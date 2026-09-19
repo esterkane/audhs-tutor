@@ -1,15 +1,23 @@
-"""Application settings. The only place configuration is read (CLAUDE.md: never elsewhere)."""
+"""Application settings. The only place configuration is read (CLAUDE.md: never elsewhere).
+
+Relative SQLite paths in DATABASE_URL are resolved against the project root (parent of backend/),
+so `./data/dev.db` means `<repo>/data/dev.db` regardless of the current working directory.
+"""
 
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=("../.env", ".env"), extra="ignore")
+    model_config = SettingsConfigDict(env_file=(str(PROJECT_ROOT / ".env"), ".env"), extra="ignore")
 
     app_env: str = "dev"
     database_url: str = "sqlite+aiosqlite:///./data/dev.db"
+    auto_migrate: bool = True
     ollama_host: str = "http://localhost:11434"
     anthropic_api_key: str = ""
     daily_budget_usd: float = 1.50
@@ -20,6 +28,30 @@ class Settings(BaseSettings):
     qdrant_url: str = "http://localhost:6333"
     models_dir: str = "./data/models"
     hf_token: str = ""
+
+    @property
+    def project_root(self) -> Path:
+        return PROJECT_ROOT
+
+    def _resolve_sqlite(self, url: str) -> str:
+        marker = ":///./"
+        if marker in url:
+            scheme, rel = url.split(":///./", 1)
+            return f"{scheme}:///{(PROJECT_ROOT / rel).resolve()}"
+        return url
+
+    @property
+    def database_url_resolved(self) -> str:
+        return self._resolve_sqlite(self.database_url)
+
+    @property
+    def sync_database_url(self) -> str:
+        return self.database_url_resolved.replace("+aiosqlite", "")
+
+    @property
+    def models_dir_resolved(self) -> Path:
+        p = Path(self.models_dir)
+        return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
 
 
 @lru_cache
