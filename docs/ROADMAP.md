@@ -21,7 +21,7 @@ Benchmark `bench_stage0.py`: local `chat` ≥ 15 tok/s; one `grade_rubric` call 
 
 ## Stage 1 — One complete learning vertical slice (subject: attention mechanisms)
 select concept → retrieve grounded material → teach → learner answers → assess → record evidence → update competency → schedule review.
-- [ ] `seed-attention` — 6–10 `skill_node`s with prerequisites + `learning_object`s for attention (dot-product, scaled, multi-head, masking, positional encoding, KV cache) from 1–2 ingested sources (hand-ingested chunks OK).
+- [x] `seed-attention` — 6–10 `skill_node`s with prerequisites + `learning_object`s for attention (dot-product, scaled, multi-head, masking, positional encoding, KV cache) from 1–2 ingested sources (hand-ingested chunks OK).
 - [ ] `context-packet` — builder with budgets + trace of drops.
 - [ ] `tutor-turn` — orchestrator loop with kernel tools; SSE `/api/tutor/stream`; explicit mode; hint ladder; citations.
 - [ ] `assess-evidence` — explain-back + cloze + MCQ; hierarchical grader; `competency_evidence` rows; `competency_state` refresh.

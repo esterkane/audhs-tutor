@@ -1,0 +1,286 @@
+# Stage 1 seed: attention mechanisms. 8 skill nodes, prerequisite edges, one LearningObject each,
+# assessments (mcq, cloze, explain_back) with rubrics. Loaded idempotently by scripts/seed_attention.py.
+domain: ai_ml
+course: "Attention Mechanisms (seed)"
+
+skills:
+  - slug: vec-dot-product
+    title: Dot product as similarity
+    description: Why the dot product of two vectors measures alignment, and how scale and dimension affect it.
+    success_criteria:
+      - Compute a dot product for two small vectors by hand.
+      - State why a larger dot product means the vectors point in a similar direction.
+      - Explain why dot products grow with the number of dimensions when entries are random.
+    assessment_requirements: {dimensions: [recall, explanation], min_items: 2}
+    example_applications: [cosine similarity in retrieval, query-key scoring in attention]
+    prerequisites: []
+
+  - slug: softmax
+    title: Softmax as a weighting function
+    description: Turning a vector of scores into a probability distribution; the effect of temperature and large inputs.
+    success_criteria:
+      - Write the softmax formula and compute it for three scores.
+      - Predict how softmax output changes when one score is much larger than the others.
+      - Explain saturation: why huge inputs produce near one-hot outputs and tiny gradients.
+    assessment_requirements: {dimensions: [recall, explanation], min_items: 2}
+    example_applications: [classification heads, attention weights]
+    prerequisites: []
+
+  - slug: attn-dot-product
+    title: Dot-product attention (Q, K, V)
+    description: Queries, keys and values; scores from query-key dot products; output as a weighted sum of values.
+    success_criteria:
+      - Name the roles of Q, K and V in one sentence each.
+      - Compute attention weights and output for a two-token example.
+      - Explain why the output is a mixture of values, not of keys.
+    assessment_requirements: {dimensions: [recall, explanation, application], min_items: 3}
+    example_applications: [sequence-to-sequence alignment, retrieval-style lookup]
+    prerequisites: [vec-dot-product, softmax]
+
+  - slug: attn-scaled
+    title: Scaled dot-product attention
+    description: Dividing scores by sqrt(d_k) to keep softmax in a useful range as dimension grows.
+    success_criteria:
+      - State the scaled dot-product attention formula.
+      - Explain what goes wrong without the 1/sqrt(d_k) factor.
+      - Show with the variance argument why sqrt(d_k) is the right scale.
+    assessment_requirements: {dimensions: [recall, explanation, application], min_items: 3}
+    example_applications: [every transformer layer]
+    prerequisites: [attn-dot-product]
+
+  - slug: attn-multi-head
+    title: Multi-head attention
+    description: Running h attention heads on projected subspaces in parallel and concatenating the results.
+    success_criteria:
+      - Describe what a head is in terms of projection matrices.
+      - Explain why several small heads can beat one large head.
+      - Compute the per-head dimension for d_model=512 and h=8.
+    assessment_requirements: {dimensions: [recall, explanation, application], min_items: 3}
+    example_applications: [transformer encoder/decoder blocks, interpretability of heads]
+    prerequisites: [attn-scaled]
+
+  - slug: attn-masking
+    title: Masking (padding and causal)
+    description: Preventing attention to padding tokens and to future positions by adding -inf before softmax.
+    success_criteria:
+      - Distinguish a padding mask from a causal mask.
+      - Explain why the mask is applied before softmax and uses -inf, not zero.
+      - Draw the causal mask for a length-4 sequence.
+    assessment_requirements: {dimensions: [recall, explanation, application], min_items: 3}
+    example_applications: [decoder-only language models, batched variable-length inputs]
+    prerequisites: [attn-scaled]
+
+  - slug: pos-encoding
+    title: Positional encoding
+    description: Why attention is permutation-invariant and how sinusoidal or learned encodings inject order.
+    success_criteria:
+      - Explain why attention without positional information cannot distinguish word order.
+      - Describe the sinusoidal scheme in words (frequencies per dimension).
+      - Contrast absolute and relative positional schemes at a high level.
+    assessment_requirements: {dimensions: [recall, explanation], min_items: 2}
+    example_applications: [transformers on text, audio and images]
+    prerequisites: [attn-dot-product]
+
+  - slug: kv-cache
+    title: KV cache in autoregressive decoding
+    description: Reusing past keys and values during generation so each new token costs O(n) instead of O(n^2).
+    success_criteria:
+      - Explain which tensors are cached and which are recomputed for each new token.
+      - Estimate cache memory for given layers, heads, head dimension and sequence length.
+      - Relate the cache to the causal mask.
+    assessment_requirements: {dimensions: [recall, explanation, application], min_items: 3}
+    example_applications: [LLM inference serving, long-context memory budgeting]
+    prerequisites: [attn-masking, attn-multi-head]
+
+learning_objects:
+  - skill: vec-dot-product
+    concept: Dot product as alignment
+    goal: Read a dot product as "how much do these two vectors agree", including its dependence on magnitude and dimension.
+    examples:
+      - "[1,0]·[1,0]=1 (aligned), [1,0]·[0,1]=0 (orthogonal), [1,0]·[-1,0]=-1 (opposed)."
+      - "Two random 512-d vectors with unit-variance entries have a dot product with variance 512."
+    exercises:
+      - Compute [2,1,0]·[1,3,4].
+      - Explain in one sentence why doubling one vector doubles the dot product.
+  - skill: softmax
+    concept: Softmax
+    goal: Convert scores into weights that sum to one and understand saturation.
+    examples:
+      - "softmax([1,2,3]) ≈ [0.09, 0.24, 0.67]."
+      - "softmax([10,20,30]) ≈ [0.00, 0.00, 1.00]: the largest score dominates."
+    exercises:
+      - Compute softmax([0,0,ln 2]).
+      - Predict softmax([100, 0, 0]) without a calculator.
+  - skill: attn-dot-product
+    concept: Dot-product attention
+    goal: Trace one attention step from Q, K, V to the output as a weighted sum of values.
+    examples:
+      - "Query 'it' scores highest against key 'animal', so the output copies mostly the value of 'animal'."
+    exercises:
+      - With q=[1,0], K=[[1,0],[0,1]], V=[[5,5],[0,10]] compute the attention output.
+  - skill: attn-scaled
+    concept: Scaled dot-product attention
+    goal: Justify the 1/sqrt(d_k) factor with the variance argument and state the full formula.
+    examples:
+      - "d_k=64: raw scores have std 8; after scaling, std 1, softmax stays soft."
+    exercises:
+      - For d_k=256, what is the scale factor and why?
+  - skill: attn-multi-head
+    concept: Multi-head attention
+    goal: Explain heads as parallel projected attentions and compute their dimensions.
+    examples:
+      - "d_model=512, h=8 → each head works in 64 dimensions; outputs are concatenated to 512 and projected by W_O."
+    exercises:
+      - Why not use one head with d_k=512 instead of 8 heads with d_k=64?
+  - skill: attn-masking
+    concept: Attention masks
+    goal: Apply padding and causal masks correctly and explain the -inf-before-softmax rule.
+    examples:
+      - "Causal mask for length 3: row i may attend to columns ≤ i."
+    exercises:
+      - What happens if you set masked scores to 0 instead of -inf?
+  - skill: pos-encoding
+    concept: Positional encoding
+    goal: Explain permutation invariance and how sinusoidal encodings add order.
+    examples:
+      - "Without position information 'dog bites man' and 'man bites dog' produce identical attention outputs."
+    exercises:
+      - Why do sinusoidal encodings use many frequencies rather than one?
+  - skill: kv-cache
+    concept: KV cache
+    goal: Explain what is cached during decoding and estimate its memory.
+    examples:
+      - "32 layers × 2 (K,V) × 4096 tokens × 4096 dims × 2 bytes ≈ 2.1 GB for one sequence in fp16."
+    exercises:
+      - Which of Q, K, V must be computed fresh for the newest token, and why?
+
+assessments:
+  - skill: vec-dot-product
+    kind: mcq
+    item:
+      question: "What is [2,1,0]·[1,3,4]?"
+      options: ["5", "9", "13", "0"]
+      answer: 0
+      explanation: "2·1 + 1·3 + 0·4 = 5."
+  - skill: vec-dot-product
+    kind: cloze
+    item:
+      text: "For random vectors with unit-variance entries, the variance of the dot product grows linearly with the ____ of the vectors."
+      answers: ["dimension", "dimensionality", "number of dimensions", "length", "d_k"]
+  - skill: softmax
+    kind: mcq
+    item:
+      question: "softmax([10, 20, 30]) is closest to which vector?"
+      options: ["[0.33, 0.33, 0.33]", "[0.0, 0.0, 1.0]", "[0.1, 0.2, 0.7]", "[1.0, 0.0, 0.0]"]
+      answer: 1
+      explanation: "The gaps of 10 in the exponent make the largest score dominate."
+  - skill: softmax
+    kind: cloze
+    item:
+      text: "When inputs to softmax are very large, the output approaches a one-hot vector and the gradients become ____."
+      answers: ["tiny", "very small", "near zero", "vanishing", "small"]
+  - skill: attn-dot-product
+    kind: mcq
+    item:
+      question: "In dot-product attention the output is a weighted sum of which vectors?"
+      options: ["queries", "keys", "values", "scores"]
+      answer: 2
+      explanation: "Scores come from query·key; the weights then mix the values."
+  - skill: attn-dot-product
+    kind: cloze
+    item:
+      text: "Attention weights are obtained by applying ____ to the query-key scores."
+      answers: ["softmax", "a softmax", "the softmax function"]
+  - skill: attn-dot-product
+    kind: explain_back
+    item:
+      prompt: "Explain to a colleague what queries, keys and values do in one attention step, and why the output mixes values rather than keys."
+    rubric:
+      - {criterion: "Names Q, K, V with their roles (query asks, key is matched, value is returned)", keywords: [query, key, value]}
+      - {criterion: "States that scores come from query-key dot products", keywords: [dot, score]}
+      - {criterion: "States that weights (after softmax) combine the values into the output", keywords: [weight, value, sum]}
+  - skill: attn-scaled
+    kind: mcq
+    item:
+      question: "Why are attention scores divided by sqrt(d_k)?"
+      options:
+        - "To make the keys orthogonal"
+        - "To keep the variance of the scores near 1 so softmax does not saturate"
+        - "To reduce the number of parameters"
+        - "To normalise the values"
+      answer: 1
+      explanation: "Random q·k has variance d_k; dividing by sqrt(d_k) restores unit variance."
+  - skill: attn-scaled
+    kind: cloze
+    item:
+      text: "Scaled dot-product attention: softmax(QK^T / ____) V."
+      answers: ["sqrt(d_k)", "√d_k", "sqrt(dk)", "square root of d_k", "the square root of d_k"]
+  - skill: attn-scaled
+    kind: explain_back
+    item:
+      prompt: "Explain why dividing by sqrt(d_k) matters, using the variance of a dot product of random vectors."
+    rubric:
+      - {criterion: "Mentions that dot-product variance grows with d_k", keywords: [variance, d_k, grow]}
+      - {criterion: "Links large scores to softmax saturation or tiny gradients", keywords: [softmax, saturat, gradient]}
+      - {criterion: "States that dividing by sqrt(d_k) restores unit variance", keywords: [sqrt, unit, variance]}
+  - skill: attn-multi-head
+    kind: mcq
+    item:
+      question: "With d_model = 512 and 8 heads, what is the dimension of each head?"
+      options: ["512", "256", "64", "8"]
+      answer: 2
+      explanation: "512 / 8 = 64."
+  - skill: attn-multi-head
+    kind: explain_back
+    item:
+      prompt: "Explain what a head is in multi-head attention and give one reason several heads can beat a single large head."
+    rubric:
+      - {criterion: "Defines a head via its own projections of Q, K, V into a subspace", keywords: [project, subspace, head]}
+      - {criterion: "Mentions concatenation and output projection", keywords: [concat, output]}
+      - {criterion: "Gives a reason: attend to different relations/positions jointly", keywords: [different, relation, position, pattern]}
+  - skill: attn-masking
+    kind: mcq
+    item:
+      question: "Why are masked positions set to -inf before softmax rather than to 0 after it?"
+      options:
+        - "-inf is faster to compute"
+        - "So the remaining weights still sum to one"
+        - "Because softmax cannot take zero inputs"
+        - "To make the gradients larger"
+      answer: 1
+      explanation: "exp(-inf) = 0 removes the position from the normalisation."
+  - skill: attn-masking
+    kind: explain_back
+    item:
+      prompt: "Describe the difference between a padding mask and a causal mask, and where in the computation each is applied."
+    rubric:
+      - {criterion: "Padding mask hides pad tokens across the batch", keywords: [pad]}
+      - {criterion: "Causal mask hides future positions for autoregressive decoding", keywords: [future, causal, autoregress]}
+      - {criterion: "Both are applied to the scores before softmax", keywords: [before, softmax]}
+  - skill: pos-encoding
+    kind: mcq
+    item:
+      question: "Without positional information, attention treats an input sequence as:"
+      options: ["a stack", "a set (order does not matter)", "a tree", "a sorted list"]
+      answer: 1
+      explanation: "Attention is permutation-equivariant; order must be injected."
+  - skill: pos-encoding
+    kind: cloze
+    item:
+      text: "The original transformer added ____ positional encodings of different frequencies to the token embeddings."
+      answers: ["sinusoidal", "sine and cosine", "sine/cosine", "sinusoid"]
+  - skill: kv-cache
+    kind: mcq
+    item:
+      question: "During autoregressive decoding with a KV cache, which tensor must be computed for the newest token only?"
+      options: ["All past keys", "All past values", "The new token's query, key and value", "Nothing new"]
+      answer: 2
+      explanation: "Past K and V are reused; only the new token's Q, K, V are computed."
+  - skill: kv-cache
+    kind: explain_back
+    item:
+      prompt: "Explain what the KV cache stores, why it makes decoding cheaper, and how you would estimate its size."
+    rubric:
+      - {criterion: "States that keys and values of past tokens are stored per layer", keywords: [key, value, layer]}
+      - {criterion: "Explains cost drops from recomputing all positions to one query per step", keywords: [recompute, per token, step, O(n)]}
+      - {criterion: "Gives a size formula involving layers, sequence length, hidden/head dimension and bytes", keywords: [layer, length, dim, byte]}
