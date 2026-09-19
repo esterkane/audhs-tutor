@@ -50,6 +50,7 @@ _RAW_PATTERNS: dict[str, str] = {
         r"</?\s*(system|assistant|instruction|tool_result|policy)\s*>|\[/?INST\]"
         r"|BEGIN (SYSTEM|INSTRUCTIONS)"
     ),
+    "fake_section": r"(?m)^\s*#{1,3}\s+(output contract|request|session state|system|instructions?)\b",
     "tool_call_injection": (
         r"\bcall (the )?tool\b|\bexecute (this )?(command|code)\b|\brun (the )?following\b"
     ),

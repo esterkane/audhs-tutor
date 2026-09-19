@@ -4,1072 +4,1074 @@
  */
 
 export interface paths {
-  '/api/health': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Liveness + DB connectivity */
-    get: operations['health_api_health_get']
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/learner/me': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** The owner profile (single learner in Phase 1) */
-    get: operations['me_api_learner_me_get']
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/skills': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Skill map with mastery + unlock state (open learner model) */
-    get: operations['list_skills_api_skills_get']
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/skills/{skill_id}': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** One skill with its state */
-    get: operations['get_skill_api_skills__skill_id__get']
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/sessions': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Start a session (learner-chosen mode + energy) */
-    post: operations['start_api_sessions_post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/sessions/{session_id}': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Session state */
-    get: operations['get_api_sessions__session_id__get']
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/sessions/{session_id}/end': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** End with confidence-rated recap */
-    post: operations['end_api_sessions__session_id__end_post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/tutor/stream': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** One tutor turn as SSE (meta, token*, done | error) */
-    post: operations['stream_api_tutor_stream_post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/tutor/turn': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** One tutor turn, buffered (tests, scripts, benchmarks) */
-    post: operations['turn_api_tutor_turn_post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/assess/next': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Next assessment item for a skill (mcq → cloze → explain-back rotation) */
-    get: operations['next_item_api_assess_next_get']
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/assess/attempt': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Submit an answer with a prior confidence rating; graded hierarchically */
-    post: operations['attempt_api_assess_attempt_post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/review/due': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Due review items, capped to the minimum-viable review for this session */
-    get: operations['due_api_review_due_get']
-    put?: never
-    post?: never
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/review/{item_id}': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    get?: never
-    put?: never
-    /** Rate a recalled item 1-4 (FSRS) */
-    post: operations['rate_api_review__item_id__post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
-  '/api/parking': {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    /** Parked items */
-    get: operations['list_parked_api_parking_get']
-    put?: never
-    /** Park a tangent (≤ 2 interactions, linked to the current node) */
-    post: operations['park_api_parking_post']
-    delete?: never
-    options?: never
-    head?: never
-    patch?: never
-    trace?: never
-  }
+    "/api/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Liveness + DB connectivity */
+        get: operations["health_api_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/learner/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The owner profile (single learner in Phase 1) */
+        get: operations["me_api_learner_me_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Skill map with mastery + unlock state (open learner model) */
+        get: operations["list_skills_api_skills_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/skills/{skill_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** One skill with its state */
+        get: operations["get_skill_api_skills__skill_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a session (learner-chosen mode + energy) */
+        post: operations["start_api_sessions_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions/{session_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Session state */
+        get: operations["get_api_sessions__session_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/sessions/{session_id}/end": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End with confidence-rated recap */
+        post: operations["end_api_sessions__session_id__end_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tutor/stream": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One tutor turn as SSE (meta, token*, done | error) */
+        post: operations["stream_api_tutor_stream_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/tutor/turn": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** One tutor turn, buffered (tests, scripts, benchmarks) */
+        post: operations["turn_api_tutor_turn_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assess/next": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Next assessment item for a skill (mcq → cloze → explain-back rotation) */
+        get: operations["next_item_api_assess_next_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/assess/attempt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Submit an answer with a prior confidence rating; graded hierarchically */
+        post: operations["attempt_api_assess_attempt_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/review/due": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Due review items, capped to the minimum-viable review for this session */
+        get: operations["due_api_review_due_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/review/{item_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Rate a recalled item 1-4 (FSRS) */
+        post: operations["rate_api_review__item_id__post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/parking": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Parked items */
+        get: operations["list_parked_api_parking_get"];
+        put?: never;
+        /** Park a tangent (≤ 2 interactions, linked to the current node) */
+        post: operations["park_api_parking_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
-export type webhooks = Record<string, never>
+export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    /** AssessmentView */
-    AssessmentView: {
-      /** Id */
-      id: string
-      /** Skill Id */
-      skill_id: string
-      /** Kind */
-      kind: string
-      /** Question */
-      question: string
-      /** Options */
-      options?: string[] | null
-      /** Criteria */
-      criteria?: string[] | null
-      /**
-       * Confidence Required
-       * @default true
-       */
-      confidence_required: boolean
-    }
-    /** AttemptRequest */
-    AttemptRequest: {
-      /** Session Id */
-      session_id: string
-      /** Assessment Id */
-      assessment_id: string
-      /** Answer */
-      answer: string
-      /** Confidence Pre */
-      confidence_pre: number
-      /** Latency Ms */
-      latency_ms?: number | null
-      /**
-       * Hint Count
-       * @default 0
-       */
-      hint_count: number
-    }
-    /** AttemptResult */
-    AttemptResult: {
-      /** Attempt Id */
-      attempt_id: string
-      /** Assessment Id */
-      assessment_id: string
-      /** Skill Id */
-      skill_id: string
-      /** Kind */
-      kind: string
-      /** Dimension */
-      dimension: string
-      /** Correct */
-      correct: boolean | null
-      /** Score */
-      score: number
-      /** Criterion Results */
-      criterion_results: components['schemas']['CriterionResult'][]
-      /** Misconception */
-      misconception: string | null
-      /** Confidence */
-      confidence: number
-      /** Grader Level */
-      grader_level: string
-      /** Feedback */
-      feedback: string
-      /** Next Step */
-      next_step: string
-      /** Confidence Pre */
-      confidence_pre: number
-      /** Calibration */
-      calibration: string
-      /** Review */
-      review: {
-        [key: string]: unknown
-      }
-      /** Mastery */
-      mastery: number
-    }
-    /** CriterionResult */
-    CriterionResult: {
-      /** Criterion */
-      criterion: string
-      /** Passed */
-      passed: boolean
-      /**
-       * Evidence
-       * @default
-       */
-      evidence: string
-    }
-    /** DueList */
-    DueList: {
-      /** Items */
-      items: components['schemas']['ReviewItemOut'][]
-      /** Cap */
-      cap: number
-      /** Total Due */
-      total_due: number
-      /** As Of */
-      as_of: string
-    }
-    /** HTTPValidationError */
-    HTTPValidationError: {
-      /** Detail */
-      detail?: components['schemas']['ValidationError'][]
-    }
-    /** Health */
-    Health: {
-      /** Status */
-      status: string
-      /** Env */
-      env: string
-      /** Db */
-      db: string
-    }
-    /** LearnerOut */
-    LearnerOut: {
-      /** Id */
-      id: string
-      /** Display Name */
-      display_name: string
-      /** Created At */
-      created_at: string
-    }
-    /**
-     * Mode
-     * @enum {string}
-     */
-    Mode: 'novelty' | 'steady' | 'low_capacity'
-    /** NextItem */
-    NextItem: {
-      item: components['schemas']['AssessmentView'] | null
-      /** Skill Id */
-      skill_id: string
-    }
-    /** ParkIn */
-    ParkIn: {
-      /** Session Id */
-      session_id?: string | null
-      /** Text */
-      text: string
-      /** Node Id */
-      node_id?: string | null
-    }
-    /** ParkList */
-    ParkList: {
-      /** Items */
-      items: components['schemas']['ParkOut'][]
-    }
-    /** ParkOut */
-    ParkOut: {
-      /** Id */
-      id: string
-      /** Text */
-      text: string
-      /** Node Id */
-      node_id: string | null
-      /** Status */
-      status: string
-      /** Created At */
-      created_at: string
-    }
-    /** ReviewItemOut */
-    ReviewItemOut: {
-      /** Item Id */
-      item_id: string
-      /** Skill Id */
-      skill_id: string
-      /** Skill Title */
-      skill_title: string
-      /** Item Type */
-      item_type: string
-      /** Question */
-      question: string
-      /** Options */
-      options: string[] | null
-      /** Reveal */
-      reveal: string
-      /** Due */
-      due: string
-      /** State */
-      state: string
-    }
-    /** ReviewOut */
-    ReviewOut: {
-      /** Item Id */
-      item_id: string
-      /** Due */
-      due: string
-      /** State */
-      state: string
-      /** Stability */
-      stability: number | null
-      /** Predicted Retrievability */
-      predicted_retrievability: number | null
-    }
-    /** ReviewRating */
-    ReviewRating: {
-      /** Session Id */
-      session_id: string
-      /** Rating */
-      rating: number
-      /** Confidence Pre */
-      confidence_pre?: number | null
-      /** Latency Ms */
-      latency_ms?: number | null
-    }
-    /** SessionEnd */
-    SessionEnd: {
-      /** Energy After */
-      energy_after: number
-      /** Self Report */
-      self_report: number
-      /** Notes */
-      notes?: string | null
-    }
-    /** SessionOut */
-    SessionOut: {
-      /** Id */
-      id: string
-      /** Mode */
-      mode: string
-      /** Energy */
-      energy: number
-      /** Socratic */
-      socratic: boolean
-      /** Started At */
-      started_at: string
-      /** Ended At */
-      ended_at: string | null
-      /** Energy After */
-      energy_after: number | null
-      next_skill: components['schemas']['SkillView'] | null
-      /** Due Reviews */
-      due_reviews: number
-      /** Review Cap */
-      review_cap: number
-      /** Minimum Viable */
-      minimum_viable: string[]
-    }
-    /** SessionStart */
-    SessionStart: {
-      /** @default steady */
-      mode: components['schemas']['Mode']
-      /**
-       * Energy
-       * @default 3
-       */
-      energy: number
-      /**
-       * Socratic
-       * @default false
-       */
-      socratic: boolean
-    }
-    /** SkillList */
-    SkillList: {
-      /** Skills */
-      skills: components['schemas']['SkillView'][]
-      /** Next Skill Id */
-      next_skill_id: string | null
-    }
-    /** SkillView */
-    SkillView: {
-      /** Id */
-      id: string
-      /** Slug */
-      slug: string
-      /** Title */
-      title: string
-      /** Description */
-      description: string
-      /** Domain */
-      domain: string
-      /** Success Criteria */
-      success_criteria: string[]
-      /** Prerequisites */
-      prerequisites: string[]
-      /** Mastery */
-      mastery: number
-      /** Unlocked */
-      unlocked: boolean
-      /** State */
-      state: {
-        [key: string]: unknown
-      }
-    }
-    /** SourceRef */
-    SourceRef: {
-      /** Chunk Id */
-      chunk_id: string
-      /** Citation */
-      citation: string
-      /** Trust Tier */
-      trust_tier: number
-      /** Score */
-      score: number
-      /** Flagged */
-      flagged?: string[]
-      /**
-       * Cited
-       * @default false
-       */
-      cited: boolean
-    }
-    /** TurnDone */
-    TurnDone: {
-      /** Turn Id */
-      turn_id: string
-      /** Model Call Id */
-      model_call_id: string | null
-      /** Tutor Trace Id */
-      tutor_trace_id: string
-      /** Registry Id */
-      registry_id: string | null
-      /** Route */
-      route: string | null
-      /** Sentences */
-      sentences: number
-      /** Representation */
-      representation: string | null
-      /** Sources */
-      sources: components['schemas']['SourceRef'][]
-      /** Flagged */
-      flagged: string[]
-      /** Dropped */
-      dropped: string[]
-      /** Latency Ms */
-      latency_ms: number
-      /** Text */
-      text: string
-    }
-    /** TurnRequest */
-    TurnRequest: {
-      /** Session Id */
-      session_id: string
-      /** Text */
-      text: string
-      /** Skill Id */
-      skill_id?: string | null
-      /**
-       * Action
-       * @default auto
-       * @enum {string}
-       */
-      action: 'auto' | 'explain' | 'hint' | 'summarize' | 'full_solution'
-      /** Representation */
-      representation?: string | null
-    }
-    /** ValidationError */
-    ValidationError: {
-      /** Location */
-      loc: (string | number)[]
-      /** Message */
-      msg: string
-      /** Error Type */
-      type: string
-      /** Input */
-      input?: unknown
-      /** Context */
-      ctx?: Record<string, never>
-    }
-  }
-  responses: never
-  parameters: never
-  requestBodies: never
-  headers: never
-  pathItems: never
+    schemas: {
+        /** AssessmentView */
+        AssessmentView: {
+            /** Id */
+            id: string;
+            /** Skill Id */
+            skill_id: string;
+            /** Kind */
+            kind: string;
+            /** Question */
+            question: string;
+            /** Options */
+            options?: string[] | null;
+            /** Criteria */
+            criteria?: string[] | null;
+            /**
+             * Confidence Required
+             * @default true
+             */
+            confidence_required: boolean;
+        };
+        /** AttemptRequest */
+        AttemptRequest: {
+            /** Session Id */
+            session_id: string;
+            /** Assessment Id */
+            assessment_id: string;
+            /** Answer */
+            answer: string;
+            /** Confidence Pre */
+            confidence_pre: number;
+            /** Latency Ms */
+            latency_ms?: number | null;
+            /**
+             * Hint Count
+             * @default 0
+             */
+            hint_count: number;
+        };
+        /** AttemptResult */
+        AttemptResult: {
+            /** Attempt Id */
+            attempt_id: string;
+            /** Assessment Id */
+            assessment_id: string;
+            /** Skill Id */
+            skill_id: string;
+            /** Kind */
+            kind: string;
+            /** Dimension */
+            dimension: string;
+            /** Correct */
+            correct: boolean | null;
+            /** Score */
+            score: number;
+            /** Criterion Results */
+            criterion_results: components["schemas"]["CriterionResult"][];
+            /** Misconception */
+            misconception: string | null;
+            /** Confidence */
+            confidence: number;
+            /** Grader Level */
+            grader_level: string;
+            /** Feedback */
+            feedback: string;
+            /** Next Step */
+            next_step: string;
+            /** Confidence Pre */
+            confidence_pre: number;
+            /** Calibration */
+            calibration: string;
+            /** Review */
+            review: {
+                [key: string]: unknown;
+            };
+            /** Mastery */
+            mastery: number;
+        };
+        /** CriterionResult */
+        CriterionResult: {
+            /** Criterion */
+            criterion: string;
+            /** Passed */
+            passed: boolean;
+            /**
+             * Evidence
+             * @default
+             */
+            evidence: string;
+        };
+        /** DueList */
+        DueList: {
+            /** Items */
+            items: components["schemas"]["ReviewItemOut"][];
+            /** Cap */
+            cap: number;
+            /** Total Due */
+            total_due: number;
+            /** As Of */
+            as_of: string;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /** Health */
+        Health: {
+            /** Status */
+            status: string;
+            /** Env */
+            env: string;
+            /** Db */
+            db: string;
+        };
+        /** LearnerOut */
+        LearnerOut: {
+            /** Id */
+            id: string;
+            /** Display Name */
+            display_name: string;
+            /** Created At */
+            created_at: string;
+        };
+        /**
+         * Mode
+         * @enum {string}
+         */
+        Mode: "novelty" | "steady" | "low_capacity";
+        /** NextItem */
+        NextItem: {
+            item: components["schemas"]["AssessmentView"] | null;
+            /** Skill Id */
+            skill_id: string;
+        };
+        /** ParkIn */
+        ParkIn: {
+            /** Session Id */
+            session_id?: string | null;
+            /** Text */
+            text: string;
+            /** Node Id */
+            node_id?: string | null;
+        };
+        /** ParkList */
+        ParkList: {
+            /** Items */
+            items: components["schemas"]["ParkOut"][];
+        };
+        /** ParkOut */
+        ParkOut: {
+            /** Id */
+            id: string;
+            /** Text */
+            text: string;
+            /** Node Id */
+            node_id: string | null;
+            /** Status */
+            status: string;
+            /** Created At */
+            created_at: string;
+        };
+        /** ReviewItemOut */
+        ReviewItemOut: {
+            /** Item Id */
+            item_id: string;
+            /** Skill Id */
+            skill_id: string;
+            /** Skill Title */
+            skill_title: string;
+            /** Item Type */
+            item_type: string;
+            /** Question */
+            question: string;
+            /** Options */
+            options: string[] | null;
+            /** Reveal */
+            reveal: string;
+            /** Due */
+            due: string;
+            /** State */
+            state: string;
+        };
+        /** ReviewOut */
+        ReviewOut: {
+            /** Item Id */
+            item_id: string;
+            /** Due */
+            due: string;
+            /** State */
+            state: string;
+            /** Stability */
+            stability: number | null;
+            /** Predicted Retrievability */
+            predicted_retrievability: number | null;
+        };
+        /** ReviewRating */
+        ReviewRating: {
+            /** Session Id */
+            session_id: string;
+            /** Rating */
+            rating: number;
+            /** Confidence Pre */
+            confidence_pre?: number | null;
+            /** Latency Ms */
+            latency_ms?: number | null;
+        };
+        /** SessionEnd */
+        SessionEnd: {
+            /** Energy After */
+            energy_after: number;
+            /** Self Report */
+            self_report: number;
+            /** Notes */
+            notes?: string | null;
+        };
+        /** SessionOut */
+        SessionOut: {
+            /** Id */
+            id: string;
+            /** Mode */
+            mode: string;
+            /** Energy */
+            energy: number;
+            /** Socratic */
+            socratic: boolean;
+            /** Started At */
+            started_at: string;
+            /** Ended At */
+            ended_at: string | null;
+            /** Energy After */
+            energy_after: number | null;
+            next_skill: components["schemas"]["SkillView"] | null;
+            /** Due Reviews */
+            due_reviews: number;
+            /** Review Cap */
+            review_cap: number;
+            /** Minimum Viable */
+            minimum_viable: string[];
+        };
+        /** SessionStart */
+        SessionStart: {
+            /** @default steady */
+            mode: components["schemas"]["Mode"];
+            /**
+             * Energy
+             * @default 3
+             */
+            energy: number;
+            /**
+             * Socratic
+             * @default false
+             */
+            socratic: boolean;
+        };
+        /** SkillList */
+        SkillList: {
+            /** Skills */
+            skills: components["schemas"]["SkillView"][];
+            /** Next Skill Id */
+            next_skill_id: string | null;
+        };
+        /** SkillView */
+        SkillView: {
+            /** Id */
+            id: string;
+            /** Slug */
+            slug: string;
+            /** Title */
+            title: string;
+            /** Description */
+            description: string;
+            /** Domain */
+            domain: string;
+            /** Success Criteria */
+            success_criteria: string[];
+            /** Prerequisites */
+            prerequisites: string[];
+            /** Mastery */
+            mastery: number;
+            /** Unlocked */
+            unlocked: boolean;
+            /** State */
+            state: {
+                [key: string]: unknown;
+            };
+        };
+        /** SourceRef */
+        SourceRef: {
+            /** Chunk Id */
+            chunk_id: string;
+            /** Citation */
+            citation: string;
+            /** Trust Tier */
+            trust_tier: number;
+            /** Score */
+            score: number;
+            /** Flagged */
+            flagged?: string[];
+            /**
+             * Cited
+             * @default false
+             */
+            cited: boolean;
+        };
+        /** TurnDone */
+        TurnDone: {
+            /** Turn Id */
+            turn_id: string;
+            /** Model Call Id */
+            model_call_id: string | null;
+            /** Tutor Trace Id */
+            tutor_trace_id: string;
+            /** Registry Id */
+            registry_id: string | null;
+            /** Route */
+            route: string | null;
+            /** Sentences */
+            sentences: number;
+            /** Representation */
+            representation: string | null;
+            /** Sources */
+            sources: components["schemas"]["SourceRef"][];
+            /** Flagged */
+            flagged: string[];
+            /** Dropped */
+            dropped: string[];
+            /** Latency Ms */
+            latency_ms: number;
+            /** Text */
+            text: string;
+        };
+        /** TurnRequest */
+        TurnRequest: {
+            /** Session Id */
+            session_id: string;
+            /** Text */
+            text: string;
+            /** Skill Id */
+            skill_id?: string | null;
+            /**
+             * Action
+             * @default auto
+             * @enum {string}
+             */
+            action: "auto" | "explain" | "hint" | "summarize" | "full_solution";
+            /** Representation */
+            representation?: string | null;
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+            /** Input */
+            input?: unknown;
+            /** Context */
+            ctx?: Record<string, never>;
+        };
+    };
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
-export type $defs = Record<string, never>
+export type $defs = Record<string, never>;
 export interface operations {
-  health_api_health_get: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['Health']
-        }
-      }
-    }
-  }
-  me_api_learner_me_get: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['LearnerOut']
-        }
-      }
-    }
-  }
-  list_skills_api_skills_get: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['SkillList']
-        }
-      }
-    }
-  }
-  get_skill_api_skills__skill_id__get: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        skill_id: string
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['SkillView']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  start_api_sessions_post: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['SessionStart']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      201: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['SessionOut']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  get_api_sessions__session_id__get: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        session_id: string
-      }
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['SessionOut']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  end_api_sessions__session_id__end_post: {
-    parameters: {
-      query?: never
-      header?: never
-      path: {
-        session_id: string
-      }
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['SessionEnd']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['SessionOut']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  stream_api_tutor_stream_post: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['TurnRequest']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': unknown
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  turn_api_tutor_turn_post: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['TurnRequest']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['TurnDone']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  next_item_api_assess_next_get: {
-    parameters: {
-      query: {
-        session_id: string
-        skill_id?: string | null
-      }
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['NextItem']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  attempt_api_assess_attempt_post: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['AttemptRequest']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['AttemptResult']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  due_api_review_due_get: {
-    parameters: {
-      query: {
-        session_id: string
-        /** @description ISO time; dev/benchmark time travel */
-        as_of?: string | null
-      }
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['DueList']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  rate_api_review__item_id__post: {
-    parameters: {
-      query?: {
-        as_of?: string | null
-      }
-      header?: never
-      path: {
-        item_id: string
-      }
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ReviewRating']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ReviewOut']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  list_parked_api_parking_get: {
-    parameters: {
-      query?: {
-        status?: string
-      }
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody?: never
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ParkList']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
-  park_api_parking_post: {
-    parameters: {
-      query?: never
-      header?: never
-      path?: never
-      cookie?: never
-    }
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['ParkIn']
-      }
-    }
-    responses: {
-      /** @description Successful Response */
-      201: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['ParkOut']
-        }
-      }
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown
-        }
-        content: {
-          'application/json': components['schemas']['HTTPValidationError']
-        }
-      }
-    }
-  }
+    health_api_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Health"];
+                };
+            };
+        };
+    };
+    me_api_learner_me_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LearnerOut"];
+                };
+            };
+        };
+    };
+    list_skills_api_skills_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillList"];
+                };
+            };
+        };
+    };
+    get_skill_api_skills__skill_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                skill_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SkillView"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    start_api_sessions_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionStart"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_api_sessions__session_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    end_api_sessions__session_id__end_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                session_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SessionEnd"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SessionOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    stream_api_tutor_stream_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TurnRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    turn_api_tutor_turn_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["TurnRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TurnDone"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    next_item_api_assess_next_get: {
+        parameters: {
+            query: {
+                session_id: string;
+                skill_id?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NextItem"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    attempt_api_assess_attempt_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AttemptRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AttemptResult"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    due_api_review_due_get: {
+        parameters: {
+            query: {
+                session_id: string;
+                /** @description ISO time; dev/benchmark time travel */
+                as_of?: string | null;
+                /** @description Undo the minimum-viable cap for this call */
+                all?: boolean;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DueList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    rate_api_review__item_id__post: {
+        parameters: {
+            query?: {
+                as_of?: string | null;
+            };
+            header?: never;
+            path: {
+                item_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewRating"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    list_parked_api_parking_get: {
+        parameters: {
+            query?: {
+                status?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParkList"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    park_api_parking_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ParkIn"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ParkOut"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
 }

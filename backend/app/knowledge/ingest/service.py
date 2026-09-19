@@ -8,6 +8,7 @@ from pathlib import Path
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import PROJECT_ROOT
 from app.db.models import Chunk, ChunkProvenance, Document, DocumentVersion
 from app.knowledge.ingest.markdown import approx_tokens, chunk_sections, parse_markdown
 
@@ -31,9 +32,14 @@ async def ingest_markdown(
 ) -> IngestResult:
     doc = parse_markdown(await asyncio.to_thread(path.read_text))
     meta = doc.meta
-    uri = str(meta.get("uri") or path.as_posix())
+    try:
+        default_uri = path.resolve().relative_to(PROJECT_ROOT).as_posix()  # noqa: ASYNC240
+    except ValueError:
+        default_uri = path.as_posix()
+    uri = str(meta.get("uri") or default_uri)
     course = course or meta.get("course")
-    trust = int(trust_tier if trust_tier is not None else meta.get("trust_tier", 2))
+    # trust is decided by the caller (ingest policy), never by the document's own front matter
+    trust = int(trust_tier if trust_tier is not None else 2)
     source_type = str(meta.get("source_type") or "doc")
 
     document = (await db.execute(select(Document).where(Document.uri == uri))).scalar_one_or_none()

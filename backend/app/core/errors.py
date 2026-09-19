@@ -9,6 +9,9 @@ from collections.abc import Awaitable, Callable
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
+from app.models_ai.gateway import GatewayError
+from app.models_ai.routing import NoModelReady
+
 
 class AppError(Exception):
     def __init__(self, code: str, message: str, http_status: int = 400) -> None:
@@ -39,3 +42,7 @@ def register_error_handlers(app: FastAPI) -> None:
             return _json(404, "not_found", str(exc).strip("'"))
         except ValueError as exc:
             return _json(400, "bad_request", str(exc))
+        except NoModelReady as exc:
+            return _json(503, "no_model_ready", str(exc))
+        except GatewayError as exc:
+            return _json(502, "tutor_failed", str(exc))

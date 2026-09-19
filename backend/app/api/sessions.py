@@ -2,9 +2,10 @@ from datetime import UTC, datetime
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from app.api.deps import DB, Learner
-from app.db.models import Session
+from app.db.models import Assessment, ReviewItem, Session
 from app.kernel import memory, skill_graph
 from app.kernel import session as ksession
 from app.schemas.common import Mode
@@ -87,6 +88,8 @@ async def get(session_id: str, db: DB, learner: Learner) -> SessionOut:
     "/{session_id}/end", summary="End with confidence-rated recap", response_model=SessionOut
 )
 async def end(session_id: str, body: SessionEnd, db: DB, learner: Learner) -> SessionOut:
+    await ensure_recall_item_for_explained_skill(db, learner.id, session_id)
+    await ksession.prune_checkpoints(db, session_id)
     s = await ksession.end(
         db,
         session_id,
@@ -95,3 +98,33 @@ async def end(session_id: str, body: SessionEnd, db: DB, learner: Learner) -> Se
         notes=body.notes,
     )
     return await _out(db, learner.id, s)
+
+
+async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, session_id: str) -> None:
+    """Pedagogy guardrail: any explain flow ends with a recall item in FSRS. If the session's skill has
+    no review items yet, schedule its first assessment (due now) so the queue is never empty."""
+    cp = await ksession.load_checkpoint(db, session_id) or {}
+    skill_id = cp.get("skill_id")
+    if not skill_id:
+        return
+    has = (
+        await db.execute(
+            select(ReviewItem.id)
+            .where(ReviewItem.learner_id == learner_id, ReviewItem.skill_id == skill_id)
+            .limit(1)
+        )
+    ).first()
+    if has:
+        return
+    first = (
+        await db.execute(
+            select(Assessment)
+            .where(Assessment.skill_id == skill_id)
+            .order_by(Assessment.kind)
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    if first is not None:
+        await memory.ensure_item(
+            db, learner_id, skill_id, first.kind, {"ref": first.id, "assessment_id": first.id}
+        )

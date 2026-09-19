@@ -103,6 +103,25 @@ async def save_checkpoint(
     return cp
 
 
+async def prune_checkpoints(db: AsyncSession, session_id: str, *, keep: int = 1) -> int:
+    """Keep only the newest `keep` checkpoints of a session; they are not an audit store."""
+    rows = list(
+        (
+            await db.execute(
+                select(SessionCheckpoint)
+                .where(SessionCheckpoint.session_id == session_id)
+                .order_by(SessionCheckpoint.ts.desc())
+            )
+        ).scalars()
+    )
+    n = 0
+    for cp in rows[keep:]:
+        await db.delete(cp)
+        n += 1
+    await db.commit()
+    return n
+
+
 async def load_checkpoint(db: AsyncSession, session_id: str) -> dict[str, Any] | None:
     stmt = (
         select(SessionCheckpoint)

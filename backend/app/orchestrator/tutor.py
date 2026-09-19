@@ -1,5 +1,8 @@
 """The one tutor loop (ADR-0007): interpret → identify skill → ContextPacket → retrieve → choose
-action → stream generation → traces + events → checkpoint. Yields SSE-ready events."""
+action → stream generation → traces + events → checkpoint. Yields SSE-ready events.
+
+A turn without a trace is a bug: the tutor_trace is written in a `finally`, also when the client
+aborts the stream mid-way (the explanation is then flagged partial)."""
 
 import time
 from collections.abc import AsyncIterator
@@ -17,7 +20,7 @@ from app.models_ai.gateway import ModelGateway, StreamHandle
 from app.models_ai.provider import TaskClass
 from app.orchestrator import actions, prompts, tools
 from app.orchestrator.context import build_packet, render_messages
-from app.schemas.common import ActivityType, ObjectType
+from app.schemas.common import ActivityType, Actor, ObjectType
 from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
 
 MAX_TOKENS_FOR_ACTION = {  # ~25 tokens per sentence; the cap backs up the prompt's sentence limit
@@ -26,11 +29,15 @@ MAX_TOKENS_FOR_ACTION = {  # ~25 tokens per sentence; the cap backs up the promp
     actions.Action.FULL_SOLUTION: 700,
     actions.Action.SUMMARIZE: 160,
 }
+SOCRATIC_MAX_TOKENS = 120
 TASK_FOR_ACTION = {
     actions.Action.EXPLAIN: TaskClass.EXPLAIN_SIMPLE,
     actions.Action.HINT: TaskClass.HINT,
     actions.Action.FULL_SOLUTION: TaskClass.EXPLAIN_SIMPLE,
     actions.Action.SUMMARIZE: TaskClass.SUMMARIZE,
+}
+ACTIVITY_FOR_ACTION = {
+    actions.Action.SUMMARIZE: ActivityType.RECAP,
 }
 
 
@@ -62,12 +69,11 @@ class TutorTurn:
             int(checkpoint.get("hint_level", 0)) if checkpoint.get("skill_id") == node.id else 0
         )
         action, hint_level = actions.choose_action(req.text, req.action, prev_hint)
-        block_type = "new_material"
+        block_type = "recap" if action == actions.Action.SUMMARIZE else "new_material"
         turn_id = new_id()
 
-        events = EventWriter(
-            db, ksession.event_context(session, activity=ActivityType.NEW_MATERIAL)
-        )
+        activity = ACTIVITY_FOR_ACTION.get(action, ActivityType.NEW_MATERIAL)
+        events = EventWriter(db, ksession.event_context(session, activity=activity))
         await events.emit(
             Verb.ASKED,
             ObjectType.TURN,
@@ -93,6 +99,7 @@ class TutorTurn:
         rtrace = await write_retrieval_trace(
             db, result.trace.model_copy(update={"learner_id": learner_id, "session_id": session.id})
         )
+        evidence = await tools.get_evidence(db, learner_id, node)
         packet = build_packet(
             policy=prompts.base_policy(),
             request=req.text,
@@ -102,7 +109,7 @@ class TutorTurn:
                 session, node, block_type=block_type, hint_level=hint_level
             ),
             learning_contract=await tools.get_learning_contract(db, node),
-            evidence=await tools.get_evidence(db, learner_id, node),
+            evidence=evidence,
             retrieved=result.hits,
             output_contract=actions.output_contract(
                 action,
@@ -110,13 +117,15 @@ class TutorTurn:
                 socratic=session.socratic,
                 representation=req.representation,
                 block_type=block_type,
+                mastery=float(evidence.get("mastery", 0.0)),
             ),
         )
         messages = render_messages(packet)
 
         handle = StreamHandle()
         text = ""
-        async for tok in self.gateway.stream(
+        completed = False
+        stream = self.gateway.stream(
             TASK_FOR_ACTION[action],
             messages,
             handle=handle,
@@ -127,72 +136,84 @@ class TutorTurn:
                 "skill_id": node.id,
                 "turn_id": turn_id,
             },
-        ):
-            text += tok
-            yield ("token", {"text": tok})
-
-        cited_idx = actions.cited_indices(text, len(packet.retrieved))
-        sources = [
-            SourceRef(
-                chunk_id=c.chunk_id,
-                citation=c.citation,
-                trust_tier=c.trust_tier,
-                score=c.score,
-                flagged=c.flagged,
-                cited=(i in cited_idx),
+            max_tokens=SOCRATIC_MAX_TOKENS if session.socratic else MAX_TOKENS_FOR_ACTION[action],
+            events=events,
+        )
+        try:
+            async for tok in stream:
+                text += tok
+                yield ("token", {"text": tok})
+            completed = True
+        finally:
+            # close the model stream first so its model_call row exists before the trace links to it
+            await stream.aclose()
+            trimmed = actions.trim_incomplete_tail(text) if completed else text
+            text = trimmed
+            cited_idx = actions.cited_indices(text, len(packet.retrieved))
+            sources = [
+                SourceRef(
+                    chunk_id=c.chunk_id,
+                    citation=c.citation,
+                    trust_tier=c.trust_tier,
+                    score=c.score,
+                    flagged=c.flagged,
+                    cited=(i in cited_idx),
+                )
+                for i, c in enumerate(packet.retrieved, 1)
+                if i in cited_idx or i <= 3
+            ]
+            cited_ids = [s.chunk_id for s in sources if s.cited]
+            representation = actions.detect_representation(text)
+            sentences = actions.count_sentences(text)
+            latency_ms = int((time.perf_counter() - t0) * 1000)
+            trace = await write_tutor_trace(
+                db,
+                TutorTraceRecord(
+                    learner_id=learner_id,
+                    session_id=session.id,
+                    turn_id=turn_id,
+                    action=str(action) if completed else f"{action}:partial",
+                    prompt_version=prompts.PROMPT_VERSION,
+                    sections=packet.section_tokens,
+                    dropped=packet.dropped,
+                    model_call_id=handle.model_call_id,
+                    retrieval_trace_id=rtrace.id,
+                    latency_ms=latency_ms,
+                ),
             )
-            for i, c in enumerate(packet.retrieved, 1)
-            if i in cited_idx or i <= 3
-        ]
-        cited_ids = [s.chunk_id for s in sources if s.cited]
-        representation = actions.detect_representation(text)
-        sentences = actions.count_sentences(text)
-        latency_ms = int((time.perf_counter() - t0) * 1000)
-        trace = await write_tutor_trace(
-            db,
-            TutorTraceRecord(
-                learner_id=learner_id,
-                session_id=session.id,
-                turn_id=turn_id,
-                action=str(action),
-                prompt_version=prompts.PROMPT_VERSION,
-                sections=packet.section_tokens,
-                dropped=packet.dropped,
-                model_call_id=handle.model_call_id,
-                retrieval_trace_id=rtrace.id,
-                latency_ms=latency_ms,
-            ),
-        )
-        await events.emit(
-            Verb.EXPLAINED,
-            ObjectType.TURN,
-            turn_id,
-            result={"sentences": sentences, "cited_sources": cited_ids},
-            context={
-                "representation": representation,
-                "hint_count": hint_level,
-                "model": handle.registry_id,
-                "route": handle.route,
-                "prompt_version": prompts.PROMPT_VERSION,
-                "latency_ms": latency_ms,
-                "tokens_in": handle.tokens_in,
-                "tokens_out": handle.tokens_out,
-                "cached_tokens": 0,
-            },
-            representation=representation,
-        )
-        await ksession.save_checkpoint(
-            db,
-            session,
-            {
-                "skill_id": node.id,
-                "hint_level": hint_level,
-                "turn_id": turn_id,
-                "action": str(action),
-                "section_tokens": packet.section_tokens,
-                "dropped": packet.dropped,
-            },
-        )
+            await events.emit(
+                Verb.EXPLAINED,
+                ObjectType.TURN,
+                turn_id,
+                actor=Actor.TUTOR,
+                result={"sentences": sentences, "cited_sources": cited_ids},
+                context={
+                    "representation": representation,
+                    "hint_count": hint_level,
+                    "model": handle.registry_id,
+                    "route": handle.route if completed else "partial",
+                    "prompt_version": prompts.PROMPT_VERSION,
+                    "latency_ms": latency_ms,
+                    "tokens_in": handle.tokens_in,
+                    "tokens_out": handle.tokens_out,
+                    "cached_tokens": handle.cached_tokens,
+                },
+                representation=representation,
+            )
+            next_hint_level = 0 if action == actions.Action.FULL_SOLUTION else hint_level
+            await ksession.save_checkpoint(
+                db,
+                session,
+                {
+                    "skill_id": node.id,
+                    "hint_level": next_hint_level,
+                    "turn_id": turn_id,
+                    "action": str(action),
+                    "section_tokens": packet.section_tokens,
+                    "dropped": packet.dropped,
+                },
+            )
+
         yield (
             "done",
             TurnDone(

@@ -145,7 +145,9 @@ def rubric_checks(criteria: list[dict[str, Any]], answer: str) -> GradeResult:
             )
         )
     n_pass = sum(1 for r in results if r.passed)
-    if n_pass == len(results):
+    if not results:
+        conf = 0.0  # no rubric: nothing to check deterministically, force the LLM level
+    elif n_pass == len(results):
         conf = 0.75
     elif n_pass == 0 and len(answer.split()) < 12:
         conf = 0.8
@@ -242,7 +244,7 @@ class Grader:
         # keep the rubric's criterion wording even if the model paraphrased
         for c, name in zip(result.criterion_results, criteria, strict=False):
             c.criterion = name
-        level = "hosted" if out.registry_id.startswith("hosted") else "local"
+        level = "hosted" if out.hosted else "local"
         return result, level
 
     async def grade(self, req: AttemptRequest, *, now: datetime | None = None) -> AttemptResult:
@@ -359,15 +361,23 @@ class Grader:
         review_item, _ = await memory.ensure_item(
             db, learner_id, a.skill_id, a.kind, {"ref": a.id, "assessment_id": a.id}, now=now
         )
+        rating = memory.rating_from_score(score, hint_count=req.hint_count)
+        if (
+            level == "rubric"
+        ):  # keyword overlap is not confirmed understanding: never the longest interval
+            rating = min(rating, memory.Rating.Good)
         await memory.review(
             db,
             learner_id,
             review_item.id,
-            int(memory.rating_from_score(score, hint_count=req.hint_count)),
+            int(rating),
             now=now,
             latency_ms=req.latency_ms,
             events=events,
         )
+        cp = await ksession.load_checkpoint(db, session.id) or {}
+        if cp.get("skill_id") == a.skill_id and cp.get("hint_level"):
+            await ksession.save_checkpoint(db, session, {**cp, "hint_level": 0})
         await competency.refresh(db, learner_id, a.skill_id, now=now)
         mastery = await competency.mastery(db, learner_id, a.skill_id)
         ms = (

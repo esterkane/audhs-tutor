@@ -138,9 +138,10 @@ async def review(
                 MemoryState.review_item_id == review_item_id, MemoryState.learner_id == learner_id
             )
         )
-    ).scalar_one()
+    ).scalar_one_or_none()
     item = await db.get(ReviewItem, review_item_id)
-    assert item is not None
+    if ms is None or item is None:
+        raise KeyError(f"review item {review_item_id!r} not found")
     sched = scheduler()
     card = Card.from_dict(cast(CardDict, ms.fsrs_card_json))
     retrievability = float(sched.get_card_retrievability(card, now))
@@ -180,6 +181,7 @@ async def review(
                 "days_since_learned": round(days_since_learned, 3),
                 "stability_before": stability_before,
                 "stability_after": new_card.stability,
+                "confidence_pre": confidence_pre,
             },
             context={"item_type": item.item_type, "node_id": item.skill_id},
         )

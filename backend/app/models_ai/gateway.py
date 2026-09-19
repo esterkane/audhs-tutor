@@ -5,7 +5,7 @@ Failures walk the fallback chain: structured-output failure emits `invalid_outpu
 blocked by the budget emits `degraded`, transport errors are logged as ok=False.
 """
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from typing import Any
 
 from pydantic import BaseModel
@@ -34,6 +34,7 @@ class GatewayResult(BaseModel):
     registry_id: str
     route: str  # primary | fallback | degraded
     cost_usd: float
+    hosted: bool = False
 
 
 class GatewayError(Exception):
@@ -49,6 +50,7 @@ class StreamHandle:
         self.route: str | None = None
         self.tokens_in: int = 0
         self.tokens_out: int = 0
+        self.cached_tokens: int = 0
         self.latency_ms: int = 0
 
 
@@ -84,7 +86,10 @@ class ModelGateway:
         metadata: dict[str, Any] | None = None,
         max_tokens: int = 1024,
         temperature: float = 0.2,
+        events: EventWriter | None = None,
     ) -> GatewayResult:
+        if events is not None:
+            self.events = events
         route = await self.router.resolve(self.db, task, learner_id)
         chain = route.chain[route.position :]
         degraded = False
@@ -168,6 +173,7 @@ class ModelGateway:
                 registry_id=rid,
                 route=kind,
                 cost_usd=call.cost_usd,
+                hosted=spec.hosted,
             )
 
         raise GatewayError(f"{task}: all routes failed: {errors}")
@@ -183,14 +189,19 @@ class ModelGateway:
         metadata: dict[str, Any] | None = None,
         max_tokens: int = 700,
         temperature: float = 0.3,
-    ) -> AsyncIterator[str]:
+        events: EventWriter | None = None,
+    ) -> AsyncGenerator[str, None]:
         """Stream tokens from the first ready model in the chain; token counts are estimated
-        (chars/4) because streams carry no usage. Budget and readiness rules as in complete()."""
+        (chars/4) because streams carry no usage. Budget and readiness rules as in complete().
+        The model_call row is always written, also when the consumer aborts mid-stream."""
         import time
 
+        if events is not None:
+            self.events = events
         route = await self.router.resolve(self.db, task, learner_id)
         chain = route.chain[route.position :]
         errors: list[str] = []
+        degraded = False
         meta = {
             **(metadata or {}),
             "task": str(task),
@@ -199,14 +210,18 @@ class ModelGateway:
         }
         prompt_chars = sum(len(m.content) for m in messages)
         for pos, rid in enumerate(chain):
-            row = await registry.get_row(self.db, rid)
+            try:
+                row = await registry.get_row(self.db, rid)
+            except KeyError as e:
+                errors.append(str(e))
+                continue
             if row.status != "ready":
                 continue
             spec = registry.spec_from_row(row)
             provider = self.providers.get(spec.provider)
             if provider is None:
+                errors.append(f"{rid}: no provider for {spec.provider}")
                 continue
-            kind = "primary" if route.position + pos == 0 else "fallback"
             if spec.hosted:
                 try:
                     await self.budget.check(self.db)
@@ -216,11 +231,15 @@ class ModelGateway:
                     await self._emit(
                         Verb.DEGRADED, rid, {"from_alias": rid, "to_alias": nxt, "reason": "budget"}
                     )
-                    kind = "degraded"
+                    degraded = True
                     continue
+            kind = (
+                "degraded" if degraded else ("primary" if route.position + pos == 0 else "fallback")
+            )
             t0 = time.perf_counter()
             out_chars = 0
             started = False
+            failure: str | None = None
             try:
                 async for tok in provider.stream(
                     spec, messages, max_tokens=max_tokens, temperature=temperature
@@ -229,25 +248,33 @@ class ModelGateway:
                     out_chars += len(tok)
                     yield tok
             except ProviderError as e:
+                failure = str(e)
                 errors.append(f"{rid}: {e}")
+                if not started:
+                    await self._log(
+                        spec, task, kind, None, learner_id, session_id, meta, error=failure
+                    )
+                    continue
+                raise GatewayError(f"{task}: stream from {rid} broke mid-way: {e}") from e
+            except GeneratorExit:
+                failure = "cancelled by consumer"
+                raise
+            finally:
                 if started:
-                    raise GatewayError(f"{task}: stream from {rid} broke mid-way: {e}") from e
-                continue
-            result = ProviderResult(
-                text="",
-                tokens_in=prompt_chars // 4,
-                tokens_out=max(1, out_chars // 4),
-                latency_ms=int((time.perf_counter() - t0) * 1000),
-                model=spec.model,
-                provider=spec.provider,
-            )
-            call = await self._log(spec, task, kind, result, learner_id, session_id, meta)
-            handle.model_call_id, handle.registry_id, handle.route = call.id, rid, kind
-            handle.tokens_in, handle.tokens_out, handle.latency_ms = (
-                result.tokens_in,
-                result.tokens_out,
-                result.latency_ms,
-            )
+                    result = ProviderResult(
+                        text="",
+                        tokens_in=prompt_chars // 4,
+                        tokens_out=max(1, out_chars // 4),
+                        latency_ms=int((time.perf_counter() - t0) * 1000),
+                        model=spec.model,
+                        provider=spec.provider,
+                    )
+                    call = await self._log(
+                        spec, task, kind, result, learner_id, session_id, meta, error=failure
+                    )
+                    handle.model_call_id, handle.registry_id, handle.route = call.id, rid, kind
+                    handle.tokens_in, handle.tokens_out = result.tokens_in, result.tokens_out
+                    handle.latency_ms = result.latency_ms
             return
         raise GatewayError(f"{task}: all routes failed: {errors}")
 

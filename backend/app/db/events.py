@@ -94,6 +94,7 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
                 "days_since_learned",
                 "stability_before",
                 "stability_after",
+                "confidence_pre",
             }
         ),
         _R({"item_type", "node_id"}),

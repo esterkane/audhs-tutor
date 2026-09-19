@@ -36,7 +36,14 @@ export function SoftTimer({
         >
           5 more minutes
         </Button>
-        <Button onClick={onFinishBlock}>Finish this block</Button>
+        <Button
+          onClick={() => {
+            setShow(false)
+            onFinishBlock()
+          }}
+        >
+          Finish this block
+        </Button>
       </div>
     </Card>
   )

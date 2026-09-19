@@ -17,7 +17,7 @@ const REPRESENTATIONS = [
   { value: 'analogy', label: 'Analogy' },
   { value: 'derivation', label: 'Derivation' },
   { value: 'code', label: 'Code' },
-  { value: 'worked example', label: 'Worked example' },
+  { value: 'worked_example', label: 'Worked example' },
 ]
 
 export function Session() {
@@ -26,6 +26,10 @@ export function Session() {
   const session = useSession(sessionId)
   const [phase, setPhase] = useState<Phase>('teach')
   const [hintCount, setHintCount] = useState(0)
+  const skill = session.data?.next_skill
+  useEffect(() => {
+    if (skill && !skillId) setSkill(skill.id)
+  }, [skill, skillId, setSkill])
   if (!sessionId) {
     return (
       <Card>
@@ -36,9 +40,7 @@ export function Session() {
       </Card>
     )
   }
-  const skill = session.data?.next_skill
   const currentSkillId = skillId ?? skill?.id ?? null
-  if (skill && !skillId) setSkill(skill.id)
 
   return (
     <div className="grid gap-4">
@@ -257,7 +259,7 @@ function AssessPanel({
   const [confidence, setConfidence] = useState<number | null>(null)
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState<AttemptResult | null>(null)
-  const [startedAt] = useState(() => Date.now())
+  const [startedAt, setStartedAt] = useState(() => Date.now())
   const nav = useNavigate()
   const item = next.data?.item
 
@@ -276,6 +278,7 @@ function AssessPanel({
   }
 
   function nextItem() {
+    setStartedAt(Date.now())
     setResult(null)
     setAnswer('')
     setConfidence(null)

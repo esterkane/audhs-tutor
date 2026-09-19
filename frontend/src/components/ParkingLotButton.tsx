@@ -13,7 +13,7 @@ export function ParkingLotButton() {
   const [status, setStatus] = useState<string | null>(null)
 
   async function submit() {
-    if (!text.trim() || !sessionId) return
+    if (!text.trim()) return
     await api.park({
       session_id: sessionId,
       text: text.trim(),

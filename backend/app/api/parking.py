@@ -3,10 +3,11 @@ from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import DB, Learner
-from app.db.events import EventWriter
+from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import ParkingLotItem
 from app.kernel import session as ksession
 from app.orchestrator.tools import park_tangent
+from app.schemas.common import Mode, ObjectType
 
 router = APIRouter(prefix="/parking", tags=["parking"])
 
@@ -51,6 +52,10 @@ async def park(body: ParkIn, db: DB, learner: Learner) -> ParkOut:
     )
     db.add(item)
     await db.commit()
+    ctx = EventContext(learner_id=learner.id, session_id=None, mode=Mode.STEADY, energy=3)
+    await EventWriter(db, ctx).emit(
+        Verb.PARKED, ObjectType.NOTE, item.id, context={"node_id": body.node_id}
+    )
     return _out(item)
 
 

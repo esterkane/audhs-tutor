@@ -5,10 +5,12 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Learner
+from app.db.events import EventWriter, Verb
 from app.db.models import Assessment, SkillNode
 from app.kernel import memory
 from app.kernel import session as ksession
 from app.orchestrator.grader import view
+from app.schemas.common import ActivityType, Actor, ObjectType
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -48,7 +50,13 @@ class ReviewOut(BaseModel):
 
 
 def _as_of(value: str | None) -> datetime:
-    return datetime.fromisoformat(value) if value else datetime.now(UTC)
+    """Dev/benchmark time travel. Must carry a timezone; naive stamps would corrupt FSRS state."""
+    if not value:
+        return datetime.now(UTC)
+    dt = datetime.fromisoformat(value)
+    if dt.tzinfo is None:
+        raise ValueError("as_of must include a timezone offset, e.g. 2030-01-01T00:00:00+00:00")
+    return dt
 
 
 async def _reveal(db: DB, prompt: dict[str, Any]) -> tuple[str, list[str] | None, str]:
@@ -88,11 +96,27 @@ async def due(
     learner: Learner,
     session_id: str = Query(...),
     as_of: str | None = Query(None, description="ISO time; dev/benchmark time travel"),
+    all: bool = Query(False, description="Undo the minimum-viable cap for this call"),
 ) -> DueList:
     s = await ksession.get(db, session_id)
     now = _as_of(as_of)
     cap = memory.review_cap(s.mode, s.energy)
     all_due = await memory.due_items(db, learner.id, now=now, cap=500)
+    if all:
+        cap = max(cap, len(all_due))
+    elif len(all_due) > cap:
+        await EventWriter(db, ksession.event_context(s, activity=ActivityType.RETRIEVAL)).emit(
+            Verb.ADAPTED,
+            ObjectType.SESSION,
+            s.id,
+            actor=Actor.SYSTEM,
+            context={
+                "what": f"review_cap={cap}",
+                "why": f"mode={s.mode} energy={s.energy}",
+                "reversible": True,
+                "policy_version": "v1",
+            },
+        )
     items = []
     for item, ms in all_due[:cap]:
         node = await db.get(SkillNode, item.skill_id)
@@ -130,6 +154,7 @@ async def rate(
         now=_as_of(as_of),
         latency_ms=body.latency_ms,
         events=events,
+        confidence_pre=body.confidence_pre,
     )
     from sqlalchemy import select
 

@@ -23,6 +23,29 @@ class SeedReport:
     documents: list[dict[str, Any]] = field(default_factory=list)
 
 
+def _check_acyclic(skills: list[dict[str, Any]]) -> None:
+    """Kahn over the YAML before anything is written; a cyclic seed would break every read path."""
+    indeg = {s["slug"]: 0 for s in skills}
+    out: dict[str, list[str]] = {s["slug"]: [] for s in skills}
+    for s in skills:
+        for pre in s.get("prerequisites", []):
+            if pre not in indeg:
+                raise ValueError(f"seed: unknown prerequisite {pre!r} for {s['slug']!r}")
+            indeg[s["slug"]] += 1
+            out[pre].append(s["slug"])
+    queue = [k for k, v in indeg.items() if v == 0]
+    seen = 0
+    while queue:
+        cur = queue.pop()
+        seen += 1
+        for nxt in out[cur]:
+            indeg[nxt] -= 1
+            if indeg[nxt] == 0:
+                queue.append(nxt)
+    if seen != len(skills):
+        raise ValueError("seed: prerequisite graph has a cycle")
+
+
 def _seed_key(skill: str, kind: str, item: dict[str, Any]) -> str:
     return hashlib.sha1(f"{skill}|{kind}|{json.dumps(item, sort_keys=True)}".encode()).hexdigest()[
         :16
@@ -34,6 +57,7 @@ async def load_seed(db: AsyncSession, seed_dir: Path) -> SeedReport:
     domain = data.get("domain", "ai_ml")
     report = SeedReport()
 
+    _check_acyclic(data["skills"])
     ids: dict[str, str] = {}
     for s in data["skills"]:
         node = (
@@ -140,7 +164,13 @@ async def load_seed(db: AsyncSession, seed_dir: Path) -> SeedReport:
     await db.commit()
 
     for md in sorted((seed_dir / "sources").glob("*.md")):
-        res = await ingest_markdown(db, md, skill_ids_by_slug=ids, course=data.get("course"))
+        res = await ingest_markdown(
+            db,
+            md,
+            skill_ids_by_slug=ids,
+            course=data.get("course"),
+            trust_tier=int(data.get("trust_tier", 2)),
+        )
         report.documents.append(
             {"file": md.name, "version": res.version, "chunks": res.chunks, "changed": res.changed}
         )

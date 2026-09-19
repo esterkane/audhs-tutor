@@ -173,7 +173,11 @@ async def main() -> int:
                 await memory.review(db, world.learner_id, item.id, 3, now=later, latency_ms=3000)
                 await db.refresh(ms)
                 stability_delta = round((ms.stability or 0) - (before or 0), 3)
-                ok = ok and (ms.stability or 0) > (before or 0) and ms.due > later.isoformat()
+                ok = (
+                    ok
+                    and (ms.stability or 0) > (before or 0)
+                    and datetime.fromisoformat(ms.due) > later
+                )
             record(
                 "C delayed review 2 days later",
                 "PASS" if ok else "FAIL",

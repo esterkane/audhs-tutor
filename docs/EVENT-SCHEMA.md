@@ -10,7 +10,7 @@ Table `learning_event` — append-only. One row per learner-relevant interaction
 | session_id | TEXT | FK session |
 | actor | TEXT | `learner` \| `system` \| `tutor` |
 | verb | TEXT | closed enum below |
-| object_type | TEXT | `item` \| `node` \| `turn` \| `block` \| `session` \| `explanation` \| `adaptation` \| `note` \| `experiment` |
+| object_type | TEXT | `item` \| `node` \| `turn` \| `block` \| `session` \| `explanation` \| `adaptation` \| `note` \| `experiment` \| `model` |
 | object_id | TEXT | |
 | domain | TEXT | `ai_ml` \| `programming` \| `language` \| `guitar` \| `movement` \| `meta` |
 | activity_type | TEXT | `new_material` \| `retrieval` \| `interleaved_review` \| `challenge` \| `domain_switch` \| `movement` \| `recap` \| `chat` |
