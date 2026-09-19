@@ -75,8 +75,13 @@ class FakeProvider:
         max_tokens: int = 1024,
         temperature: float = 0.2,
     ) -> AsyncIterator[str]:
-        for word in self.text.split(" "):
-            yield word + " "
+        self.calls.append(FakeCall(spec, messages, None))
+        if self.fail_times > 0:
+            self.fail_times -= 1
+            raise ProviderError("fake transport failure")
+        words = self.text.split(" ")
+        for i, word in enumerate(words):
+            yield word + (" " if i < len(words) - 1 else "")
 
     async def embed(self, spec: ModelSpec, texts: list[str]) -> list[list[float]]:
         return [hash_vector(t, self.vectors_dim) for t in texts]

@@ -5,6 +5,7 @@ Failures walk the fallback chain: structured-output failure emits `invalid_outpu
 blocked by the budget emits `degraded`, transport errors are logged as ok=False.
 """
 
+from collections.abc import AsyncIterator
 from typing import Any
 
 from pydantic import BaseModel
@@ -37,6 +38,18 @@ class GatewayResult(BaseModel):
 
 class GatewayError(Exception):
     pass
+
+
+class StreamHandle:
+    """Filled in after a `stream()` finishes so the caller can link traces to the model_call row."""
+
+    def __init__(self) -> None:
+        self.model_call_id: str | None = None
+        self.registry_id: str | None = None
+        self.route: str | None = None
+        self.tokens_in: int = 0
+        self.tokens_out: int = 0
+        self.latency_ms: int = 0
 
 
 class ModelGateway:
@@ -159,6 +172,85 @@ class ModelGateway:
 
         raise GatewayError(f"{task}: all routes failed: {errors}")
 
+    async def stream(
+        self,
+        task: TaskClass,
+        messages: list[Message],
+        *,
+        handle: StreamHandle,
+        learner_id: str | None = None,
+        session_id: str | None = None,
+        metadata: dict[str, Any] | None = None,
+        max_tokens: int = 700,
+        temperature: float = 0.3,
+    ) -> AsyncIterator[str]:
+        """Stream tokens from the first ready model in the chain; token counts are estimated
+        (chars/4) because streams carry no usage. Budget and readiness rules as in complete()."""
+        import time
+
+        route = await self.router.resolve(self.db, task, learner_id)
+        chain = route.chain[route.position :]
+        errors: list[str] = []
+        meta = {
+            **(metadata or {}),
+            "task": str(task),
+            "session_id": session_id,
+            "estimated_tokens": True,
+        }
+        prompt_chars = sum(len(m.content) for m in messages)
+        for pos, rid in enumerate(chain):
+            row = await registry.get_row(self.db, rid)
+            if row.status != "ready":
+                continue
+            spec = registry.spec_from_row(row)
+            provider = self.providers.get(spec.provider)
+            if provider is None:
+                continue
+            kind = "primary" if route.position + pos == 0 else "fallback"
+            if spec.hosted:
+                try:
+                    await self.budget.check(self.db)
+                except BudgetExceeded as e:
+                    errors.append(str(e))
+                    nxt = chain[pos + 1] if pos + 1 < len(chain) else None
+                    await self._emit(
+                        Verb.DEGRADED, rid, {"from_alias": rid, "to_alias": nxt, "reason": "budget"}
+                    )
+                    kind = "degraded"
+                    continue
+            t0 = time.perf_counter()
+            out_chars = 0
+            started = False
+            try:
+                async for tok in provider.stream(
+                    spec, messages, max_tokens=max_tokens, temperature=temperature
+                ):
+                    started = True
+                    out_chars += len(tok)
+                    yield tok
+            except ProviderError as e:
+                errors.append(f"{rid}: {e}")
+                if started:
+                    raise GatewayError(f"{task}: stream from {rid} broke mid-way: {e}") from e
+                continue
+            result = ProviderResult(
+                text="",
+                tokens_in=prompt_chars // 4,
+                tokens_out=max(1, out_chars // 4),
+                latency_ms=int((time.perf_counter() - t0) * 1000),
+                model=spec.model,
+                provider=spec.provider,
+            )
+            call = await self._log(spec, task, kind, result, learner_id, session_id, meta)
+            handle.model_call_id, handle.registry_id, handle.route = call.id, rid, kind
+            handle.tokens_in, handle.tokens_out, handle.latency_ms = (
+                result.tokens_in,
+                result.tokens_out,
+                result.latency_ms,
+            )
+            return
+        raise GatewayError(f"{task}: all routes failed: {errors}")
+
     async def _log(
         self,
         spec: ModelSpec,
@@ -197,4 +289,4 @@ class ModelGateway:
         return await write_model_call(self.db, rec)
 
 
-__all__ = ["GatewayError", "GatewayResult", "ModelGateway", "NoModelReady"]
+__all__ = ["GatewayError", "GatewayResult", "ModelGateway", "NoModelReady", "StreamHandle"]
