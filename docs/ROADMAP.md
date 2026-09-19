@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current stage:** 1 — Learning vertical slice (attention): slices done 2026-09-19, benchmark pending
+**Current stage:** 1 — Learning vertical slice (attention): slices done 2026-09-19; benchmark 4/5 (hard-check evals depend on the local model — see below) → decide model, then Stage 2
 
 Order follows the Architecture Review Brief: prove the learning loop first, then the kernel, then the knowledge system, then adaptive UX, then frontier+voice, then offline agents. Each stage: slices (`/feature-slice`), a benchmark script, exit criteria.
 
@@ -28,6 +28,13 @@ select concept → retrieve grounded material → teach → learner answers → 
 - [x] `fsrs-memory` — `memory_state` via py-fsrs; due queue; minimum-viable review cap.
 - [x] `session-screen` — Home (mode + energy) → single-task session screen → review → recap with confidence. `ParkingLotButton`.
 Benchmark `bench_stage1.py`: run 3 sessions on attention; every turn has a `tutor_trace`; every attempt yields evidence + FSRS update; delayed review 2 days later works; hard-check evals pass. **If this loop is not useful, stop and rethink — agents and voice will not fix it.**
+**Measured 2026-09-19** (`make bench s=1`, isolated `data/bench.db`, llama3.1:8b as fallback for explain/hint because `gemma3:12b` is not pulled; raw in `evals/results/bench_stage1.json`):
+- A every turn has a `tutor_trace` with `model_call` + `retrieval_trace`: 6/6 — PASS
+- B every attempt → `competency_evidence` + `review_log` (FSRS): 9/9, 6 competency states — PASS
+- C delayed review: one wrong MCQ → due within 1 min and at +2 days; rating Good at +2 days raised stability by 2.22 — PASS
+- D hard-check evals (`scripts/run_evals.py`, 5 cases): **2/5** — FAIL. Passing: hint-first, negated full-solution. Failing: sentence limits (explain/recap run 7–9 sentences), Socratic mode ignored, one missing citation. All failures are model-compliance failures of the 8B fallback; the tracing/guard logic is exercised and correct.
+- E loop signal: 3 sessions moved vec-dot-product 0.71 → softmax 0.60 → attn-dot-product 0.50 (unlock gate works); turn latency p50 5.9 s, max 7.1 s — PASS
+- Verdict on "is this loop useful": yes for the mechanics (retrieve → teach with citations → confidence → grade → evidence → FSRS → next node). The weak link is local-model instruction following; next step is to pull the plan's default `gemma3:12b` (or set `ANTHROPIC_API_KEY` so `hosted-medium` handles `explain_simple` fallbacks) and rerun `make bench s=1` before Stage 2.
 
 ## Stage 2 — Learning kernel, complete
 - [ ] `skill-map` — whole-map-first Mermaid/interactive graph with competency + memory overlays (open learner model).

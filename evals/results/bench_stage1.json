@@ -10,66 +10,66 @@
     "attempts": 9,
     "evidence_rows": 9,
     "review_logs": 9,
-    "competency_states": 1
+    "competency_states": 6
   },
   "C delayed review 2 days later": {
-    "status": "FAIL",
-    "due_in_1_min": 0,
-    "due_in_2_days": 0,
-    "stability_delta": null
+    "status": "PASS",
+    "due_in_1_min": 1,
+    "due_in_2_days": 1,
+    "stability_delta": 2.221
   },
   "D hard-check evals": {
     "status": "FAIL",
     "cases": 5,
-    "hard_pass": 3,
-    "hard_pass_rate": 0.6,
+    "hard_pass": 2,
+    "hard_pass_rate": 0.4,
     "evals_tail": [
-      "[FAIL] explain-qkv: llama31-8b 6738 ms ['citation_present']",
-      "[PASS] hint-first-scaled-attention: llama31-8b 5443 ms ",
-      "[PASS] kv-cache-recap: llama31-8b 7946 ms ",
-      "[PASS] negated-full-solution: llama31-8b 3766 ms ",
-      "[FAIL] socratic-masking: llama31-8b 8804 ms ['max_sentences', 'mode_respected']",
-      "hard checks: 3/5 \u2192 /Users/saru/projects/audhs-tutor/evals/results/latest.json"
+      "[FAIL] explain-qkv: llama31-8b 8988 ms ['max_sentences']",
+      "[PASS] hint-first-scaled-attention: llama31-8b 4068 ms ",
+      "[FAIL] kv-cache-recap: llama31-8b 3794 ms ['max_sentences']",
+      "[PASS] negated-full-solution: llama31-8b 4104 ms ",
+      "[FAIL] socratic-masking: llama31-8b 4007 ms ['no_full_solution', 'citation_present', 'max_sentences']",
+      "hard checks: 2/5 \u2192 /Users/saru/projects/audhs-tutor/evals/results/latest.json"
     ]
   },
   "E loop signal": {
     "status": "PASS",
     "sessions": [
       {
-        "session": "01M2WPZHQQB8MTWFTM4EVSJN7Q",
+        "session": "01M2WQ5KYCSPETR0AHP68F2ZV0",
         "skill": "vec-dot-product",
         "turns": 2,
         "attempts": 3,
-        "mastery": 0.417,
+        "mastery": 0.708,
         "latencies": [
-          7545,
-          10464
+          5133,
+          5522
         ]
       },
       {
-        "session": "01M2WQ03BXCHH0Y8ZE3PBH65RQ",
-        "skill": "vec-dot-product",
+        "session": "01M2WQ5YCY52E19QMSNX3D8337",
+        "skill": "softmax",
         "turns": 2,
         "attempts": 3,
-        "mastery": 0.417,
+        "mastery": 0.604,
         "latencies": [
-          5817,
-          6121
+          5737,
+          6106
         ]
       },
       {
-        "session": "01M2WQ0F24BYR96W4AVH9PDDSW",
-        "skill": "vec-dot-product",
+        "session": "01M2WQ6A0F5VWFXH3HPVM5AKCN",
+        "skill": "attn-dot-product",
         "turns": 2,
         "attempts": 3,
-        "mastery": 0.417,
+        "mastery": 0.5,
         "latencies": [
-          6300,
-          5094
+          7059,
+          6070
         ]
       }
     ],
-    "turn_latency_p50_ms": 6210,
-    "turn_latency_max_ms": 10464
+    "turn_latency_p50_ms": 5903,
+    "turn_latency_max_ms": 7059
   }
 }
