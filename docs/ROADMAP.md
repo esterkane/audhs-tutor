@@ -10,7 +10,7 @@ Order follows the Architecture Review Brief: prove the learning loop first, then
 - [ ] `model-provider` — `ModelProvider` interface, `OllamaProvider`, `ClaudeProvider` (LiteLLM SDK), routing table + `routing_profiles.yaml`, in-app daily budget, `model_call` logging, Instructor structured output, `FakeProvider` fixture.
 - [ ] `model-registry` — `model_registry` table, `scripts/models.py` (`list | search-hf | add | pull | bench | assign | rm`) supporting Ollama library, HF GGUF (→ Modelfile → `ollama create`), `mlx-community` snapshots; licence + disk tracking; `bench_model.py`.
 - [ ] `qdrant-repo` — `QdrantHybridRepository` (dense + sparse named vectors, fusion, payload filters, quantization), collection versioning, `reindex.py`, `SqliteHybridRepository` for tests.
-- [ ] `events-traces` — `events.emit`, verbs enum, `tutor_trace`/`retrieval_trace` writers, query helpers.
+- [x] `events-traces` — `events.emit`, verbs enum, `tutor_trace`/`retrieval_trace` writers, query helpers.
 Benchmark `bench_stage0.py`: local `chat` ≥ 15 tok/s; one `grade_rubric` call routes to Claude and lands in `model_call` with cost; budget cap trips at the configured amount; a model downloaded from Hugging Face via `scripts/models.py pull` is benchmarked and assigned to `chat`; a 1k-chunk sample round-trips through Qdrant with a payload-filtered hybrid query.
 
 ## Stage 1 — One complete learning vertical slice (subject: attention mechanisms)
