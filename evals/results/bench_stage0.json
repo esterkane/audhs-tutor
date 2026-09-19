@@ -1,0 +1,71 @@
+{
+  "A local chat tok/s >= 15": {
+    "status": "PASS",
+    "model": "llama31-8b",
+    "tok_per_s": 47.5
+  },
+  "B grade_rubric -> Claude with cost": {
+    "status": "SKIP",
+    "reason": "ANTHROPIC_API_KEY empty in .env"
+  },
+  "D HF pull -> bench -> assign chat": {
+    "status": "PASS",
+    "registry_id": "qwen25-05b-q4",
+    "row_status": "ready",
+    "size_gb": 0.491400032,
+    "tok_per_s": 272.8,
+    "first_token_ms": 85,
+    "hard_checks": 0.733,
+    "routed_chat": "qwen25-05b-q4",
+    "file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
+    "licence": "apache-2.0",
+    "add": {
+      "rc": 0,
+      "s": 1.8
+    },
+    "pull": {
+      "rc": 0,
+      "s": 15.2
+    },
+    "bench": {
+      "rc": 0,
+      "s": 4.6
+    },
+    "assign": {
+      "rc": 0,
+      "s": 1.5
+    }
+  },
+  "E 1k chunks round-trip Qdrant + filtered hybrid query": {
+    "status": "PASS",
+    "embed_model": "nomic-embed-text",
+    "dims": 768,
+    "indexed": 1000,
+    "count": 1000,
+    "index_s": 6.9,
+    "filtered_queries_correct": "20/20",
+    "search_p50_ms": 26.0,
+    "search_p95_ms": 30.0,
+    "sparse_scores_present": true,
+    "dense_scores_present": true
+  },
+  "C budget cap trips": {
+    "status": "PASS",
+    "cap_usd": 0.25,
+    "calls": [
+      [
+        "primary",
+        0.2
+      ],
+      [
+        "primary",
+        0.2
+      ],
+      [
+        "degraded",
+        0.0
+      ]
+    ],
+    "spent_usd": 0.4
+  }
+}

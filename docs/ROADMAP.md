@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current stage:** 0 — Skeleton (in progress — `repo-bootstrap` done 2026-09-19)
+**Current stage:** 0 — Skeleton **done 2026-09-19** (benchmark 4/5 PASS, check B skipped until `ANTHROPIC_API_KEY` is set) → next: Stage 1
 
 Order follows the Architecture Review Brief: prove the learning loop first, then the kernel, then the knowledge system, then adaptive UX, then frontier+voice, then offline agents. Each stage: slices (`/feature-slice`), a benchmark script, exit criteria.
 
@@ -12,6 +12,12 @@ Order follows the Architecture Review Brief: prove the learning loop first, then
 - [x] `qdrant-repo` — `QdrantHybridRepository` (dense + sparse named vectors, fusion, payload filters, quantization), collection versioning, `reindex.py`, `SqliteHybridRepository` for tests.
 - [x] `events-traces` — `events.emit`, verbs enum, `tutor_trace`/`retrieval_trace` writers, query helpers.
 Benchmark `bench_stage0.py`: local `chat` ≥ 15 tok/s; one `grade_rubric` call routes to Claude and lands in `model_call` with cost; budget cap trips at the configured amount; a model downloaded from Hugging Face via `scripts/models.py pull` is benchmarked and assigned to `chat`; a 1k-chunk sample round-trips through Qdrant with a payload-filtered hybrid query.
+**Measured 2026-09-19** (`make bench s=0`, M4 Pro 48 GB; raw in `evals/results/bench_stage0.json`):
+- A local `chat` (llama31-8b, Ollama): **47.5 tok/s** — PASS (≥ 15)
+- B `grade_rubric` → Claude with cost: **SKIP** (no `ANTHROPIC_API_KEY`); mechanism covered by `tests/test_model_provider.py`
+- C budget cap $0.25: calls primary $0.20 → primary $0.20 → **degraded** (local, $0) — PASS
+- D HF pull: `Qwen/Qwen2.5-0.5B-Instruct-GGUF` q4_k_m (0.49 GB, apache-2.0) → `ollama create` 15 s → bench **272.8 tok/s**, first token 85 ms, tutoring hard checks 0.73 → assigned to `chat`, then routing restored to llama31-8b — PASS
+- E 1000 synthetic chunks → Qdrant (nomic-embed-text 768d + BM25 sparse, RRF): index 6.9 s, filtered hybrid queries 20/20 correct, search p50 **26 ms** / p95 **30 ms** — PASS
 
 ## Stage 1 — One complete learning vertical slice (subject: attention mechanisms)
 select concept → retrieve grounded material → teach → learner answers → assess → record evidence → update competency → schedule review.
