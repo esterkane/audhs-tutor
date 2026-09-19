@@ -126,8 +126,8 @@ async def load_seed(db: AsyncSession, seed_dir: Path) -> SeedReport:
         .scalars()
         .all()
     ):
-        key = row.item_json.get("seed_key")
-        if key and key not in current_keys:
+        existing_key = row.item_json.get("seed_key")
+        if existing_key and existing_key not in current_keys:
             attempted = (
                 await db.execute(
                     select(AssessmentAttempt.id)

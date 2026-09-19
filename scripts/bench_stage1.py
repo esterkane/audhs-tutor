@@ -40,6 +40,10 @@ from app.schemas.tutor import TurnRequest  # noqa: E402
 results: dict[str, dict[str, Any]] = {}
 GOOD_ANSWERS = {
     "explain_back": (
+        "The dot product is large when two vectors point in a similar direction (it is |a||b| cos of the angle), "
+        "scaling a vector scales the product, and with random entries it grows with the dimension because the "
+        "variance adds up; softmax turns scores into positive weights that sum to one where only differences "
+        "matter and the largest score dominates, and very large scores saturate it into a one-hot with tiny gradients. "
         "A query asks a question, each key is matched against it with a dot product to get a score, "
         "softmax turns the scores into weights, and the weights combine the values into the output; "
         "the variance of the dot product grows with d_k so dividing by sqrt(d_k) restores unit variance "
@@ -77,12 +81,14 @@ async def run_session(world: Any, i: int, now: datetime) -> dict[str, Any]:
             latencies.append(done["latency_ms"])
         grader = Grader(db, gw)
         attempts = 0
-        for _ in range(3):
+        for k in range(3):
             a = await grader.next_item(world.learner_id, node.id)
             if a is None:
                 break
             if a.kind == "mcq":
-                answer = str(a.item_json["answer"])
+                # a realistic learner: the second session gets its first MCQ wrong (-> Again -> due soon)
+                wrong = (int(a.item_json["answer"]) + 1) % len(a.item_json["options"])
+                answer = str(wrong if (i == 1 and k == 0) else a.item_json["answer"])
             elif a.kind == "cloze":
                 answer = a.item_json["answers"][0]
             else:

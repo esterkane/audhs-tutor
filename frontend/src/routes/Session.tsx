@@ -167,19 +167,27 @@ function TeachPanel({
           ) : (
             <Markdown text={text || '…'} />
           )}
+          {done && (
+            <p role="status" className="sr-only">
+              Answer complete.
+            </p>
+          )}
           {done && done.sources.length > 0 && (
             <div className="mt-3 text-sm text-muted">
-              <p className="font-medium">Sources</p>
-              <ul className="list-disc ml-5">
+              <p className="font-medium">
+                Sources (cited in the answer as [n]; others were retrieved but not cited)
+              </p>
+              <ol className="list-decimal ml-5">
                 {done.sources.map((s) => (
                   <li key={s.chunk_id}>
                     {s.citation}
+                    {s.cited ? '' : ' — not cited'}
                     {(s.flagged ?? []).length > 0 && (
                       <span className="text-warn"> (flagged: {(s.flagged ?? []).join(', ')})</span>
                     )}
                   </li>
                 ))}
-              </ul>
+              </ol>
             </div>
           )}
           {done && done.sources.length === 0 && (
@@ -344,8 +352,8 @@ function AssessPanel({
       {result && (
         <Card role="status" className={result.score >= 0.85 ? 'border-ok' : 'border-warn'}>
           <p className="font-medium">
-            Score {(result.score * 100).toFixed(0)}% · graded by {result.grader_level} · you were{' '}
-            {result.calibration}
+            Score {(result.score * 100).toFixed(0)}% · graded by {result.grader_level} · confidence{' '}
+            {result.confidence_pre}/5: {result.calibration}
           </p>
           <p className="mt-2">{result.feedback}</p>
           <p className="mt-1 text-sm">{result.next_step}</p>

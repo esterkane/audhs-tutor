@@ -65,6 +65,10 @@ def output_contract(
         "representation": representation or "choose one and name it in brackets first",
         "instructions": prompts.tutor_task(str(action)).strip(),
     }
+    contract["shape_example"] = (
+        "(analogy) One or two short sentences that answer the request, grounded in source [1]. "
+        "Next: one concrete step."
+    )
     contract["scaffold"] = (
         "worked_example_first"
         if mastery < SCAFFOLD_PROBLEM_FIRST_MIN_MASTERY

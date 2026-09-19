@@ -19,7 +19,7 @@ NOW = datetime(2026, 9, 19, 12, 0, tzinfo=UTC)
 @pytest.fixture
 async def seeded(db: AsyncSession) -> AsyncSession:
     rep = await load_seed(db, SEED)
-    assert rep.skills == 8 and rep.learning_objects == 8 and rep.assessments == 18
+    assert rep.skills == 8 and rep.learning_objects == 8 and rep.assessments == 20
     return db
 
 
@@ -44,7 +44,7 @@ async def test_seed_is_idempotent_and_tags_chunks(seeded: AsyncSession) -> None:
     assert again.skills == 8 and all(not d["changed"] for d in again.documents)
     nodes = await skill_graph.all_nodes(seeded)
     assert len(nodes) == 8 and len(await skill_graph.all_edges(seeded)) == 8
-    assert len((await seeded.execute(select(models.Assessment))).scalars().all()) == 18
+    assert len((await seeded.execute(select(models.Assessment))).scalars().all()) == 20
     docs = (await seeded.execute(select(models.Document))).scalars().all()
     assert len(docs) == 2
     kv = await skill_graph.get_node_by_slug(seeded, "kv-cache")

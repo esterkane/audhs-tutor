@@ -167,6 +167,14 @@ assessments:
     item:
       text: "For random vectors with unit-variance entries, the variance of the dot product grows linearly with the ____ of the vectors."
       answers: ["dimension", "dimensionality", "number of dimensions", "d_k"]
+  - skill: vec-dot-product
+    kind: explain_back
+    item:
+      prompt: "Explain in your own words why the dot product measures how much two vectors agree, and what happens to it when the number of dimensions grows."
+    rubric:
+      - {criterion: "Links the dot product to alignment/angle (cosine) or same direction", keywords: [align, angle, cos, direction, similar]}
+      - {criterion: "States that scaling a vector scales the product (magnitude matters)", keywords: [scal, magnitude, length, doubl]}
+      - {criterion: "States that with random entries the product grows with the dimension (variance grows)", keywords: [dimension, grow, variance, larger]}
   - skill: softmax
     kind: mcq
     item:
@@ -179,6 +187,14 @@ assessments:
     item:
       text: "When inputs to softmax are very large, the output approaches a one-hot vector and the gradients become ____."
       answers: ["tiny", "very small", "near zero", "vanishing", "small"]
+  - skill: softmax
+    kind: explain_back
+    item:
+      prompt: "Explain what softmax does to a vector of scores and why very large scores are a problem for training."
+    rubric:
+      - {criterion: "Says softmax turns scores into positive weights that sum to one", keywords: [sum to one, sum to 1, probabilit, weights, normali]}
+      - {criterion: "Says only differences between scores matter / the largest score dominates", keywords: [difference, dominat, largest, relative]}
+      - {criterion: "Links large scores to saturation and tiny gradients", keywords: [saturat, gradient, one-hot, vanish]}
   - skill: attn-dot-product
     kind: mcq
     item:

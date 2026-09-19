@@ -1,0 +1,75 @@
+{
+  "A every turn has a tutor_trace": {
+    "status": "PASS",
+    "turns": 6,
+    "traces": 6,
+    "with_model_call_and_retrieval": 6
+  },
+  "B every attempt -> evidence + FSRS update": {
+    "status": "PASS",
+    "attempts": 9,
+    "evidence_rows": 9,
+    "review_logs": 9,
+    "competency_states": 1
+  },
+  "C delayed review 2 days later": {
+    "status": "FAIL",
+    "due_in_1_min": 0,
+    "due_in_2_days": 0,
+    "stability_delta": null
+  },
+  "D hard-check evals": {
+    "status": "FAIL",
+    "cases": 5,
+    "hard_pass": 3,
+    "hard_pass_rate": 0.6,
+    "evals_tail": [
+      "[FAIL] explain-qkv: llama31-8b 6738 ms ['citation_present']",
+      "[PASS] hint-first-scaled-attention: llama31-8b 5443 ms ",
+      "[PASS] kv-cache-recap: llama31-8b 7946 ms ",
+      "[PASS] negated-full-solution: llama31-8b 3766 ms ",
+      "[FAIL] socratic-masking: llama31-8b 8804 ms ['max_sentences', 'mode_respected']",
+      "hard checks: 3/5 \u2192 /Users/saru/projects/audhs-tutor/evals/results/latest.json"
+    ]
+  },
+  "E loop signal": {
+    "status": "PASS",
+    "sessions": [
+      {
+        "session": "01M2WPZHQQB8MTWFTM4EVSJN7Q",
+        "skill": "vec-dot-product",
+        "turns": 2,
+        "attempts": 3,
+        "mastery": 0.417,
+        "latencies": [
+          7545,
+          10464
+        ]
+      },
+      {
+        "session": "01M2WQ03BXCHH0Y8ZE3PBH65RQ",
+        "skill": "vec-dot-product",
+        "turns": 2,
+        "attempts": 3,
+        "mastery": 0.417,
+        "latencies": [
+          5817,
+          6121
+        ]
+      },
+      {
+        "session": "01M2WQ0F24BYR96W4AVH9PDDSW",
+        "skill": "vec-dot-product",
+        "turns": 2,
+        "attempts": 3,
+        "mastery": 0.417,
+        "latencies": [
+          6300,
+          5094
+        ]
+      }
+    ],
+    "turn_latency_p50_ms": 6210,
+    "turn_latency_max_ms": 10464
+  }
+}
