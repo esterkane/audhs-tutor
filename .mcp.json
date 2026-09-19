@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "qdrant-docs": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-fetch"],
+      "_comment": "Generic fetch server for reading docs pages when WebFetch is not enough. Optional."
+    },
+    "sqlite-learner": {
+      "type": "stdio",
+      "command": "uvx",
+      "args": ["mcp-server-sqlite", "--db-path", "${CLAUDE_PROJECT_DIR}/data/dev.db"],
+      "_comment": "Read-only inspection of the dev DB during development. Never point at a real learner DB."
+    }
+  }
+}

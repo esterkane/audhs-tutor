@@ -1,0 +1,164 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "allow": [
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "Bash(uv *)",
+      "Bash(uvx *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(pytest *)",
+      "Bash(ruff *)",
+      "Bash(mypy *)",
+      "Bash(alembic *)",
+      "Bash(pnpm *)",
+      "Bash(npx vitest *)",
+      "Bash(npx tsc *)",
+      "Bash(npx eslint *)",
+      "Bash(make *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git branch *)",
+      "Bash(git checkout *)",
+      "Bash(git switch *)",
+      "Bash(git stash *)",
+      "Bash(ls *)",
+      "Bash(cat *)",
+      "Bash(mkdir *)",
+      "Bash(docker compose *)",
+      "Bash(docker ps *)",
+      "Bash(docker logs *)",
+      "Bash(ollama list)",
+      "Bash(ollama ps)",
+      "Bash(curl -s http://localhost:*)",
+      "Bash(curl -s http://127.0.0.1:*)",
+      "Bash(sqlite3 *)",
+      "WebFetch(domain:docs.claude.com)",
+      "WebFetch(domain:code.claude.com)",
+      "WebFetch(domain:fastapi.tiangolo.com)",
+      "WebFetch(domain:qdrant.tech)",
+      "WebFetch(domain:docs.litellm.ai)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:pypi.org)",
+      "WebFetch(domain:ui.shadcn.com)",
+      "WebFetch(domain:tanstack.com)",
+      "WebFetch(domain:ml-explore.github.io)",
+      "Bash(uv run python scripts/models.py list*)",
+      "Bash(uv run python scripts/models.py search-hf *)",
+      "Bash(uv run python scripts/models.py bench *)",
+      "Bash(uv run python scripts/models.py assign *)",
+      "WebFetch(domain:huggingface.co)",
+      "WebFetch(domain:ollama.com)"
+    ],
+    "ask": [
+      "Bash(git push *)",
+      "Bash(git reset *)",
+      "Bash(git rebase *)",
+      "Bash(docker compose down *)",
+      "Bash(ollama pull *)",
+      "Bash(ollama rm *)",
+      "Bash(pip *)",
+      "Bash(brew *)",
+      "WebFetch",
+      "WebSearch",
+      "Bash(uv run python scripts/models.py pull *)",
+      "Bash(uv run python scripts/models.py rm *)",
+      "Bash(hf *)",
+      "Bash(huggingface-cli *)",
+      "Bash(ollama create *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./data/learner.db)",
+      "Read(./data/backups/**)",
+      "Edit(./data/**)",
+      "Write(./data/**)",
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(sudo *)",
+      "Bash(curl * | sh)",
+      "Bash(curl * | bash)",
+      "Read(./data/models/**)"
+    ],
+    "defaultMode": "acceptEdits",
+    "additionalDirectories": []
+  },
+  "env": {
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "UV_LINK_MODE": "copy",
+    "APP_ENV": "dev",
+    "OLLAMA_HOST": "http://localhost:11434",
+    "QDRANT_URL": "http://localhost:6333"
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/session-start.sh",
+            "args": [],
+            "timeout": 20
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/protect-files.sh",
+            "args": [],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/post-edit-check.sh",
+            "args": [],
+            "timeout": 90
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-check.sh",
+            "args": [],
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  },
+  "enableAllProjectMcpServers": false,
+  "enabledMcpjsonServers": [
+    "sqlite-learner"
+  ],
+  "includeCoAuthoredBy": true,
+  "skillOverrides": {},
+  "spinnerTipsEnabled": false
+}
