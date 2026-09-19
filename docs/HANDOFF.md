@@ -10,7 +10,7 @@
 **Verified by**
 - `make test`: backend 57 passed, frontend 7 passed. `make lint` green (ruff, mypy --strict, tsc -b, eslint incl. react-hooks purity).
 - `make bench s=1`: 5/5 PASS (hard checks 4/5 = 0.8); numbers in ROADMAP Stage 1; `evals/results/baseline.json` committed.
-- `scripts/run_evals.py`: results in `evals/results/latest.json` (no baseline committed yet — commit one after the model decision).
+- `scripts/run_evals.py`: results in `evals/results/latest.json`, baseline in `evals/results/baseline.json`.
 
 **Open / blocked**
 - Socratic mode: llama3.1:8b explains instead of asking (1/5 eval cases). Pull the plan's default (`make models args="pull gemma3-12b"`, then `bench`) or set `ANTHROPIC_API_KEY` + `make models args=seed`; rerun `make bench s=1` and compare against `evals/results/baseline.json`.

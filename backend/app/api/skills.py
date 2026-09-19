@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter
 from pydantic import BaseModel
 
@@ -42,6 +44,21 @@ async def list_skills(db: DB, learner: Learner) -> SkillList:
         skills=[await _view(db, learner.id, n) for n in nodes],
         next_skill_id=nxt.id if nxt else None,
     )
+
+
+class MapOut(BaseModel):
+    nodes: list[dict[str, Any]]
+    edges: list[dict[str, Any]]
+    mermaid: str
+
+
+@router.get(
+    "/map",
+    summary="Whole skill map with competency + memory overlays and a Mermaid rendering",
+    response_model=MapOut,
+)
+async def skill_map(db: DB, learner: Learner) -> MapOut:
+    return MapOut.model_validate(await skill_graph.map_view(db, learner.id))
 
 
 @router.get("/{skill_id}", summary="One skill with its state", response_model=SkillView)

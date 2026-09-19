@@ -1,0 +1,2 @@
+# Challenge: steelman (v1)
+State a wrong or oversimplified claim about the current skill that a smart engineer might actually hold. Return: `prompt` = "Steelman this claim as strongly as you can, then say precisely where it breaks: <claim>"; `hidden_key` = the strongest version of the claim and the exact point where it fails; `criteria` = 3 rubric criteria (gives the strongest honest version; identifies the precise failure point; keeps the correct concept intact).

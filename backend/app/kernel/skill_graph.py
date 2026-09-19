@@ -5,6 +5,7 @@ Deterministic; reads competency_state via kernel.competency. No LLM, no HTTP.
 
 from collections import deque
 from collections.abc import Sequence
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -106,3 +107,56 @@ async def next_skill(
     if not unlocked:
         return order[0] if order else None
     return min(unlocked, key=lambda t: t[0])[1]
+
+
+async def map_view(db: AsyncSession, learner_id: str) -> dict[str, Any]:
+    """Open learner model: every node with mastery, dimensions, memory overlay and unlock state,
+    every prerequisite edge, plus a Mermaid rendering (whole map first)."""
+    order = await topological_order(db)
+    nxt = await next_skill(db, learner_id)
+    nodes = []
+    for n in order:
+        st = await competency.skill_state(db, learner_id, n.id)
+        nodes.append(
+            {
+                "id": n.id,
+                "slug": n.slug,
+                "title": n.title,
+                "domain": n.domain,
+                "mastery": st["mastery"],
+                "dimensions": st["dimensions"],
+                "memory": st["memory"],
+                "unlocked": await is_unlocked(db, learner_id, n.id),
+                "is_next": bool(nxt and nxt.id == n.id),
+            }
+        )
+    edges = [
+        {"from": e.from_skill_id, "to": e.to_skill_id, "kind": e.kind} for e in await all_edges(db)
+    ]
+    return {"nodes": nodes, "edges": edges, "mermaid": to_mermaid(nodes, edges)}
+
+
+def to_mermaid(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> str:
+    def cls(n: dict[str, Any]) -> str:
+        if n["mastery"] >= 0.6:
+            return "done"
+        if n["is_next"]:
+            return "next"
+        return "open" if n["unlocked"] else "locked"
+
+    lines = ["graph LR"]
+    ids = {n["id"]: f"n{i}" for i, n in enumerate(nodes)}
+    for n in nodes:
+        due = n["memory"].get("due", 0)
+        label = f"{n['title']}<br/>{round(n['mastery'] * 100)}%" + (f" · {due} due" if due else "")
+        lines.append(f'  {ids[n["id"]]}["{label}"]:::{cls(n)}')
+    for e in edges:
+        if e["from"] in ids and e["to"] in ids:
+            lines.append(f"  {ids[e['from']]} --> {ids[e['to']]}")
+    lines += [
+        "  classDef done fill:#d9f2e3,stroke:#1f7a4d,color:#1f2328",
+        "  classDef next fill:#dfe7fb,stroke:#2f5fd4,stroke-width:3px,color:#1f2328",
+        "  classDef open fill:#ffffff,stroke:#5b6470,color:#1f2328",
+        "  classDef locked fill:#f0f1f3,stroke:#d9dde3,color:#5b6470",
+    ]
+    return "\n".join(lines)

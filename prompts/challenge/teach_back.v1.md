@@ -1,0 +1,2 @@
+# Challenge: teach back (v1)
+Pose a teach-back task: the learner must explain the current skill to a named "student" persona with a specific background (e.g. "a backend developer who knows dot products but has never seen softmax"). Return: `prompt` = the task with the persona and what the student must be able to do afterwards; `hidden_key` = the two ideas a good explanation must not skip; `criteria` = 3 rubric criteria (pitched at the persona's prior knowledge; covers both key ideas; ends with one check question for the student).

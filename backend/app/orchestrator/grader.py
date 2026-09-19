@@ -35,6 +35,10 @@ DIMENSION_FOR_KIND = {
     "cloze": "recall",
     "explain_back": "explanation",
     "transfer": "transfer",
+    "challenge_planted_error": "application",
+    "challenge_steelman": "transfer",
+    "challenge_teach_back": "explanation",
+    "challenge_calibration": "recall",
 }
 KIND_ORDER = ["mcq", "cloze", "explain_back"]
 LLM_ESCALATE_BELOW = 0.6
@@ -53,7 +57,11 @@ def view(a: Assessment) -> AssessmentView:
     if a.kind == "cloze":
         return AssessmentView(id=a.id, skill_id=a.skill_id, kind=a.kind, question=item["text"])
     return AssessmentView(
-        id=a.id, skill_id=a.skill_id, kind=a.kind, question=item["prompt"], criteria=None
+        id=a.id,
+        skill_id=a.skill_id,
+        kind=a.kind,
+        question=item["prompt"],
+        criteria=list(item.get("criteria", [])) if a.kind.startswith("challenge_") else None,
     )
 
 
@@ -211,12 +219,18 @@ class Grader:
         *,
         learner_id: str,
         session_id: str,
+        reference: str | None = None,
     ) -> tuple[GradeResult, str] | None:
         criteria = [c["criterion"] for c in rubric]
         user = "\n\n".join(
             [
                 prompts.grader_task("explain_back").strip(),
                 "## Question\n" + escape_data(prompt),
+                *(
+                    ["## Reference answer (hidden from the learner)\n" + escape_data(reference)]
+                    if reference
+                    else []
+                ),
                 "## Rubric criteria\n" + "\n".join(f"- {c}" for c in criteria),
                 "## Learner answer\n" + learner_answer_block(answer),
                 "Return criterion_results in the same order as the rubric.",
@@ -270,6 +284,10 @@ class Grader:
             rubric_version = rubric_row.version if rubric_row else None
             result = rubric_checks(criteria, req.answer)
             level = "rubric"
+            is_challenge = a.kind.startswith("challenge_")
+            reference = str(item.get("hidden_key")) if is_challenge else None
+            if is_challenge:
+                result.confidence = 0.0  # challenges are always LLM-graded against the hidden key
             if result.confidence < LLM_ESCALATE_BELOW:
                 llm = await self._llm_grade(
                     TaskClass.GRADE_SIMPLE,
@@ -278,6 +296,7 @@ class Grader:
                     req.answer,
                     learner_id=learner_id,
                     session_id=session.id,
+                    reference=reference,
                 )
                 if llm is not None:
                     result, level = llm
@@ -289,6 +308,7 @@ class Grader:
                             req.answer,
                             learner_id=learner_id,
                             session_id=session.id,
+                            reference=reference,
                         )
                         if hosted is not None:
                             result, level = hosted
@@ -375,6 +395,19 @@ class Grader:
             latency_ms=req.latency_ms,
             events=events,
         )
+        if a.kind.startswith("challenge_"):
+            # every challenge ends with a delayed item (ADR-0003): never earlier than +2 days
+            from datetime import timedelta
+
+            ms_row = (
+                await db.execute(
+                    select(MemoryState).where(MemoryState.review_item_id == review_item.id)
+                )
+            ).scalar_one()
+            delayed = (now + timedelta(days=2)).isoformat(timespec="milliseconds")
+            if ms_row.due < delayed:
+                ms_row.due = delayed
+                await db.commit()
         cp = await ksession.load_checkpoint(db, session.id) or {}
         if cp.get("skill_id") == a.skill_id and cp.get("hint_level"):
             await ksession.save_checkpoint(db, session, {**cp, "hint_level": 0})

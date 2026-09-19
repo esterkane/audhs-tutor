@@ -29,3 +29,7 @@ def tutor_task(name: str) -> str:
 
 def grader_task(name: str) -> str:
     return _read(f"grader/{name}.v1.md")
+
+
+def challenge_task(mode: str) -> str:
+    return _read(f"challenge/{mode}.v1.md")

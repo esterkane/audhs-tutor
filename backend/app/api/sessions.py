@@ -1,10 +1,12 @@
 from datetime import UTC, datetime
+from typing import Any
 
 from fastapi import APIRouter
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import DB, Learner
+from app.api.plan import build_plan, plan_to_json
 from app.db.models import Assessment, ReviewItem, Session
 from app.kernel import memory, skill_graph
 from app.kernel import session as ksession
@@ -38,6 +40,8 @@ class SessionOut(BaseModel):
     due_reviews: int
     review_cap: int
     minimum_viable: list[str]
+    plan: list[dict[str, Any]]
+    checkpoint: dict[str, Any] | None
 
 
 async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
@@ -63,6 +67,8 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
         due_reviews=len(due),
         review_cap=cap,
         minimum_viable=minimum,
+        plan=list(s.planned_blocks_json or []),
+        checkpoint=await ksession.load_checkpoint(db, s.id),
     )
 
 
@@ -73,10 +79,64 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
     status_code=201,
 )
 async def start(body: SessionStart, db: DB, learner: Learner) -> SessionOut:
+    plan = await build_plan(db, learner.id, str(body.mode), body.energy)
     s = await ksession.start(
-        db, learner.id, mode=body.mode, energy=body.energy, socratic=body.socratic
+        db,
+        learner.id,
+        mode=body.mode,
+        energy=body.energy,
+        socratic=body.socratic,
+        planned_blocks=[b.type for b in plan.blocks],
     )
+    s.planned_blocks_json = plan_to_json(plan)
+    await db.commit()
     return await _out(db, learner.id, s)
+
+
+@router.get(
+    "/current",
+    summary="The latest session that has not ended (for resume after reload)",
+    response_model=SessionOut | None,
+)
+async def current(db: DB, learner: Learner) -> SessionOut | None:
+    stmt = (
+        select(Session)
+        .where(Session.learner_id == learner.id, Session.ended_at.is_(None))
+        .order_by(Session.started_at.desc())
+        .limit(1)
+    )
+    s = (await db.execute(stmt)).scalar_one_or_none()
+    return await _out(db, learner.id, s) if s else None
+
+
+class CheckpointIn(BaseModel):
+    phase: str | None = None
+    skill_id: str | None = None
+    block_index: int | None = None
+    extra: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post(
+    "/{session_id}/checkpoint",
+    summary="Merge UI state (phase, skill, block) into the resume checkpoint",
+    response_model=dict[str, Any],
+)
+async def checkpoint(session_id: str, body: CheckpointIn, db: DB) -> dict[str, Any]:
+    s = await ksession.get(db, session_id)
+    cp = await ksession.load_checkpoint(db, s.id) or {}
+    update = {
+        k: v
+        for k, v in (
+            ("phase", body.phase),
+            ("skill_id", body.skill_id),
+            ("block_index", body.block_index),
+        )
+        if v is not None
+    }
+    merged = {**cp, **update, **body.extra}
+    await ksession.save_checkpoint(db, s, merged)
+    await ksession.prune_checkpoints(db, s.id, keep=3)
+    return merged
 
 
 @router.get("/{session_id}", summary="Session state", response_model=SessionOut)
