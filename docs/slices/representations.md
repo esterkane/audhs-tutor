@@ -1,0 +1,6 @@
+# Slice: representations (Stage 2)
+
+**Story.** "Show it differently" renders the same LearningObject as an analogy, derivation, code, diagram-in-words, worked example, problem-first (only at mastery ≥ 0.6) or narrative; renders are cached and never change the object.
+**In/out.** `kernel/representations.py` (KINDS, mastery-gated `allowed_kinds`, cache by (object_id, kind), invalidate), `orchestrator/representations.render` (cache first; otherwise one `explain_simple` call with the standard ContextPacket and `prompts/tutor/representation.v1.md`, stored with its `model_call_id`), `prefer()` → `preferred` event with chosen/rejected ids (ADR-0005 preference pairs). `GET /api/objects/{skill}/representations` (kinds with cached/allowed flags), `POST …/representations/{kind}`, `POST …/representations/prefer`. UI: "Show it differently" choices in the session screen served from the cache; after a switch, "Which explanation worked better?" (two buttons).
+**Events.** `explained` (object_type explanation, representation set), `preferred`.
+**Verified by.** `tests/test_stage2_api.py::test_representations_keep_object_identity_and_cache` (same object_id across kinds, cached repeat, mastery gate, preferred event), Stage 2 benchmark B with the real model.

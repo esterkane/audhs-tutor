@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current stage:** 1 — Learning vertical slice (attention) **done 2026-09-19** (benchmark 5/5 after code review fixes) → next: Stage 2
+**Current stage:** 2 — Learning kernel complete **done 2026-09-19** (benchmark 4/4) → next: Stage 3 (serious knowledge system)
 
 Order follows the Architecture Review Brief: prove the learning loop first, then the kernel, then the knowledge system, then adaptive UX, then frontier+voice, then offline agents. Each stage: slices (`/feature-slice`), a benchmark script, exit criteria.
 
@@ -37,12 +37,18 @@ Benchmark `bench_stage1.py`: run 3 sessions on attention; every turn has a `tuto
 - Verdict on "is this loop useful": yes. Retrieve → teach with citations → confidence → grade → evidence → FSRS → next node works end to end on a local 8B model. Socratic mode needs a stronger local model (`gemma3:12b`, the plan's default) or a hosted fallback.
 
 ## Stage 2 — Learning kernel, complete
-- [ ] `skill-map` — whole-map-first Mermaid/interactive graph with competency + memory overlays (open learner model).
-- [ ] `planner-v1` — rule-based block planner (session template, boundaries, early-switch with grasp check, movement placement, min-viable session).
-- [ ] `preferences-checkpoints` — structured `learner_preference`, `session_checkpoint`, resume.
-- [ ] `representations` — lazy render + cache of Representation kinds; "show it differently" flow.
-- [ ] `challenge-modes` — planted-error, steelman, teach-back, calibration; each schedules a delayed item.
+- [x] `skill-map` — whole-map-first Mermaid/interactive graph with competency + memory overlays (open learner model).
+- [x] `planner-v1` — rule-based block planner (session template, boundaries, early-switch with grasp check, movement placement, min-viable session).
+- [x] `preferences-checkpoints` — structured `learner_preference`, `session_checkpoint`, resume.
+- [x] `representations` — lazy render + cache of Representation kinds; "show it differently" flow.
+- [x] `challenge-modes` — planted-error, steelman, teach-back, calibration; each schedules a delayed item.
 Benchmark: planner produces valid plans for all mode×energy combos; representation switch keeps object identity; resume from checkpoint mid-session.
+**Measured 2026-09-19** (`make bench s=2`, isolated `data/bench2.db`, llama3.1:8b; raw in `evals/results/bench_stage2.json`):
+- A planner: 90 mode × energy × due × preference combos, all pass `validate_plan`; deterministic — PASS
+- B representations: analogy + derivation rendered for the same LearningObject → identical `object_id`; the repeat request came from cache (same representation id, 2 model calls total) — PASS
+- C resume: hint turn → UI checkpoint (phase=assess, block 2) → fresh DB session reads skill, phase, hint level 1, block index — PASS
+- D challenge: the model planted a real conceptual error ("1/sqrt(d_k) is a learned parameter"), graded against the hidden key by the local grader (score 0 for a canned answer that named a different error), delayed item due at +2 days — PASS
+- Not yet exercised by the benchmark: the plan strip in the UI (checked manually in the browser pane), block events over HTTP (covered by `tests/test_stage2_api.py`).
 
 ## Stage 3 — Serious knowledge system
 - [ ] `ingest-pipeline` — Udemy captions/slides/notebooks/PDFs → normalise → dedupe → semantic chunk → provenance → SQLite + Qdrant (dense + sparse); idempotent by content hash; `reindex.py`.

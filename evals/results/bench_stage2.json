@@ -1,0 +1,41 @@
+{
+  "A planner valid for all mode x energy": {
+    "status": "PASS",
+    "combos": 90
+  },
+  "B representation switch keeps object identity": {
+    "status": "PASS",
+    "object_id": "01M2WYMTA8SRWJKJ8RHZKV56R1",
+    "kinds": [
+      "analogy",
+      "derivation"
+    ],
+    "cached_on_repeat": true,
+    "model_calls": 2,
+    "analogy": "(Dot product as alignment) Think of the dot product as a measure of how much two vectors agree, like two people agreeing on a plan. Imagine two friends, Alice a",
+    "derivation": "(Derivation)\n\nThe dot product of two vectors a and b is defined as a\u00b7b = \u03a3 a_i b_i [1]. This can be rewritten as a\u00b7b = |a||b|cos \u03b8, where \u03b8 is the angle between"
+  },
+  "C resume from checkpoint mid-session": {
+    "status": "PASS",
+    "checkpoint": {
+      "skill_id": "01M2WYMTA10W58Y0PREQ47XZJW",
+      "phase": "assess",
+      "hint_level": 1,
+      "block_index": 2,
+      "action": "hint"
+    }
+  },
+  "D challenge round trip": {
+    "status": "PASS",
+    "prompt": "The scaled dot-product attention formula is Attention(Q, K, V) = softmax(QK\u1d40 / sqrt(d_k)) V, where the 1/sqrt(d_k) factor is a learned parameter that scales the dot products. This factor is necessary ",
+    "criteria": [
+      "Locate the error in the explanation and state what is incorrect.",
+      "State the correct claim about the 1/sqrt(d_k) factor in the scaled dot-product attention formula.",
+      "Explain why the 1/sqrt(d_k) factor is necessary in the formula."
+    ],
+    "score": 0.0,
+    "grader": "local",
+    "due": "2026-09-21T13:46:19.062+00:00",
+    "feedback": "The learner correctly identifies the issue with the formula, but fails to accurately describe the 1/sqrt(d_k) factor. This factor is indeed necessary to prevent"
+  }
+}
