@@ -9,12 +9,13 @@ need() { command -v "$1" >/dev/null 2>&1 || { echo "missing: $1 — $2"; exit 1;
 need brew   "install Homebrew first"
 need jq     "brew install jq"
 need docker "install OrbStack or Docker Desktop (needed for Qdrant)"
+docker info >/dev/null 2>&1 || { echo "Docker daemon not running — start Docker Desktop / OrbStack, then re-run"; exit 1; }
 
 echo "▸ tools"
-brew list uv >/dev/null 2>&1 || brew install uv
-brew list pnpm >/dev/null 2>&1 || brew install pnpm
-brew list ollama >/dev/null 2>&1 || brew install ollama
-brew list sqlite >/dev/null 2>&1 || brew install sqlite
+command -v uv >/dev/null 2>&1 || brew install uv
+command -v pnpm >/dev/null 2>&1 || brew install pnpm
+command -v ollama >/dev/null 2>&1 || brew install ollama
+command -v sqlite3 >/dev/null 2>&1 || brew install sqlite
 command -v claude >/dev/null 2>&1 || echo "note: Claude Code CLI not found — install per docs.claude.com"
 
 echo "▸ hooks executable"
@@ -24,9 +25,11 @@ echo "▸ env"
 [ -f .env ] || cp .env.example .env
 [ -f .claude/settings.local.json ] || cp .claude/settings.local.json.example .claude/settings.local.json
 
+mkdir -p backend frontend
+
 echo "▸ backend (uv)"
 if [ ! -f backend/pyproject.toml ]; then
-  (cd backend && uv init --name audhs_tutor --python 3.12 --no-readme >/dev/null && \
+  (cd backend && uv init --bare --name audhs_tutor --python 3.12 >/dev/null && \
    uv add fastapi "uvicorn[standard]" pydantic pydantic-settings sqlalchemy alembic aiosqlite \
           instructor openai litellm qdrant-client fastembed sqlite-vec fsrs python-ulid httpx websockets numpy huggingface_hub && \
    uv add --dev pytest pytest-asyncio ruff mypy httpx)
@@ -36,7 +39,7 @@ fi
 
 echo "▸ frontend (pnpm)"
 if [ ! -f frontend/package.json ]; then
-  (cd frontend && pnpm create vite@latest . --template react-ts >/dev/null && pnpm install && \
+  (cd frontend && pnpm create vite@latest . --template react-ts --eslint --no-immediate --no-interactive </dev/null >/dev/null && pnpm install && \
    pnpm add @tanstack/react-query zustand react-router-dom katex mermaid @codemirror/state @codemirror/view && \
    pnpm add -D vitest @testing-library/react @testing-library/jest-dom jsdom eslint-plugin-jsx-a11y prettier openapi-typescript)
 else

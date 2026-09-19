@@ -25,7 +25,7 @@ test-frontend:
 
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy app
-	cd frontend && pnpm exec tsc --noEmit && pnpm exec eslint src
+	cd frontend && pnpm exec tsc -b && pnpm exec eslint src
 
 migrate:
 	cd backend && uv run alembic revision --autogenerate -m "$(m)" && uv run alembic upgrade head
