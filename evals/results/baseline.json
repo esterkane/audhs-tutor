@@ -1,0 +1,148 @@
+{
+  "ran_at": "2026-09-19T11:50:55+00:00",
+  "cases": [
+    {
+      "id": "explain-qkv",
+      "skill": "attn-dot-product",
+      "turns": [
+        {
+          "learner": "Explain what queries, keys and values do in one attention step.",
+          "action": "explain",
+          "text": "(derivation) In one attention step, queries (Q) decide which keys (K) to match against, keys (K) determine the weights for the matching, and values (V) are the content that gets mixed into the output. The query and key vectors are used to compute a score, and the softmax of these scores gives the weights for the weighted sum of the values. This is based on the dot-product attention formula [1], where QKᵀ / sqrt(d_k) gives the scores and softmax(QKᵀ / sqrt(d_k)) V gives the output.\n\nNext: Compute attention weights and output for a two-token example.",
+          "sources": [
+            "[Attention Mechanisms (seed) › Notes › Dot-product attention: queries, keys, values]",
+            "[Attention Mechanisms (seed) › Notes › Scaled dot-product attention]",
+            "[Attention Mechanisms (seed) › Paper summary › Scaled dot-product attention (section 3.2.1)]"
+          ],
+          "hard": {
+            "citation_present": true,
+            "max_sentences": true,
+            "no_banned_language": true,
+            "mode_respected": true
+          },
+          "hard_pass": true,
+          "rubric": null,
+          "latency_ms": 7316,
+          "model": "llama31-8b"
+        }
+      ],
+      "hard_pass": true
+    },
+    {
+      "id": "hint-first-scaled-attention",
+      "skill": "attn-scaled",
+      "turns": [
+        {
+          "learner": "Why do we divide the attention scores by sqrt(d_k)? Give me a hint first, not the answer.",
+          "action": "hint",
+          "text": "(Derivation) The reason we divide the attention scores by sqrt(d_k) has to do with the variance of the dot product. [1]",
+          "sources": [
+            "[Attention Mechanisms (seed) › Notes › Scaled dot-product attention]",
+            "[Attention Mechanisms (seed) › Paper summary › Scaled dot-product attention (section 3.2.1)]",
+            "[Attention Mechanisms (seed) › Notes › Dot-product attention: queries, keys, values]"
+          ],
+          "hard": {
+            "no_full_solution": true,
+            "citation_present": true,
+            "max_sentences": true,
+            "no_banned_language": true,
+            "mode_respected": true
+          },
+          "hard_pass": true,
+          "rubric": null,
+          "latency_ms": 4947,
+          "model": "llama31-8b"
+        }
+      ],
+      "hard_pass": true
+    },
+    {
+      "id": "kv-cache-recap",
+      "skill": "kv-cache",
+      "turns": [
+        {
+          "learner": "Recap the KV cache for me.",
+          "action": "summarize",
+          "text": "(derivation) The KV cache stores the key and value vectors of all previous tokens for every layer and head, allowing the model to attend over the cached keys at each step, reducing per-step cost from O(n²) to O(n) in sequence length [1]. This cache is the main memory consumer at inference time, and its size can be estimated as layers × 2 (keys and values) × sequence length × (heads × head dimension) × bytes per element [1]. For example, for 32 layers, a hidden size of 4096, a 4096-token context, and fp16 (2 bytes), the cache size is approximately 2.1 GB for a single sequence [1]. \n\nNext, consider how the cache size would change if you were to",
+          "sources": [
+            "[Attention Mechanisms (seed) › Notes › KV cache in autoregressive decoding]",
+            "[Attention Mechanisms (seed) › Paper summary › Masking in the decoder (section 3.2.3)]",
+            "[Attention Mechanisms (seed) › Paper summary › Model overview]"
+          ],
+          "hard": {
+            "citation_present": true,
+            "max_sentences": true,
+            "no_banned_language": true,
+            "mode_respected": true
+          },
+          "hard_pass": true,
+          "rubric": null,
+          "latency_ms": 7331,
+          "model": "llama31-8b"
+        }
+      ],
+      "hard_pass": true
+    },
+    {
+      "id": "negated-full-solution",
+      "skill": "attn-scaled",
+      "turns": [
+        {
+          "learner": "I don't want the full solution, just a nudge on why we scale by sqrt(d_k).",
+          "action": "hint",
+          "text": "(Derivation) The variance argument in scaled dot-product attention is based on the fact that the dot product of two vectors with independent unit-variance components has variance d_k [1]. This is because the products a_i b_i are independent with variance one, so the sum over d dimensions has variance d.",
+          "sources": [
+            "[Attention Mechanisms (seed) › Notes › Scaled dot-product attention]",
+            "[Attention Mechanisms (seed) › Paper summary › Scaled dot-product attention (section 3.2.1)]",
+            "[Attention Mechanisms (seed) › Notes › Dot product as similarity]"
+          ],
+          "hard": {
+            "no_full_solution": true,
+            "citation_present": true,
+            "max_sentences": true,
+            "no_banned_language": true,
+            "mode_respected": true
+          },
+          "hard_pass": true,
+          "rubric": null,
+          "latency_ms": 4287,
+          "model": "llama31-8b"
+        }
+      ],
+      "hard_pass": true
+    },
+    {
+      "id": "socratic-masking",
+      "skill": "attn-masking",
+      "turns": [
+        {
+          "learner": "Why is the mask applied with minus infinity before the softmax instead of zeroing weights after?",
+          "action": "explain",
+          "text": "(Derivation)\n\nWhen applying a mask to the scores before softmax, why use -∞ instead of zeroing the weights after softmax? The key insight is that softmax normalizes the weights so that they sum to one. If we were to zero the weights of the masked positions after softmax, the remaining weights would no longer sum to one, violating the normalization property of softmax. This would lead to incorrect results in downstream computations.\n\nInstead, adding -∞ to the masked entries before softmax ensures that the masked positions drop out of the normalization and the remaining weights still sum to one. This is because",
+          "sources": [
+            "[Attention Mechanisms (seed) › Notes › Masking: padding and causal]",
+            "[Attention Mechanisms (seed) › Notes › Softmax as a weighting function]",
+            "[Attention Mechanisms (seed) › Notes › Scaled dot-product attention]"
+          ],
+          "hard": {
+            "no_full_solution": false,
+            "citation_present": false,
+            "max_sentences": true,
+            "no_banned_language": true,
+            "mode_respected": false
+          },
+          "hard_pass": false,
+          "rubric": null,
+          "latency_ms": 6938,
+          "model": "llama31-8b"
+        }
+      ],
+      "hard_pass": false
+    }
+  ],
+  "summary": {
+    "cases": 5,
+    "hard_pass": 4,
+    "hard_pass_rate": 0.8
+  }
+}

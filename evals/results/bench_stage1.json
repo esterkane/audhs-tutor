@@ -15,61 +15,61 @@
   "C delayed review 2 days later": {
     "status": "PASS",
     "due_in_1_min": 1,
-    "due_in_2_days": 1,
+    "due_in_2_days": 4,
     "stability_delta": 2.221
   },
   "D hard-check evals": {
-    "status": "FAIL",
+    "status": "PASS",
     "cases": 5,
-    "hard_pass": 2,
-    "hard_pass_rate": 0.4,
+    "hard_pass": 4,
+    "hard_pass_rate": 0.8,
     "evals_tail": [
-      "[FAIL] explain-qkv: llama31-8b 8988 ms ['max_sentences']",
-      "[PASS] hint-first-scaled-attention: llama31-8b 4068 ms ",
-      "[FAIL] kv-cache-recap: llama31-8b 3794 ms ['max_sentences']",
-      "[PASS] negated-full-solution: llama31-8b 4104 ms ",
-      "[FAIL] socratic-masking: llama31-8b 4007 ms ['no_full_solution', 'citation_present', 'max_sentences']",
-      "hard checks: 2/5 \u2192 /Users/saru/projects/audhs-tutor/evals/results/latest.json"
+      "[PASS] explain-qkv: llama31-8b 7316 ms ",
+      "[PASS] hint-first-scaled-attention: llama31-8b 4947 ms ",
+      "[PASS] kv-cache-recap: llama31-8b 7331 ms ",
+      "[PASS] negated-full-solution: llama31-8b 4287 ms ",
+      "[FAIL] socratic-masking: llama31-8b 6938 ms ['no_full_solution', 'citation_present', 'mode_respected']",
+      "hard checks: 4/5 \u2192 /Users/saru/projects/audhs-tutor/evals/results/latest.json"
     ]
   },
   "E loop signal": {
     "status": "PASS",
     "sessions": [
       {
-        "session": "01M2WQ5KYCSPETR0AHP68F2ZV0",
+        "session": "01M2WR182FVA1KAJ78YPY9EHA7",
         "skill": "vec-dot-product",
         "turns": 2,
         "attempts": 3,
         "mastery": 0.708,
         "latencies": [
-          5133,
-          5522
+          10032,
+          5796
         ]
       },
       {
-        "session": "01M2WQ5YCY52E19QMSNX3D8337",
+        "session": "01M2WR1QJH1RR7462SEX4FXZR2",
         "skill": "softmax",
         "turns": 2,
         "attempts": 3,
         "mastery": 0.604,
         "latencies": [
-          5737,
-          6106
+          8062,
+          5866
         ]
       },
       {
-        "session": "01M2WQ6A0F5VWFXH3HPVM5AKCN",
+        "session": "01M2WR2577QJTGT1TW75DXH263",
         "skill": "attn-dot-product",
         "turns": 2,
         "attempts": 3,
         "mastery": 0.5,
         "latencies": [
-          7059,
-          6070
+          7784,
+          6257
         ]
       }
     ],
-    "turn_latency_p50_ms": 5903,
-    "turn_latency_max_ms": 7059
+    "turn_latency_p50_ms": 7020,
+    "turn_latency_max_ms": 10032
   }
 }
