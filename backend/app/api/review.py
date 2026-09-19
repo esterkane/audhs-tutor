@@ -35,6 +35,7 @@ class DueList(BaseModel):
 class ReviewRating(BaseModel):
     session_id: str
     rating: int = Field(ge=1, le=4)
+    confidence_pre: int | None = Field(default=None, ge=1, le=5)
     latency_ms: int | None = None
 
 

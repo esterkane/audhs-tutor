@@ -43,6 +43,8 @@ describe('Review', () => {
     renderApp(<Review />)
     expect(await screen.findByText(/capped at 5; 7 due in total/)).toBeInTheDocument()
     expect(screen.queryByText(/largest dominates/)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /show answer/i })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: '4' }))
     fireEvent.click(screen.getByRole('button', { name: /show answer/i }))
     expect(screen.getByText(/largest dominates/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /good/i }))
@@ -54,6 +56,7 @@ describe('Review', () => {
       rating: 3,
     })
     expect(await screen.findByText(/review done/i)).toBeInTheDocument()
+    expect(screen.queryByText(/show all 7 due/i)).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: /finish session/i })).toBeInTheDocument()
   })
 })

@@ -79,7 +79,7 @@ def data_block(chunks: list[RetrievedChunk]) -> str:
     ]
     for i, c in enumerate(chunks, 1):
         flags = f' flags="{",".join(c.flagged)}"' if c.flagged else ""
-        lines.append(f"[{i}] source={c.citation} trust_tier={c.trust_tier}{flags}")
+        lines.append(f"[{i}] {c.citation.strip('[]')} (trust {c.trust_tier}){flags}")
         lines.append(escape_data(c.text))
     lines.append("</retrieved_data>")
     return "\n".join(lines)

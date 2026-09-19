@@ -7,11 +7,10 @@ import { ParkingLotButton } from './ParkingLotButton'
 describe('ParkingLotButton', () => {
   afterEach(() => vi.unstubAllGlobals())
 
-  it('is always rendered and disabled without a session', () => {
+  it('is always rendered and usable even without a session', () => {
     useMode.setState({ sessionId: null })
     renderApp(<ParkingLotButton />)
-    const btn = screen.getByRole('button', { name: /parking lot/i })
-    expect(btn).toBeDisabled()
+    expect(screen.getByRole('button', { name: /parking lot/i })).toBeEnabled()
   })
 
   it('parks a tangent in two interactions (open, type + Enter)', async () => {

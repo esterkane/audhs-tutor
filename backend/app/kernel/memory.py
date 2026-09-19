@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 from typing import Any, cast
 
 from fsrs import Card, Rating, Scheduler
+
+__all__ = ["Rating"]
 from fsrs.card import CardDict
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -127,6 +129,7 @@ async def review(
     now: datetime | None = None,
     latency_ms: int | None = None,
     events: EventWriter | None = None,
+    confidence_pre: int | None = None,
 ) -> ReviewLog:
     now = now or datetime.now(UTC)
     ms = (

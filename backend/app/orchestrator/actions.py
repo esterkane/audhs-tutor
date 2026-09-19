@@ -10,6 +10,9 @@ MAX_HINT_LEVEL = 3
 FULL_SOLUTION_PATTERNS = re.compile(
     r"show (me )?the full solution|full solution|show (me )?the (complete|whole) solution", re.I
 )
+NEGATED_FULL_SOLUTION = re.compile(
+    r"\b(don'?t|do not|not|without|no|never)\b[^.!?]{0,25}(full|complete|whole) solution", re.I
+)
 HINT_PATTERNS = re.compile(r"\bhint\b|\bstuck\b|\bnudge\b|\bnext step\b|where do i start", re.I)
 SUMMARY_PATTERNS = re.compile(r"\bsummar(y|ise|ize)\b|\brecap\b", re.I)
 
@@ -23,7 +26,13 @@ class Action(StrEnum):
 
 def choose_action(text: str, requested: str, hint_level: int) -> tuple[Action, int]:
     """Returns (action, hint_level). Full solution only on an explicit request or button."""
-    if requested == "full_solution" or FULL_SOLUTION_PATTERNS.search(text):
+    if requested == "full_solution":
+        return Action.FULL_SOLUTION, hint_level
+    if (
+        requested == "auto"
+        and FULL_SOLUTION_PATTERNS.search(text)
+        and not NEGATED_FULL_SOLUTION.search(text)
+    ):
         return Action.FULL_SOLUTION, hint_level
     if requested == "hint" or (requested == "auto" and HINT_PATTERNS.search(text)):
         return Action.HINT, min(MAX_HINT_LEVEL, hint_level + 1)
@@ -32,8 +41,17 @@ def choose_action(text: str, requested: str, hint_level: int) -> tuple[Action, i
     return Action.EXPLAIN, hint_level
 
 
+SCAFFOLD_PROBLEM_FIRST_MIN_MASTERY = 0.6
+
+
 def output_contract(
-    action: Action, *, hint_level: int, socratic: bool, representation: str | None, block_type: str
+    action: Action,
+    *,
+    hint_level: int,
+    socratic: bool,
+    representation: str | None,
+    block_type: str,
+    mastery: float = 0.0,
 ) -> dict[str, Any]:
     style = "socratic" if socratic else "explicit"
     contract: dict[str, Any] = {
@@ -43,10 +61,19 @@ def output_contract(
         "max_sentences": {"hint": 3, "summarize": 5, "explain": 6, "full_solution": 10}[
             str(action)
         ],
-        "citation_format": "[course › section › lecture]",
+        "citation_format": "source number in square brackets, e.g. [1]",
         "representation": representation or "choose one and name it in brackets first",
         "instructions": prompts.tutor_task(str(action)).strip(),
     }
+    contract["scaffold"] = (
+        "worked_example_first"
+        if mastery < SCAFFOLD_PROBLEM_FIRST_MIN_MASTERY
+        else "problem_first_allowed"
+    )
+    if socratic:
+        contract["socratic_rule"] = (
+            "no explanation; at most 2 sentences of setup, then exactly one narrowing question"
+        )
     if action == Action.HINT:
         contract["hint_level"] = hint_level
     if action == Action.FULL_SOLUTION:
@@ -81,3 +108,25 @@ def detect_representation(text: str) -> str | None:
 
 def count_sentences(text: str) -> int:
     return len([s for s in re.split(r"(?<=[.!?])\s+", text.strip()) if s])
+
+
+def trim_incomplete_tail(text: str) -> str:
+    """If generation stopped mid-sentence (token cap), drop the dangling fragment."""
+    t = text.rstrip()
+    if not t or t[-1] in ".!?)]\"'":
+        return t
+    cut = max(
+        t.rfind(". "), t.rfind("? "), t.rfind("! "), t.rfind(".\n"), t.rfind("?\n"), t.rfind("!\n")
+    )
+    return t[: cut + 1] if cut > 40 else t
+
+
+def cited_indices(text: str, n_sources: int) -> set[int]:
+    """Numeric citations actually present in the reply, e.g. [1] or [1, 3]."""
+    found: set[int] = set()
+    for m in re.finditer(r"\[(\d+(?:\s*,\s*\d+)*)\]", text):
+        for part in m.group(1).split(","):
+            i = int(part)
+            if 1 <= i <= n_sources:
+                found.add(i)
+    return found

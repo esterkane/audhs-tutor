@@ -31,8 +31,7 @@ export function ParkingLotButton() {
           variant="outline"
           className="fixed bottom-4 right-4 shadow-md bg-card"
           aria-label="Parking lot: park a tangent for later"
-          title={sessionId ? 'Park a tangent (P)' : 'Start a session to park thoughts'}
-          disabled={!sessionId}
+          title="Park a tangent for later"
         >
           🅿 Park
         </Button>
@@ -71,7 +70,10 @@ export function ParkingLotButton() {
         </Dialog.Content>
       </Dialog.Portal>
       {status && (
-        <p role="status" className="sr-only">
+        <p
+          role="status"
+          className="fixed bottom-16 right-4 rounded-md bg-card border border-line px-3 py-2 text-sm shadow"
+        >
           {status}
         </p>
       )}

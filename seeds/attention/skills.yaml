@@ -72,7 +72,7 @@ skills:
 
   - slug: pos-encoding
     title: Positional encoding
-    description: Why attention is permutation-invariant and how sinusoidal or learned encodings inject order.
+    description: Why attention is permutation-equivariant (treats the input as a set) and how sinusoidal or learned encodings inject order.
     success_criteria:
       - Explain why attention without positional information cannot distinguish word order.
       - Describe the sinusoidal scheme in words (frequencies per dimension).
@@ -166,7 +166,7 @@ assessments:
     kind: cloze
     item:
       text: "For random vectors with unit-variance entries, the variance of the dot product grows linearly with the ____ of the vectors."
-      answers: ["dimension", "dimensionality", "number of dimensions", "length", "d_k"]
+      answers: ["dimension", "dimensionality", "number of dimensions", "d_k"]
   - skill: softmax
     kind: mcq
     item:
@@ -254,7 +254,7 @@ assessments:
     item:
       prompt: "Describe the difference between a padding mask and a causal mask, and where in the computation each is applied."
     rubric:
-      - {criterion: "Padding mask hides pad tokens across the batch", keywords: [pad]}
+      - {criterion: "Padding mask hides pad tokens across the batch", keywords: [pad, batch, shorter]}
       - {criterion: "Causal mask hides future positions for autoregressive decoding", keywords: [future, causal, autoregress]}
       - {criterion: "Both are applied to the scores before softmax", keywords: [before, softmax]}
   - skill: pos-encoding

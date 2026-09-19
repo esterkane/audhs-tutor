@@ -1,10 +1,10 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 
-export function useDue(sessionId: string | null) {
+export function useDue(sessionId: string | null, all = false) {
   return useQuery({
-    queryKey: ['due', sessionId],
-    queryFn: () => api.due(sessionId!),
+    queryKey: ['due', sessionId, all],
+    queryFn: () => api.due(sessionId!, all),
     enabled: !!sessionId,
   })
 }
@@ -16,7 +16,7 @@ export function useRate() {
       body,
     }: {
       itemId: string
-      body: { session_id: string; rating: number; latency_ms?: number }
+      body: { session_id: string; rating: number; latency_ms?: number; confidence_pre?: number }
     }) => api.rate(itemId, body),
   })
 }

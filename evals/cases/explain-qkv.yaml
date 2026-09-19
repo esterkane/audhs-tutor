@@ -1,0 +1,15 @@
+id: explain-qkv
+skill: attn-dot-product
+block_type: new_material
+questioning_style: explicit
+turns:
+  - learner: "Explain what queries, keys and values do in one attention step."
+    action: explain
+expect:
+  hard:
+    no_full_solution: false
+    citation_present: true
+    max_sentences: 6
+    no_banned_language: true
+    mode_respected: true
+  rubric: [cognitive_load, active_learning, metacognition, curiosity, adaptivity]

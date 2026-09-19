@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
@@ -25,6 +25,7 @@ export function Session() {
   const nav = useNavigate()
   const session = useSession(sessionId)
   const [phase, setPhase] = useState<Phase>('teach')
+  const [hintCount, setHintCount] = useState(0)
   if (!sessionId) {
     return (
       <Card>
@@ -57,9 +58,20 @@ export function Session() {
         )}
       </Card>
       {phase === 'teach' ? (
-        <TeachPanel sessionId={sessionId} skillId={currentSkillId} onCheck={() => setPhase('assess')} />
+        <TeachPanel
+          sessionId={sessionId}
+          skillId={currentSkillId}
+          onCheck={() => setPhase('assess')}
+          onHintLevel={setHintCount}
+        />
       ) : (
-        <AssessPanel sessionId={sessionId} skillId={currentSkillId} onBack={() => setPhase('teach')} />
+        <AssessPanel
+          sessionId={sessionId}
+          skillId={currentSkillId}
+          hintCount={hintCount}
+          onBack={() => setPhase('teach')}
+          onGraded={() => setHintCount(0)}
+        />
       )}
     </div>
   )
@@ -69,20 +81,25 @@ function TeachPanel({
   sessionId,
   skillId,
   onCheck,
+  onHintLevel,
 }: {
   sessionId: string
   skillId: string | null
   onCheck: () => void
+  onHintLevel: (n: number) => void
 }) {
   const [input, setInput] = useState('')
   const { text, meta, done, error, busy, run, stop } = useTutorStream()
   const base = { session_id: sessionId, skill_id: skillId }
+  useEffect(() => {
+    if (meta) onHintLevel(meta.hint_level)
+  }, [meta, onHintLevel])
 
   return (
     <>
       <Card>
         <label htmlFor="ask" className="text-sm font-medium">
-          What do you want explained? (or leave empty for the next idea)
+          Question for the tutor (optional). Empty + Explain = the next idea for this skill.
         </label>
         <Textarea
           id="ask"
@@ -126,7 +143,7 @@ function TeachPanel({
               })
             }
           >
-            Recap
+            Summary of this skill
           </Button>
           {busy && (
             <Button variant="ghost" onClick={stop}>
@@ -136,7 +153,7 @@ function TeachPanel({
         </div>
       </Card>
       {(text || busy || error) && (
-        <Card aria-live="polite" aria-busy={busy}>
+        <Card aria-busy={busy}>
           {meta && (
             <p className="text-xs text-muted mb-2">
               {meta.action}
@@ -216,11 +233,15 @@ function TeachPanel({
 function AssessPanel({
   sessionId,
   skillId,
+  hintCount,
   onBack,
+  onGraded,
 }: {
   sessionId: string
   skillId: string | null
+  hintCount: number
   onBack: () => void
+  onGraded: () => void
 }) {
   const [round, setRound] = useState(0)
   const next = useNextItem(sessionId, skillId, round)
@@ -240,9 +261,10 @@ function AssessPanel({
       answer,
       confidence_pre: confidence,
       latency_ms: Date.now() - startedAt,
-      hint_count: 0,
+      hint_count: hintCount,
     })
     setResult(res)
+    onGraded()
   }
 
   function nextItem() {
@@ -347,7 +369,6 @@ function AssessPanel({
               Next item
             </Button>
             <Button onClick={onBack}>Back to explanation</Button>
-            <Button onClick={() => nav('/review')}>Go to review</Button>
             <Button onClick={() => nav('/recap')}>Finish session</Button>
           </div>
         </Card>

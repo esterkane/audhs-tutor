@@ -12,7 +12,7 @@ router = APIRouter(prefix="/parking", tags=["parking"])
 
 
 class ParkIn(BaseModel):
-    session_id: str
+    session_id: str | None = None
     text: str = Field(min_length=1, max_length=500)
     node_id: str | None = None
 
@@ -41,10 +41,17 @@ def _out(p: ParkingLotItem) -> ParkOut:
     response_model=ParkOut,
     status_code=201,
 )
-async def park(body: ParkIn, db: DB) -> ParkOut:
-    s = await ksession.get(db, body.session_id)
-    events = EventWriter(db, ksession.event_context(s))
-    return _out(await park_tangent(db, s, body.text, node_id=body.node_id, events=events))
+async def park(body: ParkIn, db: DB, learner: Learner) -> ParkOut:
+    if body.session_id:
+        s = await ksession.get(db, body.session_id)
+        events = EventWriter(db, ksession.event_context(s))
+        return _out(await park_tangent(db, s, body.text, node_id=body.node_id, events=events))
+    item = ParkingLotItem(
+        learner_id=learner.id, session_id=None, text=body.text, node_id=body.node_id
+    )
+    db.add(item)
+    await db.commit()
+    return _out(item)
 
 
 @router.get("", summary="Parked items", response_model=ParkList)

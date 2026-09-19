@@ -115,6 +115,28 @@ async def load_seed(db: AsyncSession, seed_dir: Path) -> SeedReport:
                 Assessment(skill_id=skill_id, kind=a["kind"], item_json=item, rubric_id=rubric_id)
             )
         report.assessments += 1
+    # retire seed assessments whose item changed (new seed_key) and that were never attempted
+    from app.db.models import AssessmentAttempt
+
+    current_keys = {
+        _seed_key(a["skill"], a["kind"], dict(a["item"])) for a in data.get("assessments", [])
+    }
+    for row in (
+        (await db.execute(select(Assessment).where(Assessment.skill_id.in_(list(ids.values())))))
+        .scalars()
+        .all()
+    ):
+        key = row.item_json.get("seed_key")
+        if key and key not in current_keys:
+            attempted = (
+                await db.execute(
+                    select(AssessmentAttempt.id)
+                    .where(AssessmentAttempt.assessment_id == row.id)
+                    .limit(1)
+                )
+            ).first()
+            if not attempted:
+                await db.delete(row)
     await db.commit()
 
     for md in sorted((seed_dir / "sources").glob("*.md")):

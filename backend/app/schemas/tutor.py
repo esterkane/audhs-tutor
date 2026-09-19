@@ -17,6 +17,7 @@ class SourceRef(BaseModel):
     trust_tier: int
     score: float
     flagged: list[str] = Field(default_factory=list)
+    cited: bool = False
 
 
 class TurnMeta(BaseModel):

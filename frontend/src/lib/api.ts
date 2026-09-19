@@ -89,14 +89,17 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  due: (sessionId: string) =>
-    apiFetch<DueList>(`/api/review/due?session_id=${encodeURIComponent(sessionId)}`),
-  rate: (itemId: string, body: { session_id: string; rating: number; latency_ms?: number }) =>
+  due: (sessionId: string, all = false) =>
+    apiFetch<DueList>(`/api/review/due?session_id=${encodeURIComponent(sessionId)}${all ? '&all=true' : ''}`),
+  rate: (
+    itemId: string,
+    body: { session_id: string; rating: number; latency_ms?: number; confidence_pre?: number },
+  ) =>
     apiFetch<ReviewOut>(`/api/review/${itemId}`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  park: (body: { session_id: string; text: string; node_id?: string | null }) =>
+  park: (body: { session_id: string | null; text: string; node_id?: string | null }) =>
     apiFetch<ParkOut>('/api/parking', {
       method: 'POST',
       body: JSON.stringify(body),

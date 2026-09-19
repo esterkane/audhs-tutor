@@ -88,7 +88,10 @@ async def test_full_learning_loop_over_http(seeded_client: AsyncClient, db: Asyn
     assert r.status_code == 200, r.text
     res = r.json()
     assert res["correct"] is True and res["grader_level"] == "deterministic" and res["mastery"] > 0
-    assert res["review"]["state"] in ("learning", "review") and res["calibration"] == "calibrated"
+    assert (
+        res["review"]["state"] in ("learning", "review")
+        and res["calibration"] == "estimate close to result"
+    )
 
     # review queue: nothing due now, something due in 3 days (time travel), rate it
     due_now = (await c.get("/api/review/due", params={"session_id": sid})).json()

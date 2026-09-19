@@ -20,11 +20,11 @@ from app.orchestrator.context import build_packet, render_messages
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
 
-MAX_TOKENS_FOR_ACTION = {
-    actions.Action.EXPLAIN: 260,
-    actions.Action.HINT: 140,
+MAX_TOKENS_FOR_ACTION = {  # ~25 tokens per sentence; the cap backs up the prompt's sentence limit
+    actions.Action.EXPLAIN: 190,
+    actions.Action.HINT: 95,
     actions.Action.FULL_SOLUTION: 700,
-    actions.Action.SUMMARIZE: 240,
+    actions.Action.SUMMARIZE: 160,
 }
 TASK_FOR_ACTION = {
     actions.Action.EXPLAIN: TaskClass.EXPLAIN_SIMPLE,
@@ -131,6 +131,7 @@ class TutorTurn:
             text += tok
             yield ("token", {"text": tok})
 
+        cited_idx = actions.cited_indices(text, len(packet.retrieved))
         sources = [
             SourceRef(
                 chunk_id=c.chunk_id,
@@ -138,9 +139,12 @@ class TutorTurn:
                 trust_tier=c.trust_tier,
                 score=c.score,
                 flagged=c.flagged,
+                cited=(i in cited_idx),
             )
-            for c in packet.retrieved[:3]
+            for i, c in enumerate(packet.retrieved, 1)
+            if i in cited_idx or i <= 3
         ]
+        cited_ids = [s.chunk_id for s in sources if s.cited]
         representation = actions.detect_representation(text)
         sentences = actions.count_sentences(text)
         latency_ms = int((time.perf_counter() - t0) * 1000)
@@ -163,7 +167,7 @@ class TutorTurn:
             Verb.EXPLAINED,
             ObjectType.TURN,
             turn_id,
-            result={"sentences": sentences, "cited_sources": [s.chunk_id for s in sources]},
+            result={"sentences": sentences, "cited_sources": cited_ids},
             context={
                 "representation": representation,
                 "hint_count": hint_level,

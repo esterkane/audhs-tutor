@@ -384,7 +384,7 @@ export interface components {
     /** ParkIn */
     ParkIn: {
       /** Session Id */
-      session_id: string
+      session_id?: string | null
       /** Text */
       text: string
       /** Node Id */
@@ -448,6 +448,8 @@ export interface components {
       session_id: string
       /** Rating */
       rating: number
+      /** Confidence Pre */
+      confidence_pre?: number | null
       /** Latency Ms */
       latency_ms?: number | null
     }
@@ -543,6 +545,11 @@ export interface components {
       score: number
       /** Flagged */
       flagged?: string[]
+      /**
+       * Cited
+       * @default false
+       */
+      cited: boolean
     }
     /** TurnDone */
     TurnDone: {

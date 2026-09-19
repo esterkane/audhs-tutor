@@ -80,7 +80,10 @@ def grade_mcq(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
         next_step = "Next: explain in one sentence why the other options are wrong."
     else:
         feedback = f"Not correct. You chose {chosen_text}. The correct option is {options[correct_idx]}. {expl}".strip()
-        next_step = "Next: re-read the relevant note, then retry a similar item."
+        next_step = (
+            f"Next: without looking, say in one sentence why '{options[correct_idx]}' is right, "
+            "then retry a similar item."
+        )
     return (
         GradeResult(
             criterion_results=[
@@ -99,7 +102,9 @@ def grade_mcq(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
 def grade_cloze(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
     accepted = [_norm(x) for x in item["answers"]]
     a = _norm(answer)
-    passed = bool(a) and any(a == acc or acc in a for acc in accepted)
+    passed = bool(a) and any(
+        a == acc or re.search(rf"(?<![a-z0-9]){re.escape(acc)}(?![a-z0-9])", a) for acc in accepted
+    )
     if passed:
         feedback = f"Correct: '{item['answers'][0]}' fits the blank."
         next_step = "Next: say the whole sentence aloud from memory."
@@ -107,7 +112,9 @@ def grade_cloze(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
         feedback = (
             f"Not correct. You wrote '{answer.strip()[:60]}'. Expected: '{item['answers'][0]}'."
         )
-        next_step = "Next: re-read the sentence in the notes where this term is defined."
+        next_step = (
+            f"Next: from memory, use '{item['answers'][0]}' in a sentence of your own, then retry."
+        )
     return (
         GradeResult(
             criterion_results=[
@@ -396,8 +403,9 @@ class Grader:
 
 
 def _calibration(confidence_pre: int, score: float) -> str:
+    """Describes the estimate, never the person."""
     expected = (confidence_pre - 1) / 4
     gap = expected - score
     if abs(gap) <= 0.25:
-        return "calibrated"
-    return "overconfident" if gap > 0 else "underconfident"
+        return "estimate close to result"
+    return "estimate higher than result" if gap > 0 else "estimate lower than result"

@@ -2,6 +2,7 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
+import { Choice } from '../components/ui/choice'
 import { useDue, useRate } from '../features/review/api'
 import { nowMs } from '../lib/time'
 import { useMode } from '../stores/mode'
@@ -15,7 +16,9 @@ const RATINGS = [
 
 export function Review() {
   const { sessionId } = useMode()
-  const due = useDue(sessionId)
+  const [showAll, setShowAll] = useState(false)
+  const [confidence, setConfidence] = useState<number | null>(null)
+  const due = useDue(sessionId, showAll)
   const rate = useRate()
   const nav = useNavigate()
   const [idx, setIdx] = useState(0)
@@ -86,9 +89,23 @@ export function Review() {
           </ol>
         )}
         {!revealed ? (
-          <Button variant="primary" className="mt-3" onClick={() => setRevealed(true)}>
-            Show answer
-          </Button>
+          <div className="mt-3">
+            <Choice<number>
+              label="Before revealing: how sure are you of your recall? (1 = no idea, 5 = certain)"
+              options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
+              value={confidence}
+              onChange={setConfidence}
+              columns={5}
+            />
+            <Button
+              variant="primary"
+              className="mt-3"
+              onClick={() => setRevealed(true)}
+              disabled={confidence == null}
+            >
+              Show answer
+            </Button>
+          </div>
         ) : (
           <div className="mt-3">
             <p className="font-medium">Answer</p>
@@ -110,10 +127,15 @@ export function Review() {
           </div>
         )}
       </Card>
-      <div>
+      <div className="flex gap-2 flex-wrap">
         <Button variant="ghost" onClick={() => nav('/recap')}>
           Stop here (save progress)
         </Button>
+        {due.data.total_due > items.length && !showAll && (
+          <Button variant="ghost" onClick={() => setShowAll(true)}>
+            Show all {due.data.total_due} due (undo the cap)
+          </Button>
+        )}
       </div>
     </div>
   )

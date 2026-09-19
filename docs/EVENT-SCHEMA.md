@@ -35,7 +35,7 @@ Table `learning_event` — append-only. One row per learner-relevant interaction
 | graded | `criterion_results[{criterion,passed}], score(0–1 derived), misconception?, confidence, feedback_len` | `grader_level ∈ deterministic|rubric|local|hosted, prompt_version, rubric_version` |
 | evidenced | `skill_id, dimension, score, weight` | `attempt_id` |
 | proposed (adaptation) / decided | `decision ∈ try|default|no|never` | `what, why, origin ∈ observed_pattern|planner` |
-| reviewed | `rating(1–4), latency_ms, predicted_retrievability, days_since_learned, stability_before, stability_after` | `item_type, node_id` |
+| reviewed | `rating(1–4), latency_ms, predicted_retrievability, days_since_learned, stability_before, stability_after, confidence_pre?(1–5)` | `item_type, node_id` |
 | adapted / undone | — | `what, why, reversible, policy_version` |
 | parked / promoted | — | `node_id, promoted_to?` |
 | spoke | `stt_ms, llm_first_token_ms, tts_first_audio_ms, total_ms` | `stt_model, tts_model, lang` |
