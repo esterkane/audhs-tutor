@@ -7,7 +7,7 @@ Order follows the Architecture Review Brief: prove the learning loop first, then
 ## Stage 0 — Skeleton (½ day)
 - [x] `repo-bootstrap` — `scripts/bootstrap.sh`, Makefile, `.env.example`, uv + pnpm projects, ruff/prettier, Qdrant container (`make services`).
 - [x] `db-core` — ORM + Alembic for all Phase-1 tables (ARCHITECTURE §4); `learning_event` append-only; `learner_id` everywhere; export/wipe scripts + test.
-- [ ] `model-provider` — `ModelProvider` interface, `OllamaProvider`, `ClaudeProvider` (LiteLLM SDK), routing table + `routing_profiles.yaml`, in-app daily budget, `model_call` logging, Instructor structured output, `FakeProvider` fixture.
+- [x] `model-provider` — `ModelProvider` interface, `OllamaProvider`, `ClaudeProvider` (LiteLLM SDK), routing table + `routing_profiles.yaml`, in-app daily budget, `model_call` logging, Instructor structured output, `FakeProvider` fixture.
 - [ ] `model-registry` — `model_registry` table, `scripts/models.py` (`list | search-hf | add | pull | bench | assign | rm`) supporting Ollama library, HF GGUF (→ Modelfile → `ollama create`), `mlx-community` snapshots; licence + disk tracking; `bench_model.py`.
 - [ ] `qdrant-repo` — `QdrantHybridRepository` (dense + sparse named vectors, fusion, payload filters, quantization), collection versioning, `reindex.py`, `SqliteHybridRepository` for tests.
 - [x] `events-traces` — `events.emit`, verbs enum, `tutor_trace`/`retrieval_trace` writers, query helpers.

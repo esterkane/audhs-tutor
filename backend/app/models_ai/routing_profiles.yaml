@@ -1,0 +1,89 @@
+# TaskClass -> registry ids (ADR-0001, ADR-0010). Inspectable, learner-overridable.
+# The router walks [learner override, primary, *fallbacks] and picks the first entry whose
+# registry status is `ready`. Anything but position 0 is logged as route=fallback.
+# Hosted entries need ANTHROPIC_API_KEY and are subject to the daily budget (degraded -> next local).
+
+registry_defaults:
+  - id: llama31-8b
+    display_name: Llama 3.1 8B (Q4_K_M)
+    source: ollama_library
+    repo_id: llama3.1
+    file_or_tag: llama3.1:8b
+    runtime: ollama
+    role: chat
+    quant: Q4_K_M
+    context_len: 131072
+    licence: Llama 3.1 Community License
+  - id: gemma3-12b
+    display_name: Gemma 3 12B (Q4_K_M)
+    source: ollama_library
+    repo_id: gemma3
+    file_or_tag: gemma3:12b
+    runtime: ollama
+    role: chat
+    quant: Q4_K_M
+    context_len: 131072
+    licence: Gemma Terms of Use
+  - id: qwen3-coder-30b-a3b
+    display_name: Qwen3-Coder 30B-A3B
+    source: ollama_library
+    repo_id: qwen3-coder
+    file_or_tag: qwen3-coder:30b
+    runtime: ollama
+    role: code
+    quant: Q4_K_M
+    context_len: 262144
+    licence: Apache-2.0
+  - id: nomic-embed-text
+    display_name: nomic-embed-text v1.5 (768d)
+    source: ollama_library
+    repo_id: nomic-embed-text
+    file_or_tag: nomic-embed-text
+    runtime: ollama
+    role: embed
+    context_len: 8192
+    licence: Apache-2.0
+  - id: hosted-strong
+    display_name: Claude Sonnet 5
+    source: hosted
+    repo_id: claude-sonnet-5
+    file_or_tag: claude-sonnet-5
+    runtime: hosted
+    role: chat
+    context_len: 1000000
+    licence: Anthropic Commercial Terms
+    price_in_per_mtok: 2.0
+    price_out_per_mtok: 10.0
+  - id: hosted-medium
+    display_name: Claude Haiku 4.5
+    source: hosted
+    repo_id: claude-haiku-4-5
+    file_or_tag: claude-haiku-4-5
+    runtime: hosted
+    role: judge
+    context_len: 200000
+    licence: Anthropic Commercial Terms
+    price_in_per_mtok: 1.0
+    price_out_per_mtok: 5.0
+
+profiles:
+  default:
+    chat:          {primary: llama31-8b}
+    chat_fast:     {primary: llama31-8b}
+    format:        {primary: gemma3-12b, fallbacks: [llama31-8b]}
+    summarize:     {primary: gemma3-12b, fallbacks: [llama31-8b]}
+    query_expand:  {primary: gemma3-12b, fallbacks: [llama31-8b]}
+    gen_items:     {primary: gemma3-12b, fallbacks: [llama31-8b]}
+    explain_simple: {primary: gemma3-12b, fallbacks: [llama31-8b, hosted-medium]}
+    hint:          {primary: gemma3-12b, fallbacks: [llama31-8b, hosted-medium]}
+    code_local:    {primary: qwen3-coder-30b-a3b, fallbacks: [llama31-8b, hosted-strong]}
+    grade_simple:  {primary: gemma3-12b, fallbacks: [llama31-8b, hosted-medium]}
+    grade_rubric:  {primary: hosted-strong, fallbacks: [hosted-medium]}
+    tutor_deep:    {primary: hosted-strong, fallbacks: [llama31-8b]}
+    socratic:      {primary: hosted-strong, fallbacks: [llama31-8b]}
+    challenge:     {primary: hosted-strong, fallbacks: [llama31-8b]}
+    code_review:   {primary: hosted-strong, fallbacks: [llama31-8b]}
+    conflict_resolution: {primary: hosted-strong, fallbacks: [llama31-8b]}
+    tutor_medium:  {primary: hosted-medium, fallbacks: [llama31-8b]}
+    judge:         {primary: hosted-medium, fallbacks: [hosted-strong]}
+    embed:         {primary: nomic-embed-text}
