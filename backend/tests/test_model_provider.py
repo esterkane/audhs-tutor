@@ -31,9 +31,12 @@ async def seeded(db: AsyncSession) -> AsyncSession:
 
 
 def _gateway(
-    db: AsyncSession, local: FakeProvider, hosted: FakeProvider, cap: float = 1.0,
+    db: AsyncSession,
+    local: FakeProvider,
+    hosted: FakeProvider,
+    cap: float = 1.0,
     events: EventWriter | None = None,
-) -> ModelGateway:  # fmt: skip
+) -> ModelGateway:
     return ModelGateway(
         db, Router("default"), {"ollama": local, "anthropic": hosted}, Budget(cap), events
     )

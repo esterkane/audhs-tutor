@@ -11,15 +11,39 @@ from app.db.base import Base
 from app.db.migrate import upgrade_to_head
 
 EXPECTED_TABLES = {
-    "learner_profile", "learner_preference", "session", "session_checkpoint",
-    "skill_node", "skill_edge", "learning_object", "representation",
-    "competency_evidence", "competency_state", "review_item", "memory_state", "review_log",
-    "assessment", "assessment_rubric", "assessment_attempt",
-    "document", "document_version", "chunk", "chunk_provenance", "index_state",
-    "model_registry", "parking_lot_item", "adaptation", "adaptation_decision",
-    "experiment", "experiment_arm", "experiment_observation",
-    "tutor_trace", "retrieval_trace", "model_call", "learning_event",
-}  # fmt: skip
+    "learner_profile",
+    "learner_preference",
+    "session",
+    "session_checkpoint",
+    "skill_node",
+    "skill_edge",
+    "learning_object",
+    "representation",
+    "competency_evidence",
+    "competency_state",
+    "review_item",
+    "memory_state",
+    "review_log",
+    "assessment",
+    "assessment_rubric",
+    "assessment_attempt",
+    "document",
+    "document_version",
+    "chunk",
+    "chunk_provenance",
+    "index_state",
+    "model_registry",
+    "parking_lot_item",
+    "adaptation",
+    "adaptation_decision",
+    "experiment",
+    "experiment_arm",
+    "experiment_observation",
+    "tutor_trace",
+    "retrieval_trace",
+    "model_call",
+    "learning_event",
+}
 
 
 def test_all_phase1_tables_declared() -> None:
@@ -28,10 +52,21 @@ def test_all_phase1_tables_declared() -> None:
 
 def test_every_learner_scoped_table_has_learner_id() -> None:
     shared = {
-        "learner_profile", "skill_node", "skill_edge", "learning_object", "representation",
-        "assessment", "assessment_rubric", "document", "document_version", "chunk",
-        "chunk_provenance", "index_state", "model_registry", "experiment_arm",
-    }  # fmt: skip
+        "learner_profile",
+        "skill_node",
+        "skill_edge",
+        "learning_object",
+        "representation",
+        "assessment",
+        "assessment_rubric",
+        "document",
+        "document_version",
+        "chunk",
+        "chunk_provenance",
+        "index_state",
+        "model_registry",
+        "experiment_arm",
+    }
     for name, table in Base.metadata.tables.items():
         if name not in shared:
             assert "learner_id" in table.c, f"{name} lacks learner_id"
@@ -45,9 +80,16 @@ async def test_wal_and_foreign_keys(engine: AsyncEngine) -> None:
 
 async def _event(db: AsyncSession, learner: models.LearnerProfile) -> models.LearningEvent:
     ev = models.LearningEvent(
-        learner_id=learner.id, actor="learner", verb="started", object_type="session",
-        object_id="s1", domain="meta", activity_type="chat", mode="steady", energy=3,
-    )  # fmt: skip
+        learner_id=learner.id,
+        actor="learner",
+        verb="started",
+        object_type="session",
+        object_id="s1",
+        domain="meta",
+        activity_type="chat",
+        mode="steady",
+        energy=3,
+    )
     db.add(ev)
     await db.commit()
     return ev

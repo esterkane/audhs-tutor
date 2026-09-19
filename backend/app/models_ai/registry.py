@@ -18,12 +18,14 @@ RUNTIME_TO_PROVIDER = {"ollama": "ollama", "hosted": "anthropic", "mlx": "mlx"}
 
 
 def spec_from_row(row: ModelRegistry) -> ModelSpec:
+    # HF GGUF models are imported into Ollama under the registry id (`ollama create <id>`).
+    model = row.id if row.source == "huggingface_gguf" else (row.file_or_tag or row.repo_id)
     return ModelSpec(
         registry_id=row.id,
         provider=RUNTIME_TO_PROVIDER.get(row.runtime, row.runtime),
-        model=row.file_or_tag or row.repo_id,
-        price_in_per_mtok=row.price_in_per_mtok,
-        price_out_per_mtok=row.price_out_per_mtok,
+        model=model,
+        price_in_per_mtok=row.price_in_per_mtok or 0.0,
+        price_out_per_mtok=row.price_out_per_mtok or 0.0,
         context_len=row.context_len,
     )
 

@@ -28,11 +28,13 @@ async def test_emit_stamps_context_and_validates(
     s = await _session(db, learner)
     w = EventWriter(db, EventContext(learner.id, s.id, Mode.NOVELTY, energy=4, socratic=True))
     ev = await w.emit(
-        Verb.EXPLAINED, ObjectType.TURN, "t1",
+        Verb.EXPLAINED,
+        ObjectType.TURN,
+        "t1",
         result={"sentences": 3, "cited_sources": ["c1"]},
         context={"representation": "analogy", "hint_count": 0, "model": "m", "route": "local"},
         representation="analogy",
-    )  # fmt: skip
+    )
     assert ev.mode == "novelty" and ev.energy == 4 and ev.socratic is True
     assert ev.learner_id == learner.id and ev.session_id == s.id
     assert len(ev.id) == 26 and ev.ts.endswith("+00:00")
@@ -67,7 +69,7 @@ async def test_trace_writers_and_spend(db: AsyncSession, learner: models.Learner
             latency_ms=900,
             learner_id=learner.id,
             session_id=s.id,
-        ),  # fmt: skip
+        ),
     )
     await write_model_call(
         db,
@@ -84,7 +86,7 @@ async def test_trace_writers_and_spend(db: AsyncSession, learner: models.Learner
             chunk_ids=["c1"],
             flagged_patterns=["ignore previous instructions"],
             learner_id=learner.id,
-        ),  # fmt: skip
+        ),
     )
     tt = await write_tutor_trace(
         db,
@@ -98,7 +100,7 @@ async def test_trace_writers_and_spend(db: AsyncSession, learner: models.Learner
             dropped=["evidence:misconceptions"],
             model_call_id=mc.id,
             retrieval_trace_id=rt.id,
-        ),  # fmt: skip
+        ),
     )
     assert tt.model_call_id == mc.id and tt.retrieval_trace_id == rt.id
     assert await hosted_spend_since(db, "2000-01-01T00:00:00+00:00") == pytest.approx(0.0007)

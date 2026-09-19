@@ -32,7 +32,7 @@ async def _seed(db: AsyncSession, name: str) -> models.LearnerProfile:
             activity_type="chat",
             mode="steady",
             energy=3,
-        )  # fmt: skip
+        )
     )
     await db.commit()
     return lp

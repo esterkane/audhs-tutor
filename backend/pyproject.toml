@@ -53,6 +53,9 @@ src = ["."]
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "ASYNC"]
 
+[tool.ruff.lint.pycodestyle]
+max-line-length = 120  # formatter wraps at 100; long literals/docstrings tolerated to 120
+
 [tool.mypy]
 python_version = "3.12"
 strict = true
@@ -63,3 +66,4 @@ ignore_missing_imports = true
 asyncio_mode = "auto"
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = ["integration: needs local services (Qdrant/Ollama); skipped when unreachable"]

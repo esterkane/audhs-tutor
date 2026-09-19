@@ -67,7 +67,7 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
                 "tokens_in",
                 "tokens_out",
                 "cached_tokens",
-            }  # fmt: skip
+            }
         ),
     ),
     Verb.PREFERRED: (
@@ -94,7 +94,7 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
                 "days_since_learned",
                 "stability_before",
                 "stability_after",
-            }  # fmt: skip
+            }
         ),
         _R({"item_type", "node_id"}),
     ),

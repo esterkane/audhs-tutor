@@ -98,16 +98,21 @@ class ModelGateway:
                     errors.append(str(e))
                     nxt = chain[pos + 1] if pos + 1 < len(chain) else None
                     await self._emit(
-                        Verb.DEGRADED, rid,
+                        Verb.DEGRADED,
+                        rid,
                         {"from_alias": rid, "to_alias": nxt, "reason": "budget"},
-                    )  # fmt: skip
+                    )
                     degraded = True
                     continue
             try:
                 result = await provider.complete(
-                    spec, messages, response_model=response_model, max_tokens=max_tokens,
-                    temperature=temperature, metadata=meta,
-                )  # fmt: skip
+                    spec,
+                    messages,
+                    response_model=response_model,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    metadata=meta,
+                )
             except StructuredOutputError as e:
                 errors.append(f"{rid}: {e}")
                 await self._emit(
@@ -115,13 +120,29 @@ class ModelGateway:
                     rid,
                     {"task": str(task), "model": rid, "attempts": e.attempts},
                 )
-                await self._log(spec, task, "primary" if pos == 0 else "fallback", None, learner_id,
-                                session_id, meta, error=str(e))  # fmt: skip
+                await self._log(
+                    spec,
+                    task,
+                    "primary" if pos == 0 else "fallback",
+                    None,
+                    learner_id,
+                    session_id,
+                    meta,
+                    error=str(e),
+                )
                 continue
             except ProviderError as e:
                 errors.append(f"{rid}: {e}")
-                await self._log(spec, task, "primary" if pos == 0 else "fallback", None, learner_id,
-                                session_id, meta, error=str(e))  # fmt: skip
+                await self._log(
+                    spec,
+                    task,
+                    "primary" if pos == 0 else "fallback",
+                    None,
+                    learner_id,
+                    session_id,
+                    meta,
+                    error=str(e),
+                )
                 continue
 
             kind = (
@@ -156,14 +177,23 @@ class ModelGateway:
             if result.reported_cost_usd:
                 cost = max(cost, result.reported_cost_usd)
         rec = ModelCallRecord(
-            provider=spec.provider, model=spec.model, registry_id=spec.registry_id, task=str(task),
-            route=route, tokens_in=result.tokens_in if result else 0,
+            provider=spec.provider,
+            model=spec.model,
+            registry_id=spec.registry_id,
+            task=str(task),
+            route=route,
+            tokens_in=result.tokens_in if result else 0,
             tokens_out=result.tokens_out if result else 0,
-            cached_tokens=result.cached_tokens if result else 0, cost_usd=cost,
+            cached_tokens=result.cached_tokens if result else 0,
+            cost_usd=cost,
             latency_ms=result.latency_ms if result else 0,
-            cached=bool(result and result.cached_tokens), ok=error is None, error=error,
-            metadata=meta, learner_id=learner_id, session_id=session_id,
-        )  # fmt: skip
+            cached=bool(result and result.cached_tokens),
+            ok=error is None,
+            error=error,
+            metadata=meta,
+            learner_id=learner_id,
+            session_id=session_id,
+        )
         return await write_model_call(self.db, rec)
 
 
