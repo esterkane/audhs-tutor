@@ -4,6 +4,7 @@ import json
 import re
 import sqlite3
 import time
+from typing import Any
 
 import numpy as np
 
@@ -17,6 +18,7 @@ from app.knowledge.repository import (
     matches,
     rrf,
 )
+from app.knowledge.rerank import Reranker, candidate_count, finish_hits
 from app.models_ai.provider import EmbeddingProvider, ModelSpec
 
 
@@ -34,11 +36,15 @@ class SqliteHybridRepository:
         dims: int,
         path: str = ":memory:",
         embedding_version: int = 1,
+        reranker: Reranker | None = None,
+        max_per_document: int = 3,
     ) -> None:
         self.embedder = embedder
         self.embed_spec = embed_spec
         self.dims = dims
         self.collection = f"sqlite_corpus_v{embedding_version}"
+        self.reranker = reranker
+        self.max_per_document = max_per_document
         self.conn = sqlite3.connect(path)
         self.vec_ext = self._try_load_vec()
         self._schema()
@@ -92,6 +98,16 @@ class SqliteHybridRepository:
     async def count(self) -> int:
         return int(self.conn.execute("SELECT count(*) FROM chunks").fetchone()[0])
 
+    async def update_payload(self, ids: list[str], payload: dict[str, Any]) -> None:
+        for cid in ids:
+            row = self.conn.execute("SELECT record FROM chunks WHERE id=?", (cid,)).fetchone()
+            if row is None:
+                continue
+            rec = ChunkRecord.model_validate_json(row[0])
+            rec.provenance = rec.provenance.model_copy(update=payload)
+            self.conn.execute("UPDATE chunks SET record=? WHERE id=?", (rec.model_dump_json(), cid))
+        self.conn.commit()
+
     async def reindex(self, chunks: list[ChunkRecord]) -> int:
         self.conn.execute("DELETE FROM chunks")
         self.conn.execute("DELETE FROM chunks_fts")
@@ -142,8 +158,9 @@ class SqliteHybridRepository:
         bm25 = {c: s for c, s in bm25.items() if c in keep}
         dense = {c: s for c, s in dense.items() if c in keep}
         fused = rrf([list(bm25), list(dense)])
+        candidates = candidate_count(k, reranker=self.reranker, cap=self.max_per_document)
         hits = []
-        for rank, (cid, score) in enumerate(list(fused.items())[:k]):
+        for rank, (cid, score) in enumerate(list(fused.items())[:candidates]):
             rec = records[cid]
             hits.append(
                 ScoredChunk(
@@ -155,13 +172,20 @@ class SqliteHybridRepository:
                     flagged=flag_instruction_patterns(rec.text),
                 )
             )
+        hits, reranked = await finish_hits(
+            hits, query, k=k, reranker=self.reranker, cap=self.max_per_document
+        )
         trace = RetrievalTraceRecord(
             collection=self.collection,
             query=query,
             filters=filters.model_dump(exclude_none=True) if filters else {},
             bm25_scores=bm25,
             vector_scores=dense,
-            fused=dict(list(fused.items())[:k]),
+            fused=dict(list(fused.items())[:candidates]),
+            reranked=reranked,
+            reranker_id=self.reranker.registry_id
+            if reranked is not None and self.reranker
+            else None,
             chunk_ids=[h.chunk.id for h in hits],
             flagged_patterns=sorted({f for h in hits for f in h.flagged}),
             latency_ms=int((time.perf_counter() - t0) * 1000),

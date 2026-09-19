@@ -14,7 +14,12 @@ from app.db.models import LearnerPreference, ModelRegistry
 from app.models_ai.provider import ModelSpec, TaskClass
 from app.models_ai.routing import PROFILES_PATH, load_profiles
 
-RUNTIME_TO_PROVIDER = {"ollama": "ollama", "hosted": "anthropic", "mlx": "mlx"}
+RUNTIME_TO_PROVIDER = {
+    "ollama": "ollama",
+    "hosted": "anthropic",
+    "mlx": "mlx",
+    "fastembed": "fastembed",
+}
 
 
 def spec_from_row(row: ModelRegistry) -> ModelSpec:
@@ -73,6 +78,8 @@ async def seed_defaults(
         if entry["runtime"] == "ollama" and _tag_installed(entry["file_or_tag"], installed):
             status = "ready"
         if entry["runtime"] == "hosted" and "hosted" in installed:
+            status = "ready"
+        if entry["runtime"] == "fastembed" and f"fastembed:{entry['repo_id']}" in installed:
             status = "ready"
         row = ModelRegistry(**entry, status=status)
         db.add(row)

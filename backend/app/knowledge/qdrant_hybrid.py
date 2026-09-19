@@ -12,6 +12,7 @@ from qdrant_client import models as qm
 from app.db.traces import RetrievalTraceRecord
 from app.knowledge.provenance import Provenance, flag_instruction_patterns
 from app.knowledge.repository import ChunkRecord, ScoredChunk, SearchFilters, SearchResult
+from app.knowledge.rerank import Reranker, candidate_count, finish_hits
 from app.models_ai.provider import EmbeddingProvider, ModelSpec
 
 POINT_NS = uuid.UUID("6f1c7d3e-5b1a-4a4e-9c3e-1f2d3c4b5a69")
@@ -68,6 +69,9 @@ class QdrantHybridRepository:
         on_disk: bool = True,
         quantize: bool = True,
         batch_size: int = 64,
+        reranker: Reranker | None = None,
+        max_per_document: int = 3,
+        prefetch_factor: int = 3,
     ) -> None:
         self.client = client
         self.embedder = embedder
@@ -79,6 +83,9 @@ class QdrantHybridRepository:
         self.on_disk = on_disk
         self.quantize = quantize
         self.batch_size = batch_size
+        self.reranker = reranker
+        self.max_per_document = max_per_document
+        self.prefetch_factor = prefetch_factor
 
     # ------------------------------------------------------------------ schema
     async def ensure_collection(self, *, recreate: bool = False) -> None:
@@ -160,6 +167,13 @@ class QdrantHybridRepository:
             return 0
         return int((await self.client.count(self.collection, exact=True)).count)
 
+    async def update_payload(self, ids: list[str], payload: dict[str, Any]) -> None:
+        """Change provenance fields (e.g. trust_tier) without re-embedding."""
+        if ids:
+            await self.client.set_payload(
+                self.collection, payload=payload, points=[point_id(i) for i in ids], wait=True
+            )
+
     async def reindex(self, chunks: list[ChunkRecord]) -> int:
         await self.ensure_collection(recreate=True)
         return await self.upsert(chunks)
@@ -190,14 +204,15 @@ class QdrantHybridRepository:
             self.embedder.embed(self.embed_spec, [query]), self.sparse.encode_query(query)
         )
         qfilter = self._filter(filters)
-        pre = k * 3
+        candidates = candidate_count(k, reranker=self.reranker, cap=self.max_per_document)
+        pre = candidates * self.prefetch_factor
         fused_req = qm.QueryRequest(
             prefetch=[
                 qm.Prefetch(query=dense_q, using=DENSE, limit=pre, filter=qfilter),
                 qm.Prefetch(query=sparse_q, using=SPARSE, limit=pre, filter=qfilter),
             ],
             query=qm.FusionQuery(fusion=qm.Fusion.RRF),
-            limit=k,
+            limit=candidates,
             with_payload=True,
         )
         dense_req = qm.QueryRequest(
@@ -243,6 +258,9 @@ class QdrantHybridRepository:
             pid = point_id(h.chunk.id)
             h.dense_score = dense_scores.get(pid)
             h.sparse_score = sparse_scores.get(pid)
+        hits, reranked = await finish_hits(
+            hits, query, k=k, reranker=self.reranker, cap=self.max_per_document
+        )
         flagged = sorted({f for h in hits for f in h.flagged})
         trace = RetrievalTraceRecord(
             collection=self.collection,
@@ -251,6 +269,10 @@ class QdrantHybridRepository:
             bm25_scores={id_of.get(pid, pid): s for pid, s in sparse_scores.items()},
             vector_scores={id_of.get(pid, pid): s for pid, s in dense_scores.items()},
             fused=fused_scores,
+            reranked=reranked,
+            reranker_id=self.reranker.registry_id
+            if reranked is not None and self.reranker
+            else None,
             chunk_ids=[h.chunk.id for h in hits],
             flagged_patterns=flagged,
             latency_ms=int((time.perf_counter() - t0) * 1000),

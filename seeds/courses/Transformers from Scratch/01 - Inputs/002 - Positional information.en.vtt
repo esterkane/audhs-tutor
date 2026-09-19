@@ -1,0 +1,21 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.000 --> 00:00:07.000
+Attention on its own is permutation invariant. If you shuffle the input tokens, the set of outputs is the same, just shuffled.
+
+00:00:07.400 --> 00:00:15.844
+So we have to inject order. The original paper used sinusoidal positional encodings: sines and cosines of different frequencies added to the embeddings.
+
+00:00:16.244 --> 00:00:21.188
+Each dimension pair gets its own wavelength, from two pi up to ten thousand times two pi.
+
+00:00:21.588 --> 00:00:27.866
+Learned positional embeddings are the alternative: a second lookup table indexed by position instead of by token.
+
+00:00:28.266 --> 00:00:35.766
+Modern models mostly use rotary position embeddings, RoPE, which rotate the query and key vectors by an angle that depends on position.
+
+00:00:36.166 --> 00:00:43.222
+RoPE makes the dot product between a query and a key depend only on their relative distance, which helps length generalisation.

@@ -1,4 +1,4 @@
-.PHONY: dev backend frontend services qdrant models test test-backend test-frontend lint migrate ingest evals bench gen-api seed
+.PHONY: dev backend frontend services qdrant models test test-backend test-frontend lint migrate ingest evals eval-retrieval bench gen-api seed
 
 dev: qdrant
 	@echo "backend :8000 | frontend :5173 | qdrant :6333"
@@ -35,6 +35,9 @@ ingest:
 
 evals:
 	cd backend && uv run python ../scripts/run_evals.py --cases "../evals/cases/*.yaml" --out ../evals/results/latest.json
+
+eval-retrieval:
+	cd backend && uv run python ../scripts/eval_retrieval.py $(args)
 
 bench:
 	cd backend && uv run python ../scripts/bench_stage$(s).py

@@ -1,6 +1,7 @@
 """Provenance is first-class; retrieved text is untrusted data (ADR-0008)."""
 
 import re
+import unicodedata
 from enum import IntEnum
 
 from pydantic import BaseModel
@@ -40,10 +41,14 @@ _RAW_PATTERNS: dict[str, str] = {
         r"\b(ignore|disregard|forget)\b.{0,40}\b(previous|prior|above|earlier)\b"
         r".{0,20}\b(instructions?|prompts?|rules?)\b"
     ),
-    "role_override": r"\byou are now\b|\bact as\b.{0,30}\b(system|admin|developer)\b|\bnew persona\b",
+    "role_override": (
+        r"\byou are now (a|an|the|my|our)\b|\bact as\b.{0,30}\b(system|admin|developer)\b"
+        r"|\bnew persona\b|\bfrom now on you\b"
+    ),
     "system_prompt_ref": r"\bsystem prompt\b|\bdeveloper message\b",
     "exfiltration": (
-        r"\b(reveal|print|output|leak)\b.{0,30}\b(system prompt|api key|secret|token|credentials?)\b"
+        r"\b(reveal|print|output|leak|exfiltrate)\b.{0,30}"
+        r"\b(system prompt|api keys?|secrets?|passwords?|(access|auth|api|bearer|session) tokens?|credentials?)\b"
     ),
     "hidden_directive": r"\bdo not (tell|inform|show)\b.{0,20}\b(the )?(user|learner)\b",
     "fake_markup": (
@@ -54,11 +59,31 @@ _RAW_PATTERNS: dict[str, str] = {
     "tool_call_injection": (
         r"\bcall (the )?tool\b|\bexecute (this )?(command|code)\b|\brun (the )?following\b"
     ),
+    "authority_claim": (
+        r"\b(note|message|instruction)s? (for|to) (the )?(ai|assistant|model|llm|tutor)s?\b"
+        r"|\bas (the|your) (developer|administrator|operator)\b"
+    ),
+    "encoded_blob": r"(?<![A-Za-z0-9+/])[A-Za-z0-9+/]{120,}={0,2}(?![A-Za-z0-9+/])",
 }
 INSTRUCTION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (name, re.compile(rx, re.IGNORECASE)) for name, rx in _RAW_PATTERNS.items()
 ]
 
 
+_INVISIBLE = re.compile("[​‌‍⁠﻿­᠎‎‏‪-‮⁦-⁩]")
+
+
+def scan_text(text: str) -> str:
+    """What the patterns run on: NFKC (full-width / stylised letters → ASCII) with zero-width and
+    bidi control characters removed, so `ig​nore` and `ｉｇｎｏｒｅ` still match."""
+    return unicodedata.normalize("NFKC", _INVISIBLE.sub("", text))
+
+
 def flag_instruction_patterns(text: str) -> list[str]:
-    return [name for name, rx in INSTRUCTION_PATTERNS if rx.search(text)]
+    scanned = scan_text(text)
+    flags = [name for name, rx in INSTRUCTION_PATTERNS if rx.search(scanned)]
+    if flags and scanned != unicodedata.normalize("NFKC", text):
+        flags.append("obfuscated")  # the pattern only showed after stripping invisible characters
+    elif not flags and _INVISIBLE.search(text) and len(_INVISIBLE.findall(text)) >= 3:
+        flags.append("obfuscated")  # invisible characters sprinkled through clean-looking text
+    return flags

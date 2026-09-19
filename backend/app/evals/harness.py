@@ -14,7 +14,7 @@ from app.kernel.seed import load_seed
 from app.knowledge.reindex import build_repo
 from app.knowledge.repository import RetrievalRepository
 from app.models_ai import registry
-from app.models_ai.factory import build_gateway, installed_ollama_tags
+from app.models_ai.factory import build_gateway, installed_models
 from app.models_ai.gateway import ModelGateway
 
 
@@ -50,10 +50,7 @@ async def open_world(
     factory = make_session_factory(engine)
     async with factory() as db:
         await load_seed(db, PROJECT_ROOT / "seeds" / seed)
-        installed = await installed_ollama_tags(settings.ollama_host)
-        if settings.anthropic_api_key:
-            installed.add("hosted")
-        await registry.seed_defaults(db, installed_ollama_tags=installed)
+        await registry.seed_defaults(db, installed_ollama_tags=await installed_models(settings))
         learner = await get_or_create_owner(db, display_name="eval-learner")
         repo = await build_repo(db, settings) if with_repo else None
     return World(settings, engine, factory, learner.id, repo)

@@ -35,6 +35,7 @@ class ScoredChunk(BaseModel):
     score: float  # fused
     dense_score: float | None = None
     sparse_score: float | None = None
+    rerank_score: float | None = None
     rank: int
     flagged: list[str] = Field(default_factory=list)
 

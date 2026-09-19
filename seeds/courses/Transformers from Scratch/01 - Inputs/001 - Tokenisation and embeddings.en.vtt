@@ -1,0 +1,55 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.000 --> 00:00:04.444
+Welcome back. Before a transformer can see text, the text has to become numbers.
+
+00:00:04.844 --> 00:00:05.844
+Welcome back. Before a transformer can see text, the text has to become numbers.
+
+00:00:05.844 --> 00:00:12.122
+Welcome back. Before a transformer can see text, the text has to become numbers.
+A tokeniser splits the string into tokens. Byte-pair encoding, BPE for short, starts from bytes and merges the most frequent pairs.
+
+00:00:12.522 --> 00:00:13.522
+A tokeniser splits the string into tokens. Byte-pair encoding, BPE for short, starts from bytes and merges the most frequent pairs.
+
+00:00:13.522 --> 00:00:16.577
+A tokeniser splits the string into tokens. Byte-pair encoding, BPE for short, starts from bytes and merges the most frequent pairs.
+So the word unbelievable might become three tokens: un, believ, and able.
+
+00:00:16.977 --> 00:00:17.977
+So the word unbelievable might become three tokens: un, believ, and able.
+
+00:00:17.977 --> 00:00:23.088
+So the word unbelievable might become three tokens: un, believ, and able.
+Each token id then looks up a row in the embedding matrix, which has vocabulary size rows and d model columns.
+
+00:00:23.488 --> 00:00:24.488
+Each token id then looks up a row in the embedding matrix, which has vocabulary size rows and d model columns.
+
+00:00:24.488 --> 00:00:29.988
+Each token id then looks up a row in the embedding matrix, which has vocabulary size rows and d model columns.
+For GPT-2 the vocabulary has fifty thousand two hundred fifty seven entries and d model is seven hundred sixty eight.
+
+00:00:30.388 --> 00:00:31.388
+For GPT-2 the vocabulary has fifty thousand two hundred fifty seven entries and d model is seven hundred sixty eight.
+
+00:00:31.388 --> 00:00:36.111
+For GPT-2 the vocabulary has fifty thousand two hundred fifty seven entries and d model is seven hundred sixty eight.
+The embedding matrix is learned like any other weight; it starts random and gradient descent shapes it.
+
+00:00:36.511 --> 00:00:37.511
+The embedding matrix is learned like any other weight; it starts random and gradient descent shapes it.
+
+00:00:37.511 --> 00:00:42.344
+The embedding matrix is learned like any other weight; it starts random and gradient descent shapes it.
+One consequence: rare words are split into more pieces, so they cost more tokens and more context length.
+
+00:00:42.744 --> 00:00:43.744
+One consequence: rare words are split into more pieces, so they cost more tokens and more context length.
+
+00:00:43.744 --> 00:00:46.522
+One consequence: rare words are split into more pieces, so they cost more tokens and more context length.
+Keep that in mind when you count tokens for a context window budget.

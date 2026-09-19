@@ -36,6 +36,7 @@ class RetrievalTraceRecord(BaseModel):
     vector_scores: dict[str, float] = Field(default_factory=dict)
     fused: dict[str, float] = Field(default_factory=dict)
     reranked: dict[str, float] | None = None
+    reranker_id: str | None = None
     chunk_ids: list[str] = Field(default_factory=list)
     flagged_patterns: list[str] = Field(default_factory=list)
     latency_ms: int = 0
@@ -95,6 +96,7 @@ async def write_retrieval_trace(
         vector_scores_json=rec.vector_scores,
         fused_json=rec.fused,
         reranked_json=rec.reranked,
+        reranker_id=rec.reranker_id,
         chunk_ids_json=rec.chunk_ids,
         flagged_patterns_json=rec.flagged_patterns,
         latency_ms=rec.latency_ms,

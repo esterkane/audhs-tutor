@@ -1,0 +1,23 @@
+1
+00:00:00,000 --> 00:00:04,500
+QLoRA combines LoRA with a quantised base model so a large model fits on one GPU.
+
+2
+00:00:04,900 --> 00:00:11,677
+The base weights are stored in four bit NormalFloat, NF4, a data type whose levels match a normal distribution of weights.
+
+3
+00:00:12,077 --> 00:00:18,577
+During the forward pass each block is dequantised to bfloat16 just in time, the LoRA adapters stay in full precision.
+
+4
+00:00:18,977 --> 00:00:25,755
+Double quantisation also quantises the quantisation constants, saving about half a gigabyte on a sixty-five billion model.
+
+5
+00:00:26,155 --> 00:00:33,100
+Paged optimisers move optimiser states to CPU memory when the GPU runs out, avoiding out of memory crashes on long sequences.
+
+6
+00:00:33,500 --> 00:00:38,944
+The cost is speed: dequantisation makes training roughly thirty percent slower than bfloat16 LoRA.

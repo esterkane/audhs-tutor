@@ -1,3 +1,5 @@
+import * as matchers from 'vitest-axe/matchers'
+import { expect } from 'vitest'
 import '@testing-library/jest-dom/vitest'
 
 // jsdom lacks these; Radix Dialog and Zustand's matchMedia probe need them.
@@ -27,3 +29,5 @@ import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 
 afterEach(() => cleanup())
+
+expect.extend(matchers)

@@ -1,5 +1,7 @@
 """Rebuild Qdrant from SQLite (latest document version per document). SQLite is the system of record."""
 
+from typing import Any
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,10 +11,11 @@ from app.db.models import Chunk, ChunkProvenance, DocumentVersion, IndexState
 from app.knowledge.provenance import Provenance
 from app.knowledge.qdrant_hybrid import QdrantHybridRepository
 from app.knowledge.repository import ChunkRecord
+from app.knowledge.rerank import FastembedReranker
 from app.models_ai import registry
 from app.models_ai.ollama import OllamaProvider
 from app.models_ai.provider import EmbeddingProvider, ModelSpec, TaskClass
-from app.models_ai.routing import Router
+from app.models_ai.routing import NoModelReady, Router
 
 
 async def latest_version_ids(db: AsyncSession) -> list[str]:
@@ -29,14 +32,28 @@ async def latest_version_ids(db: AsyncSession) -> list[str]:
 
 
 async def load_chunks(db: AsyncSession) -> list[ChunkRecord]:
-    versions = await latest_version_ids(db)
+    return await records_for_versions(db, await latest_version_ids(db))
+
+
+async def records_for_versions(db: AsyncSession, versions: list[str]) -> list[ChunkRecord]:
+    """Unique (non-duplicate) chunks of the given versions, ready for the index."""
     if not versions:
         return []
+    return await _records(db, Chunk.document_version_id.in_(versions))
+
+
+async def records_for_chunk_ids(db: AsyncSession, chunk_ids: list[str]) -> list[ChunkRecord]:
+    if not chunk_ids:
+        return []
+    return await _records(db, Chunk.id.in_(chunk_ids))
+
+
+async def _records(db: AsyncSession, where: Any) -> list[ChunkRecord]:
     stmt = (
         select(Chunk, ChunkProvenance, DocumentVersion.document_id)
         .join(ChunkProvenance, ChunkProvenance.chunk_id == Chunk.id)
         .join(DocumentVersion, DocumentVersion.id == Chunk.document_version_id)
-        .where(Chunk.document_version_id.in_(versions))
+        .where(where, Chunk.duplicate_of.is_(None))
         .order_by(DocumentVersion.document_id, Chunk.ordinal)
     )
     out = []
@@ -69,6 +86,21 @@ async def embed_spec(db: AsyncSession, settings: Settings) -> ModelSpec:
     return await registry.get_spec(db, route.registry_id)
 
 
+async def reranker_for(db: AsyncSession, settings: Settings) -> FastembedReranker | None:
+    """The reranker is optional: only a `ready` registry entry routed for TaskClass.RERANK is used."""
+    try:
+        route = await Router(settings.routing_profile).resolve(db, TaskClass.RERANK)
+    except NoModelReady:
+        return None
+    spec = await registry.get_spec(db, route.registry_id)
+    cache = settings.models_dir_resolved / "fastembed"
+    if (
+        not cache.exists()
+    ):  # registry says ready but the artefact is gone: never download at search time
+        return None
+    return FastembedReranker(spec.model, cache_dir=cache, registry_id=spec.registry_id)
+
+
 async def build_repo(
     db: AsyncSession,
     settings: Settings,
@@ -87,6 +119,8 @@ async def build_repo(
         spec,
         dims=dims,
         embedding_version=embedding_version,
+        reranker=await reranker_for(db, settings),
+        max_per_document=settings.retrieval_max_per_document,
     )
 
 

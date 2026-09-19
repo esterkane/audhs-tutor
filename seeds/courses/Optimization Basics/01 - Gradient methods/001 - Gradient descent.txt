@@ -1,0 +1,7 @@
+Gradient descent minimises a loss by repeatedly stepping in the direction of the negative gradient. The step size is the learning rate.
+
+With batch gradient descent every step uses the whole dataset. Stochastic gradient descent, SGD, uses one example per step; mini-batch SGD uses a batch of 32 to 512 examples and is what everyone actually runs.
+
+If the learning rate is too large the loss oscillates or diverges; if it is too small training crawls. A learning-rate range test, sweeping the rate upward over a few hundred steps, finds the largest rate at which the loss still falls.
+
+The gradient of the loss with respect to the weights is computed by backpropagation, which is reverse-mode automatic differentiation applied to the computation graph.

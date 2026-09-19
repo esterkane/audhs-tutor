@@ -1,0 +1,27 @@
+1
+00:00:00,000 --> 00:00:08,000
+Full fine-tuning updates every weight of the model. For a seven billion parameter model that means seven billion gradients and optimiser states.
+
+2
+00:00:08,400 --> 00:00:14,622
+LoRA, low-rank adaptation, freezes the base weights and adds a small trainable update: delta W equals B times A.
+
+3
+00:00:15,022 --> 00:00:20,688
+A has shape r by d in, B has shape d out by r, and the rank r is small, typically eight to sixty-four.
+
+4
+00:00:21,088 --> 00:00:26,533
+Only A and B are trained, so the trainable parameter count drops by a factor of a hundred or more.
+
+5
+00:00:26,933 --> 00:00:31,488
+At inference you can merge B A into the base weight, so there is no extra latency.
+
+6
+00:00:31,888 --> 00:00:38,222
+Alpha is a scaling factor: the update is multiplied by alpha divided by r. A common setting is alpha equals two r.
+
+7
+00:00:38,622 --> 00:00:47,288
+You choose which modules get adapters. Attention projections q and v are the classic choice; adding the MLP layers usually helps more than raising the rank.

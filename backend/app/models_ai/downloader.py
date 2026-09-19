@@ -179,6 +179,21 @@ class Downloader:
         )
         return Path(path_str)
 
+    async def fastembed_cross_encoder(self, repo_id: str, progress: Progress = None) -> Path:
+        """Download (and load once) a fastembed cross-encoder into MODELS_DIR/fastembed."""
+        target = self.models_dir / "fastembed"
+        target.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
+        if progress:
+            progress(f"fastembed cross-encoder {repo_id}")
+
+        def _run() -> None:
+            from fastembed.rerank.cross_encoder import TextCrossEncoder
+
+            TextCrossEncoder(model_name=repo_id, cache_dir=str(target))
+
+        await asyncio.to_thread(_run)
+        return target
+
     async def remove(self, *, runtime: str, tag: str | None, local_path: str | None) -> None:
         if runtime == "ollama" and tag:
             await self.ollama_delete(tag)

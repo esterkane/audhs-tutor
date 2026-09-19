@@ -1,0 +1,7 @@
+Momentum keeps an exponential moving average of past gradients and steps along that average. It smooths the zig-zag of SGD in narrow valleys and accelerates along consistent directions. The usual coefficient is 0.9.
+
+Adam keeps two moving averages: the mean of the gradient (first moment, beta1 = 0.9) and the mean of the squared gradient (second moment, beta2 = 0.999). Each parameter is updated by the first moment divided by the square root of the second, so parameters with noisy gradients take smaller steps.
+
+AdamW decouples weight decay from the gradient update. Instead of adding L2 regularisation to the loss, it shrinks the weights directly each step. AdamW is the default optimiser for transformers.
+
+Bias correction divides both moments by one minus beta to the power t, which matters in the first few hundred steps when the averages are still near zero.

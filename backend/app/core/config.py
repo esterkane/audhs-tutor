@@ -26,6 +26,18 @@ class Settings(BaseSettings):
     whisper_model: str = "mlx-community/whisper-large-v3-turbo"
     kokoro_url: str = "http://localhost:8880"
     qdrant_url: str = "http://localhost:6333"
+    retrieval_max_per_document: int = 3  # diversity cap on hits from one document (0 = off)
+    quarantine_below_trust: int = 2  # flagged chunks below this trust tier never reach the tutor
+    ingest_roots: str = "~"  # comma-separated folders the ingest API may read (CLI is unrestricted)
+
+    @property
+    def ingest_roots_resolved(self) -> list[Path]:
+        return [
+            Path(r.strip()).expanduser().resolve()
+            for r in self.ingest_roots.split(",")
+            if r.strip()
+        ]
+
     models_dir: str = "./data/models"
     hf_token: str = ""
 

@@ -43,6 +43,15 @@ registry_defaults:
     role: embed
     context_len: 8192
     licence: Apache-2.0
+  - id: ms-marco-minilm-l6
+    display_name: ms-marco MiniLM-L6 cross-encoder (rerank, ONNX)
+    source: huggingface_fastembed
+    repo_id: Xenova/ms-marco-MiniLM-L-6-v2
+    file_or_tag: Xenova/ms-marco-MiniLM-L-6-v2
+    runtime: fastembed
+    role: rerank
+    context_len: 512
+    licence: Apache-2.0
   - id: hosted-strong
     display_name: Claude Sonnet 5
     source: hosted
@@ -87,3 +96,4 @@ profiles:
     tutor_medium:  {primary: hosted-medium, fallbacks: [llama31-8b]}
     judge:         {primary: hosted-medium, fallbacks: [hosted-strong]}
     embed:         {primary: nomic-embed-text}
+    rerank:        {primary: ms-marco-minilm-l6}

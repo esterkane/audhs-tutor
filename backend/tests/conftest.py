@@ -23,12 +23,13 @@ def db_path(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def settings(db_path: Path) -> Settings:
+def settings(db_path: Path, tmp_path_factory: pytest.TempPathFactory) -> Settings:
     return Settings(
         database_url=f"sqlite+aiosqlite:///{db_path}",
         auto_migrate=False,
         anthropic_api_key="",
         daily_budget_usd=1.0,
+        ingest_roots=f"{Path(__file__).resolve().parents[2]},{tmp_path_factory.getbasetemp()}",
         _env_file=None,  # type: ignore[call-arg]
     )
 

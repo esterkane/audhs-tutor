@@ -1,0 +1,74 @@
+{
+  "A \u22655 courses ingested, idempotent, indexed": {
+    "status": "PASS",
+    "courses": [
+      "LLM Evaluation",
+      "Optimization Basics",
+      "Practical Fine-Tuning",
+      "PyTorch Fundamentals",
+      "Transformers from Scratch"
+    ],
+    "documents": 17,
+    "chunks": 34,
+    "deduped": 0,
+    "flagged_course": 0,
+    "flagged_forum": 1,
+    "skipped": [],
+    "rerun": {
+      "files": 17,
+      "documents": 17,
+      "new_versions": 0,
+      "unchanged": 17,
+      "skipped": 0,
+      "chunks": 0,
+      "deduped": 0,
+      "flagged": 0,
+      "indexed": 0,
+      "courses": [
+        "LLM Evaluation",
+        "Optimization Basics",
+        "Practical Fine-Tuning",
+        "PyTorch Fundamentals",
+        "Transformers from Scratch"
+      ]
+    },
+    "index_count": 35,
+    "seconds": 0.8,
+    "source_types": [
+      "markdown",
+      "notebook",
+      "text",
+      "udemy_caption"
+    ]
+  },
+  "B recall@8 \u2265 0.8 on labelled queries": {
+    "status": "PASS",
+    "recall_at_8": 1.0,
+    "recall_at_4": 1.0,
+    "recall_at_1": 0.9375,
+    "mrr": 0.9635,
+    "citation_coverage": 0.9648,
+    "queries": 32,
+    "misses": [],
+    "collection": "corpus_v903"
+  },
+  "C poisoned-chunk tests pass": {
+    "status": "PASS",
+    "result": "6 passed in 0.32s"
+  },
+  "D p95 search < 300 ms": {
+    "status": "PASS",
+    "p50_ms": 121,
+    "p95_ms": 129,
+    "max_ms": 136,
+    "searches": 96,
+    "corpus_chunks": 35,
+    "reranker": "Xenova/ms-marco-MiniLM-L-6-v2"
+  },
+  "E Qdrant RAM < 1 GB": {
+    "status": "PASS",
+    "memory_active_gb": 0.354,
+    "memory_allocated_gb": 0.089,
+    "docker_stats": "632.9MiB / 7.749GiB"
+  }
+}

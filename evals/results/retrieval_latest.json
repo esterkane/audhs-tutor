@@ -1,0 +1,756 @@
+{
+  "ran_at": "2026-09-19T15:06:26+00:00",
+  "k": 8,
+  "collection": "corpus_v1",
+  "queries": 32,
+  "recall_at_k": 1.0,
+  "recall_at_1": 0.8438,
+  "recall_at_4": 1.0,
+  "mrr": 0.9115,
+  "citation_coverage": 0.9961,
+  "latency_p50_ms": 139,
+  "latency_p95_ms": 183,
+  "results": [
+    {
+      "id": "bpe-tokens",
+      "query": "how does byte-pair encoding split rare words into tokens?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 253,
+      "hits": [
+        "[Transformers from Scratch \u203a Inputs \u203a Tokenisation and embeddings @00:00]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[Transformers from Scratch \u203a Attention \u203a Self-attention step by step @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a KV cache in autoregressive decoding]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: The OpenAI API \u203a Temperature, Max Tokens, and Streaming]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Indexing: Document Splitting with Markdown Header Text Splitter]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "embedding-matrix-shape",
+      "query": "shape of the token embedding matrix",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 155,
+      "hits": [
+        "[Transformers from Scratch \u203a Inputs \u203a Tokenisation and embeddings @00:00]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[Transformers from Scratch \u203a Attention \u203a Self-attention step by step @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Indexing: Text Embedding with OpenAI]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Masking: padding and causal]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a KV cache in autoregressive decoding]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "rope",
+      "query": "what does RoPE do to queries and keys?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 162,
+      "hits": [
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot-product attention: queries, keys, values]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Multi-head attention]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Multi-head attention (section 3.2.2)]",
+        "[Transformers from Scratch \u203a Attention \u203a Self-attention step by step @00:00]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Scaled dot-product attention (section 3.2.1)]",
+        "[LLM Evaluation \u203a Metrics \u203a Retrieval metrics recall and MRR]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "permutation-invariance",
+      "query": "why does attention need positional information at all?",
+      "recall": 1.0,
+      "recall_at_1": 0.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 0.5,
+      "citation_coverage": 1.0,
+      "latency_ms": 130,
+      "hits": [
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Why self-attention (section 4)]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Masking in the decoder (section 3.2.3)]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot-product attention: queries, keys, values]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Masking: padding and causal]",
+        "[Transformers from Scratch \u203a Attention \u203a Self-attention step by step @00:00]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "sqrt-dk",
+      "query": "why divide attention scores by the square root of d_k?",
+      "recall": 1.0,
+      "recall_at_1": 0.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 0.5,
+      "citation_coverage": 0.875,
+      "latency_ms": 131,
+      "hits": [
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Scaled dot-product attention]",
+        "[Transformers from Scratch \u203a Attention \u203a Self-attention step by step @00:00]",
+        "[Forum dump \u203a forum-thread-attention]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Multi-head attention]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Scaled dot-product attention (section 3.2.1)]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Multi-head attention (section 3.2.2)]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot-product attention: queries, keys, values]",
+        "[Transformers from Scratch \u203a Attention \u203a Layer norm and residual connections @00:00]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "causal-mask",
+      "query": "how does a decoder stop a token from attending to future positions?",
+      "recall": 1.0,
+      "recall_at_1": 0.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
+      "citation_coverage": 1.0,
+      "latency_ms": 135,
+      "hits": [
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Masking: padding and causal]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a KV cache in autoregressive decoding]",
+        "[Transformers from Scratch \u203a Attention \u203a Self-attention step by step @00:00]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Masking in the decoder (section 3.2.3)]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Model overview]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "prenorm-vs-postnorm",
+      "query": "pre-norm vs post-norm which is more stable?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 148,
+      "hits": [
+        "[Transformers from Scratch \u203a Attention \u203a Layer norm and residual connections @00:00]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Scaled dot-product attention]",
+        "[LLM Evaluation \u203a Judging \u203a Human eval vs LLM-as-judge]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Softmax as a weighting function]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "rmsnorm",
+      "query": "RMSNorm difference from layer normalisation",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 126,
+      "hits": [
+        "[Transformers from Scratch \u203a Attention \u203a Layer norm and residual connections @00:00]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Model overview]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Why self-attention (section 4)]",
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a LoRA low-rank adapters @00:00]",
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Masking: padding and causal]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a KV cache in autoregressive decoding]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "lora-rank",
+      "query": "what are the shapes of the LoRA A and B matrices and what is the rank?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 139,
+      "hits": [
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a LoRA low-rank adapters @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot product as similarity]",
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a QLoRA and 4-bit quantisation @00:00]",
+        "[Transformers from Scratch \u203a Inputs \u203a Tokenisation and embeddings @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot-product attention: queries, keys, values]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Multi-head attention]",
+        "[LLM Evaluation \u203a Metrics \u203a Retrieval metrics recall and MRR]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "lora-alpha",
+      "query": "what does alpha do in LoRA",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 183,
+      "hits": [
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a LoRA low-rank adapters @00:00]",
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a QLoRA and 4-bit quantisation @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Indexing: Text Embedding with OpenAI]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Masking in the decoder (section 3.2.3)]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a Agents in Practice Module: Project 1 - Job-Helper agent (ReAct) \u203a Building the Graph]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a Agents in Practice Module: Project 2 - ReWOO Job-Helper agent \u203a Implementing the Executor]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Indexing: Creating a Chroma Vector Store]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "nf4",
+      "query": "NF4 4-bit NormalFloat data type",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 146,
+      "hits": [
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a QLoRA and 4-bit quantisation @00:00]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Transformers from Scratch \u203a Attention \u203a Layer norm and residual connections @00:00]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Generation: Generating a Response]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Indexing: Document Loading with PyPDFLoader]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Scaled dot-product attention]",
+        "[PyTorch Fundamentals \u203a Training \u203a DataLoader and batching]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: LangChain Expression Language (LCEL) \u203a Piping Chains and the RunnablePassthrough Class]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "paged-optimizers",
+      "query": "how does QLoRA avoid out-of-memory on long sequences?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 185,
+      "hits": [
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a QLoRA and 4-bit quantisation @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Masking: padding and causal]",
+        "[PyTorch Fundamentals \u203a Training \u203a DataLoader and batching]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangGraph Module: Thread-Level Persistence \u203a Long-Term Memory with SQLite]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a KV cache in autoregressive decoding]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangGraph Module: Thread-Level Persistence \u203a Long-Term Memory with SQLite]",
+        "[LLM Evaluation \u203a Judging \u203a Contamination]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "overfitting-epochs",
+      "query": "training loss falls but validation loss rises after a few epochs",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 129,
+      "hits": [
+        "[Practical Fine-Tuning \u203a Evaluating fine-tunes \u203a Held-out evals and overfitting @00:00]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Optimization Basics \u203a Gradient methods \u203a Gradient descent]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[LLM Evaluation \u203a Judging \u203a Contamination]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "autograd-accumulate",
+      "query": "why call zero_grad before backward in PyTorch?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 171,
+      "hits": [
+        "[PyTorch Fundamentals \u203a Tensors \u203a Tensors and autograd]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[PyTorch Fundamentals \u203a Tensors \u203a Tensors and autograd]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Optimization Basics \u203a Gradient methods \u203a Gradient descent]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: The OpenAI API \u203a Creating a Sarcastic Chatbot]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "mps-device",
+      "query": "device string for Apple Silicon GPU in torch",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 157,
+      "hits": [
+        "[PyTorch Fundamentals \u203a Tensors \u203a Tensors and autograd]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[PyTorch Fundamentals \u203a Tensors \u203a Tensors and autograd]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[PyTorch Fundamentals \u203a Training \u203a DataLoader and batching]",
+        "[PyTorch Fundamentals \u203a Training \u203a DataLoader and batching]",
+        "[PyTorch Fundamentals \u203a Tensors \u203a Tensors and autograd]",
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a QLoRA and 4-bit quantisation @00:00]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "training-loop-steps",
+      "query": "the five steps of a PyTorch training step",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 149,
+      "hits": [
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Optimization Basics \u203a Gradient methods \u203a Gradient descent]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: The OpenAI API \u203a First Steps]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Practical Fine-Tuning \u203a Evaluating fine-tunes \u203a Held-out evals and overfitting @00:00]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "state-dict",
+      "query": "how should I save a PyTorch model checkpoint?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 180,
+      "hits": [
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a Agents in Practice Module: Project 2 - ReWOO Job-Helper agent \u203a Implementing the Executor]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a Agents in Practice Module: Project 3 - Business-Idea Evaluator \u203a Initializing the State]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a Agents in Practice Module: Project 3 - Business-Idea Evaluator \u203a Building the Human-in-the-loop]",
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a QLoRA and 4-bit quantisation @00:00]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangGraph Module: Thread-Level Persistence \u203a Long-Term Memory with SQLite]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangGraph Module: Thread-Level Persistence \u203a Short-Term Memory with the InMemorySaver Class]",
+        "[Practical Fine-Tuning \u203a Evaluating fine-tunes \u203a Held-out evals and overfitting @00:00]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "collate-padding",
+      "query": "batching variable-length sequences with padding and an attention mask",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 138,
+      "hits": [
+        "[PyTorch Fundamentals \u203a Training \u203a DataLoader and batching]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Masking: padding and causal]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a KV cache in autoregressive decoding]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Masking in the decoder (section 3.2.3)]",
+        "[Transformers from Scratch \u203a Attention \u203a Self-attention step by step @00:00]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Model overview]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "perplexity-meaning",
+      "query": "what does a perplexity of 20 mean?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 127,
+      "hits": [
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Softmax as a weighting function]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot product as similarity]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "perplexity-tokenizer",
+      "query": "why can't perplexity be compared across models with different tokenisers?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 138,
+      "hits": [
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[Transformers from Scratch \u203a Inputs \u203a Tokenisation and embeddings @00:00]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Multi-head attention]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "recall-at-k",
+      "query": "definition of recall@k for RAG",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 132,
+      "hits": [
+        "[LLM Evaluation \u203a Metrics \u203a Retrieval metrics recall and MRR]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Retrieval: Maximal Marginal Relevance Search]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Retrieval: Similarity Search]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Retrieval: Vector Store-Backed Retriever]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Generation: Stuffing Documents]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Indexing: Document Splitting with Markdown Header Text Splitter]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Scaled dot-product attention]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot-product attention: queries, keys, values]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "citation-coverage",
+      "query": "metric that catches answers from parametric memory instead of the course",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 159,
+      "hits": [
+        "[LLM Evaluation \u203a Metrics \u203a Retrieval metrics recall and MRR]",
+        "[LLM Evaluation \u203a Metrics \u203a Retrieval metrics recall and MRR]",
+        "[LLM Evaluation \u203a Metrics \u203a Retrieval metrics recall and MRR]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangGraph Module: Thread-Level Persistence \u203a Short-Term Memory with the InMemorySaver Class]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Scaled dot-product attention (section 3.2.1)]",
+        "[LLM Evaluation \u203a Judging \u203a Human eval vs LLM-as-judge]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Scaled dot-product attention]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "judge-position-bias",
+      "query": "LLM-as-judge position bias and how to cancel it",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 159,
+      "hits": [
+        "[LLM Evaluation \u203a Judging \u203a Human eval vs LLM-as-judge]",
+        "[LLM Evaluation \u203a Judging \u203a Human eval vs LLM-as-judge]",
+        "[LLM Evaluation \u203a Judging \u203a Human eval vs LLM-as-judge]",
+        "[Transformers from Scratch \u203a Attention \u203a Layer norm and residual connections @00:00]",
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a Agents in Practice Module: Project 2 - ReWOO Job-Helper agent \u203a Implementing the Solver]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a Agents in Practice Module: Project 3 - Business-Idea Evaluator \u203a Collection Node and Building the Graph]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "contamination-detect",
+      "query": "how to detect benchmark contamination",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 143,
+      "hits": [
+        "[LLM Evaluation \u203a Judging \u203a Contamination]",
+        "[LLM Evaluation \u203a Judging \u203a Contamination]",
+        "[LLM Evaluation \u203a Judging \u203a Contamination]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[Practical Fine-Tuning \u203a Evaluating fine-tunes \u203a Held-out evals and overfitting @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Masking: padding and causal]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Retrieval: Vector Store-Backed Retriever]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Retrieval: Maximal Marginal Relevance Search]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "lr-range-test",
+      "query": "how to find the largest learning rate that still works",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 139,
+      "hits": [
+        "[Optimization Basics \u203a Gradient methods \u203a Gradient descent]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Scaled dot-product attention]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Softmax as a weighting function]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot product as similarity]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Multi-head attention (section 3.2.2)]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "minibatch",
+      "query": "mini-batch SGD batch sizes",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 136,
+      "hits": [
+        "[Optimization Basics \u203a Gradient methods \u203a Gradient descent]",
+        "[PyTorch Fundamentals \u203a Training \u203a DataLoader and batching]",
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]",
+        "[PyTorch Fundamentals \u203a Training \u203a DataLoader and batching]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Masking: padding and causal]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a KV cache in autoregressive decoding]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: LangChain Expression Language (LCEL) \u203a Batching]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Scaled dot-product attention]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "adam-moments",
+      "query": "what are beta1 and beta2 in Adam?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 127,
+      "hits": [
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Dot product as similarity]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Indexing: Document Loading with Docx2txtLoader]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Scaled dot-product attention]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Retrieval Augmented Generation (RAG) \u203a Indexing: Inspecting and Managing Documents in a Vector Store]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "adamw-decoupled",
+      "query": "how is AdamW different from Adam with L2 regularisation?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 137,
+      "hits": [
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Transformers from Scratch \u203a Attention \u203a Layer norm and residual connections @00:00]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Multi-head attention]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Multi-head attention (section 3.2.2)]",
+        "[Attention Mechanisms (seed) \u203a Notes \u203a Positional encoding]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "warmup-why",
+      "query": "why use learning-rate warmup with Adam?",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 127,
+      "hits": [
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Gradient descent]",
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Multi-head attention (section 3.2.2)]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "cosine-decay",
+      "query": "cosine decay schedule",
+      "recall": 1.0,
+      "recall_at_1": 1.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 1.0,
+      "citation_coverage": 1.0,
+      "latency_ms": 119,
+      "hits": [
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Attention Mechanisms (seed) \u203a Paper summary \u203a Positional encoding (section 3.5)]",
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]",
+        "[Transformers from Scratch \u203a Inputs \u203a Positional information @00:00]",
+        "[PyTorch Fundamentals \u203a Training \u203a nn.Module and the training loop]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Gradient descent]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "cross-lora-eval",
+      "query": "after LoRA fine-tuning, how do I check the adapter actually improved on the base model?",
+      "recall": 1.0,
+      "recall_at_1": 0.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 0.5,
+      "citation_coverage": 1.0,
+      "latency_ms": 181,
+      "hits": [
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a LoRA low-rank adapters @00:00]",
+        "[Practical Fine-Tuning \u203a Evaluating fine-tunes \u203a Held-out evals and overfitting @00:00]",
+        "[Practical Fine-Tuning \u203a Parameter-efficient methods \u203a QLoRA and 4-bit quantisation @00:00]",
+        "[LLM Evaluation \u203a Metrics \u203a Perplexity]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Model Inputs \u203a ChatOpenAI]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Model Inputs \u203a AI Messages]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[The AI Agents Bootcamp 2026: Complete AI \u0410gents Course \u203a LangChain Module: Model Inputs \u203a System and Human Messages]"
+      ],
+      "found": [
+        true
+      ]
+    },
+    {
+      "id": "course-filter-optim",
+      "query": "learning rate",
+      "recall": 1.0,
+      "recall_at_1": 0.0,
+      "recall_at_4": 1.0,
+      "reciprocal_rank": 0.3333333333333333,
+      "citation_coverage": 1.0,
+      "latency_ms": 58,
+      "hits": [
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Gradient descent]",
+        "[Optimization Basics \u203a Gradient methods \u203a Learning-rate schedules]",
+        "[Optimization Basics \u203a Gradient methods \u203a Momentum and Adam]"
+      ],
+      "found": [
+        true
+      ]
+    }
+  ],
+  "misses": [],
+  "deltas": {
+    "recall_at_k": 0.0,
+    "recall_at_4": 0.0,
+    "recall_at_1": 0.0313,
+    "mrr": 0.0157,
+    "citation_coverage": 0.0
+  }
+}
