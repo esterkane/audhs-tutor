@@ -20,6 +20,12 @@ from app.orchestrator.context import build_packet, render_messages
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
 
+MAX_TOKENS_FOR_ACTION = {
+    actions.Action.EXPLAIN: 260,
+    actions.Action.HINT: 140,
+    actions.Action.FULL_SOLUTION: 700,
+    actions.Action.SUMMARIZE: 240,
+}
 TASK_FOR_ACTION = {
     actions.Action.EXPLAIN: TaskClass.EXPLAIN_SIMPLE,
     actions.Action.HINT: TaskClass.HINT,

@@ -1,6 +1,12 @@
-"""Single error shape for the API: {error: {code, message}}."""
+"""Single error shape for the API: {error: {code, message}}.
 
-from fastapi import FastAPI, Request
+Starlette 1.x no longer routes arbitrary exception classes through `exception_handler`, so the
+KeyError/ValueError mapping is a middleware; AppError keeps the explicit handler.
+"""
+
+from collections.abc import Awaitable, Callable
+
+from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
 
@@ -12,10 +18,24 @@ class AppError(Exception):
         self.http_status = http_status
 
 
+def _json(status: int, code: str, message: str) -> JSONResponse:
+    return JSONResponse(status_code=status, content={"error": {"code": code, "message": message}})
+
+
 def register_error_handlers(app: FastAPI) -> None:
     @app.exception_handler(AppError)
     async def _app_error(_: Request, exc: AppError) -> JSONResponse:
-        return JSONResponse(
-            status_code=exc.http_status,
-            content={"error": {"code": exc.code, "message": exc.message}},
-        )
+        return _json(exc.http_status, exc.code, exc.message)
+
+    @app.middleware("http")
+    async def _map_domain_errors(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        try:
+            return await call_next(request)
+        except AppError as exc:
+            return _json(exc.http_status, exc.code, exc.message)
+        except KeyError as exc:
+            return _json(404, "not_found", str(exc).strip("'"))
+        except ValueError as exc:
+            return _json(400, "bad_request", str(exc))

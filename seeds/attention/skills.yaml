@@ -21,7 +21,7 @@ skills:
     success_criteria:
       - Write the softmax formula and compute it for three scores.
       - Predict how softmax output changes when one score is much larger than the others.
-      - Explain saturation: why huge inputs produce near one-hot outputs and tiny gradients.
+      - "Explain saturation: why huge inputs produce near one-hot outputs and tiny gradients."
     assessment_requirements: {dimensions: [recall, explanation], min_items: 2}
     example_applications: [classification heads, attention weights]
     prerequisites: []

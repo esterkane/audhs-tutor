@@ -57,7 +57,8 @@ def output_contract(
 
 
 REPRESENTATION_PREFIX = re.compile(
-    r"^\s*[\(\[]\s*(analogy|derivation|code|diagram(?:-in-words)?|worked example|problem[- ]first|narrative)\s*[\)\]]",
+    r"^[\s*_#]*[\(\[]\s*(analogy|derivation|code|diagram(?:-in-words)?|worked example|problem[- ]first|narrative)"
+    r"\s*[\)\]]",
     re.I,
 )
 REPRESENTATION_MAP = {

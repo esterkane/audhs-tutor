@@ -11,7 +11,10 @@ from app.core.config import Settings
 from app.db import models
 from app.db.base import Base
 from app.db.session import make_engine, make_session_factory
+from app.knowledge.sqlite_hybrid import SqliteHybridRepository
 from app.main import create_app
+from app.models_ai.fake import FakeProvider
+from app.models_ai.provider import ModelSpec
 
 
 @pytest.fixture
@@ -59,9 +62,33 @@ async def learner(db: AsyncSession) -> models.LearnerProfile:
 
 
 @pytest.fixture
-async def client(settings: Settings, engine: AsyncEngine) -> AsyncIterator[AsyncClient]:
+def fake_local() -> FakeProvider:
+    return FakeProvider(
+        text="(analogy) Keys are labels, values are contents. Next: try the two-token example."
+    )
+
+
+@pytest.fixture
+def fake_repo() -> SqliteHybridRepository:
+    return SqliteHybridRepository(
+        FakeProvider(vectors_dim=32),
+        ModelSpec(registry_id="fake-embed", provider="fake", model="f"),
+        dims=32,
+    )
+
+
+@pytest.fixture
+async def client(
+    settings: Settings,
+    engine: AsyncEngine,
+    fake_local: FakeProvider,
+    fake_repo: SqliteHybridRepository,
+) -> AsyncIterator[AsyncClient]:
+    """App client with fake providers and an in-memory retrieval repo (no Ollama/Qdrant needed)."""
     app = create_app(settings)
     app.state.engine = engine
     app.state.session_factory = make_session_factory(engine)
+    app.state.providers = {"ollama": fake_local, "anthropic": FakeProvider(text="hosted")}
+    app.state.repo = fake_repo
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as c:
         yield c

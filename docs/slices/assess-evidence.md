@@ -1,0 +1,8 @@
+# Slice: assess-evidence (Stage 1)
+
+**Story.** After an explanation the learner checks themselves: rates confidence first, answers an MCQ / cloze / explain-back item, and gets literal per-criterion feedback; every attempt becomes competency evidence and a scheduled review.
+**In/out.** `GET /api/assess/next?session_id&skill_id` (kind rotation mcq → cloze → explain_back, never-attempted first; answers are not exposed), `POST /api/assess/attempt` (`AttemptRequest{assessment_id, answer, confidence_pre 1–5, latency_ms, hint_count}` → `AttemptResult{score, correct?, criterion_results[], misconception?, confidence, grader_level, feedback, next_step, calibration, review{due,state}, mastery}`). `orchestrator/grader.py`: deterministic (mcq index/text, cloze accepted-term match) → keyword rubric (confident only when all/none match) → local Instructor grade (`grade_simple`, `GradeResult` schema) → hosted `grade_rubric` escalation when confidence < 0.6 (skipped gracefully without an API key).
+**Kernel path.** `competency.record_evidence` (weight = grader level × confidence) → `evidenced`; `memory.ensure_item` + `memory.review(rating_from_score)` → `reviewed`; `competency.refresh` → mastery view.
+**Events.** `attempted`, `graded`, `evidenced`, `reviewed`; `model_call` row for LLM grades.
+**Pedagogy.** Confidence is required before submit (UI blocks otherwise); feedback states what was wrong, why, what next; no praise filler; calibration shown as a fact (over/under/calibrated).
+**Verified by.** `tests/test_orchestrator.py::test_deterministic_graders`, `::test_grader_pipeline_mcq_and_explain_back`, `tests/test_api.py`.

@@ -17,3 +17,4 @@ frontend/dist/
 .ruff_cache/
 .vite/
 coverage/
+backend/openapi.json

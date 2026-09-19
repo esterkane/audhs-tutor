@@ -1,4 +1,4 @@
-.PHONY: dev backend frontend services qdrant models test test-backend test-frontend lint migrate ingest evals bench
+.PHONY: dev backend frontend services qdrant models test test-backend test-frontend lint migrate ingest evals bench gen-api seed
 
 dev: qdrant
 	@echo "backend :8000 | frontend :5173 | qdrant :6333"
@@ -38,3 +38,10 @@ evals:
 
 bench:
 	cd backend && uv run python ../scripts/bench_stage$(s).py
+
+gen-api:
+	cd backend && uv run python -c "import json; from app.main import app; print(json.dumps(app.openapi()))" > openapi.json
+	cd frontend && pnpm exec openapi-typescript ../backend/openapi.json -o src/lib/api-types.ts
+
+seed:
+	uv run --project backend python scripts/seed_attention.py

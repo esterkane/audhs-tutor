@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current stage:** 0 — Skeleton **done 2026-09-19** (benchmark 4/5 PASS, check B skipped until `ANTHROPIC_API_KEY` is set) → next: Stage 1
+**Current stage:** 1 — Learning vertical slice (attention): slices done 2026-09-19, benchmark pending
 
 Order follows the Architecture Review Brief: prove the learning loop first, then the kernel, then the knowledge system, then adaptive UX, then frontier+voice, then offline agents. Each stage: slices (`/feature-slice`), a benchmark script, exit criteria.
 
@@ -22,11 +22,11 @@ Benchmark `bench_stage0.py`: local `chat` ≥ 15 tok/s; one `grade_rubric` call 
 ## Stage 1 — One complete learning vertical slice (subject: attention mechanisms)
 select concept → retrieve grounded material → teach → learner answers → assess → record evidence → update competency → schedule review.
 - [x] `seed-attention` — 6–10 `skill_node`s with prerequisites + `learning_object`s for attention (dot-product, scaled, multi-head, masking, positional encoding, KV cache) from 1–2 ingested sources (hand-ingested chunks OK).
-- [ ] `context-packet` — builder with budgets + trace of drops.
-- [ ] `tutor-turn` — orchestrator loop with kernel tools; SSE `/api/tutor/stream`; explicit mode; hint ladder; citations.
-- [ ] `assess-evidence` — explain-back + cloze + MCQ; hierarchical grader; `competency_evidence` rows; `competency_state` refresh.
-- [ ] `fsrs-memory` — `memory_state` via py-fsrs; due queue; minimum-viable review cap.
-- [ ] `session-screen` — Home (mode + energy) → single-task session screen → review → recap with confidence. `ParkingLotButton`.
+- [x] `context-packet` — builder with budgets + trace of drops.
+- [x] `tutor-turn` — orchestrator loop with kernel tools; SSE `/api/tutor/stream`; explicit mode; hint ladder; citations.
+- [x] `assess-evidence` — explain-back + cloze + MCQ; hierarchical grader; `competency_evidence` rows; `competency_state` refresh.
+- [x] `fsrs-memory` — `memory_state` via py-fsrs; due queue; minimum-viable review cap.
+- [x] `session-screen` — Home (mode + energy) → single-task session screen → review → recap with confidence. `ParkingLotButton`.
 Benchmark `bench_stage1.py`: run 3 sessions on attention; every turn has a `tutor_trace`; every attempt yields evidence + FSRS update; delayed review 2 days later works; hard-check evals pass. **If this loop is not useful, stop and rethink — agents and voice will not fix it.**
 
 ## Stage 2 — Learning kernel, complete
