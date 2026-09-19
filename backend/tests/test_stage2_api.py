@@ -177,7 +177,10 @@ async def test_challenge_round_trip(
     s = (await client.post("/api/sessions", json={"mode": "novelty", "energy": 4})).json()
     assert (await client.get("/api/challenge/modes")).json()["modes"][0]["mode"] == "planted_error"
     fake_local.structured = {
-        "prompt": "Scaled attention divides by d_k (not its square root) to keep the variance at one. Find the error and explain what is correct.",
+        "prompt": (
+            "Scaled attention divides by d_k (not its square root) to keep the variance at one. "
+            "Find the error and explain what is correct."
+        ),
         "hidden_key": "It divides by sqrt(d_k), not d_k.",
         "criteria": [
             "Locates the error in the scaling factor",

@@ -40,7 +40,9 @@ describe('Home', () => {
       socratic: false,
       sessionId: null,
     })
-    const fetchMock = vi.fn(async () => jsonResponse(session, 201))
+    const fetchMock = vi.fn(async (_url: string, init?: RequestInit) =>
+      init?.method === 'POST' ? jsonResponse(session, 201) : jsonResponse(null),
+    )
     vi.stubGlobal('fetch', fetchMock)
     renderApp(
       <Routes>
@@ -57,7 +59,10 @@ describe('Home', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /start session/i }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
-    const [, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    const post = fetchMock.mock.calls.find(
+      (c) => (c as unknown as [string, RequestInit])[1]?.method === 'POST',
+    ) as unknown as [string, RequestInit]
+    const [, init] = post
     expect(JSON.parse(init.body as string)).toEqual({
       mode: 'low_capacity',
       energy: 2,

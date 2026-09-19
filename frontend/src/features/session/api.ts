@@ -9,6 +9,22 @@ export function useSession(sessionId: string | null) {
   })
 }
 
+export function useCurrentSession() {
+  return useQuery({ queryKey: ['session-current'], queryFn: () => api.current() })
+}
+
+export function useCheckpoint() {
+  return useMutation({
+    mutationFn: ({
+      id,
+      body,
+    }: {
+      id: string
+      body: { phase?: string; skill_id?: string | null; block_index?: number }
+    }) => api.checkpoint(id, body),
+  })
+}
+
 export function useStartSession() {
   return useMutation({ mutationFn: api.startSession })
 }

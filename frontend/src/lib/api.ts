@@ -75,6 +75,12 @@ export const api = {
       body: JSON.stringify(body),
     }),
   session: (id: string) => apiFetch<SessionOut>(`/api/sessions/${id}`),
+  current: () => apiFetch<SessionOut | null>('/api/sessions/current'),
+  checkpoint: (id: string, body: { phase?: string; skill_id?: string | null; block_index?: number }) =>
+    apiFetch<Record<string, unknown>>(`/api/sessions/${id}/checkpoint`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   endSession: (id: string, body: { energy_after: number; self_report: number; notes?: string }) =>
     apiFetch<SessionOut>(`/api/sessions/${id}/end`, {
       method: 'POST',

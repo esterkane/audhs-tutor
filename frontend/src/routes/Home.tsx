@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { Choice } from '../components/ui/choice'
-import { useStartSession } from '../features/session/api'
+import { useCurrentSession, useStartSession } from '../features/session/api'
 import type { SessionOut } from '../lib/api'
 import { MODE_LABELS, useMode, type Mode } from '../stores/mode'
 
@@ -12,6 +12,8 @@ export function Home() {
   const start = useStartSession()
   const nav = useNavigate()
   const [offer, setOffer] = useState<SessionOut | null>(null)
+  const current = useCurrentSession()
+  const resumable = current.data && current.data.id
 
   async function begin() {
     const s = await start.mutateAsync({ mode, energy, socratic })
@@ -95,9 +97,21 @@ export function Home() {
         <Button variant="primary" size="lg" onClick={() => void begin()} disabled={start.isPending}>
           {start.isPending ? 'Starting…' : 'Start session'}
         </Button>
-        {sessionId && (
-          <Button size="lg" onClick={() => nav('/session')}>
-            Continue current session
+        {(sessionId || resumable) && (
+          <Button
+            size="lg"
+            onClick={() => {
+              if (current.data)
+                setSession(
+                  current.data.id,
+                  current.data.checkpoint?.skill_id
+                    ? String(current.data.checkpoint.skill_id)
+                    : (current.data.next_skill?.id ?? null),
+                )
+              nav(current.data?.checkpoint?.phase === 'review' ? '/review' : '/session')
+            }}
+          >
+            Resume session{current.data?.checkpoint?.phase ? ` (${current.data.checkpoint.phase})` : ''}
           </Button>
         )}
       </div>

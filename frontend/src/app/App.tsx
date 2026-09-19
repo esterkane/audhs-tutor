@@ -2,6 +2,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import { ParkingLotButton } from '../components/ParkingLotButton'
 import { Home } from '../routes/Home'
+import { Map } from '../routes/Map'
+import { Preferences } from '../routes/Preferences'
 import { Recap } from '../routes/Recap'
 import { Review } from '../routes/Review'
 import { Session } from '../routes/Session'
@@ -19,6 +21,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Link to="/" className="font-semibold no-underline text-fg">
           AuDHS-Tutor
         </Link>
+        <nav className="flex gap-3 text-sm">
+          <Link to="/map">Skill map</Link>
+          <Link to="/preferences">Preferences</Link>
+        </nav>
         <div className="text-sm text-muted" aria-live="polite">
           {MODE_LABELS[mode].title} · energy {energy}
           {sessionId ? ' · session running' : ''}
@@ -40,6 +46,8 @@ export default function App() {
             <Route path="/session" element={<Session />} />
             <Route path="/review" element={<Review />} />
             <Route path="/recap" element={<Recap />} />
+            <Route path="/map" element={<Map />} />
+            <Route path="/preferences" element={<Preferences />} />
           </Routes>
         </Shell>
       </BrowserRouter>
