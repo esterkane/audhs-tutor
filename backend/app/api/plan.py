@@ -8,16 +8,35 @@ from pydantic import BaseModel, Field
 from app.api.deps import DB, Learner
 from app.db.events import EventWriter, Verb
 from app.db.models import Session
-from app.kernel import competency, memory, planner, preferences, skill_graph
+from app.kernel import adaptation, competency, memory, planner, practice, preferences, skill_graph
 from app.kernel import session as ksession
 from app.schemas.common import ActivityType, ObjectType
 
 router = APIRouter(prefix="/plan", tags=["plan"])
 
 
-async def build_plan(db: DB, learner_id: str, mode: str, energy: int) -> planner.Plan:
+ARM_PREF_KEYS = {"new_material_min": "planner.new_material_min", "review_min": "planner.review_min"}
+
+
+async def build_plan(
+    db: DB,
+    learner_id: str,
+    mode: str,
+    energy: int,
+    *,
+    overrides: dict[str, Any] | None = None,
+) -> planner.Plan:
+    """`overrides` = an experiment arm's config for this session (e.g. new_material_min), merged
+    over the learner's preferences; disclosed on the session screen."""
     nxt = await skill_graph.next_skill(db, learner_id)
-    due = await memory.due_items(db, learner_id, cap=100)
+    due = await memory.due_items(db, learner_id, cap=100, exclude_domains=("language",))
+    prefs = await preferences.get_all(db, learner_id)
+    for key, value in (overrides or {}).items():
+        if key in ARM_PREF_KEYS:
+            prefs[ARM_PREF_KEYS[key]] = value
+    language_due = (
+        await practice.language_due(db, learner_id) if prefs.get("planner.language") else 0
+    )
     return planner.plan_session(
         planner.PlanInput(
             mode=mode,
@@ -26,7 +45,9 @@ async def build_plan(db: DB, learner_id: str, mode: str, energy: int) -> planner
             next_skill_id=nxt.id if nxt else None,
             next_skill_mastery=await competency.mastery(db, learner_id, nxt.id) if nxt else 0.0,
             review_node_ids=sorted({item.skill_id for item, _ in due}),
-            preferences=await preferences.get_all(db, learner_id),
+            language_due=language_due,
+            guitar=bool(prefs.get("planner.guitar")),
+            preferences=prefs,
         )
     )
 
@@ -149,3 +170,54 @@ def _phase(block_type: str) -> str:
 
 def plan_to_json(plan: planner.Plan) -> list[dict[str, Any]]:
     return [b.model_dump() for b in plan.blocks]
+
+
+class ReplanIn(BaseModel):
+    session_id: str
+    energy: int = Field(ge=1, le=5)
+    from_index: int = Field(ge=0, le=400, default=0, description="first block that may change")
+
+
+class ReplanOut(BaseModel):
+    proposal_id: str | None
+    energy: int
+    plan: planner.Plan
+    changed: bool
+
+
+@router.post(
+    "/replan",
+    summary="Energy check-in mid-session: records the new energy and proposes a re-scaled plan",
+    response_model=ReplanOut,
+)
+async def replan(body: ReplanIn, db: DB, learner: Learner) -> ReplanOut:
+    s = await ksession.get(db, body.session_id)
+    if s.ended_at is not None:
+        raise ValueError("session already ended")
+    current = planner.Plan(
+        mode=s.mode,
+        energy=s.energy,
+        blocks=_blocks(s),
+        minimum_viable=["retrieval", "recap"],
+        total_min=sum(b.planned_min for b in _blocks(s)),
+    )
+    new = planner.replan(current, from_index=body.from_index, energy=body.energy)
+    s.energy = body.energy  # the learner said so: explicit, not an adaptation
+    await db.commit()
+    if [b.model_dump() for b in new.blocks] == [b.model_dump() for b in current.blocks]:
+        return ReplanOut(proposal_id=None, energy=body.energy, plan=current, changed=False)
+    remaining_old = sum(b.planned_min for b in current.blocks[body.from_index :])
+    remaining_new = sum(b.planned_min for b in new.blocks[body.from_index :])
+    card = await adaptation.propose(
+        db,
+        learner.id,
+        what=f"Re-plan the rest of this session: {remaining_new} min instead of {remaining_old}",
+        why=f"You set energy to {body.energy} (was {current.energy}).",
+        pref="session.plan",
+        value={"blocks": [b.model_dump() for b in new.blocks], "energy": body.energy},
+        origin="planner",
+        pattern=f"planner:replan:{s.id}",
+        evidence={"energy_before": current.energy, "energy_after": body.energy},
+        session=s,
+    )
+    return ReplanOut(proposal_id=card.id, energy=body.energy, plan=new, changed=True)

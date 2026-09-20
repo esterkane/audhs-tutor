@@ -1,12 +1,17 @@
 from fastapi import APIRouter
 
 from app.api import (
+    adaptations,
     assess,
     challenge,
+    corpus,
+    experiments,
     health,
     learner,
+    models_admin,
     parking,
     plan,
+    practice,
     preferences,
     representations,
     review,
@@ -29,5 +34,10 @@ for r in (
     assess,
     review,
     parking,
+    corpus,
+    adaptations,
+    models_admin,
+    experiments,
+    practice,
 ):
     api_router.include_router(r.router)

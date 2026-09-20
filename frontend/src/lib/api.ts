@@ -18,6 +18,8 @@ export type TurnMeta = {
   hint_level: number
   prompt_version: string
   questioning_style: string
+  experiment_arm?: string | null
+  arm_not_applied?: boolean
 }
 export type AssessmentView = Schemas['AssessmentView']
 export type NextItem = Schemas['NextItem']

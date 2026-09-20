@@ -29,6 +29,10 @@ class Block(BaseModel):
     optional: bool = False
     reason: str = ""
     grasp_check_required: bool = False
+    domain: str | None = None  # language | guitar | movement for whole-domain blocks (ADR-0006)
+    base_min: int | None = (
+        None  # energy-3 minutes; re-planning re-scales from here, never from a guess
+    )
 
 
 class PlanInput(BaseModel):
@@ -39,6 +43,8 @@ class PlanInput(BaseModel):
     next_skill_mastery: float = 0.0
     review_node_ids: list[str] = Field(default_factory=list)
     other_domains_available: bool = False  # language / guitar blocks exist (Stage 4)
+    language_due: int = 0  # due vocabulary cards → the domain block is a language block
+    guitar: bool = False  # guitar practice enabled (planner.guitar)
     preferences: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -73,12 +79,15 @@ def plan_session(inp: PlanInput) -> Plan:
     retrieval = Block(
         type="retrieval",
         planned_min=_scale(7, e),
+        base_min=7,
         node_ids=inp.review_node_ids[:5],
         reason=f"{inp.due_reviews} items due"
         if inp.due_reviews
         else "warm-up on the current skill",
     )
-    recap = Block(type="recap", planned_min=5, reason="confidence-rated recap; always last")
+    recap = Block(
+        type="recap", planned_min=5, base_min=5, reason="confidence-rated recap; always last"
+    )
 
     if inp.mode == "low_capacity" or e <= 1:
         # 1 + (2 or 4, short) + 6 — the shortest useful path
@@ -105,6 +114,7 @@ def plan_session(inp: PlanInput) -> Plan:
         blocks.append(
             Block(
                 type="movement_primer",
+                domain="movement",
                 planned_min=5 if e >= 3 else 3,
                 optional=True,
                 reason="movement before new material (ADR-0006)",
@@ -119,6 +129,7 @@ def plan_session(inp: PlanInput) -> Plan:
             Block(
                 type="new_material",
                 planned_min=_scale(new_min if inp.mode != "novelty" else new_min + 5, e),
+                base_min=new_min if inp.mode != "novelty" else new_min + 5,
                 node_ids=skill,
                 reason=scaffold,
                 grasp_check_required=True,
@@ -128,7 +139,9 @@ def plan_session(inp: PlanInput) -> Plan:
             blocks.append(
                 Block(
                     type="movement_primer",
+                    domain="movement",
                     planned_min=5,
+                    base_min=5,
                     optional=True,
                     reason="movement right after new material (ADR-0006)",
                 )
@@ -143,6 +156,7 @@ def plan_session(inp: PlanInput) -> Plan:
             Block(
                 type="challenge",
                 planned_min=_scale(10, e),
+                base_min=10,
                 node_ids=skill,
                 optional=True,
                 reason="critical-thinking challenge on the current skill",
@@ -153,19 +167,28 @@ def plan_session(inp: PlanInput) -> Plan:
             Block(
                 type="interleaved_review",
                 planned_min=_scale(review_min, e),
+                base_min=review_min,
                 node_ids=inp.review_node_ids[:8],
                 reason="interleave confusable AI/ML concepts (ADR-0006)",
             )
         )
-    if inp.other_domains_available and e >= 3:
-        blocks.append(
-            Block(
-                type="domain_switch",
-                planned_min=_scale(15, e),
-                optional=True,
-                reason="language/guitar block at a boundary",
+    if (inp.other_domains_available or inp.language_due or inp.guitar) and e >= 3:
+        domain = "language" if inp.language_due else ("guitar" if inp.guitar else None)
+        if domain is not None:
+            blocks.append(
+                Block(
+                    type="domain_switch",
+                    planned_min=_scale(10 if domain == "language" else 15, e),
+                    base_min=10 if domain == "language" else 15,
+                    optional=True,
+                    domain=domain,
+                    reason=(
+                        f"{inp.language_due} vocabulary cards due (spaced, whole block, ADR-0006)"
+                        if domain == "language"
+                        else "guitar practice at a boundary (ADR-0006)"
+                    ),
+                )
             )
-        )
     blocks.append(recap)
     return _finish(inp, blocks)
 
@@ -213,3 +236,38 @@ def can_switch_early(block: Block, *, grasp_passed: bool | None, reason: str) ->
     if block.grasp_check_required and not grasp_passed:
         return False, "answer one recall item on this skill before switching (grasp check)"
     return True, "ok"
+
+
+def replan(plan: Plan, *, from_index: int, energy: int) -> Plan:
+    """Mid-session energy check-in (ADR-0006 boundaries): blocks before `from_index` are kept as
+    they were; the rest are re-scaled to the new energy. At energy 1 optional blocks and the
+    challenge are dropped so the minimum-viable path remains. Never applied silently — the
+    caller raises an adaptation card."""
+    if not 1 <= energy <= 5:
+        raise ValueError("energy must be 1-5")
+    old_factor = {1: 0.6, 2: 0.8, 3: 1.0, 4: 1.1, 5: 1.2}[plan.energy]
+    from_index = max(0, min(from_index, len(plan.blocks)))
+    kept = [b.model_copy() for b in plan.blocks[:from_index]]
+    rest: list[Block] = []
+    for b in plan.blocks[from_index:]:
+        if energy <= 1 and (b.optional or b.type == "challenge"):
+            continue
+        # base_min is the energy-3 length recorded at planning time; older plans fall back to
+        # un-scaling by the plan's own energy
+        base = b.base_min if b.base_min is not None else max(3, round(b.planned_min / old_factor))
+        rest.append(b.model_copy(update={"planned_min": _scale(base, energy), "base_min": base}))
+    blocks = kept + rest
+    if not any(b.type == "recap" for b in blocks):
+        blocks.append(
+            Block(type="recap", planned_min=3, base_min=3, reason="always end with a recap")
+        )
+    out = Plan(
+        mode=plan.mode,
+        energy=energy,
+        blocks=blocks,
+        minimum_viable=plan.minimum_viable,
+        total_min=sum(b.planned_min for b in blocks),
+        policy_version=plan.policy_version,
+    )
+    validate_plan(out)
+    return out

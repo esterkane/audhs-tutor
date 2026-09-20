@@ -69,6 +69,18 @@ PREFERENCES: dict[str, PrefSpec] = {
             description="Movement primer placement relative to new material",
         ),
         PrefSpec(
+            key="planner.language",
+            type="bool",
+            default=False,
+            description="Plan a language (vocabulary) block when cards are due",
+        ),
+        PrefSpec(
+            key="planner.guitar",
+            type="bool",
+            default=False,
+            description="Plan a guitar practice block at a boundary",
+        ),
+        PrefSpec(
             key="planner.challenge",
             type="bool",
             default=True,
@@ -85,6 +97,33 @@ PREFERENCES: dict[str, PrefSpec] = {
             description="Screen density",
         ),
         PrefSpec(key="ui.sound", type="bool", default=False, description="UI sounds"),
+        PrefSpec(
+            key="ui.theme",
+            type="enum",
+            default="system",
+            choices=["system", "light", "dark"],
+            description="Colour theme",
+        ),
+        PrefSpec(
+            key="ui.font_scale",
+            type="enum",
+            default="normal",
+            choices=["normal", "large"],
+            description="Text size",
+        ),
+        PrefSpec(
+            key="ui.notifications",
+            type="bool",
+            default=False,
+            description="Browser notifications for wind-down prompts",
+        ),
+        PrefSpec(
+            key="ui.ambient",
+            type="enum",
+            default="off",
+            choices=["off", "brown_noise"],
+            description="Ambient sound on the body-doubling screen (opt-in, never autoplays)",
+        ),
     ]
 }
 
@@ -131,6 +170,8 @@ async def set_pref(
     confidence: float = 1.0,
     reversible: bool = True,
     events: EventWriter | None = None,
+    event_object_id: str | None = None,
+    policy_version: str = "v1",
 ) -> LearnerPreference:
     validate(key, value)
     if origin not in ORIGINS:
@@ -161,15 +202,22 @@ async def set_pref(
         await events.emit(
             Verb.ADAPTED,
             ObjectType.ADAPTATION,
-            key,
+            event_object_id or key,
             context={
                 "what": f"{key}={value}",
                 "why": origin,
                 "reversible": reversible,
-                "policy_version": "v1",
+                "policy_version": policy_version,
             },
         )
     return row
+
+
+async def is_set(db: AsyncSession, learner_id: str, key: str) -> bool:
+    stmt = select(LearnerPreference.id).where(
+        LearnerPreference.learner_id == learner_id, LearnerPreference.key == key
+    )
+    return (await db.execute(stmt)).scalar_one_or_none() is not None
 
 
 async def reset(db: AsyncSession, learner_id: str, key: str) -> None:

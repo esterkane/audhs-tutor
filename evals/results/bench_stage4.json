@@ -1,0 +1,167 @@
+{
+  "A adaptation card lifecycle": {
+    "status": "PASS",
+    "card": "Start new material with a worked example (for skills you have not yet mastered)",
+    "why": "You used 3.0 hints per attempt over the last 8 attempts on unmastered skills.",
+    "applied": "worked_example",
+    "expired": 1,
+    "restored": "",
+    "events": [
+      "adapted",
+      "decided",
+      "proposed",
+      "undone"
+    ]
+  },
+  "B two-week Socratic vs explicit on matched nodes (simulated)": {
+    "status": "PASS",
+    "assignments": {
+      "explicit": 3,
+      "socratic": 3
+    },
+    "delayed_recall": {
+      "explicit": {
+        "n": 3,
+        "mean": 1.0
+      },
+      "socratic": {
+        "n": 3,
+        "mean": 1.0
+      }
+    },
+    "difference": 0.0,
+    "ci95": [
+      0.0,
+      0.0
+    ],
+    "reading": "No clear difference yet on delayed recall (difference +0.000; 95% CI +0.000 to +0.000; n=3+3). Keep going or stop: your call.",
+    "other_metrics": {
+      "error_rate": {
+        "explicit": 0.0,
+        "socratic": 0.0
+      },
+      "latency_ms": {
+        "explicit": 4000.0,
+        "socratic": 4000.0
+      },
+      "completion": {
+        "explicit": null,
+        "socratic": null
+      },
+      "voluntary_continuation": {
+        "explicit": null,
+        "socratic": null
+      },
+      "transfer": {
+        "explicit": null,
+        "socratic": null
+      }
+    },
+    "arm_stamped_events": 18,
+    "per_node": [
+      {
+        "node": "vec-dot-product",
+        "arm": "socratic",
+        "cited": false,
+        "sentences": 5,
+        "correct": true,
+        "review_rating": 3
+      },
+      {
+        "node": "softmax",
+        "arm": "explicit",
+        "cited": true,
+        "sentences": 5,
+        "correct": true,
+        "review_rating": 4
+      },
+      {
+        "node": "attn-dot-product",
+        "arm": "socratic",
+        "cited": true,
+        "sentences": 3,
+        "correct": true,
+        "review_rating": 4
+      },
+      {
+        "node": "attn-scaled",
+        "arm": "explicit",
+        "cited": true,
+        "sentences": 7,
+        "correct": true,
+        "review_rating": 3
+      },
+      {
+        "node": "attn-multi-head",
+        "arm": "explicit",
+        "cited": true,
+        "sentences": 5,
+        "correct": true,
+        "review_rating": 4
+      },
+      {
+        "node": "attn-masking",
+        "arm": "socratic",
+        "cited": true,
+        "sentences": 5,
+        "correct": true,
+        "review_rating": 4
+      }
+    ],
+    "simulated_days": 14
+  },
+  "C energy check-in re-plan card apply + undo": {
+    "status": "PASS",
+    "before_min": 51,
+    "after_min": 34,
+    "applied": true,
+    "restored": true
+  },
+  "D domain blocks: vocab in the language block only, practiced, movement_skipped card": {
+    "status": "PASS",
+    "vocab_due": 3,
+    "ai_review_has_vocab": false,
+    "domain_block": {
+      "type": "domain_switch",
+      "planned_min": 11,
+      "node_ids": [],
+      "optional": true,
+      "reason": "3 vocabulary cards due (spaced, whole block, ADR-0006)",
+      "grasp_check_required": false,
+      "domain": "language",
+      "base_min": 10
+    },
+    "vocab_left_after_block": 0,
+    "cards": [
+      "movement_skipped"
+    ]
+  },
+  "E models registry routing table": {
+    "status": "PASS",
+    "tasks": 20,
+    "resolved": {
+      "chat": "llama31-8b",
+      "chat_fast": "llama31-8b",
+      "format": "llama31-8b",
+      "summarize": "llama31-8b",
+      "query_expand": "llama31-8b",
+      "gen_items": "llama31-8b",
+      "explain_simple": "llama31-8b",
+      "hint": "llama31-8b",
+      "code_local": "llama31-8b",
+      "grade_simple": "llama31-8b",
+      "tutor_deep": "llama31-8b",
+      "tutor_medium": "llama31-8b",
+      "socratic": "llama31-8b",
+      "challenge": "llama31-8b",
+      "code_review": "llama31-8b",
+      "conflict_resolution": "llama31-8b",
+      "embed": "nomic-embed-text",
+      "rerank": "ms-marco-minilm-l6"
+    },
+    "unresolved": [
+      "grade_rubric",
+      "judge"
+    ]
+  }
+}

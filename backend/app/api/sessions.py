@@ -7,8 +7,9 @@ from sqlalchemy import select
 
 from app.api.deps import DB, Learner
 from app.api.plan import build_plan, plan_to_json
+from app.db import models
 from app.db.models import Assessment, ReviewItem, Session
-from app.kernel import memory, skill_graph
+from app.kernel import adaptation, experiments, memory, skill_graph
 from app.kernel import session as ksession
 from app.schemas.common import Mode
 from app.schemas.tutor import SkillView
@@ -42,6 +43,25 @@ class SessionOut(BaseModel):
     minimum_viable: list[str]
     plan: list[dict[str, Any]]
     checkpoint: dict[str, Any] | None
+    experiment: dict[str, Any] | None = None  # {id, name, arm, config, unit_type} when running
+
+
+async def _experiment_info(db: DB, learner_id: str, s: Session) -> dict[str, Any] | None:
+    if s.experiment_arm_id:
+        arm = await db.get(models.ExperimentArm, s.experiment_arm_id)
+        if arm is not None:
+            exp = await db.get(models.Experiment, arm.experiment_id)
+            if exp is not None:
+                return {
+                    "id": exp.id,
+                    "name": exp.name,
+                    "arm": arm.name,
+                    "config": dict(arm.config_json),
+                    "unit_type": "session",
+                }
+    for exp in await experiments.running(db, learner_id, unit_type="node"):
+        return {"id": exp.id, "name": exp.name, "arm": None, "config": {}, "unit_type": "node"}
+    return None
 
 
 async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
@@ -49,7 +69,9 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
 
     nxt = await skill_graph.next_skill(db, learner_id)
     cap = memory.review_cap(s.mode, s.energy)
-    due = await memory.due_items(db, learner_id, now=datetime.now(UTC), cap=100)
+    due = await memory.due_items(
+        db, learner_id, now=datetime.now(UTC), cap=100, exclude_domains=("language",)
+    )
     minimum = (
         ["retrieval", "recap"]
         if s.mode == "low_capacity" or s.energy <= 2
@@ -69,6 +91,7 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
         minimum_viable=minimum,
         plan=list(s.planned_blocks_json or []),
         checkpoint=await ksession.load_checkpoint(db, s.id),
+        experiment=await _experiment_info(db, learner_id, s),
     )
 
 
@@ -79,17 +102,21 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
     status_code=201,
 )
 async def start(body: SessionStart, db: DB, learner: Learner) -> SessionOut:
-    plan = await build_plan(db, learner.id, str(body.mode), body.energy)
     s = await ksession.start(
-        db,
-        learner.id,
-        mode=body.mode,
-        energy=body.energy,
-        socratic=body.socratic,
-        planned_blocks=[b.type for b in plan.blocks],
+        db, learner.id, mode=body.mode, energy=body.energy, socratic=body.socratic, emit=False
     )
+    # 1. 'Try' adaptations last one session: revert earlier trials *before* planning this one
+    await adaptation.expire_trials(db, learner.id, current_session=s)
+    # 2. a running session-unit experiment assigns an arm (may set socratic / block lengths)
+    arm_pair = await experiments.arm_for_session(db, learner.id, s)
+    overrides = dict(arm_pair[1].config_json) if arm_pair else None
+    # 3. plan with the learner's preferences (+ the arm's overrides, disclosed in SessionOut)
+    plan = await build_plan(db, learner.id, str(body.mode), body.energy, overrides=overrides)
     s.planned_blocks_json = plan_to_json(plan)
     await db.commit()
+    await ksession.emit_started(db, s, [b.type for b in plan.blocks])
+    # 4. look for patterns worth a card
+    await adaptation.observe(db, learner.id, session=s)
     return await _out(db, learner.id, s)
 
 

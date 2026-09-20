@@ -11,9 +11,16 @@ from app.kernel import competency, skill_graph
 from app.knowledge.repository import RetrievalRepository, SearchFilters, SearchResult
 from app.schemas.common import ObjectType
 
+TUTOR_MIN_TRUST = 1  # tier 0 (untrusted) never leaves the index for a tutor turn
+
 
 async def retrieve(
-    repo: RetrievalRepository, query: str, *, skill_id: str | None, k: int = 6, min_trust: int = 1
+    repo: RetrievalRepository,
+    query: str,
+    *,
+    skill_id: str | None,
+    k: int = 6,
+    min_trust: int = TUTOR_MIN_TRUST,
 ) -> SearchResult:
     """Skill-filtered search first; widen to the whole corpus when the node has too little material."""
     res = await repo.search(
@@ -78,12 +85,18 @@ async def get_preferences(db: AsyncSession, learner_id: str) -> dict[str, Any]:
 
 
 def session_state(
-    session: Session, node: SkillNode, *, block_type: str, hint_level: int
+    session: Session,
+    node: SkillNode,
+    *,
+    block_type: str,
+    hint_level: int,
+    socratic: bool | None = None,
 ) -> dict[str, Any]:
+    socratic = session.socratic if socratic is None else socratic
     return {
         "mode": session.mode,
         "energy": session.energy,
-        "questioning_style": "socratic" if session.socratic else "explicit",
+        "questioning_style": "socratic" if socratic else "explicit",
         "block_type": block_type,
         "skill": node.title,
         "hint_level": hint_level,

@@ -29,18 +29,10 @@ from app.core.config import Settings, get_settings  # noqa: E402
 from app.db.migrate import upgrade_to_head  # noqa: E402
 from app.db.models import LearnerProfile  # noqa: E402
 from app.db.session import make_engine, make_session_factory  # noqa: E402
-from app.models_ai import registry  # noqa: E402
-from app.models_ai.bench import bench_model, summarize  # noqa: E402
-from app.models_ai.downloader import Downloader, hf_info, hf_search, slugify  # noqa: E402
-from app.models_ai.factory import build_providers, installed_ollama_tags  # noqa: E402
+from app.models_ai import manage, registry  # noqa: E402
+from app.models_ai.bench import summarize  # noqa: E402
+from app.models_ai.downloader import hf_info, hf_search  # noqa: E402
 from app.models_ai.provider import TaskClass  # noqa: E402
-
-RUNTIME_FOR_SOURCE = {
-    "ollama_library": "ollama",
-    "huggingface_gguf": "ollama",
-    "huggingface_mlx": "mlx",
-    "hosted": "hosted",
-}
 
 
 def say(msg: str) -> None:
@@ -61,20 +53,7 @@ async def owner_learner(db: AsyncSession) -> LearnerProfile:
 
 
 async def cmd_seed(db: AsyncSession, s: Settings, a: argparse.Namespace) -> int:
-    installed = await installed_ollama_tags(s.ollama_host)
-    if s.anthropic_api_key:
-        installed.add("hosted")
-    rows = await registry.seed_defaults(db, installed_ollama_tags=installed)
-    # refresh readiness of already-known ollama rows
-    for r in rows:
-        if r.runtime == "ollama" and r.status in ("available", "ready"):
-            tag = r.id if r.source == "huggingface_gguf" else (r.file_or_tag or r.repo_id)
-            r.status = (
-                "ready" if (tag in installed or f"{tag}:latest" in installed) else "available"
-            )
-        if r.runtime == "hosted" and r.status in ("available", "ready"):
-            r.status = "ready" if s.anthropic_api_key else "available"
-    await db.commit()
+    await manage.seed(db, s)
     return await cmd_list(db, s, a)
 
 
@@ -105,45 +84,25 @@ async def cmd_info(db: AsyncSession, s: Settings, a: argparse.Namespace) -> int:
 
 
 async def cmd_add(db: AsyncSession, s: Settings, a: argparse.Namespace) -> int:
-    if a.source not in RUNTIME_FOR_SOURCE:
-        say(f"unknown source {a.source}; one of {sorted(RUNTIME_FOR_SOURCE)}")
+    try:
+        row = await manage.add(
+            db,
+            s,
+            source=a.source,
+            repo_id=a.repo_id,
+            file=a.file,
+            tag=a.tag,
+            registry_id=a.id,
+            display_name=a.display_name,
+            role=a.role,
+            quant=a.quant,
+            context_len=a.context_len,
+            price_in=a.price_in,
+            price_out=a.price_out,
+        )
+    except ValueError as e:
+        say(str(e))
         return 2
-    if a.source == "huggingface_gguf" and not a.file:
-        say("huggingface_gguf needs --file <name.gguf>  (see: models.py info <repo_id>)")
-        return 2
-    if a.source == "hosted" and not a.tag:
-        say("hosted needs --tag <model id>, e.g. --tag claude-sonnet-5")
-        return 2
-    file_or_tag = a.file or a.tag or (a.repo_id if a.source == "ollama_library" else None)
-    rid = a.id or slugify(a.repo_id.split("/")[-1], a.file or a.tag)
-    licence, size_gb = None, None
-    if a.source.startswith("huggingface"):
-        try:
-            info = hf_info(a.repo_id, s.hf_token)
-            licence = info["licence"]
-            match = [f for f in info["gguf_files"] if f["filename"] == a.file]
-            size_gb = match[0]["size_gb"] if match else (info["total_size_gb"] or None)
-        except Exception as e:  # network optional at add time
-            say(f"note: could not fetch HF metadata ({e})")
-    row = await registry.upsert(
-        db,
-        {
-            "id": rid,
-            "display_name": a.display_name or rid,
-            "source": a.source,
-            "repo_id": a.repo_id,
-            "file_or_tag": file_or_tag,
-            "runtime": RUNTIME_FOR_SOURCE[a.source],
-            "role": a.role,
-            "quant": a.quant,
-            "licence": licence,
-            "size_gb": size_gb,
-            "context_len": a.context_len,
-            "status": "ready" if (a.source == "hosted" and s.anthropic_api_key) else "available",
-            "price_in_per_mtok": a.price_in,
-            "price_out_per_mtok": a.price_out,
-        },
-    )
     say(
         f"added {row.id} ({row.source}, {row.runtime}, licence={row.licence}) → models.py pull {row.id}"
     )
@@ -151,37 +110,9 @@ async def cmd_add(db: AsyncSession, s: Settings, a: argparse.Namespace) -> int:
 
 
 async def cmd_pull(db: AsyncSession, s: Settings, a: argparse.Namespace) -> int:
-    row = await registry.get_row(db, a.id)
-    dl = Downloader(s.ollama_host, s.models_dir_resolved, s.hf_token)
-    await registry.set_status(db, row.id, "downloading")
     try:
-        if row.source == "ollama_library":
-            tag = row.file_or_tag or row.repo_id
-            await dl.ollama_pull(tag, say)
-            await registry.set_status(db, row.id, "ready")
-        elif row.source == "huggingface_gguf":
-            assert row.file_or_tag
-            path = await dl.hf_gguf(
-                row.repo_id, row.file_or_tag, row.id, num_ctx=row.context_len, progress=say
-            )
-            await registry.set_status(
-                db, row.id, "ready", local_path=str(path), size_gb=path.stat().st_size / 1e9
-            )
-        elif row.source == "huggingface_mlx":
-            path = await dl.hf_mlx(row.repo_id, say)
-            from app.models_ai.downloader import dir_size_gb
-
-            await registry.set_status(
-                db, row.id, "ready", local_path=str(path), size_gb=dir_size_gb(path)
-            )
-        elif row.source == "hosted":
-            if not s.anthropic_api_key:
-                say("hosted model: set ANTHROPIC_API_KEY in .env, then re-run")
-                await registry.set_status(db, row.id, "available")
-                return 1
-            await registry.set_status(db, row.id, "ready")
+        row = await manage.pull(db, s, a.id, say)
     except Exception as e:
-        await registry.set_status(db, row.id, "failed")
         say(f"pull failed: {e}")
         return 1
     say(f"{row.id} ready → models.py bench {row.id}")
@@ -189,20 +120,16 @@ async def cmd_pull(db: AsyncSession, s: Settings, a: argparse.Namespace) -> int:
 
 
 async def cmd_bench(db: AsyncSession, s: Settings, a: argparse.Namespace) -> int:
-    row = await registry.get_row(db, a.id)
-    if row.status != "ready":
-        say(f"{row.id} is {row.status}; pull it first")
+    try:
+        bench = await manage.bench(db, s, a.id, say)
+    except ValueError as e:
+        say(str(e))
         return 1
-    spec = registry.spec_from_row(row)
-    provider = build_providers(s).get(spec.provider)
-    if provider is None:
-        say(f"no provider for runtime {row.runtime} (hosted needs ANTHROPIC_API_KEY)")
-        return 1
-    say(f"benchmarking {row.id} …")
-    bench = await bench_model(provider, spec)
-    await registry.set_status(db, row.id, "ready", benchmark_json=bench)
     say(json.dumps(bench, indent=2))
-    say(f"{row.id}: {summarize(bench)} → models.py assign <task> {row.id}")
+    if "ms_per_16_docs" in bench:
+        say(f"{a.id}: rerank {bench['ms_per_16_docs']} ms / 16 docs → routes via TaskClass.rerank")
+    else:
+        say(f"{a.id}: {summarize(bench)} → models.py assign <task> {a.id}")
     return 0
 
 
@@ -223,12 +150,8 @@ async def cmd_assign(db: AsyncSession, s: Settings, a: argparse.Namespace) -> in
 
 
 async def cmd_rm(db: AsyncSession, s: Settings, a: argparse.Namespace) -> int:
-    row = await registry.get_row(db, a.id)
-    dl = Downloader(s.ollama_host, s.models_dir_resolved, s.hf_token)
-    tag = row.id if row.source == "huggingface_gguf" else row.file_or_tag
-    await dl.remove(runtime=row.runtime, tag=tag, local_path=row.local_path)
-    await registry.set_status(db, row.id, "removed", local_path=None, benchmark_json=None)
-    say(f"removed {row.id}")
+    await manage.remove(db, s, a.id)
+    say(f"removed {a.id}")
     return 0
 
 

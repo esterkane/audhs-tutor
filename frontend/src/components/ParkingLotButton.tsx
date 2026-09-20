@@ -1,6 +1,8 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useState } from 'react'
 import { api } from '../lib/api'
+import { ParkedList } from '../features/parking/ParkedList'
+import { useParkingActions } from '../features/parking/api'
 import { useMode } from '../stores/mode'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
@@ -11,6 +13,7 @@ export function ParkingLotButton() {
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
   const [status, setStatus] = useState<string | null>(null)
+  const { invalidate } = useParkingActions()
 
   async function submit() {
     if (!text.trim()) return
@@ -20,6 +23,7 @@ export function ParkingLotButton() {
       node_id: skillId,
     })
     setText('')
+    invalidate()
     setStatus('Parked. It stays out of the way until you promote it.')
     setOpen(false)
   }
@@ -67,6 +71,12 @@ export function ParkingLotButton() {
               Park it
             </Button>
           </div>
+          <details className="mt-3">
+            <summary className="cursor-pointer text-sm font-medium">Parked so far</summary>
+            <div className="mt-2">
+              <ParkedList />
+            </div>
+          </details>
         </Dialog.Content>
       </Dialog.Portal>
       {status && (

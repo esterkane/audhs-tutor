@@ -4,6 +4,7 @@ action → stream generation → traces + events → checkpoint. Yields SSE-read
 A turn without a trace is a bug: the tutor_trace is written in a `finally`, also when the client
 aborts the stream mid-way (the explanation is then flagged partial)."""
 
+import dataclasses
 import time
 from collections.abc import AsyncIterator
 from typing import Any
@@ -13,13 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
 from app.db.traces import TutorTraceRecord, write_retrieval_trace, write_tutor_trace
+from app.kernel import experiments, representations, skill_graph
 from app.kernel import session as ksession
-from app.kernel import skill_graph
 from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway, StreamHandle
 from app.models_ai.provider import TaskClass
 from app.orchestrator import actions, prompts, tools
-from app.orchestrator.context import build_packet, render_messages
+from app.orchestrator.context import QUARANTINE_BELOW_TRUST, build_packet, render_messages
 from app.schemas.common import ActivityType, Actor, ObjectType
 from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
 
@@ -42,10 +43,18 @@ ACTIVITY_FOR_ACTION = {
 
 
 class TutorTurn:
-    def __init__(self, db: AsyncSession, gateway: ModelGateway, repo: RetrievalRepository) -> None:
+    def __init__(
+        self,
+        db: AsyncSession,
+        gateway: ModelGateway,
+        repo: RetrievalRepository,
+        *,
+        quarantine_below_trust: int = QUARANTINE_BELOW_TRUST,
+    ) -> None:
         self.db = db
         self.gateway = gateway
         self.repo = repo
+        self.quarantine_below_trust = quarantine_below_trust
 
     async def run(self, req: TurnRequest) -> AsyncIterator[tuple[str, dict[str, Any]]]:
         t0 = time.perf_counter()
@@ -72,8 +81,39 @@ class TutorTurn:
         block_type = "recap" if action == actions.Action.SUMMARIZE else "new_material"
         turn_id = new_id()
 
+        # a running node-unit experiment decides the questioning style / representation for this
+        # node (matched-node design); disclosed on the session screen, stamped on every event
+        socratic = session.socratic
+        evidence = await tools.get_evidence(db, learner_id, node)
+        mastery = float(evidence.get("mastery", 0.0))
+        prefs = await tools.get_preferences(db, learner_id)
+        allowed = set(representations.allowed_kinds(mastery))
+        representation = req.representation
+        if representation is None and prefs.get("tutor.representation_default"):
+            # the accepted default (adaptation card) applies to skills not yet mastered only
+            default_rep = str(prefs["tutor.representation_default"])
+            if mastery < skill_graph.MASTERY_DONE and default_rep in allowed:
+                representation = default_rep
+        arm_pair = await experiments.arm_for_node(db, learner_id, node.id, session=session)
+        experiment_arm_id: str | None = None
+        arm_not_applied = False
+        if arm_pair is not None:
+            _, arm = arm_pair
+            experiment_arm_id = arm.id
+            if "socratic" in arm.config_json:
+                socratic = bool(arm.config_json["socratic"])
+            arm_rep = arm.config_json.get("representation")
+            if arm_rep:
+                if str(arm_rep) in allowed:
+                    representation = str(arm_rep)
+                else:  # never bypass the mastery gate (problem-first needs mastery ≥ 0.6)
+                    arm_not_applied = True
+
         activity = ACTIVITY_FOR_ACTION.get(action, ActivityType.NEW_MATERIAL)
-        events = EventWriter(db, ksession.event_context(session, activity=activity))
+        ctx = ksession.event_context(session, activity=activity)
+        if experiment_arm_id:
+            ctx = dataclasses.replace(ctx, experiment_arm=experiment_arm_id)
+        events = EventWriter(db, ctx)
         await events.emit(
             Verb.ASKED,
             ObjectType.TURN,
@@ -91,7 +131,9 @@ class TutorTurn:
                 action=str(action),
                 hint_level=hint_level,
                 prompt_version=prompts.PROMPT_VERSION,
-                questioning_style="socratic" if session.socratic else "explicit",
+                questioning_style="socratic" if socratic else "explicit",
+                experiment_arm=experiment_arm_id,
+                arm_not_applied=arm_not_applied,
             ).model_dump(),
         )
 
@@ -99,25 +141,25 @@ class TutorTurn:
         rtrace = await write_retrieval_trace(
             db, result.trace.model_copy(update={"learner_id": learner_id, "session_id": session.id})
         )
-        evidence = await tools.get_evidence(db, learner_id, node)
         packet = build_packet(
             policy=prompts.base_policy(),
             request=req.text,
             prompt_version=prompts.PROMPT_VERSION,
-            preferences=await tools.get_preferences(db, learner_id),
+            preferences=prefs,
             session_state=tools.session_state(
-                session, node, block_type=block_type, hint_level=hint_level
+                session, node, block_type=block_type, hint_level=hint_level, socratic=socratic
             ),
             learning_contract=await tools.get_learning_contract(db, node),
             evidence=evidence,
             retrieved=result.hits,
+            quarantine_below_trust=self.quarantine_below_trust,
             output_contract=actions.output_contract(
                 action,
                 hint_level=hint_level,
-                socratic=session.socratic,
-                representation=req.representation,
+                socratic=socratic,
+                representation=representation,
                 block_type=block_type,
-                mastery=float(evidence.get("mastery", 0.0)),
+                mastery=mastery,
             ),
         )
         messages = render_messages(packet)
@@ -136,7 +178,7 @@ class TutorTurn:
                 "skill_id": node.id,
                 "turn_id": turn_id,
             },
-            max_tokens=SOCRATIC_MAX_TOKENS if session.socratic else MAX_TOKENS_FOR_ACTION[action],
+            max_tokens=SOCRATIC_MAX_TOKENS if socratic else MAX_TOKENS_FOR_ACTION[action],
             events=events,
         )
         try:

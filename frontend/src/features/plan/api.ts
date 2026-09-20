@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, type Schemas } from '../../lib/api'
 
 export type Block = Schemas['Block']
@@ -27,4 +27,16 @@ export const BLOCK_LABELS: Record<string, string> = {
   interleaved_review: 'Interleaved review',
   domain_switch: 'Other domain',
   recap: 'Recap',
+}
+
+export function useReplan() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: { session_id: string; energy: number; from_index: number }) =>
+      apiFetch<Schemas['ReplanOut']>('/api/plan/replan', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['adaptations'] })
+      void qc.invalidateQueries({ queryKey: ['session'] })
+    },
+  })
 }

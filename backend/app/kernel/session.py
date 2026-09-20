@@ -26,6 +26,7 @@ def event_context(
         mode=Mode(session.mode),
         energy=session.energy,
         socratic=session.socratic,
+        experiment_arm=session.experiment_arm_id,
         domain=domain,
         activity_type=activity,
     )
@@ -39,7 +40,10 @@ async def start(
     energy: int,
     socratic: bool = False,
     planned_blocks: list[str] | None = None,
+    emit: bool = True,
 ) -> Session:
+    """Create the session row; `emit=False` lets the caller finish set-up (experiment arm, plan)
+    before the single `started` event is written with `emit_started`."""
     if not 1 <= energy <= 5:
         raise ValueError("energy must be 1-5")
     s = Session(
@@ -51,10 +55,15 @@ async def start(
     )
     db.add(s)
     await db.commit()
-    await EventWriter(db, event_context(s, domain=Domain.META, activity=ActivityType.CHAT)).emit(
-        Verb.STARTED, ObjectType.SESSION, s.id, context={"planned_blocks": planned_blocks or []}
-    )
+    if emit:
+        await emit_started(db, s, planned_blocks or [])
     return s
+
+
+async def emit_started(db: AsyncSession, s: Session, planned_blocks: list[str]) -> None:
+    await EventWriter(db, event_context(s, domain=Domain.META, activity=ActivityType.CHAT)).emit(
+        Verb.STARTED, ObjectType.SESSION, s.id, context={"planned_blocks": planned_blocks}
+    )
 
 
 async def get(db: AsyncSession, session_id: str) -> Session:

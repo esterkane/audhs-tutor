@@ -60,6 +60,9 @@ def _as_of(value: str | None) -> datetime:
 
 
 async def _reveal(db: DB, prompt: dict[str, Any]) -> tuple[str, list[str] | None, str]:
+    if prompt.get("type") == "vocab":
+        example = f" — e.g. {prompt['example']}" if prompt.get("example") else ""
+        return str(prompt.get("q", "")), None, f"{prompt.get('a', '')}{example}"
     a = await db.get(Assessment, str(prompt.get("assessment_id") or prompt.get("ref")))
     if a is None:
         return str(prompt.get("q", "")), None, ""
@@ -97,11 +100,21 @@ async def due(
     session_id: str = Query(...),
     as_of: str | None = Query(None, description="ISO time; dev/benchmark time travel"),
     all: bool = Query(False, description="Undo the minimum-viable cap for this call"),
+    domain: str | None = Query(
+        None, description="only this domain (e.g. language); default: all but language"
+    ),
 ) -> DueList:
     s = await ksession.get(db, session_id)
     now = _as_of(as_of)
     cap = memory.review_cap(s.mode, s.energy)
-    all_due = await memory.due_items(db, learner.id, now=now, cap=500)
+    all_due = await memory.due_items(
+        db,
+        learner.id,
+        now=now,
+        cap=500,
+        domain=domain,
+        exclude_domains=() if domain else ("language",),  # AI/ML review never mixes vocab in
+    )
     if all:
         cap = max(cap, len(all_due))
     elif len(all_due) > cap:

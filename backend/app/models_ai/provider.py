@@ -31,6 +31,7 @@ class TaskClass(StrEnum):
     CONFLICT_RESOLUTION = "conflict_resolution"
     JUDGE = "judge"
     EMBED = "embed"
+    RERANK = "rerank"
 
 
 class Message(BaseModel):

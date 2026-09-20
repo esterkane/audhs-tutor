@@ -33,8 +33,12 @@ describe('ParkingLotButton', () => {
     const box = await screen.findByLabelText(/tangent to park/i)
     fireEvent.change(box, { target: { value: 'look up RoPE' } })
     fireEvent.keyDown(box, { key: 'Enter' })
-    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
-    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit]
+    const posts = () =>
+      (fetchMock.mock.calls as unknown as Array<[string, RequestInit?]>).filter(
+        (c) => c[1]?.method === 'POST',
+      )
+    await waitFor(() => expect(posts()).toHaveLength(1))
+    const [url, init] = posts()[0] as [string, RequestInit]
     expect(url).toBe('/api/parking')
     expect(JSON.parse(init.body as string)).toEqual({
       session_id: 's1',

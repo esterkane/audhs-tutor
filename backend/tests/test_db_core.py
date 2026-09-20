@@ -38,6 +38,7 @@ EXPECTED_TABLES = {
     "adaptation_decision",
     "experiment",
     "experiment_arm",
+    "experiment_assignment",
     "experiment_observation",
     "tutor_trace",
     "retrieval_trace",

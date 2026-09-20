@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.events import EventWriter, Verb
-from app.db.models import MemoryState, ReviewItem, ReviewLog
+from app.db.models import MemoryState, ReviewItem, ReviewLog, SkillNode
 from app.schemas.common import ObjectType
 
 DESIRED_RETENTION = 0.9
@@ -103,12 +103,21 @@ async def ensure_item(
 
 
 async def due_items(
-    db: AsyncSession, learner_id: str, *, now: datetime | None = None, cap: int = 10
+    db: AsyncSession,
+    learner_id: str,
+    *,
+    now: datetime | None = None,
+    cap: int = 10,
+    domain: str | None = None,
+    exclude_domains: tuple[str, ...] = (),
 ) -> list[tuple[ReviewItem, MemoryState]]:
+    """Due cards, oldest first. Domain filters keep blocks pure (ADR-0006): the AI/ML review block
+    excludes language cards, the language block asks for them explicitly."""
     now = now or datetime.now(UTC)
     stmt = (
         select(ReviewItem, MemoryState)
         .join(MemoryState, MemoryState.review_item_id == ReviewItem.id)
+        .join(SkillNode, SkillNode.id == ReviewItem.skill_id)
         .where(
             ReviewItem.learner_id == learner_id,
             ReviewItem.active.is_(True),
@@ -117,6 +126,10 @@ async def due_items(
         .order_by(MemoryState.due)
         .limit(cap)
     )
+    if domain is not None:
+        stmt = stmt.where(SkillNode.domain == domain)
+    if exclude_domains:
+        stmt = stmt.where(SkillNode.domain.not_in(exclude_domains))
     return [(item, ms) for item, ms in (await db.execute(stmt)).all()]
 
 
@@ -146,6 +159,7 @@ async def review(
     card = Card.from_dict(cast(CardDict, ms.fsrs_card_json))
     retrievability = float(sched.get_card_retrievability(card, now))
     stability_before = card.stability
+    previous_review = ms.last_review  # the spacing interval starts at the last review (or creation)
     new_card, fsrs_log = sched.review_card(card, Rating(rating), review_datetime=now)
     ms.fsrs_card_json = dict(new_card.to_dict())
     ms.stability = new_card.stability
@@ -153,10 +167,9 @@ async def review(
     ms.state = _state_name(new_card)
     ms.due = _iso(new_card.due)
     ms.last_review = _iso(now)
+    since = previous_review or item.created_at
     days_since_learned = (
-        (now - datetime.fromisoformat(item.created_at)).total_seconds() / 86400
-        if item.created_at
-        else 0.0
+        max(0.0, (now - datetime.fromisoformat(since)).total_seconds() / 86400) if since else 0.0
     )
     log = ReviewLog(
         learner_id=learner_id,

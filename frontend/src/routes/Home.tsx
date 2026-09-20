@@ -1,8 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { Choice } from '../components/ui/choice'
+import { AdaptationCards } from '../features/adaptations/AdaptationCards'
+import { PromotedReminders } from '../features/parking/ParkedList'
+import { useExperiments } from '../features/experiments/api'
+import { usePreferences } from '../features/preferences/api'
 import { useCurrentSession, useStartSession } from '../features/session/api'
 import type { SessionOut } from '../lib/api'
 import { MODE_LABELS, useMode, type Mode } from '../stores/mode'
@@ -14,6 +18,20 @@ export function Home() {
   const [offer, setOffer] = useState<SessionOut | null>(null)
   const current = useCurrentSession()
   const resumable = current.data && current.data.id
+  const prefs = usePreferences()
+  const experiments = useExperiments()
+  const defaultMode = (prefs.data?.values as Record<string, unknown> | undefined)?.['session.default_mode']
+  const preselected = useRef(false)
+  // Preferences (incl. accepted adaptation cards) preselect the mode once per visit; the learner
+  // still chooses. Zustand is an external store, so syncing it from an effect is the intended way.
+  useEffect(() => {
+    if (sessionId || preselected.current || typeof defaultMode !== 'string') return
+    preselected.current = true
+    if (defaultMode !== useMode.getState().mode) useMode.getState().setMode(defaultMode as Mode)
+  }, [defaultMode, sessionId])
+  const nodeExperiment = (experiments.data?.experiments ?? []).find(
+    (e) => e.status === 'running' && e.unit_type === 'node',
+  )
 
   async function begin() {
     const s = await start.mutateAsync({ mode, energy, socratic })
@@ -48,6 +66,8 @@ export function Home() {
 
   return (
     <div className="grid gap-4">
+      <AdaptationCards />
+      <PromotedReminders />
       <Card>
         <CardTitle>Set up this session</CardTitle>
         <Choice<Mode>
@@ -60,6 +80,11 @@ export function Home() {
           value={mode}
           onChange={setMode}
         />
+        {typeof defaultMode === 'string' && defaultMode === mode && !sessionId && (
+          <p className="text-sm text-muted mt-1">
+            Preselected from your default (Preferences). Change it freely.
+          </p>
+        )}
         <div className="mt-4">
           <Choice<number>
             label="Energy (1 = running on empty, 5 = plenty)"
@@ -91,6 +116,12 @@ export function Home() {
             onChange={(v) => setSocratic(v === 'socratic')}
             columns={2}
           />
+          {nodeExperiment && (
+            <p className="text-sm text-muted mt-1" role="status">
+              An experiment is running ("{nodeExperiment.name}"): on assigned skills the experiment's style
+              replaces this choice. Stop it under Experiments to get full control back.
+            </p>
+          )}
         </div>
       </Card>
       <div className="flex gap-2 flex-wrap">

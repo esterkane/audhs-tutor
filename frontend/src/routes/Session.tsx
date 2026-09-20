@@ -12,18 +12,27 @@ import { useBlockEnd, useBlockStart, type Block } from '../features/plan/api'
 import { useKinds, usePrefer, useRender, type RenderOut } from '../features/representations/api'
 import { useCheckpoint, useSession } from '../features/session/api'
 import { SoftTimer } from '../features/session/SoftTimer'
+import { AdaptationCards } from '../features/adaptations/AdaptationCards'
+import { PracticePanel } from '../features/practice/PracticePanel'
+import { VocabPanel } from '../features/practice/VocabPanel'
+import { useReplan } from '../features/plan/api'
+import { useSensory } from '../features/sensory/useSensory'
 import { useTutorStream } from '../features/tutor/useTutorStream'
 import type { AttemptResult, SessionOut } from '../lib/api'
 import { SOFT_TIMER_MIN, useMode } from '../stores/mode'
 
-type Phase = 'teach' | 'assess' | 'challenge'
+type Phase = 'teach' | 'assess' | 'challenge' | 'practice'
+function withheldCount(dropped: string[] | undefined): number {
+  return (dropped ?? []).filter((d) => d.endsWith(':quarantined')).length
+}
+
 const PHASE_FOR_BLOCK: Record<string, Phase | 'review' | 'recap' | 'skip'> = {
-  movement_primer: 'skip',
+  movement_primer: 'practice',
   retrieval: 'review',
   new_material: 'teach',
   challenge: 'challenge',
   interleaved_review: 'review',
-  domain_switch: 'skip',
+  domain_switch: 'practice',
   recap: 'recap',
 }
 
@@ -49,19 +58,28 @@ export function Session() {
 }
 
 function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut }) {
-  const { skillId, setSkill, mode } = useMode()
+  const { skillId, setSkill, mode, setEnergy } = useMode()
   const nav = useNavigate()
   const checkpoint = useCheckpoint()
   const blockStart = useBlockStart()
   const blockEnd = useBlockEnd()
+  const replan = useReplan()
+  const { notifications } = useSensory()
   const cp = data.checkpoint as Checkpoint
-  const [phase, setPhase] = useState<Phase>(() =>
-    cp?.phase === 'assess' || cp?.phase === 'challenge' ? cp.phase : 'teach',
-  )
+  const [phase, setPhase] = useState<Phase>(() => {
+    if (cp?.phase === 'assess' || cp?.phase === 'challenge' || cp?.phase === 'practice') return cp.phase
+    if (typeof cp?.block_index !== 'number') {
+      const first = ((data.plan ?? []) as Block[])[0]
+      if (first && first.type === 'movement_primer') return 'practice'
+    }
+    return 'teach'
+  })
   const [hintCount, setHintCount] = useState(0)
-  const [blockIndex, setBlockIndex] = useState<number | null>(() =>
-    typeof cp?.block_index === 'number' ? cp.block_index : null,
-  )
+  const [blockIndex, setBlockIndex] = useState<number | null>(() => {
+    if (typeof cp?.block_index === 'number') return cp.block_index
+    const first = ((data.plan ?? []) as Block[])[0]
+    return first && first.type === 'movement_primer' && !cp?.phase ? 0 : null
+  })
   const [graspPassed, setGraspPassed] = useState(false)
   const [blockNote, setBlockNote] = useState<string | null>(null)
   const skill = data.next_skill
@@ -86,7 +104,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
     })
   }
 
-  async function finishBlock(reason: 'finished' | 'save_and_stop' | 'switch_early') {
+  async function finishBlock(reason: 'finished' | 'save_and_stop' | 'switch_early' | 'skipped') {
     if (current < 0 || !currentBlock) {
       nav('/recap')
       return
@@ -130,12 +148,52 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
         minutes={timerMinutes}
         onSaveStop={() => void finishBlock('save_and_stop')}
         onFinishBlock={() => void finishBlock('finished')}
+        notify={notifications}
       />
+      <AdaptationCards origin="planner" />
       <Card>
         <PlanStrip blocks={plan} current={current} />
+        {data.experiment && (
+          <p className="text-sm mt-2" role="status">
+            Experiment "{String(data.experiment.name)}":{' '}
+            {data.experiment.arm
+              ? `this session runs the "${String(data.experiment.arm)}" arm`
+              : 'each skill keeps the arm it was assigned to (shown per turn)'}
+            .
+          </p>
+        )}
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          <span id="energy-now">Energy now:</span>
+          <div role="group" aria-labelledby="energy-now" className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((n) => (
+              <Button
+                key={n}
+                size="sm"
+                pressed={data.energy === n}
+                disabled={replan.isPending}
+                aria-label={`Energy ${n}`}
+                onClick={() => {
+                  if (n === data.energy) return
+                  setEnergy(n)
+                  void replan.mutateAsync({
+                    session_id: sessionId!,
+                    energy: n,
+                    from_index: current >= 0 ? current : 0,
+                  })
+                }}
+              >
+                {n}
+              </Button>
+            ))}
+          </div>
+          <span className="text-muted">
+            A change re-plans the remaining blocks as a suggestion, never silently.
+          </span>
+        </div>
         <CardTitle className="mt-3">
-          {phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}:{' '}
-          {skill?.title ?? '…'}
+          {phase === 'practice'
+            ? `${currentBlock?.domain === 'language' ? 'Language' : currentBlock?.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
+            : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}
         </CardTitle>
         {skill && phase === 'teach' && (
           <p className="text-sm text-muted">
@@ -175,6 +233,18 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
           sessionId={sessionId}
           skillId={currentSkillId}
           onDone={() => void finishBlock('finished')}
+        />
+      )}
+      {phase === 'practice' && currentBlock && currentBlock.domain === 'language' && (
+        <VocabPanel sessionId={sessionId} onDone={() => void finishBlock('finished')} />
+      )}
+      {phase === 'practice' && currentBlock && currentBlock.domain !== 'language' && (
+        <PracticePanel
+          sessionId={sessionId}
+          domain={currentBlock.domain === 'guitar' ? 'guitar' : 'movement'}
+          plannedMin={currentBlock.planned_min}
+          onDone={() => void finishBlock('finished')}
+          onSkip={() => void finishBlock('skipped')}
         />
       )}
     </div>
@@ -266,6 +336,8 @@ function TeachPanel({
             <p className="text-xs text-muted mb-2">
               {meta.action}
               {meta.action === 'hint' ? ` · level ${meta.hint_level}` : ''} · {meta.questioning_style}
+              {meta.experiment_arm ? ' · set by the experiment arm' : ''}
+              {meta.arm_not_applied ? ' (representation kept: not yet at the mastery this arm needs)' : ''}
             </p>
           )}
           {error ? (
@@ -298,7 +370,14 @@ function TeachPanel({
               </ol>
             </div>
           )}
-          {done && done.sources.length === 0 && (
+          {done && withheldCount(done.dropped) > 0 && (
+            <p className="text-sm text-muted mt-1" role="status">
+              {withheldCount(done.dropped)} source{withheldCount(done.dropped) === 1 ? '' : 's'} withheld:
+              flagged text from a web or untrusted tier is not sent to the tutor. You can inspect and re-tier
+              it under Corpus.
+            </p>
+          )}
+          {done && done.sources.length === 0 && withheldCount(done.dropped) === 0 && (
             <p className="text-sm text-muted mt-2">no course source for this</p>
           )}
         </Card>

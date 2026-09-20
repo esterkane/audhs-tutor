@@ -29,6 +29,8 @@ class TurnMeta(BaseModel):
     hint_level: int
     prompt_version: str
     questioning_style: str
+    experiment_arm: str | None = None
+    arm_not_applied: bool = False  # the arm's representation was outside the mastery gate
 
 
 class TurnDone(BaseModel):

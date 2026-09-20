@@ -225,6 +225,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/plan/replan': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Energy check-in mid-session: records the new energy and proposes a re-scaled plan */
+    post: operations['replan_api_plan_replan_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/preferences': {
     parameters: {
       query?: never
@@ -482,10 +499,570 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/parking/{item_id}/promote': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Promote a parked tangent: to the next session (Home reminder) or onto a skill node */
+    post: operations['promote_api_parking__item_id__promote_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/parking/{item_id}/drop': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Drop a parked or promoted item */
+    post: operations['drop_api_parking__item_id__drop_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/corpus/stats': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Corpus overview: courses, chunks, flags, index state */
+    get: operations['stats_api_corpus_stats_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/corpus/documents': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Documents (latest version each), optionally by course */
+    get: operations['documents_api_corpus_documents_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/corpus/ingest': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Ingest a local file or course folder (idempotent by content hash) */
+    post: operations['ingest_api_corpus_ingest_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/corpus/documents/{document_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Remove a document (all versions) from SQLite and the index */
+    delete: operations['forget_api_corpus_documents__document_id__delete']
+    options?: never
+    head?: never
+    /** Re-decide a document's trust tier (provenance + index payload; no re-ingest) */
+    patch: operations['retier_api_corpus_documents__document_id__patch']
+    trace?: never
+  }
+  '/api/corpus/search': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Inspect hybrid retrieval: fused, dense, sparse and rerank scores
+     * @description With `tutor_view`, the tutor's trust floor applies and hits the tutor would quarantine are
+     *     marked (kept visible, so the owner can see what was withheld).
+     */
+    post: operations['search_api_corpus_search_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/adaptations': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Open proposal cards */
+    get: operations['pending_api_adaptations_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/adaptations/observe': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Run the pattern rules now and return the open cards */
+    post: operations['observe_api_adaptations_observe_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/adaptations/{adaptation_id}/decide': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Try (this session) / Make default / No (ask in 14 days) / Don't suggest again */
+    post: operations['decide_api_adaptations__adaptation_id__decide_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/adaptations/{adaptation_id}/undo': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Revert an applied adaptation to the previous value (logged as undone) */
+    post: operations['undo_api_adaptations__adaptation_id__undo_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/adaptations/log': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Adaptation log: every card and what happened to it */
+    get: operations['log_api_adaptations_log_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/models': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Registry rows (defaults seeded, readiness refreshed) */
+    get: operations['list_models_api_models_get']
+    put?: never
+    /** Add a registry row (nothing is downloaded yet) */
+    post: operations['add_api_models_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/models/search': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Search Hugging Face (GGUF / mlx-community filters) */
+    get: operations['search_api_models_search_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/models/{registry_id}/pull': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Download in the background (status: downloading → ready) */
+    post: operations['pull_api_models__registry_id__pull_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/models/{registry_id}/bench': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Benchmark in the background (tok/s, first token, tutoring checks) */
+    post: operations['bench_api_models__registry_id__bench_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/models/jobs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Background pull/bench jobs with their progress lines */
+    get: operations['jobs_api_models_jobs_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/models/{registry_id}/assign': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Route a TaskClass to this model for the owner (must be ready) */
+    post: operations['assign_api_models__registry_id__assign_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/models/{registry_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Remove the artefact and mark the row removed */
+    delete: operations['remove_api_models__registry_id__delete']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/models/routing': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** TaskClass → chain with readiness; what each task will actually use */
+    get: operations['routing_api_models_routing_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/experiments': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Experiments, templates and available metrics */
+    get: operations['list_experiments_api_experiments_get']
+    put?: never
+    /** Create an experiment by hand */
+    post: operations['create_api_experiments_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/experiments/from-template': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Create from a template (e.g. socratic-vs-explicit) */
+    post: operations['from_template_api_experiments_from_template_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/experiments/{experiment_id}/start': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Start: new units get assigned from now on */
+    post: operations['start_api_experiments__experiment_id__start_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/experiments/{experiment_id}/stop': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Stop: freeze the window; results stay readable */
+    post: operations['stop_api_experiments__experiment_id__stop_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/experiments/{experiment_id}/results': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Per-arm outcomes from the event log, read as hypotheses */
+    get: operations['results_api_experiments__experiment_id__results_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/practice': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Log a practice block (movement / guitar / language) as a practiced event */
+    post: operations['log_api_practice_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/practice/activities': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Concrete activity options per domain (2–3 choices) */
+    get: operations['activities_api_practice_activities_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/vocab': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Vocabulary decks with card and due counts */
+    get: operations['decks_api_vocab_get']
+    put?: never
+    /** Add a vocabulary card (FSRS-scheduled, reviewed in the language block) */
+    post: operations['add_api_vocab_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /** ActivitiesOut */
+    ActivitiesOut: {
+      /** Activities */
+      activities: {
+        [key: string]: string[]
+      }
+    }
+    /** AddIn */
+    AddIn: {
+      /** Source */
+      source: string
+      /** Repo Id */
+      repo_id: string
+      /** File */
+      file?: string | null
+      /** Tag */
+      tag?: string | null
+      /** Registry Id */
+      registry_id?: string | null
+      /** Display Name */
+      display_name?: string | null
+      /**
+       * Role
+       * @default chat
+       */
+      role: string
+      /** Quant */
+      quant?: string | null
+      /** Context Len */
+      context_len?: number | null
+      /**
+       * Price In
+       * @default 0
+       */
+      price_in: number
+      /**
+       * Price Out
+       * @default 0
+       */
+      price_out: number
+    }
+    /** ArmIn */
+    ArmIn: {
+      /** Name */
+      name: string
+      /** Config */
+      config?: {
+        [key: string]: unknown
+      }
+    }
+    /** ArmOut */
+    ArmOut: {
+      /** Id */
+      id: string
+      /** Name */
+      name: string
+      /** Config */
+      config: {
+        [key: string]: unknown
+      }
+      /** Assigned */
+      assigned: number
+    }
+    /** ArmStatsOut */
+    ArmStatsOut: {
+      /** Arm Id */
+      arm_id: string
+      /** Name */
+      name: string
+      /** N */
+      n: number
+      /** Mean */
+      mean: number | null
+      /** Sd */
+      sd: number | null
+    }
     /** AssessmentView */
     AssessmentView: {
       /** Id */
@@ -505,6 +1082,11 @@ export interface components {
        * @default true
        */
       confidence_required: boolean
+    }
+    /** AssignIn */
+    AssignIn: {
+      /** Task */
+      task: string
     }
     /** AttemptRequest */
     AttemptRequest: {
@@ -596,6 +1178,8 @@ export interface components {
        * @default false
        */
       grasp_check_required: boolean
+      /** Domain */
+      domain?: string | null
     }
     /** BlockEvent */
     BlockEvent: {
@@ -626,6 +1210,13 @@ export interface components {
       message: string
       /** Next Index */
       next_index: number | null
+    }
+    /** ChainEntry */
+    ChainEntry: {
+      /** Registry Id */
+      registry_id: string
+      /** Status */
+      status: string
     }
     /** ChallengeStart */
     ChallengeStart: {
@@ -672,6 +1263,41 @@ export interface components {
         [key: string]: unknown
       }
     }
+    /** CorpusStats */
+    CorpusStats: {
+      retrieval: components['schemas']['RetrievalConfigOut']
+      /** Documents */
+      documents: number
+      /** Versions */
+      versions: number
+      /** Chunks */
+      chunks: number
+      /** Flagged Chunks */
+      flagged_chunks: number
+      /** Courses */
+      courses: components['schemas']['CourseStats'][]
+      index: components['schemas']['IndexStateOut'] | null
+      /**
+       * Index Count
+       * @description live count from the retrieval index
+       */
+      index_count?: number | null
+    }
+    /** CourseStats */
+    CourseStats: {
+      /** Course */
+      course: string
+      /** Documents */
+      documents: number
+      /** Chunks */
+      chunks: number
+      /** Flagged */
+      flagged: number
+      /** Source Types */
+      source_types: string[]
+      /** Trust Tiers */
+      trust_tiers: number[]
+    }
     /** CriterionResult */
     CriterionResult: {
       /** Criterion */
@@ -684,6 +1310,57 @@ export interface components {
        */
       evidence: string
     }
+    /** DecideIn */
+    DecideIn: {
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: 'try' | 'default' | 'no' | 'never'
+      /** Session Id */
+      session_id?: string | null
+    }
+    /** DeckList */
+    DeckList: {
+      /** Decks */
+      decks: {
+        [key: string]: unknown
+      }[]
+      /** Due Total */
+      due_total: number
+    }
+    /** DocumentList */
+    DocumentList: {
+      /** Documents */
+      documents: components['schemas']['DocumentOut'][]
+    }
+    /** DocumentOut */
+    DocumentOut: {
+      /** Id */
+      id: string
+      /** Title */
+      title: string
+      /** Source Type */
+      source_type: string
+      /** Uri */
+      uri: string
+      /** Course */
+      course: string | null
+      /** Section */
+      section: string | null
+      /** Lecture */
+      lecture: string | null
+      /** Version */
+      version: number
+      /** Chunks */
+      chunks: number
+      /** Flagged */
+      flagged: number
+      /** Trust Tier */
+      trust_tier: number
+      /** Ingested At */
+      ingested_at: string | null
+    }
     /** DueList */
     DueList: {
       /** Items */
@@ -694,6 +1371,66 @@ export interface components {
       total_due: number
       /** As Of */
       as_of: string
+    }
+    /** ExperimentIn */
+    ExperimentIn: {
+      /** Name */
+      name: string
+      /**
+       * Hypothesis
+       * @default
+       */
+      hypothesis: string
+      /** Metric */
+      metric: string
+      /**
+       * Unit Type
+       * @default node
+       */
+      unit_type: string
+      /** Arms */
+      arms: components['schemas']['ArmIn'][]
+    }
+    /** ExperimentList */
+    ExperimentList: {
+      /** Experiments */
+      experiments: components['schemas']['ExperimentOut'][]
+      /** Templates */
+      templates: {
+        [key: string]: unknown
+      }[]
+      /** Metrics */
+      metrics: string[]
+    }
+    /** ExperimentOut */
+    ExperimentOut: {
+      /** Id */
+      id: string
+      /** Name */
+      name: string
+      /** Hypothesis */
+      hypothesis: string
+      /** Metric */
+      metric: string
+      /** Unit Type */
+      unit_type: string
+      /** Status */
+      status: string
+      /** Created At */
+      created_at: string
+      /** Started At */
+      started_at: string | null
+      /** Ended At */
+      ended_at: string | null
+      /** Arms */
+      arms: components['schemas']['ArmOut'][]
+    }
+    /** ForgetOut */
+    ForgetOut: {
+      /** Document Id */
+      document_id: string
+      /** Chunks Removed */
+      chunks_removed: number
     }
     /** HTTPValidationError */
     HTTPValidationError: {
@@ -708,6 +1445,163 @@ export interface components {
       env: string
       /** Db */
       db: string
+    }
+    /** HfSearchHit */
+    HfSearchHit: {
+      /** Repo Id */
+      repo_id: string
+      /** Downloads */
+      downloads: number | null
+      /** Likes */
+      likes: number | null
+      /** Tags */
+      tags: string[]
+    }
+    /** HfSearchOut */
+    HfSearchOut: {
+      /** Hits */
+      hits: components['schemas']['HfSearchHit'][]
+    }
+    /** HistoryList */
+    HistoryList: {
+      /** Entries */
+      entries: components['schemas']['HistoryOut'][]
+    }
+    /** HistoryOut */
+    HistoryOut: {
+      /** Id */
+      id: string
+      /** What */
+      what: string
+      /** Why */
+      why: string
+      /** Origin */
+      origin: string
+      /** Pattern */
+      pattern: string
+      /** Pref */
+      pref: string
+      /** Value */
+      value: unknown
+      /** Previous */
+      previous: unknown | null
+      /** Proposed At */
+      proposed_at: string
+      /** Decision */
+      decision: string | null
+      /** Decided At */
+      decided_at: string | null
+      /** Undone At */
+      undone_at: string | null
+      /** In Effect */
+      in_effect: boolean
+      /** Trial */
+      trial: boolean
+    }
+    /** IndexStateOut */
+    IndexStateOut: {
+      /** Collection */
+      collection: string
+      /** Embedding Registry Id */
+      embedding_registry_id: string
+      /** Embedding Version */
+      embedding_version: number
+      /** Dims */
+      dims: number
+      /** Chunk Count */
+      chunk_count: number
+      /** Last Reindex */
+      last_reindex: string | null
+    }
+    /** IngestDocResult */
+    IngestDocResult: {
+      /** Document Id */
+      document_id: string
+      /** Title */
+      title: string
+      /** Course */
+      course: string | null
+      /** Source Type */
+      source_type: string
+      /** Version */
+      version: number
+      /** Chunks */
+      chunks: number
+      /** Changed */
+      changed: boolean
+      /** Deduped */
+      deduped: number
+      /** Flagged */
+      flagged: number
+      /** Indexed */
+      indexed: number
+      /**
+       * Trust Updated
+       * @default false
+       */
+      trust_updated: boolean
+      /**
+       * Reverted
+       * @default false
+       */
+      reverted: boolean
+    }
+    /** IngestOut */
+    IngestOut: {
+      /** Summary */
+      summary: {
+        [key: string]: unknown
+      }
+      /** Results */
+      results: components['schemas']['IngestDocResult'][]
+      /** Skipped */
+      skipped: components['schemas']['SkippedFile'][]
+    }
+    /** IngestRequest */
+    IngestRequest: {
+      /**
+       * Path
+       * @description local file or folder (Udemy layout: Course/Section/Lecture)
+       */
+      path: string
+      /** Course */
+      course?: string | null
+      /**
+       * Trust Tier
+       * @default 2
+       */
+      trust_tier: number
+      /** Source Type */
+      source_type?: string | null
+      /**
+       * Index
+       * @default true
+       */
+      index: boolean
+    }
+    /** JobList */
+    JobList: {
+      /** Jobs */
+      jobs: components['schemas']['JobOut'][]
+    }
+    /** JobOut */
+    JobOut: {
+      /** Id */
+      id: string
+      /** Kind */
+      kind: string
+      /** Registry Id */
+      registry_id: string
+      /** Status */
+      status: string
+      /** Log */
+      log?: string[]
+      /** Error */
+      error?: string | null
+      /** Result */
+      result?: {
+        [key: string]: unknown
+      } | null
     }
     /** KindsOut */
     KindsOut: {
@@ -742,11 +1636,70 @@ export interface components {
       /** Mermaid */
       mermaid: string
     }
+    /** MetricOut */
+    MetricOut: {
+      /** Metric */
+      metric: string
+      /** Lower Is Better */
+      lower_is_better: boolean
+      /** Arms */
+      arms: components['schemas']['ArmStatsOut'][]
+      /** Difference */
+      difference: number | null
+      /** Ci95 */
+      ci95: number[] | null
+      /** Reading */
+      reading: string
+    }
     /**
      * Mode
      * @enum {string}
      */
     Mode: 'novelty' | 'steady' | 'low_capacity'
+    /** ModelList */
+    ModelList: {
+      /** Models */
+      models: components['schemas']['ModelRow'][]
+    }
+    /** ModelRow */
+    ModelRow: {
+      /** Id */
+      id: string
+      /** Display Name */
+      display_name: string
+      /** Source */
+      source: string
+      /** Repo Id */
+      repo_id: string
+      /** File Or Tag */
+      file_or_tag: string | null
+      /** Runtime */
+      runtime: string
+      /** Role */
+      role: string
+      /** Quant */
+      quant: string | null
+      /** Size Gb */
+      size_gb: number | null
+      /** Context Len */
+      context_len: number | null
+      /** Licence */
+      licence: string | null
+      /** Status */
+      status: string
+      /** Benchmark */
+      benchmark: {
+        [key: string]: unknown
+      } | null
+      /** Price In Per Mtok */
+      price_in_per_mtok: number
+      /** Price Out Per Mtok */
+      price_out_per_mtok: number
+      /** Local Path */
+      local_path: string | null
+      /** Updated At */
+      updated_at: string
+    }
     /** ModesOut */
     ModesOut: {
       /** Modes */
@@ -784,6 +1737,8 @@ export interface components {
       node_id: string | null
       /** Status */
       status: string
+      /** Promoted To */
+      promoted_to?: string | null
       /** Created At */
       created_at: string
     }
@@ -804,6 +1759,34 @@ export interface components {
        * @default planner.v1
        */
       policy_version: string
+    }
+    /** PracticeIn */
+    PracticeIn: {
+      /** Session Id */
+      session_id?: string | null
+      /** Domain */
+      domain: string
+      /** Activity */
+      activity: string
+      /** Duration Min */
+      duration_min: number
+      /** Self Rating */
+      self_rating: number
+      /** Notes */
+      notes?: string | null
+    }
+    /** PracticeOut */
+    PracticeOut: {
+      /** Event Id */
+      event_id: string
+      /** Domain */
+      domain: string
+      /** Activity */
+      activity: string
+      /** Duration Min */
+      duration_min: number
+      /** Self Rating */
+      self_rating: number
     }
     /** PrefOut */
     PrefOut: {
@@ -839,6 +1822,45 @@ export interface components {
       /** Reason */
       reason?: string | null
     }
+    /** PromoteIn */
+    PromoteIn: {
+      /**
+       * Promoted To
+       * @description 'next_session' (shown on Home until done) or a skill node id
+       * @default next_session
+       */
+      promoted_to: string
+    }
+    /** ProposalList */
+    ProposalList: {
+      /** Proposals */
+      proposals: components['schemas']['ProposalOut'][]
+    }
+    /** ProposalOut */
+    ProposalOut: {
+      /** Id */
+      id: string
+      /** What */
+      what: string
+      /** Why */
+      why: string
+      /** Origin */
+      origin: string
+      /** Pattern */
+      pattern: string
+      /** Pref */
+      pref: string
+      /** Value */
+      value: unknown
+      /** Evidence */
+      evidence: {
+        [key: string]: unknown
+      }
+      /** Proposed At */
+      proposed_at: string
+      /** Reversible */
+      reversible: boolean
+    }
     /** RenderIn */
     RenderIn: {
       /** Session Id */
@@ -869,6 +1891,58 @@ export interface components {
       cached: boolean
       /** Sources */
       sources: string[]
+    }
+    /** ReplanIn */
+    ReplanIn: {
+      /** Session Id */
+      session_id: string
+      /** Energy */
+      energy: number
+      /**
+       * From Index
+       * @description first block that may change
+       * @default 0
+       */
+      from_index: number
+    }
+    /** ReplanOut */
+    ReplanOut: {
+      /** Proposal Id */
+      proposal_id: string | null
+      /** Energy */
+      energy: number
+      plan: components['schemas']['Plan']
+      /** Changed */
+      changed: boolean
+    }
+    /** ResultsOut */
+    ResultsOut: {
+      experiment: components['schemas']['ExperimentOut']
+      /** Primary Metric */
+      primary_metric: string
+      /** Metrics */
+      metrics: components['schemas']['MetricOut'][]
+      /** Units */
+      units: {
+        [key: string]: unknown
+      }[]
+    }
+    /** RetierRequest */
+    RetierRequest: {
+      /** Trust Tier */
+      trust_tier: number
+    }
+    /** RetrievalConfigOut */
+    RetrievalConfigOut: {
+      /** Collection */
+      collection: string
+      /**
+       * Reranker
+       * @description registry model used after fusion
+       */
+      reranker?: string | null
+      /** Max Per Document */
+      max_per_document: number
     }
     /** ReviewItemOut */
     ReviewItemOut: {
@@ -915,6 +1989,105 @@ export interface components {
       /** Latency Ms */
       latency_ms?: number | null
     }
+    /** RouteRow */
+    RouteRow: {
+      /** Task */
+      task: string
+      /** Override */
+      override: string | null
+      /** Chain */
+      chain: components['schemas']['ChainEntry'][]
+      /** Resolved */
+      resolved: string | null
+    }
+    /** RoutingOut */
+    RoutingOut: {
+      /** Profile */
+      profile: string
+      /** Routes */
+      routes: components['schemas']['RouteRow'][]
+    }
+    /** SearchHit */
+    SearchHit: {
+      /** Chunk Id */
+      chunk_id: string
+      /** Rank */
+      rank: number
+      /** Score */
+      score: number
+      /** Dense Score */
+      dense_score: number | null
+      /** Sparse Score */
+      sparse_score: number | null
+      /** Rerank Score */
+      rerank_score?: number | null
+      /** Citation */
+      citation: string
+      /** Course */
+      course: string | null
+      /** Section */
+      section: string | null
+      /** Lecture */
+      lecture: string | null
+      /** Source Type */
+      source_type: string
+      /** Trust Tier */
+      trust_tier: number
+      /** T Start */
+      t_start: number | null
+      /** Flagged */
+      flagged: string[]
+      /**
+       * Quarantined
+       * @default false
+       */
+      quarantined: boolean
+      /** Text */
+      text: string
+    }
+    /** SearchOut */
+    SearchOut: {
+      /** Query */
+      query: string
+      /** Hits */
+      hits: components['schemas']['SearchHit'][]
+      /** Latency Ms */
+      latency_ms: number
+      /** Reranked */
+      reranked: boolean
+      /** Flagged Patterns */
+      flagged_patterns: string[]
+      /** Collection */
+      collection: string
+    }
+    /** SearchRequest */
+    SearchRequest: {
+      /** Query */
+      query: string
+      /**
+       * K
+       * @default 8
+       */
+      k: number
+      /** Course */
+      course?: string | null
+      /** Section */
+      section?: string | null
+      /** Lecture */
+      lecture?: string | null
+      /** Source Type */
+      source_type?: string | null
+      /** Skill Ids */
+      skill_ids?: string[] | null
+      /** Min Trust Tier */
+      min_trust_tier?: number | null
+      /**
+       * Tutor View
+       * @description apply the tutor's trust floor and mark quarantined hits
+       * @default false
+       */
+      tutor_view: boolean
+    }
     /** SessionEnd */
     SessionEnd: {
       /** Energy After */
@@ -953,6 +2126,10 @@ export interface components {
       }[]
       /** Checkpoint */
       checkpoint: {
+        [key: string]: unknown
+      } | null
+      /** Experiment */
+      experiment?: {
         [key: string]: unknown
       } | null
     }
@@ -1003,6 +2180,13 @@ export interface components {
         [key: string]: unknown
       }
     }
+    /** SkippedFile */
+    SkippedFile: {
+      /** Path */
+      path: string
+      /** Reason */
+      reason: string
+    }
     /** SourceRef */
     SourceRef: {
       /** Chunk Id */
@@ -1020,6 +2204,11 @@ export interface components {
        * @default false
        */
       cited: boolean
+    }
+    /** TemplateIn */
+    TemplateIn: {
+      /** Template */
+      template: string
     }
     /** TurnDone */
     TurnDone: {
@@ -1077,6 +2266,30 @@ export interface components {
       input?: unknown
       /** Context */
       ctx?: Record<string, never>
+    }
+    /** VocabIn */
+    VocabIn: {
+      /** Lang */
+      lang: string
+      /** Word */
+      word: string
+      /** Translation */
+      translation: string
+      /** Example */
+      example?: string | null
+    }
+    /** VocabItemOut */
+    VocabItemOut: {
+      /** Item Id */
+      item_id: string
+      /** Lang */
+      lang: string
+      /** Word */
+      word: string
+      /** Translation */
+      translation: string
+      /** Due */
+      due: string
     }
   }
   responses: never
@@ -1439,6 +2652,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['BlockOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  replan_api_plan_replan_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReplanIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReplanOut']
         }
       }
       /** @description Validation Error */
@@ -1861,6 +3107,8 @@ export interface operations {
         as_of?: string | null
         /** @description Undo the minimum-viable cap for this call */
         all?: boolean
+        /** @description only this domain (e.g. language); default: all but language */
+        domain?: string | null
       }
       header?: never
       path?: never
@@ -1976,6 +3224,934 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ParkOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  promote_api_parking__item_id__promote_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        item_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PromoteIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ParkOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  drop_api_parking__item_id__drop_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        item_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ParkOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  stats_api_corpus_stats_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorpusStats']
+        }
+      }
+    }
+  }
+  documents_api_corpus_documents_get: {
+    parameters: {
+      query?: {
+        course?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DocumentList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  ingest_api_corpus_ingest_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['IngestRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IngestOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  forget_api_corpus_documents__document_id__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ForgetOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  retier_api_corpus_documents__document_id__patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RetierRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DocumentOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  search_api_corpus_search_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SearchRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SearchOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  pending_api_adaptations_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ProposalList']
+        }
+      }
+    }
+  }
+  observe_api_adaptations_observe_post: {
+    parameters: {
+      query?: {
+        session_id?: string | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ProposalList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  decide_api_adaptations__adaptation_id__decide_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        adaptation_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DecideIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HistoryList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  undo_api_adaptations__adaptation_id__undo_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        adaptation_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HistoryList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  log_api_adaptations_log_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HistoryList']
+        }
+      }
+    }
+  }
+  list_models_api_models_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelList']
+        }
+      }
+    }
+  }
+  add_api_models_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AddIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelRow']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  search_api_models_search_get: {
+    parameters: {
+      query: {
+        q: string
+        gguf?: boolean
+        mlx?: boolean
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HfSearchOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  pull_api_models__registry_id__pull_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        registry_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['JobOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  bench_api_models__registry_id__bench_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        registry_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['JobOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  jobs_api_models_jobs_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['JobList']
+        }
+      }
+    }
+  }
+  assign_api_models__registry_id__assign_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        registry_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AssignIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RoutingOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  remove_api_models__registry_id__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        registry_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ModelRow']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  routing_api_models_routing_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['RoutingOut']
+        }
+      }
+    }
+  }
+  list_experiments_api_experiments_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExperimentList']
+        }
+      }
+    }
+  }
+  create_api_experiments_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ExperimentIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExperimentOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  from_template_api_experiments_from_template_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TemplateIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExperimentOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  start_api_experiments__experiment_id__start_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        experiment_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExperimentOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  stop_api_experiments__experiment_id__stop_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        experiment_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExperimentOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  results_api_experiments__experiment_id__results_get: {
+    parameters: {
+      query?: {
+        record?: boolean
+      }
+      header?: never
+      path: {
+        experiment_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ResultsOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  log_api_practice_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PracticeIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PracticeOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  activities_api_practice_activities_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ActivitiesOut']
+        }
+      }
+    }
+  }
+  decks_api_vocab_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DeckList']
+        }
+      }
+    }
+  }
+  add_api_vocab_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['VocabIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VocabItemOut']
         }
       }
       /** @description Validation Error */

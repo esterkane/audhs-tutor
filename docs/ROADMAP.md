@@ -1,6 +1,6 @@
 # Roadmap
 
-**Current stage:** 2 — Learning kernel complete **done 2026-09-19** (benchmark 4/4) → next: Stage 3 (serious knowledge system)
+**Current stage:** 4 — Adaptive learning UX **done 2026-09-19** (benchmark 5/5; the two-week experiment is simulated — run it for real) → next: Stage 5 (frontier models + voice)
 
 Order follows the Architecture Review Brief: prove the learning loop first, then the kernel, then the knowledge system, then adaptive UX, then frontier+voice, then offline agents. Each stage: slices (`/feature-slice`), a benchmark script, exit criteria.
 
@@ -51,18 +51,34 @@ Benchmark: planner produces valid plans for all mode×energy combos; representat
 - Not yet exercised by the benchmark: the plan strip in the UI (checked manually in the browser pane), block events over HTTP (covered by `tests/test_stage2_api.py`).
 
 ## Stage 3 — Serious knowledge system
-- [ ] `ingest-pipeline` — Udemy captions/slides/notebooks/PDFs → normalise → dedupe → semantic chunk → provenance → SQLite + Qdrant (dense + sparse); idempotent by content hash; `reindex.py`.
-- [ ] `hybrid-retrieval` — server-side fusion, optional local reranker, trust/provenance filter, node/course payload filters; `retrieval_trace`.
-- [ ] `retrieval-evals` — labelled queries, recall@k, citation coverage.
-- [ ] `untrusted-content-guard` — tagged data blocks, instruction-pattern flagging, tests with poisoned chunks.
+- [x] `ingest-pipeline` — Udemy captions/slides/notebooks/PDFs → normalise → dedupe → semantic chunk → provenance → SQLite + Qdrant (dense + sparse); idempotent by content hash; `reindex.py`.
+- [x] `hybrid-retrieval` — server-side fusion, optional local reranker, trust/provenance filter, node/course payload filters; `retrieval_trace`.
+- [x] `retrieval-evals` — labelled queries, recall@k, citation coverage.
+- [x] `untrusted-content-guard` — tagged data blocks, instruction-pattern flagging, tests with poisoned chunks.
 Benchmark: ≥ 5 courses ingested; recall@8 ≥ 0.8 on labelled set; poisoned-chunk tests pass; p95 search < 300 ms at current corpus size; Qdrant RAM < 1 GB.
+**Measured 2026-09-19** (`make bench s=3`, isolated `data/bench3.db` + throwaway collection `corpus_v903`, nomic-embed-text 768d + BM25, no reranker; raw in `evals/results/bench_stage3.json`):
+- A ingest: 5 courses (`seeds/courses`: VTT, SRT, ipynb, markdown, text) → 17 documents, 34 chunks in 0.9 s, 0 duplicates, 0 flagged; forum dump at trust 0 → 1 chunk, flagged; re-run → 0 new versions, 0 re-indexed; index count = 35 — PASS
+- B recall@8 on 32 labelled queries: **1.000** (recall@4 1.000, recall@1 0.906, MRR 0.948, citation coverage 0.961; the misses at k=1 are neighbouring sections of the right lecture) — PASS (≥ 0.8). Corpus is small; `make eval-retrieval` re-measures against any DB/collection and fails on a > 0.05 regression vs `evals/results/retrieval_baseline.json`
+- C poisoned-chunk tests (`tests/test_untrusted_guard.py` + data-block test, end-to-end through `TutorTurn` and the grader): 5/5 — PASS
+- D hybrid search latency, 96 searches: p50 **29 ms**, p95 **35 ms**, max 37 ms — PASS (< 300 ms)
+- E Qdrant RAM: `memory_active_bytes` **0.34 GB** (docker stats 624 MiB incl. container overhead) — PASS (< 1 GB)
+- After the kit reviews (pedagogy-reviewer: ship-with-fixes → 7 fixes applied; code-reviewer: 17 findings → all majors and most minors applied): backend 96 tests, frontend 11, bench re-run 5/5, tutoring hard checks 4/5 (= Stage 1 baseline).
+- **With the reranker** (`ms-marco-minilm-l6` pulled by the owner, 82 ms / 16 docs × 800 chars): B recall@1 0.906 → **0.938**, MRR 0.948 → **0.964**; D p50 121 ms / p95 **129 ms** — still PASS. Real corpus (`~/Downloads/Udemy Resources`, one course with 67 notebooks/PDF → 156 unique chunks + 89 duplicates dropped; two `.docx` skipped): dev corpus 294 chunks, `make eval-retrieval` recall@8 1.000 / recall@1 0.844 / MRR 0.911, p95 183 ms. `pypdf` added (owner approved). Backend 98 tests.
+- Not measured: PDF ingest (loader exists, `pypdf` not added to `pyproject.toml` — owner decision), the cross-encoder reranker (`ms-marco-minilm-l6` in the registry, not pulled), real Udemy exports (only the five sample courses).
 
 ## Stage 4 — Adaptive learning UX
-- [ ] `adaptation-proposals` — observed pattern → proposal card (Try / Make default / No / Don't suggest again) → log → undo.
-- [ ] `energy-planner`, `body-doubling`, `sensory-settings`, `models-settings-screen` (registry UI: search HF, download, bench, assign per task), `parking-lot-promote`, `soft-timers`.
-- [ ] `experiments` — n-of-1 engine + dashboard (delayed recall, latency, error rate, completion, voluntary continuation, transfer).
-- [ ] `domain-blocks` — language (spaced vocab), guitar, movement blocks with `practiced` events.
+- [x] `adaptation-proposals` — observed pattern → proposal card (Try / Make default / No / Don't suggest again) → log → undo.
+- [x] `energy-planner`, `body-doubling`, `sensory-settings`, `models-settings-screen` (registry UI: search HF, download, bench, assign per task), `parking-lot-promote`, `soft-timers` (`docs/slices/adaptive-ux-bundle.md`).
+- [x] `experiments` — n-of-1 engine + dashboard (delayed recall, latency, error rate, completion, voluntary continuation, transfer).
+- [x] `domain-blocks` — language (spaced vocab), guitar, movement blocks with `practiced` events.
 Benchmark: run one 2-week experiment (Socratic vs explicit on matched nodes) and read results.
+**Measured 2026-09-19** (`make bench s=4`, isolated `data/bench4.db`, llama3.1:8b; raw in `evals/results/bench_stage4.json`). A real two-week run needs the owner's sessions; the benchmark runs the identical pipeline with time travel over 14 simulated days:
+- A adaptation card: 8 attempts with 3 hints each on an unmastered skill → `hint_heavy` card ("Start new material with a worked example (for skills you have not yet mastered)" / "You used 3.0 hints per attempt over the last 8 attempts on unmastered skills.") → Try applied `worked_example` (origin proposed_accepted) → next session expired it (1 undone, pref restored) → events proposed/decided/adapted/undone — PASS
+- B two-week Socratic vs explicit on six matched attention nodes (each node taught by the real local model in its assigned arm on day 0/2/…/10, assessed, its cards reviewed two days later; delayed recall counts only reviews ≥ 1 day after the previous review): assignment balanced 3/3, 18 arm-stamped events, results readable on the dashboard. Delayed recall explicit 1.00 (n=3) vs socratic 1.00 (n=3), difference 0.000, 95 % CI 0.000 to 0.000 → reading "No clear difference yet … Keep going or stop: your call." Error rate 0/0, latency 4000/4000 ms (canned), completion / continuation / transfer "not enough data" (no block events in the simulation). The pipeline is proven; the *answer* needs the owner's real two weeks — PASS on mechanism, not on the hypothesis.
+- C energy check-in: plan 51 min → re-plan at energy 1 = 34 min as a card → Try applied to the session's blocks → Undo restored the original plan — PASS
+- D domain blocks: 3 German cards due → planned `domain_switch(domain=language, 11 min)`; the AI/ML review contained no vocab; all 3 reviewed in the language block → 0 left; guitar `practiced` event logged; movement skipped 3× → `movement_skipped` card — PASS
+- After the kit reviews (pedagogy-reviewer: ship-with-fixes, 9 fixes applied; code-reviewer: 3 blockers + 7 majors + minors, all blockers/majors and most minors applied — see the slice docs' "Review fixes"): backend 122 tests, frontend 18, bench re-run 5/5.
+- E models registry: routing table resolves 18 of 20 task classes to ready models (chat/hint/… → llama31-8b, embed → nomic-embed-text, rerank → ms-marco-minilm-l6); `grade_rubric` and `judge` unresolved until an API key exists — PASS
 
 ## Stage 5 — Frontier models + voice
 - [ ] `escalation-polish` — code review, conflicting-evidence resolution, deep explanation on Claude; prompt caching; cost dashboard.

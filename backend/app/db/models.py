@@ -63,6 +63,7 @@ class Session(IdMixin, LearnerScoped, Base):
     socratic: Mapped[bool] = mapped_column(Boolean, default=False)
     energy_after: Mapped[int | None] = mapped_column(Integer)
     planned_blocks_json: Mapped[JsonList] = mapped_column(JSON, default=list)
+    experiment_arm_id: Mapped[str | None] = mapped_column(Text)  # session-unit n-of-1 assignment
 
 
 class SessionCheckpoint(IdMixin, LearnerScoped, Base):
@@ -250,6 +251,11 @@ class Chunk(IdMixin, Base):
     t_start: Mapped[float | None] = mapped_column(Float)
     t_end: Mapped[float | None] = mapped_column(Float)
     skill_ids_json: Mapped[JsonList] = mapped_column(JSON, default=list)
+    norm_hash: Mapped[str | None] = mapped_column(Text, index=True)  # dedupe key (normalised text)
+    # duplicate of another chunk in the same course: stored (system of record), never indexed
+    duplicate_of: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("chunk.id", name="fk_chunk_duplicate_of"), index=True
+    )
 
 
 class ChunkProvenance(IdMixin, Base):
@@ -263,6 +269,7 @@ class ChunkProvenance(IdMixin, Base):
     section: Mapped[str | None] = mapped_column(Text)
     lecture: Mapped[str | None] = mapped_column(Text)
     ingested_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    flags_json: Mapped[JsonList] = mapped_column(JSON, default=list)  # instruction patterns found
 
 
 class IndexState(IdMixin, Base):
@@ -323,6 +330,13 @@ class Adaptation(IdMixin, LearnerScoped, Base):
     policy_version: Mapped[str] = mapped_column(Text, default="v1")
     reversible: Mapped[bool] = mapped_column(Boolean, default=True)
     proposed_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    pattern: Mapped[str] = mapped_column(Text, default="")  # rule id (kernel/adaptation.py)
+    apply_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)  # {"pref": key, "value": v}
+    previous_json: Mapped[JsonDict | None] = mapped_column(JSON)  # value before it was applied
+    evidence_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)  # the observed numbers
+    session_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("session.id", name="fk_adaptation_session"), index=True
+    )  # trial scope
 
 
 class AdaptationDecision(IdMixin, LearnerScoped, Base):
@@ -340,6 +354,9 @@ class Experiment(IdMixin, LearnerScoped, Base):
     metric: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(Text, default="draft")  # draft | running | done
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    unit_type: Mapped[str] = mapped_column(Text, default="node")  # node (matched) | session
+    started_at: Mapped[str | None] = mapped_column(Text)
+    ended_at: Mapped[str | None] = mapped_column(Text)
 
 
 class ExperimentArm(IdMixin, Base):
@@ -347,6 +364,22 @@ class ExperimentArm(IdMixin, Base):
     experiment_id: Mapped[str] = mapped_column(Text, ForeignKey("experiment.id"), index=True)
     name: Mapped[str] = mapped_column(Text)
     config_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
+
+
+class ExperimentAssignment(IdMixin, LearnerScoped, Base):
+    """Which arm a unit (session or skill node) got; balanced, deterministic, logged as `assigned`."""
+
+    __tablename__ = "experiment_assignment"
+    __table_args__ = (UniqueConstraint("experiment_id", "unit_id", name="uq_assignment_unit"),)
+    experiment_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("experiment.id", name="fk_assignment_experiment"), index=True
+    )
+    arm_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("experiment_arm.id", name="fk_assignment_arm")
+    )
+    unit_type: Mapped[str] = mapped_column(Text)  # session | node
+    unit_id: Mapped[str] = mapped_column(Text, index=True)
+    ts: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 
 class ExperimentObservation(IdMixin, LearnerScoped, Base):
@@ -397,6 +430,7 @@ class RetrievalTrace(IdMixin, Base):
     vector_scores_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
     fused_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
     reranked_json: Mapped[JsonDict | None] = mapped_column(JSON)
+    reranker_id: Mapped[str | None] = mapped_column(Text)  # registry id of the cross-encoder
     chunk_ids_json: Mapped[JsonList] = mapped_column(JSON, default=list)
     flagged_patterns_json: Mapped[JsonList] = mapped_column(JSON, default=list)
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)

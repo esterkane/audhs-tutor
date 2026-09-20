@@ -73,7 +73,7 @@ Competence & memory: `competency_evidence{skill_id, dimension, score, weight, so
 Assessment: `assessment{item, kind, rubric_id}`, `assessment_rubric{criteria_json, version}`, `assessment_attempt{answer, confidence_pre, deterministic_result, llm_result_json, grader_route}`.
 Knowledge: `document`, `document_version{content_hash, version, publication_date}`, `chunk`, `chunk_provenance{source_id, path, source_type, trust_tier, ingested_at}`, `index_state{collection, embedding_version, last_reindex}`; vectors live in Qdrant (payload mirrors provenance).
 Models: `model_registry{id, display_name, source, repo_id, file_or_tag, runtime, role, quant, size_gb, context_len, licence, status, benchmark_json, added_at}`; routing assignments in `learner_preference` (`routing.<task>`).
-UX: `parking_lot_item`, `adaptation{what, why, origin}`, `adaptation_decision{accepted|declined|never}`, `experiment`, `experiment_arm`, `experiment_observation`.
+UX: `parking_lot_item`, `adaptation{what, why, origin}`, `adaptation_decision{accepted|declined|never}`, `experiment{unit_type, started_at, ended_at}`, `experiment_arm`, `experiment_assignment{unit_type, unit_id, arm_id}`, `experiment_observation`; `session.experiment_arm_id`.
 Observability: `tutor_trace`, `retrieval_trace{query, bm25_scores, vector_scores, fused, reranked, chunk_ids}`, `model_call{provider, model, task, tokens, cost, latency, cached}`, `learning_event` (append-only; `docs/EVENT-SCHEMA.md`).
 
 ## 5. ContextPacket

@@ -45,3 +45,50 @@ body {
   padding: 0 0.25rem;
   border-radius: 3px;
 }
+
+/* Sensory settings (preferences ui.theme / ui.density / ui.font_scale / ui.reduced_motion) */
+:root[data-theme='dark'] {
+  --color-bg: #15181c;
+  --color-fg: #e6e8eb;
+  --color-muted: #a0a8b3;
+  --color-card: #1e2227;
+  --color-line: #343a42;
+  --color-accent: #7ea2ff;
+  --color-accent-fg: #0f1a33;
+  --color-ok: #5bc08a;
+  --color-warn: #e0a34a;
+  color-scheme: dark;
+}
+:root[data-theme='dark'] .prose code {
+  background: #2a3038;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --color-bg: #15181c;
+    --color-fg: #e6e8eb;
+    --color-muted: #a0a8b3;
+    --color-card: #1e2227;
+    --color-line: #343a42;
+    --color-accent: #7ea2ff;
+    --color-accent-fg: #0f1a33;
+    --color-ok: #5bc08a;
+    --color-warn: #e0a34a;
+    color-scheme: dark;
+  }
+}
+:root[data-font='large'] {
+  font-size: 118%;
+}
+:root[data-density='compact'] main {
+  max-width: 56rem;
+}
+:root[data-density='compact'] main .grid {
+  gap: 0.5rem;
+}
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}

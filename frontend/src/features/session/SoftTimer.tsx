@@ -7,10 +7,13 @@ export function SoftTimer({
   minutes,
   onSaveStop,
   onFinishBlock,
+  notify = false,
 }: {
   minutes: number
   onSaveStop: () => void
   onFinishBlock: () => void
+  /** Browser notification when the wind-down prompt appears (preference ui.notifications). */
+  notify?: boolean
 }) {
   const [deadline, setDeadline] = useState(() => Date.now() + minutes * 60_000)
   const [show, setShow] = useState(false)
@@ -20,6 +23,12 @@ export function SoftTimer({
     }, 5_000)
     return () => clearInterval(id)
   }, [deadline])
+  useEffect(() => {
+    if (!show || !notify) return
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification('Planned time is up', { body: 'Save & stop, 5 more minutes, or finish the block.' })
+    }
+  }, [show, notify])
   if (!show) return null
   return (
     <Card role="status" className="border-warn mb-4">
