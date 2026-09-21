@@ -2,6 +2,7 @@
 ingested material, validation, publish with versioning, re-publish, reject, citation passages with a
 guarded open link, content reports, goal preference narrowing next_skill."""
 
+import re
 from pathlib import Path
 
 from httpx import AsyncClient
@@ -15,6 +16,7 @@ from app.knowledge.ingest.service import ingest_path
 from app.knowledge.sqlite_hybrid import SqliteHybridRepository
 from app.models_ai import registry
 from app.models_ai.fake import FakeProvider
+from app.orchestrator import drafting
 
 COURSES = Path(__file__).resolve().parents[2] / "seeds" / "courses"
 
@@ -392,6 +394,18 @@ async def test_model_draft_merges_proposals_and_labels_them(
     assert mcq["origin"] == "model" and mcq["source_chunk_id"] is None and mcq["auto"] is False
     assert any("model-proposed item" in p["message"] for p in d["problems"])
     assert not any(s["slug"] == "invented-lecture" for s in d["payload"]["skills"])
+    # lectures are requested a few per call so a local model's output limit is never hit; every
+    # call carries its own slice of the excerpts and no lecture is asked for twice
+    calls = [c for c in fake_local.calls if c.response_model is drafting.DraftSuggestions]
+    n_lectures = min(len(mat.lectures), drafting.MAX_LECTURES)
+    expected_calls = -(-n_lectures // drafting.LECTURES_PER_CALL)
+    assert len(calls) == expected_calls
+    slugs_seen: list[str] = []
+    for c in calls:
+        body = c.messages[-1].content
+        slugs_seen += re.findall(r'<lecture slug="([^"]+)">', body)
+        assert 1 <= body.count("<lecture slug=") <= drafting.LECTURES_PER_CALL
+    assert slugs_seen == curriculum.lecture_slugs(mat)[:n_lectures]
     # a model that keeps returning invalid output → deterministic draft, labelled as such
     fake_local.fail_structured_times = 10
     r = await client.post(
@@ -415,3 +429,41 @@ def test_open_target_guards(tmp_path: Path) -> None:
     assert curriculum.open_target(str(f), [root]) == f.resolve()
     assert curriculum.open_fragment("udemy_caption", str(f), 75.4) == "#t=75"
     assert curriculum.open_fragment("markdown", "x.md", 75.4) == ""
+
+
+def test_model_excerpts_prefer_teaching_text_over_setup_cells() -> None:
+    """A notebook's first cells are installs and imports; the excerpts quote the explanations."""
+    chunks = [
+        {
+            "id": "c0",
+            "text": "L › nb\n```python\n! pip install -q transformers\nimport torch\n```",
+            "ordinal": 0,
+        },
+        {
+            "id": "c1",
+            "text": "L › nb › Setup\n```python\nmodel_name = 'x'\nfrom datasets import load_dataset\n```",
+            "ordinal": 1,
+        },
+        {
+            "id": "c2",
+            "text": "L › nb › Attention\nThe attention layer weighs every token against every other "
+            "token before mixing them.",
+            "ordinal": 2,
+        },
+        {
+            "id": "c3",
+            "text": "L › nb › Positional\nPositions are added as sinusoids so order survives the mixing.",
+            "ordinal": 3,
+        },
+        {
+            "id": "c4",
+            "text": "L › nb › Run\n```python\ntrain()\n```\nOutput: loss 0.3",
+            "ordinal": 4,
+        },
+    ]
+    picked = drafting.teaching_chunks(chunks, n=2)
+    assert [c["id"] for c in picked] == ["c2", "c3"]
+    assert drafting.prose_words(chunks[0]["text"]) == 0
+    assert drafting.prose_words(chunks[4]["text"]) == 2  # "Output loss": bare code carries nothing
+    # nothing but setup cells: the first passages are used rather than none
+    assert [c["id"] for c in drafting.teaching_chunks(chunks[:2], n=4)] == ["c0", "c1"]

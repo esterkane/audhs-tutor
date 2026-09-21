@@ -400,3 +400,61 @@ async def test_archive_members_take_one_decision(
         json={"archive": "missing.zip", "role": "excluded"},
     )
     assert r.status_code == 404
+
+
+async def test_documents_of_one_lecture_form_one_skill(
+    db: AsyncSession,
+    fake_repo: SqliteHybridRepository,
+    learner: models.LearnerProfile,
+    tmp_path: Path,
+) -> None:
+    """A resources export files every asset of a lecture under `Lecture N - title/`: an archive's
+    members (Dockerfile, main.py) are one lesson with all their passages — not one skill per file
+    with the same title."""
+    import io
+    import zipfile
+
+    root = tmp_path / "Udemy"
+    sec = root / "Served Course" / "Section 1 - Serving"
+    served = sec / "Lecture 0-1 - 1. Serving with FastAPI"
+    served.mkdir(parents=True)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as z:
+        z.writestr(
+            "main.py", '"""The FastAPI app defines a question answering endpoint."""\napp = 1\n'
+        )
+        z.writestr(
+            "serve.py", '"""The server installs uvicorn and exposes port 80."""\nport = 80\n'
+        )
+    (served / "app--6cc041d7784f.zip").write_bytes(buf.getvalue())
+    other = sec / "Lecture 0-2 - 2. Tokenizers"
+    other.mkdir()
+    (other / "notes.md").write_text("# Tokenizers\n\nA tokenizer splits text into ids.")
+    rep = await ingest_path(db, root, repo=fake_repo, options=IngestOptions(media=False))
+    assert rep.summary()["outcomes"]["imported"] == 3, rep.summary()
+    section = (await curriculum.sections_of(db, "Served Course"))[0]["section"]
+    # next to a plain lecture file the archive is suggested supplemental; the owner makes it primary
+    n = await curriculum.set_archive_role(
+        db, "Served Course", "app--6cc041d7784f.zip", "primary", "the code is the lesson"
+    )
+    assert n == 2
+    mat = await curriculum.section_material(db, "Served Course", section)
+    lectures = [str(lec["lecture"]) for lec in mat.lectures]
+    assert lectures == ["Serving with FastAPI", "Tokenizers"], lectures
+    slot = mat.lectures[0]
+    assert len(slot["documents"]) == 2 and len(slot["chunks"]) == 2
+    assert {d["title"] for d in slot["documents"]} == {"main", "serve"}
+    assert [c["document_id"] for c in slot["chunks"]] == [
+        slot["documents"][0]["document_id"],
+        slot["documents"][1]["document_id"],
+    ]
+    draft = await curriculum.create_draft(db, learner.id, course="Served Course", section=section)
+    payload = draft.payload_json
+    assert [s["title"] for s in payload["skills"]] == ["Serving with FastAPI", "Tokenizers"]
+    assert ", 2 documents" in payload["skills"][0]["description"]
+    obj = next(o for o in payload["learning_objects"] if o["concept"] == "Serving with FastAPI")
+    assert len(obj["sources"]) == 2  # both members are cited
+    built = payload["selection"]["built_on"]
+    assert len(built) == 3 and sum(1 for b in built if b["lecture"] == "Serving with FastAPI") == 2
+    infos = [p["message"] for p in draft.validation_json if p["level"] == "info"]
+    assert any(m.startswith("built on 3 of 3 primary document(s);") for m in infos)

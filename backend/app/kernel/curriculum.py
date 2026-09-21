@@ -385,7 +385,10 @@ async def section_material(db: AsyncSession, course: str, section: str | None) -
     else:
         stmt = stmt.where(Document.section == section)
     mat = SectionMaterial(course=course, section=section)
+    # one slot per *lecture*: documents filed under the same lecture label (an archive's members,
+    # two notebooks of one lesson) are one lesson with all their passages, not one skill each
     by_doc: dict[str, dict[str, Any]] = {}
+    slots: dict[tuple[str, str], dict[str, Any]] = {}
     seen_out: set[str] = set()
     for doc, chunk in (await db.execute(stmt)).all():
         role = roles.get(doc.id, {}).get("role", "primary")
@@ -402,22 +405,43 @@ async def section_material(db: AsyncSession, course: str, section: str | None) -
                     }
                 )
             continue
-        entry = by_doc.setdefault(
-            doc.id,
-            {
+        key = ("lecture", doc.lecture) if doc.lecture else ("document", doc.id)
+        entry = slots.get(key)
+        if entry is None:
+            entry = slots[key] = {
                 "lecture": doc.lecture or doc.title,
-                "document_id": doc.id,
+                "document_id": doc.id,  # the first document: the slot's identity for older readers
                 "title": doc.title,
                 "lecture_no": path_numbers(doc.uri)[1],
+                "documents": [],
                 "chunks": [],
-            },
-        )
+            }
+        if doc.id not in by_doc:
+            by_doc[doc.id] = entry
+            entry["documents"].append({"document_id": doc.id, "title": doc.title, "passages": 0})
+            if entry["lecture_no"] is None:
+                entry["lecture_no"] = path_numbers(doc.uri)[1]
+        entry["documents"][
+            -1
+            if entry["documents"][-1]["document_id"] == doc.id
+            else next(i for i, d in enumerate(entry["documents"]) if d["document_id"] == doc.id)
+        ]["passages"] += 1
         entry["chunks"].append(
-            {"id": chunk.id, "text": chunk.text, "t_start": chunk.t_start, "ordinal": chunk.ordinal}
+            {
+                "id": chunk.id,
+                "text": chunk.text,
+                "t_start": chunk.t_start,
+                "ordinal": chunk.ordinal,
+                "document_id": doc.id,
+            }
         )
+    # passages stay grouped per document (in the order the documents were met), then by ordinal
+    for entry in slots.values():
+        order = {d["document_id"]: i for i, d in enumerate(entry["documents"])}
+        entry["chunks"].sort(key=lambda c: (order[c["document_id"]], c["ordinal"]))
     # lecture order = file number (001, 002, …), never the alphabetical label
     mat.lectures = sorted(
-        by_doc.values(), key=lambda e: _order_key(e["lecture_no"], str(e["lecture"]))
+        slots.values(), key=lambda e: _order_key(e["lecture_no"], str(e["lecture"]))
     )
     # a primary document whose text is entirely a duplicate of another has no unique passages:
     # it gets no lecture slot, and it must be said rather than silently vanish
@@ -525,11 +549,13 @@ def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str,
         title = str(lec["lecture"])
         chunks = lec["chunks"]
         where = f"{mat.course} › {mat.section}" if mat.section else mat.course
+        n_docs = len(lec.get("documents") or [])
+        docs_note = f", {n_docs} documents" if n_docs > 1 else ""
         skills.append(
             {
                 "slug": slug,
                 "title": title,
-                "description": f"Lecture '{title}' in {where} ({len(chunks)} source passages).",
+                "description": f"Lecture '{title}' in {where} ({len(chunks)} source passages{docs_note}).",
                 "success_criteria": [],
                 "assessment_requirements": {
                     "dimensions": ["recall", "explanation"],
@@ -570,16 +596,22 @@ def selection_summary(mat: SectionMaterial) -> dict[str, Any]:
     drafted = mat.lectures[:MAX_SKILLS_PER_DRAFT]
     return {
         "built_on": [
-            {
-                "document_id": lec["document_id"],
-                "title": lec["title"],
-                "passages": len(lec["chunks"]),
-            }
+            {**d, "lecture": str(lec["lecture"])}
             for lec in drafted
+            for d in lec.get("documents")
+            or [
+                {
+                    "document_id": lec["document_id"],
+                    "title": lec["title"],
+                    "passages": len(lec["chunks"]),
+                }
+            ]
         ],
         "beyond_cap": [
-            {"document_id": lec["document_id"], "title": lec["title"]}
+            {"document_id": d["document_id"], "title": d["title"], "lecture": str(lec["lecture"])}
             for lec in mat.lectures[MAX_SKILLS_PER_DRAFT:]
+            for d in lec.get("documents")
+            or [{"document_id": lec["document_id"], "title": lec["title"]}]
         ],
         "cited_passages": sum(min(len(lec["chunks"]), MAX_SOURCES_PER_OBJECT) for lec in drafted),
         "unique_passages": mat.unique_chunks,

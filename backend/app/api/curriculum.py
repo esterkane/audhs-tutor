@@ -147,11 +147,11 @@ async def drafts(db: DB, learner: Learner) -> DraftList:
 )
 async def create_draft(body: DraftCreate, db: DB, learner: Learner, gateway: Gateway) -> DraftOut:
     if body.use_model:
-        payload, call_id = await drafting.draft_with_model(
+        payload, call_id, failed = await drafting.draft_with_model(
             db, gateway, learner.id, course=body.course, section=body.section
         )
         # a failed/absent model route leaves the deterministic draft: say so, in the origin and
-        # as a visible note on the draft
+        # as a visible note on the draft; a partly failed one names the lectures left deterministic
         notes = (
             []
             if call_id
@@ -161,6 +161,16 @@ async def create_draft(body: DraftCreate, db: DB, learner: Learner, gateway: Gat
                 )
             ]
         )
+        if call_id and failed:
+            names = ", ".join(f"'{t}'" for t in failed[:6]) + (" …" if len(failed) > 6 else "")
+            notes.append(
+                curriculum.Problem(
+                    "warning",
+                    "draft",
+                    f"the model call failed for {len(failed)} lecture(s); those lessons are "
+                    f"deterministic: {names}",
+                )
+            )
         d = await curriculum.create_draft(
             db,
             learner.id,
