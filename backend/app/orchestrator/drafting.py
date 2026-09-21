@@ -63,8 +63,9 @@ async def draft_with_model(
     the deterministic one and the id is None."""
     mat = await curriculum.section_material(db, course, section)
     if not mat.lectures:
-        raise ValueError("no ingested material for this course section")
+        raise ValueError(curriculum.no_primary_message(mat, course, section))
     payload = curriculum.propose_payload(mat)
+    payload["selection"] = curriculum.selection_summary(mat)  # excluded text never reaches here
     try:
         out = await gateway.complete(
             TaskClass.GEN_ITEMS,

@@ -9,6 +9,9 @@ export type PublishOut = Schemas['PublishOut']
 export type ChunkOut = Schemas['ChunkOut']
 export type ReportIn = Schemas['ReportIn']
 export type ReportOut = Schemas['ReportOut']
+export type SourceList = Schemas['CourseSourceList']
+export type SourceOut = Schemas['CourseSourceOut']
+export type SourceRoleOut = Schemas['CourseSourceRoleOut']
 
 export function useMaterial() {
   return useQuery({
@@ -78,4 +81,44 @@ export function useReport() {
     mutationFn: (body: ReportIn) =>
       apiFetch<ReportOut>('/api/curriculum/reports', { method: 'POST', body: JSON.stringify(body) }),
   })
+}
+
+/** Course curation (stage 3): what each document is for its course — owner decision or suggestion. */
+export function useSources(course: string | null) {
+  return useQuery({
+    queryKey: ['curriculum', 'sources', course],
+    queryFn: () => apiFetch<SourceList>(`/api/curriculum/sources?course=${encodeURIComponent(course!)}`),
+    enabled: !!course,
+  })
+}
+
+export function useSourceRole() {
+  const qc = useQueryClient()
+  const invalidate = () => void qc.invalidateQueries({ queryKey: ['curriculum', 'sources'] })
+  const set = useMutation({
+    mutationFn: ({
+      course,
+      documentId,
+      role,
+      reason,
+    }: {
+      course: string
+      documentId: string
+      role: string
+      reason?: string
+    }) =>
+      apiFetch<SourceRoleOut>(`/api/curriculum/sources/${documentId}?course=${encodeURIComponent(course)}`, {
+        method: 'PUT',
+        body: JSON.stringify({ role, reason: reason ?? '' }),
+      }),
+    onSuccess: invalidate,
+  })
+  const reset = useMutation({
+    mutationFn: ({ course, documentId }: { course: string; documentId: string }) =>
+      apiFetch<SourceRoleOut>(`/api/curriculum/sources/${documentId}?course=${encodeURIComponent(course)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: invalidate,
+  })
+  return { set, reset }
 }

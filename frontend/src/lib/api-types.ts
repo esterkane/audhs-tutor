@@ -1425,6 +1425,58 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/curriculum/sources': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Every document of a course with its role for drafting (owner decision or suggestion) */
+    get: operations['sources_api_curriculum_sources_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/sources/{document_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Decide a document's role for its course (primary | supplemental | excluded) */
+    put: operations['set_source_api_curriculum_sources__document_id__put']
+    post?: never
+    /** Drop the owner's decision: the suggested role applies again */
+    delete: operations['reset_source_api_curriculum_sources__document_id__delete']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/sources-archive': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Decide the role of every member of one bundled archive at once */
+    put: operations['set_archive_api_curriculum_sources_archive_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/curriculum/drafts': {
     parameters: {
       query?: never
@@ -1613,6 +1665,30 @@ export interface components {
        * @default 0
        */
       price_out: number
+    }
+    /** ArchiveRoleIn */
+    ArchiveRoleIn: {
+      /** Role */
+      role: string
+      /**
+       * Reason
+       * @default
+       */
+      reason: string
+      /**
+       * Archive
+       * @description archive file name or uri
+       */
+      archive: string
+    }
+    /** ArchiveRoleOut */
+    ArchiveRoleOut: {
+      /** Archive */
+      archive: string
+      /** Role */
+      role: string
+      /** Documents */
+      documents: number
     }
     /** ArmIn */
     ArmIn: {
@@ -2156,6 +2232,61 @@ export interface components {
       /** Recent Failures */
       recent_failures: components['schemas']['CostFailure'][]
     }
+    /** CourseSourceList */
+    CourseSourceList: {
+      /** Course */
+      course: string
+      /** Sources */
+      sources: components['schemas']['CourseSourceOut'][]
+      /** Counts */
+      counts: {
+        [key: string]: number
+      }
+    }
+    /** CourseSourceOut */
+    CourseSourceOut: {
+      /** Document Id */
+      document_id: string
+      /** Title */
+      title: string
+      /** Section */
+      section: string | null
+      /** Lecture */
+      lecture: string | null
+      /** Source Type */
+      source_type: string
+      /** Uri */
+      uri: string
+      /** Chunks */
+      chunks: number
+      /** Role */
+      role: string
+      /** Reason */
+      reason: string
+      /** Decided By */
+      decided_by: string
+    }
+    /** CourseSourceRoleIn */
+    CourseSourceRoleIn: {
+      /** Role */
+      role: string
+      /**
+       * Reason
+       * @default
+       */
+      reason: string
+    }
+    /** CourseSourceRoleOut */
+    CourseSourceRoleOut: {
+      /** Document Id */
+      document_id: string
+      /** Role */
+      role: string
+      /** Reason */
+      reason: string
+      /** Decided By */
+      decided_by: string
+    }
     /** CourseStats */
     CourseStats: {
       /** Course */
@@ -2304,6 +2435,13 @@ export interface components {
       learning_objects?: components['schemas']['LearningObjectIn'][]
       /** Assessments */
       assessments?: components['schemas']['AssessmentIn'][]
+      /**
+       * Selection
+       * @description what the draft was built on (kept across edits; kernel-written)
+       */
+      selection?: {
+        [key: string]: unknown
+      } | null
     } & {
       [key: string]: unknown
     }
@@ -6623,6 +6761,142 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SectionList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  sources_api_curriculum_sources_get: {
+    parameters: {
+      query: {
+        course: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CourseSourceList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  set_source_api_curriculum_sources__document_id__put: {
+    parameters: {
+      query: {
+        course: string
+      }
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CourseSourceRoleIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CourseSourceRoleOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  reset_source_api_curriculum_sources__document_id__delete: {
+    parameters: {
+      query: {
+        course: string
+      }
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CourseSourceRoleOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  set_archive_api_curriculum_sources_archive_put: {
+    parameters: {
+      query: {
+        course: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ArchiveRoleIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ArchiveRoleOut']
         }
       }
       /** @description Validation Error */

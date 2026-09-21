@@ -38,9 +38,50 @@ class DraftCreate(BaseModel):
 
 
 class ProblemOut(BaseModel):
-    level: str
+    level: str  # error | warning | info
     where: str
     message: str
+
+
+class CourseSourceOut(BaseModel):
+    document_id: str
+    title: str
+    section: str | None
+    lecture: str | None
+    source_type: str
+    uri: str
+    chunks: int
+    role: str  # primary | supplemental | excluded
+    reason: str
+    decided_by: str  # owner | suggested
+
+
+class CourseSourceList(BaseModel):
+    course: str
+    sources: list[CourseSourceOut]
+    counts: dict[str, int]
+
+
+class CourseSourceRoleIn(BaseModel):
+    role: str = Field(pattern=r"^(primary|supplemental|excluded)$")
+    reason: str = Field(default="", max_length=500)
+
+
+class CourseSourceRoleOut(BaseModel):
+    document_id: str
+    role: str
+    reason: str
+    decided_by: str
+
+
+class ArchiveRoleIn(CourseSourceRoleIn):
+    archive: str = Field(min_length=1, max_length=500, description="archive file name or uri")
+
+
+class ArchiveRoleOut(BaseModel):
+    archive: str
+    role: str
+    documents: int
 
 
 class DraftOut(BaseModel):
@@ -110,6 +151,9 @@ class DraftPayload(BaseModel):
     skills: list[SkillIn] = Field(default_factory=list, max_length=60)
     learning_objects: list[LearningObjectIn] = Field(default_factory=list, max_length=60)
     assessments: list[AssessmentIn] = Field(default_factory=list, max_length=300)
+    selection: dict[str, Any] | None = Field(
+        default=None, description="what the draft was built on (kept across edits; kernel-written)"
+    )
 
 
 class DraftUpdate(BaseModel):

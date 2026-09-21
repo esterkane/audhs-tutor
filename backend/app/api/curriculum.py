@@ -12,7 +12,13 @@ from app.db.models import ContentReport, CurriculumDraft
 from app.kernel import curriculum
 from app.orchestrator import drafting
 from app.schemas.curriculum import (
+    ArchiveRoleIn,
+    ArchiveRoleOut,
     ChunkOut,
+    CourseSourceList,
+    CourseSourceOut,
+    CourseSourceRoleIn,
+    CourseSourceRoleOut,
     DraftCreate,
     DraftList,
     DraftOut,
@@ -66,6 +72,66 @@ async def sections(course: str, db: DB) -> SectionList:
     return SectionList(
         course=course, sections=[SectionOut(**s) for s in await curriculum.sections_of(db, course)]
     )
+
+
+@router.get(
+    "/sources",
+    summary="Every document of a course with its role for drafting (owner decision or suggestion)",
+    response_model=CourseSourceList,
+)
+async def sources(course: str, db: DB) -> CourseSourceList:
+    rows = await curriculum.course_sources(db, course)
+    counts = {r: 0 for r in curriculum.SOURCE_ROLES}
+    for r in rows:
+        counts[str(r["role"])] += 1
+    return CourseSourceList(
+        course=course,
+        sources=[
+            CourseSourceOut(**{k: v for k, v in r.items() if k not in ("section_no", "lecture_no")})
+            for r in rows
+        ],
+        counts=counts,
+    )
+
+
+@router.put(
+    "/sources/{document_id}",
+    summary="Decide a document's role for its course (primary | supplemental | excluded)",
+    response_model=CourseSourceRoleOut,
+)
+async def set_source(
+    document_id: str, course: str, body: CourseSourceRoleIn, db: DB
+) -> CourseSourceRoleOut:
+    try:
+        res = await curriculum.set_source_role(db, course, document_id, body.role, body.reason)
+    except KeyError as e:
+        raise AppError("not_found", f"document {document_id} is not in course {course}", 404) from e
+    return CourseSourceRoleOut(document_id=document_id, **res)
+
+
+@router.put(
+    "/sources-archive",
+    summary="Decide the role of every member of one bundled archive at once",
+    response_model=ArchiveRoleOut,
+)
+async def set_archive(course: str, body: ArchiveRoleIn, db: DB) -> ArchiveRoleOut:
+    n = await curriculum.set_archive_role(db, course, body.archive, body.role, body.reason)
+    if n == 0:
+        raise AppError("not_found", f"no members of archive {body.archive!r} in {course}", 404)
+    return ArchiveRoleOut(archive=body.archive, role=body.role, documents=n)
+
+
+@router.delete(
+    "/sources/{document_id}",
+    summary="Drop the owner's decision: the suggested role applies again",
+    response_model=CourseSourceRoleOut,
+)
+async def reset_source(document_id: str, course: str, db: DB) -> CourseSourceRoleOut:
+    try:
+        res = await curriculum.reset_source_role(db, course, document_id)
+    except KeyError as e:
+        raise AppError("not_found", f"document {document_id} not found", 404) from e
+    return CourseSourceRoleOut(document_id=document_id, **res)
 
 
 @router.get("/drafts", summary="Curriculum drafts (newest first)", response_model=DraftList)

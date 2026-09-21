@@ -51,7 +51,7 @@ async def test_material_status_and_deterministic_draft(
         assert a["source_chunk_id"]
     problems = [p for p in draft.validation_json]
     # the deterministic draft is honest about gaps: skills without a cloze need an assessment
-    assert all(p["level"] in ("error", "warning") for p in problems)
+    assert all(p["level"] in ("error", "warning", "info") for p in problems)
     status = await curriculum.material_status(db, learner.id)
     assert (
         next(m for m in status if m["course"] == "Transformers from Scratch")["status"] == "draft"

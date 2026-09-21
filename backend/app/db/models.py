@@ -542,6 +542,26 @@ class CurriculumDraft(IdMixin, LearnerScoped, Base):
     model_call_id: Mapped[str | None] = mapped_column(Text)  # when a model drafted it
 
 
+class CourseSource(IdMixin, Base):
+    """Course-material stage 3: the owner's decision about what a document *is* for a course —
+    primary teaching material, supplemental (community notebooks, bundled software docs, link
+    lists), or excluded (decorative assets, off-topic). Drafts use primary sources only. A row
+    exists only after an explicit decision; without one the deterministic suggestion applies.
+    Originals and provenance are never touched by a role."""
+
+    __tablename__ = "course_source"
+    __table_args__ = (UniqueConstraint("document_id", name="uq_course_source_document"),)
+    # the course the decision belongs to; one document lives in one course today, so the unique
+    # constraint is on document_id alone — the column is what the Sources screen filters by and
+    # what guards against re-roling a document through another course
+    course: Mapped[str] = mapped_column(Text, index=True)
+    document_id: Mapped[str] = mapped_column(Text, ForeignKey("document.id"))
+    role: Mapped[str] = mapped_column(Text)  # primary | supplemental | excluded
+    reason: Mapped[str] = mapped_column(Text, default="")
+    decided_by: Mapped[str] = mapped_column(Text, default="owner")  # owner (rows are decisions)
+    decided_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class IngestRun(IdMixin, Base):
     """Course-material stage 1: one ingest run (CLI or API job). Not learner state — the corpus is
     shared — but the record makes a long run explainable while it runs and resumable after an

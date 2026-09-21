@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import utcnow_iso
@@ -26,6 +26,7 @@ from app.db.models import (
     Chunk,
     ChunkProvenance,
     ContentReport,
+    CourseSource,
     CurriculumDraft,
     Document,
     DocumentVersion,
@@ -37,15 +38,17 @@ from app.knowledge.ingest.loaders import clean_stem, split_number
 
 STATUSES = ("draft", "published", "rejected")
 MATERIAL_STATUSES = ("imported", "searchable", "draft", "published")
+SOURCE_ROLES = ("primary", "supplemental", "excluded")
 MAX_SKILLS_PER_DRAFT = 30
 MAX_CLOZE_PER_SKILL = 3
+MAX_SOURCES_PER_OBJECT = 8  # passages cited per learning object (the first N of a lecture)
 _SENT = re.compile(r"(?<=[.!?])\s+")
 _WORD = re.compile(r"[A-Za-zÄÖÜäöüß][\w\-]{3,}")
 
 
 @dataclass
 class Problem:
-    level: str  # error | warning
+    level: str  # error | warning | info (a note about what the draft is built on)
     where: str  # skill slug or "draft"
     message: str
 
@@ -55,6 +58,169 @@ class SectionMaterial:
     course: str
     section: str | None
     lectures: list[dict[str, Any]] = field(default_factory=list)  # {lecture, document_id, chunks}
+    # documents of the section that were *not* used, by role — so a draft can say what it left out
+    left_out: list[dict[str, Any]] = field(default_factory=list)  # {document_id, title, role, …}
+
+    @property
+    def unique_chunks(self) -> int:
+        """Coverage: latest-version, non-duplicate passages behind the draft."""
+        return sum(len(lec["chunks"]) for lec in self.lectures)
+
+
+# ----------------------------------------------------------------------------- source roles
+def suggest_role(doc: Document, *, section_has_plain_documents: bool = True) -> tuple[str, str]:
+    """Deterministic, literal suggestion of what a document is for its course. Only the owner's
+    decision (a `course_source` row) overrides it; the suggestion never changes provenance.
+    `section_has_plain_documents`: whether the document's section also holds material that is
+    not an archive member — when an archive is a section's *only* material it is the lessons."""
+    uri = (doc.uri or "").lower()
+    name = uri.rsplit("/", 1)[-1]
+    if name.endswith("external-links.json") or "external-links" in name:
+        return "supplemental", "a list of links: references, not teaching material"
+    if "!/" in uri:
+        if not section_has_plain_documents:
+            return "primary", "member of the archive that is this section's only material"
+        return "supplemental", "member of a bundled archive (repository, software docs, notebook)"
+    if doc.source_type in ("code", "notebook") and path_numbers(doc.uri)[1] is None:
+        # a numbered notebook is a lecture slot the instructor filled; an unnumbered one next to
+        # the lectures is community/bonus material until the owner says otherwise
+        return "supplemental", "unnumbered code or notebook: reference material, not a lecture"
+    return "primary", "no rule matched: treated as lecture material until you change it"
+
+
+async def source_roles(db: AsyncSession, course: str) -> dict[str, dict[str, Any]]:
+    """Effective role per document id of a course: the owner's decision when there is one,
+    otherwise the suggestion (marked `decided_by: suggested`)."""
+    decided = {
+        r.document_id: r
+        for r in (await db.execute(select(CourseSource).where(CourseSource.course == course)))
+        .scalars()
+        .all()
+    }
+    docs = (await db.execute(select(Document).where(Document.course == course))).scalars().all()
+    # a section has "plain material" when a non-archive document there is itself suggested
+    # primary (a lone external-links.json next to a resources.zip does not count)
+    plain_sections = {
+        d.section
+        for d in docs
+        if "!/" not in (d.uri or "")
+        and suggest_role(d, section_has_plain_documents=True)[0] == "primary"
+    }
+    out: dict[str, dict[str, Any]] = {}
+    for doc in docs:
+        row = decided.get(doc.id)
+        if row is not None:
+            out[doc.id] = {"role": row.role, "reason": row.reason, "decided_by": "owner"}
+        else:
+            role, why = suggest_role(doc, section_has_plain_documents=doc.section in plain_sections)
+            out[doc.id] = {"role": role, "reason": why, "decided_by": "suggested"}
+    return out
+
+
+async def course_sources(db: AsyncSession, course: str) -> list[dict[str, Any]]:
+    """Every document of a course with its effective role, in section/lecture order, plus the
+    number of unique latest-version passages it contributes."""
+    roles = await source_roles(db, course)
+    latest = (
+        select(DocumentVersion.document_id, func.max(DocumentVersion.version).label("v"))
+        .group_by(DocumentVersion.document_id)
+        .subquery()
+    )
+    counts = {
+        str(doc_id): int(n)
+        for doc_id, n in (
+            await db.execute(
+                select(DocumentVersion.document_id, func.count(Chunk.id))
+                .join(
+                    latest,
+                    (latest.c.document_id == DocumentVersion.document_id)
+                    & (latest.c.v == DocumentVersion.version),
+                )
+                .join(Chunk, Chunk.document_version_id == DocumentVersion.id)
+                .where(Chunk.duplicate_of.is_(None))
+                .group_by(DocumentVersion.document_id)
+            )
+        ).all()
+    }
+    docs = (await db.execute(select(Document).where(Document.course == course))).scalars().all()
+    out = []
+    for doc in docs:
+        sec_no, lec_no = path_numbers(doc.uri)
+        out.append(
+            {
+                "document_id": doc.id,
+                "title": doc.title,
+                "section": doc.section,
+                "lecture": doc.lecture,
+                "source_type": doc.source_type,
+                "uri": doc.uri,
+                "chunks": counts.get(doc.id, 0),
+                "section_no": sec_no,
+                "lecture_no": lec_no,
+                **roles[doc.id],
+            }
+        )
+    out.sort(
+        key=lambda d: (
+            _order_key(d["section_no"], d["section"]),
+            _order_key(d["lecture_no"], str(d["lecture"] or d["title"])),
+        )
+    )
+    return out
+
+
+async def set_source_role(
+    db: AsyncSession, course: str, document_id: str, role: str, reason: str = ""
+) -> dict[str, Any]:
+    """The owner's decision for one document (upsert). Never touches the document itself."""
+    if role not in SOURCE_ROLES:
+        raise ValueError(f"role must be one of {SOURCE_ROLES}")
+    doc = await db.get(Document, document_id)
+    if doc is None or doc.course != course:
+        raise KeyError(document_id)
+    row = (
+        await db.execute(select(CourseSource).where(CourseSource.document_id == document_id))
+    ).scalar_one_or_none()
+    if row is None:
+        row = CourseSource(course=course, document_id=document_id, role=role, reason=reason)
+        db.add(row)
+    else:
+        row.role, row.reason, row.decided_at = role, reason, utcnow_iso()
+    await db.commit()
+    return {"role": role, "reason": reason, "decided_by": "owner"}
+
+
+async def reset_source_role(db: AsyncSession, course: str, document_id: str) -> dict[str, Any]:
+    """Drop the owner's decision: the suggestion applies again."""
+    doc = await db.get(Document, document_id)
+    if doc is None or doc.course != course:
+        raise KeyError(document_id)
+    await db.execute(
+        delete(CourseSource).where(
+            CourseSource.document_id == document_id, CourseSource.course == course
+        )
+    )
+    await db.commit()
+    return (await source_roles(db, course))[doc.id]
+
+
+async def set_archive_role(
+    db: AsyncSession, course: str, archive: str, role: str, reason: str = ""
+) -> int:
+    """One decision for every member of an archive (`archive` = the archive file name or its full
+    uri prefix): a bundle of 100 files must not need 100 clicks. Returns the number of documents."""
+    if role not in SOURCE_ROLES:
+        raise ValueError(f"role must be one of {SOURCE_ROLES}")
+    docs = (await db.execute(select(Document).where(Document.course == course))).scalars().all()
+    members = [
+        d
+        for d in docs
+        if "!/" in (d.uri or "")
+        and (d.uri.split("!/", 1)[0] == archive or d.uri.split("!/", 1)[0].endswith("/" + archive))
+    ]
+    for d in members:
+        await set_source_role(db, course, d.id, role, reason)
+    return len(members)
 
 
 def slugify(text: str, *, prefix: str = "") -> str:
@@ -193,7 +359,10 @@ async def sections_of(db: AsyncSession, course: str) -> list[dict[str, Any]]:
 
 
 async def section_material(db: AsyncSession, course: str, section: str | None) -> SectionMaterial:
-    """Latest-version unique chunks of every document (= lecture) in the section, in order."""
+    """Latest-version unique chunks of every **primary** document (= lecture) in the section, in
+    order. Supplemental and excluded documents are listed in `left_out` and never contribute a
+    skill, a source passage or a cloze; duplicates (`Chunk.duplicate_of`) never inflate coverage."""
+    roles = await source_roles(db, course)
     latest = (
         select(DocumentVersion.document_id, func.max(DocumentVersion.version).label("v"))
         .group_by(DocumentVersion.document_id)
@@ -217,7 +386,22 @@ async def section_material(db: AsyncSession, course: str, section: str | None) -
         stmt = stmt.where(Document.section == section)
     mat = SectionMaterial(course=course, section=section)
     by_doc: dict[str, dict[str, Any]] = {}
+    seen_out: set[str] = set()
     for doc, chunk in (await db.execute(stmt)).all():
+        role = roles.get(doc.id, {}).get("role", "primary")
+        if role != "primary":
+            if doc.id not in seen_out:
+                seen_out.add(doc.id)
+                mat.left_out.append(
+                    {
+                        "document_id": doc.id,
+                        "title": doc.title,
+                        "role": role,
+                        "reason": roles[doc.id]["reason"],
+                        "decided_by": roles[doc.id]["decided_by"],
+                    }
+                )
+            continue
         entry = by_doc.setdefault(
             doc.id,
             {
@@ -235,6 +419,28 @@ async def section_material(db: AsyncSession, course: str, section: str | None) -
     mat.lectures = sorted(
         by_doc.values(), key=lambda e: _order_key(e["lecture_no"], str(e["lecture"]))
     )
+    # a primary document whose text is entirely a duplicate of another has no unique passages:
+    # it gets no lecture slot, and it must be said rather than silently vanish
+    docs_stmt = select(Document).where(Document.course == course)
+    docs_stmt = (
+        docs_stmt.where(Document.section.is_(None))
+        if section is None
+        else docs_stmt.where(Document.section == section)
+    )
+    for doc in (await db.execute(docs_stmt)).scalars():
+        if doc.id in by_doc or doc.id in seen_out:
+            continue
+        if roles.get(doc.id, {}).get("role", "primary") == "primary":
+            mat.left_out.append(
+                {
+                    "document_id": doc.id,
+                    "title": doc.title,
+                    "role": "primary",
+                    "reason": "no unique passages: all of its text duplicates another document "
+                    "of this course (or it has no text)",
+                    "decided_by": roles.get(doc.id, {}).get("decided_by", "suggested"),
+                }
+            )
     return mat
 
 
@@ -341,7 +547,7 @@ def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str,
                 "examples": [],
                 "exercises": [],
                 "success_criteria": [],
-                "sources": [c["id"] for c in chunks[:8]],
+                "sources": [c["id"] for c in chunks[:MAX_SOURCES_PER_OBJECT]],
             }
         )
         for cz in _cloze_candidates(title, chunks):
@@ -358,6 +564,83 @@ def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str,
 
 
 # ----------------------------------------------------------------------------- validation
+def selection_summary(mat: SectionMaterial) -> dict[str, Any]:
+    """What the draft is built on, stored *in the payload* (`payload["selection"]`) so it survives
+    every re-validation, edit and publish — a validation pass only re-derives the notes from it."""
+    drafted = mat.lectures[:MAX_SKILLS_PER_DRAFT]
+    return {
+        "built_on": [
+            {
+                "document_id": lec["document_id"],
+                "title": lec["title"],
+                "passages": len(lec["chunks"]),
+            }
+            for lec in drafted
+        ],
+        "beyond_cap": [
+            {"document_id": lec["document_id"], "title": lec["title"]}
+            for lec in mat.lectures[MAX_SKILLS_PER_DRAFT:]
+        ],
+        "cited_passages": sum(min(len(lec["chunks"]), MAX_SOURCES_PER_OBJECT) for lec in drafted),
+        "unique_passages": mat.unique_chunks,
+        "left_out": [
+            {k: d[k] for k in ("document_id", "title", "role", "reason", "decided_by")}
+            for d in mat.left_out
+        ],
+    }
+
+
+def no_primary_message(mat: SectionMaterial, course: str, section: str | None) -> str:
+    n_sup = sum(1 for d in mat.left_out if d["role"] == "supplemental")
+    n_exc = sum(1 for d in mat.left_out if d["role"] == "excluded")
+    n_dup = sum(1 for d in mat.left_out if d["role"] == "primary")
+    return (
+        f"no primary material in section '{section or '(no section)'}': {n_sup} supplemental, "
+        f"{n_exc} excluded, {n_dup} primary without unique passages. Open 'Sources of {course}' "
+        "and set at least one document with passages to primary."
+    )
+
+
+def selection_problems(selection: dict[str, Any] | None) -> list[Problem]:
+    """The visible notes derived from `payload["selection"]`, so a reviewer never has to guess
+    whether a bundled notebook shaped the lessons. Empty for drafts without a selection (hand-made
+    or from before this slice)."""
+    if not isinstance(selection, dict) or "built_on" not in selection:
+        return []
+    built = _dicts(selection.get("built_on"))
+    beyond = _dicts(selection.get("beyond_cap"))
+    notes = [
+        Problem(
+            "info",
+            "draft",
+            f"built on {len(built)} of {len(built) + len(beyond)} primary document(s); "
+            f"{selection.get('cited_passages', 0)} of {selection.get('unique_passages', 0)} "
+            "unique passages cited",
+        )
+    ]
+    if beyond:
+        names = ", ".join(f"'{d.get('title')}'" for d in beyond[:5])
+        more = f", … {len(beyond) - 5} more" if len(beyond) > 5 else ""
+        notes.append(
+            Problem(
+                "warning",
+                "draft",
+                f"{len(beyond)} primary document(s) beyond the {MAX_SKILLS_PER_DRAFT}-skill cap "
+                f"were not drafted: {names}{more} — split the section or set them to supplemental",
+            )
+        )
+    for d in _dicts(selection.get("left_out")):
+        why = str(d.get("reason") or "") or "your choice, no reason given"
+        notes.append(
+            Problem(
+                "info",
+                "draft",
+                f"not used ({d.get('role')}, {d.get('decided_by')}): '{d.get('title')}' — {why}",
+            )
+        )
+    return notes
+
+
 def check_acyclic(nodes: set[str], edges: list[tuple[str, str]]) -> None:
     """Kahn over (prerequisite → skill) edges; raises ValueError on a cycle."""
     indeg = dict.fromkeys(nodes, 0)
@@ -546,9 +829,11 @@ async def create_draft(
     if payload is None:
         mat = await section_material(db, course, section)
         if not mat.lectures:
-            raise ValueError("no ingested material for this course section")
+            raise ValueError(no_primary_message(mat, course, section))
         payload = propose_payload(mat)
-    problems = list(notes or []) + await validate_payload(db, payload)
+        payload["selection"] = selection_summary(mat)
+    selection_notes = selection_problems(payload.get("selection"))
+    problems = list(notes or []) + selection_notes + await validate_payload(db, payload)
     draft = CurriculumDraft(
         learner_id=learner_id,
         course=course,
@@ -588,7 +873,9 @@ async def update_draft(
     if d.status != "draft":
         raise ValueError(f"a {d.status} draft cannot be edited; create a new draft")
     d.payload_json = payload
-    d.validation_json = problems_json(await validate_payload(db, payload))
+    d.validation_json = problems_json(
+        selection_problems(payload.get("selection")) + await validate_payload(db, payload)
+    )
     d.version += 1
     await db.commit()
     return d
@@ -620,7 +907,7 @@ async def publish_draft(db: AsyncSession, learner_id: str, draft_id: str) -> Pub
     if d.status == "published":
         raise ValueError("already published")
     payload = d.payload_json
-    problems = await validate_payload(db, payload)
+    problems = selection_problems(payload.get("selection")) + await validate_payload(db, payload)
     errors = [p for p in problems if p.level == "error"]
     if errors:
         d.validation_json = problems_json(problems)

@@ -49,6 +49,7 @@ EXPECTED_TABLES = {
     "learning_event",
     "ingest_run",  # course-material stage 1: progress + resume of an ingest run
     "ingest_run_item",
+    "course_source",  # course-material stage 3: owner-decided source roles
 }
 
 
@@ -76,6 +77,7 @@ def test_every_learner_scoped_table_has_learner_id() -> None:
         "experiment_arm",
         "ingest_run",  # corpus tooling, not learner state
         "ingest_run_item",
+        "course_source",  # a decision about corpus documents, not learner state
     }
     for name, table in Base.metadata.tables.items():
         if name not in shared:

@@ -7,6 +7,8 @@ import {
   useDrafts,
   useMaterial,
   useSections,
+  useSourceRole,
+  useSources,
   type DraftOut,
 } from '../features/curriculum/api'
 
@@ -69,6 +71,7 @@ export function Curriculum() {
           ))}
         </ul>
       </Card>
+      {course && <SourcesPanel course={course} />}
       {course && (
         <Card>
           <details open={!selected}>
@@ -126,7 +129,8 @@ export function Curriculum() {
                   <span className="text-muted">
                     {d.status} · v{d.version} · {d.origin} ·{' '}
                     {d.problems.filter((p) => p.level === 'error').length} errors,{' '}
-                    {d.problems.filter((p) => p.level === 'warning').length} warnings
+                    {d.problems.filter((p) => p.level === 'warning').length} warnings,{' '}
+                    {d.problems.filter((p) => p.level === 'info').length} notes
                   </span>
                 </li>
               ))}
@@ -139,6 +143,97 @@ export function Curriculum() {
   )
 }
 
+const ROLE_LABELS: Record<string, string> = {
+  primary: 'primary — lessons are built from it',
+  supplemental: 'supplemental — not used for lessons; still searchable by the tutor',
+  excluded: 'excluded — not used for lessons; still searchable by the tutor',
+}
+
+/** What each document is for this course. Suggestions are literal rules; only your choice sticks. */
+function SourcesPanel({ course }: { course: string }) {
+  const sources = useSources(course)
+  const roles = useSourceRole()
+  if (sources.isError)
+    return (
+      <Card>
+        <p role="alert" className="text-sm text-warn">
+          The sources of {course} could not be loaded: {(sources.error as Error).message}
+        </p>
+      </Card>
+    )
+  if (!sources.data) return null
+  const counts = sources.data.counts
+  return (
+    <Card>
+      <details>
+        <summary className="cursor-pointer font-medium">
+          Sources of {course}: {counts.primary} primary · {counts.supplemental} supplemental ·{' '}
+          {counts.excluded} excluded
+        </summary>
+        <p className="text-sm text-muted my-2">
+          A draft is built from primary documents only. Without your choice, a rule suggests the role: a link
+          list → supplemental; a file inside a bundled archive → supplemental, unless the archive is the
+          section's only material → primary; an unnumbered code file or notebook → supplemental; anything else
+          → primary. A role you pick is saved for this course; "use suggestion" deletes your choice and the
+          rule applies again. Roles never change the documents, their provenance, their trust, or what the
+          tutor can search. Today a draft treats supplemental and excluded the same; supplemental is a note to
+          yourself until further-reading citations exist.
+        </p>
+        <ul className="text-sm grid gap-1" aria-label="Sources">
+          {sources.data.sources.map((s) => (
+            <li key={s.document_id} className="flex flex-wrap gap-2 items-center">
+              <span className="min-w-48">
+                <span className="text-muted">{s.section ?? '(no section)'} · </span>
+                {s.title}
+                <span className="text-muted">
+                  {' '}
+                  · {s.source_type} · {s.chunks} passages
+                  {s.chunks === 0 ? ' · no unique passages' : ''}
+                </span>
+              </span>
+              <label className="flex items-center gap-1">
+                <select
+                  className="border border-line rounded-md px-1 py-0.5"
+                  value={s.role}
+                  aria-label={`Role of ${s.title}`}
+                  onChange={(e) =>
+                    roles.set.mutate({ course, documentId: s.document_id, role: e.target.value })
+                  }
+                >
+                  {Object.entries(ROLE_LABELS).map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <span className="text-muted text-xs">
+                {s.decided_by === 'owner'
+                  ? `your choice${s.reason ? `: ${s.reason}` : ' (no reason recorded)'}`
+                  : `suggested: ${s.reason}`}
+              </span>
+              {s.decided_by === 'owner' && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => roles.reset.mutate({ course, documentId: s.document_id })}
+                >
+                  use suggestion
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+        {(roles.set.isError || roles.reset.isError) && (
+          <p role="alert" className="text-sm text-warn mt-2">
+            The role was not saved; try again.
+          </p>
+        )}
+      </details>
+    </Card>
+  )
+}
+
 function DraftEditor({ draft }: { draft: DraftOut }) {
   const actions = useDraftActions()
   const payload = draft.payload as Payload
@@ -146,6 +241,9 @@ function DraftEditor({ draft }: { draft: DraftOut }) {
   const [parseError, setParseError] = useState<string | null>(null)
   const errors = draft.problems.filter((p) => p.level === 'error')
   const warnings = draft.problems.filter((p) => p.level === 'warning')
+  const notes = draft.problems.filter((p) => p.level === 'info')
+  const withoutCriteria = warnings.filter((p) => p.message.startsWith('no success criteria')).length
+  const withoutExercises = warnings.filter((p) => p.message.startsWith('no exercises')).length
   const editable = draft.status === 'draft'
   const skills = payload.skills ?? []
   const objects = payload.learning_objects ?? []
@@ -171,6 +269,8 @@ function DraftEditor({ draft }: { draft: DraftOut }) {
       </CardTitle>
       <p className="text-sm text-muted">
         {skills.length} skills · {objects.length} learning objects · {assessments.length} assessments
+        {withoutCriteria > 0 ? ` · ${withoutCriteria} skills without success criteria` : ''}
+        {withoutExercises > 0 ? ` · ${withoutExercises} without exercises` : ''}
         {assessments.some((a) => a.auto) ? ' · cloze items marked auto were cut from the source text' : ''}
         {assessments.some((a) => a.guessable)
           ? ' · items marked guessable blank a title word — edit or replace them before publishing'
@@ -200,6 +300,13 @@ function DraftEditor({ draft }: { draft: DraftOut }) {
           )
         })}
       </ol>
+      {notes.length > 0 && (
+        <ul className="text-sm mt-2 grid gap-1 text-muted" aria-label="What this draft is built on">
+          {notes.map((p, i) => (
+            <li key={`n${i}`}>note · {p.message}</li>
+          ))}
+        </ul>
+      )}
       {(errors.length > 0 || warnings.length > 0) && (
         <ul className="text-sm mt-2 grid gap-1" aria-label="Validation">
           {errors.map((p, i) => (
@@ -248,7 +355,9 @@ function DraftEditor({ draft }: { draft: DraftOut }) {
           >
             {errors.length > 0
               ? `Publish (fix ${errors.length} error${errors.length === 1 ? '' : 's'} first)`
-              : 'Publish these lessons'}
+              : warnings.length > 0
+                ? `Publish these lessons (${warnings.length} warning${warnings.length === 1 ? '' : 's'} remain)`
+                : 'Publish these lessons'}
           </Button>
           <Button
             variant="ghost"
