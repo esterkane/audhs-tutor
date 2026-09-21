@@ -5,6 +5,9 @@ export type CorpusStats = Schemas['CorpusStats']
 export type DocumentList = Schemas['DocumentList']
 export type IngestRequest = Schemas['IngestRequest']
 export type IngestOut = Schemas['IngestOut']
+export type IngestJobRequest = Schemas['IngestJobRequest']
+export type IngestJobOut = Schemas['IngestJobOut']
+export type IngestRunOut = Schemas['IngestRunOut']
 export type SearchRequest = Schemas['SearchRequest']
 export type SearchOut = Schemas['SearchOut']
 export type SearchHit = Schemas['SearchHit']
@@ -68,5 +71,48 @@ export function useRetierDocument() {
         body: JSON.stringify({ trust_tier }),
       }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['corpus'] }),
+  })
+}
+
+/** Background ingest (course-material stage 1): start, poll while it runs, cancel, resume. */
+export function useStartIngestJob() {
+  return useMutation({
+    mutationFn: (body: IngestJobRequest) =>
+      apiFetch<IngestJobOut>('/api/corpus/ingest/jobs', { method: 'POST', body: JSON.stringify(body) }),
+  })
+}
+
+export function useIngestJob(jobId: string | null) {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: ['corpus', 'ingest-job', jobId],
+    queryFn: async () => {
+      const job = await apiFetch<IngestJobOut>(`/api/corpus/ingest/jobs/${jobId}`)
+      if (job.status !== 'queued' && job.status !== 'running') {
+        void qc.invalidateQueries({ queryKey: ['corpus', 'stats'] })
+        void qc.invalidateQueries({ queryKey: ['corpus', 'documents'] })
+        void qc.invalidateQueries({ queryKey: ['corpus', 'ingest-runs'] })
+      }
+      return job
+    },
+    enabled: jobId !== null,
+    refetchInterval: (q) => {
+      const st = q.state.data?.status
+      return st === 'queued' || st === 'running' ? 1000 : false
+    },
+  })
+}
+
+export function useCancelIngestJob() {
+  return useMutation({
+    mutationFn: (jobId: string) =>
+      apiFetch<IngestJobOut>(`/api/corpus/ingest/jobs/${jobId}/cancel`, { method: 'POST' }),
+  })
+}
+
+export function useIngestRuns() {
+  return useQuery({
+    queryKey: ['corpus', 'ingest-runs'],
+    queryFn: () => apiFetch<IngestRunOut[]>('/api/corpus/ingest/runs'),
   })
 }

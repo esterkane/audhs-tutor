@@ -635,6 +635,74 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/corpus/ingest/jobs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Start an ingest run in the background; poll GET /ingest/jobs/{id} for progress */
+    post: operations['start_ingest_job_api_corpus_ingest_jobs_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/corpus/ingest/jobs/{job_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Progress and outcome of a background ingest run */
+    get: operations['get_ingest_job_api_corpus_ingest_jobs__job_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/corpus/ingest/jobs/{job_id}/cancel': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Stop a running ingest cleanly after the current file; the run stays resumable */
+    post: operations['cancel_ingest_job_api_corpus_ingest_jobs__job_id__cancel_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/corpus/ingest/runs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Recorded ingest runs, newest first (interrupted ones can be resumed) */
+    get: operations['list_ingest_runs_api_corpus_ingest_runs_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/corpus/ingest': {
     parameters: {
       query?: never
@@ -644,7 +712,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Ingest a local file or course folder (idempotent by content hash) */
+    /** Ingest a local file or course folder synchronously (small runs; the UI uses jobs) */
     post: operations['ingest_api_corpus_ingest_post']
     delete?: never
     options?: never
@@ -2559,6 +2627,11 @@ export interface components {
     IngestDocResult: {
       /** Document Id */
       document_id: string
+      /**
+       * Outcome
+       * @default imported
+       */
+      outcome: string
       /** Title */
       title: string
       /** Course */
@@ -2595,6 +2668,61 @@ export interface components {
        */
       vision: boolean
     }
+    /** IngestJobOut */
+    IngestJobOut: {
+      /** Job Id */
+      job_id: string
+      /** Run Id */
+      run_id: string | null
+      /** Status */
+      status: string
+      /** Started At */
+      started_at: string
+      /** Finished At */
+      finished_at?: string | null
+      progress?: components['schemas']['IngestProgressOut'] | null
+      result?: components['schemas']['IngestOut'] | null
+      /** Error */
+      error?: string | null
+    }
+    /** IngestJobRequest */
+    IngestJobRequest: {
+      /**
+       * Path
+       * @description local file or folder (Udemy layout: Course/Section/Lecture)
+       */
+      path: string
+      /** Course */
+      course?: string | null
+      /**
+       * Trust Tier
+       * @default 2
+       */
+      trust_tier: number
+      /** Source Type */
+      source_type?: string | null
+      /**
+       * Index
+       * @default true
+       */
+      index: boolean
+      /**
+       * Language
+       * @description force the transcription language (ISO 639 code); null = auto
+       */
+      language?: string | null
+      /**
+       * Media
+       * @description transcribe audio/video and read images (false: list as skipped)
+       * @default true
+       */
+      media: boolean
+      /**
+       * Resume Run Id
+       * @description continue an interrupted run: its finished items are not redone
+       */
+      resume_run_id?: string | null
+    }
     /** IngestOut */
     IngestOut: {
       /** Summary */
@@ -2605,6 +2733,31 @@ export interface components {
       results: components['schemas']['IngestDocResult'][]
       /** Skipped */
       skipped: components['schemas']['SkippedFile'][]
+    }
+    /** IngestProgressOut */
+    IngestProgressOut: {
+      /** Done */
+      done: number
+      /** Total */
+      total: number
+      /** Current */
+      current: string
+      /** Outcomes */
+      outcomes: {
+        [key: string]: number
+      }
+      /** Archive */
+      archive?: string | null
+      /**
+       * Member Done
+       * @default 0
+       */
+      member_done: number
+      /**
+       * Member Total
+       * @default 0
+       */
+      member_total: number
     }
     /** IngestRequest */
     IngestRequest: {
@@ -2638,6 +2791,33 @@ export interface components {
        * @default true
        */
       media: boolean
+    }
+    /** IngestRunOut */
+    IngestRunOut: {
+      /** Id */
+      id: string
+      /** Src */
+      src: string
+      /** Course */
+      course: string | null
+      /** Status */
+      status: string
+      /** Started At */
+      started_at: string
+      /** Finished At */
+      finished_at: string | null
+      /** Files Total */
+      files_total: number
+      /** Files Done */
+      files_done: number
+      /** Last Uri */
+      last_uri: string | null
+      /** Resumed From */
+      resumed_from: string | null
+      /** Outcomes */
+      outcomes: {
+        [key: string]: number
+      }
     }
     /** JobList */
     JobList: {
@@ -3567,6 +3747,11 @@ export interface components {
       path: string
       /** Reason */
       reason: string
+      /**
+       * Outcome
+       * @default unsupported
+       */
+      outcome: string
     }
     /** SkippedOut */
     SkippedOut: {
@@ -4973,6 +5158,132 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['IngestCapabilities']
+        }
+      }
+    }
+  }
+  start_ingest_job_api_corpus_ingest_jobs_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['IngestJobRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IngestJobOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_ingest_job_api_corpus_ingest_jobs__job_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        job_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IngestJobOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  cancel_ingest_job_api_corpus_ingest_jobs__job_id__cancel_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        job_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IngestJobOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_ingest_runs_api_corpus_ingest_runs_get: {
+    parameters: {
+      query?: {
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IngestRunOut'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
         }
       }
     }

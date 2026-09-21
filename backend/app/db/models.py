@@ -542,6 +542,42 @@ class CurriculumDraft(IdMixin, LearnerScoped, Base):
     model_call_id: Mapped[str | None] = mapped_column(Text)  # when a model drafted it
 
 
+class IngestRun(IdMixin, Base):
+    """Course-material stage 1: one ingest run (CLI or API job). Not learner state — the corpus is
+    shared — but the record makes a long run explainable while it runs and resumable after an
+    interruption: items already recorded with a terminal outcome are not processed again."""
+
+    __tablename__ = "ingest_run"
+    src: Mapped[str] = mapped_column(Text, index=True)  # resolved path the run walked
+    course: Mapped[str | None] = mapped_column(Text)
+    options_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(Text, default="running", index=True)
+    # running | finished | interrupted | failed
+    started_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    finished_at: Mapped[str | None] = mapped_column(Text)
+    files_total: Mapped[int] = mapped_column(Integer, default=0)
+    files_done: Mapped[int] = mapped_column(Integer, default=0)
+    last_uri: Mapped[str | None] = mapped_column(Text)
+    resumed_from: Mapped[str | None] = mapped_column(Text, ForeignKey("ingest_run.id"))
+    summary_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
+
+
+class IngestRunItem(IdMixin, Base):
+    """One terminal outcome per file or archive member of a run (imported, unchanged,
+    reference_only, no_content, unsupported, gated, retryable_error, access_blocked,
+    parser_error) — the audit trail behind the progress counts and the resume set."""
+
+    __tablename__ = "ingest_run_item"
+    __table_args__ = (UniqueConstraint("run_id", "uri", name="uq_ingest_run_item_run_uri"),)
+    run_id: Mapped[str] = mapped_column(Text, ForeignKey("ingest_run.id"), index=True)
+    uri: Mapped[str] = mapped_column(Text)
+    outcome: Mapped[str] = mapped_column(Text, index=True)
+    reason: Mapped[str] = mapped_column(Text, default="")
+    document_id: Mapped[str | None] = mapped_column(Text)
+    version_id: Mapped[str | None] = mapped_column(Text)
+    ts: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class ContentReport(IdMixin, LearnerScoped, Base):
     """P4: 'this source / explanation is wrong' — kept as a report next to the evidence, never a
     silent rewrite of what the learner saw."""

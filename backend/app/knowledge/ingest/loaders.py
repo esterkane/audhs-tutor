@@ -460,9 +460,11 @@ def load_file(
         if cues:
             return done(transcript_blocks(cues), source_type=source_type or "transcript")
         try:
-            return done(_links_blocks(json.loads(text)))
+            blocks = _links_blocks(json.loads(text))
         except json.JSONDecodeError as e:
             raise ValueError(f"json: {e.msg}") from e
+        meta["reference_only"] = True  # a list of links references material; it is not material
+        return done(blocks)
     if suffix in (".tsv", ".csv"):
         cues = transcript_cues(text, suffix)
         if cues:

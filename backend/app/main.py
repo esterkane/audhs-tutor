@@ -28,6 +28,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            from app.knowledge.ingest.jobs import stop_all
+
+            await stop_all(app)  # a running ingest is recorded `interrupted`, hence resumable
             repo = getattr(app.state, "repo", None)
             if repo is not None and hasattr(repo, "client"):
                 await repo.client.close()

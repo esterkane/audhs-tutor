@@ -15,15 +15,24 @@ Invariants (tests/test_ingest.py):
 
 import asyncio
 import tempfile
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import PROJECT_ROOT
-from app.db.models import Chunk, ChunkProvenance, Document, DocumentVersion
+from app.db.base import utcnow_iso
+from app.db.models import (
+    Chunk,
+    ChunkProvenance,
+    Document,
+    DocumentVersion,
+    IngestRun,
+    IngestRunItem,
+)
 from app.db.traces import ModelCallRecord, write_model_call
 from app.knowledge.ingest.archives import archive_stem, content_root, extract_archive, is_archive
 from app.knowledge.ingest.chunker import chunk_doc
@@ -72,6 +81,56 @@ class IngestResult:
     reverted: bool = False
     transcribed_seconds: float | None = None  # audio/video: seconds of media transcribed
     vision: bool = False  # image read by the vision model
+    reference_only: bool = False  # a links list: references material, is not material
+
+    @property
+    def outcome(self) -> "Outcome":
+        if self.reference_only:
+            return "reference_only"
+        return "imported" if self.changed else "unchanged"
+
+
+Outcome = Literal[
+    "imported",  # a new document version was stored (and indexed when a repo was given)
+    "unchanged",  # same content hash as the latest version: nothing to do
+    "reference_only",  # a list of links: recorded as references, not as course material
+    "no_content",  # loaded fine but nothing to keep (empty table/list, image without text)
+    "unsupported",  # a format this build does not read (export hint in the reason)
+    "gated",  # deliberately left out by a rule (caption wins, media off, secret-looking, unsafe)
+    "retryable_error",  # a runtime/IO problem — try again later (STT/vision missing or failed)
+    "access_blocked",  # permission denied or encrypted: needs the owner, not a retry
+    "parser_error",  # the file is claimed to be a supported format but could not be parsed
+]
+OUTCOMES: tuple[Outcome, ...] = (
+    "imported",
+    "unchanged",
+    "reference_only",
+    "no_content",
+    "unsupported",
+    "gated",
+    "retryable_error",
+    "access_blocked",
+    "parser_error",
+)
+
+
+@dataclass
+class IngestProgress:
+    """What a long run is doing right now: file `done`/`total` under the walked root, the current
+    uri, and — inside an archive — member `member_done`/`member_total`."""
+
+    done: int
+    total: int
+    current: str
+    outcomes: dict[str, int]
+    archive: str | None = None
+    member_done: int = 0
+    member_total: int = 0
+    run_id: str | None = None
+
+
+class IngestInterrupted(Exception):
+    """Raised inside a run when `IngestOptions.should_stop()` asks for a clean stop."""
 
 
 @dataclass
@@ -88,26 +147,45 @@ class IngestOptions:
     expand_archives: bool = True
     stt_hint: str = DEFAULT_STT_HINT  # skip reason when no STT model is ready
     vision_hint: str = DEFAULT_VISION_HINT
+    progress: Callable[[IngestProgress], None] | None = None  # called before every file/member
+    should_stop: Callable[[], bool] | None = None  # polled between files: True → clean stop
+    record_run: bool = True  # write ingest_run / ingest_run_item rows (progress + resume)
 
 
 @dataclass
 class SkippedFile:
     path: str
     reason: str
+    outcome: Outcome = "unsupported"
 
 
 @dataclass
 class IngestReport:
     results: list[IngestResult] = field(default_factory=list)
     skipped: list[SkippedFile] = field(default_factory=list)
+    run_id: str | None = None
+    interrupted: bool = False
+    resumed: int = 0  # items a resumed run did not touch again (already terminal)
 
     @property
     def files(self) -> int:
         return len(self.results) + len(self.skipped)
 
+    def outcomes(self) -> dict[str, int]:
+        counts: dict[str, int] = {o: 0 for o in OUTCOMES}
+        for r in self.results:
+            counts[r.outcome] += 1
+        for sk in self.skipped:
+            counts[sk.outcome] += 1
+        return counts
+
     def summary(self) -> dict[str, Any]:
-        new = [r for r in self.results if r.changed]
+        new = [r for r in self.results if r.changed and not r.reference_only]
         return {
+            "outcomes": self.outcomes(),
+            "run_id": self.run_id,
+            "interrupted": self.interrupted,
+            "resumed": self.resumed,
             "files": self.files,
             "documents": len(self.results),
             "new_versions": len(new),
@@ -261,6 +339,7 @@ async def ingest_source(
             source_type=doc.source_type,
             transcribed_seconds=float(tr["duration_s"]) if isinstance(tr, dict) else None,
             vision="vision" in doc.meta,
+            reference_only=bool(doc.meta.get("reference_only")),
             **kw,
         )
 
@@ -551,20 +630,190 @@ def _skip_reason(e: BaseException) -> str:
     return f"{type(e).__name__}: {e}"
 
 
+def classify(e: BaseException) -> Outcome:
+    """The outcome class of a failure — what the owner can do about it, not the exception name.
+    Unknown exceptions are parser errors: the format was claimed supported and the parse failed."""
+    reason = str(e).lower()
+    if isinstance(e, SkipFile):
+        if "empty" in reason or "no text or figure" in reason:
+            return "no_content"
+        if reason.startswith("lockfile"):
+            return "gated"  # a deliberate rule, not a format gap
+        return "unsupported"
+    if isinstance(e, SttSupportMissing | VisionSupportMissing | RuntimeCallFailed):
+        return "retryable_error"
+    if isinstance(e, TimeoutError | ConnectionError):
+        return "retryable_error"
+    if isinstance(e, PermissionError):
+        return "access_blocked"
+    if isinstance(e, RuntimeError) and ("encrypted" in reason or "password" in reason):
+        return "access_blocked"  # zipfile raises RuntimeError for encrypted members
+    if isinstance(e, RuntimeError) and ("ffmpeg" in reason or "decoder" in reason):
+        return "retryable_error"  # a missing audio decoder: install it, run again
+    if isinstance(e, MemoryError | OSError):
+        return "retryable_error"
+    if isinstance(e, ValueError) and reason.startswith("unsupported file type"):
+        return "unsupported"
+    if isinstance(e, ValueError) and "too large" in reason:
+        return "gated"  # a size rule, not a broken file
+    return "parser_error"
+
+
+def _skipped(uri: str, e: BaseException) -> SkippedFile:
+    return SkippedFile(uri, _skip_reason(e), classify(e))
+
+
+_EXTRACTION_OUTCOMES: dict[str, Outcome] = {
+    "possible secret file": "gated",
+    "unsafe path": "gated",
+    "nested archive": "unsupported",
+}
+
+
+def _extraction_skip(name: str, reason: str) -> SkippedFile:
+    outcome = _EXTRACTION_OUTCOMES.get(reason, "unsupported" if "large" not in reason else "gated")
+    return SkippedFile(name, reason, outcome)
+
+
 async def _gate(path: Path, opts: IngestOptions) -> SkippedFile | None:
     """Per-file rules that apply before any loading, for plain files and archive members alike:
     media/images disabled for the run, a caption next to a media file, archives disabled."""
     suffix = path.suffix.lower()
     if suffix in MEDIA_SUFFIXES or suffix in IMAGE_SUFFIXES:
         if not opts.media:
-            return SkippedFile(path.as_posix(), "media disabled for this run")
+            return SkippedFile(path.as_posix(), "media disabled for this run", "gated")
         if suffix in MEDIA_SUFFIXES:
             sidecar = await asyncio.to_thread(sidecar_transcript, path)
             if sidecar is not None:
-                return SkippedFile(path.as_posix(), f"transcript present: {sidecar.name}")
+                return SkippedFile(path.as_posix(), f"transcript present: {sidecar.name}", "gated")
     if is_archive(path) and not opts.expand_archives:
-        return SkippedFile(path.as_posix(), "archives disabled for this run")
+        return SkippedFile(path.as_posix(), "archives disabled for this run", "gated")
     return None
+
+
+# ----------------------------------------------------------------------------- run record
+def _uri_of(path: Path) -> str:
+    return path.resolve().as_posix()
+
+
+class _Run:
+    """The persisted run behind progress and resume. `done` holds the URIs already terminal.
+    Only the id is read from the row after a commit (the session expires attributes on commit)."""
+
+    def __init__(self, row: IngestRun | None, done: set[str], report: IngestReport) -> None:
+        self.row, self.done, self.report = row, done, report
+        self.run_id: str | None = row.id if row is not None else None
+        self.files_done = 0
+        self.files_total = 0
+        self.counts: dict[str, int] = {o: 0 for o in OUTCOMES}  # running, O(1) per item
+
+    async def record(
+        self,
+        db: AsyncSession,
+        uri: str,
+        outcome: Outcome,
+        reason: str = "",
+        *,
+        document_id: str | None = None,
+        version_id: str | None = None,
+        top_level: bool = False,
+    ) -> None:
+        self.done.add(uri)
+        if reason != "archive":
+            self.counts[outcome] = self.counts.get(outcome, 0) + 1
+        if top_level:
+            self.files_done += 1
+        if self.row is None:
+            return
+        db.add(
+            IngestRunItem(
+                run_id=self.run_id or "",
+                uri=uri,
+                outcome=outcome,
+                reason=reason[:500],
+                document_id=document_id,
+                version_id=version_id,
+            )
+        )
+        self.row.files_done = self.files_done
+        self.row.last_uri = uri
+        await db.commit()
+
+    async def finish(self, db: AsyncSession, status: str) -> None:
+        if self.row is None:
+            return
+        self.row.status = status
+        self.row.finished_at = utcnow_iso()
+        self.row.files_done = self.files_done
+        self.row.summary_json = self.report.summary()
+        await db.commit()
+
+
+def _progress(
+    opts: IngestOptions,
+    run: _Run,
+    current: str,
+    *,
+    archive: str | None = None,
+    member_done: int = 0,
+    member_total: int = 0,
+) -> None:
+    if opts.should_stop is not None and opts.should_stop():
+        raise IngestInterrupted(current)
+    if opts.progress is not None:
+        opts.progress(
+            IngestProgress(
+                done=run.files_done,
+                total=run.files_total,
+                current=current,
+                outcomes=dict(run.counts),
+                archive=archive,
+                member_done=member_done,
+                member_total=member_total,
+                run_id=run.run_id,
+            )
+        )
+
+
+async def latest_resumable_run(
+    db: AsyncSession, src: Path, course: str | None = None
+) -> IngestRun | None:
+    """The newest interrupted run over the same root (and course), if any."""
+    src_key = await asyncio.to_thread(_uri_of, src)
+    stmt = (
+        select(IngestRun)
+        .where(IngestRun.src == src_key, IngestRun.status == "interrupted")
+        .order_by(IngestRun.started_at.desc())
+        .limit(1)
+    )
+    stmt = stmt.where(
+        IngestRun.course == course if course is not None else IngestRun.course.is_(None)
+    )
+    return (await db.execute(stmt)).scalar_one_or_none()
+
+
+async def _done_uris(db: AsyncSession, run_id: str) -> set[str]:
+    """Terminal URIs of a run *and* of the runs it resumed (the chain), so a third attempt does
+    not redo what the first one finished."""
+    done: set[str] = set()
+    seen: set[str] = set()
+    current: str | None = run_id
+    while current is not None and current not in seen and len(seen) < 50:
+        seen.add(current)
+        rows = (
+            await db.execute(
+                select(IngestRunItem.uri).where(
+                    IngestRunItem.run_id == current,
+                    IngestRunItem.outcome != "retryable_error",  # a resume retries these
+                )
+            )
+        ).scalars()
+        done.update(rows)
+        parent = (
+            await db.execute(select(IngestRun.resumed_from).where(IngestRun.id == current))
+        ).scalar_one_or_none()
+        current = parent
+    return done
 
 
 def _archive_plan(
@@ -602,6 +851,7 @@ async def _ingest_archive(
     repo: RetrievalRepository | None,
     opts: IngestOptions,
     report: IngestReport,
+    run: "_Run",
 ) -> None:
     archive_uri, (member_course, inherited) = await asyncio.to_thread(
         lambda: (archive.resolve().as_posix(), _archive_plan(archive, root, course))
@@ -610,15 +860,26 @@ async def _ingest_archive(
         extraction = await asyncio.to_thread(extract_archive, archive, Path(td))
         for name, reason in extraction.skipped:
             if reason not in ("hidden or build folder", "dotfile"):  # pure noise stays out
-                report.skipped.append(SkippedFile(f"{archive_uri}!/{name}", reason))
+                sk = _extraction_skip(f"{archive_uri}!/{name}", reason)
+                if sk.path not in run.done:
+                    report.skipped.append(sk)
+                    await run.record(db, sk.path, sk.outcome, sk.reason)
         croot = await asyncio.to_thread(content_root, extraction.root, archive_stem(archive))
         members = await asyncio.to_thread(iter_source_files, croot)
-        for member in members:
+        for n, member in enumerate(members, 1):
             rel = member.relative_to(croot).as_posix()
             uri = f"{archive_uri}!/{rel}"
+            if uri in run.done:
+                report.resumed += 1
+                continue
+            _progress(
+                opts, run, uri, archive=archive.name, member_done=n - 1, member_total=len(members)
+            )
             gated = await _gate(member, opts)
             if gated is not None:
-                report.skipped.append(SkippedFile(uri, gated.reason))
+                sk = SkippedFile(uri, gated.reason, gated.outcome)
+                report.skipped.append(sk)
+                await run.record(db, uri, sk.outcome, sk.reason)
                 continue
             if inherited is not None:
                 prov: dict[str, Any] | None = {
@@ -647,9 +908,14 @@ async def _ingest_archive(
                 )
             except Exception as e:
                 await db.rollback()
-                report.skipped.append(SkippedFile(uri, _skip_reason(e)))
+                sk = _skipped(uri, e)
+                report.skipped.append(sk)
+                await run.record(db, uri, sk.outcome, sk.reason)
                 continue
             report.results.append(res)
+            await run.record(
+                db, uri, res.outcome, document_id=res.document_id, version_id=res.version_id
+            )
 
 
 async def ingest_path(
@@ -662,26 +928,100 @@ async def ingest_path(
     skill_ids_by_slug: dict[str, str] | None = None,
     repo: RetrievalRepository | None = None,
     options: IngestOptions | None = None,
+    resume_run_id: str | None = None,
 ) -> IngestReport:
     """Ingest one file or a directory tree. `src` itself is the root: `<src>/<Course>/<Section>/…`
     unless `course` is given, in which case `src` is the course folder. A single file is treated as
-    `<Course>/<Section>/<file>` (root two levels up). Every failure is reported, never raised.
-    Archives are expanded into a temporary folder; media next to a caption file is not transcribed
-    (the caption wins); with `options.media=False` media and images are listed as skipped."""
+    `<Course>/<Section>/<file>` (root two levels up). Every failure is reported with an outcome
+    class, never raised. Archives are expanded into a temporary folder; media next to a caption
+    file is not transcribed (the caption wins); with `options.media=False` media and images are
+    listed as skipped. Progress is reported per file and per archive member through
+    `options.progress`; `options.should_stop` ends the run cleanly (`report.interrupted`).
+    A run is recorded (`ingest_run`, `ingest_run_item`); with `resume_run_id` the items that run
+    already finished are not touched again (`report.resumed`), and a Ctrl-C / task cancellation
+    leaves the run marked `interrupted` so it can be resumed."""
     opts = options or IngestOptions()
     report = IngestReport()
     files = await asyncio.to_thread(iter_source_files, src)
     is_dir = await asyncio.to_thread(src.is_dir)
     # a single lecture file sits at <root>/<Course>/<Section>/<file>: the root is three levels up
     root = src if is_dir else src.parents[min(2, len(src.parents) - 1)]
-    for path in files:
-        gated = await _gate(path, opts)
-        if gated is not None:
-            report.skipped.append(gated)
-            continue
-        if is_archive(path):
+    done: set[str] = set()
+    row: IngestRun | None = None
+    if opts.record_run:
+        if resume_run_id is not None:
+            previous = await db.get(IngestRun, resume_run_id)
+            if previous is None:
+                raise KeyError(f"ingest run {resume_run_id} not found")
+            done = await _done_uris(db, resume_run_id)
+            if previous.status == "interrupted":
+                previous.status = "resumed"  # superseded as soon as the continuation starts
+        row = IngestRun(
+            src=await asyncio.to_thread(_uri_of, src),
+            course=course,
+            options_json={
+                "trust_tier": trust_tier,
+                "source_type": source_type,
+                "media": opts.media,
+                "language": opts.language,
+                "index": repo is not None,
+            },
+            status="running",
+            files_total=len(files),
+            resumed_from=resume_run_id,
+        )
+        db.add(row)
+        await db.commit()
+    run = _Run(row, done, report)
+    run.files_total = len(files)
+    report.run_id = run.run_id
+    status = "finished"
+    try:
+        for path in files:
+            uri = await asyncio.to_thread(_uri_of, path)
+            if uri in run.done:
+                report.resumed += 1
+                run.files_done += 1
+                continue
+            _progress(opts, run, uri)
+            gated = await _gate(path, opts)
+            if gated is not None:
+                report.skipped.append(gated)
+                await run.record(db, uri, gated.outcome, gated.reason, top_level=True)
+                continue
+            if is_archive(path):
+                before = len(report.results)
+                try:
+                    await _ingest_archive(
+                        db,
+                        path,
+                        root=root,
+                        course=course,
+                        source_type=source_type,
+                        trust_tier=trust_tier,
+                        skill_ids_by_slug=skill_ids_by_slug,
+                        repo=repo,
+                        opts=opts,
+                        report=report,
+                        run=run,
+                    )
+                except IngestInterrupted:
+                    raise
+                except Exception as e:
+                    await db.rollback()
+                    sk = _skipped(path.as_posix(), e)
+                    report.skipped.append(sk)
+                    await run.record(db, uri, sk.outcome, sk.reason, top_level=True)
+                    continue
+                # the archive itself is terminal once every member is: a resume skips it whole
+                # (its outcome reflects its own members, not the run so far)
+                new_here = any(r.changed for r in report.results[before:])
+                await run.record(
+                    db, uri, "imported" if new_here else "unchanged", "archive", top_level=True
+                )
+                continue
             try:
-                await _ingest_archive(
+                res = await ingest_file(
                     db,
                     path,
                     root=root,
@@ -690,30 +1030,36 @@ async def ingest_path(
                     trust_tier=trust_tier,
                     skill_ids_by_slug=skill_ids_by_slug,
                     repo=repo,
-                    opts=opts,
-                    report=report,
+                    options=opts,
                 )
             except Exception as e:
                 await db.rollback()
-                report.skipped.append(SkippedFile(path.as_posix(), _skip_reason(e)))
-            continue
-        try:
-            res = await ingest_file(
+                sk = _skipped(path.as_posix(), e)
+                report.skipped.append(sk)
+                await run.record(db, uri, sk.outcome, sk.reason, top_level=True)
+                continue
+            report.results.append(res)
+            await run.record(
                 db,
-                path,
-                root=root,
-                course=course,
-                source_type=source_type,
-                trust_tier=trust_tier,
-                skill_ids_by_slug=skill_ids_by_slug,
-                repo=repo,
-                options=opts,
+                uri,
+                res.outcome,
+                document_id=res.document_id,
+                version_id=res.version_id,
+                top_level=True,
             )
-        except Exception as e:
-            await db.rollback()
-            report.skipped.append(SkippedFile(path.as_posix(), _skip_reason(e)))
-            continue
-        report.results.append(res)
+    except IngestInterrupted:
+        report.interrupted = True
+        status = "interrupted"
+    except (asyncio.CancelledError, KeyboardInterrupt):
+        report.interrupted = True
+        await db.rollback()
+        await run.finish(db, "interrupted")
+        raise
+    except Exception:
+        await db.rollback()
+        await run.finish(db, "failed")
+        raise
+    await run.finish(db, status)
     return report
 
 

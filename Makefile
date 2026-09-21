@@ -1,4 +1,4 @@
-.PHONY: dev dev-sandbox sandbox-backend sandbox-frontend pyodide pyodide-verify backend frontend services qdrant models test test-backend test-frontend test-e2e lint migrate migrate-check migrate-apply backup backup-inspect backup-restore ingest evals eval-retrieval bench gen-api seed
+.PHONY: dev dev-sandbox sandbox-backend sandbox-frontend pyodide pyodide-verify ingest-runs backend frontend services qdrant models test test-backend test-frontend test-e2e lint migrate migrate-check migrate-apply backup backup-inspect backup-restore ingest evals eval-retrieval bench gen-api seed
 
 dev: qdrant
 	@echo "backend :8000 | frontend :5173 | qdrant :6333"
@@ -86,8 +86,12 @@ backup-restore:
 	$(if $(and $(f),$(target)),,$(error usage: make backup-restore f=<file> target=<empty folder>))
 	cd backend && uv run python ../scripts/backup.py restore "$(f)" --target "$(target)" $(if $(pwfile),--password-file "$(pwfile)",)
 
+# ingest: progress per file on stderr; Ctrl-C leaves the run resumable → resume=1 continues it
 ingest:
-	cd backend && uv run python ../scripts/ingest.py --src "$(src)"
+	cd backend && uv run python ../scripts/ingest.py --src "$(src)" $(if $(course),--course "$(course)",) $(if $(filter 1 yes true,$(resume)),--resume,)
+
+ingest-runs:
+	cd backend && uv run python ../scripts/ingest.py --runs
 
 evals:
 	cd backend && uv run python ../scripts/run_evals.py --cases "../evals/cases/*.yaml" --out ../evals/results/latest.json

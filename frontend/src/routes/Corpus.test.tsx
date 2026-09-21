@@ -91,10 +91,15 @@ const ingestOut = {
     transcribed_media: 1,
     audio_seconds: 61.5,
     images_read: 0,
+    outcomes: { imported: 2, unchanged: 0, retryable_error: 1, unsupported: 1 },
   },
   results: [],
-  skipped: [{ path: '/x/Course/Lecture 1/talk.mkv', reason: '.mkv needs ffmpeg' }],
+  skipped: [
+    { path: '/x/Course/Lecture 1/talk.mkv', reason: '.mkv needs ffmpeg', outcome: 'retryable_error' },
+    { path: '/x/Course/Lecture 1/book.mobi', reason: 'unsupported file type: .mobi', outcome: 'unsupported' },
+  ],
 }
+let jobPolls = 0
 
 describe('Corpus', () => {
   afterEach(() => vi.unstubAllGlobals())
@@ -103,10 +108,37 @@ describe('Corpus', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
-        if (url.endsWith('/api/corpus/ingest')) {
+        if (url.endsWith('/api/corpus/ingest/jobs') && init?.method === 'POST') {
           ingestBodies.push(JSON.parse(String(init?.body)))
-          return jsonResponse(ingestOut)
+          return jsonResponse({ job_id: 'j1', run_id: null, status: 'queued', started_at: 't' })
         }
+        if (url.endsWith('/api/corpus/ingest/jobs/j1')) {
+          jobPolls += 1
+          if (jobPolls === 1)
+            return jsonResponse({
+              job_id: 'j1',
+              run_id: 'r1',
+              status: 'running',
+              started_at: 't',
+              progress: {
+                done: 1,
+                total: 3,
+                current: '/x/Course/Lecture 1/talk.mkv',
+                outcomes: { imported: 1 },
+                archive: null,
+                member_done: 0,
+                member_total: 0,
+              },
+            })
+          return jsonResponse({
+            job_id: 'j1',
+            run_id: 'r1',
+            status: 'finished',
+            started_at: 't',
+            result: ingestOut,
+          })
+        }
+        if (url.endsWith('/api/corpus/ingest/runs')) return jsonResponse([])
         if (url.endsWith('/api/corpus/stats')) return jsonResponse(stats)
         if (url.endsWith('/api/corpus/capabilities')) return jsonResponse(capabilities)
         if (url.endsWith('/api/corpus/search')) return jsonResponse(search)
@@ -135,10 +167,28 @@ describe('Corpus', () => {
     fireEvent.change(screen.getByLabelText(/Transcription language/), { target: { value: 'de' } })
     fireEvent.click(screen.getByLabelText(/Transcribe audio\/video/))
     fireEvent.click(screen.getByRole('button', { name: 'Ingest' }))
-    expect(await screen.findByText(/1 media transcribed \(61.5 s\)/)).toBeInTheDocument()
-    expect(ingestBodies[0]).toMatchObject({ path: '/x/Course', language: 'de', media: false, trust_tier: 2 })
-    fireEvent.click(screen.getByText('Skipped files and why', { selector: 'summary' }))
+    // the run reports what it is doing while it runs, then its outcome classes
+    expect(await screen.findByText(/File 2 of 3: Lecture 1\/talk.mkv/)).toBeInTheDocument()
+    expect(screen.getByText(/So far 1 imported/)).toBeInTheDocument()
+    expect(
+      await screen.findByText(/1 media transcribed \(61.5 s\)/, {}, { timeout: 4000 }),
+    ).toBeInTheDocument()
+    expect(ingestBodies[0]).toMatchObject({
+      path: '/x/Course',
+      language: 'de',
+      media: false,
+      trust_tier: 2,
+      index: true,
+      resume_run_id: null,
+    })
+    expect(screen.getByRole('list', { name: 'Outcomes' })).toHaveTextContent(/2 imported/)
+    fireEvent.click(
+      screen.getByText(/try again later \(runtime or I\/O problem — a resume retries these\): 1/, {
+        selector: 'summary',
+      }),
+    )
     expect(screen.getByText(/needs ffmpeg/)).toBeInTheDocument()
+    expect(screen.getByText(/format not supported \(see the hint\): 1/)).toBeInTheDocument()
     // secondary tasks are collapsed by default (one task per screen)
     const inspect = screen.getByText('Inspect retrieval', { selector: 'summary' })
     expect(inspect.closest('details')).not.toHaveAttribute('open')

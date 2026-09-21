@@ -8,6 +8,10 @@ Course material processing: the complete 39-course browser batch finished (25 cl
 
 Keep `frontend/public/pyodide/` and the private prompt pack out of Git. Separate in-progress voice-benchmark changes (`scripts/bench_voice.py`, ROADMAP/voice-loop notes and `evals/results/bench_voice.json`) are outside these four implementation commits. Do not stage them implicitly.
 
+## Course-material stage 1 — explain progress and failures (Claude, 2026-09-21, done)
+
+`docs/slices/ingest-progress.md`. Delta from the inherited tree: `knowledge/ingest/service.py` (outcome classes + `classify`, `IngestProgress`/`should_stop`, `ingest_run`/`ingest_run_item` records, resume along the chain, links lists `reference_only`), `loaders.py` (marks links lists), `db/models.py` + migration `b7d1c0a5e2f3`, `api/corpus.py` + `schemas/corpus.py` (background jobs, runs list, outcome fields), `scripts/ingest.py` (progress lines, `--resume`, `--runs`), Makefile (`ingest … resume=1`, `ingest-runs`), Corpus screen (progress, outcome groups, resume). Tests: `tests/test_ingest_progress.py` (+ route tests), `Corpus.test.tsx`; `make migrate-check` ok; CLI smoke on a disposable DB. The live DB was not touched; nothing was ingested into it. Code review applied (see the slice doc: Ctrl-C as a clean stop, decoder/size/lockfile classification, resume retries `retryable_error` and keeps the run's settings, shutdown stops jobs, `knowledge/ingest/jobs.py`, deterministic stop→resume test, quiet live region, prompt pack git-ignored). Remaining limits in the slice doc (no progress inside one huge media file; a hard-killed run stays `running`; a resume skips by URI, changed files are caught by the next plain run).
+
 ## Current update — 2026-09-21: accepted decisions and local TTS
 
 Owner accepted ADR-0011–0013 ("Paket annehmen"); statuses are now Accepted. Earlier pending-decision notes below are historical.

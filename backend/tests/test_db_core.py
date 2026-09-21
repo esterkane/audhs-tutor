@@ -47,6 +47,8 @@ EXPECTED_TABLES = {
     "retrieval_trace",
     "model_call",
     "learning_event",
+    "ingest_run",  # course-material stage 1: progress + resume of an ingest run
+    "ingest_run_item",
 }
 
 
@@ -72,6 +74,8 @@ def test_every_learner_scoped_table_has_learner_id() -> None:
         "index_state",
         "model_registry",
         "experiment_arm",
+        "ingest_run",  # corpus tooling, not learner state
+        "ingest_run_item",
     }
     for name, table in Base.metadata.tables.items():
         if name not in shared:

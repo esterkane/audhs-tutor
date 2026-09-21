@@ -81,6 +81,7 @@ class IngestRequest(BaseModel):
 
 class IngestDocResult(BaseModel):
     document_id: str
+    outcome: str = "imported"
     title: str
     course: str | None
     source_type: str
@@ -120,12 +121,54 @@ class IngestCapabilities(BaseModel):
 class SkippedFile(BaseModel):
     path: str
     reason: str
+    outcome: str = "unsupported"
 
 
 class IngestOut(BaseModel):
     summary: dict[str, Any]
     results: list[IngestDocResult]
     skipped: list[SkippedFile]
+
+
+class IngestJobRequest(IngestRequest):
+    resume_run_id: str | None = Field(
+        default=None, description="continue an interrupted run: its finished items are not redone"
+    )
+
+
+class IngestProgressOut(BaseModel):
+    done: int
+    total: int
+    current: str
+    outcomes: dict[str, int]
+    archive: str | None = None
+    member_done: int = 0
+    member_total: int = 0
+
+
+class IngestJobOut(BaseModel):
+    job_id: str
+    run_id: str | None
+    status: str  # queued | running | finished | interrupted | failed
+    started_at: str
+    finished_at: str | None = None
+    progress: IngestProgressOut | None = None
+    result: IngestOut | None = None
+    error: str | None = None
+
+
+class IngestRunOut(BaseModel):
+    id: str
+    src: str
+    course: str | None
+    status: str
+    started_at: str
+    finished_at: str | None
+    files_total: int
+    files_done: int
+    last_uri: str | None
+    resumed_from: str | None
+    outcomes: dict[str, int]
 
 
 class ForgetOut(BaseModel):

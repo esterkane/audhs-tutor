@@ -3,15 +3,24 @@ is a localhost owner app), re-tier or forget a document, and an inspectable sear
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
+from sqlalchemy import select
 
 from app.api.deps import DB, Repo, SettingsDep
 from app.core.errors import AppError
+from app.db.models import IngestRun, IngestRunItem
 from app.knowledge import corpus_stats
+from app.knowledge.ingest import jobs
 from app.knowledge.ingest.runtime import capabilities as ingest_capabilities
 from app.knowledge.ingest.runtime import default_options
-from app.knowledge.ingest.service import forget_document, ingest_path, retier_document
+from app.knowledge.ingest.service import (
+    IngestReport,
+    forget_document,
+    ingest_path,
+    retier_document,
+)
 from app.knowledge.reindex import latest_version_ids
 from app.knowledge.repository import SearchFilters
 from app.orchestrator.context import QUARANTINE_FLAGS
@@ -23,8 +32,12 @@ from app.schemas.corpus import (
     ForgetOut,
     IngestCapabilities,
     IngestDocResult,
+    IngestJobOut,
+    IngestJobRequest,
     IngestOut,
+    IngestProgressOut,
     IngestRequest,
+    IngestRunOut,
     RetierRequest,
     RetrievalConfigOut,
     SearchHit,
@@ -100,28 +113,13 @@ async def capabilities(db: DB, settings: SettingsDep) -> IngestCapabilities:
     return IngestCapabilities(**await ingest_capabilities(db, settings))
 
 
-@router.post(
-    "/ingest",
-    summary="Ingest a local file or course folder (idempotent by content hash)",
-    response_model=IngestOut,
-)
-async def ingest(req: IngestRequest, db: DB, repo: Repo, settings: SettingsDep) -> IngestOut:
-    path = await asyncio.to_thread(_resolve_ingest_path, req.path, settings.ingest_roots_resolved)
-    options = await default_options(db, settings, media=req.media, language=req.language)
-    report = await ingest_path(
-        db,
-        path,
-        course=req.course,
-        source_type=req.source_type,
-        trust_tier=req.trust_tier,
-        repo=repo if req.index else None,
-        options=options,
-    )
+def _ingest_out(report: IngestReport) -> IngestOut:
     return IngestOut(
         summary=report.summary(),
         results=[
             IngestDocResult(
                 document_id=r.document_id,
+                outcome=r.outcome,
                 title=r.title,
                 course=r.course,
                 source_type=r.source_type,
@@ -138,8 +136,147 @@ async def ingest(req: IngestRequest, db: DB, repo: Repo, settings: SettingsDep) 
             )
             for r in report.results
         ],
-        skipped=[SkippedFile(path=s.path, reason=s.reason) for s in report.skipped],
+        skipped=[
+            SkippedFile(path=s.path, reason=s.reason, outcome=s.outcome) for s in report.skipped
+        ],
     )
+
+
+def _job_out(job: jobs.IngestJob) -> IngestJobOut:
+    pr = job.progress
+    return IngestJobOut(
+        job_id=job.job_id,
+        run_id=job.run_id,
+        status=job.status,
+        started_at=job.started_at,
+        finished_at=job.finished_at,
+        progress=IngestProgressOut(
+            done=pr.done,
+            total=pr.total,
+            current=pr.current,
+            outcomes=pr.outcomes,
+            archive=pr.archive,
+            member_done=pr.member_done,
+            member_total=pr.member_total,
+        )
+        if pr is not None
+        else None,
+        result=_ingest_out(job.report) if job.report is not None else None,
+        error=job.error,
+    )
+
+
+@router.post(
+    "/ingest/jobs",
+    summary="Start an ingest run in the background; poll GET /ingest/jobs/{id} for progress",
+    response_model=IngestJobOut,
+    status_code=202,
+)
+async def start_ingest_job(
+    req: IngestJobRequest, request: Request, db: DB, settings: SettingsDep
+) -> IngestJobOut:
+    path = await asyncio.to_thread(_resolve_ingest_path, req.path, settings.ingest_roots_resolved)
+    body: dict[str, Any] = req.model_dump()
+    if req.resume_run_id is not None:
+        try:
+            # a resume keeps the interrupted run's own settings (trust tier, media, language)
+            body.update(await jobs.resume_options(db, req.resume_run_id))
+        except KeyError as e:
+            raise AppError("not_found", f"ingest run {req.resume_run_id} not found", 404) from e
+        except ValueError as e:
+            raise AppError(
+                "invalid_state",
+                f"run {req.resume_run_id} is {e}; only interrupted runs resume",
+                http_status=409,
+            ) from e
+    if any(j.active for j in jobs.jobs_of(request.app).values()):
+        raise AppError(
+            "busy", "an ingest run is already in progress; wait for it or cancel it", 409
+        )
+    return _job_out(jobs.start(request.app, body, path))
+
+
+@router.get(
+    "/ingest/jobs/{job_id}",
+    summary="Progress and outcome of a background ingest run",
+    response_model=IngestJobOut,
+)
+async def get_ingest_job(job_id: str, request: Request) -> IngestJobOut:
+    job = jobs.jobs_of(request.app).get(job_id)
+    if job is None:
+        raise AppError("not_found", f"ingest job {job_id} not found", 404)
+    return _job_out(job)
+
+
+@router.post(
+    "/ingest/jobs/{job_id}/cancel",
+    summary="Stop a running ingest cleanly after the current file; the run stays resumable",
+    response_model=IngestJobOut,
+)
+async def cancel_ingest_job(job_id: str, request: Request) -> IngestJobOut:
+    job = jobs.jobs_of(request.app).get(job_id)
+    if job is None:
+        raise AppError("not_found", f"ingest job {job_id} not found", 404)
+    job.stop = True
+    return _job_out(job)
+
+
+@router.get(
+    "/ingest/runs",
+    summary="Recorded ingest runs, newest first (interrupted ones can be resumed)",
+    response_model=list[IngestRunOut],
+)
+async def list_ingest_runs(db: DB, limit: int = 20) -> list[IngestRunOut]:
+    rows = (
+        (await db.execute(select(IngestRun).order_by(IngestRun.started_at.desc()).limit(limit)))
+        .scalars()
+        .all()
+    )
+    out = []
+    for r in rows:
+        counts: dict[str, int] = dict(r.summary_json.get("outcomes") or {})
+        if not counts:  # still running or interrupted: count the recorded items
+            items = (
+                await db.execute(select(IngestRunItem.outcome).where(IngestRunItem.run_id == r.id))
+            ).scalars()
+            for o in items:
+                counts[o] = counts.get(o, 0) + 1
+        out.append(
+            IngestRunOut(
+                id=r.id,
+                src=r.src,
+                course=r.course,
+                status=r.status,
+                started_at=r.started_at,
+                finished_at=r.finished_at,
+                files_total=r.files_total,
+                files_done=r.files_done,
+                last_uri=r.last_uri,
+                resumed_from=r.resumed_from,
+                outcomes=counts,
+            )
+        )
+    return out
+
+
+@router.post(
+    "/ingest",
+    summary="Ingest a local file or course folder synchronously (small runs; the UI uses jobs)",
+    response_model=IngestOut,
+)
+async def ingest(req: IngestRequest, db: DB, repo: Repo, settings: SettingsDep) -> IngestOut:
+    path = await asyncio.to_thread(_resolve_ingest_path, req.path, settings.ingest_roots_resolved)
+    options = await default_options(db, settings, media=req.media, language=req.language)
+    report = await ingest_path(
+        db,
+        path,
+        course=req.course,
+        source_type=req.source_type,
+        trust_tier=req.trust_tier,
+        repo=repo if req.index else None,
+        options=options,
+    )
+    return _ingest_out(report)
 
 
 @router.patch(

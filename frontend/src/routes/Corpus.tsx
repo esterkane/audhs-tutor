@@ -5,10 +5,14 @@ import {
   useCapabilities,
   useCorpusStats,
   useDocuments,
+  useCancelIngestJob,
   useForgetDocument,
-  useIngest,
+  useIngestJob,
+  useIngestRuns,
   useRetierDocument,
   useSearch,
+  useStartIngestJob,
+  type IngestOut,
   type SearchHit,
 } from '../features/corpus/api'
 
@@ -63,14 +67,110 @@ function Capabilities() {
   )
 }
 
+/** What each outcome class means for the owner — literal, one line each. */
+const OUTCOME_LABELS: Record<string, string> = {
+  imported: 'imported (new version stored)',
+  unchanged: 'unchanged (same content as before)',
+  reference_only: 'links only (references, not material)',
+  no_content: 'nothing to keep (empty or no text)',
+  unsupported: 'format not supported (see the hint)',
+  gated: 'left out on purpose (caption present, media off, secret-looking)',
+  retryable_error: 'try again later (runtime or I/O problem — a resume retries these)',
+  access_blocked: 'needs you (permission denied or encrypted)',
+  parser_error: 'could not be parsed (claimed format, broken file)',
+}
+const OUTCOME_ORDER = Object.keys(OUTCOME_LABELS)
+
+function shortPath(p: string) {
+  const parts = p.split('!/')
+  const tail = parts[parts.length - 1].split('/').slice(-2).join('/')
+  return parts.length > 1 ? `${parts[0].split('/').slice(-1)[0]} › ${tail}` : tail
+}
+
+function IngestReport({ out }: { out: IngestOut }) {
+  const summary = out.summary as Record<string, unknown>
+  const outcomes = (summary.outcomes ?? {}) as Record<string, number>
+  const groups = OUTCOME_ORDER.filter((o) => out.skipped.some((s) => s.outcome === o))
+  return (
+    <div className="mt-3 text-sm">
+      <p role="status">
+        {String(summary.documents)} documents, {String(summary.new_versions)} new versions,{' '}
+        {String(summary.chunks)} chunks ({String(summary.deduped)} duplicates dropped,{' '}
+        {String(summary.flagged)} flagged, {String(summary.indexed)} indexed)
+        {Number(summary.transcribed_media) > 0 &&
+          ` · ${String(summary.transcribed_media)} media transcribed (${String(summary.audio_seconds)} s)`}
+        {Number(summary.images_read) > 0 && ` · ${String(summary.images_read)} images read`}
+        {out.skipped.length > 0 && ` · ${out.skipped.length} files skipped`}
+        {Number(summary.resumed) > 0 && ` · ${String(summary.resumed)} already done before the resume`}
+      </p>
+      <ul className="mt-1 flex flex-wrap gap-x-3 gap-y-1" aria-label="Outcomes">
+        {OUTCOME_ORDER.filter((o) => outcomes[o] > 0).map((o) => (
+          <li key={o}>
+            <span className="font-medium">{outcomes[o]}</span> {OUTCOME_LABELS[o]}
+          </li>
+        ))}
+      </ul>
+      {groups.map((o) => (
+        <details key={o} className="mt-2">
+          <summary className="cursor-pointer">
+            {OUTCOME_LABELS[o]}: {out.skipped.filter((s) => s.outcome === o).length}
+          </summary>
+          <ul className="mt-1 grid gap-1">
+            {out.skipped
+              .filter((s) => s.outcome === o)
+              .slice(0, 50)
+              .map((s) => (
+                <li key={s.path}>
+                  <span className="text-muted">{shortPath(s.path)}</span> — {s.reason}
+                </li>
+              ))}
+            {out.skipped.filter((s) => s.outcome === o).length > 50 && (
+              <li>… and {out.skipped.filter((s) => s.outcome === o).length - 50} more</li>
+            )}
+          </ul>
+        </details>
+      ))}
+    </div>
+  )
+}
+
 function IngestForm() {
-  const ingest = useIngest()
+  const start = useStartIngestJob()
+  const cancel = useCancelIngestJob()
+  const [jobId, setJobId] = useState<string | null>(null)
+  const job = useIngestJob(jobId)
+  const runs = useIngestRuns()
   const [path, setPath] = useState('')
   const [course, setCourse] = useState('')
   const [trust, setTrust] = useState(2)
   const [language, setLanguage] = useState('')
   const [media, setMedia] = useState(true)
-  const summary = ingest.data?.summary as Record<string, unknown> | undefined
+  const [index, setIndex] = useState(true)
+  const [stopRequested, setStopRequested] = useState(false)
+  const active = job.data && (job.data.status === 'queued' || job.data.status === 'running')
+  const progress = job.data?.progress
+  const interrupted = (runs.data ?? []).filter((r) => r.status === 'interrupted')
+
+  function launch(resumeRunId: string | null, src = path, courseName = course) {
+    start.mutate(
+      {
+        path: src,
+        course: courseName || null,
+        trust_tier: trust,
+        index,
+        language: language.trim() || null,
+        media,
+        resume_run_id: resumeRunId,
+      },
+      {
+        onSuccess: (j) => {
+          setStopRequested(false)
+          setJobId(j.job_id)
+        },
+      },
+    )
+  }
+
   return (
     <Card>
       <CardTitle>Ingest course material</CardTitle>
@@ -79,14 +179,7 @@ function IngestForm() {
         className="grid gap-3"
         onSubmit={(e) => {
           e.preventDefault()
-          ingest.mutate({
-            path,
-            course: course || null,
-            trust_tier: trust,
-            index: true,
-            language: language.trim() || null,
-            media,
-          })
+          launch(null)
         }}
       >
         <label className="text-sm font-medium">
@@ -133,40 +226,89 @@ function IngestForm() {
         </label>
         <label className="text-sm font-medium flex items-center gap-2">
           <input type="checkbox" checked={media} onChange={(e) => setMedia(e.target.checked)} />
-          Transcribe audio/video and read images (slow; long runs are better done with make ingest)
+          Transcribe audio/video and read images (slow; a run keeps going in the background)
         </label>
-        <div>
-          <Button type="submit" variant="primary" disabled={ingest.isPending || !path}>
-            {ingest.isPending ? 'Ingesting…' : 'Ingest'}
+        <label className="text-sm font-medium flex items-center gap-2">
+          <input type="checkbox" checked={index} onChange={(e) => setIndex(e.target.checked)} />
+          Index into retrieval now (needs the embedding model; off = store only, reindex later)
+        </label>
+        <div className="flex gap-2 flex-wrap">
+          <Button type="submit" variant="primary" disabled={start.isPending || !!active || !path}>
+            {active ? 'Ingesting…' : 'Ingest'}
           </Button>
+          {active && jobId && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setStopRequested(true)
+                cancel.mutate(jobId)
+              }}
+              disabled={cancel.isPending || stopRequested}
+            >
+              {stopRequested ? 'Stopping after the current file…' : 'Stop after this file'}
+            </Button>
+          )}
         </div>
       </form>
-      {ingest.isError && (
+      {start.isError && (
         <p role="alert" className="text-warn mt-2">
-          {(ingest.error as Error).message}
+          {(start.error as Error).message}
         </p>
       )}
-      {summary && (
-        <p className="text-sm mt-3" role="status">
-          {String(summary.documents)} documents, {String(summary.new_versions)} new versions,{' '}
-          {String(summary.chunks)} chunks ({String(summary.deduped)} duplicates dropped,{' '}
-          {String(summary.flagged)} flagged, {String(summary.indexed)} indexed)
-          {Number(summary.transcribed_media) > 0 &&
-            ` · ${String(summary.transcribed_media)} media transcribed (${String(summary.audio_seconds)} s)`}
-          {Number(summary.images_read) > 0 && ` · ${String(summary.images_read)} images read`}
-          {ingest.data && ingest.data.skipped.length > 0 && ` · ${ingest.data.skipped.length} files skipped`}
+      {active && (
+        <>
+          {/* the per-file line changes every second: visible, but not announced on every poll */}
+          <p className="text-sm mt-3" role="status" aria-live="off">
+            {progress
+              ? `File ${progress.done + 1} of ${progress.total}: ${shortPath(progress.current)}` +
+                (progress.archive
+                  ? ` · inside ${progress.archive}, member ${progress.member_done + 1} of ${progress.member_total}`
+                  : '')
+              : 'Starting the run…'}
+          </p>
+          {/* announced only when the outcome counts change (rarely), not on every file */}
+          <p className="text-xs text-muted" aria-live="polite">
+            {progress
+              ? `So far ${
+                  OUTCOME_ORDER.filter((o) => (progress.outcomes[o] ?? 0) > 0)
+                    .map((o) => `${progress.outcomes[o]} ${o.replace('_', ' ')}`)
+                    .join(', ') || 'nothing finished yet'
+                }`
+              : ''}
+          </p>
+        </>
+      )}
+      {job.data?.status === 'failed' && (
+        <p role="alert" className="text-warn mt-2">
+          The run failed: {job.data.error}. Nothing already imported was lost.
         </p>
       )}
-      {ingest.data && ingest.data.skipped.length > 0 && (
-        <details className="mt-2 text-sm">
-          <summary className="cursor-pointer">Skipped files and why</summary>
+      {job.data?.status === 'interrupted' && (
+        <p role="status" className="text-sm text-warn mt-2">
+          Stopped after the current file. Everything finished so far is kept; resume below to continue (a
+          resume keeps the run's original settings and retries files marked "try again later").
+        </p>
+      )}
+      {job.data?.result && <IngestReport out={job.data.result} />}
+      {interrupted.length > 0 && (
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer">Interrupted runs you can resume ({interrupted.length})</summary>
           <ul className="mt-1 grid gap-1">
-            {ingest.data.skipped.slice(0, 50).map((s) => (
-              <li key={s.path}>
-                <span className="text-muted">{s.path.split('/').slice(-2).join('/')}</span> — {s.reason}
+            {interrupted.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center gap-2">
+                <span className="text-muted">{shortPath(r.src)}</span> {r.files_done} of {r.files_total} files
+                done
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={!!active || start.isPending}
+                  onClick={() => launch(r.id, r.src, r.course ?? '')}
+                >
+                  Resume
+                </Button>
               </li>
             ))}
-            {ingest.data.skipped.length > 50 && <li>… and {ingest.data.skipped.length - 50} more</li>}
           </ul>
         </details>
       )}
