@@ -113,7 +113,7 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
     Verb.PROMOTED: (_R(), _R({"node_id", "promoted_to"})),
     Verb.SPOKE: (
         _R({"stt_ms", "llm_first_token_ms", "tts_first_audio_ms", "total_ms", "interrupted"}),
-        _R({"stt_model", "tts_model", "lang"}),
+        _R({"stt_model", "tts_model", "lang", "first_chunk"}),
     ),
     Verb.PRACTICED: (_R({"duration_min", "self_rating"}), _R({"domain", "activity", "notes"})),
     Verb.LISTENED: (_R({"replays", "seconds"}), _R({"document_id", "clip_index"})),

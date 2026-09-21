@@ -68,6 +68,7 @@ class TurnTiming:
     tts_first_audio_ms: int | None = None
     total_ms: int = 0
     interrupted: bool = False
+    first_chunk: str | None = None  # "clause" | "sentence": what the first TTS request carried
 
     def dict(self) -> dict[str, Any]:
         return {
@@ -87,12 +88,53 @@ class VoiceState:
     text_only: bool
     conversation: bool
     voice: str
+    early_speech: bool = True
     buffer: bytearray = field(default_factory=bytearray)
     speaking: bool = False
 
 
 def sentences(text: str) -> list[str]:
     return [s for s in _SENTENCE.split(text.strip()) if s]
+
+
+_CLAUSE = re.compile(r"(?<=[,;:])\s+")
+_SENTENCE_END = re.compile(r"[.!?…]\s*$")
+MIN_CLAUSE_WORDS = 3
+
+
+def first_clause(text: str) -> tuple[str, str] | None:
+    """`(clause, rest)` at the first comma/semicolon/colon that closes at least three *spoken*
+    words and is followed by more text — the earliest point where speaking can start without a
+    fragment. Delimiters inside code spans or open brackets do not count; a short interjection
+    ("Yes, …") is skipped and the next delimiter is tried."""
+    for m in _CLAUSE.finditer(text):
+        head, rest = text[: m.start()], text[m.end() :]
+        if head.count("`") % 2 or head.count("(") != head.count(")"):
+            continue
+        if len(speakable(head).split()) < MIN_CLAUSE_WORDS:
+            continue
+        if not rest.strip():
+            return None  # the clause is closed but nothing follows yet: wait for more tokens
+        return head.strip(), rest
+    return None
+
+
+def speech_chunks(pending: str, *, first: bool, early: bool) -> tuple[list[str], str]:
+    """What to hand to the speaker now and what to keep. Whole sentences always; for the very
+    first utterance of a turn (`first`) with `early` on, the first clause of the first sentence
+    goes out as soon as it is closed, so first audio does not wait for the sentence to finish
+    (measured gain: docs/slices/voice-loop.md)."""
+    ends = list(_SENTENCE.finditer(pending))
+    if ends:
+        # keep the remainder verbatim: `sentences()` would strip the whitespace a streaming
+        # provider puts *after* a token and glue the next word onto it ("Thenone")
+        cut = ends[-1].end()
+        return sentences(pending[:cut]), pending[cut:]
+    if first and early:
+        fc = first_clause(pending)
+        if fc is not None:
+            return [fc[0]], fc[1]
+    return [], pending
 
 
 class VoiceLoop:
@@ -185,6 +227,7 @@ class VoiceLoop:
             except Exception:
                 voice = ""
         retain = bool(await preferences.get(self.db, self.learner_id, "voice.retain_audio"))
+        early = bool(await preferences.get(self.db, self.learner_id, "voice.early_speech"))
         days = int(await preferences.get(self.db, self.learner_id, "voice.retention_days") or 7)
         await asyncio.to_thread(prune, self.voice_dir, days if retain else 0)
         text_only = bool(data.get("text_only")) or self.stt is None or self.tts is None
@@ -195,6 +238,7 @@ class VoiceLoop:
             text_only=text_only,
             conversation=bool(data.get("conversation")),
             voice=voice,
+            early_speech=early,
         )
         await self._send(
             ws,
@@ -343,6 +387,7 @@ class VoiceLoop:
         pending = ""
         done_payload: dict[str, Any] | None = None
         first_token = True
+        nothing_spoken_yet = True
         speak_queue: asyncio.Queue[str | None] = asyncio.Queue()
         speaker: asyncio.Task[None] | None = None
         tts_log: list[ModelCallRecord] = []
@@ -363,12 +408,18 @@ class VoiceLoop:
                     tok = str(data.get("text", ""))
                     await self._send(ws, {"type": "token", "text": tok})
                     pending += tok
-                    parts = sentences(pending)
-                    if len(parts) > 1:
-                        for s in parts[:-1]:
-                            if speakable(s):
-                                await speak_queue.put(speakable(s))
-                        pending = parts[-1]
+                    ready, pending = speech_chunks(
+                        pending, first=nothing_spoken_yet, early=state.early_speech
+                    )
+                    for s in ready:
+                        spoken_text = speakable(s)
+                        if spoken_text:
+                            if nothing_spoken_yet:
+                                timing.first_chunk = (
+                                    "sentence" if _SENTENCE_END.search(s) else "clause"
+                                )
+                            await speak_queue.put(spoken_text)
+                            nothing_spoken_yet = False
                 elif kind == "done":
                     done_payload = data
                 elif kind == "meta":
@@ -524,6 +575,7 @@ class VoiceLoop:
                 "interrupted": timing.interrupted,
             },
             context={
+                "first_chunk": timing.first_chunk,
                 "stt_model": self.stt.registry_id if self.stt else None,
                 "tts_model": self.tts.model if self.tts else None,
                 "lang": state.lang,
@@ -559,4 +611,14 @@ def prune(voice_dir: Path, days: int) -> int:
 
 
 Factory = Callable[[AsyncSession], Awaitable[tuple[Stt | None, Tts | None, Vad]]]
-__all__ = ["VoiceLoop", "prune", "sentences", "speakable", "TurnTiming", "Factory", "AsyncIterator"]
+__all__ = [
+    "VoiceLoop",
+    "prune",
+    "sentences",
+    "speakable",
+    "first_clause",
+    "speech_chunks",
+    "TurnTiming",
+    "Factory",
+    "AsyncIterator",
+]

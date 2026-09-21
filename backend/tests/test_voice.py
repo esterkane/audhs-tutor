@@ -26,7 +26,7 @@ from app.models_ai import registry
 from app.models_ai.fake import FakeProvider
 from app.models_ai.provider import ModelSpec
 from app.voice import setup
-from app.voice.loop import prune, sentences
+from app.voice.loop import first_clause, prune, sentences, speech_chunks
 from app.voice.stt import FakeStt
 from app.voice.tts import FakeTts
 from app.voice.vad import EnergyVad, silence, tone, wav_bytes
@@ -41,6 +41,62 @@ def test_energy_vad_and_sentences() -> None:
     assert states[0] == "silence" and "speech" in states and states[-1] == "end"
     assert vad.heard_ms >= 300
     assert sentences("One. Two! Three? Four") == ["One.", "Two!", "Three?", "Four"]
+
+
+def test_first_clause_and_speech_chunks() -> None:
+    # a clause needs ≥ 3 words and text after the comma; a bare "Yes," is not spoken alone
+    assert first_clause("Scaling keeps the scores small, so softmax stays") == (
+        "Scaling keeps the scores small,",
+        "so softmax stays",
+    )
+    assert first_clause("Yes, it does") is None
+    # a short interjection is skipped, the next delimiter is tried
+    assert first_clause("Yes, attention is a weighted sum, so half survive") == (
+        "Yes, attention is a weighted sum,",
+        "so half survive",
+    )
+    # citations do not count as words; delimiters inside code spans or open brackets are skipped
+    assert first_clause("Keys [1] [2], values follow") is None
+    assert first_clause("Call the function `f(a=1, b=2)` now, then stop") == (
+        "Call the function `f(a=1, b=2)` now,",
+        "then stop",
+    )
+    assert first_clause("Numbers like 1,000 and 0.5 stay, as do 10:30 times") == (
+        "Numbers like 1,000 and 0.5 stay,",
+        "as do 10:30 times",
+    )
+    assert first_clause("Scaling keeps the scores small,") is None  # nothing after it yet
+    assert first_clause("No comma here at all") is None
+    # token by token: the first clause goes out as soon as it closes, then whole sentences
+    spoken: list[str] = []
+    pending = ""
+    first = True
+    for tok in [
+        "Scaling keeps",
+        " the scores small,",
+        " so softmax",
+        " stays soft.",
+        " Second",
+        " one.",
+    ]:
+        pending += tok
+        ready, pending = speech_chunks(pending, first=first, early=True)
+        spoken += ready
+        first = first and not ready
+    ready, pending = speech_chunks(pending, first=first, early=True)
+    spoken += ready
+    spoken.append(pending)  # the loop flushes the remainder at the end of the turn
+    assert spoken == ["Scaling keeps the scores small,", "so softmax stays soft.", "Second one."]
+    # with early speech off nothing goes out before the first sentence ends
+    pending, out = "", []
+    for tok in ["Scaling keeps", " the scores small,", " so softmax", " stays soft.", " Next"]:
+        pending += tok
+        ready, pending = speech_chunks(pending, first=not out, early=False)
+        out += ready
+    assert out == ["Scaling keeps the scores small, so softmax stays soft."]
+    # after the first utterance, clauses are never split off (naturalness)
+    ready, rest = speech_chunks("and this, that", first=False, early=True)
+    assert ready == [] and rest == "and this, that"
     from app.voice.loop import speakable
 
     assert speakable("(analogy) Keys are **labels** [1], values are contents [2, 3].") == (
@@ -402,3 +458,39 @@ async def test_conversation_turn_stays_in_the_language_block(
     assert all(
         (c.packet_json or {}).get("skill_id") != node.id for c in cp
     )  # block not re-targeted
+
+
+async def test_voice_loop_speaks_first_clause_then_sentences_and_respects_the_preference(
+    ws_app,
+    spoken_world: dict[str, str],
+    db: AsyncSession,  # type: ignore[no-untyped-def]
+) -> None:
+    ws_app.state.providers["ollama"] = FakeProvider(
+        text="Scaling keeps the scores small, so softmax stays soft. Then one more sentence."
+    )
+    sid = spoken_world["session_id"]
+
+    def drive() -> list[str]:
+        tts = FakeTts()
+        ws_app.state.voice_overrides = {"stt": FakeStt("why scale"), "tts": tts, "vad": EnergyVad()}
+        with TestClient(ws_app) as tc, _connect(tc) as ws:
+            ws.send_text(json.dumps({"type": "start", "session_id": sid, "lang": "en"}))
+            assert json.loads(ws.receive_text())["type"] == "ready"
+            ws.send_text(json.dumps({"type": "text", "text": "why scale"}))
+            _collect(ws, {"done"})
+            ws.send_text(json.dumps({"type": "stop"}))
+        return tts.spoken
+
+    spoken = await asyncio.to_thread(drive)
+    assert spoken[:2] == ["Scaling keeps the scores small,", "so softmax stays soft."]
+    assert spoken[2] == "Then one more sentence."
+    ev = (await db.execute(select(models.LearningEvent))).scalars().all()
+    assert [e for e in ev if e.verb == "spoke"][-1].context_json["first_chunk"] == "clause"
+    # the learner switches early speech off: the first chunk is the whole sentence again
+    await preferences.set_pref(
+        db, spoken_world["learner_id"], "voice.early_speech", False, origin="explicit"
+    )
+    spoken = await asyncio.to_thread(drive)
+    assert spoken[0] == "Scaling keeps the scores small, so softmax stays soft."
+    ev = (await db.execute(select(models.LearningEvent))).scalars().all()
+    assert [e for e in ev if e.verb == "spoke"][-1].context_json["first_chunk"] == "sentence"

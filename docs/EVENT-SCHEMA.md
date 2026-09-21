@@ -38,7 +38,7 @@ Table `learning_event` — append-only. One row per learner-relevant interaction
 | reviewed | `rating(1–4), latency_ms, predicted_retrievability, days_since_learned (days since the previous review, or since the card was created; ≥ 0), stability_before, stability_after, confidence_pre?(1–5)` | `item_type, node_id` |
 | adapted / undone | — | `what, why, reversible, policy_version` |
 | parked / promoted | — | `node_id, promoted_to?` |
-| spoke | `stt_ms, llm_first_token_ms, tts_first_audio_ms, total_ms, interrupted` | `stt_model, tts_model, lang` — one per voice turn (P9); `domain=language` for conversation practice |
+| spoke | `stt_ms, llm_first_token_ms, tts_first_audio_ms, total_ms, interrupted` | `first_chunk` (`clause`/`sentence`/null — what the first TTS request carried, so the early-speech gain is checkable in real sessions), `stt_model, tts_model, lang` — one per voice turn (P9); `domain=language` for conversation practice |
 | practiced | `duration_min, self_rating(1–5)` | `domain, activity, notes?` |
 | listened | `replays, seconds` (really played) | `document_id, clip_index` — object id = the clip's `chunk_id`; emitted only after actual playback; exposure only, never evidence (P7) |
 | assigned / measured | `arm, metric, value, n` (+ for `measured`: `n_units` = independent assigned units with data, `n_events` = raw events behind them; `n` equals `n_units` since analysis v2) | `experiment_id`, `analysis_version` (`v2` = unit-level analysis, 2026-09-20) |

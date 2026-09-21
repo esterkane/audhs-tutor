@@ -114,6 +114,13 @@ PREFERENCES: dict[str, PrefSpec] = {
             description="Voice: Kokoro voice id",
         ),
         PrefSpec(
+            key="voice.early_speech",
+            type="bool",
+            default=True,
+            description="Voice: start speaking at the first clause of an answer (faster first "
+            "audio; the rest of the sentence follows after a short seam). Off = whole sentences",
+        ),
+        PrefSpec(
             key="listening.document_id",
             type="str",
             default="",

@@ -57,7 +57,6 @@ def gate() -> list[str]:
 
 _WORD = re.compile(r"[^a-z0-9' ]+")
 _SENTENCE = re.compile(r"[.!?](\s|$)")
-_CLAUSE = re.compile(r"[,;:.!?](\s|$)")
 
 
 def normalise(text: str) -> list[str]:
@@ -96,6 +95,7 @@ async def bench(
     transcripts: dict[str, str] | None = None,
     dataset: str = "own recordings",
     own_recordings: bool = True,
+    first_clause_mode: bool = False,
 ) -> dict[str, object]:
     from app.core.config import get_settings
     from app.db.session import make_engine, make_session_factory
@@ -143,7 +143,7 @@ async def bench(
                 reference = (transcripts or {}).get(wav.stem)
                 wer = word_error_rate(reference, res.text) if reference else None
                 from app.models_ai.gateway import StreamHandle
-                from app.voice.loop import speakable
+                from app.voice.loop import first_clause, speakable, speech_chunks
 
                 h = StreamHandle()
                 text = ""
@@ -173,18 +173,15 @@ async def bench(
                         t_first_tok = time.perf_counter()
                     text += tok
                     if t_clause is None:
-                        m = _CLAUSE.search(text)
-                        if m and len(text[: m.end()].split()) >= 3:
-                            t_clause, clause_text = time.perf_counter(), speakable(text[: m.end()])
+                        fc = first_clause(text)
+                        if fc is not None:
+                            t_clause, clause_text = time.perf_counter(), speakable(fc[0])
                     if t_sentence is None:
-                        m = _SENTENCE.search(text)
-                        if m and len(text[: m.end()].split()) >= 3:
-                            # what the real loop does: speak the first sentence while the LLM
-                            # keeps generating (voice/loop.py speak_queue)
-                            t_sentence, sentence_text = (
-                                time.perf_counter(),
-                                speakable(text[: m.end()]),
-                            )
+                        # exactly the loop's decision (voice/loop.py speech_chunks): the first
+                        # sentence, or with --first-clause the first closed clause of it
+                        ready, _rest = speech_chunks(text, first=True, early=first_clause_mode)
+                        if ready and len(ready[0].split()) >= 3:
+                            t_sentence, sentence_text = time.perf_counter(), speakable(ready[0])
                             sentence_tts = asyncio.create_task(first_audio_at(sentence_text))
                 t_llm_done = time.perf_counter()
                 if sentence_tts is None:  # no sentence boundary at all: speak everything
@@ -248,6 +245,7 @@ async def bench(
         return vals[max(0, int(len(vals) * 0.95) - 1)] if vals else None
 
     return {
+        "mode": "first_clause" if first_clause_mode else "sentence",
         "dataset": dataset,
         "own_recordings": own_recordings,
         "stage5_gate": (
@@ -273,10 +271,17 @@ async def bench(
         },
         "first_audio_clause_est_median_ms": med("first_audio_clause_est_ms"),
         "measurement": (
-            "total_ms = utterance end → first audio, with TTS started at the first sentence "
-            "boundary while the LLM streams (what voice/loop.py does); tts_sentence_ms is the "
-            "synthesis time of that sentence alone; first_audio_clause_est_ms = first clause "
-            "boundary + its own synthesis time, measured afterwards (a projection, not a run)"
+            "total_ms = utterance end → first audio, with TTS started at the first "
+            + ("closed clause" if first_clause_mode else "sentence boundary")
+            + " while the LLM streams (voice/loop.py speech_chunks, voice.early_speech "
+            + ("on" if first_clause_mode else "off")
+            + "); tts_sentence_ms is the synthesis time of that first chunk alone"
+            + (
+                ""
+                if first_clause_mode
+                else "; first_audio_clause_est_ms = first clause boundary + its own synthesis "
+                "time measured afterwards (a projection — run --first-clause for the real number)"
+            )
         ),
         "target_median_ms": 2000,
         "latency_target_met": median_ok,
@@ -303,6 +308,11 @@ def main() -> int:
     ap.add_argument("--wavs", type=Path, required=True)
     ap.add_argument("--turns", type=int, default=20)
     ap.add_argument("--transcripts", type=Path, help="reference text per wav stem (WER)")
+    ap.add_argument(
+        "--first-clause",
+        action="store_true",
+        help="start TTS at the first closed clause (the loop's voice.early_speech behaviour)",
+    )
     ap.add_argument("--dataset", default="own recordings", help="label for the report")
     ap.add_argument(
         "--own-recordings",
@@ -335,6 +345,7 @@ def main() -> int:
             transcripts=load_transcripts(args.transcripts),
             dataset=args.dataset,
             own_recordings=args.own_recordings,
+            first_clause_mode=args.first_clause,
         )
     )
     args.out.parent.mkdir(parents=True, exist_ok=True)
