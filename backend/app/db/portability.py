@@ -2,6 +2,7 @@
 
 import json
 import sqlite3
+from pathlib import Path
 from typing import Any
 
 from app.db.ddl import LEARNING_EVENT_GUARDS, drop_guard
@@ -43,3 +44,11 @@ def wipe_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, int]:
 
 def dumps(payload: dict[str, Any]) -> str:
     return json.dumps(payload, indent=2, ensure_ascii=False, default=str)
+
+
+def wipe_voice(voice_dir: Path) -> int:
+    """Delete every retained voice recording (P9). Part of a learner wipe; export lists them as
+    excluded (audio is not part of the JSON export)."""
+    from app.voice.loop import prune
+
+    return prune(voice_dir, 0)

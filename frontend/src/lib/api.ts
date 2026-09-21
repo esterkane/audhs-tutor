@@ -5,7 +5,7 @@ export type SessionOut = Schemas['SessionOut']
 export type SkillView = Schemas['SkillView']
 export type SkillList = Schemas['SkillList']
 export type TurnDone = Schemas['TurnDone']
-export type TurnRequest = Omit<Schemas['TurnRequest'], 'action'> & {
+export type TurnRequest = Omit<Schemas['TurnRequest'], 'action' | 'spoken'> & {
   action?: Schemas['TurnRequest']['action']
 }
 /** Emitted on the SSE stream only (not part of the OpenAPI response models). */

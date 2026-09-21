@@ -6,6 +6,9 @@ import { defineConfig } from 'vite'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
-  server: { proxy: { '/api': 'http://localhost:8000' } },
+  // API_PORT lets `make dev-sandbox` proxy to a second backend; ws:true carries the voice WebSocket.
+  server: {
+    proxy: { '/api': { target: `http://localhost:${process.env.API_PORT ?? 8000}`, ws: true } },
+  },
   test: { environment: 'jsdom', setupFiles: ['./src/test/setup.ts'], css: false },
 })

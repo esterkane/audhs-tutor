@@ -9,6 +9,11 @@ class TurnRequest(BaseModel):
     skill_id: str | None = None
     action: Literal["auto", "explain", "hint", "summarize", "full_solution"] = "auto"
     representation: str | None = None
+    # P9: spoken conversation practice inside the language block — the reply follows
+    # prompts/voice/conversation.v1.md in this language (no citations, short, no assessment)
+    conversation_lang: str | None = Field(default=None, pattern=r"^[a-z]{2,3}$")
+    # P9: the answer will be read aloud — short, no lists/code; citations stay in the text
+    spoken: bool = False
 
 
 class SourceRef(BaseModel):
@@ -39,6 +44,9 @@ class TurnDone(BaseModel):
     tutor_trace_id: str
     registry_id: str | None
     route: str | None
+    outcome: str = "ok"  # ok | partial (the model stopped mid-way; the text shown is what arrived)
+    usage_source: str | None = None  # reported | estimated | unavailable
+    cost_status: str | None = None  # free | reported | estimated | unknown
     sentences: int
     representation: str | None
     sources: list[SourceRef]

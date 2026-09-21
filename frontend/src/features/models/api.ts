@@ -5,6 +5,7 @@ export type ModelRow = Schemas['ModelRow']
 export type JobOut = Schemas['JobOut']
 export type RoutingOut = Schemas['RoutingOut']
 export type AddIn = Schemas['AddIn']
+export type CostsOut = Schemas['CostsOut']
 
 export function useModels() {
   return useQuery({ queryKey: ['models'], queryFn: () => apiFetch<Schemas['ModelList']>('/api/models') })
@@ -62,4 +63,12 @@ export function useModelActions() {
     onSuccess: invalidate,
   })
   return { add, pull, bench, assign, remove }
+}
+
+/** P6 cost view: what the daily cap sees, split by how sure we are of each figure. */
+export function useCosts(days = 1) {
+  return useQuery({
+    queryKey: ['models', 'costs', days],
+    queryFn: () => apiFetch<CostsOut>(`/api/models/costs?days=${days}`),
+  })
 }

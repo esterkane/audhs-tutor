@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
 import { ParkingLotButton } from '../components/ParkingLotButton'
 import { Corpus } from '../routes/Corpus'
+import { Curriculum } from '../routes/Curriculum'
 import { Experiments } from '../routes/Experiments'
 import { Home } from '../routes/Home'
 import { Map } from '../routes/Map'
@@ -34,6 +35,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link to="/experiments">Experiments</Link>
           <Link to="/vocab">Vocab</Link>
           <Link to="/corpus">Corpus</Link>
+          <Link to="/curriculum">Lessons</Link>
           <Link to="/models">Models</Link>
           <Link to="/preferences">Preferences</Link>
         </nav>
@@ -61,6 +63,7 @@ export default function App() {
             <Route path="/map" element={<Map />} />
             <Route path="/preferences" element={<Preferences />} />
             <Route path="/corpus" element={<Corpus />} />
+            <Route path="/curriculum" element={<Curriculum />} />
             <Route path="/models" element={<Models />} />
             <Route path="/experiments" element={<Experiments />} />
             <Route path="/vocab" element={<Vocab />} />

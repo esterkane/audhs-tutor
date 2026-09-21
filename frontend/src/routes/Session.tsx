@@ -8,16 +8,30 @@ import { Textarea } from '../components/ui/textarea'
 import { useAttempt, useNextItem } from '../features/assess/api'
 import { ChallengePanel } from '../features/challenge/ChallengePanel'
 import { PlanStrip } from '../features/plan/PlanStrip'
-import { useBlockEnd, useBlockStart, type Block } from '../features/plan/api'
+import { BLOCK_LABELS, type Block } from '../features/plan/api'
+import { skipNote, startLabel } from '../features/plan/labels'
 import { useKinds, usePrefer, useRender, type RenderOut } from '../features/representations/api'
-import { useCheckpoint, useSession } from '../features/session/api'
+import {
+  REVIEW_BLOCK_TYPES,
+  firstIndex,
+  routeForPhase,
+  useBlockTransition,
+  useCheckpoint,
+  useSession,
+} from '../features/session/api'
 import { SoftTimer } from '../features/session/SoftTimer'
 import { AdaptationCards } from '../features/adaptations/AdaptationCards'
 import { PracticePanel } from '../features/practice/PracticePanel'
-import { VocabPanel } from '../features/practice/VocabPanel'
+import { LanguageBlock } from '../features/listening/LanguageBlock'
+import { CodeExercise } from '../features/code/CodeExercise'
+import { VoicePanel } from '../features/voice/VoicePanel'
+import { usePreferences } from '../features/preferences/api'
+import { useExercise } from '../features/code/api'
 import { useReplan } from '../features/plan/api'
 import { useSensory } from '../features/sensory/useSensory'
 import { useTutorStream } from '../features/tutor/useTutorStream'
+import { SourceViewer } from '../features/curriculum/SourceViewer'
+import { useReport } from '../features/curriculum/api'
 import type { AttemptResult, SessionOut } from '../lib/api'
 import { SOFT_TIMER_MIN, useMode } from '../stores/mode'
 
@@ -25,18 +39,6 @@ type Phase = 'teach' | 'assess' | 'challenge' | 'practice'
 function withheldCount(dropped: string[] | undefined): number {
   return (dropped ?? []).filter((d) => d.endsWith(':quarantined')).length
 }
-
-const PHASE_FOR_BLOCK: Record<string, Phase | 'review' | 'recap' | 'skip'> = {
-  movement_primer: 'practice',
-  retrieval: 'review',
-  new_material: 'teach',
-  challenge: 'challenge',
-  interleaved_review: 'review',
-  domain_switch: 'practice',
-  recap: 'recap',
-}
-
-type Checkpoint = { phase?: string; skill_id?: string; block_index?: number } | null | undefined
 
 export function Session() {
   const { sessionId } = useMode()
@@ -53,106 +55,211 @@ export function Session() {
     )
   }
   if (session.isLoading || !session.data) return <Card>Loading session…</Card>
-  // keyed by session id so a resumed session initialises its state from the server checkpoint
-  return <SessionBody key={session.data.id} sessionId={sessionId} data={session.data} />
+  // keyed by the server's block id: a new block (or a resumed session) starts with fresh UI state
+  const st = session.data.state
+  return (
+    <SessionBody
+      key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
+      sessionId={sessionId}
+      data={session.data}
+    />
+  )
+}
+
+function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut }) {
+  const nav = useNavigate()
+  const transition = useBlockTransition(sessionId)
+  const plan = (data.plan ?? []) as Block[]
+  const reviewIx = firstIndex(plan, (t) => REVIEW_BLOCK_TYPES.includes(t))
+  const learnIx = firstIndex(plan, (t) => !REVIEW_BLOCK_TYPES.includes(t))
+  const [note, setNote] = useState<string | null>(null)
+  async function beginChecked(index: number) {
+    if (transition.pending) return
+    const state = await transition.start(index)
+    if (!state.allowed) {
+      setNote(state.message)
+      return
+    }
+    nav(routeForPhase(state))
+  }
+  async function continuePlan() {
+    if (transition.pending || !data.state) return
+    const state = await transition.next({ from_index: data.state.block_index ?? null, reason: 'finished' })
+    if (!state.allowed) {
+      setNote(state.message)
+      return
+    }
+    nav(state.plan_complete ? '/recap' : routeForPhase(state))
+  }
+  if (data.state?.plan_complete)
+    return (
+      <Card>
+        <CardTitle>Plan complete</CardTitle>
+        <p className="text-sm text-muted">Every planned block is done. Finish with the recap.</p>
+        <Button variant="primary" className="mt-3" onClick={() => nav('/recap')}>
+          Recap
+        </Button>
+      </Card>
+    )
+  // a block ended (stop, then a change of mind): continue where the plan is, never restart it
+  if (data.state?.block_status === 'ended' && data.state.next_index != null) {
+    const nextBlock = plan[data.state.next_index]
+    return (
+      <Card>
+        <CardTitle>Continue the plan?</CardTitle>
+        <PlanStrip blocks={plan} current={-1} firstStarted={data.state.first_started_index} />
+        <div className="flex gap-2 flex-wrap mt-3">
+          <Button variant="primary" onClick={() => void continuePlan()} disabled={transition.pending}>
+            Continue: {BLOCK_LABELS[nextBlock.type] ?? nextBlock.type} ({nextBlock.planned_min} min)
+          </Button>
+          <Button onClick={() => nav('/recap')}>Finish session</Button>
+        </div>
+        {note && (
+          <p role="status" className="text-sm text-warn mt-2">
+            {note}
+          </p>
+        )}
+      </Card>
+    )
+  }
+  return (
+    <Card>
+      <CardTitle>Which first?</CardTitle>
+      <PlanStrip blocks={plan} current={-1} />
+      <div className="flex gap-2 flex-wrap mt-3">
+        {learnIx != null && (
+          <Button variant="primary" onClick={() => void beginChecked(learnIx)} disabled={transition.pending}>
+            {startLabel(plan, learnIx, data.active_skill?.title ?? data.next_skill?.title)}
+          </Button>
+        )}
+        {reviewIx != null && data.due_reviews > 0 && (
+          <Button onClick={() => void beginChecked(reviewIx)} disabled={transition.pending}>
+            Review first ({data.due_reviews} due){skipNote(plan, reviewIx)}
+          </Button>
+        )}
+        {!plan.length && (
+          <Button variant="primary" onClick={() => nav('/recap')}>
+            No blocks planned — recap
+          </Button>
+        )}
+      </div>
+      {note && (
+        <p role="status" className="text-sm text-warn mt-2">
+          {note}
+        </p>
+      )}
+      {transition.error && (
+        <p role="alert" className="text-warn mt-2">
+          {transition.error.message}
+        </p>
+      )}
+    </Card>
+  )
 }
 
 function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut }) {
   const { skillId, setSkill, mode, setEnergy } = useMode()
   const nav = useNavigate()
   const checkpoint = useCheckpoint()
-  const blockStart = useBlockStart()
-  const blockEnd = useBlockEnd()
+  const transition = useBlockTransition(sessionId)
   const replan = useReplan()
   const { notifications } = useSensory()
-  const cp = data.checkpoint as Checkpoint
-  const [phase, setPhase] = useState<Phase>(() => {
-    if (cp?.phase === 'assess' || cp?.phase === 'challenge' || cp?.phase === 'practice') return cp.phase
-    if (typeof cp?.block_index !== 'number') {
-      const first = ((data.plan ?? []) as Block[])[0]
-      if (first && first.type === 'movement_primer') return 'practice'
-    }
-    return 'teach'
-  })
+  const st = data.state
+  const plan = (data.plan ?? []) as Block[]
+  const blockIndex = st?.block_status === 'running' ? (st.block_index ?? null) : null
+  const currentBlock = blockIndex != null ? plan[blockIndex] : undefined
+  // the server phase says which screen; within the session screen the learner moves teach ↔ assess
+  const serverPhase = st?.phase
+  const [phase, setPhase] = useState<Phase>(() =>
+    serverPhase === 'assess' ||
+    serverPhase === 'challenge' ||
+    serverPhase === 'practice' ||
+    serverPhase === 'teach'
+      ? serverPhase
+      : 'teach',
+  )
   const [hintCount, setHintCount] = useState(0)
-  const [blockIndex, setBlockIndex] = useState<number | null>(() => {
-    if (typeof cp?.block_index === 'number') return cp.block_index
-    const first = ((data.plan ?? []) as Block[])[0]
-    return first && first.type === 'movement_primer' && !cp?.phase ? 0 : null
-  })
   const [graspPassed, setGraspPassed] = useState(false)
   const [blockNote, setBlockNote] = useState<string | null>(null)
-  const skill = data.next_skill
-  const plan = (data.plan ?? []) as Block[]
+  const skill = data.active_skill ?? data.next_skill // the block's skill, not the map's recommendation
+  const activeSkillId = st?.skill_id ?? skill?.id ?? null
 
   // Zustand is an external store: syncing it from an effect is the intended pattern.
   useEffect(() => {
-    const wanted = cp?.skill_id ?? skill?.id ?? null
-    if (wanted && !skillId) setSkill(wanted)
-  }, [cp?.skill_id, skill, skillId, setSkill])
+    if (activeSkillId && skillId !== activeSkillId) setSkill(activeSkillId)
+  }, [activeSkillId, skillId, setSkill])
+  // a running review/recap block belongs to another screen
+  useEffect(() => {
+    if (blockIndex != null && (serverPhase === 'review' || serverPhase === 'recap')) nav(routeForPhase(st))
+  }, [blockIndex, serverPhase, st, nav])
 
-  const currentSkillId = skillId ?? cp?.skill_id ?? skill?.id ?? null
-  const current = blockIndex ?? plan.findIndex((b) => b.type === 'new_material')
-  const currentBlock = current >= 0 ? plan[current] : undefined
-  const timerMinutes = currentBlock?.planned_min ?? SOFT_TIMER_MIN[mode]
+  if (blockIndex == null || !currentBlock) return <StartCard sessionId={sessionId} data={data} />
+
+  const timerMinutes = currentBlock.planned_min ?? SOFT_TIMER_MIN[mode]
 
   function changePhase(p: Phase) {
     setPhase(p)
     void checkpoint.mutateAsync({
-      id: sessionId!,
-      body: { phase: p, skill_id: currentSkillId, block_index: current >= 0 ? current : undefined },
+      id: sessionId,
+      body: { phase: p, skill_id: activeSkillId, block_index: blockIndex ?? undefined },
     })
   }
 
   async function finishBlock(reason: 'finished' | 'save_and_stop' | 'switch_early' | 'skipped') {
-    if (current < 0 || !currentBlock) {
+    if (transition.pending || blockIndex == null) return
+    try {
+      await doFinish(reason)
+    } catch {
+      /* transition.error is rendered; nothing changed on the server */
+    }
+  }
+
+  async function doFinish(reason: 'finished' | 'save_and_stop' | 'switch_early' | 'skipped') {
+    if (blockIndex == null) return
+    if (reason === 'save_and_stop') {
+      const res = await transition.end({ index: blockIndex, reason, switched_early: true })
+      if (!res.allowed) {
+        setBlockNote(res.message)
+        return
+      }
       nav('/recap')
       return
     }
-    const res = await blockEnd.mutateAsync({
-      session_id: sessionId!,
-      index: current,
-      switched_early: reason !== 'finished',
-      reason,
-      grasp_passed: graspPassed,
-    })
+    const res = await transition.next({ from_index: blockIndex, reason, grasp_passed: graspPassed })
     if (!res.allowed) {
       setBlockNote(res.message)
       changePhase('assess')
       return
     }
     setBlockNote(null)
-    if (reason === 'save_and_stop' || res.next_index == null) {
+    if (res.plan_complete || res.block_index == null) {
       nav('/recap')
       return
     }
-    // advance through the plan; skip blocks that have no screen yet
-    let idx: number | null = res.next_index
-    while (idx != null && idx < plan.length && PHASE_FOR_BLOCK[plan[idx].type] === 'skip')
-      idx = idx + 1 < plan.length ? idx + 1 : null
-    if (idx == null) {
-      nav('/recap')
-      return
-    }
-    setBlockIndex(idx)
-    await blockStart.mutateAsync({ session_id: sessionId!, index: idx, switched_early: false })
-    const next = PHASE_FOR_BLOCK[plan[idx].type]
-    if (next === 'review') nav('/review')
-    else if (next === 'recap') nav('/recap')
-    else changePhase(next as Phase)
+    const route = routeForPhase(res)
+    if (route !== '/session') nav(route)
+    // staying on /session: the new block id re-keys SessionBody, which resets phase/hints/grasp
   }
 
   return (
     <div className="grid gap-4">
-      <SoftTimer
-        minutes={timerMinutes}
-        onSaveStop={() => void finishBlock('save_and_stop')}
-        onFinishBlock={() => void finishBlock('finished')}
-        notify={notifications}
-      />
+      {st?.block_started_at && (
+        <SoftTimer
+          key={st.block_id ?? String(blockIndex)}
+          blockKey={st.block_id ?? String(blockIndex)}
+          startedAt={st.block_started_at}
+          plannedMin={timerMinutes}
+          extensionMin={st.timer_extension_min ?? 0}
+          onExtend={(min) => void transition.extend(blockIndex, min)}
+          onSaveStop={() => void finishBlock('save_and_stop')}
+          onFinishBlock={() => void finishBlock('finished')}
+          notify={notifications}
+          pending={transition.pending}
+        />
+      )}
       <AdaptationCards origin="planner" />
       <Card>
-        <PlanStrip blocks={plan} current={current} />
+        <PlanStrip blocks={plan} current={blockIndex} firstStarted={st?.first_started_index} />
         {data.experiment && (
           <p className="text-sm mt-2" role="status">
             Experiment "{String(data.experiment.name)}":{' '}
@@ -175,11 +282,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
                 onClick={() => {
                   if (n === data.energy) return
                   setEnergy(n)
-                  void replan.mutateAsync({
-                    session_id: sessionId!,
-                    energy: n,
-                    from_index: current >= 0 ? current : 0,
-                  })
+                  void replan.mutateAsync({ session_id: sessionId, energy: n, from_index: blockIndex })
                 }}
               >
                 {n}
@@ -187,17 +290,18 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
             ))}
           </div>
           <span className="text-muted">
-            A change re-plans the remaining blocks as a suggestion, never silently.
+            A change re-plans the remaining blocks as a suggestion, never silently; the review cap follows
+            your energy at once (undo: "Show all" on the review screen).
           </span>
         </div>
         <CardTitle className="mt-3">
           {phase === 'practice'
-            ? `${currentBlock?.domain === 'language' ? 'Language' : currentBlock?.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
+            ? `${currentBlock.domain === 'language' ? 'Language' : currentBlock.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
             : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}
         </CardTitle>
         {skill && phase === 'teach' && (
           <p className="text-sm text-muted">
-            Goal: {skill.description} · mastery {(skill.mastery * 100).toFixed(0)}%
+            About: {skill.description} · mastery {(skill.mastery * 100).toFixed(0)}%
           </p>
         )}
         {blockNote && (
@@ -205,11 +309,16 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
             {blockNote}
           </p>
         )}
+        {transition.error && (
+          <p role="alert" className="text-sm text-warn mt-2">
+            {transition.error.message} — nothing was changed; try again.
+          </p>
+        )}
       </Card>
       {phase === 'teach' && (
         <TeachPanel
           sessionId={sessionId}
-          skillId={currentSkillId}
+          skillId={activeSkillId}
           onCheck={() => changePhase('assess')}
           onHintLevel={setHintCount}
           onSwitchEarly={() => void finishBlock('switch_early')}
@@ -218,7 +327,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
       {phase === 'assess' && (
         <AssessPanel
           sessionId={sessionId}
-          skillId={currentSkillId}
+          skillId={activeSkillId}
           hintCount={hintCount}
           onBack={() => changePhase('teach')}
           onGraded={(r) => {
@@ -228,17 +337,20 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
           onFinishBlock={() => void finishBlock('finished')}
         />
       )}
+      {(phase === 'teach' || phase === 'assess') && activeSkillId && (
+        <OptionalExercise sessionId={sessionId} skillId={activeSkillId} mastery={skill?.mastery ?? 0} />
+      )}
       {phase === 'challenge' && (
         <ChallengePanel
           sessionId={sessionId}
-          skillId={currentSkillId}
+          skillId={activeSkillId}
           onDone={() => void finishBlock('finished')}
         />
       )}
-      {phase === 'practice' && currentBlock && currentBlock.domain === 'language' && (
-        <VocabPanel sessionId={sessionId} onDone={() => void finishBlock('finished')} />
+      {phase === 'practice' && currentBlock.domain === 'language' && (
+        <LanguageBlock sessionId={sessionId} onDone={() => void finishBlock('finished')} />
       )}
-      {phase === 'practice' && currentBlock && currentBlock.domain !== 'language' && (
+      {phase === 'practice' && currentBlock.domain !== 'language' && (
         <PracticePanel
           sessionId={sessionId}
           domain={currentBlock.domain === 'guitar' ? 'guitar' : 'movement'}
@@ -271,10 +383,23 @@ function TeachPanel({
   const prefer = usePrefer()
   const [alt, setAlt] = useState<RenderOut | null>(null)
   const [prevAlt, setPrevAlt] = useState<RenderOut | null>(null)
+  const [openSource, setOpenSource] = useState<{
+    chunkId: string
+    citation: string
+    turnId: string
+  } | null>(null)
+  const reportTurn = useReport()
+  const prefs = usePreferences()
+  const voiceOn = (prefs.data?.values as Record<string, unknown> | undefined)?.['voice.enabled'] === true
+  const [talking, setTalking] = useState(false)
   const base = { session_id: sessionId, skill_id: skillId }
   useEffect(() => {
     if (meta) onHintLevel(meta.hint_level)
   }, [meta, onHintLevel])
+  // "Reported" and an open source belong to one turn: derived, so a new answer starts clean
+  const reportedThisTurn =
+    reportTurn.isSuccess && done != null && reportTurn.variables?.turn_id === done.turn_id
+  const sourceForThisTurn = openSource && done && openSource.turnId === done.turn_id ? openSource : null
 
   async function showDifferently(kind: string) {
     if (!skillId) return
@@ -328,8 +453,16 @@ function TeachPanel({
               Stop
             </Button>
           )}
+          {voiceOn && !talking && (
+            <Button variant="ghost" onClick={() => setTalking(true)}>
+              Talk instead
+            </Button>
+          )}
         </div>
       </Card>
+      {voiceOn && talking && (
+        <VoicePanel sessionId={sessionId} skillId={skillId} onClose={() => setTalking(false)} />
+      )}
       {(text || busy || error) && (
         <Card aria-busy={busy}>
           {meta && (
@@ -352,6 +485,26 @@ function TeachPanel({
               Answer complete.
             </p>
           )}
+          {done && done.outcome === 'partial' && (
+            <p className="text-sm text-muted mt-2" role="status">
+              Answer cut short — the model stopped mid-way. What you read is what arrived. Ask again, or use
+              Hint for the next step.
+            </p>
+          )}
+          {done && done.route && done.route !== 'primary' && (
+            <p className="text-xs text-muted mt-2" role="status">
+              {done.route === 'degraded'
+                ? "Answered by a local model instead of the planned hosted one: today's hosted budget is used up. Nothing else changed."
+                : 'Answered by a fallback model: the planned model was not ready. Nothing else changed.'}
+            </p>
+          )}
+          {done && done.registry_id && (
+            <details className="text-xs text-muted mt-1">
+              <summary className="cursor-pointer">About this answer</summary>
+              Model {done.registry_id} ({done.route ?? 'primary'})
+              {done.usage_source === 'estimated' ? ' · token usage estimated' : ''}
+            </details>
+          )}
           {done && done.sources.length > 0 && (
             <div className="mt-3 text-sm text-muted">
               <p className="font-medium">
@@ -360,7 +513,15 @@ function TeachPanel({
               <ol className="list-decimal ml-5">
                 {done.sources.map((s) => (
                   <li key={s.chunk_id}>
-                    {s.citation}
+                    <button
+                      type="button"
+                      className="underline text-left"
+                      onClick={() =>
+                        setOpenSource({ chunkId: s.chunk_id, citation: s.citation, turnId: done.turn_id })
+                      }
+                    >
+                      {s.citation}
+                    </button>
                     {s.cited ? '' : ' — not cited'}
                     {(s.flagged ?? []).length > 0 && (
                       <span className="text-warn"> (flagged: {(s.flagged ?? []).join(', ')})</span>
@@ -368,6 +529,17 @@ function TeachPanel({
                   </li>
                 ))}
               </ol>
+              {sourceForThisTurn && (
+                <div className="mt-2">
+                  <SourceViewer
+                    key={sourceForThisTurn.chunkId}
+                    chunkId={sourceForThisTurn.chunkId}
+                    citation={sourceForThisTurn.citation}
+                    turnId={done.turn_id}
+                    onClose={() => setOpenSource(null)}
+                  />
+                </div>
+              )}
             </div>
           )}
           {done && withheldCount(done.dropped) > 0 && (
@@ -379,6 +551,29 @@ function TeachPanel({
           )}
           {done && done.sources.length === 0 && withheldCount(done.dropped) === 0 && (
             <p className="text-sm text-muted mt-2">no course source for this</p>
+          )}
+          {done && (
+            <p className="text-xs mt-2">
+              {reportedThisTurn ? (
+                <span role="status">Reported — kept next to this turn; nothing was rewritten.</span>
+              ) : (
+                <button
+                  type="button"
+                  className="underline text-muted"
+                  disabled={reportTurn.isPending}
+                  onClick={() =>
+                    reportTurn.mutate({
+                      kind: 'wrong_explanation',
+                      turn_id: done.turn_id,
+                      skill_id: skillId,
+                      note: '',
+                    })
+                  }
+                >
+                  Report this explanation as wrong
+                </button>
+              )}
+            </p>
           )}
         </Card>
       )}
@@ -612,5 +807,30 @@ function AssessPanel({
         </Card>
       )}
     </>
+  )
+}
+
+/** A code exercise exists for some skills (P8). Collapsed by default: one task at a time. */
+function OptionalExercise({
+  sessionId,
+  skillId,
+  mastery,
+}: {
+  sessionId: string
+  skillId: string
+  mastery: number
+}) {
+  const exercise = useExercise(skillId)
+  if (!exercise.data) return null
+  return (
+    <details className="mt-2">
+      <summary className="cursor-pointer text-sm font-medium">
+        Code exercise (optional{mastery < 0.6 ? ' — best after the worked example' : ''}):{' '}
+        {exercise.data.title}
+      </summary>
+      <div className="mt-2">
+        <CodeExercise sessionId={sessionId} skillId={skillId} />
+      </div>
+    </details>
   )
 }

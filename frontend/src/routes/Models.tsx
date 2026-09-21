@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
+import { VoiceSetup } from '../features/voice/VoiceSetup'
 import {
+  useCosts,
   useJobs,
   useModelActions,
   useModels,
@@ -225,7 +227,10 @@ function RoutingTable() {
           <th scope="col" className="pr-2">
             Chain
           </th>
-          <th scope="col">Override</th>
+          <th scope="col" className="pr-2">
+            Override
+          </th>
+          <th scope="col">If nothing is ready</th>
         </tr>
       </thead>
       <tbody>
@@ -253,19 +258,152 @@ function RoutingTable() {
                 ))}
               </select>
             </td>
+            <td className="text-muted">
+              {r.problem ? (
+                <span>
+                  {r.problem} — <span className="text-fg">{r.action}</span>
+                </span>
+              ) : (
+                ''
+              )}
+            </td>
           </tr>
         ))}
       </tbody>
       {assign.isError && (
         <tfoot>
           <tr>
-            <td colSpan={4} role="alert" className="text-warn">
+            <td colSpan={5} role="alert" className="text-warn">
               {(assign.error as Error).message}
             </td>
           </tr>
         </tfoot>
       )}
     </table>
+  )
+}
+
+function usd(n: number): string {
+  return `$${n.toFixed(4)}`
+}
+
+/**
+ * P6 cost view. Never one blended number: reported (provider price), estimated (tokens × registry
+ * price), unknown (a failed hosted call with no usage, counted at its reserved worst case) and legacy
+ * (rows from before the accounting existed) are shown apart. "Counted" is what the daily cap sees.
+ */
+function CostCard() {
+  const [days, setDays] = useState(1)
+  const costs = useCosts(days)
+  const c = costs.data
+  if (costs.isError)
+    return (
+      <Card>
+        <CardTitle>Hosted spend</CardTitle>
+        <p role="alert" className="text-sm text-warn">
+          Cost view unavailable: {(costs.error as Error).message}
+        </p>
+      </Card>
+    )
+  if (!c) return null
+  const t = c.today
+  const w = c.window
+  return (
+    <Card>
+      <CardTitle>Hosted spend</CardTitle>
+      <p className="text-sm">
+        Counted toward today's cap: <span className="font-medium">{usd(t.counted)}</span> of{' '}
+        {usd(c.daily_cap_usd)} — {usd(t.remaining)} left. Local models cost nothing here.
+      </p>
+      <dl className="text-xs text-muted mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+        <dt>Reported by the provider (never below the registry estimate)</dt>
+        <dd>{usd(t.reported)}</dd>
+        <dt>Estimated (tokens × registry price)</dt>
+        <dd>{usd(t.estimated)}</dd>
+        <dt>Unknown billing (failed calls, counted at their reserved worst case)</dt>
+        <dd>{usd(t.unknown_reserved)}</dd>
+        <dt>In flight (open reservations)</dt>
+        <dd>{usd(t.open_reservations)}</dd>
+        {t.legacy > 0 && (
+          <>
+            <dt>Legacy rows (written before this accounting existed)</dt>
+            <dd>{usd(t.legacy)}</dd>
+          </>
+        )}
+      </dl>
+      <p className="text-xs text-muted mt-1">
+        Counted = reported + estimated + unknown (at worst case) + in flight{t.legacy > 0 ? ' + legacy' : ''}.
+      </p>
+      <label className="text-sm flex items-center gap-2 mt-2">
+        Breakdown window
+        <select
+          className="border border-line rounded-md px-1 py-0.5"
+          value={days}
+          onChange={(e) => setDays(Number(e.target.value))}
+        >
+          <option value={1}>today</option>
+          <option value={7}>7 days</option>
+          <option value={30}>30 days</option>
+        </select>
+      </label>
+      <p className="text-xs text-muted mt-1">
+        {w.hosted_calls} hosted · {w.free_calls} local · {w.failed_calls} failed · {w.blocked_calls} blocked
+        by the cap · {w.retried_requests} requests needed more than one attempt · {w.unknown_calls} with
+        unknown billing{w.legacy_rows ? ` · ${w.legacy_rows} legacy rows` : ''}
+        {w.expired_reservations ? ` · ${w.expired_reservations} stale reservations expired` : ''}
+      </p>
+      {c.by_task.length > 0 && (
+        <div className="overflow-x-auto mt-2">
+          <table className="w-full text-sm">
+            <caption className="text-left text-muted mb-1">By task</caption>
+            <thead>
+              <tr className="text-left text-muted">
+                <th scope="col" className="pr-2">
+                  Task
+                </th>
+                <th scope="col" className="pr-2">
+                  Calls
+                </th>
+                <th scope="col" className="pr-2">
+                  Failed
+                </th>
+                <th scope="col" className="pr-2">
+                  Cost (reported + estimated)
+                </th>
+                <th scope="col">Unknown billing (counted at worst case)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {c.by_task.map((b) => (
+                <tr key={b.key}>
+                  <td className="pr-2">{b.key}</td>
+                  <td className="pr-2">{b.calls}</td>
+                  <td className="pr-2">{b.failed}</td>
+                  <td className="pr-2">{usd(b.cost_usd)}</td>
+                  <td>{b.unknown_usd ? usd(b.unknown_usd) : '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {c.recent_failures.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-sm">
+            Failed, stopped or retried calls ({c.recent_failures.length})
+          </summary>
+          <ul className="text-xs grid gap-1 mt-1" aria-label="Failed, stopped or retried calls">
+            {c.recent_failures.map((f) => (
+              <li key={`${f.request_id}-${f.attempt}`}>
+                {f.ts.slice(0, 19)} · {f.task} · {f.registry_id} · attempt {f.attempt} · {f.outcome} · billing{' '}
+                {f.cost_status}
+                {f.error ? ` · ${f.error}` : ''}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </Card>
   )
 }
 
@@ -277,6 +415,8 @@ export function Models() {
   const busy = running.length > 0
   return (
     <div className="grid gap-4">
+      <CostCard />
+      <VoiceSetup />
       <Card>
         <CardTitle>Models</CardTitle>
         <p className="text-sm text-muted mb-2">

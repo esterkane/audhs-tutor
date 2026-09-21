@@ -30,6 +30,9 @@ def settings(db_path: Path, tmp_path_factory: pytest.TempPathFactory) -> Setting
         anthropic_api_key="",
         daily_budget_usd=1.0,
         ingest_roots=f"{Path(__file__).resolve().parents[2]},{tmp_path_factory.getbasetemp()}",
+        voice_dir=str(
+            tmp_path_factory.getbasetemp() / "voice"
+        ),  # retained recordings never leave tmp
         _env_file=None,  # type: ignore[call-arg]
     )
 

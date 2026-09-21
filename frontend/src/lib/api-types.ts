@@ -132,7 +132,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Merge UI state (phase, skill, block) into the resume checkpoint */
+    /** Merge UI state (sub-phase, skill) into the resume checkpoint; block fields are server-owned */
     post: operations['checkpoint_api_sessions__session_id__checkpoint_post']
     delete?: never
     options?: never
@@ -191,6 +191,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/plan/blocks/state': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Where the session is: block, phase, active skill */
+    get: operations['block_state_api_plan_blocks_state_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/plan/blocks/start': {
     parameters: {
       query?: never
@@ -200,7 +217,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Start a planned block (emits block_started) */
+    /** Start a planned block (emits block_started once; idempotent) */
     post: operations['start_block_api_plan_blocks_start_post']
     delete?: never
     options?: never
@@ -217,8 +234,42 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** End a block; early switches out of new material need a grasp check */
+    /** End the running block (emits block_ended once; early switches out of new material need a grasp check) */
     post: operations['end_block_api_plan_blocks_end_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/plan/blocks/next': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** End the current block and start the next one atomically (idempotent on from_index) */
+    post: operations['next_block_api_plan_blocks_next_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/plan/blocks/extend': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Soft timer: give the running block N more minutes (kept across reloads) */
+    post: operations['extend_block_api_plan_blocks_extend_post']
     delete?: never
     options?: never
     head?: never
@@ -567,6 +618,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/corpus/capabilities': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Supported formats and the readiness of optional runtimes (STT, vision, decoders) */
+    get: operations['capabilities_api_corpus_capabilities_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/corpus/ingest': {
     parameters: {
       query?: never
@@ -845,6 +913,244 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/models/costs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Cost view: daily cap, reported/estimated/unknown/legacy spend, per task/provider, failures */
+    get: operations['costs_api_models_costs_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/listening/lessons': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Ingested timed documents usable as listening lessons (audio availability, progress) */
+    get: operations['list_lessons_api_listening_lessons_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/listening/lessons/{document_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** One lesson: bounded clips with transcript, progress, guarded media url */
+    get: operations['get_lesson_api_listening_lessons__document_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/listening/lessons/{document_id}/media': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The lesson's audio/video (plain file under INGEST_ROOTS only; Range-capable) */
+    get: operations['media_api_listening_lessons__document_id__media_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/listening/lessons/{document_id}/sections/{index}/task': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** The comprehension task for one clip (created once; model-proposed or source-cut cloze) */
+    post: operations['task_api_listening_lessons__document_id__sections__index__task_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/listening/tasks/{assessment_id}/validate': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Mark a model-proposed question as checked by you (full weight) or not */
+    post: operations['validate_api_listening_tasks__assessment_id__validate_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/listening/lessons/{document_id}/sections/{index}/listened': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Log that a clip was played (exposure, never evidence) */
+    post: operations['listened_api_listening_lessons__document_id__sections__index__listened_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/exercises/for-skill/{skill_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The code exercise for a skill (created once from the catalogue; 404 when none) */
+    get: operations['for_skill_api_exercises_for_skill__skill_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/exercises/{assessment_id}/hint': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** One hint step (hint-first; each level is an explicit request, logged) */
+    post: operations['hint_api_exercises__assessment_id__hint_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/exercises/{assessment_id}/solution': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** The full solution — explicit request only, logged, followed by a check question */
+    post: operations['solution_api_exercises__assessment_id__solution_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/voice/readiness': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Is voice usable? Each component with the one step that fixes it */
+    get: operations['readiness_api_voice_readiness_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/voice/verify': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Load the installed speech components once and run a fixed sentence (no microphone) */
+    post: operations['verify_api_voice_verify_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/voice/test-mic': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Transcribe one short test recording (raw body: mono 16 kHz WAV, ≤ 20 s); discarded */
+    post: operations['test_mic_api_voice_test_mic_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/voice/activate': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Turn voice on/off for sessions (explicit; needs STT and TTS ready) */
+    post: operations['activate_api_voice_activate_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/experiments': {
     parameters: {
       query?: never
@@ -983,10 +1289,222 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/vocab/import/preview': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Parse a CSV vocabulary list: detected columns, one status per row, nothing saved */
+    post: operations['import_preview_api_vocab_import_preview_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/vocab/import': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Import the confirmed rows as FSRS cards (idempotent; existing schedules untouched) */
+    post: operations['import_cards_api_vocab_import_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/material': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Per course: imported → searchable → draft → published */
+    get: operations['material_api_curriculum_material_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/sections': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Sections of a course with document counts */
+    get: operations['sections_api_curriculum_sections_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/drafts': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Curriculum drafts (newest first) */
+    get: operations['drafts_api_curriculum_drafts_get']
+    put?: never
+    /** Propose a draft for one course section (deterministic, or via the routed local model) */
+    post: operations['create_draft_api_curriculum_drafts_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/drafts/{draft_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** One draft with its validation */
+    get: operations['get_draft_api_curriculum_drafts__draft_id__get']
+    /** Replace the draft payload (re-validated; version +1) */
+    put: operations['update_draft_api_curriculum_drafts__draft_id__put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/drafts/{draft_id}/publish': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Publish: skills, prerequisites, a new learning-object version, assessments */
+    post: operations['publish_api_curriculum_drafts__draft_id__publish_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/drafts/{draft_id}/reject': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Reject a draft (kept for the record) */
+    post: operations['reject_api_curriculum_drafts__draft_id__reject_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/chunks/{chunk_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** A cited passage with neighbours and a guarded open link (citation viewer) */
+    get: operations['chunk_api_curriculum_chunks__chunk_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/chunks/{chunk_id}/file': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** The original file behind a passage (only plain files under INGEST_ROOTS; Range-capable) */
+    get: operations['chunk_file_api_curriculum_chunks__chunk_id__file_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/reports': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Open content reports */
+    get: operations['reports_api_curriculum_reports_get']
+    put?: never
+    /** Report a wrong source, explanation or grading (kept next to the evidence) */
+    post: operations['report_api_curriculum_reports_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/curriculum/reports/{report_id}/resolve': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Mark a report resolved */
+    post: operations['resolve_api_curriculum_reports__report_id__resolve_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /** ActivateIn */
+    ActivateIn: {
+      /** Enabled */
+      enabled: boolean
+    }
     /** ActivitiesOut */
     ActivitiesOut: {
       /** Activities */
@@ -1062,6 +1580,52 @@ export interface components {
       mean: number | null
       /** Sd */
       sd: number | null
+      /**
+       * N Units
+       * @default 0
+       */
+      n_units: number
+      /**
+       * N Events
+       * @default 0
+       */
+      n_events: number
+      /** Fidelity */
+      fidelity?: number | null
+    }
+    /** AssessmentIn */
+    AssessmentIn: {
+      /** Skill */
+      skill: string
+      /** Kind */
+      kind: string
+      /** Item */
+      item?: {
+        [key: string]: unknown
+      }
+      /** Source Chunk Id */
+      source_chunk_id?: string | null
+      /** Rubric */
+      rubric?:
+        | unknown[]
+        | {
+            [key: string]: unknown
+          }
+        | null
+      /**
+       * Auto
+       * @default false
+       */
+      auto: boolean
+      /**
+       * Guessable
+       * @default false
+       */
+      guessable: boolean
+      /** Origin */
+      origin?: string | null
+    } & {
+      [key: string]: unknown
     }
     /** AssessmentView */
     AssessmentView: {
@@ -1180,6 +1744,30 @@ export interface components {
       grasp_check_required: boolean
       /** Domain */
       domain?: string | null
+      /** Base Min */
+      base_min?: number | null
+    }
+    /**
+     * BlockAdvance
+     * @description End the block the client believes is current and start the next one (one server call).
+     */
+    BlockAdvance: {
+      /** Session Id */
+      session_id: string
+      /**
+       * From Index
+       * @description idempotency key: the current block
+       */
+      from_index?: number | null
+      /**
+       * Reason
+       * @default finished
+       */
+      reason: string
+      /** Grasp Passed */
+      grasp_passed?: boolean | null
+      /** Actual Min */
+      actual_min?: number | null
     }
     /** BlockEvent */
     BlockEvent: {
@@ -1189,27 +1777,72 @@ export interface components {
       index: number
       /** Actual Min */
       actual_min?: number | null
-      /**
-       * Switched Early
-       * @default false
-       */
-      switched_early: boolean
+      /** Switched Early */
+      switched_early?: boolean | null
       /** Reason */
       reason?: string | null
       /** Grasp Passed */
       grasp_passed?: boolean | null
     }
-    /** BlockOut */
-    BlockOut: {
+    /** BlockExtend */
+    BlockExtend: {
+      /** Session Id */
+      session_id: string
       /** Index */
       index: number
-      block: components['schemas']['Block']
-      /** Allowed */
-      allowed: boolean
-      /** Message */
-      message: string
+      /**
+       * Minutes
+       * @default 5
+       */
+      minutes: number
+    }
+    /**
+     * BlockState
+     * @description What the client renders from; returned by every transition and inside `SessionOut`.
+     */
+    BlockState: {
+      /** Block Index */
+      block_index?: number | null
+      block?: components['schemas']['Block'] | null
+      /** Block Id */
+      block_id?: string | null
+      /** Block Status */
+      block_status?: ('running' | 'ended') | null
+      /** Block Started At */
+      block_started_at?: string | null
+      /** Phase */
+      phase?: string | null
+      /** Skill Id */
+      skill_id?: string | null
       /** Next Index */
-      next_index: number | null
+      next_index?: number | null
+      /**
+       * Plan Version
+       * @default 1
+       */
+      plan_version: number
+      /**
+       * Timer Extension Min
+       * @default 0
+       */
+      timer_extension_min: number
+      /** First Started Index */
+      first_started_index?: number | null
+      /**
+       * Plan Complete
+       * @default false
+       */
+      plan_complete: boolean
+      /**
+       * Allowed
+       * @default true
+       */
+      allowed: boolean
+      /**
+       * Message
+       * @default
+       */
+      message: string
     }
     /** ChainEntry */
     ChainEntry: {
@@ -1250,18 +1883,79 @@ export interface components {
       /** Sources */
       sources: string[]
     }
+    /** CheckOut */
+    CheckOut: {
+      /** Name */
+      name: string
+      /** Criterion */
+      criterion: string
+      /** Code */
+      code: string
+    }
     /** CheckpointIn */
     CheckpointIn: {
       /** Phase */
       phase?: string | null
       /** Skill Id */
       skill_id?: string | null
-      /** Block Index */
+      /**
+       * Block Index
+       * @description must equal the running block; the client cannot move blocks
+       */
       block_index?: number | null
       /** Extra */
       extra?: {
         [key: string]: unknown
       }
+    }
+    /**
+     * ChunkOut
+     * @description One source passage for the citation viewer. `open_url` is the http(s) URI as-is, or the
+     *     app's guarded file endpoint (`/api/curriculum/chunks/{id}/file#t=…`) when the document is a
+     *     plain file under INGEST_ROOTS; otherwise None and the path is shown.
+     */
+    ChunkOut: {
+      /** Chunk Id */
+      chunk_id: string
+      /** Text */
+      text: string
+      /** Citation */
+      citation: string
+      /** Course */
+      course: string | null
+      /** Section */
+      section: string | null
+      /** Lecture */
+      lecture: string | null
+      /** Source Type */
+      source_type: string
+      /** Trust Tier */
+      trust_tier: number
+      /** Document Title */
+      document_title: string
+      /** Uri */
+      uri: string
+      /** Open Url */
+      open_url: string | null
+      /** T Start */
+      t_start: number | null
+      /** T End */
+      t_end: number | null
+      /** Prev Text */
+      prev_text: string | null
+      /** Next Text */
+      next_text: string | null
+    }
+    /** ComponentOut */
+    ComponentOut: {
+      /** Ready */
+      ready: boolean
+      /** Status */
+      status: string
+      /** Detail */
+      detail: string
+      /** Action */
+      action?: string | null
     }
     /** CorpusStats */
     CorpusStats: {
@@ -1282,6 +1976,107 @@ export interface components {
        * @description live count from the retrieval index
        */
       index_count?: number | null
+    }
+    /** CostBucket */
+    CostBucket: {
+      /** Key */
+      key: string
+      /** Calls */
+      calls: number
+      /** Failed */
+      failed: number
+      /** Cost Usd */
+      cost_usd: number
+      /** Unknown Usd */
+      unknown_usd: number
+      /** Tokens In */
+      tokens_in: number
+      /** Tokens Out */
+      tokens_out: number
+    }
+    /** CostFailure */
+    CostFailure: {
+      /** Ts */
+      ts: string
+      /** Request Id */
+      request_id: string | null
+      /** Attempt */
+      attempt: number
+      /** Registry Id */
+      registry_id: string
+      /** Task */
+      task: string
+      /** Route */
+      route: string
+      /** Outcome */
+      outcome: string
+      /** Cost Status */
+      cost_status: string
+      /** Reserved Usd */
+      reserved_usd: number
+      /** Error */
+      error: string | null
+    }
+    /** CostToday */
+    CostToday: {
+      /** Counted */
+      counted: number
+      /** Remaining */
+      remaining: number
+      /** Reported */
+      reported: number
+      /** Estimated */
+      estimated: number
+      /** Unknown Reserved */
+      unknown_reserved: number
+      /** Legacy */
+      legacy: number
+      /** Open Reservations */
+      open_reservations: number
+    }
+    /** CostWindow */
+    CostWindow: {
+      /** Hosted Calls */
+      hosted_calls: number
+      /** Free Calls */
+      free_calls: number
+      /** Failed Calls */
+      failed_calls: number
+      /** Cancelled Calls */
+      cancelled_calls: number
+      /** Blocked Calls */
+      blocked_calls: number
+      /** Retried Requests */
+      retried_requests: number
+      /** Unknown Calls */
+      unknown_calls: number
+      /** Legacy Rows */
+      legacy_rows: number
+      /** Open Reservations */
+      open_reservations: number
+      /** Expired Reservations */
+      expired_reservations: number
+    }
+    /**
+     * CostsOut
+     * @description P6 cost view. `today.counted` is what the daily cap sees: reported + estimated + legacy
+     *     hosted cost + unknown calls at their reserved worst case + open reservations.
+     */
+    CostsOut: {
+      /** Daily Cap Usd */
+      daily_cap_usd: number
+      /** Day Start */
+      day_start: string
+      /** Window Start */
+      window_start: string
+      today: components['schemas']['CostToday']
+      window: components['schemas']['CostWindow']
+      /** By Task */
+      by_task: components['schemas']['CostBucket'][]
+      /** By Provider */
+      by_provider: components['schemas']['CostBucket'][]
+      /** Recent Failures */
+      recent_failures: components['schemas']['CostFailure'][]
     }
     /** CourseStats */
     CourseStats: {
@@ -1361,6 +2156,83 @@ export interface components {
       /** Ingested At */
       ingested_at: string | null
     }
+    /** DraftCreate */
+    DraftCreate: {
+      /** Course */
+      course: string
+      /** Section */
+      section?: string | null
+      /**
+       * Use Model
+       * @description ask the routed local model to draft objectives/exercises (untrusted until reviewed)
+       * @default false
+       */
+      use_model: boolean
+    }
+    /** DraftList */
+    DraftList: {
+      /** Drafts */
+      drafts: components['schemas']['DraftOut'][]
+    }
+    /** DraftOut */
+    DraftOut: {
+      /** Id */
+      id: string
+      /** Course */
+      course: string
+      /** Section */
+      section: string | null
+      /** Title */
+      title: string
+      /** Status */
+      status: string
+      /** Origin */
+      origin: string
+      /** Version */
+      version: number
+      /** Payload */
+      payload: {
+        [key: string]: unknown
+      }
+      /** Problems */
+      problems: components['schemas']['ProblemOut'][]
+      /** Created At */
+      created_at: string
+      /** Updated At */
+      updated_at: string
+      /** Published At */
+      published_at: string | null
+      /** Model Call Id */
+      model_call_id?: string | null
+    }
+    /**
+     * DraftPayload
+     * @description A whole draft as the learner may edit it. Sizes are capped; the kernel's `validate_payload`
+     *     adds the semantic problems (unknown prerequisites, cycles, missing assessments, …).
+     */
+    DraftPayload: {
+      /**
+       * Domain
+       * @default ai_ml
+       */
+      domain: string
+      /** Course */
+      course?: string | null
+      /** Section */
+      section?: string | null
+      /** Skills */
+      skills?: components['schemas']['SkillIn'][]
+      /** Learning Objects */
+      learning_objects?: components['schemas']['LearningObjectIn'][]
+      /** Assessments */
+      assessments?: components['schemas']['AssessmentIn'][]
+    } & {
+      [key: string]: unknown
+    }
+    /** DraftUpdate */
+    DraftUpdate: {
+      payload: components['schemas']['DraftPayload']
+    }
     /** DueList */
     DueList: {
       /** Items */
@@ -1371,6 +2243,47 @@ export interface components {
       total_due: number
       /** As Of */
       as_of: string
+    }
+    /** ExerciseView */
+    ExerciseView: {
+      /** Assessment Id */
+      assessment_id: string
+      /** Skill Id */
+      skill_id: string
+      /** Exercise Id */
+      exercise_id: string
+      /** Title */
+      title: string
+      /** Prompt */
+      prompt: string
+      /** Starter Code */
+      starter_code: string
+      /** Success Criteria */
+      success_criteria: string[]
+      /** Checks */
+      checks: components['schemas']['CheckOut'][]
+      /** Packages */
+      packages: string[]
+      /** Timeout S */
+      timeout_s: number
+      /** Max Output Chars */
+      max_output_chars: number
+      /** Sources */
+      sources: components['schemas']['SourceOut'][]
+      /** Runtime */
+      runtime: string
+      /** Hints Available */
+      hints_available: number
+      /** Attempts */
+      attempts: number
+      /** Check Assessment Id */
+      check_assessment_id?: string | null
+      /** Check Question */
+      check_question: string
+      /** Policy */
+      policy: {
+        [key: string]: unknown
+      }
     }
     /** ExperimentIn */
     ExperimentIn: {
@@ -1462,6 +2375,22 @@ export interface components {
       /** Hits */
       hits: components['schemas']['HfSearchHit'][]
     }
+    /** HintIn */
+    HintIn: {
+      /** Session Id */
+      session_id: string
+      /** Level */
+      level: number
+    }
+    /** HintOut */
+    HintOut: {
+      /** Level */
+      level: number
+      /** Text */
+      text: string
+      /** Hints Available */
+      hints_available: number
+    }
     /** HistoryList */
     HistoryList: {
       /** Entries */
@@ -1498,6 +2427,92 @@ export interface components {
       /** Trial */
       trial: boolean
     }
+    /** ImportIn */
+    ImportIn: {
+      /** Lang */
+      lang: string
+      /** Rows */
+      rows: components['schemas']['ImportRowIn'][]
+      /**
+       * Reverse
+       * @description also create the translation → word card
+       * @default false
+       */
+      reverse: boolean
+      /**
+       * Source
+       * @description file name for attribution
+       */
+      source?: string | null
+    }
+    /** ImportOut */
+    ImportOut: {
+      /** Lang */
+      lang: string
+      /** Added */
+      added: number
+      /** Reverse Added */
+      reverse_added: number
+      /**
+       * Reverse Skipped
+       * @default 0
+       */
+      reverse_skipped: number
+      /** Skipped Existing */
+      skipped_existing: number
+      /**
+       * Duplicate In File
+       * @default 0
+       */
+      duplicate_in_file: number
+      /** Invalid */
+      invalid: number
+    }
+    /** ImportPreviewIn */
+    ImportPreviewIn: {
+      /** Lang */
+      lang: string
+      /**
+       * Csv Text
+       * @description file contents (the browser reads the file)
+       */
+      csv_text: string
+      /**
+       * Reverse
+       * @default false
+       */
+      reverse: boolean
+    }
+    /** ImportPreviewOut */
+    ImportPreviewOut: {
+      /** Lang */
+      lang: string
+      /** Rows */
+      rows: components['schemas']['PreviewRowOut'][]
+      /** Columns */
+      columns: {
+        [key: string]: number
+      }
+      /** Delimiter */
+      delimiter: string
+      /** Header */
+      header: boolean
+      /** Counts */
+      counts: {
+        [key: string]: number
+      }
+      /** Errors */
+      errors: string[]
+    }
+    /** ImportRowIn */
+    ImportRowIn: {
+      /** Word */
+      word: string
+      /** Translation */
+      translation: string
+      /** Example */
+      example?: string | null
+    }
     /** IndexStateOut */
     IndexStateOut: {
       /** Collection */
@@ -1512,6 +2527,33 @@ export interface components {
       chunk_count: number
       /** Last Reindex */
       last_reindex: string | null
+    }
+    /** IngestCapabilities */
+    IngestCapabilities: {
+      /** Formats */
+      formats: {
+        [key: string]: string[]
+      }
+      /** Unsupported */
+      unsupported: {
+        [key: string]: string
+      }
+      /** Archives */
+      archives: string[]
+      /** Audio */
+      audio: string[]
+      /** Video */
+      video: string[]
+      /** Images */
+      images: string[]
+      stt: components['schemas']['ToolStatus']
+      vision: components['schemas']['ToolStatus']
+      /** Audio Decoder */
+      audio_decoder: string | null
+      /** Legacy Office */
+      legacy_office: string | null
+      /** Image Converter */
+      image_converter: string | null
     }
     /** IngestDocResult */
     IngestDocResult: {
@@ -1545,6 +2587,13 @@ export interface components {
        * @default false
        */
       reverted: boolean
+      /** Transcribed Seconds */
+      transcribed_seconds?: number | null
+      /**
+       * Vision
+       * @default false
+       */
+      vision: boolean
     }
     /** IngestOut */
     IngestOut: {
@@ -1578,6 +2627,17 @@ export interface components {
        * @default true
        */
       index: boolean
+      /**
+       * Language
+       * @description force the transcription language (ISO 639 code); null = auto
+       */
+      language?: string | null
+      /**
+       * Media
+       * @description transcribe audio/video and read images (false: list as skipped)
+       * @default true
+       */
+      media: boolean
     }
     /** JobList */
     JobList: {
@@ -1623,6 +2683,105 @@ export interface components {
       /** Created At */
       created_at: string
     }
+    /** LearningObjectIn */
+    LearningObjectIn: {
+      /** Skill */
+      skill: string
+      /**
+       * Concept
+       * @default
+       */
+      concept: string
+      /**
+       * Goal
+       * @default
+       */
+      goal: string
+      /** Examples */
+      examples?: string[]
+      /** Exercises */
+      exercises?: string[]
+      /** Success Criteria */
+      success_criteria?: string[]
+      /** Sources */
+      sources?: string[]
+    } & {
+      [key: string]: unknown
+    }
+    /** LessonList */
+    LessonList: {
+      /** Lessons */
+      lessons: components['schemas']['LessonSummary'][]
+    }
+    /** LessonOut */
+    LessonOut: {
+      /** Document Id */
+      document_id: string
+      /** Title */
+      title: string
+      /** Course */
+      course: string | null
+      /** Lecture */
+      lecture: string | null
+      /** Language */
+      language: string | null
+      /** Media Url */
+      media_url: string | null
+      /** Media Note */
+      media_note: string | null
+      /** Duration S */
+      duration_s: number | null
+      /** Sections */
+      sections: components['schemas']['app__schemas__listening__SectionOut'][]
+      /** Skipped */
+      skipped: components['schemas']['SkippedOut'][]
+      /** Next Index */
+      next_index: number | null
+    }
+    /** LessonSummary */
+    LessonSummary: {
+      /** Document Id */
+      document_id: string
+      /** Title */
+      title: string
+      /** Course */
+      course: string | null
+      /** Section */
+      section: string | null
+      /** Lecture */
+      lecture: string | null
+      /** Language */
+      language: string | null
+      /** Sections */
+      sections: number
+      /** Done */
+      done: number
+      /** Next Index */
+      next_index?: number | null
+      /** Media Available */
+      media_available: boolean
+      /** Duration S */
+      duration_s: number | null
+      /** Timed Chunks */
+      timed_chunks: number
+    }
+    /** ListenedIn */
+    ListenedIn: {
+      /** Session Id */
+      session_id: string
+      /** Chunk Id */
+      chunk_id?: string | null
+      /**
+       * Replays
+       * @default 0
+       */
+      replays: number
+      /**
+       * Seconds
+       * @default 0
+       */
+      seconds: number
+    }
     /** MapOut */
     MapOut: {
       /** Nodes */
@@ -1635,6 +2794,26 @@ export interface components {
       }[]
       /** Mermaid */
       mermaid: string
+    }
+    /** MaterialList */
+    MaterialList: {
+      /** Courses */
+      courses: components['schemas']['MaterialStatus'][]
+    }
+    /** MaterialStatus */
+    MaterialStatus: {
+      /** Course */
+      course: string
+      /** Documents */
+      documents: number
+      /** Chunks */
+      chunks: number
+      /** Drafts */
+      drafts: number
+      /** Published Skills */
+      published_skills: number
+      /** Status */
+      status: string
     }
     /** MetricOut */
     MetricOut: {
@@ -1650,6 +2829,32 @@ export interface components {
       ci95: number[] | null
       /** Reading */
       reading: string
+      /**
+       * Available
+       * @default true
+       */
+      available: boolean
+      /**
+       * Method
+       * @default insufficient
+       */
+      method: string
+    }
+    /** MicTestOut */
+    MicTestOut: {
+      /** Text */
+      text: string
+      /** Language */
+      language: string | null
+      /** Latency Ms */
+      latency_ms: number
+      /** Seconds */
+      seconds: number
+      /**
+       * Recording Kept
+       * @default false
+       */
+      recording_kept: boolean
     }
     /**
      * Mode
@@ -1822,6 +3027,30 @@ export interface components {
       /** Reason */
       reason?: string | null
     }
+    /** PreviewRowOut */
+    PreviewRowOut: {
+      /** Row */
+      row: number
+      /** Word */
+      word: string
+      /** Translation */
+      translation: string
+      /** Example */
+      example: string | null
+      /** Status */
+      status: string
+      /** Problem */
+      problem?: string | null
+    }
+    /** ProblemOut */
+    ProblemOut: {
+      /** Level */
+      level: string
+      /** Where */
+      where: string
+      /** Message */
+      message: string
+    }
     /** PromoteIn */
     PromoteIn: {
       /**
@@ -1860,6 +3089,49 @@ export interface components {
       proposed_at: string
       /** Reversible */
       reversible: boolean
+    }
+    /** PublishOut */
+    PublishOut: {
+      draft: components['schemas']['DraftOut']
+      /** Skills */
+      skills: number
+      /** Edges */
+      edges: number
+      /** Learning Objects */
+      learning_objects: number
+      /** New Object Versions */
+      new_object_versions: number
+      /** Assessments */
+      assessments: number
+    }
+    /** ReadinessOut */
+    ReadinessOut: {
+      stt: components['schemas']['ComponentOut']
+      tts: components['schemas']['ComponentOut']
+      vad: components['schemas']['ComponentOut']
+      tools: components['schemas']['ComponentOut']
+      /** Activated */
+      activated: boolean
+      /** Retain Audio */
+      retain_audio: boolean
+      /** Retention Days */
+      retention_days: number
+      /** Voice */
+      voice: string
+      /** Can Activate */
+      can_activate: boolean
+      /** Stt Id */
+      stt_id: string
+      /** Tts Id */
+      tts_id: string
+      /** Vad Id */
+      vad_id: string | null
+      /** Conversation Lang */
+      conversation_lang: string
+      /** Conversation Lang Supported */
+      conversation_lang_supported: boolean
+      /** Notes */
+      notes: string[]
     }
     /** RenderIn */
     RenderIn: {
@@ -1915,6 +3187,50 @@ export interface components {
       /** Changed */
       changed: boolean
     }
+    /** ReportIn */
+    ReportIn: {
+      /** Kind */
+      kind: string
+      /** Turn Id */
+      turn_id?: string | null
+      /** Chunk Id */
+      chunk_id?: string | null
+      /** Skill Id */
+      skill_id?: string | null
+      /** Assessment Id */
+      assessment_id?: string | null
+      /**
+       * Note
+       * @default
+       */
+      note: string
+    }
+    /** ReportList */
+    ReportList: {
+      /** Reports */
+      reports: components['schemas']['ReportOut'][]
+    }
+    /** ReportOut */
+    ReportOut: {
+      /** Id */
+      id: string
+      /** Kind */
+      kind: string
+      /** Turn Id */
+      turn_id: string | null
+      /** Chunk Id */
+      chunk_id: string | null
+      /** Skill Id */
+      skill_id: string | null
+      /** Assessment Id */
+      assessment_id?: string | null
+      /** Note */
+      note: string
+      /** Status */
+      status: string
+      /** Created At */
+      created_at: string
+    }
     /** ResultsOut */
     ResultsOut: {
       experiment: components['schemas']['ExperimentOut']
@@ -1926,6 +3242,31 @@ export interface components {
       units: {
         [key: string]: unknown
       }[]
+      /**
+       * Analysis Version
+       * @default v2
+       */
+      analysis_version: string
+      /**
+       * Units Without Data
+       * @default 0
+       */
+      units_without_data: number
+      /**
+       * Low Fidelity Units
+       * @default 0
+       */
+      low_fidelity_units: number
+      /**
+       * Outcome Window Days
+       * @default 30
+       */
+      outcome_window_days: number
+      /**
+       * Caveats
+       * @default []
+       */
+      caveats: string[]
     }
     /** RetierRequest */
     RetierRequest: {
@@ -1999,6 +3340,10 @@ export interface components {
       chain: components['schemas']['ChainEntry'][]
       /** Resolved */
       resolved: string | null
+      /** Problem */
+      problem?: string | null
+      /** Action */
+      action?: string | null
     }
     /** RoutingOut */
     RoutingOut: {
@@ -2088,6 +3433,13 @@ export interface components {
        */
       tutor_view: boolean
     }
+    /** SectionList */
+    SectionList: {
+      /** Course */
+      course: string
+      /** Sections */
+      sections: components['schemas']['app__schemas__curriculum__SectionOut'][]
+    }
     /** SessionEnd */
     SessionEnd: {
       /** Energy After */
@@ -2114,6 +3466,7 @@ export interface components {
       /** Energy After */
       energy_after: number | null
       next_skill: components['schemas']['SkillView'] | null
+      active_skill?: components['schemas']['SkillView'] | null
       /** Due Reviews */
       due_reviews: number
       /** Review Cap */
@@ -2128,6 +3481,7 @@ export interface components {
       checkpoint: {
         [key: string]: unknown
       } | null
+      state: components['schemas']['BlockState']
       /** Experiment */
       experiment?: {
         [key: string]: unknown
@@ -2147,6 +3501,33 @@ export interface components {
        * @default false
        */
       socratic: boolean
+    }
+    /**
+     * SkillIn
+     * @description Shape check for hand-edited JSON (the kernel validates meaning). Unknown keys are kept.
+     */
+    SkillIn: {
+      /** Slug */
+      slug: string
+      /** Title */
+      title: string
+      /**
+       * Description
+       * @default
+       */
+      description: string
+      /** Prerequisites */
+      prerequisites?: string[]
+      /** Success Criteria */
+      success_criteria?: string[]
+      /** Assessment Requirements */
+      assessment_requirements?: {
+        [key: string]: unknown
+      }
+      /** Example Applications */
+      example_applications?: string[]
+    } & {
+      [key: string]: unknown
     }
     /** SkillList */
     SkillList: {
@@ -2187,6 +3568,32 @@ export interface components {
       /** Reason */
       reason: string
     }
+    /** SkippedOut */
+    SkippedOut: {
+      /** Chunk Id */
+      chunk_id: string
+      /** Reason */
+      reason: string
+    }
+    /** SolutionIn */
+    SolutionIn: {
+      /** Session Id */
+      session_id: string
+    }
+    /** SolutionOut */
+    SolutionOut: {
+      /** Solution */
+      solution: string
+      /** Check Question */
+      check_question: string
+    }
+    /** SourceOut */
+    SourceOut: {
+      /** Chunk Id */
+      chunk_id: string
+      /** Citation */
+      citation: string
+    }
     /** SourceRef */
     SourceRef: {
       /** Chunk Id */
@@ -2205,10 +3612,48 @@ export interface components {
        */
       cited: boolean
     }
+    /** TaskIn */
+    TaskIn: {
+      /** Session Id */
+      session_id: string
+      /**
+       * Use Model
+       * @description ask the routed local model for a comprehension question; deterministic cloze when no route is ready or the reply fails the checks
+       * @default true
+       */
+      use_model: boolean
+    }
+    /** TaskOut */
+    TaskOut: {
+      item: components['schemas']['AssessmentView']
+      /** Origin */
+      origin: string
+      /** Validated */
+      validated: boolean
+      /** Problems */
+      problems: string[]
+      /** Citation */
+      citation: string | null
+      /** Clip */
+      clip: {
+        [key: string]: unknown
+      }
+    }
     /** TemplateIn */
     TemplateIn: {
       /** Template */
       template: string
+    }
+    /** ToolStatus */
+    ToolStatus: {
+      /** Ready */
+      ready: boolean
+      /** Registry Id */
+      registry_id?: string | null
+      /** Detail */
+      detail: string
+      /** Package Installed */
+      package_installed?: boolean | null
     }
     /** TurnDone */
     TurnDone: {
@@ -2222,6 +3667,15 @@ export interface components {
       registry_id: string | null
       /** Route */
       route: string | null
+      /**
+       * Outcome
+       * @default ok
+       */
+      outcome: string
+      /** Usage Source */
+      usage_source?: string | null
+      /** Cost Status */
+      cost_status?: string | null
       /** Sentences */
       sentences: number
       /** Representation */
@@ -2253,6 +3707,21 @@ export interface components {
       action: 'auto' | 'explain' | 'hint' | 'summarize' | 'full_solution'
       /** Representation */
       representation?: string | null
+      /** Conversation Lang */
+      conversation_lang?: string | null
+      /**
+       * Spoken
+       * @default false
+       */
+      spoken: boolean
+    }
+    /** ValidateIn */
+    ValidateIn: {
+      /**
+       * Validated
+       * @default true
+       */
+      validated: boolean
     }
     /** ValidationError */
     ValidationError: {
@@ -2266,6 +3735,19 @@ export interface components {
       input?: unknown
       /** Context */
       ctx?: Record<string, never>
+    }
+    /** VerifyOut */
+    VerifyOut: {
+      /** Stt */
+      stt: {
+        [key: string]: unknown
+      } | null
+      /** Tts */
+      tts: {
+        [key: string]: unknown
+      } | null
+      /** Problems */
+      problems: string[]
     }
     /** VocabIn */
     VocabIn: {
@@ -2290,6 +3772,30 @@ export interface components {
       translation: string
       /** Due */
       due: string
+    }
+    /** SectionOut */
+    app__schemas__curriculum__SectionOut: {
+      /** Section */
+      section: string | null
+      /** Documents */
+      documents: number
+    }
+    /** SectionOut */
+    app__schemas__listening__SectionOut: {
+      /** Index */
+      index: number
+      /** Chunk Id */
+      chunk_id: string
+      /** T Start */
+      t_start: number
+      /** T End */
+      t_end: number
+      /** Text */
+      text: string
+      /** Done */
+      done: boolean
+      /** Attempts */
+      attempts: number
     }
   }
   responses: never
@@ -2599,6 +4105,37 @@ export interface operations {
       }
     }
   }
+  block_state_api_plan_blocks_state_get: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BlockState']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   start_block_api_plan_blocks_start_post: {
     parameters: {
       query?: never
@@ -2618,7 +4155,7 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['BlockOut']
+          'application/json': components['schemas']['BlockState']
         }
       }
       /** @description Validation Error */
@@ -2651,7 +4188,73 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['BlockOut']
+          'application/json': components['schemas']['BlockState']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  next_block_api_plan_blocks_next_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BlockAdvance']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BlockState']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  extend_block_api_plan_blocks_extend_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['BlockExtend']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['BlockState']
         }
       }
       /** @description Validation Error */
@@ -3354,6 +4957,26 @@ export interface operations {
       }
     }
   }
+  capabilities_api_corpus_capabilities_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['IngestCapabilities']
+        }
+      }
+    }
+  }
   ingest_api_corpus_ingest_post: {
     parameters: {
       query?: never
@@ -3878,6 +5501,416 @@ export interface operations {
       }
     }
   }
+  costs_api_models_costs_get: {
+    parameters: {
+      query?: {
+        days?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CostsOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_lessons_api_listening_lessons_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LessonList']
+        }
+      }
+    }
+  }
+  get_lesson_api_listening_lessons__document_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LessonOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  media_api_listening_lessons__document_id__media_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  task_api_listening_lessons__document_id__sections__index__task_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+        index: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TaskIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TaskOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  validate_api_listening_tasks__assessment_id__validate_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        assessment_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ValidateIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TaskOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  listened_api_listening_lessons__document_id__sections__index__listened_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+        index: number
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ListenedIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      204: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  for_skill_api_exercises_for_skill__skill_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        skill_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExerciseView']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  hint_api_exercises__assessment_id__hint_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        assessment_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['HintIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HintOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  solution_api_exercises__assessment_id__solution_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        assessment_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SolutionIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SolutionOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  readiness_api_voice_readiness_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReadinessOut']
+        }
+      }
+    }
+  }
+  verify_api_voice_verify_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VerifyOut']
+        }
+      }
+    }
+  }
+  test_mic_api_voice_test_mic_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MicTestOut']
+        }
+      }
+    }
+  }
+  activate_api_voice_activate_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ActivateIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReadinessOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   list_experiments_api_experiments_get: {
     parameters: {
       query?: never
@@ -4152,6 +6185,459 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['VocabItemOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  import_preview_api_vocab_import_preview_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ImportPreviewIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ImportPreviewOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  import_cards_api_vocab_import_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ImportIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ImportOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  material_api_curriculum_material_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MaterialList']
+        }
+      }
+    }
+  }
+  sections_api_curriculum_sections_get: {
+    parameters: {
+      query: {
+        course: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SectionList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  drafts_api_curriculum_drafts_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftList']
+        }
+      }
+    }
+  }
+  create_draft_api_curriculum_drafts_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DraftCreate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_draft_api_curriculum_drafts__draft_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  update_draft_api_curriculum_drafts__draft_id__put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DraftUpdate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  publish_api_curriculum_drafts__draft_id__publish_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PublishOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  reject_api_curriculum_drafts__draft_id__reject_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  chunk_api_curriculum_chunks__chunk_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        chunk_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ChunkOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  chunk_file_api_curriculum_chunks__chunk_id__file_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        chunk_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  reports_api_curriculum_reports_get: {
+    parameters: {
+      query?: {
+        status?: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReportList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  report_api_curriculum_reports_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReportIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReportOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  resolve_api_curriculum_reports__report_id__resolve_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        report_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReportOut']
         }
       }
       /** @description Validation Error */

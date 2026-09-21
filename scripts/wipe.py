@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from app.core.config import get_settings  # noqa: E402
-from app.db.portability import wipe_learner  # noqa: E402
+from app.db.portability import wipe_learner, wipe_voice  # noqa: E402
 from app.db.session import sync_connect  # noqa: E402
 
 
@@ -24,6 +24,9 @@ def main() -> int:
     for table, n in wipe_learner(conn, args.learner).items():
         if n:
             print(f"{table}: {n}")
+    removed = wipe_voice(get_settings().voice_dir_resolved)
+    if removed:
+        print(f"voice recordings: {removed}")
     return 0
 
 

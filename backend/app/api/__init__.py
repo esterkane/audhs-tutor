@@ -5,9 +5,12 @@ from app.api import (
     assess,
     challenge,
     corpus,
+    curriculum,
+    exercises,
     experiments,
     health,
     learner,
+    listening,
     models_admin,
     parking,
     plan,
@@ -18,6 +21,7 @@ from app.api import (
     sessions,
     skills,
     tutor,
+    voice,
 )
 
 api_router = APIRouter(prefix="/api")
@@ -37,7 +41,11 @@ for r in (
     corpus,
     adaptations,
     models_admin,
+    listening,
+    exercises,
+    voice,
     experiments,
     practice,
+    curriculum,
 ):
     api_router.include_router(r.router)

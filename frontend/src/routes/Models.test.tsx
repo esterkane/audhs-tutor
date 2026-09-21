@@ -54,6 +54,68 @@ const routing = {
       override: null,
       chain: [{ registry_id: 'llama31-8b', status: 'ready' }],
       resolved: 'llama31-8b',
+      problem: null,
+      action: null,
+    },
+    {
+      task: 'grade_rubric',
+      override: null,
+      chain: [{ registry_id: 'hosted-strong', status: 'available' }],
+      resolved: null,
+      problem: 'hosted-strong is hosted and ANTHROPIC_API_KEY is empty',
+      action: 'set ANTHROPIC_API_KEY in .env and restart the backend',
+    },
+  ],
+}
+const costs = {
+  daily_cap_usd: 1.5,
+  day_start: '2026-09-20T00:00:00+00:00',
+  window_start: '2026-09-20T00:00:00+00:00',
+  today: {
+    counted: 0.2134,
+    remaining: 1.2866,
+    reported: 0.2,
+    estimated: 0.0034,
+    unknown_reserved: 0.01,
+    legacy: 0,
+    open_reservations: 0,
+  },
+  window: {
+    hosted_calls: 3,
+    free_calls: 12,
+    failed_calls: 1,
+    cancelled_calls: 0,
+    blocked_calls: 0,
+    retried_requests: 1,
+    unknown_calls: 1,
+    legacy_rows: 0,
+    open_reservations: 0,
+    expired_reservations: 0,
+  },
+  by_task: [
+    {
+      key: 'grade_rubric',
+      calls: 3,
+      failed: 1,
+      cost_usd: 0.2034,
+      unknown_usd: 0.01,
+      tokens_in: 3000,
+      tokens_out: 300,
+    },
+  ],
+  by_provider: [],
+  recent_failures: [
+    {
+      ts: '2026-09-20T10:00:00+00:00',
+      request_id: 'r1',
+      attempt: 1,
+      registry_id: 'hosted-strong',
+      task: 'grade_rubric',
+      route: 'primary',
+      outcome: 'error',
+      cost_status: 'unknown',
+      reserved_usd: 0.01,
+      error: 'timeout',
     },
   ],
 }
@@ -74,6 +136,25 @@ describe('Models', () => {
           )
         }
         if (url.endsWith('/api/models/jobs')) return jsonResponse({ jobs: [] })
+        if (url.includes('/api/models/costs')) return jsonResponse(costs)
+        if (url.endsWith('/api/voice/readiness'))
+          return jsonResponse({
+            stt: { ready: false, status: 'available', detail: 'not downloaded', action: 'pull it' },
+            tts: { ready: false, status: 'available', detail: 'no server', action: 'start it' },
+            vad: { ready: true, status: 'fallback', detail: 'energy', action: 'pull silero' },
+            tools: { ready: true, status: 'ready', detail: 'browser mic', action: null },
+            activated: false,
+            retain_audio: false,
+            retention_days: 7,
+            voice: 'af_heart',
+            can_activate: false,
+            stt_id: 'whisper-large-v3-turbo',
+            tts_id: 'kokoro-82m',
+            vad_id: 'silero-vad',
+            conversation_lang: '',
+            conversation_lang_supported: true,
+            notes: [],
+          })
         if (url.endsWith('/api/models/routing')) return jsonResponse(routing)
         if (url.endsWith('/api/models')) return jsonResponse(models)
         return jsonResponse({})
@@ -94,5 +175,18 @@ describe('Models', () => {
     expect(pulls[0]).toContain('/api/models/gemma3-12b/pull')
     fireEvent.click(screen.getByText('Routing: which model does each task use'))
     expect(await screen.findByText('llama31-8b (ready)')).toBeInTheDocument()
+    // an unavailable route names the problem and the one step that fixes it
+    expect(screen.getByText(/ANTHROPIC_API_KEY is empty/)).toBeInTheDocument()
+    expect(screen.getByText('set ANTHROPIC_API_KEY in .env and restart the backend')).toBeInTheDocument()
+    // the cost view keeps reported / estimated / unknown apart and shows failures
+    expect(screen.getByText(/\$0\.2134/)).toBeInTheDocument()
+    expect(
+      screen.getByText('Reported by the provider (never below the registry estimate)'),
+    ).toBeInTheDocument()
+    expect(screen.getByText('$0.2000')).toBeInTheDocument()
+    expect(screen.getByText('$0.0034')).toBeInTheDocument()
+    expect(screen.getByText(/Unknown billing \(failed calls/)).toBeInTheDocument()
+    fireEvent.click(screen.getByText(/Failed, stopped or retried calls \(1\)/))
+    expect(screen.getByText(/attempt 1 · error · billing unknown · timeout/)).toBeInTheDocument()
   })
 })

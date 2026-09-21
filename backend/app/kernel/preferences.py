@@ -75,6 +75,51 @@ PREFERENCES: dict[str, PrefSpec] = {
             description="Plan a language (vocabulary) block when cards are due",
         ),
         PrefSpec(
+            key="goal.course",
+            type="str",
+            default="",
+            description="Learn toward this course's published skills first (empty = whole map)",
+        ),
+        PrefSpec(
+            key="voice.enabled",
+            type="bool",
+            default=False,
+            description="Voice: talk to the tutor (activated by you after setup and a test)",
+        ),
+        PrefSpec(
+            key="voice.retain_audio",
+            type="bool",
+            default=False,
+            description="Voice: keep my recordings (off = deleted right after transcription)",
+        ),
+        PrefSpec(
+            key="voice.retention_days",
+            type="int",
+            default=7,
+            min=1,
+            max=90,
+            description="Voice: days to keep recordings when retention is on",
+        ),
+        PrefSpec(
+            key="voice.conversation_lang",
+            type="str",
+            default="",
+            description="Voice: language for spoken conversation practice in the language block "
+            "(ISO code, e.g. de; empty = no conversation option)",
+        ),
+        PrefSpec(
+            key="voice.voice",
+            type="str",
+            default="af_heart",
+            description="Voice: Kokoro voice id",
+        ),
+        PrefSpec(
+            key="listening.document_id",
+            type="str",
+            default="",
+            description="The listening lesson offered in the language block (empty = none)",
+        ),
+        PrefSpec(
             key="planner.guitar",
             type="bool",
             default=False,
