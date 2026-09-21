@@ -333,6 +333,8 @@ def load_file(
     raw_hash: str | None = None,
     stt_hint: str = DEFAULT_STT_HINT,
     vision_hint: str = DEFAULT_VISION_HINT,
+    vision_cache: Path | None = None,
+    use_cache: bool = True,
 ) -> SourceDoc:
     """Raises `ValueError` for unsupported suffixes, `SkipFile` for recognised-but-empty files,
     `PdfSupportMissing` / `SttSupportMissing` / `VisionSupportMissing` for optional runtimes and
@@ -382,6 +384,7 @@ def load_file(
                 workdir=Path(td),
                 language=language,
                 hint=stt_hint,
+                use_cache=use_cache,
             )
         meta["transcription"] = {
             "registry_id": res.registry_id,
@@ -390,12 +393,20 @@ def load_file(
             "duration_s": round(res.duration_s, 1),
             "latency_ms": res.latency_ms,
             "decoder": res.decoder,
+            "source_format": res.source_format,
             "cached": res.cached,
         }
         return done(transcript_to_blocks(res))
     if suffix in IMAGE_SUFFIXES:
         with tempfile.TemporaryDirectory(prefix="audhs-image-") as td:
-            blocks, vmeta = read_image(path, image_reader, workdir=Path(td), hint=vision_hint)
+            blocks, vmeta = read_image(
+                path,
+                image_reader,
+                workdir=Path(td),
+                hint=vision_hint,
+                cache_dir=vision_cache,
+                use_cache=use_cache,
+            )
         meta.update(vmeta)
         return done(blocks)  # empty blocks + meta.vision.empty: the service logs, then skips
 

@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     quarantine_below_trust: int = 2  # flagged chunks below this trust tier never reach the tutor
     ingest_roots: str = "~"  # comma-separated folders the ingest API may read (CLI is unrestricted)
     transcript_cache_dir: str = "./data/transcripts"  # STT results by content hash
+    vision_cache_dir: str = "./data/vision"  # vision-model answers by image bytes + model + prompt
     stt_language: str = ""  # ISO code forced for transcription; empty = auto-detect
     voice_dir: str = "./data/voice"  # retained voice recordings (opt-in, see voice.retain_audio)
 
@@ -70,6 +71,11 @@ class Settings(BaseSettings):
     @property
     def voice_dir_resolved(self) -> Path:
         p = Path(self.voice_dir).expanduser()
+        return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+
+    @property
+    def vision_cache_dir_resolved(self) -> Path:
+        p = Path(self.vision_cache_dir).expanduser()
         return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
 
     @property

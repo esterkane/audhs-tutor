@@ -1,6 +1,6 @@
 # Recovery guide (P5)
 
-**What a backup is.** One zip made by `make backup out=<file>`: a consistent SQLite snapshot, a manifest with checksums, and (optionally) the transcript cache. Add `encrypt=1` to wrap it in a password-based authenticated envelope (ADR-0012, `docs/slices/encrypted-backups.md`); without that it is **not encrypted** — keep it on an encrypted disk. Never in a backup: `.env` and every secret, model binaries, Qdrant vectors, course originals. Default scope `learner` leaves the corpus text of purchased courses out; `scope=full` is for your own private reinstall only.
+**What a backup is.** One zip made by `make backup out=<file>`: a consistent SQLite snapshot, a manifest with checksums, and (optionally) the transcript cache. Add `encrypt=1` to wrap it in a password-based authenticated envelope (ADR-0012, `docs/slices/encrypted-backups.md`); without that it is **not encrypted** — keep it on an encrypted disk. Never in a backup: `.env` and every secret, model binaries, Qdrant vectors, course originals, the vision-answer cache (`VISION_CACHE_DIR`, rebuilt on the next ingest — only its path is recorded). Default scope `learner` leaves the corpus text of purchased courses out; `scope=full` is for your own private reinstall only.
 
 **Make one.**
 ```bash

@@ -298,6 +298,7 @@ dev = [
 ]
 stt = [
     { name = "mlx-whisper" },
+    { name = "scipy" },
 ]
 
 [package.metadata]
@@ -336,7 +337,10 @@ dev = [
     { name = "ruff", specifier = ">=0.16.8" },
     { name = "types-pyyaml", specifier = ">=6.0.12.20260906" },
 ]
-stt = [{ name = "mlx-whisper", specifier = ">=0.4.2" }]
+stt = [
+    { name = "mlx-whisper", specifier = ">=0.4.2" },
+    { name = "scipy", specifier = ">=1.18.1" },
+]
 
 [[package]]
 name = "boto3"

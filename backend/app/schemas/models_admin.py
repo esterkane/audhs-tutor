@@ -94,6 +94,7 @@ class RoutingOut(BaseModel):
 class CostBucket(BaseModel):
     key: str
     calls: int
+    cache_hits: int = 0
     failed: int
     cost_usd: float
     unknown_usd: float
@@ -127,6 +128,7 @@ class CostToday(BaseModel):
 class CostWindow(BaseModel):
     hosted_calls: int
     free_calls: int
+    cache_hits: int = 0
     failed_calls: int
     cancelled_calls: int
     blocked_calls: int

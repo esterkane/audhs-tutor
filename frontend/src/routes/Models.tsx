@@ -348,6 +348,7 @@ function CostCard() {
       </label>
       <p className="text-xs text-muted mt-1">
         {w.hosted_calls} hosted · {w.free_calls} local · {w.failed_calls} failed · {w.blocked_calls} blocked
+        {w.cache_hits > 0 ? ` · ${w.cache_hits} served from the ingest cache (no model call)` : ''}
         by the cap · {w.retried_requests} requests needed more than one attempt · {w.unknown_calls} with
         unknown billing{w.legacy_rows ? ` · ${w.legacy_rows} legacy rows` : ''}
         {w.expired_reservations ? ` · ${w.expired_reservations} stale reservations expired` : ''}

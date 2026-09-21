@@ -2051,6 +2051,11 @@ export interface components {
       key: string
       /** Calls */
       calls: number
+      /**
+       * Cache Hits
+       * @default 0
+       */
+      cache_hits: number
       /** Failed */
       failed: number
       /** Cost Usd */
@@ -2108,6 +2113,11 @@ export interface components {
       hosted_calls: number
       /** Free Calls */
       free_calls: number
+      /**
+       * Cache Hits
+       * @default 0
+       */
+      cache_hits: number
       /** Failed Calls */
       failed_calls: number
       /** Cancelled Calls */

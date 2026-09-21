@@ -83,6 +83,7 @@ RECONSTRUCTION_SETTINGS = (
     "quarantine_below_trust",
     "ingest_roots",
     "transcript_cache_dir",
+    "vision_cache_dir",
     "stt_language",
     "models_dir",
     "daily_budget_usd",

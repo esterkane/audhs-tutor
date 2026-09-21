@@ -22,6 +22,7 @@ from app.models_ai.provider import HOSTED_PROVIDERS
 class Breakdown:
     key: str
     calls: int = 0
+    cache_hits: int = 0  # ingest cache hits (STT/vision): handled, but nothing was spent
     failed: int = 0
     cost_usd: float = 0.0
     unknown_usd: float = 0.0
@@ -50,6 +51,7 @@ class CostReport:
     spend: Spend
     hosted_calls: int = 0
     free_calls: int = 0
+    cache_hits: int = 0
     failed_calls: int = 0
     cancelled_calls: int = 0
     blocked_calls: int = 0
@@ -80,6 +82,11 @@ async def cost_report(db: AsyncSession, budget: Budget, *, days: int = 1) -> Cos
     providers: dict[str, Breakdown] = {}
     requests_attempts: dict[str, int] = {}
     for r in rows:
+        if (r.metadata_json or {}).get("cache") == "hit":
+            rep.cache_hits += 1  # not a call: no tokens, no latency, no model involved
+            for bucket, key in ((tasks, r.task), (providers, r.provider)):
+                bucket.setdefault(key, Breakdown(key=key)).cache_hits += 1
+            continue
         hosted = r.provider in HOSTED_PROVIDERS
         if hosted:
             rep.hosted_calls += 1
@@ -166,6 +173,7 @@ def report_dict(rep: CostReport) -> dict[str, Any]:
         "window": {
             "hosted_calls": rep.hosted_calls,
             "free_calls": rep.free_calls,
+            "cache_hits": rep.cache_hits,
             "failed_calls": rep.failed_calls,
             "cancelled_calls": rep.cancelled_calls,
             "blocked_calls": rep.blocked_calls,

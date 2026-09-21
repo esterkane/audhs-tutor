@@ -144,6 +144,7 @@ class IngestOptions:
     media: bool = True  # False: audio/video/images are listed as skipped without decoding
     force_media: bool = False  # re-transcribe / re-read even when the bytes are unchanged
     transcript_cache: Path | None = None
+    vision_cache: Path | None = None  # bounded, versioned answers of the vision model
     expand_archives: bool = True
     stt_hint: str = DEFAULT_STT_HINT  # skip reason when no STT model is ready
     vision_hint: str = DEFAULT_VISION_HINT
@@ -512,7 +513,9 @@ async def _log_runtime_call(db: AsyncSession, doc: SourceDoc) -> None:
     """Transcription / vision are model calls: one `model_call` row each (ADR-0010 observability),
     also when the model saw nothing."""
     tr = doc.meta.get("transcription")
-    if isinstance(tr, dict) and not tr.get("cached") and tr.get("registry_id"):
+    if isinstance(tr, dict) and tr.get("registry_id"):
+        # a transcript-cache hit is recorded like a vision hit: cached=True, zero latency,
+        # metadata.cache=hit — the audit shows the file was handled, usage is not counted twice
         await write_model_call(
             db,
             ModelCallRecord(
@@ -520,17 +523,22 @@ async def _log_runtime_call(db: AsyncSession, doc: SourceDoc) -> None:
                 model=str(tr.get("model") or ""),
                 registry_id=str(tr["registry_id"]),
                 task="stt",
-                latency_ms=int(tr.get("latency_ms") or 0),
+                latency_ms=0 if tr.get("cached") else int(tr.get("latency_ms") or 0),
+                cached=bool(tr.get("cached")),
                 metadata={
+                    "cache": "hit" if tr.get("cached") else "miss",
                     "uri": doc.uri,
                     "duration_s": tr.get("duration_s"),
                     "language": tr.get("language"),
                     "decoder": tr.get("decoder"),
+                    "source_format": tr.get("source_format"),
                 },
             ),
         )
     vi = doc.meta.get("vision")
     if isinstance(vi, dict) and vi.get("registry_id"):
+        # a cache hit is recorded as a call that cost nothing (cached=True, zero tokens/latency):
+        # the audit shows the image was read, the accounting does not count it twice
         await write_model_call(
             db,
             ModelCallRecord(
@@ -538,10 +546,18 @@ async def _log_runtime_call(db: AsyncSession, doc: SourceDoc) -> None:
                 model=str(vi.get("model") or ""),
                 registry_id=str(vi["registry_id"]),
                 task="vision",
-                tokens_in=int(vi.get("tokens_in") or 0),
-                tokens_out=int(vi.get("tokens_out") or 0),
-                latency_ms=int(vi.get("latency_ms") or 0),
-                metadata={"uri": doc.uri, "bytes": vi.get("bytes"), "empty": vi.get("empty")},
+                tokens_in=0 if vi.get("cached") else int(vi.get("tokens_in") or 0),
+                tokens_out=0 if vi.get("cached") else int(vi.get("tokens_out") or 0),
+                latency_ms=0 if vi.get("cached") else int(vi.get("latency_ms") or 0),
+                cached=bool(vi.get("cached")),
+                metadata={
+                    "cache": "hit" if vi.get("cached") else "miss",
+                    "uri": doc.uri,
+                    "bytes": vi.get("bytes"),
+                    "empty": vi.get("empty"),
+                    "cache_key": vi.get("cache_key"),
+                    "prompt_version": vi.get("prompt_version"),
+                },
             ),
         )
 
@@ -611,6 +627,8 @@ async def ingest_file(
             transcript_cache=opts.transcript_cache,
             stt_hint=opts.stt_hint,
             vision_hint=opts.vision_hint,
+            vision_cache=opts.vision_cache,
+            use_cache=not opts.force_media,  # --retranscribe: redo even what is cached
         )
     except RuntimeCallFailed as e:
         await _log_failed_call(db, e, uri or path.resolve().as_posix())  # noqa: ASYNC240

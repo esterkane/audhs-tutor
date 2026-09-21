@@ -89,6 +89,7 @@ async def default_options(
         media=media,
         force_media=force_media,
         transcript_cache=settings.transcript_cache_dir_resolved,
+        vision_cache=settings.vision_cache_dir_resolved,
         stt_hint=pull_hint(settings, TaskClass.STT, "speech-to-text"),
         vision_hint=pull_hint(settings, TaskClass.VISION, "vision"),
     )
