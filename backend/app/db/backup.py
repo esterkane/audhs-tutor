@@ -44,6 +44,8 @@ import sqlite3
 import stat
 import tempfile
 import zipfile
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,6 +55,8 @@ from urllib.parse import urlsplit, urlunsplit
 from alembic.script import ScriptDirectory
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from app.db import backup_crypto
+from app.db import models as _models  # noqa: F401  (registers every table on Base.metadata)
 from app.db.base import Base
 from app.db.ddl import LEARNING_EVENT_GUARDS
 from app.db.migrate import alembic_config, upgrade_to_head
@@ -86,6 +90,7 @@ RECONSTRUCTION_SETTINGS = (
 _TRANSCRIPT_MEMBER = re.compile(r"^transcripts/[0-9a-f]{16,64}\.json$")
 _URL_SETTINGS = ("ollama_host", "qdrant_url", "kokoro_url")
 MAX_MEMBERS = 20_000
+ENCRYPTION_LABEL = "aes-256-gcm+scrypt envelope v1 (see backup_crypto)"
 MAX_TOTAL_BYTES = 16 * 1024**3
 _CHUNK = 1 << 20
 
@@ -284,10 +289,16 @@ def create_backup(
     scope: str = "learner",
     transcripts_dir: Path | None = None,
     settings_snapshot: dict[str, Any] | None = None,
+    password: str | None = None,
+    kdf_n: int = backup_crypto.DEFAULT_KDF_N,
 ) -> Report:
-    """Write `out` atomically (temp file → rename). Refuses to overwrite. Read-only on the source."""
+    """Write `out` atomically (temp file → rename). Refuses to overwrite. Read-only on the source.
+    With `password` the archive is wrapped in the authenticated envelope of `backup_crypto`
+    (ADR-0012); the password is never stored anywhere."""
     if scope not in SCOPES:
         raise BackupError(f"scope must be one of {SCOPES}")
+    if password is not None and not password:
+        raise BackupError("the encryption password must not be empty")
     out = out.expanduser()
     out.parent.mkdir(parents=True, exist_ok=True)
     try:  # reserve the name atomically: no check-then-write window
@@ -329,7 +340,7 @@ def create_backup(
             "purpose": "private-recovery",
             "scope": scope,
             "created_at": _utc(),
-            "encryption": "none",
+            "encryption": ENCRYPTION_LABEL if password is not None else "none",
             "app": {"alembic_revision": snap["alembic_revision"], "alembic_head": head_revision()},
             "database": {"member": DB_MEMBER, "tables": snap["tables"]},
             "index": {
@@ -368,7 +379,16 @@ def create_backup(
             z.write(db_tmp, DB_MEMBER)
             for p in transcripts:
                 z.write(p, f"transcripts/{p.name}")
-        os.replace(tmp_zip, out)
+        if password is not None:
+            tmp_enc = staging / "archive.enc.partial"
+            try:
+                backup_crypto.encrypt_file(tmp_zip, tmp_enc, password, kdf_n=kdf_n)
+            except backup_crypto.EncryptionError as e:
+                raise BackupError(str(e)) from e
+            tmp_zip.unlink()
+            os.replace(tmp_enc, out)
+        else:
+            os.replace(tmp_zip, out)
         return Report(path=out, manifest=manifest)
     except Exception:
         out.unlink(missing_ok=True)  # the reserved (empty) name
@@ -470,18 +490,55 @@ def _verify_member(z: zipfile.ZipFile, name: str, expected_sha: str, dest: Path 
         raise BackupError(f"checksum mismatch for {name} (corrupted archive)")
 
 
-def inspect_backup(path: Path) -> dict[str, Any]:
-    """Validate the manifest and every member's checksum without writing anything."""
+@contextmanager
+def _plain_archive(path: Path, password: str | None, *, workdir: Path | None) -> Iterator[Path]:
+    """Yield a readable plaintext zip: `path` itself, or — for an encrypted backup — a private
+    decrypted copy (0600, in `workdir` or a fresh temp dir) that is removed afterwards."""
+    if not backup_crypto.is_encrypted(path):
+        yield path
+        return
+    if password is None:
+        raise BackupError("this backup is encrypted: a password is required")
+    own = workdir is None
+    # the plaintext copy lives next to the archive (same volume, never the shared system temp)
+    work = (
+        Path(tempfile.mkdtemp(prefix=f".{path.name}.decrypting-", dir=path.parent))
+        if workdir is None
+        else workdir
+    )
+    plain = work / "archive.decrypted.zip"
+    try:
+        need = path.stat().st_size + (64 << 20)
+        if shutil.disk_usage(work).free < need:
+            raise BackupError("not enough free disk space to decrypt the backup next to it")
+        try:
+            backup_crypto.decrypt_file(path, plain, password)
+        except backup_crypto.EncryptionError as e:
+            raise BackupError(str(e)) from e
+        except OSError as e:
+            raise BackupError(f"could not write the decrypted copy: {e}") from e
+        yield plain
+    finally:
+        plain.unlink(missing_ok=True)
+        if own:
+            shutil.rmtree(work, ignore_errors=True)
+
+
+def inspect_backup(path: Path, password: str | None = None) -> dict[str, Any]:
+    """Validate the manifest and every member's checksum. Writes nothing for a plain archive; an
+    encrypted one is decrypted into a private temp file first (needs its size in free space)."""
     path = path.expanduser()
     if not path.is_file():
         raise BackupError(f"no such file: {path}")
+    encrypted = backup_crypto.is_encrypted(path)
     try:
-        with zipfile.ZipFile(path) as z:
+        with _plain_archive(path, password, workdir=None) as plain, zipfile.ZipFile(plain) as z:
             manifest = _load_manifest(z)
             for f in manifest["files"]:
                 _verify_member(z, f["path"], f["sha256"], None)
     except zipfile.BadZipFile as e:
         raise BackupError("not a zip archive") from e
+    manifest["_encrypted"] = encrypted
     return manifest
 
 
@@ -494,12 +551,14 @@ def _target_is_empty(target: Path) -> bool:
     return not any(target.iterdir())
 
 
-def restore_backup(path: Path, target: Path) -> Report:
+def restore_backup(path: Path, target: Path, password: str | None = None) -> Report:
     """Restore into `target` (must not exist or be an empty directory). Layout afterwards:
     `target/data/dev.db`, `target/data/transcripts/`, `target/backup-manifest.json`,
     `target/RESTORE-NOTES.md`. The live installation is never read or written."""
     path = path.expanduser()
     target = target.expanduser()
+    if not path.is_file():
+        raise BackupError(f"no such file: {path}")
     if not _target_is_empty(target):
         raise BackupError(
             f"refusing to restore into {target}: it is not empty. This version restores only into "
@@ -510,7 +569,10 @@ def restore_backup(path: Path, target: Path) -> Report:
     staging = Path(tempfile.mkdtemp(prefix=f".{target.name}.restoring-", dir=target.parent))
     try:
         try:
-            with zipfile.ZipFile(path) as z:
+            with (
+                _plain_archive(path, password, workdir=staging) as plain,
+                zipfile.ZipFile(plain) as z,
+            ):
                 manifest = _load_manifest(z)
                 revision = manifest["app"]["alembic_revision"]
                 if not isinstance(revision, str) or revision not in known_revisions():

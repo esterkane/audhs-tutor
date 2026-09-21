@@ -63,19 +63,20 @@ migrate-check:
 migrate-apply:
 	cd backend && uv run alembic upgrade head
 
-# backup: never overwrites; scope=learner (default) leaves course text out, scope=full is private recovery
+# backup: never overwrites; scope=learner (default) leaves course text out, scope=full is private recovery;
+# encrypt=1 asks for a password (or pwfile=<file with the password on line 1>) — ADR-0012
 backup:
-	$(if $(out),,$(error usage: make backup out=<file> [scope=learner|full] [transcripts=1]))
-	cd backend && uv run python ../scripts/backup.py create --out "$(out)" --scope "$(or $(scope),learner)" $(if $(transcripts),--include-transcripts,)
+	$(if $(out),,$(error usage: make backup out=<file> [scope=learner|full] [transcripts=1] [encrypt=1] [pwfile=<file>]))
+	cd backend && uv run python ../scripts/backup.py create --out "$(out)" --scope "$(or $(scope),learner)" $(if $(transcripts),--include-transcripts,) $(if $(filter 1 yes true,$(encrypt)),--encrypt,) $(if $(pwfile),--password-file "$(pwfile)",)
 
 backup-inspect:
 	$(if $(f),,$(error usage: make backup-inspect f=<file>))
-	cd backend && uv run python ../scripts/backup.py inspect "$(f)"
+	cd backend && uv run python ../scripts/backup.py inspect "$(f)" $(if $(pwfile),--password-file "$(pwfile)",)
 
 # restores into an EMPTY target folder only; the live data/dev.db is never touched
 backup-restore:
 	$(if $(and $(f),$(target)),,$(error usage: make backup-restore f=<file> target=<empty folder>))
-	cd backend && uv run python ../scripts/backup.py restore "$(f)" --target "$(target)"
+	cd backend && uv run python ../scripts/backup.py restore "$(f)" --target "$(target)" $(if $(pwfile),--password-file "$(pwfile)",)
 
 ingest:
 	cd backend && uv run python ../scripts/ingest.py --src "$(src)"

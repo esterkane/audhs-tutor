@@ -33,6 +33,8 @@ def settings(db_path: Path, tmp_path_factory: pytest.TempPathFactory) -> Setting
         voice_dir=str(
             tmp_path_factory.getbasetemp() / "voice"
         ),  # retained recordings never leave tmp
+        kokoro_url="http://127.0.0.1:1",  # never the owner's real Kokoro server
+        ollama_host="http://127.0.0.1:1",  # never the owner's real Ollama
         _env_file=None,  # type: ignore[call-arg]
     )
 
