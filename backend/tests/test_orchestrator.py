@@ -250,6 +250,7 @@ def test_deterministic_graders() -> None:
     ]
     full = rubric_checks(rubric, "the variance grows so softmax saturates")
     assert full.score == 1.0 and full.confidence >= 0.7
+    assert "missing" not in full.next_step  # nothing is missing: no contradictory next step
     empty = rubric_checks(rubric, "no idea")
     assert empty.score == 0.0 and empty.confidence >= 0.7
     partial = rubric_checks(

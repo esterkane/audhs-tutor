@@ -13,7 +13,14 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.events import EventWriter, Verb
-from app.db.models import Assessment, AssessmentAttempt, AssessmentRubric, MemoryState, Session
+from app.db.models import (
+    Assessment,
+    AssessmentAttempt,
+    AssessmentRubric,
+    MemoryState,
+    Session,
+    SkillNode,
+)
 from app.kernel import competency, memory
 from app.kernel import session as ksession
 from app.models_ai.gateway import GatewayError, ModelGateway
@@ -21,7 +28,7 @@ from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import NoModelReady
 from app.orchestrator import prompts
 from app.orchestrator.context import escape_data, learner_answer_block
-from app.schemas.common import ActivityType, ObjectType
+from app.schemas.common import ActivityType, Domain, ObjectType
 from app.schemas.grading import (
     AssessmentView,
     AttemptRequest,
@@ -39,6 +46,7 @@ DIMENSION_FOR_KIND = {
     "challenge_steelman": "transfer",
     "challenge_teach_back": "explanation",
     "challenge_calibration": "recall",
+    "code": "application",
 }
 KIND_ORDER = ["mcq", "cloze", "explain_back"]
 LLM_ESCALATE_BELOW = 0.6
@@ -56,6 +64,14 @@ def view(a: Assessment) -> AssessmentView:
         )
     if a.kind == "cloze":
         return AssessmentView(id=a.id, skill_id=a.skill_id, kind=a.kind, question=item["text"])
+    if a.kind == "code":  # as a review card the exercise asks its check question (P8)
+        return AssessmentView(
+            id=a.id,
+            skill_id=a.skill_id,
+            kind=a.kind,
+            question=str(item.get("check_question") or item.get("prompt") or ""),
+            criteria=list(item.get("success_criteria") or []),
+        )
     return AssessmentView(
         id=a.id,
         skill_id=a.skill_id,
@@ -167,11 +183,13 @@ def rubric_checks(criteria: list[dict[str, Any]], answer: str) -> GradeResult:
         if not missing
         else f"Missing or unclear: {'; '.join(missing)}."
     )
+    next_step = (
+        "Next: move on; this node comes back in a delayed review."
+        if not missing
+        else "Next: add the missing point in one sentence."
+    )
     return GradeResult(
-        criterion_results=results,
-        confidence=conf,
-        feedback=feedback,
-        next_step="Next: add the missing point in one sentence.",
+        criterion_results=results, confidence=conf, feedback=feedback, next_step=next_step
     )
 
 
@@ -184,7 +202,11 @@ class Grader:
         """Rotate kinds (mcq → cloze → explain_back); prefer items never attempted, then the oldest attempt."""
         items = list(
             (
-                await self.db.execute(select(Assessment).where(Assessment.skill_id == skill_id))
+                await self.db.execute(
+                    select(Assessment).where(
+                        Assessment.skill_id == skill_id, Assessment.kind != "code"
+                    )
+                )
             ).scalars()
         )
         if not items:
@@ -275,6 +297,12 @@ class Grader:
         if a.kind == "mcq":
             result, correct = grade_mcq(item, req.answer)
             level = "deterministic"
+        elif a.kind == "code":
+            # P8: check results computed in the learner's browser sandbox (never on this host)
+            from app.kernel import exercises
+
+            result, correct = exercises.grade_code(item, req.answer)
+            level = "deterministic"
         elif a.kind == "cloze":
             result, correct = grade_cloze(item, req.answer)
             level = "deterministic"
@@ -314,6 +342,13 @@ class Grader:
                             result, level = hosted
             correct = None if 0.0 < result.score < 1.0 else result.score == 1.0
 
+        listening_meta = item.get("listening") if isinstance(item.get("listening"), dict) else None
+        # one label everywhere: the attempt row, the graded event and the result say where the
+        # verdict came from (a code exercise is checked in the learner's browser sandbox)
+        route_label = "deterministic:client-pyodide" if a.kind == "code" else level
+        if listening_meta is not None and listening_meta.get("validated") is False:
+            # a model-proposed question nobody has checked: evidence at half weight, never Easy
+            result.confidence = min(result.confidence, 0.5)
         score = result.score
         attempt = AssessmentAttempt(
             learner_id=learner_id,
@@ -325,7 +360,7 @@ class Grader:
             deterministic_result_json=result.model_dump()
             if level in ("deterministic", "rubric")
             else None,
-            grader_route=level,
+            grader_route=route_label,
             correct=correct,
             latency_ms=req.latency_ms,
             hint_count=req.hint_count,
@@ -333,7 +368,15 @@ class Grader:
         db.add(attempt)
         await db.commit()
 
-        events = EventWriter(db, ksession.event_context(session, activity=ActivityType.RETRIEVAL))
+        node = await db.get(SkillNode, a.skill_id)
+        domain = (
+            Domain(node.domain)
+            if node is not None and node.domain in {d.value for d in Domain}
+            else Domain.AI_ML
+        )
+        events = EventWriter(
+            db, ksession.event_context(session, domain=domain, activity=ActivityType.RETRIEVAL)
+        )
         await events.emit(
             Verb.ATTEMPTED,
             ObjectType.ITEM,
@@ -361,7 +404,7 @@ class Grader:
                 "feedback_len": len(result.feedback),
             },
             context={
-                "grader_level": level,
+                "grader_level": route_label,
                 "prompt_version": prompts.GRADER_VERSION if level in ("local", "hosted") else None,
                 "rubric_version": rubric_version,
             },
@@ -384,7 +427,9 @@ class Grader:
         rating = memory.rating_from_score(score, hint_count=req.hint_count)
         if (
             level == "rubric"
-        ):  # keyword overlap is not confirmed understanding: never the longest interval
+            or (listening_meta is not None and listening_meta.get("validated") is False)
+            or (a.kind == "code" and result.confidence < 1.0)
+        ):  # keyword overlap / unchecked item / code after the solution: never the longest interval
             rating = min(rating, memory.Rating.Good)
         await memory.review(
             db,
@@ -395,8 +440,8 @@ class Grader:
             latency_ms=req.latency_ms,
             events=events,
         )
-        if a.kind.startswith("challenge_"):
-            # every challenge ends with a delayed item (ADR-0003): never earlier than +2 days
+        if a.kind.startswith("challenge_") or a.kind == "code":
+            # every challenge / code exercise ends with a delayed item (ADR-0003): ≥ +2 days
             from datetime import timedelta
 
             ms_row = (
@@ -430,7 +475,7 @@ class Grader:
             criterion_results=result.criterion_results,
             misconception=result.misconception,
             confidence=result.confidence,
-            grader_level=level,
+            grader_level=route_label,
             feedback=result.feedback,
             next_step=result.next_step,
             confidence_pre=req.confidence_pre,

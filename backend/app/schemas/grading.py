@@ -38,7 +38,7 @@ class AssessmentView(BaseModel):
 class AttemptRequest(BaseModel):
     session_id: str
     assessment_id: str
-    answer: str = Field(max_length=6000)
+    answer: str = Field(max_length=20_000)  # code submissions carry code + check results
     confidence_pre: int = Field(ge=1, le=5)
     latency_ms: int | None = None
     hint_count: int = 0
