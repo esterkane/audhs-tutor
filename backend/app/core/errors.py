@@ -4,6 +4,7 @@ Starlette 1.x no longer routes arbitrary exception classes through `exception_ha
 KeyError/ValueError mapping is a middleware; AppError keeps the explicit handler.
 """
 
+import logging
 from collections.abc import Awaitable, Callable
 
 from fastapi import FastAPI, Request, Response
@@ -11,6 +12,8 @@ from fastapi.responses import JSONResponse
 
 from app.models_ai.gateway import GatewayError
 from app.models_ai.routing import NoModelReady
+
+logger = logging.getLogger(__name__)
 
 
 class AppError(Exception):
@@ -44,5 +47,11 @@ def register_error_handlers(app: FastAPI) -> None:
             return _json(400, "bad_request", str(exc))
         except NoModelReady as exc:
             return _json(503, "no_model_ready", str(exc))
-        except GatewayError as exc:
-            return _json(502, "tutor_failed", str(exc))
+        except GatewayError:
+            logger.exception("model gateway failed")
+            return _json(
+                502,
+                "tutor_failed",
+                "The tutor model did not answer. Nothing was changed. Try again, or check "
+                "Models › Routing.",
+            )

@@ -82,8 +82,70 @@ class RouteRow(BaseModel):
     override: str | None
     chain: list[ChainEntry]
     resolved: str | None
+    problem: str | None = None  # why nothing is ready (P6)
+    action: str | None = None  # the one step that would fix it
 
 
 class RoutingOut(BaseModel):
     profile: str
     routes: list[RouteRow]
+
+
+class CostBucket(BaseModel):
+    key: str
+    calls: int
+    failed: int
+    cost_usd: float
+    unknown_usd: float
+    tokens_in: int
+    tokens_out: int
+
+
+class CostFailure(BaseModel):
+    ts: str
+    request_id: str | None
+    attempt: int
+    registry_id: str
+    task: str
+    route: str
+    outcome: str
+    cost_status: str
+    reserved_usd: float
+    error: str | None
+
+
+class CostToday(BaseModel):
+    counted: float
+    remaining: float
+    reported: float
+    estimated: float
+    unknown_reserved: float
+    legacy: float
+    open_reservations: float
+
+
+class CostWindow(BaseModel):
+    hosted_calls: int
+    free_calls: int
+    failed_calls: int
+    cancelled_calls: int
+    blocked_calls: int
+    retried_requests: int
+    unknown_calls: int
+    legacy_rows: int
+    open_reservations: int
+    expired_reservations: int
+
+
+class CostsOut(BaseModel):
+    """P6 cost view. `today.counted` is what the daily cap sees: reported + estimated + legacy
+    hosted cost + unknown calls at their reserved worst case + open reservations."""
+
+    daily_cap_usd: float
+    day_start: str
+    window_start: str
+    today: CostToday
+    window: CostWindow
+    by_task: list[CostBucket]
+    by_provider: list[CostBucket]
+    recent_failures: list[CostFailure]

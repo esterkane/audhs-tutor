@@ -33,13 +33,24 @@ async def get_learner(db: DB) -> LearnerProfile:
 Learner = Annotated[LearnerProfile, Depends(get_learner)]
 
 
-async def get_gateway(request: Request, db: DB, settings: SettingsDep) -> ModelGateway:
-    return ModelGateway(
-        db,
-        Router(settings.routing_profile),
-        request.app.state.providers,
-        Budget(settings.daily_budget_usd),
-    )
+def get_budget(request: Request, settings: SettingsDep) -> Budget:
+    """One reservation lock per app process (app.state, never a module singleton)."""
+    lock = getattr(request.app.state, "budget_lock", None)
+    if lock is None:
+        import asyncio
+
+        lock = asyncio.Lock()
+        request.app.state.budget_lock = lock
+    return Budget(settings.daily_budget_usd, lock=lock)
+
+
+BudgetDep = Annotated[Budget, Depends(get_budget)]
+
+
+async def get_gateway(
+    request: Request, db: DB, settings: SettingsDep, budget: BudgetDep
+) -> ModelGateway:
+    return ModelGateway(db, Router(settings.routing_profile), request.app.state.providers, budget)
 
 
 Gateway = Annotated[ModelGateway, Depends(get_gateway)]

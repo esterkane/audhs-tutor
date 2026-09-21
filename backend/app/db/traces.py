@@ -3,10 +3,12 @@
 from typing import Any
 
 from pydantic import BaseModel, Field
-from sqlalchemy import func, select
+from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import ModelCall, RetrievalTrace, TutorTrace
+from app.models_ai.provider import HOSTED_PROVIDERS
 
 
 class ModelCallRecord(BaseModel):
@@ -26,6 +28,14 @@ class ModelCallRecord(BaseModel):
     metadata: dict[str, Any] = Field(default_factory=dict)
     learner_id: str | None = None
     session_id: str | None = None
+    # P6 accounting
+    request_id: str | None = None
+    attempt: int = 1
+    idempotency_key: str | None = None
+    outcome: str = "ok"  # ok | error | invalid_output | cancelled | partial | blocked
+    usage_source: str = "unavailable"  # reported | estimated | unavailable | legacy
+    cost_status: str = "free"  # free | reported | estimated | unknown | legacy
+    reserved_usd: float = 0.0
 
 
 class RetrievalTraceRecord(BaseModel):
@@ -60,6 +70,21 @@ class TutorTraceRecord(BaseModel):
 async def write_model_call(
     db: AsyncSession, rec: ModelCallRecord, *, commit: bool = True
 ) -> ModelCall:
+    """One row per provider attempt. An `idempotency_key` already present returns the existing
+    row instead of a second one (a retried write never double-counts)."""
+    if rec.idempotency_key:
+        existing = (
+            await db.execute(
+                select(ModelCall).where(ModelCall.idempotency_key == rec.idempotency_key)
+            )
+        ).scalar_one_or_none()
+        if existing is not None:
+            return existing
+    cost_status = rec.cost_status
+    if rec.request_id is None and cost_status == "free" and rec.provider in HOSTED_PROVIDERS:
+        # a hosted row written outside the gateway without an explicit status: priced by tokens →
+        # estimated; claiming zero cost is never "free" by default — its billing is unknown
+        cost_status = "estimated" if rec.cost_usd > 0 else "unknown"
     row = ModelCall(
         learner_id=rec.learner_id,
         session_id=rec.session_id,
@@ -77,9 +102,29 @@ async def write_model_call(
         ok=rec.ok,
         error=rec.error,
         metadata_json=rec.metadata,
+        request_id=rec.request_id,
+        attempt=rec.attempt,
+        idempotency_key=rec.idempotency_key,
+        outcome=rec.outcome,
+        usage_source=rec.usage_source,
+        cost_status=cost_status,
+        reserved_usd=rec.reserved_usd,
     )
     db.add(row)
-    await (db.commit() if commit else db.flush())
+    try:
+        await (db.commit() if commit else db.flush())
+    except IntegrityError:
+        # lost the race on the unique idempotency key: the other write is the record
+        await db.rollback()
+        if rec.idempotency_key:
+            dup = (
+                await db.execute(
+                    select(ModelCall).where(ModelCall.idempotency_key == rec.idempotency_key)
+                )
+            ).scalar_one_or_none()
+            if dup is not None:
+                return dup
+        raise
     return row
 
 
@@ -124,14 +169,6 @@ async def write_tutor_trace(
     db.add(row)
     await (db.commit() if commit else db.flush())
     return row
-
-
-async def hosted_spend_since(db: AsyncSession, since_iso: str) -> float:
-    """Sum of model_call.cost_usd for hosted providers since a UTC ISO timestamp (budget.py)."""
-    stmt = select(func.coalesce(func.sum(ModelCall.cost_usd), 0.0)).where(
-        ModelCall.ts >= since_iso, ModelCall.cost_usd > 0
-    )
-    return float((await db.execute(stmt)).scalar_one())
 
 
 async def model_calls_for_task(db: AsyncSession, task: str, limit: int = 20) -> list[ModelCall]:

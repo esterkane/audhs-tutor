@@ -135,22 +135,29 @@ async def test_invalid_output_escalates_one_tier(
 ) -> None:
     await registry.set_status(seeded, "gemma3-12b", "ready")
     events = EventWriter(seeded, EventContext(learner.id, None, Mode.STEADY, 3))
-    local = FakeProvider(structured={"passed": True, "evidence": "ok"}, fail_structured_times=1)
+    # three invalid replies exhaust one attempt + two repairs on gemma, then the chain escalates
+    local = FakeProvider(structured={"passed": True, "evidence": "ok"}, fail_structured_times=3)
     hosted = FakeProvider(structured={"passed": False, "evidence": "hosted"})
     gw = _gateway(seeded, local, hosted, events=events)
 
     out = await gw.complete(TaskClass.GRADE_SIMPLE, MSGS, response_model=Grade)
     # gemma failed structured -> llama (same fake provider, now succeeds) -> fallback
-    assert out.registry_id == "llama31-8b" and out.route == "fallback"
+    assert out.registry_id == "llama31-8b" and out.route == "fallback" and out.attempts == 4
     assert isinstance(out.result.parsed, Grade) and out.result.parsed.passed is True
     ev = (await seeded.execute(select(models.LearningEvent))).scalars().all()
-    assert [e.verb for e in ev] == ["invalid_output"]
+    assert [e.verb for e in ev] == ["invalid_output"] and ev[0].context_json["attempts"] == 3
     calls = (
-        (await seeded.execute(select(models.ModelCall).order_by(models.ModelCall.ts)))
+        (await seeded.execute(select(models.ModelCall).order_by(models.ModelCall.attempt)))
         .scalars()
         .all()
     )
-    assert [(c.registry_id, c.ok) for c in calls] == [("gemma3-12b", False), ("llama31-8b", True)]
+    assert [(c.registry_id, c.ok, c.attempt) for c in calls] == [
+        ("gemma3-12b", False, 1),
+        ("gemma3-12b", False, 2),
+        ("gemma3-12b", False, 3),
+        ("llama31-8b", True, 4),
+    ]
+    assert len({c.request_id for c in calls}) == 1  # one gateway call, four attempts
 
 
 async def test_all_routes_failing_raises(seeded: AsyncSession) -> None:

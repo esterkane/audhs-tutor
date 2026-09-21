@@ -11,6 +11,8 @@ from app.models_ai.provider import (
     ModelSpec,
     ProviderError,
     ProviderResult,
+    StreamEvent,
+    StreamUsage,
     StructuredOutputError,
 )
 
@@ -34,6 +36,10 @@ class FakeProvider:
     latency_ms: int = 1
     calls: list[FakeCall] = field(default_factory=list)
     vectors_dim: int = 8
+    stream_usage: tuple[int, int] | None = None  # (tokens_in, tokens_out) final usage chunk
+    reported_cost_usd: float | None = None
+    stream_delay_s: float = 0.0  # await between words (lets a test cancel mid-stream)
+    fail_after_words: int | None = None  # break the stream after n words (partial)
 
     async def complete(
         self,
@@ -44,6 +50,7 @@ class FakeProvider:
         max_tokens: int = 1024,
         temperature: float = 0.2,
         metadata: dict[str, Any] | None = None,
+        max_retries: int = 1,
     ) -> ProviderResult:
         self.calls.append(FakeCall(spec, messages, response_model))
         if self.fail_times > 0:
@@ -54,7 +61,13 @@ class FakeProvider:
         if response_model is not None:
             if self.fail_structured_times > 0:
                 self.fail_structured_times -= 1
-                raise StructuredOutputError("fake invalid output", attempts=3)
+                raise StructuredOutputError(
+                    "fake invalid output",
+                    attempts=1,
+                    tokens_in=self.tokens_in,
+                    tokens_out=self.tokens_out,
+                    last_text="{not json",
+                )
             parsed = response_model.model_validate(self.structured)
             text = parsed.model_dump_json()
         return ProviderResult(
@@ -65,6 +78,7 @@ class FakeProvider:
             latency_ms=self.latency_ms,
             model=spec.model,
             provider=self.name,
+            reported_cost_usd=self.reported_cost_usd,
         )
 
     async def stream(
@@ -74,25 +88,36 @@ class FakeProvider:
         *,
         max_tokens: int = 1024,
         temperature: float = 0.2,
-    ) -> AsyncIterator[str]:
+    ) -> AsyncIterator[StreamEvent]:
         self.calls.append(FakeCall(spec, messages, None))
         if self.fail_times > 0:
             self.fail_times -= 1
             raise ProviderError("fake transport failure")
         words = self.text.split(" ")
         for i, word in enumerate(words):
+            if self.fail_after_words is not None and i >= self.fail_after_words:
+                raise ProviderError("fake stream broke mid-way")
+            if self.stream_delay_s:
+                import asyncio
+
+                await asyncio.sleep(self.stream_delay_s)
             yield word + (" " if i < len(words) - 1 else "")
+        if self.stream_usage is not None:
+            yield StreamUsage(tokens_in=self.stream_usage[0], tokens_out=self.stream_usage[1])
 
     async def embed(self, spec: ModelSpec, texts: list[str]) -> list[list[float]]:
         return [hash_vector(t, self.vectors_dim) for t in texts]
 
 
 def hash_vector(text: str, dim: int) -> list[float]:
-    """Deterministic pseudo-embedding: bag-of-words hashed into `dim` buckets, L2-normalised."""
+    """Deterministic pseudo-embedding: bag-of-words hashed into `dim` buckets, L2-normalised.
+    Uses crc32, not `hash()` — Python's str hash is salted per process and made retrieval tests
+    flaky across runs."""
     import math
+    import zlib
 
     v = [0.0] * dim
     for tok in text.lower().split():
-        v[hash(tok) % dim] += 1.0
+        v[zlib.crc32(tok.encode()) % dim] += 1.0
     n = math.sqrt(sum(x * x for x in v)) or 1.0
     return [x / n for x in v]

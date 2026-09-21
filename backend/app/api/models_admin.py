@@ -8,14 +8,15 @@ from typing import Any
 from fastapi import APIRouter, Request
 from ulid import ULID
 
-from app.api.deps import DB, Learner, SettingsDep
+from app.api.deps import DB, BudgetDep, Learner, SettingsDep
 from app.core.errors import AppError
 from app.db.models import ModelRegistry
-from app.models_ai import manage, registry
+from app.models_ai import manage, registry, usage
 from app.schemas.models_admin import (
     AddIn,
     AssignIn,
     ChainEntry,
+    CostsOut,
     HfSearchHit,
     HfSearchOut,
     JobList,
@@ -211,7 +212,19 @@ async def routing(db: DB, learner: Learner, settings: SettingsDep) -> RoutingOut
                 override=r["override"],
                 chain=[ChainEntry(**c) for c in r["chain"]],
                 resolved=r["resolved"],
+                problem=r.get("problem"),
+                action=r.get("action"),
             )
             for r in rows
         ],
     )
+
+
+@router.get(
+    "/costs",
+    summary="Cost view: daily cap, reported/estimated/unknown/legacy spend, per task/provider, failures",
+    response_model=CostsOut,
+)
+async def costs(db: DB, budget: BudgetDep, days: int = 1) -> CostsOut:
+    rep = await usage.cost_report(db, budget, days=max(1, min(days, 90)))
+    return CostsOut(**usage.report_dict(rep))

@@ -7,7 +7,6 @@ from app.db.traces import (
     ModelCallRecord,
     RetrievalTraceRecord,
     TutorTraceRecord,
-    hosted_spend_since,
     write_model_call,
     write_retrieval_trace,
     write_tutor_trace,
@@ -103,4 +102,7 @@ async def test_trace_writers_and_spend(db: AsyncSession, learner: models.Learner
         ),
     )
     assert tt.model_call_id == mc.id and tt.retrieval_trace_id == rt.id
-    assert await hosted_spend_since(db, "2000-01-01T00:00:00+00:00") == pytest.approx(0.0007)
+    from app.models_ai.budget import Budget
+
+    # a hosted row written without an explicit status is priced by tokens → "estimated", counted
+    assert (await Budget(1.0).spend_today(db)).estimated == pytest.approx(0.0007)

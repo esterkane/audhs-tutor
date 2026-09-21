@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 
 from fastapi import APIRouter
@@ -7,6 +8,11 @@ from app.api.deps import DB, Gateway, Repo, SettingsDep
 from app.api.sse import sse
 from app.orchestrator.tutor import TutorTurn
 from app.schemas.tutor import TurnDone, TurnRequest
+
+logger = logging.getLogger(__name__)
+TUTOR_FAILED = (
+    "The tutor model did not answer. Nothing was changed. Try again, or check Models › Routing."
+)
 
 router = APIRouter(prefix="/tutor", tags=["tutor"])
 
@@ -23,8 +29,9 @@ async def stream(
                 yield sse(kind, data)
         except (KeyError, ValueError) as e:
             yield sse("error", {"code": "bad_request", "message": str(e)})
-        except Exception as e:  # never leave the stream hanging
-            yield sse("error", {"code": "tutor_failed", "message": f"{type(e).__name__}: {e}"})
+        except Exception:  # never leave the stream hanging; detail goes to the log, not the learner
+            logger.exception("tutor turn failed")
+            yield sse("error", {"code": "tutor_failed", "message": TUTOR_FAILED})
 
     return StreamingResponse(
         gen(),
