@@ -6,6 +6,59 @@ A personal, local-first learning app designed around AuDHD needs: manageable ses
 
 This is an actively developed, single-learner application intended for localhost. Local models handle supported tasks; hosted model routes are optional. Course material, learner data, model downloads and secrets are not included in this repository.
 
+## Why this app exists
+
+The aim is to help the learner direct their own learning while reducing the work of organizing it. Courses, notes and conversations can supply explanations; the app connects them to a goal, practice, feedback and a reliable place to resume.
+
+The intended learning loop is:
+
+**Choose a meaningful goal → explore relevant material → explain and practise → get feedback → return later → apply the idea in a new situation.**
+
+Watching a lesson, remembering a definition, explaining an idea and solving a new problem are different achievements. The app keeps review scheduling separate from evidence of competence, and makes that evidence inspectable. Its success should be judged by what the learner can do independently and how easily they can return to learning.
+
+### Freedom of choice with useful defaults
+
+The learner owns the goal. The app recommends a next step and explains why, while keeping alternatives accessible. Resume, a short review or learning toward a goal should be enough to get started; choosing every setting should not become a prerequisite for learning.
+
+Adaptations are proposed explicitly, with options to try them for a session, adopt them, decline or stop future suggestions. Accepted changes are reversible. Explicit explanation is the default; Socratic questioning and challenge blocks are opt-in. Hints support practice, and a full solution remains available on explicit request.
+
+These are design commitments to learner agency, not assumptions that everyone with AuDHD needs the same experience. The intended experience allows stopping without punishment and changing direction without losing one's place.
+
+### Switching with a purpose
+
+Different switches serve different needs:
+
+| Change | Purpose |
+| --- | --- |
+| Explanation → diagram → code | Explore the same concept from another angle |
+| One problem type → a related problem type | Practise deciding which method applies |
+| AI → language or guitar | Change activity at a clear block boundary |
+| Learning → pause or movement | Make room for capacity and recovery |
+
+The planner protects continuity by scheduling domain changes at block boundaries. Checkpoints and a tangent parking lot make returning easier. Cross-domain switching is an option for engagement and session structure; this project does not claim that switching subjects automatically improves retention. A suggested consolidation check should help the learner leave a useful checkpoint, never become a barrier to stopping.
+
+### Critical thinking includes questioning the tutor
+
+The tutor, its sources and its generated answer keys can be wrong. Citations and confident wording do not establish that a claim is true.
+
+Opt-in challenges include finding a planted error, constructing a strong alternative argument (steelman), explaining an idea back and comparing confidence with performance. The broader aim is to practise asking: What supports this claim? Which assumptions does it need? Where does this analogy fail? What evidence would change my conclusion?
+
+Feedback should explain its criteria and supporting evidence. Supporting defensible alternative answers and making grades contestable are continuing evaluation requirements; model-generated grading is not an unquestionable authority.
+
+### Different approaches, shared learning objectives
+
+“Show it differently” changes the representation of an idea while preserving its objective and source content. A short explanation, worked example, derivation, analogy or code exercise can expose different aspects of the same concept. These are tools to choose for the task, not fixed “learning style” labels assigned to a person.
+
+Preference and learning outcomes are tracked separately: an explanation can feel helpful without establishing later recall or transfer. The project therefore includes delayed reviews and personal experiments, with uncertainty made visible when evidence is sparse.
+
+### What remains to be demonstrated
+
+The local research notes inform the design, but are incomplete and do not establish the effectiveness of this application. Some thresholds, timing rules and adaptation policies remain provisional choices to evaluate in real use. Automated tests verify software behavior; they do not demonstrate improved learning.
+
+The next meaningful product test is one curated course followed through a complete learning loop: start easily, understand something difficult, stop safely, resume with context and later solve a new problem independently. More imported files or more AI features alone do not establish that outcome.
+
+The rationale is recorded in the decisions on [tutoring modes](docs/adr/0003-tutoring-mode-policy.md), [memory and competence](docs/adr/0004-learner-model-n1.md), [switching and interleaving](docs/adr/0006-interleaving-and-blocks.md), and the [personal experiment analysis](docs/slices/experiment-analysis-v2.md).
+
 ## What works today
 
 - Learning sessions with block boundaries, stop/resume, confidence-before-feedback reviews and spaced repetition.
