@@ -6,8 +6,11 @@ in the language block (domain filters in `memory.due_items`). Practice blocks en
 `practiced` event (duration, self-rating, activity); skipping is a `block_ended` with reason
 "skipped", which the adaptation rules read. Nothing here calls a model."""
 
+import unicodedata
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from urllib.parse import quote
 
 from sqlalchemy import case, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,10 +30,14 @@ LANG_NAMES = {"de": "German", "en": "English", "es": "Spanish", "fr": "French", 
 
 
 def deck_slug(lang: str) -> str:
-    return f"lang-{lang.lower()}"
+    return f"lang-{lang.strip().lower()}"
 
 
-async def vocab_deck(db: AsyncSession, lang: str) -> SkillNode:
+# a deck is reviewed on FSRS, never taught: keep it out of `next_skill` (P1 curriculum-eligibility)
+DECK_REQUIREMENTS: dict[str, Any] = {"teachable": False, "kind": "vocab_deck"}
+
+
+async def vocab_deck(db: AsyncSession, lang: str, *, commit: bool = True) -> SkillNode:
     """Get-or-create the language deck node (domain=language)."""
     slug = deck_slug(lang)
     node = (await db.execute(select(SkillNode).where(SkillNode.slug == slug))).scalar_one_or_none()
@@ -38,13 +45,65 @@ async def vocab_deck(db: AsyncSession, lang: str) -> SkillNode:
         node = SkillNode(
             domain=str(Domain.LANGUAGE),
             slug=slug,
-            title=f"{LANG_NAMES.get(lang.lower(), lang)} vocabulary",
+            title=f"{LANG_NAMES.get(lang.strip().lower(), lang.strip())} vocabulary",
             description="Spaced vocabulary deck",
             success_criteria_json=["recall the translation on a due card"],
+            assessment_requirements_json=DECK_REQUIREMENTS,
         )
         db.add(node)
-        await db.commit()
+        await (db.commit() if commit else db.flush())
+    elif (node.assessment_requirements_json or {}).get("teachable") is not False:
+        node.assessment_requirements_json = {
+            **(node.assessment_requirements_json or {}),
+            **DECK_REQUIREMENTS,
+        }
+        await (db.commit() if commit else db.flush())  # rows created before P1 get the marker
     return node
+
+
+def norm_text(text: str) -> str:
+    """NFC-normalised, whitespace-collapsed, lower-cased. `lower()` (not `casefold()`) keeps
+    `Maße` ≠ `Masse`; NFC makes a macOS-pasted (NFD) `é` equal to an NFC one."""
+    return unicodedata.normalize("NFC", " ".join(text.split())).lower()
+
+
+def _part(text: str) -> str:
+    return quote(norm_text(text), safe="")  # ':' inside a word can never be read as a separator
+
+
+def vocab_ref(lang: str, direction: str, word: str, meaning: str) -> str:
+    """Card identity (P3): language + direction + normalised word + normalised meaning, so two
+    meanings of one word are two cards and `Haus`/`haus ` are one."""
+    return f"{lang.strip().lower()}:{direction}:{_part(word)}:{_part(meaning)}"
+
+
+def legacy_vocab_ref(lang: str, word: str) -> str:
+    return f"{lang.strip().lower()}:{norm_text(word)}"
+
+
+@dataclass
+class DeckIndex:
+    """Cards of one deck keyed for O(1) identity checks (built once per bulk import)."""
+
+    by_ref: dict[str, ReviewItem] = field(default_factory=dict)
+    by_legacy: dict[str, list[ReviewItem]] = field(default_factory=dict)
+
+
+async def deck_index(db: AsyncSession, learner_id: str, node_id: str) -> DeckIndex:
+    idx = DeckIndex()
+    stmt = select(ReviewItem).where(
+        ReviewItem.learner_id == learner_id,
+        ReviewItem.skill_id == node_id,
+        ReviewItem.item_type == "vocab",
+        ReviewItem.active.is_(True),
+    )
+    for item in (await db.execute(stmt)).scalars():
+        ref = str(item.prompt_json.get("ref") or "")
+        if item.prompt_json.get("direction") is None:  # pre-P3 card: `lang:word`
+            idx.by_legacy.setdefault(ref, []).append(item)
+        else:
+            idx.by_ref[ref] = item
+    return idx
 
 
 async def add_vocab(
@@ -55,20 +114,73 @@ async def add_vocab(
     word: str,
     translation: str,
     example: str | None = None,
+    direction: str = "forward",
+    attribution: dict[str, Any] | None = None,
     now: datetime | None = None,
-) -> ReviewItem:
-    node = await vocab_deck(db, lang)
-    prompt: dict[str, Any] = {
-        "ref": f"{lang.lower()}:{word.strip().casefold()}",
+    commit: bool = True,
+    index: DeckIndex | None = None,
+) -> tuple[ReviewItem, bool]:
+    """Find-or-create a card. Update policy: an existing card (same identity) keeps its id and FSRS
+    schedule; only a missing `example`/attribution is filled in. A card still carrying the legacy
+    `lang:word` ref is adopted when its stored meaning matches (ref rewritten in place, schedule
+    kept). `index` (from `deck_index`) makes bulk imports O(1) per row. Returns (item, created)."""
+    if direction not in ("forward", "reverse"):
+        raise ValueError("direction must be forward or reverse")
+    lang = lang.strip().lower()
+    node = await vocab_deck(db, lang, commit=commit)
+    word, translation = word.strip(), translation.strip()
+    ref = vocab_ref(lang, direction, word, translation)
+    idx = index if index is not None else await deck_index(db, learner_id, node.id)
+    existing = idx.by_ref.get(ref)
+    if existing is None and direction == "forward":
+        for item in idx.by_legacy.get(legacy_vocab_ref(lang, word), []):
+            if norm_text(str(item.prompt_json.get("a") or "")) == norm_text(translation):
+                existing = item  # pre-P3 card: adopt it under the new identity
+                break
+    if existing is not None:
+        prompt = dict(existing.prompt_json)
+        changed = False
+        if prompt.get("ref") != ref or prompt.get("direction") is None:
+            prompt.update({"ref": ref, "direction": direction, "lang": lang})
+            changed = True
+            idx.by_ref[ref] = existing
+        if example and not prompt.get("example"):
+            prompt["example"] = example.strip()
+            changed = True
+        if attribution and not prompt.get("source"):
+            prompt.update(attribution)
+            changed = True
+        if changed:
+            existing.prompt_json = prompt
+            if commit:
+                await db.commit()
+            else:
+                await db.flush()
+        return existing, False
+    prompt = {
+        "ref": ref,
         "type": "vocab",
-        "q": word.strip(),
-        "a": translation.strip(),
-        "lang": lang.lower(),
+        "q": word,
+        "a": translation,
+        "lang": lang,
+        "direction": direction,
     }
     if example:
         prompt["example"] = example.strip()
-    item, _ = await memory.ensure_item(db, learner_id, node.id, "vocab", prompt, now=now)
-    return item
+    if attribution:
+        prompt.update(attribution)
+    item, _ = await memory.ensure_item(
+        db, learner_id, node.id, "vocab", prompt, now=now, commit=commit, lookup=False
+    )
+    idx.by_ref[ref] = item
+    return item, True
+
+
+async def card_due(db: AsyncSession, item_id: str) -> str:
+    ms = (
+        await db.execute(select(MemoryState.due).where(MemoryState.review_item_id == item_id))
+    ).scalar_one()
+    return str(ms)
 
 
 async def decks(

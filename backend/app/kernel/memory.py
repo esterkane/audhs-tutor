@@ -63,18 +63,24 @@ async def ensure_item(
     *,
     object_id: str | None = None,
     now: datetime | None = None,
+    commit: bool = True,
+    lookup: bool = True,
 ) -> tuple[ReviewItem, MemoryState]:
-    """Find-or-create the review item for (learner, skill, item_type, prompt['ref']) and its card."""
+    """Find-or-create the review item for (learner, skill, item_type, prompt['ref']) and its card.
+    `commit=False` lets a bulk import commit once at the end (atomic)."""
     now = now or datetime.now(UTC)
     ref = prompt.get("ref")
-    stmt = select(ReviewItem).where(
-        ReviewItem.learner_id == learner_id,
-        ReviewItem.skill_id == skill_id,
-        ReviewItem.item_type == item_type,
-    )
-    item = next(
-        (r for r in (await db.execute(stmt)).scalars() if r.prompt_json.get("ref") == ref), None
-    )
+    item: ReviewItem | None = None
+    if lookup:  # a bulk importer that already resolved identity skips the deck scan
+        stmt = select(ReviewItem).where(
+            ReviewItem.learner_id == learner_id,
+            ReviewItem.skill_id == skill_id,
+            ReviewItem.item_type == item_type,
+        )
+        item = next(
+            (r for r in (await db.execute(stmt)).scalars() if r.prompt_json.get("ref") == ref),
+            None,
+        )
     if item is None:
         item = ReviewItem(
             learner_id=learner_id,
@@ -98,7 +104,10 @@ async def ensure_item(
             due=_iso(now),
         )
         db.add(ms)
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     return item, ms
 
 

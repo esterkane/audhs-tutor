@@ -46,3 +46,25 @@ export function useDueLanguage(sessionId: string | null) {
     enabled: sessionId !== null,
   })
 }
+
+export type ImportPreviewOut = Schemas['ImportPreviewOut']
+export type ImportOut = Schemas['ImportOut']
+
+export function useImportPreview() {
+  return useMutation({
+    mutationFn: (body: Schemas['ImportPreviewIn']) =>
+      apiFetch<ImportPreviewOut>('/api/vocab/import/preview', { method: 'POST', body: JSON.stringify(body) }),
+  })
+}
+
+export function useImportVocab() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: Schemas['ImportIn']) =>
+      apiFetch<ImportOut>('/api/vocab/import', { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['vocab'] })
+      void qc.invalidateQueries({ queryKey: ['due'] })
+    },
+  })
+}
