@@ -15,6 +15,9 @@ EXPECTED_TABLES = {
     "learner_preference",
     "session",
     "session_checkpoint",
+    "curriculum_draft",  # P4: reviewable course→curriculum drafts
+    "content_report",  # P4: "this source/explanation is wrong" reports
+    "budget_reservation",  # P6: hosted-call reservations against the daily cap
     "skill_node",
     "skill_edge",
     "learning_object",
@@ -52,6 +55,8 @@ def test_all_phase1_tables_declared() -> None:
 
 
 def test_every_learner_scoped_table_has_learner_id() -> None:
+    # P4 tables ride along in export/wipe
+    assert {"curriculum_draft", "content_report"} <= set(models.learner_scoped_tables())
     shared = {
         "learner_profile",
         "skill_node",

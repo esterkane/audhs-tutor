@@ -1,0 +1,102 @@
+# Regression gates (P5 `ci-gates`). Runs on every push and pull request with locked dependencies.
+# Needs no private data, local models, API keys or personal services: backend tests use the fake
+# model provider and the SQLite retrieval repository; frontend tests mock fetch. Live checks
+# (`make bench s=<n>`, `make evals`, media/STT with a pulled model) are *not* CI — they are labelled
+# "live" in docs/slices/ci-gates.md and run on the owner's machine only.
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  ANTHROPIC_API_KEY: ""
+  HF_TOKEN: ""
+  CI: "true"
+
+jobs:
+  backend:
+    name: backend · ruff, mypy, pytest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - name: Install Python 3.12 and locked dependencies
+        run: |
+          uv python install 3.12
+          uv sync --frozen
+      - name: Lockfile is in sync with pyproject
+        run: uv lock --check
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Types
+        run: uv run mypy app
+      - name: Unit + route tests (fake providers, SQLite repo)
+        run: uv run pytest -q
+
+  frontend:
+    name: frontend · tsc, eslint, vitest
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Types
+        run: pnpm exec tsc -b
+      - name: Lint
+        run: pnpm exec eslint src
+      - name: Component tests (mocked fetch, axe)
+        run: pnpm exec vitest run
+
+  migrations:
+    name: migrations · upgrade path on an empty database
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - run: |
+          uv python install 3.12
+          uv sync --frozen
+      - name: Every migration applies from an empty database, up and one step down again
+        run: |
+          export DATABASE_URL="sqlite+aiosqlite:///$RUNNER_TEMP/ci.db"
+          uv run alembic upgrade head
+          uv run alembic downgrade -1
+          uv run alembic upgrade head
+          uv run alembic current
