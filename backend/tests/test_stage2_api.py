@@ -53,7 +53,7 @@ async def test_plan_blocks_resume_and_map(
     # early switch out of new material without a grasp check is refused (but not for save_and_stop)
     r = await client.post(
         "/api/plan/blocks/end",
-        json={"session_id": s["id"], "index": nm, "switched_early": True, "reason": "bored"},
+        json={"session_id": s["id"], "index": nm, "switched_early": True, "reason": "switch_early"},
     )
     assert r.status_code == 200 and r.json()["allowed"] is False and "grasp" in r.json()["message"]
     r = await client.post(
@@ -62,7 +62,7 @@ async def test_plan_blocks_resume_and_map(
             "session_id": s["id"],
             "index": nm,
             "switched_early": True,
-            "reason": "bored",
+            "reason": "switch_early",
             "grasp_passed": True,
             "actual_min": 4.5,
         },

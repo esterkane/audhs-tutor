@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import LearningObject, SkillEdge, SkillNode
-from app.kernel import competency
+from app.kernel import competency, preferences
 
 MASTERY_UNLOCK = 0.6  # prerequisites must reach this before a node is offered as new material
 MASTERY_DONE = 0.6  # a node at/above this is not "the next thing to learn" any more
@@ -90,12 +90,17 @@ async def is_unlocked(db: AsyncSession, learner_id: str, skill_id: str) -> bool:
     return True
 
 
-async def next_skill(
-    db: AsyncSession, learner_id: str, domain: str | None = None
-) -> SkillNode | None:
-    """Stage-1 planner rule: the first unlocked node (topological order) below MASTERY_DONE;
-    if everything unlocked is done, the unlocked node with the lowest mastery (keep deepening)."""
-    order = await topological_order(db, domain)
+def teachable(node: SkillNode) -> bool:
+    """Curriculum eligibility (P1): a node can be *taught* unless it is marked
+    `assessment_requirements_json.teachable = false` — vocabulary decks are (they only ever run in
+    the language block on FSRS). A genuine language lesson node stays eligible."""
+    reqs = node.assessment_requirements_json or {}
+    return bool(reqs.get("teachable", True))
+
+
+async def _pick(db: AsyncSession, learner_id: str, order: list[SkillNode]) -> SkillNode | None:
+    """First unlocked node below MASTERY_DONE in the given order; else the unlocked node with the
+    lowest mastery; None when nothing in `order` is unlocked."""
     unlocked: list[tuple[float, SkillNode]] = []
     for node in order:
         if not await is_unlocked(db, learner_id, node.id):
@@ -104,9 +109,39 @@ async def next_skill(
         if m < MASTERY_DONE:
             return node
         unlocked.append((m, node))
-    if not unlocked:
-        return order[0] if order else None
-    return min(unlocked, key=lambda t: t[0])[1]
+    return min(unlocked, key=lambda t: t[0])[1] if unlocked else None
+
+
+async def next_skill(
+    db: AsyncSession, learner_id: str, domain: str | None = None
+) -> SkillNode | None:
+    """Stage-1 planner rule: the first unlocked *teachable* node (topological order) below
+    MASTERY_DONE; if everything unlocked is done, the unlocked node with the lowest mastery.
+    A `goal.course` preference narrows the order to that course; when every goal node is still
+    locked, the unlocked prerequisites *of* the goal come next, then the whole map. A locked node
+    is never returned while an unlocked one exists."""
+    order = [n for n in await topological_order(db, domain) if teachable(n)]
+    goal = str(await preferences.get(db, learner_id, "goal.course") or "").strip()
+    if goal:
+        in_goal = [n for n in order if n.course == goal]
+        if in_goal:  # a chosen goal narrows the map; an empty/unknown goal falls back to the map
+            pick = await _pick(db, learner_id, in_goal)
+            if pick is not None:
+                return pick
+            needed: set[str] = set()
+            frontier = [n.id for n in in_goal]
+            while frontier:
+                for pre in await prerequisites(db, frontier.pop()):
+                    if pre.id not in needed:
+                        needed.add(pre.id)
+                        frontier.append(pre.id)
+            pick = await _pick(db, learner_id, [n for n in order if n.id in needed])
+            if pick is not None:
+                return pick
+    pick = await _pick(db, learner_id, order)
+    if pick is not None:
+        return pick
+    return order[0] if order else None
 
 
 async def map_view(db: AsyncSession, learner_id: str) -> dict[str, Any]:

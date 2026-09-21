@@ -1,8 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, type Schemas } from '../../lib/api'
 
 export type Block = Schemas['Block']
-export type BlockOut = Schemas['BlockOut']
+export type BlockOut = Schemas['BlockState']
 export type BlockEvent = Schemas['BlockEvent']
 
 export function useBlockStart() {
@@ -38,5 +38,13 @@ export function useReplan() {
       void qc.invalidateQueries({ queryKey: ['adaptations'] })
       void qc.invalidateQueries({ queryKey: ['session'] })
     },
+  })
+}
+
+export function usePlanPreview(mode: string, energy: number) {
+  return useQuery({
+    queryKey: ['plan', 'preview', mode, energy],
+    queryFn: () =>
+      apiFetch<Schemas['Plan']>(`/api/plan/preview?mode=${encodeURIComponent(mode)}&energy=${energy}`),
   })
 }

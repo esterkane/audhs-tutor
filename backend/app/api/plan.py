@@ -1,16 +1,24 @@
 """Session plans and blocks (planner-v1). Blocks are the only boundaries for domain switches."""
 
+import asyncio
 from typing import Any
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Learner
-from app.db.events import EventWriter, Verb
 from app.db.models import Session
-from app.kernel import adaptation, competency, memory, planner, practice, preferences, skill_graph
+from app.kernel import (
+    adaptation,
+    blocks,
+    competency,
+    memory,
+    planner,
+    practice,
+    preferences,
+    skill_graph,
+)
 from app.kernel import session as ksession
-from app.schemas.common import ActivityType, ObjectType
 
 router = APIRouter(prefix="/plan", tags=["plan"])
 
@@ -67,105 +75,119 @@ class BlockEvent(BaseModel):
     session_id: str
     index: int = Field(ge=0)
     actual_min: float | None = None
-    switched_early: bool = False
-    reason: str | None = None
+    switched_early: bool | None = None
+    reason: str | None = Field(
+        default=None, pattern="^(finished|switch_early|skipped|save_and_stop|session_end)$"
+    )
     grasp_passed: bool | None = None
 
 
-class BlockOut(BaseModel):
-    index: int
-    block: planner.Block
-    allowed: bool
-    message: str
-    next_index: int | None
+class BlockAdvance(BaseModel):
+    """End the block the client believes is current and start the next one (one server call)."""
+
+    session_id: str
+    from_index: int | None = Field(
+        default=None, ge=0, description="idempotency key: the current block"
+    )
+    reason: str = Field(
+        default="finished", pattern="^(finished|switch_early|skipped|save_and_stop)$"
+    )
+    grasp_passed: bool | None = None
+    actual_min: float | None = None
 
 
-def _blocks(s: Session) -> list[planner.Block]:
-    return [planner.Block.model_validate(b) for b in (s.planned_blocks_json or [])]
+class BlockExtend(BaseModel):
+    session_id: str
+    index: int = Field(ge=0)
+    minutes: int = Field(default=5, ge=1, le=30)
+
+
+BlockOut = blocks.BlockState
+
+
+def session_lock(request: Request, session_id: str) -> asyncio.Lock:
+    """One asyncio.Lock per session on `app.state` (no module singleton): transitions are
+    read-check-write, so two concurrent requests must not both pass the check."""
+    locks: dict[str, asyncio.Lock] | None = getattr(request.app.state, "transition_locks", None)
+    if locks is None:
+        locks = {}
+        request.app.state.transition_locks = locks
+    lock = locks.get(session_id)
+    if lock is None:
+        lock = locks[session_id] = asyncio.Lock()
+        if len(locks) > 500:  # sessions are short-lived; drop idle locks
+            for key in [k for k, v in list(locks.items()) if not v.locked()][:250]:
+                locks.pop(key, None)
+    return lock
+
+
+@router.get(
+    "/blocks/state",
+    summary="Where the session is: block, phase, active skill",
+    response_model=BlockOut,
+)
+async def block_state(session_id: str, db: DB) -> BlockOut:
+    return await blocks.state(db, await ksession.get(db, session_id))
 
 
 @router.post(
-    "/blocks/start", summary="Start a planned block (emits block_started)", response_model=BlockOut
+    "/blocks/start",
+    summary="Start a planned block (emits block_started once; idempotent)",
+    response_model=BlockOut,
 )
-async def start_block(body: BlockEvent, db: DB) -> BlockOut:
-    s = await ksession.get(db, body.session_id)
-    blocks = _blocks(s)
-    if body.index >= len(blocks):
-        raise KeyError("block index out of range")
-    b = blocks[body.index]
-    events = EventWriter(db, ksession.event_context(s, activity=_activity(b.type)))
-    await events.emit(
-        Verb.BLOCK_STARTED,
-        ObjectType.BLOCK,
-        f"{s.id}:{body.index}",
-        context={"block_type": b.type, "planned_min": b.planned_min, "node_ids": b.node_ids},
-    )
-    cp = await ksession.load_checkpoint(db, s.id) or {}
-    await ksession.save_checkpoint(
-        db, s, {**cp, "block_index": body.index, "phase": _phase(b.type)}
-    )
-    return BlockOut(
-        index=body.index,
-        block=b,
-        allowed=True,
-        message="started",
-        next_index=body.index + 1 if body.index + 1 < len(blocks) else None,
-    )
+async def start_block(body: BlockEvent, request: Request, db: DB) -> BlockOut:
+    async with session_lock(request, body.session_id):
+        return await blocks.start(db, await ksession.get(db, body.session_id), body.index)
 
 
 @router.post(
     "/blocks/end",
-    summary="End a block; early switches out of new material need a grasp check",
+    summary="End the running block (emits block_ended once; early switches out of new material need a grasp check)",
     response_model=BlockOut,
 )
-async def end_block(body: BlockEvent, db: DB) -> BlockOut:
-    s = await ksession.get(db, body.session_id)
-    blocks = _blocks(s)
-    if body.index >= len(blocks):
-        raise KeyError("block index out of range")
-    b = blocks[body.index]
-    if body.switched_early:
-        ok, why = planner.can_switch_early(
-            b, grasp_passed=body.grasp_passed, reason=body.reason or ""
+async def end_block(body: BlockEvent, request: Request, db: DB) -> BlockOut:
+    async with session_lock(request, body.session_id):
+        return await blocks.end(
+            db,
+            await ksession.get(db, body.session_id),
+            body.index,
+            reason=body.reason or "finished",
+            switched_early=body.switched_early,
+            grasp_passed=body.grasp_passed,
+            actual_min=body.actual_min,
         )
-        if not ok:
-            return BlockOut(index=body.index, block=b, allowed=False, message=why, next_index=None)
-    events = EventWriter(db, ksession.event_context(s, activity=_activity(b.type)))
-    await events.emit(
-        Verb.BLOCK_ENDED,
-        ObjectType.BLOCK,
-        f"{s.id}:{body.index}",
-        result={
-            "actual_min": body.actual_min,
-            "switched_early": body.switched_early,
-            "reason": body.reason,
-        },
-        context={"block_type": b.type, "planned_min": b.planned_min, "node_ids": b.node_ids},
+
+
+@router.post(
+    "/blocks/next",
+    summary="End the current block and start the next one atomically (idempotent on from_index)",
+    response_model=BlockOut,
+)
+async def next_block(body: BlockAdvance, request: Request, db: DB) -> BlockOut:
+    async with session_lock(request, body.session_id):
+        return await blocks.advance(
+            db,
+            await ksession.get(db, body.session_id),
+            from_index=body.from_index,
+            reason=body.reason,
+            grasp_passed=body.grasp_passed,
+            actual_min=body.actual_min,
+        )
+
+
+@router.post(
+    "/blocks/extend",
+    summary="Soft timer: give the running block N more minutes (kept across reloads)",
+    response_model=BlockOut,
+)
+async def extend_block(body: BlockExtend, db: DB) -> BlockOut:
+    return await blocks.extend(
+        db, await ksession.get(db, body.session_id), body.index, body.minutes
     )
-    nxt = body.index + 1 if body.index + 1 < len(blocks) else None
-    return BlockOut(index=body.index, block=b, allowed=True, message="ended", next_index=nxt)
 
 
-def _activity(block_type: str) -> ActivityType:
-    return {
-        "movement_primer": ActivityType.MOVEMENT,
-        "retrieval": ActivityType.RETRIEVAL,
-        "new_material": ActivityType.NEW_MATERIAL,
-        "challenge": ActivityType.CHALLENGE,
-        "interleaved_review": ActivityType.INTERLEAVED_REVIEW,
-        "domain_switch": ActivityType.DOMAIN_SWITCH,
-        "recap": ActivityType.RECAP,
-    }.get(block_type, ActivityType.CHAT)
-
-
-def _phase(block_type: str) -> str:
-    return {
-        "retrieval": "review",
-        "interleaved_review": "review",
-        "new_material": "teach",
-        "challenge": "challenge",
-        "recap": "recap",
-    }.get(block_type, "teach")
+def _blocks(s: Session) -> list[planner.Block]:
+    return blocks.blocks_of(s)
 
 
 def plan_to_json(plan: planner.Plan) -> list[dict[str, Any]]:

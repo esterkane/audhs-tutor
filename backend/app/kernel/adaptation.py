@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import Adaptation, AdaptationDecision, LearningEvent, Session
-from app.kernel import competency, memory, preferences
+from app.kernel import blocks, competency, memory, preferences
 from app.kernel.skill_graph import MASTERY_DONE
 from app.schemas.common import Mode, ObjectType
 
@@ -403,6 +403,8 @@ async def decide(
             a.previous_json = {"value": list(target.planned_blocks_json or [])}
             target.planned_blocks_json = list(value["blocks"])
             await db.commit()
+            if target.ended_at is None:
+                await blocks.bump_plan_version(db, target)
             await events.emit(
                 Verb.ADAPTED,
                 ObjectType.ADAPTATION,
@@ -464,6 +466,9 @@ async def undo(
         target = await db.get(Session, a.session_id) if a.session_id else None
         if target is not None and isinstance(previous, list):
             target.planned_blocks_json = previous
+            await db.commit()
+            if target.ended_at is None:
+                await blocks.bump_plan_version(db, target)
     elif previous is None or prev.get("was_set") is False:
         await preferences.reset(db, learner_id, pref)  # it was the default before: back to default
     else:

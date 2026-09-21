@@ -74,6 +74,8 @@ async def _reveal(db: DB, prompt: dict[str, Any]) -> tuple[str, list[str] | None
         )
     elif a.kind == "cloze":
         reveal = str(item["answers"][0])
+    elif a.kind == "code":
+        reveal = "A complete answer covers: " + "; ".join(item.get("success_criteria") or [])
     else:
         rubric = (
             await db.get(

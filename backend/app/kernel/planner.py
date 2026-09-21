@@ -231,7 +231,7 @@ def validate_plan(plan: Plan) -> None:
 def can_switch_early(block: Block, *, grasp_passed: bool | None, reason: str) -> tuple[bool, str]:
     """Early switch out of a block: new material needs a minimal grasp check unless the learner is
     saving and stopping (learner control beats completeness)."""
-    if reason == "save_and_stop":
+    if reason in ("save_and_stop", "session_end"):
         return True, "saved and stopped; nothing lost"
     if block.grasp_check_required and not grasp_passed:
         return False, "answer one recall item on this skill before switching (grasp check)"
@@ -249,8 +249,9 @@ def replan(plan: Plan, *, from_index: int, energy: int) -> Plan:
     from_index = max(0, min(from_index, len(plan.blocks)))
     kept = [b.model_copy() for b in plan.blocks[:from_index]]
     rest: list[Block] = []
-    for b in plan.blocks[from_index:]:
-        if energy <= 1 and (b.optional or b.type == "challenge"):
+    for i, b in enumerate(plan.blocks[from_index:]):
+        # the first block of the tail is the one in progress: it is re-scaled, never removed
+        if i > 0 and energy <= 1 and (b.optional or b.type == "challenge"):
             continue
         # base_min is the energy-3 length recorded at planning time; older plans fall back to
         # un-scaling by the plan's own energy

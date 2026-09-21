@@ -97,29 +97,48 @@ async def end(
 
 
 async def save_checkpoint(
-    db: AsyncSession, session: Session, packet: dict[str, Any]
+    db: AsyncSession, session: Session, packet: dict[str, Any], *, commit: bool = True
 ) -> SessionCheckpoint:
-    cp = SessionCheckpoint(
-        learner_id=session.learner_id,
-        session_id=session.id,
-        packet_json=packet,
-        expires_at=(datetime.now(UTC) + timedelta(days=CHECKPOINT_TTL_DAYS)).isoformat(
-            timespec="milliseconds"
-        ),
+    """One row per session, updated in place (the checkpoint is a resume point, not an audit
+    store). `commit=False` lets a caller commit it together with the event it belongs to."""
+    cp = (
+        await db.execute(
+            select(SessionCheckpoint)
+            .where(SessionCheckpoint.session_id == session.id)
+            .order_by(SessionCheckpoint.ts.desc(), SessionCheckpoint.id.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    expires = (datetime.now(UTC) + timedelta(days=CHECKPOINT_TTL_DAYS)).isoformat(
+        timespec="milliseconds"
     )
-    db.add(cp)
-    await db.commit()
+    if cp is None:
+        cp = SessionCheckpoint(
+            learner_id=session.learner_id,
+            session_id=session.id,
+            packet_json=packet,
+            expires_at=expires,
+        )
+        db.add(cp)
+    else:
+        cp.packet_json = packet
+        cp.ts = utcnow_iso()
+        cp.expires_at = expires
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     return cp
 
 
 async def prune_checkpoints(db: AsyncSession, session_id: str, *, keep: int = 1) -> int:
-    """Keep only the newest `keep` checkpoints of a session; they are not an audit store."""
+    """Remove older duplicate rows (pre-P1 sessions could have several); newest `keep` stay."""
     rows = list(
         (
             await db.execute(
                 select(SessionCheckpoint)
                 .where(SessionCheckpoint.session_id == session_id)
-                .order_by(SessionCheckpoint.ts.desc())
+                .order_by(SessionCheckpoint.ts.desc(), SessionCheckpoint.id.desc())
             )
         ).scalars()
     )
@@ -127,7 +146,8 @@ async def prune_checkpoints(db: AsyncSession, session_id: str, *, keep: int = 1)
     for cp in rows[keep:]:
         await db.delete(cp)
         n += 1
-    await db.commit()
+    if n:
+        await db.commit()
     return n
 
 
@@ -137,7 +157,7 @@ async def load_checkpoint(db: AsyncSession, session_id: str) -> dict[str, Any] |
         .where(
             SessionCheckpoint.session_id == session_id, SessionCheckpoint.expires_at > utcnow_iso()
         )
-        .order_by(SessionCheckpoint.ts.desc())
+        .order_by(SessionCheckpoint.ts.desc(), SessionCheckpoint.id.desc())
         .limit(1)
     )
     cp = (await db.execute(stmt)).scalar_one_or_none()

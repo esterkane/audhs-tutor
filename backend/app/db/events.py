@@ -34,6 +34,7 @@ class Verb(StrEnum):
     PROMOTED = "promoted"
     SPOKE = "spoke"
     PRACTICED = "practiced"
+    LISTENED = "listened"
     ASSIGNED = "assigned"
     MEASURED = "measured"
     DEGRADED = "degraded"
@@ -50,7 +51,7 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
         _R({"block_type", "planned_min", "node_ids"}),
     ),
     Verb.BLOCK_ENDED: (
-        _R({"actual_min", "switched_early", "reason"}),
+        _R({"actual_min", "switched_early", "reason", "timer_extension_min"}),
         _R({"block_type", "planned_min", "node_ids"}),
     ),
     Verb.ASKED: (_R(), _R({"text_len", "node_id"})),
@@ -67,6 +68,13 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
                 "tokens_in",
                 "tokens_out",
                 "cached_tokens",
+                "node_id",  # the skill the turn was about (unit key for node experiments)
+                "arm_intended",  # experiment arm config meant for this turn (P2 arm fidelity)
+                "arm_delivered",  # whether the answer actually shows that treatment
+                "arm_not_applied",  # the mastery gate refused the arm's representation
+                "questioning_style",  # explicit | socratic as *requested* for this turn,
+                "usage_source",
+                "cost_status",
             }
         ),
     ),
@@ -104,12 +112,16 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
     Verb.PARKED: (_R(), _R({"node_id", "promoted_to"})),
     Verb.PROMOTED: (_R(), _R({"node_id", "promoted_to"})),
     Verb.SPOKE: (
-        _R({"stt_ms", "llm_first_token_ms", "tts_first_audio_ms", "total_ms"}),
+        _R({"stt_ms", "llm_first_token_ms", "tts_first_audio_ms", "total_ms", "interrupted"}),
         _R({"stt_model", "tts_model", "lang"}),
     ),
     Verb.PRACTICED: (_R({"duration_min", "self_rating"}), _R({"domain", "activity", "notes"})),
+    Verb.LISTENED: (_R({"replays", "seconds"}), _R({"document_id", "clip_index"})),
     Verb.ASSIGNED: (_R({"arm", "metric", "value", "n"}), _R({"experiment_id"})),
-    Verb.MEASURED: (_R({"arm", "metric", "value", "n"}), _R({"experiment_id"})),
+    Verb.MEASURED: (
+        _R({"arm", "metric", "value", "n", "n_units", "n_events"}),
+        _R({"experiment_id", "analysis_version"}),
+    ),
     Verb.DEGRADED: (_R(), _R({"from_alias", "to_alias", "reason"})),
     Verb.INVALID_OUTPUT: (_R(), _R({"task", "model", "attempts"})),
 }

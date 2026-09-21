@@ -106,7 +106,10 @@ async def test_stream_budget_degrades_and_emits(
         and handle.route == "degraded"
         and handle.registry_id == "llama31-8b"
     )
-    call = (await seeded.execute(select(models.ModelCall))).scalar_one()
+    # P6: the budget-blocked hosted attempt leaves its own row; the local answer is the ok one
+    calls = (await seeded.execute(select(models.ModelCall))).scalars().all()
+    assert [c.outcome for c in sorted(calls, key=lambda c: c.attempt)] == ["blocked", "ok"]
+    call = next(c for c in calls if c.ok)
     assert call.route == "degraded" and call.ok
     verbs = [e.verb for e in (await seeded.execute(select(models.LearningEvent))).scalars()]
     assert "degraded" in verbs

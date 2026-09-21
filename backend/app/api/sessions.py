@@ -1,15 +1,16 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
 from app.api.deps import DB, Learner
-from app.api.plan import build_plan, plan_to_json
+from app.api.plan import build_plan, plan_to_json, session_lock
+from app.core.errors import AppError
 from app.db import models
 from app.db.models import Assessment, ReviewItem, Session
-from app.kernel import adaptation, experiments, memory, skill_graph
+from app.kernel import adaptation, blocks, experiments, memory, skill_graph
 from app.kernel import session as ksession
 from app.schemas.common import Mode
 from app.schemas.tutor import SkillView
@@ -37,12 +38,14 @@ class SessionOut(BaseModel):
     started_at: str
     ended_at: str | None
     energy_after: int | None
-    next_skill: SkillView | None
+    next_skill: SkillView | None  # the map's recommendation (may move after a grade)
+    active_skill: SkillView | None = None  # the skill this session is working on (persisted)
     due_reviews: int
     review_cap: int
     minimum_viable: list[str]
     plan: list[dict[str, Any]]
     checkpoint: dict[str, Any] | None
+    state: blocks.BlockState  # server-authoritative block / phase / active skill
     experiment: dict[str, Any] | None = None  # {id, name, arm, config, unit_type} when running
 
 
@@ -68,6 +71,8 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
     from app.api.skills import _view
 
     nxt = await skill_graph.next_skill(db, learner_id)
+    st = await blocks.state(db, s)
+    active = await skill_graph.get_node(db, st.skill_id) if st.skill_id else None
     cap = memory.review_cap(s.mode, s.energy)
     due = await memory.due_items(
         db, learner_id, now=datetime.now(UTC), cap=100, exclude_domains=("language",)
@@ -86,11 +91,13 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
         ended_at=s.ended_at,
         energy_after=s.energy_after,
         next_skill=await _view(db, learner_id, nxt) if nxt else None,
+        active_skill=await _view(db, learner_id, active) if active else None,
         due_reviews=len(due),
         review_cap=cap,
         minimum_viable=minimum,
         plan=list(s.planned_blocks_json or []),
         checkpoint=await ksession.load_checkpoint(db, s.id),
+        state=st,
         experiment=await _experiment_info(db, learner_id, s),
     )
 
@@ -114,6 +121,11 @@ async def start(body: SessionStart, db: DB, learner: Learner) -> SessionOut:
     plan = await build_plan(db, learner.id, str(body.mode), body.energy, overrides=overrides)
     s.planned_blocks_json = plan_to_json(plan)
     await db.commit()
+    # the active skill is persisted here; `next_skill` stays a recommendation that may change
+    nxt = await skill_graph.next_skill(db, learner.id)
+    await ksession.save_checkpoint(
+        db, s, {"skill_id": nxt.id if nxt else None, "plan_version": 1, "block_status": None}
+    )
     await ksession.emit_started(db, s, [b.type for b in plan.blocks])
     # 4. look for patterns worth a card
     await adaptation.observe(db, learner.id, session=s)
@@ -139,30 +151,64 @@ async def current(db: DB, learner: Learner) -> SessionOut | None:
 class CheckpointIn(BaseModel):
     phase: str | None = None
     skill_id: str | None = None
-    block_index: int | None = None
+    block_index: int | None = Field(
+        default=None, description="must equal the running block; the client cannot move blocks"
+    )
     extra: dict[str, Any] = Field(default_factory=dict)
+
+
+# owned by kernel/blocks.py: a UI checkpoint can never rewrite them (server authority)
+RESERVED_CHECKPOINT_KEYS = frozenset(
+    {
+        "block_index",
+        "block_id",
+        "block_type",
+        "block_status",
+        "block_started_at",
+        "plan_version",
+        "timer_extension_min",
+        "first_started_index",
+    }
+)
+SUB_PHASES = {"new_material": {"teach", "assess"}}
 
 
 @router.post(
     "/{session_id}/checkpoint",
-    summary="Merge UI state (phase, skill, block) into the resume checkpoint",
+    summary="Merge UI state (sub-phase, skill) into the resume checkpoint; block fields are server-owned",
     response_model=dict[str, Any],
 )
-async def checkpoint(session_id: str, body: CheckpointIn, db: DB) -> dict[str, Any]:
+async def checkpoint(
+    session_id: str, body: CheckpointIn, request: Request, db: DB
+) -> dict[str, Any]:
     s = await ksession.get(db, session_id)
-    cp = await ksession.load_checkpoint(db, s.id) or {}
-    update = {
-        k: v
-        for k, v in (
-            ("phase", body.phase),
-            ("skill_id", body.skill_id),
-            ("block_index", body.block_index),
-        )
-        if v is not None
-    }
-    merged = {**cp, **update, **body.extra}
-    await ksession.save_checkpoint(db, s, merged)
-    await ksession.prune_checkpoints(db, s.id, keep=3)
+    async with session_lock(request, session_id):
+        cp = await ksession.load_checkpoint(db, s.id) or {}
+        current = cp.get("block_index") if cp.get("block_status") == "running" else None
+        if body.block_index is not None and current is not None and body.block_index != current:
+            raise AppError(
+                "stale_block",
+                f"block {current} is running; a checkpoint for block {body.block_index} is stale",
+                http_status=409,
+            )
+        update: dict[str, Any] = {}
+        if body.phase is not None:
+            block_type = str(cp.get("block_type") or "")
+            allowed = SUB_PHASES.get(
+                block_type, {blocks.phase_for(block_type)} if block_type else None
+            )
+            if current is not None and allowed is not None and body.phase not in allowed:
+                raise AppError(
+                    "invalid_phase",
+                    f"phase {body.phase!r} is not valid inside a {block_type} block",
+                    http_status=409,
+                )
+            update["phase"] = body.phase
+        if body.skill_id is not None:
+            update["skill_id"] = body.skill_id
+        extra = {k: v for k, v in body.extra.items() if k not in RESERVED_CHECKPOINT_KEYS}
+        merged = {**cp, **extra, **update}
+        await ksession.save_checkpoint(db, s, merged)
     return merged
 
 
@@ -176,6 +222,7 @@ async def get(session_id: str, db: DB, learner: Learner) -> SessionOut:
 )
 async def end(session_id: str, body: SessionEnd, db: DB, learner: Learner) -> SessionOut:
     await ensure_recall_item_for_explained_skill(db, learner.id, session_id)
+    await blocks.end_running(db, await ksession.get(db, session_id), reason="session_end")
     await ksession.prune_checkpoints(db, session_id)
     s = await ksession.end(
         db,
@@ -206,7 +253,7 @@ async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, sessio
     first = (
         await db.execute(
             select(Assessment)
-            .where(Assessment.skill_id == skill_id)
+            .where(Assessment.skill_id == skill_id, Assessment.kind != "code")
             .order_by(Assessment.kind)
             .limit(1)
         )

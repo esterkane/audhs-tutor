@@ -78,6 +78,7 @@ class SessionCheckpoint(IdMixin, LearnerScoped, Base):
 class SkillNode(IdMixin, Base):
     __tablename__ = "skill_node"
     domain: Mapped[str] = mapped_column(Text, index=True)
+    course: Mapped[str | None] = mapped_column(Text, index=True)  # published-from course (P4 goal)
     slug: Mapped[str] = mapped_column(Text, unique=True)
     title: Mapped[str] = mapped_column(Text)
     description: Mapped[str] = mapped_column(Text, default="")
@@ -395,6 +396,7 @@ class ExperimentObservation(IdMixin, LearnerScoped, Base):
 # ---------------------------------------------------------------- observability
 class ModelCall(IdMixin, Base):
     __tablename__ = "model_call"
+    __table_args__ = (UniqueConstraint("idempotency_key", name="uq_model_call_idempotency_key"),)
     learner_id: Mapped[str | None] = mapped_column(
         Text, ForeignKey("learner_profile.id"), index=True
     )
@@ -414,6 +416,40 @@ class ModelCall(IdMixin, Base):
     ok: Mapped[bool] = mapped_column(Boolean, default=True)
     error: Mapped[str | None] = mapped_column(Text)
     metadata_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
+    # P6 usage accounting. One gateway call = one request_id; every provider attempt (fallback,
+    # structured-output repair) is its own row with attempt 1..n and a unique idempotency key.
+    request_id: Mapped[str | None] = mapped_column(Text, index=True)
+    attempt: Mapped[int] = mapped_column(Integer, default=1)
+    idempotency_key: Mapped[str | None] = mapped_column(Text)
+    # ok | error | invalid_output | cancelled | partial | blocked
+    outcome: Mapped[str] = mapped_column(Text, default="ok")
+    # reported (provider usage) | estimated (chars/4 or partial) | unavailable | legacy (pre-P6 row)
+    usage_source: Mapped[str] = mapped_column(Text, default="legacy")
+    # free (local) | reported (provider price) | estimated (tokens × registry price) | unknown
+    # (failed hosted call, billing unknown — counted at reserved_usd) | legacy (pre-P6 row)
+    cost_status: Mapped[str] = mapped_column(Text, default="legacy")
+    reserved_usd: Mapped[float] = mapped_column(Float, default=0.0)
+
+
+class BudgetReservation(IdMixin, Base):
+    """P6: a hosted call reserves its worst-case cost before it runs (prompt estimate + max_tokens
+    at the registry price) so concurrent calls cannot overshoot the daily cap; it is reconciled to
+    the real/estimated cost afterwards, released when the provider was never reached, or expires
+    (stale) after RESERVATION_TTL. `open` reservations count toward the cap."""
+
+    __tablename__ = "budget_reservation"
+    learner_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("learner_profile.id"), index=True
+    )
+    request_id: Mapped[str] = mapped_column(Text, index=True)
+    registry_id: Mapped[str] = mapped_column(Text)
+    task: Mapped[str] = mapped_column(Text)
+    amount_usd: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(Text, default="open")  # open|reconciled|released|expired
+    settled_usd: Mapped[float | None] = mapped_column(Float)
+    model_call_id: Mapped[str | None] = mapped_column(Text, ForeignKey("model_call.id"))
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, index=True)
+    expires_at: Mapped[str] = mapped_column(Text, index=True)
 
 
 class RetrievalTrace(IdMixin, Base):
@@ -481,3 +517,43 @@ for _ddl in LEARNING_EVENT_GUARDS.values():
 def learner_scoped_tables() -> list[str]:
     """Names of every table that carries a learner_id column (used by export/wipe)."""
     return [t.name for t in Base.metadata.sorted_tables if "learner_id" in t.c]
+
+
+class CurriculumDraft(IdMixin, LearnerScoped, Base):
+    """P4: a reviewable course→curriculum proposal (skills, prerequisites, learning objects,
+    assessments) linked to source chunks. `draft` → `published` (applied to skill_node /
+    learning_object / assessment with versioning) or `rejected`. Publishing never edits history:
+    a re-publish writes a new learning_object version and new assessment rows."""
+
+    __tablename__ = "curriculum_draft"
+    course: Mapped[str] = mapped_column(Text, index=True)
+    section: Mapped[str | None] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(
+        Text, default="draft", index=True
+    )  # draft|published|rejected
+    origin: Mapped[str] = mapped_column(Text, default="deterministic")  # deterministic | model
+    payload_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
+    validation_json: Mapped[JsonList] = mapped_column(JSON, default=list)  # problems found
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, onupdate=utcnow_iso)
+    published_at: Mapped[str | None] = mapped_column(Text)
+    model_call_id: Mapped[str | None] = mapped_column(Text)  # when a model drafted it
+
+
+class ContentReport(IdMixin, LearnerScoped, Base):
+    """P4: 'this source / explanation is wrong' — kept as a report next to the evidence, never a
+    silent rewrite of what the learner saw."""
+
+    __tablename__ = "content_report"
+    kind: Mapped[str] = mapped_column(
+        Text
+    )  # wrong_source | wrong_explanation | wrong_grading | other
+    turn_id: Mapped[str | None] = mapped_column(Text, index=True)
+    chunk_id: Mapped[str | None] = mapped_column(Text, index=True)
+    skill_id: Mapped[str | None] = mapped_column(Text, index=True)
+    assessment_id: Mapped[str | None] = mapped_column(Text, index=True)  # P7: a wrong item
+    note: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(Text, default="open")  # open | resolved
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)

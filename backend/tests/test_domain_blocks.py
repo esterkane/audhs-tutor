@@ -20,10 +20,10 @@ async def test_vocab_cards_are_language_domain_and_never_mix_into_ai_review(
 ) -> None:
     await load_seed(db, SEED)
     past = datetime.now(UTC) - timedelta(days=2)
-    a = await practice.add_vocab(
+    a, _ = await practice.add_vocab(
         db, learner.id, lang="de", word="der Hund", translation="the dog", now=past
     )
-    again = await practice.add_vocab(
+    again, _ = await practice.add_vocab(
         db, learner.id, lang="de", word="Der Hund ", translation="the dog", now=past
     )
     assert again.id == a.id  # idempotent by normalised word
