@@ -6,6 +6,11 @@ resources are installed and reachable (no synthetic timings are ever reported as
 
   bench_voice.py --wavs DIR    mono 16 kHz WAV utterances (≥ 20; reused cyclically) — your own
                                recordings; nothing is bundled
+  [--transcripts FILE]         reference text per utterance (`<wav stem> <TEXT>` per line, the
+                               LibriSpeech `*.trans.txt` layout) → word error rate per turn
+  [--dataset LABEL] [--own-recordings]   what the audio is; the Stage-5 gate (ADR-0011) needs
+                               ≥ 20 of the owner's own recordings — a public corpus is measured
+                               and reported, but never marked as that gate
   [--turns 20] [--out evals/results/bench_voice.json]
 
 The roadmap target is median ≤ 2 s to first audio. This script measures from the end of the
@@ -17,11 +22,13 @@ import argparse
 import asyncio
 import json
 import platform
+import re
 import statistics
 import sys
 import time
 import wave
 from pathlib import Path
+from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
@@ -48,7 +55,48 @@ def gate() -> list[str]:
     return problems
 
 
-async def bench(wavs: list[Path], turns: int) -> dict[str, object]:
+_WORD = re.compile(r"[^a-z0-9' ]+")
+_SENTENCE = re.compile(r"[.!?](\s|$)")
+_CLAUSE = re.compile(r"[,;:.!?](\s|$)")
+
+
+def normalise(text: str) -> list[str]:
+    return _WORD.sub(" ", text.lower().replace("-", " ")).split()
+
+
+def word_error_rate(reference: str, hypothesis: str) -> float | None:
+    """Levenshtein distance over normalised words / reference length; None without a reference."""
+    ref, hyp = normalise(reference), normalise(hypothesis)
+    if not ref:
+        return None
+    prev = list(range(len(hyp) + 1))
+    for i, r in enumerate(ref, 1):
+        cur = [i]
+        for j, h in enumerate(hyp, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (r != h)))
+        prev = cur
+    return round(prev[-1] / len(ref), 4)
+
+
+def load_transcripts(path: Path | None) -> dict[str, str]:
+    if path is None:
+        return {}
+    out: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stem, _, text = line.strip().partition(" ")
+        if stem and text:
+            out[stem] = text
+    return out
+
+
+async def bench(
+    wavs: list[Path],
+    turns: int,
+    *,
+    transcripts: dict[str, str] | None = None,
+    dataset: str = "own recordings",
+    own_recordings: bool = True,
+) -> dict[str, object]:
     from app.core.config import get_settings
     from app.db.session import make_engine, make_session_factory
     from app.kernel.learner import get_or_create_owner
@@ -70,9 +118,16 @@ async def bench(wavs: list[Path], turns: int) -> dict[str, object]:
         registry_id="whisper-large-v3-turbo",
     )
     tts = KokoroClient(s.kokoro_url)
-    rows = []
+    rows: list[dict[str, Any]] = []
     failures = 0
     async with factory() as db:
+        # a disposable DB (DATABASE_URL) has no registry rows yet: seed them from the profiles,
+        # marking the Ollama tags that are actually installed as ready — never pulls anything
+        from app.models_ai import registry
+        from app.models_ai.factory import installed_models
+
+        await registry.seed_defaults(db, installed_ollama_tags=await installed_models(s))
+        await db.commit()
         owner = await get_or_create_owner(db)
         gw = ModelGateway(
             db, Router(s.routing_profile), build_providers(s), Budget(s.daily_budget_usd)
@@ -85,11 +140,25 @@ async def bench(wavs: list[Path], turns: int) -> dict[str, object]:
             try:
                 res = await stt.transcribe(pcm, language=None)
                 t_stt = time.perf_counter()
-                first_tok = None
-                text = ""
+                reference = (transcripts or {}).get(wav.stem)
+                wer = word_error_rate(reference, res.text) if reference else None
                 from app.models_ai.gateway import StreamHandle
+                from app.voice.loop import speakable
 
                 h = StreamHandle()
+                text = ""
+                t_first_tok: float | None = None
+                t_clause: float | None = None
+                clause_text = ""
+                t_sentence: float | None = None
+                sentence_text = ""
+                sentence_tts: asyncio.Task[float | None] | None = None
+
+                async def first_audio_at(utterance: str) -> float | None:
+                    async for _chunk in tts.stream(utterance, voice="af_heart", lang=None):
+                        return time.perf_counter()
+                    return None
+
                 async for tok in gw.stream(
                     TaskClass.CHAT,
                     [
@@ -100,26 +169,63 @@ async def bench(wavs: list[Path], turns: int) -> dict[str, object]:
                     learner_id=owner.id,
                     max_tokens=80,
                 ):
-                    if first_tok is None:
-                        first_tok = time.perf_counter()
+                    if t_first_tok is None:
+                        t_first_tok = time.perf_counter()
                     text += tok
-                t_llm_first = first_tok or time.perf_counter()
-                first_audio = None
-                async for _chunk in tts.stream(
-                    text.split(".")[0] or text, voice="af_heart", lang=None
-                ):
-                    first_audio = time.perf_counter()
-                    break
-                t_audio = first_audio or time.perf_counter()
+                    if t_clause is None:
+                        m = _CLAUSE.search(text)
+                        if m and len(text[: m.end()].split()) >= 3:
+                            t_clause, clause_text = time.perf_counter(), speakable(text[: m.end()])
+                    if t_sentence is None:
+                        m = _SENTENCE.search(text)
+                        if m and len(text[: m.end()].split()) >= 3:
+                            # what the real loop does: speak the first sentence while the LLM
+                            # keeps generating (voice/loop.py speak_queue)
+                            t_sentence, sentence_text = (
+                                time.perf_counter(),
+                                speakable(text[: m.end()]),
+                            )
+                            sentence_tts = asyncio.create_task(first_audio_at(sentence_text))
+                t_llm_done = time.perf_counter()
+                if sentence_tts is None:  # no sentence boundary at all: speak everything
+                    t_sentence, sentence_text = t_llm_done, speakable(text) or "Say hello."
+                    sentence_tts = asyncio.create_task(first_audio_at(sentence_text))
+                t_audio = await sentence_tts
+                assert t_sentence is not None
+                # pure synthesis time of the first clause, measured on its own afterwards, gives a
+                # projection for starting TTS at the first clause instead of the first sentence
+                clause_tts_ms: int | None = None
+                first_audio_clause_est: int | None = None
+                if t_clause is not None and clause_text and clause_text != sentence_text:
+                    tc0 = time.perf_counter()
+                    tc1 = await first_audio_at(clause_text)
+                    if tc1 is not None:
+                        clause_tts_ms = int((tc1 - tc0) * 1000)
+                        first_audio_clause_est = int((t_clause - t0) * 1000) + clause_tts_ms
+                t_llm_first = t_first_tok or t_llm_done
                 rows.append(
                     {
                         "turn": i + 1,
                         "wav": wav.name,
                         "stt_ms": int((t_stt - t0) * 1000),
                         "llm_first_token_ms": int((t_llm_first - t_stt) * 1000),
-                        "tts_first_audio_ms": int((t_audio - t_llm_first) * 1000),
-                        "total_ms": int((t_audio - t0) * 1000),
+                        "llm_generation_ms": int((t_llm_done - t_llm_first) * 1000),
+                        "first_sentence_ready_ms": int((t_sentence - t0) * 1000),
+                        "tts_sentence_ms": (
+                            int((t_audio - t_sentence) * 1000) if t_audio is not None else None
+                        ),
+                        "total_ms": int(((t_audio or time.perf_counter()) - t0) * 1000),
+                        "first_clause_ready_ms": (
+                            int((t_clause - t0) * 1000) if t_clause is not None else None
+                        ),
+                        "tts_clause_ms": clause_tts_ms,
+                        "first_audio_clause_est_ms": first_audio_clause_est,
+                        "sentence_words": len(sentence_text.split()),
+                        "clause_words": len(clause_text.split()) if clause_text else None,
+                        "reply_chars": len(text),
                         "transcript_chars": len(res.text),
+                        "transcript": res.text[:200],
+                        "wer": wer,
                         "model": h.registry_id,
                     }
                 )
@@ -130,13 +236,51 @@ async def bench(wavs: list[Path], turns: int) -> dict[str, object]:
                 )
     await engine.dispose()
     totals = [r["total_ms"] for r in rows if "total_ms" in r]
+    wers = [float(r["wer"]) for r in rows if r.get("wer") is not None]
+    median_ok = bool(totals) and failures == 0 and statistics.median(totals) <= 2000
+
+    def med(key: str) -> float | None:
+        vals = [float(r[key]) for r in rows if r.get(key) is not None]
+        return statistics.median(vals) if vals else None
+
+    def p95(key: str) -> float | None:
+        vals = sorted(float(r[key]) for r in rows if r.get(key) is not None)
+        return vals[max(0, int(len(vals) * 0.95) - 1)] if vals else None
+
     return {
+        "dataset": dataset,
+        "own_recordings": own_recordings,
+        "stage5_gate": (
+            "measured on the owner's own recordings"
+            if own_recordings
+            else "NOT the Stage-5 gate: public corpus, not the owner's voice (ADR-0011)"
+        ),
         "turns": turns,
         "failures": failures,
+        "wer_median": statistics.median(wers) if wers else None,
+        "wer_mean": round(sum(wers) / len(wers), 4) if wers else None,
+        "wer_turns": len(wers),
         "median_total_ms": statistics.median(totals) if totals else None,
-        "p95_total_ms": (sorted(totals)[max(0, int(len(totals) * 0.95) - 1)] if totals else None),
+        "p95_total_ms": p95("total_ms"),
+        "stages_median_ms": {
+            "stt": med("stt_ms"),
+            "llm_first_token": med("llm_first_token_ms"),
+            "llm_generation": med("llm_generation_ms"),
+            "first_sentence_ready": med("first_sentence_ready_ms"),
+            "tts_sentence": med("tts_sentence_ms"),
+            "first_clause_ready": med("first_clause_ready_ms"),
+            "tts_clause": med("tts_clause_ms"),
+        },
+        "first_audio_clause_est_median_ms": med("first_audio_clause_est_ms"),
+        "measurement": (
+            "total_ms = utterance end → first audio, with TTS started at the first sentence "
+            "boundary while the LLM streams (what voice/loop.py does); tts_sentence_ms is the "
+            "synthesis time of that sentence alone; first_audio_clause_est_ms = first clause "
+            "boundary + its own synthesis time, measured afterwards (a projection, not a run)"
+        ),
         "target_median_ms": 2000,
-        "passed": bool(totals) and failures == 0 and statistics.median(totals) <= 2000,
+        "latency_target_met": median_ok,
+        "passed": median_ok and own_recordings,
         "hardware": {
             "machine": platform.machine(),
             "system": platform.platform(),
@@ -158,6 +302,13 @@ def main() -> int:
     )
     ap.add_argument("--wavs", type=Path, required=True)
     ap.add_argument("--turns", type=int, default=20)
+    ap.add_argument("--transcripts", type=Path, help="reference text per wav stem (WER)")
+    ap.add_argument("--dataset", default="own recordings", help="label for the report")
+    ap.add_argument(
+        "--own-recordings",
+        action="store_true",
+        help="the audio is the owner's own voice (required for the Stage-5 gate)",
+    )
     ap.add_argument(
         "--out",
         type=Path,
@@ -174,9 +325,27 @@ def main() -> int:
     if not wavs:
         print("no WAV files in", args.wavs, file=sys.stderr)
         return 2
-    report = asyncio.run(bench(wavs, args.turns))
+    if len(wavs) < 20:
+        print(f"only {len(wavs)} WAV files; the benchmark wants ≥ 20 utterances", file=sys.stderr)
+        return 2
+    report = asyncio.run(
+        bench(
+            wavs,
+            args.turns,
+            transcripts=load_transcripts(args.transcripts),
+            dataset=args.dataset,
+            own_recordings=args.own_recordings,
+        )
+    )
+    args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(report, indent=2))
     print(json.dumps({k: v for k, v in report.items() if k != "rows"}, indent=2))
+    if not args.own_recordings:
+        print(
+            "note: measured on a public corpus — the Stage-5 gate needs the owner's own "
+            "recordings (--own-recordings); this run is evidence, not the gate",
+            file=sys.stderr,
+        )
     return 0 if report["passed"] else 1
 
 
