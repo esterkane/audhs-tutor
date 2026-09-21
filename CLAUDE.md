@@ -51,4 +51,4 @@ Detailed rules load per path from `.claude/rules/`. Procedures are skills (`/bui
 - Conventional Commits via `/commit`. Unsure about a product/pedagogy decision → read `docs/adr/`, then ask.
 
 ## Commands
-`make dev` (backend :8000 + frontend :5173 + Qdrant :6333) · `make dev-sandbox` (fresh seeded `data/sandbox.db`, backend :8010 + frontend :5174, hosted budget 0 — walk-throughs never touch `data/dev.db`) · `make models` (registry CLI) · `make test` · `make lint` · `make migrate m="msg"` (generate) · `make migrate-check` (disposable DB) · `make migrate-apply` · `make ingest src=<path>` · `make evals` · `make bench s=<stage>`
+`make dev` (backend :8000 + frontend :5173 + Qdrant :6333) · `make dev-sandbox` (fresh seeded `data/sandbox.db`, backend :8010 + frontend :5174, hosted budget 0 — walk-throughs never touch `data/dev.db`) · `make pyodide` (pinned local Python runtime for the code exercise) · `make models` (registry CLI) · `make test` · `make lint` · `make migrate m="msg"` (generate) · `make migrate-check` (disposable DB) · `make migrate-apply` · `make ingest src=<path>` · `make evals` · `make bench s=<stage>`

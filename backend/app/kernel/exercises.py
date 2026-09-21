@@ -249,9 +249,10 @@ def policy_for(ex: Exercise) -> dict[str, Any]:
             "read this Mac's files or run on the backend"
         ),
         "filesystem": "in-memory only, discarded when the worker stops; no host files",
-        "runtime_download": "Pyodide + "
+        "runtime_download": "the pinned Pyodide release + "
         + ", ".join(ex.packages)
-        + " come from cdn.jsdelivr.net once",
+        + " are served by this app from its own origin (installed once by `make pyodide`); "
+        "nothing is fetched from a CDN",
         "timeout_s": ex.timeout_s,
         "output_cap_chars": ex.max_output_chars,
         "run_vs_submit": "Run only executes; Submit records an assessed attempt (confidence first)",

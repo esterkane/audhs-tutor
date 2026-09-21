@@ -129,7 +129,14 @@ jobs:
           cd frontend
           pnpm install --frozen-lockfile
           pnpm exec playwright install --with-deps chromium
-      - name: Journeys (fresh seeded sandbox DB, hosted providers off)
+      - name: Pinned Pyodide runtime (cache keyed by the manifest)
+        uses: actions/cache@v4
+        with:
+          path: frontend/public/pyodide
+          key: pyodide-${{ hashFiles('frontend/pyodide.manifest.json') }}
+      - name: Install / verify the runtime (downloads only what the cache lacks)
+        run: make pyodide
+      - name: Journeys (fresh seeded sandbox DB, hosted providers off, code runs offline)
         run: make test-e2e
       - uses: actions/upload-artifact@v4
         if: failure()

@@ -36,21 +36,30 @@ export function createPyodideRunner(): Runner {
     worker = worker ?? spawn()
     const w = worker
     ready = new Promise<void>((resolve, reject) => {
+      const settle = () => {
+        w.removeEventListener('message', onMsg)
+        w.removeEventListener('error', onErr)
+      }
+      // a failed load discards this worker: the next Run starts a fresh one, so installing the
+      // runtime and clicking "Try loading the runtime again" can succeed without a reload
+      const fail = (message: string) => {
+        settle()
+        w.terminate()
+        worker = null
+        ready = null
+        reject(new Error(message))
+      }
       const onMsg = (ev: MessageEvent) => {
         if (ev.data?.type === 'ready') {
-          w.removeEventListener('message', onMsg)
+          settle()
           resolve()
         } else if (ev.data?.type === 'load_error') {
-          w.removeEventListener('message', onMsg)
-          ready = null
-          reject(new Error(ev.data.message))
+          fail(ev.data.message)
         }
       }
+      const onErr = (e: ErrorEvent) => fail(e.message || 'worker failed')
       w.addEventListener('message', onMsg)
-      w.addEventListener('error', (e) => {
-        ready = null
-        reject(new Error(e.message || 'worker failed'))
-      })
+      w.addEventListener('error', onErr)
       w.postMessage({ type: 'load', packages })
     })
     return ready

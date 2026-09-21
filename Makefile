@@ -1,4 +1,4 @@
-.PHONY: dev dev-sandbox sandbox-backend sandbox-frontend backend frontend services qdrant models test test-backend test-frontend test-e2e lint migrate migrate-check migrate-apply backup backup-inspect backup-restore ingest evals eval-retrieval bench gen-api seed
+.PHONY: dev dev-sandbox sandbox-backend sandbox-frontend pyodide pyodide-verify backend frontend services qdrant models test test-backend test-frontend test-e2e lint migrate migrate-check migrate-apply backup backup-inspect backup-restore ingest evals eval-retrieval bench gen-api seed
 
 dev: qdrant
 	@echo "backend :8000 | frontend :5173 | qdrant :6333"
@@ -41,6 +41,14 @@ test-backend:
 
 test-frontend:
 	cd frontend && pnpm vitest run
+
+# Pinned Pyodide runtime for the code exercise, served from frontend/public/pyodide (ADR-0013; git-ignored,
+# pinned by frontend/pyodide.manifest.json). Downloads only what is missing; verifies every file.
+pyodide:
+	cd backend && uv run python ../scripts/pyodide_runtime.py install
+
+pyodide-verify:
+	cd backend && uv run python ../scripts/pyodide_runtime.py verify
 
 # Browser journeys (Playwright, ADR-0013) — starts `make dev-sandbox` itself; never touches data/dev.db.
 test-e2e:

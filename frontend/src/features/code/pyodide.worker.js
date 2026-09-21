@@ -1,10 +1,12 @@
-/* Pyodide sandbox worker (P8). Classic worker: importScripts loads the runtime from jsDelivr once.
-   Policy: after the runtime (and the exercise's packages) are loaded, network APIs are removed so
-   learner/model code cannot reach anything; the filesystem is Pyodide's in-memory one; the main
-   thread enforces the timeout by terminating this worker; stdout is capped here. */
+/* Pyodide sandbox worker (P8). Classic worker: importScripts loads the runtime from this app's
+   own origin (`/pyodide/`, installed once by `make pyodide`, pinned version — ADR-0013: never a
+   CDN, no silent fallback). Policy: after the runtime (and the exercise's packages) are loaded,
+   network APIs are removed so learner/model code cannot reach anything; the filesystem is Pyodide's
+   in-memory one; the main thread enforces the timeout by terminating this worker; stdout is capped
+   here. */
 /* global loadPyodide */
 const PYODIDE_VERSION = '0.27.8'
-const INDEX_URL = `https://cdn.jsdelivr.net/pyodide/v${PYODIDE_VERSION}/full/`
+const INDEX_URL = new URL('/pyodide/', self.location.href).href
 
 let pyodide = null
 let loading = null
@@ -12,8 +14,20 @@ let loading = null
 async function ensure(packages) {
   if (!loading) {
     loading = (async () => {
-      importScripts(INDEX_URL + 'pyodide.js')
+      if (!(packages || []).every((p) => /^[A-Za-z0-9_.-]+$/.test(p)))
+        throw new Error('package names only: the sandbox never loads packages from URLs')
+      try {
+        importScripts(INDEX_URL + 'pyodide.js')
+      } catch (e) {
+        throw new Error(
+          `The Python runtime is not installed in this app (${INDEX_URL}pyodide.js could not be ` +
+            'loaded). Run `make pyodide` once on the machine that serves the app — nothing is ' +
+            `fetched from a CDN. (${e && e.message ? e.message : e})`,
+        )
+      }
       const py = await loadPyodide({ indexURL: INDEX_URL })
+      if (py.version !== PYODIDE_VERSION)
+        throw new Error(`Installed Python runtime is ${py.version}, expected ${PYODIDE_VERSION}`)
       if (packages && packages.length) await py.loadPackage(packages)
       // Best-effort lockdown once the runtime is loaded: remove the browser's network entry points
       // on the global *and* its prototype and freeze them, so `js.WorkerGlobalScope.prototype.fetch`
@@ -45,7 +59,10 @@ async function ensure(packages) {
           lock(target, name, undefined)
       }
       return py
-    })()
+    })().catch((e) => {
+      loading = null // a failed load is not memoised: the next attempt starts over
+      throw e
+    })
   }
   pyodide = await loading
   return pyodide

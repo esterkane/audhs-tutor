@@ -265,14 +265,15 @@ function Editor({
       </div>
       {runtime === 'loading' && (
         <p className="text-sm text-muted mt-2" role="status">
-          Loading the Python runtime (Pyodide + {exercise.packages.join(', ')}) from jsDelivr — the first time
-          this takes a moment and a few MB. Your code has not run yet.
+          Loading the Python runtime (Pyodide + {exercise.packages.join(', ')}) from this app — the first time
+          takes a moment. Your code has not run yet.
         </p>
       )}
       {runtime === 'failed' && (
         <p className="text-sm text-warn mt-2" role="alert">
           The Python runtime could not be loaded ({runtimeError}). You can still read, edit and think through
-          the exercise; running needs the runtime. Check the network and try again later.
+          the exercise; running needs the runtime. If it is not installed, run `make pyodide` on the machine
+          serving the app, then try again.
         </p>
       )}
       {hints.length > 0 && (
