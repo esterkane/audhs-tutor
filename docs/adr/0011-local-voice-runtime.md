@@ -1,6 +1,6 @@
 # 0011 — Local voice runtime and TTS routing
 Date: 2026-09-21
-Status: Proposed
+Status: Accepted
 
 ## Context
 Owner requested resolution of the dependency decisions in IMPROVEMENT-PLAN and execution of the local setup and commit plan.

@@ -1,6 +1,6 @@
 # 0013 — Browser testing, code editor, PDF import and offline Python runtime
 Date: 2026-09-21
-Status: Proposed
+Status: Accepted
 
 ## Context
 Owner requested resolution of the dependency decisions in IMPROVEMENT-PLAN and execution of the local setup and commit plan.

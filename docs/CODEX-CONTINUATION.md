@@ -1,3 +1,19 @@
+## Current update — 2026-09-21: accepted decisions and local TTS
+
+Owner accepted ADR-0011–0013 ("Paket annehmen"); statuses are now Accepted. Earlier pending-decision notes below are historical.
+
+Kokoro is running in Docker as `audhs-kokoro`, bound only to `127.0.0.1:8880`, with restart policy `unless-stopped`. Image: `ghcr.io/remsky/kokoro-fastapi-cpu@sha256:ee3111d6a2c903ed62f3b4fa19543c6901205ed39fce3c177e895b34a8386b9c` (arm64). Local `.env` has `KOKORO_URL=http://127.0.0.1:8880`; restart the backend to reload settings. Stop/start: `docker stop audhs-kokoro` / `docker start audhs-kokoro`. Docker Desktop must be running.
+
+Verified: GET `/v1/audio/voices` returned 72 voices; POST `/v1/audio/speech` with synthetic English text returned 101232 bytes PCM. No microphone capture or voice activation was performed. This is a service smoke test, not the Stage-5 latency/recognition benchmark; that gate remains open. Kokoro v1 does not provide German TTS.
+
+Next implementation order (recommended):
+1. Playwright journeys against isolated sandbox data: session boundaries/reload, review confidence, stop/resume; no paid providers.
+2. CodeMirror Python editor: preserve drafts, keyboard escape, textarea fallback; browser regression coverage.
+3. Encrypted backups: authenticated versioned format with bounded resource use, wrong-password/tampering/round-trip tests; retain learner default and explicit private full scope. Current ZIPs remain unencrypted.
+4. Pinned locally served Pyodide plus NumPy/lock metadata: reproducible setup, ignored artifacts, offline tests, explicit missing-runtime error, no silent CDN fallback.
+
+These four slices are approved directions, not completed features. Use `/feature-slice` and its reviews for each. Keep the private implementation prompt pack untracked; do not push.
+
 # Codex continuation — 2026-09-20
 
 ## Ownership and baseline
