@@ -58,7 +58,7 @@ export const useMode = create<ModeState>()(
       partialize: (s) => ({
         mode: s.mode,
         energy: s.energy,
-        socratic: s.socratic,
+        // `socratic` is deliberately not persisted: questioning style is an opt-in per session
         sessionId: s.sessionId,
         skillId: s.skillId,
       }),

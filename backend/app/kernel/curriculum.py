@@ -1,0 +1,868 @@
+"""Course → curriculum workflow (P4 `curriculum-drafts`).
+
+Ingested material is *searchable*; it becomes *learnable* only through a reviewed, published
+curriculum: skill nodes with prerequisites, one LearningObject per skill (concept, goal, examples,
+exercises, success criteria, sources = chunk ids), and assessments with rubrics. This module is
+deterministic: a draft is proposed from the documents of one course section (one skill per lecture,
+prerequisites in lecture order, cloze candidates cut from the source text — never invented),
+validated (cycles, unknown prerequisites, missing objects/assessments, broken provenance), edited by
+the learner and published explicitly. Publishing writes a *new* LearningObject version and new
+assessment rows; nothing that produced historical evidence is overwritten. A model may draft the
+same payload through the orchestrator (`origin="model"`); it is untrusted until reviewed, exactly
+like this deterministic draft."""
+
+import re
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.base import utcnow_iso
+from app.db.models import (
+    Assessment,
+    AssessmentRubric,
+    Chunk,
+    ChunkProvenance,
+    ContentReport,
+    CurriculumDraft,
+    Document,
+    DocumentVersion,
+    LearningObject,
+    SkillEdge,
+    SkillNode,
+)
+from app.knowledge.ingest.loaders import clean_stem, split_number
+
+STATUSES = ("draft", "published", "rejected")
+MATERIAL_STATUSES = ("imported", "searchable", "draft", "published")
+MAX_SKILLS_PER_DRAFT = 30
+MAX_CLOZE_PER_SKILL = 3
+_SENT = re.compile(r"(?<=[.!?])\s+")
+_WORD = re.compile(r"[A-Za-zÄÖÜäöüß][\w\-]{3,}")
+
+
+@dataclass
+class Problem:
+    level: str  # error | warning
+    where: str  # skill slug or "draft"
+    message: str
+
+
+@dataclass
+class SectionMaterial:
+    course: str
+    section: str | None
+    lectures: list[dict[str, Any]] = field(default_factory=list)  # {lecture, document_id, chunks}
+
+
+def slugify(text: str, *, prefix: str = "") -> str:
+    base = re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60] or "skill"
+    return f"{prefix}{base}" if prefix else base
+
+
+def draft_prefix(course: str, section: str | None) -> str:
+    """Slug prefix = course + section, so "Introduction" in two sections never collides."""
+    prefix = slugify(course)[:20]
+    if section:
+        prefix += "-" + slugify(section)[:16]
+    return prefix + "-"
+
+
+def lecture_slugs(mat: SectionMaterial) -> list[str]:
+    """One slug per lecture (draft order), unique within the draft (`-2`, `-3` on repeats)."""
+    prefix = draft_prefix(mat.course, mat.section)
+    seen: dict[str, int] = {}
+    out: list[str] = []
+    for lec in mat.lectures[:MAX_SKILLS_PER_DRAFT]:
+        slug = slugify(str(lec["lecture"]), prefix=prefix)
+        n = seen.get(slug, 0)
+        seen[slug] = n + 1
+        out.append(slug if n == 0 else f"{slug}-{n + 1}")
+    return out
+
+
+def path_numbers(uri: str) -> tuple[int | None, int | None]:
+    """(section_no, lecture_no) re-derived from the file path `<NN - Section>/<NNN - Lecture>.ext`.
+    Ingest strips the numbers from the stored labels (they only live in transient meta), so the
+    path is the durable place to read them from; archive members use the member path."""
+    if not uri or uri.startswith(("http://", "https://")):
+        return None, None
+    member = uri.split("!/", 1)[1] if "!/" in uri else uri
+    p = Path(member)
+    lecture_no, _ = split_number(clean_stem(p))
+    section_no, _ = split_number(p.parent.name)
+    return section_no, lecture_no
+
+
+def _order_key(no: int | None, label: str | None) -> tuple[int, int, str]:
+    return (no is None, no or 0, (label or "").lower())
+
+
+# ----------------------------------------------------------------------------- material status
+async def material_status(db: AsyncSession, learner_id: str) -> list[dict[str, Any]]:
+    """Per course: imported documents, searchable chunks, the learner's drafts, published skills."""
+    docs = (
+        await db.execute(
+            select(Document.course, func.count(Document.id))
+            .where(Document.course.is_not(None))
+            .group_by(Document.course)
+        )
+    ).all()
+    chunks_by_course: dict[str, int] = {}
+    for course, n in (
+        await db.execute(
+            select(ChunkProvenance.course, func.count(ChunkProvenance.id))
+            .join(Chunk, Chunk.id == ChunkProvenance.chunk_id)
+            .where(ChunkProvenance.course.is_not(None), Chunk.duplicate_of.is_(None))
+            .group_by(ChunkProvenance.course)
+        )
+    ).all():
+        chunks_by_course[str(course)] = int(n)
+    drafts: dict[str, dict[str, int]] = {}
+    for course, status, n in (
+        await db.execute(
+            select(CurriculumDraft.course, CurriculumDraft.status, func.count(CurriculumDraft.id))
+            .where(CurriculumDraft.learner_id == learner_id)
+            .group_by(CurriculumDraft.course, CurriculumDraft.status)
+        )
+    ).all():
+        drafts.setdefault(str(course), {})[str(status)] = int(n)
+    published: dict[str, int] = {}
+    for course, n in (
+        await db.execute(
+            select(SkillNode.course, func.count(SkillNode.id))
+            .where(SkillNode.course.is_not(None))
+            .group_by(SkillNode.course)
+        )
+    ).all():
+        published[str(course)] = int(n)
+    out = []
+    for course, n_docs in docs:
+        c = str(course)
+        d = drafts.get(c, {})
+        status = (
+            "published"
+            if published.get(c)
+            else "draft"
+            if d.get("draft")
+            else "searchable"
+            if chunks_by_course.get(c)
+            else "imported"
+        )
+        out.append(
+            {
+                "course": c,
+                "documents": int(n_docs),
+                "chunks": chunks_by_course.get(c, 0),
+                "drafts": d.get("draft", 0),
+                "published_skills": published.get(c, 0),
+                "status": status,
+            }
+        )
+    for c, n in published.items():  # published from a seed (no documents)
+        if not any(o["course"] == c for o in out):
+            out.append(
+                {
+                    "course": c,
+                    "documents": 0,
+                    "chunks": 0,
+                    "drafts": 0,
+                    "published_skills": n,
+                    "status": "published",
+                }
+            )
+    return sorted(out, key=lambda o: o["course"])
+
+
+async def sections_of(db: AsyncSession, course: str) -> list[dict[str, Any]]:
+    """Sections in course order (folder number, then label); documents per section."""
+    rows = (
+        await db.execute(select(Document.section, Document.uri).where(Document.course == course))
+    ).all()
+    agg: dict[str | None, dict[str, Any]] = {}
+    for section, uri in rows:
+        entry = agg.setdefault(section, {"section": section, "documents": 0, "no": None})
+        entry["documents"] += 1
+        no, _ = path_numbers(str(uri or ""))
+        if no is not None and (entry["no"] is None or no < entry["no"]):
+            entry["no"] = no
+    ordered = sorted(agg.values(), key=lambda e: _order_key(e["no"], e["section"]))
+    return [{"section": e["section"], "documents": e["documents"]} for e in ordered]
+
+
+async def section_material(db: AsyncSession, course: str, section: str | None) -> SectionMaterial:
+    """Latest-version unique chunks of every document (= lecture) in the section, in order."""
+    latest = (
+        select(DocumentVersion.document_id, func.max(DocumentVersion.version).label("v"))
+        .group_by(DocumentVersion.document_id)
+        .subquery()
+    )
+    stmt = (
+        select(Document, Chunk)
+        .join(DocumentVersion, DocumentVersion.document_id == Document.id)
+        .join(
+            latest,
+            (latest.c.document_id == DocumentVersion.document_id)
+            & (latest.c.v == DocumentVersion.version),
+        )
+        .join(Chunk, Chunk.document_version_id == DocumentVersion.id)
+        .where(Document.course == course, Chunk.duplicate_of.is_(None))
+        .order_by(Chunk.ordinal)
+    )
+    if section is None:
+        stmt = stmt.where(Document.section.is_(None))
+    else:
+        stmt = stmt.where(Document.section == section)
+    mat = SectionMaterial(course=course, section=section)
+    by_doc: dict[str, dict[str, Any]] = {}
+    for doc, chunk in (await db.execute(stmt)).all():
+        entry = by_doc.setdefault(
+            doc.id,
+            {
+                "lecture": doc.lecture or doc.title,
+                "document_id": doc.id,
+                "title": doc.title,
+                "lecture_no": path_numbers(doc.uri)[1],
+                "chunks": [],
+            },
+        )
+        entry["chunks"].append(
+            {"id": chunk.id, "text": chunk.text, "t_start": chunk.t_start, "ordinal": chunk.ordinal}
+        )
+    # lecture order = file number (001, 002, …), never the alphabetical label
+    mat.lectures = sorted(
+        by_doc.values(), key=lambda e: _order_key(e["lecture_no"], str(e["lecture"]))
+    )
+    return mat
+
+
+# ----------------------------------------------------------------------------- deterministic draft
+def _body(text: str) -> str:
+    """Chunk text minus the `title › heading` prefix line."""
+    return text.split("\n", 1)[1] if "\n" in text else text
+
+
+_STOP = frozenset(
+    "about after again always around because before being between could every first going "
+    "having might other really right should something still their there these thing things "
+    "think those through under using where which while would little people".split()
+)
+
+
+STOP_WORDS = _STOP
+WORD_RE = _WORD
+
+
+def _cloze_candidates(lecture_title: str, chunks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Source-grounded cloze items: a sentence from the material that mentions the lecture topic,
+    with a *content* word blanked. Nothing is invented; the answer is a word as written in the
+    source. A title word is never the preferred blank — the skill title is shown above the item, so
+    it would be guessable; when nothing else qualifies the item is marked `guessable` so the
+    validator warns and the learner edits or replaces it."""
+    terms = [w for w in _WORD.findall(lecture_title) if len(w) >= 4]
+    title_terms = {t.lower() for t in terms}
+    out: list[dict[str, Any]] = []
+    for c in chunks:
+        for sent in _SENT.split(_body(c["text"])):
+            sent = " ".join(sent.split())
+            if not 40 <= len(sent) <= 220:
+                continue
+            hit = next(
+                (
+                    m
+                    for term in terms
+                    if (m := re.search(rf"\b{re.escape(term)}\b", sent, re.IGNORECASE))
+                ),
+                None,
+            )
+            if hit is None:
+                continue
+            content = [
+                m
+                for m in _WORD.finditer(sent)
+                if len(m.group(0)) >= 6
+                and m.group(0).lower() not in title_terms
+                and m.group(0).lower() not in _STOP
+                and m.group(0).isalpha()
+            ]
+            target = max(content, key=lambda m: len(m.group(0))) if content else hit
+            item: dict[str, Any] = {
+                "kind": "cloze",
+                "item": {
+                    "text": sent[: target.start()] + "____" + sent[target.end() :],
+                    "answers": [target.group(0)],
+                },
+                "source_chunk_id": c["id"],
+                "auto": True,
+            }
+            if not content:
+                item["guessable"] = True
+            out.append(item)
+            if len(out) >= MAX_CLOZE_PER_SKILL:
+                return out
+    return out
+
+
+def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str, Any]:
+    """One skill per lecture, prerequisites in lecture order, a LearningObject whose goal restates
+    the lecture, and cloze candidates cut from the source. Success criteria, examples and exercises
+    are left empty on purpose: transcript openers are not worked examples and a template criterion
+    would silence the validator's warning. Every field is meant to be edited; nothing here is a
+    claim about the material's truth."""
+    skills: list[dict[str, Any]] = []
+    objects: list[dict[str, Any]] = []
+    assessments: list[dict[str, Any]] = []
+    prev_slug: str | None = None
+    for lec, slug in zip(mat.lectures, lecture_slugs(mat), strict=False):
+        title = str(lec["lecture"])
+        chunks = lec["chunks"]
+        where = f"{mat.course} › {mat.section}" if mat.section else mat.course
+        skills.append(
+            {
+                "slug": slug,
+                "title": title,
+                "description": f"Lecture '{title}' in {where} ({len(chunks)} source passages).",
+                "success_criteria": [],
+                "assessment_requirements": {
+                    "dimensions": ["recall", "explanation"],
+                    "min_items": 1,
+                },
+                "example_applications": [],
+                "prerequisites": [prev_slug] if prev_slug else [],
+            }
+        )
+        objects.append(
+            {
+                "skill": slug,
+                "concept": title,
+                "goal": f"Understand and explain '{title}' as taught in {mat.course}.",
+                "examples": [],
+                "exercises": [],
+                "success_criteria": [],
+                "sources": [c["id"] for c in chunks[:8]],
+            }
+        )
+        for cz in _cloze_candidates(title, chunks):
+            assessments.append({"skill": slug, **cz})
+        prev_slug = slug
+    return {
+        "domain": domain,
+        "course": mat.course,
+        "section": mat.section,
+        "skills": skills,
+        "learning_objects": objects,
+        "assessments": assessments,
+    }
+
+
+# ----------------------------------------------------------------------------- validation
+def check_acyclic(nodes: set[str], edges: list[tuple[str, str]]) -> None:
+    """Kahn over (prerequisite → skill) edges; raises ValueError on a cycle."""
+    indeg = dict.fromkeys(nodes, 0)
+    out: dict[str, list[str]] = {n: [] for n in nodes}
+    for pre, post in edges:
+        if pre not in indeg or post not in indeg:
+            continue
+        indeg[post] += 1
+        out[pre].append(post)
+    queue = [k for k, v in indeg.items() if v == 0]
+    seen = 0
+    while queue:
+        cur = queue.pop()
+        seen += 1
+        for nxt in out[cur]:
+            indeg[nxt] -= 1
+            if indeg[nxt] == 0:
+                queue.append(nxt)
+    if seen != len(nodes):
+        stuck = sorted(k for k, v in indeg.items() if v > 0)[:5]
+        raise ValueError("involving " + ", ".join(stuck))
+
+
+def _dicts(items: Any) -> list[dict[str, Any]]:
+    return [x for x in (items if isinstance(items, list) else []) if isinstance(x, dict)]
+
+
+async def validate_payload(db: AsyncSession, payload: dict[str, Any]) -> list[Problem]:
+    """Errors block publishing; warnings are shown. Checks: shape, slugs, prerequisites (draft or
+    already published), cycles over the draft **plus the published graph**, learning objects and
+    assessments per skill (no orphans), assessment shapes, source chunks that still exist, and the
+    pedagogy gaps a deterministic draft leaves open (criteria, exercises, guessable cloze)."""
+    problems: list[Problem] = []
+    skills = _dicts(payload.get("skills"))
+    if not skills:
+        problems.append(Problem("error", "draft", "no skills"))
+    slugs = [str(s.get("slug") or "") for s in skills]
+    if len(set(slugs)) != len(slugs):
+        problems.append(Problem("error", "draft", "duplicate skill slugs"))
+    known = {x for x in slugs if x}
+    published_slug_of: dict[str, str] = {
+        str(i): str(sl) for i, sl in (await db.execute(select(SkillNode.id, SkillNode.slug))).all()
+    }
+    published_slugs = set(published_slug_of.values())
+    for s in skills:
+        slug = str(s.get("slug") or "")
+        if not slug or not s.get("title"):
+            problems.append(Problem("error", slug or "?", "slug and title are required"))
+        pres = s.get("prerequisites")
+        if not isinstance(pres, list):
+            problems.append(Problem("error", slug, "prerequisites must be a list of slugs"))
+            pres = []
+        for pre in pres:
+            if str(pre) not in known and str(pre) not in published_slugs:
+                problems.append(Problem("error", slug, f"unknown prerequisite '{pre}'"))
+        if not s.get("success_criteria"):
+            problems.append(Problem("warning", slug, "no success criteria"))
+    # cycles: draft edges ∪ every published prerequisite edge (publish only ever adds edges)
+    edges: list[tuple[str, str]] = [
+        (published_slug_of[str(a)], published_slug_of[str(b)])
+        for a, b in (
+            await db.execute(
+                select(SkillEdge.from_skill_id, SkillEdge.to_skill_id).where(
+                    SkillEdge.kind == "prerequisite"
+                )
+            )
+        ).all()
+        if str(a) in published_slug_of and str(b) in published_slug_of
+    ]
+    for s in skills:
+        if s.get("slug") and isinstance(s.get("prerequisites"), list):
+            edges.extend((str(pre), str(s["slug"])) for pre in s["prerequisites"])
+    try:
+        check_acyclic(known | published_slugs, edges)
+    except ValueError as e:
+        problems.append(Problem("error", "draft", f"prerequisite cycle: {e}"))
+    objects: dict[str, dict[str, Any]] = {}
+    for o in _dicts(payload.get("learning_objects")):
+        sk = str(o.get("skill") or "")
+        if sk not in known:
+            problems.append(Problem("error", "draft", f"learning object for unknown skill '{sk}'"))
+        objects[sk] = o
+    assessments = _dicts(payload.get("assessments"))
+    by_skill: dict[str, int] = {}
+    for a in assessments:
+        sk = str(a.get("skill") or "")
+        if sk not in known:
+            problems.append(Problem("error", "draft", f"assessment for unknown skill '{sk}'"))
+        by_skill[sk] = by_skill.get(sk, 0) + 1
+        kind = a.get("kind")
+        raw_item = a.get("item")
+        item: dict[str, Any] = raw_item if isinstance(raw_item, dict) else {}
+        if kind == "cloze" and not (item.get("text") and item.get("answers")):
+            problems.append(Problem("error", sk, "cloze needs text and answers"))
+        if kind == "mcq" and not (
+            item.get("question") and item.get("options") and "answer" in item
+        ):
+            problems.append(Problem("error", sk, "mcq needs question, options, answer"))
+        if kind == "explain_back" and not (item.get("prompt") and a.get("rubric")):
+            problems.append(Problem("error", sk, "explain_back needs prompt and rubric"))
+        if kind not in ("mcq", "cloze", "explain_back"):
+            problems.append(Problem("error", sk, f"unsupported assessment kind {kind!r}"))
+        if a.get("guessable"):
+            problems.append(
+                Problem(
+                    "warning",
+                    sk,
+                    "cloze blanks a title word — guessable from the header; edit or replace it",
+                )
+            )
+        if a.get("origin") == "model" and not a.get("source_chunk_id"):
+            problems.append(
+                Problem(
+                    "warning",
+                    sk,
+                    "model-proposed item: no single passage linked — check it against the source",
+                )
+            )
+    chunk_ids = {
+        str(c) for o in objects.values() for c in (o.get("sources") or []) if isinstance(c, str)
+    } | {str(a.get("source_chunk_id")) for a in assessments if a.get("source_chunk_id")}
+    present: set[str] = set()
+    if chunk_ids:
+        present = {
+            str(r)
+            for r in (
+                await db.execute(select(Chunk.id).where(Chunk.id.in_(list(chunk_ids))))
+            ).scalars()
+        }
+    for s in skills:
+        slug = str(s.get("slug") or "")
+        obj = objects.get(slug)
+        if obj is None:
+            problems.append(Problem("error", slug, "no learning object"))
+        else:
+            if not obj.get("goal") or not obj.get("concept"):
+                problems.append(Problem("error", slug, "learning object needs concept and goal"))
+            missing = [c for c in (obj.get("sources") or []) if c not in present]
+            if missing:
+                problems.append(
+                    Problem("error", slug, f"{len(missing)} source chunk(s) no longer exist")
+                )
+            if not obj.get("sources"):
+                problems.append(Problem("warning", slug, "no source passages linked"))
+            if not obj.get("exercises"):
+                problems.append(
+                    Problem(
+                        "warning",
+                        slug,
+                        "no exercises: a new node needs a worked example, then a faded problem",
+                    )
+                )
+        reqs = s.get("assessment_requirements")
+        dims = (reqs.get("dimensions") if isinstance(reqs, dict) else None) or []
+        if "explanation" in dims and not any(
+            a.get("kind") == "explain_back" and str(a.get("skill")) == slug for a in assessments
+        ):
+            problems.append(
+                Problem(
+                    "warning",
+                    slug,
+                    "requirements list 'explanation' but there is no explain_back item",
+                )
+            )
+        if by_skill.get(slug, 0) < 1:
+            problems.append(Problem("error", slug, "at least one assessment is required"))
+    return problems
+
+
+def problems_json(problems: list[Problem]) -> list[dict[str, str]]:
+    return [{"level": p.level, "where": p.where, "message": p.message} for p in problems]
+
+
+# ----------------------------------------------------------------------------- drafts
+async def create_draft(
+    db: AsyncSession,
+    learner_id: str,
+    *,
+    course: str,
+    section: str | None,
+    payload: dict[str, Any] | None = None,
+    origin: str = "deterministic",
+    model_call_id: str | None = None,
+    notes: list[Problem] | None = None,
+) -> CurriculumDraft:
+    if payload is None:
+        mat = await section_material(db, course, section)
+        if not mat.lectures:
+            raise ValueError("no ingested material for this course section")
+        payload = propose_payload(mat)
+    problems = list(notes or []) + await validate_payload(db, payload)
+    draft = CurriculumDraft(
+        learner_id=learner_id,
+        course=course,
+        section=section,
+        title=f"{course}" + (f" › {section}" if section else ""),
+        status="draft",
+        origin=origin,
+        payload_json=payload,
+        validation_json=problems_json(problems),
+        model_call_id=model_call_id,
+    )
+    db.add(draft)
+    await db.commit()
+    return draft
+
+
+async def get_draft(db: AsyncSession, learner_id: str, draft_id: str) -> CurriculumDraft:
+    d = await db.get(CurriculumDraft, draft_id)
+    if d is None or d.learner_id != learner_id:
+        raise KeyError("draft not found")
+    return d
+
+
+async def list_drafts(db: AsyncSession, learner_id: str) -> list[CurriculumDraft]:
+    stmt = (
+        select(CurriculumDraft)
+        .where(CurriculumDraft.learner_id == learner_id)
+        .order_by(CurriculumDraft.updated_at.desc())
+    )
+    return list((await db.execute(stmt)).scalars())
+
+
+async def update_draft(
+    db: AsyncSession, learner_id: str, draft_id: str, payload: dict[str, Any]
+) -> CurriculumDraft:
+    d = await get_draft(db, learner_id, draft_id)
+    if d.status != "draft":
+        raise ValueError(f"a {d.status} draft cannot be edited; create a new draft")
+    d.payload_json = payload
+    d.validation_json = problems_json(await validate_payload(db, payload))
+    d.version += 1
+    await db.commit()
+    return d
+
+
+async def reject_draft(db: AsyncSession, learner_id: str, draft_id: str) -> CurriculumDraft:
+    d = await get_draft(db, learner_id, draft_id)
+    if d.status == "published":
+        raise ValueError("a published draft cannot be rejected; publish a corrected draft instead")
+    d.status = "rejected"
+    await db.commit()
+    return d
+
+
+@dataclass
+class PublishReport:
+    skills: int = 0
+    edges: int = 0
+    learning_objects: int = 0
+    assessments: int = 0
+    new_object_versions: int = 0
+
+
+async def publish_draft(db: AsyncSession, learner_id: str, draft_id: str) -> PublishReport:
+    """Apply the payload: nodes upserted (course stamped), edges added, a **new** LearningObject
+    version per skill (older versions stay — historical evidence keeps pointing at what was taught),
+    assessments added when their content is new (existing rows untouched). Errors block."""
+    d = await get_draft(db, learner_id, draft_id)
+    if d.status == "published":
+        raise ValueError("already published")
+    payload = d.payload_json
+    problems = await validate_payload(db, payload)
+    errors = [p for p in problems if p.level == "error"]
+    if errors:
+        d.validation_json = problems_json(problems)
+        await db.commit()
+        raise ValueError(
+            "draft has errors: " + "; ".join(f"{p.where}: {p.message}" for p in errors[:5])
+        )
+    report = PublishReport()
+    domain = str(payload.get("domain") or "ai_ml")
+    ids: dict[str, str] = {}
+    for s in payload["skills"]:
+        node = (
+            await db.execute(select(SkillNode).where(SkillNode.slug == s["slug"]))
+        ).scalar_one_or_none()
+        fields = dict(
+            domain=domain,
+            course=payload.get("course") or d.course,
+            title=s["title"],
+            description=s.get("description", ""),
+            success_criteria_json=s.get("success_criteria", []),
+            assessment_requirements_json=s.get("assessment_requirements", {}),
+            example_applications_json=s.get("example_applications", []),
+        )
+        if node is None:
+            node = SkillNode(slug=s["slug"], **fields)
+            db.add(node)
+            await db.flush()
+        else:
+            for k, v in fields.items():
+                setattr(node, k, v)
+        ids[s["slug"]] = node.id
+        report.skills += 1
+    for s in payload["skills"]:
+        for pre in s.get("prerequisites", []):
+            pre_id = ids.get(pre)
+            if pre_id is None:
+                row = (
+                    await db.execute(select(SkillNode.id).where(SkillNode.slug == pre))
+                ).scalar_one_or_none()
+                pre_id = str(row) if row else None
+            if pre_id is None:
+                continue
+            exists = (
+                await db.execute(
+                    select(SkillEdge).where(
+                        SkillEdge.from_skill_id == pre_id,
+                        SkillEdge.to_skill_id == ids[s["slug"]],
+                        SkillEdge.kind == "prerequisite",
+                    )
+                )
+            ).scalar_one_or_none()
+            if exists is None:
+                db.add(
+                    SkillEdge(from_skill_id=pre_id, to_skill_id=ids[s["slug"]], kind="prerequisite")
+                )
+                report.edges += 1
+    for lo in payload.get("learning_objects", []):
+        skill_id = ids[lo["skill"]]
+        latest = (
+            await db.execute(
+                select(LearningObject)
+                .where(LearningObject.skill_id == skill_id)
+                .order_by(LearningObject.version.desc())
+                .limit(1)
+            )
+        ).scalar_one_or_none()
+        fields = dict(
+            concept=lo["concept"],
+            goal=lo["goal"],
+            examples_json=lo.get("examples", []),
+            exercises_json=lo.get("exercises", []),
+            sources_json=lo.get("sources", []),
+            success_criteria_json=lo.get("success_criteria", []),
+        )
+        same = latest is not None and all(getattr(latest, k) == v for k, v in fields.items())
+        if not same:
+            db.add(
+                LearningObject(
+                    skill_id=skill_id, version=(latest.version + 1) if latest else 1, **fields
+                )
+            )
+            report.new_object_versions += 1
+        report.learning_objects += 1
+    for a in payload.get("assessments", []):
+        skill_id = ids[a["skill"]]
+        item = {k: v for k, v in dict(a["item"]).items()}
+        if a.get("source_chunk_id"):
+            item["source_chunk_id"] = a["source_chunk_id"]
+        item["draft_id"] = d.id
+        dup = False
+        for arow in (
+            await db.execute(
+                select(Assessment).where(
+                    Assessment.skill_id == skill_id, Assessment.kind == a["kind"]
+                )
+            )
+        ).scalars():
+            core = {
+                k: v
+                for k, v in arow.item_json.items()
+                if k not in ("seed_key", "draft_id", "source_chunk_id")
+            }
+            mine = {
+                k: v
+                for k, v in item.items()
+                if k not in ("seed_key", "draft_id", "source_chunk_id")
+            }
+            if core == mine:
+                dup = True
+                break
+        if dup:
+            continue
+        rubric_id = None
+        if a.get("rubric"):
+            rubric = AssessmentRubric(criteria_json=a["rubric"], version=1)
+            db.add(rubric)
+            await db.flush()
+            rubric_id = rubric.id
+        db.add(Assessment(skill_id=skill_id, kind=a["kind"], item_json=item, rubric_id=rubric_id))
+        report.assessments += 1
+    d.status = "published"
+    d.published_at = utcnow_iso()
+    d.validation_json = problems_json(problems)
+    await db.commit()
+    return report
+
+
+# ----------------------------------------------------------------------------- source passages
+@dataclass
+class Passage:
+    chunk_id: str
+    text: str
+    citation: str
+    course: str | None
+    section: str | None
+    lecture: str | None
+    source_type: str
+    trust_tier: int
+    document_title: str
+    uri: str
+    t_start: float | None
+    t_end: float | None
+    prev_text: str | None
+    next_text: str | None
+
+
+async def passage(db: AsyncSession, chunk_id: str) -> Passage | None:
+    """The cited chunk with its provenance and neighbours (citation viewer); None when gone."""
+    row = (
+        await db.execute(
+            select(Chunk, ChunkProvenance, DocumentVersion, Document)
+            .join(ChunkProvenance, ChunkProvenance.chunk_id == Chunk.id)
+            .join(DocumentVersion, DocumentVersion.id == Chunk.document_version_id)
+            .join(Document, Document.id == DocumentVersion.document_id)
+            .where(Chunk.id == chunk_id)
+        )
+    ).first()
+    if row is None:
+        return None
+    c, prov, ver, doc = row
+    neighbours = {
+        ch.ordinal: ch.text
+        for ch in (
+            await db.execute(
+                select(Chunk).where(
+                    Chunk.document_version_id == ver.id,
+                    Chunk.ordinal.in_([c.ordinal - 1, c.ordinal + 1]),
+                )
+            )
+        ).scalars()
+    }
+    time = (
+        f" @{int(c.t_start // 60):02d}:{int(c.t_start % 60):02d}" if c.t_start is not None else ""
+    )
+    parts = [p for p in (prov.course, prov.section, prov.lecture) if p]
+    return Passage(
+        chunk_id=c.id,
+        text=c.text,
+        citation="[" + " › ".join(parts) + time + "]",
+        course=prov.course,
+        section=prov.section,
+        lecture=prov.lecture,
+        source_type=prov.source_type,
+        trust_tier=prov.trust_tier,
+        document_title=doc.title,
+        uri=doc.uri,
+        t_start=c.t_start,
+        t_end=c.t_end,
+        prev_text=neighbours.get(c.ordinal - 1),
+        next_text=neighbours.get(c.ordinal + 1),
+    )
+
+
+def open_target(uri: str, roots: list[Path]) -> Path | None:
+    """The local file behind a document URI, only when it is a plain file (no archive member, no
+    URL, no empty path) that lies under one of the configured ingest roots. Anything else is not
+    served: the path is shown to the learner instead."""
+    if not uri or uri.startswith(("http://", "https://")) or "!/" in uri:
+        return None
+    try:
+        p = Path(uri).expanduser().resolve()
+    except (OSError, RuntimeError):
+        return None
+    if not p.is_file():
+        return None
+    if any(p == r or r in p.parents for r in roots):
+        return p
+    return None
+
+
+def open_fragment(source_type: str, uri: str, t_start: float | None) -> str:
+    """`#t=` for media (browsers seek), nothing else: PDF page numbers are not tracked."""
+    if t_start is not None and (
+        source_type in ("udemy_caption", "audio", "video", "transcript")
+        or uri.lower().endswith((".mp4", ".mp3", ".m4a", ".webm", ".mov", ".wav"))
+    ):
+        return f"#t={int(t_start)}"
+    return ""
+
+
+# ----------------------------------------------------------------------------- content reports
+async def file_report(
+    db: AsyncSession,
+    learner_id: str,
+    *,
+    kind: str,
+    turn_id: str | None,
+    chunk_id: str | None,
+    skill_id: str | None,
+    note: str,
+    assessment_id: str | None = None,
+) -> ContentReport:
+    """A report is a row next to the evidence; it never rewrites a chunk, a turn or a grade."""
+    r = ContentReport(
+        learner_id=learner_id,
+        kind=kind,
+        turn_id=turn_id,
+        chunk_id=chunk_id,
+        skill_id=skill_id,
+        assessment_id=assessment_id,
+        note=note.strip(),
+    )
+    db.add(r)
+    await db.commit()
+    return r

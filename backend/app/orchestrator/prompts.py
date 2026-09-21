@@ -9,6 +9,9 @@ PROMPTS_DIR = PROJECT_ROOT / "prompts"
 BASE_VERSION = "pedagogy.v1"
 TUTOR_VERSION = "tutor.v1"
 GRADER_VERSION = "grader.explain_back.v1"
+CURRICULUM_VERSION = "curriculum.draft.v1"
+LISTENING_VERSION = "listening.comprehension.v1"
+VOICE_VERSION = "voice.conversation.v1"
 PROMPT_VERSION = f"{BASE_VERSION}+{TUTOR_VERSION}"
 
 
@@ -33,3 +36,15 @@ def grader_task(name: str) -> str:
 
 def challenge_task(mode: str) -> str:
     return _read(f"challenge/{mode}.v1.md")
+
+
+def curriculum_task(name: str) -> str:
+    return _read(f"curriculum/{name}.v1.md")
+
+
+def listening_task(name: str) -> str:
+    return _read(f"listening/{name}.v1.md")
+
+
+def voice_task(name: str) -> str:
+    return _read(f"voice/{name}.v1.md")

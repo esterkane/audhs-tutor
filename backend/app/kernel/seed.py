@@ -65,6 +65,7 @@ async def load_seed(db: AsyncSession, seed_dir: Path) -> SeedReport:
         ).scalar_one_or_none()
         fields = dict(
             domain=domain,
+            course=data.get("course"),
             title=s["title"],
             description=s.get("description", ""),
             success_criteria_json=s.get("success_criteria", []),
