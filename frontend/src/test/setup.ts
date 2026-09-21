@@ -24,6 +24,12 @@ class RO {
 Element.prototype.scrollIntoView = () => {}
 Element.prototype.hasPointerCapture = () => false
 Element.prototype.releasePointerCapture = () => {}
+// CodeMirror measures the DOM through Range client rects, which jsdom does not implement.
+const noRects = () =>
+  ({ length: 0, item: () => null, [Symbol.iterator]: [][Symbol.iterator] }) as unknown as DOMRectList
+if (!Range.prototype.getClientRects) Range.prototype.getClientRects = noRects
+if (!Range.prototype.getBoundingClientRect)
+  Range.prototype.getBoundingClientRect = () => new DOMRect(0, 0, 0, 0)
 
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'

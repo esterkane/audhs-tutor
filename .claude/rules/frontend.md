@@ -14,6 +14,7 @@ Layout: `frontend/src/{app,routes,features/<feature>/{components,hooks,api},comp
   - The Zustand store `useMode` (`stores/mode.ts`) exposes `{mode, energy, setMode, …}`; components read density/session-length from it. Never mutate mode without user action. (Older text said `ModeProvider`; there is no such component.)
   - Every adaptation the UI applies goes through `useAdaptationLog()` so it is explained and undoable.
   - Timers are soft (wind-down prompt), never hard cut-offs.
+- Code editing: `features/code/CodeEditor.tsx` (CodeMirror 6 + plain textarea switch/fallback; Esc then Tab must always leave the editor). Only the four declared `@codemirror/*` packages may be imported (pnpm is strict: transitive packages do not resolve).
 - Streaming: SSE for tutor tokens (`useTutorStream`, exists); WebSocket for voice (`features/voice/useVoiceLoop.ts`, P9: connects and records only on a click, playback stoppable, typed fallback always present). Render markdown with KaTeX + code highlighting; Mermaid for the skill map.
 - Tests: `vitest` + Testing Library + `vitest-axe` for components/hooks. Browser journeys: Playwright (approved by ADR-0013) in `frontend/e2e/*.spec.ts`, run with `make test-e2e` against the sandbox stack (`make dev-sandbox`, never `data/dev.db`); controls located by role + accessible name (`getByText` only for status copy); each journey ends its session through the API (`docs/slices/browser-journeys.md`).
 - Lint: eslint (typescript-eslint, jsx-a11y) + prettier. `tsc --noEmit` must pass.

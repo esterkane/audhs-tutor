@@ -6,6 +6,8 @@ import { useAttempt } from '../assess/api'
 import type { AttemptResult } from '../../lib/api'
 import { useExercise, useHint, useSolution, type ExerciseView } from './api'
 import { createPyodideRunner, type RunResult, type Runner } from './runner'
+import { CodeEditor } from './CodeEditor'
+import { readPlainPreference, writePlainPreference } from './editorPreference'
 
 /**
  * One source-linked code exercise (P8). The learner's code runs in the browser sandbox only
@@ -75,7 +77,9 @@ function Editor({
   const solve = useSolution()
   const attempt = useAttempt()
   const startedAt = useRef(0)
-  const [escaped, setEscaped] = useState(false)
+  // per-viewer preference: the plain <textarea> instead of CodeMirror (also the mount fallback)
+  const [plainEditor, setPlainEditor] = useState<boolean>(() => readPlainPreference())
+  const [editorNote, setEditorNote] = useState<string | null>(null)
   const [checkAnswer, setCheckAnswer] = useState('')
   const [checkConfidence, setCheckConfidence] = useState<number | null>(null)
   const [checkResult, setCheckResult] = useState<AttemptResult | null>(null)
@@ -189,31 +193,42 @@ function Editor({
           Your saved draft was restored; Reset returns the starter code.
         </p>
       )}
-      <label htmlFor="code-editor" className="text-sm font-medium block mt-3">
-        Your code (Python; Tab inserts two spaces — Shift+Tab, or Esc then Tab, leaves the editor)
+      <label
+        id="code-editor-label"
+        htmlFor={plainEditor ? 'code-editor' : undefined}
+        className="text-sm font-medium block mt-3"
+      >
+        {plainEditor
+          ? 'Your code (Python; Tab inserts two spaces — Shift+Tab, or Esc then Tab, leaves the editor)'
+          : 'Your code (Python; Tab indents — Esc then Tab leaves the editor)'}
       </label>
-      <textarea
+      <CodeEditor
         id="code-editor"
-        className="w-full font-mono text-sm border border-line rounded-md p-2 min-h-56 mt-1"
         value={code}
-        spellCheck={false}
-        onChange={(e) => setCode(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Escape') {
-            setEscaped(true)
-            return
-          }
-          if (e.key === 'Tab' && !e.shiftKey && !e.ctrlKey && !e.metaKey && !escaped) {
-            e.preventDefault()
-            const el = e.currentTarget
-            const { selectionStart, selectionEnd } = el
-            const next = code.slice(0, selectionStart) + '  ' + code.slice(selectionEnd)
-            setCode(next)
-            requestAnimationFrame(() => el.setSelectionRange(selectionStart + 2, selectionStart + 2))
-          }
-          if (e.key !== 'Escape') setEscaped(false)
+        onChange={setCode}
+        plain={plainEditor}
+        onPlainFallback={(reason) => {
+          setPlainEditor(true)
+          setEditorNote(`The code editor could not start (${reason}); using the plain editor.`)
         }}
       />
+      {editorNote && (
+        <p className="text-xs text-muted mt-1" role="status">
+          {editorNote}
+        </p>
+      )}
+      <button
+        type="button"
+        className="text-xs underline text-muted mt-1"
+        onClick={() => {
+          const next = !plainEditor
+          setPlainEditor(next)
+          setEditorNote(null)
+          writePlainPreference(next)
+        }}
+      >
+        {plainEditor ? 'Switch to the code editor' : 'Switch to the plain editor'}
+      </button>
       <div className="flex flex-wrap gap-2 mt-2">
         <Button
           variant="primary"

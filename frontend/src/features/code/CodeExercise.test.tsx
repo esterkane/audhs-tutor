@@ -1,8 +1,9 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { CodeExercise } from './CodeExercise'
+import { PLAIN_EDITOR_KEY } from './editorPreference'
 import type { Runner, RunResult } from './runner'
 
 const exercise = {
@@ -31,7 +32,7 @@ const exercise = {
     where: 'your browser',
     network: 'none',
     filesystem: 'in-memory',
-    runtime_download: 'jsDelivr once',
+    runtime_download: 'served by this app from its own origin',
   },
 }
 const graded = {
@@ -98,9 +99,38 @@ function stub(posts: { url: string; body: unknown }[]) {
 }
 
 describe('CodeExercise', () => {
+  // the interaction tests drive the plain <textarea> (jsdom cannot type into CodeMirror);
+  // the CodeMirror test below covers mounting, naming, value sync and the switch
+  beforeEach(() => localStorage.setItem(PLAIN_EDITOR_KEY, '1'))
   afterEach(() => {
     vi.unstubAllGlobals()
     localStorage.clear()
+  })
+
+  it('mounts CodeMirror by default with an accessible name, syncs Reset into it and can switch to the plain editor', async () => {
+    localStorage.removeItem(PLAIN_EDITOR_KEY)
+    stub([])
+    const { container } = renderApp(
+      <CodeExercise sessionId="s1" skillId="k1" runner={fakeRunner(() => ok)} />,
+    )
+    const mirror = await screen.findByRole('textbox', { name: /Your code \(Python; Tab indents/ })
+    expect(mirror).toHaveAttribute('contenteditable', 'true')
+    expect(screen.getByTestId('code-mirror').textContent).toContain('def softmax(x):')
+    expect(screen.queryByRole('textbox', { name: /Tab inserts two spaces/ })).not.toBeInTheDocument()
+    // the switch keeps the code and is remembered per viewer
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to the plain editor' }))
+    const plain = screen.getByLabelText(/Tab inserts two spaces/) as HTMLTextAreaElement
+    expect(plain.value).toBe(exercise.starter_code)
+    expect(localStorage.getItem(PLAIN_EDITOR_KEY)).toBe('1')
+    fireEvent.change(plain, { target: { value: 'x = 1' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to the code editor' }))
+    expect(screen.getByTestId('code-mirror').textContent).toContain('x = 1')
+    expect(localStorage.getItem(PLAIN_EDITOR_KEY)).toBeNull()
+    // an external value (Reset) flows into the mounted editor
+    fireEvent.click(screen.getByRole('button', { name: 'Reset to starter code' }))
+    expect(screen.getByTestId('code-mirror').textContent).toContain('def softmax(x):')
+    expect(screen.getByTestId('code-mirror').textContent).not.toContain('x = 1')
+    expect(await axe(container)).toHaveNoViolations()
   })
 
   it('runs only on click, keeps run and submit apart, gives hints one at a time and the solution only on request', async () => {
