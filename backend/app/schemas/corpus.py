@@ -69,6 +69,14 @@ class IngestRequest(BaseModel):
     trust_tier: int = Field(default=2, ge=0, le=3)
     source_type: str | None = None
     index: bool = True
+    language: str | None = Field(
+        default=None,
+        pattern=r"^[a-z]{2,3}$",
+        description="force the transcription language (ISO 639 code); null = auto",
+    )
+    media: bool = Field(
+        default=True, description="transcribe audio/video and read images (false: list as skipped)"
+    )
 
 
 class IngestDocResult(BaseModel):
@@ -84,6 +92,29 @@ class IngestDocResult(BaseModel):
     indexed: int
     trust_updated: bool = False
     reverted: bool = False
+    transcribed_seconds: float | None = None
+    vision: bool = False
+
+
+class ToolStatus(BaseModel):
+    ready: bool
+    registry_id: str | None = None
+    detail: str
+    package_installed: bool | None = None
+
+
+class IngestCapabilities(BaseModel):
+    formats: dict[str, list[str]]
+    unsupported: dict[str, str]
+    archives: list[str]
+    audio: list[str]
+    video: list[str]
+    images: list[str]
+    stt: ToolStatus
+    vision: ToolStatus
+    audio_decoder: str | None
+    legacy_office: str | None
+    image_converter: str | None
 
 
 class SkippedFile(BaseModel):

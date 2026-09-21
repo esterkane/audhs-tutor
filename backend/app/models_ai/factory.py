@@ -53,12 +53,50 @@ def fastembed_cached(models_dir: Path, repo_id: str) -> set[str]:
     return {f"fastembed:{repo_id}"} if snap.is_dir() else set()
 
 
+def mlx_snapshot_dir(models_dir: Path, repo_id: str) -> Path:
+    from app.models_ai.downloader import slugify
+
+    return models_dir / "mlx" / slugify(repo_id)
+
+
+def mlx_cached(models_dir: Path, repo_id: str) -> set[str]:
+    """`mlx:<repo_id>` when the snapshot under MODELS_DIR/mlx holds weights (`config.json` +
+    a safetensors/npz file), i.e. the pull completed."""
+    snap = mlx_snapshot_dir(models_dir, repo_id)
+    if not snap.is_dir() or not (snap / "config.json").exists():
+        return set()
+    has_weights = any(p.suffix in (".safetensors", ".npz") for p in snap.iterdir())
+    return {f"mlx:{repo_id}"} if has_weights else set()
+
+
+def onnx_cached(models_dir: Path, registry_id: str, repo_id: str, filename: str | None) -> set[str]:
+    """`onnx:<repo_id>` when the single-file download landed under MODELS_DIR/onnx/<id>/."""
+    if not filename:
+        return set()
+    path = models_dir / "onnx" / registry_id / Path(filename).name
+    return {f"onnx:{repo_id}"} if path.is_file() and path.stat().st_size > 0 else set()
+
+
 async def installed_models(settings: Settings) -> set[str]:
-    """Ollama tags + cached fastembed rerankers + 'hosted' when an API key exists (for seeding)."""
+    """Ollama tags + cached fastembed rerankers + MLX snapshots + ONNX files + 'kokoro' when the
+    persistent TTS server answers + 'hosted' when an API key exists. Reading never downloads."""
     installed = await installed_ollama_tags(settings.ollama_host)
     for entry in load_profiles()["registry_defaults"]:
         if entry.get("runtime") == "fastembed":
             installed |= fastembed_cached(settings.models_dir_resolved, str(entry["repo_id"]))
+        if entry.get("runtime") == "mlx":
+            installed |= mlx_cached(settings.models_dir_resolved, str(entry["repo_id"]))
+        if entry.get("runtime") == "onnx":
+            installed |= onnx_cached(
+                settings.models_dir_resolved,
+                str(entry["id"]),
+                str(entry["repo_id"]),
+                entry.get("file_or_tag"),
+            )
+    from app.voice.tts import kokoro_reachable
+
+    if await kokoro_reachable(settings.kokoro_url):
+        installed.add("kokoro")
     if settings.anthropic_api_key:
         installed.add("hosted")
     return installed

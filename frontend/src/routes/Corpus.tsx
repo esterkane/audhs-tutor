@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import {
+  useCapabilities,
   useCorpusStats,
   useDocuments,
   useForgetDocument,
@@ -18,25 +19,74 @@ const TRUST_LABELS: Record<number, string> = {
   3: 'owner-verified',
 }
 
+function Capabilities() {
+  const caps = useCapabilities()
+  if (!caps.data) return null
+  const c = caps.data
+  return (
+    <div className="text-sm mb-3">
+      <p className="text-muted">
+        Captions and transcripts, documents (Word, PowerPoint, Excel, ODF, PDF, RTF, LaTeX), EPUB, HTML,
+        notes, notebooks and source code, zip/tar archives, audio, video and slide images. Unchanged files are
+        skipped; changed files get a new version. You decide the trust level, the files never do.
+      </p>
+      <ul className="mt-2 grid gap-1" aria-label="Optional runtimes">
+        <li>
+          <span className="font-medium">Audio/video transcription:</span>{' '}
+          {c.stt.ready ? 'ready' : 'not ready'} — {c.stt.detail}
+        </li>
+        <li>
+          <span className="font-medium">Slide images:</span> {c.vision.ready ? 'ready' : 'not ready'} —{' '}
+          {c.vision.detail}
+        </li>
+      </ul>
+      <details className="mt-2">
+        <summary className="cursor-pointer">All supported file types</summary>
+        <dl className="mt-2 grid gap-1">
+          {Object.entries(c.formats).map(([group, suffixes]) => (
+            <div key={group} className="flex flex-wrap gap-x-2">
+              <dt className="font-medium">{group}:</dt>
+              <dd className="text-muted">{suffixes.join(' ')}</dd>
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-x-2">
+            <dt className="font-medium">not supported:</dt>
+            <dd className="text-muted">
+              {Object.entries(c.unsupported)
+                .map(([s, hint]) => `${s} (${hint})`)
+                .join(' · ')}
+            </dd>
+          </div>
+        </dl>
+      </details>
+    </div>
+  )
+}
+
 function IngestForm() {
   const ingest = useIngest()
   const [path, setPath] = useState('')
   const [course, setCourse] = useState('')
   const [trust, setTrust] = useState(2)
+  const [language, setLanguage] = useState('')
+  const [media, setMedia] = useState(true)
   const summary = ingest.data?.summary as Record<string, unknown> | undefined
   return (
     <Card>
       <CardTitle>Ingest course material</CardTitle>
-      <p className="text-sm text-muted mb-3">
-        A folder laid out like a Udemy export (Course / Section / Lecture) with .vtt, .srt, .ipynb, .pdf, .md
-        or .txt files. Unchanged files are skipped; changed files get a new version. You decide the trust
-        level, the files never do.
-      </p>
+      <Capabilities />
       <form
         className="grid gap-3"
         onSubmit={(e) => {
           e.preventDefault()
-          ingest.mutate({ path, course: course || null, trust_tier: trust, index: true })
+          ingest.mutate({
+            path,
+            course: course || null,
+            trust_tier: trust,
+            index: true,
+            language: language.trim() || null,
+            media,
+          })
         }}
       >
         <label className="text-sm font-medium">
@@ -71,6 +121,20 @@ function IngestForm() {
             ))}
           </select>
         </label>
+        <label className="text-sm font-medium">
+          Transcription language (ISO code, empty = detect)
+          <input
+            className="block w-24 border border-line rounded-md px-2 py-1 mt-1"
+            value={language}
+            onChange={(e) => setLanguage(e.target.value)}
+            placeholder="en"
+            maxLength={5}
+          />
+        </label>
+        <label className="text-sm font-medium flex items-center gap-2">
+          <input type="checkbox" checked={media} onChange={(e) => setMedia(e.target.checked)} />
+          Transcribe audio/video and read images (slow; long runs are better done with make ingest)
+        </label>
         <div>
           <Button type="submit" variant="primary" disabled={ingest.isPending || !path}>
             {ingest.isPending ? 'Ingesting…' : 'Ingest'}
@@ -87,8 +151,24 @@ function IngestForm() {
           {String(summary.documents)} documents, {String(summary.new_versions)} new versions,{' '}
           {String(summary.chunks)} chunks ({String(summary.deduped)} duplicates dropped,{' '}
           {String(summary.flagged)} flagged, {String(summary.indexed)} indexed)
+          {Number(summary.transcribed_media) > 0 &&
+            ` · ${String(summary.transcribed_media)} media transcribed (${String(summary.audio_seconds)} s)`}
+          {Number(summary.images_read) > 0 && ` · ${String(summary.images_read)} images read`}
           {ingest.data && ingest.data.skipped.length > 0 && ` · ${ingest.data.skipped.length} files skipped`}
         </p>
+      )}
+      {ingest.data && ingest.data.skipped.length > 0 && (
+        <details className="mt-2 text-sm">
+          <summary className="cursor-pointer">Skipped files and why</summary>
+          <ul className="mt-1 grid gap-1">
+            {ingest.data.skipped.slice(0, 50).map((s) => (
+              <li key={s.path}>
+                <span className="text-muted">{s.path.split('/').slice(-2).join('/')}</span> — {s.reason}
+              </li>
+            ))}
+            {ingest.data.skipped.length > 50 && <li>… and {ingest.data.skipped.length - 50} more</li>}
+          </ul>
+        </details>
       )}
     </Card>
   )

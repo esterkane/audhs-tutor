@@ -44,8 +44,13 @@ def parse_markdown(raw: str) -> MarkdownDoc:
     body = raw
     m = _FRONT.match(raw)
     if m:
-        meta = yaml.safe_load(m.group(1)) or {}
-        body = raw[m.end() :]
+        try:
+            loaded = yaml.safe_load(m.group(1))
+        except yaml.YAMLError:
+            loaded = None  # a leading `---` horizontal rule, not front matter
+        if isinstance(loaded, dict):
+            meta = loaded
+            body = raw[m.end() :]
     title = str(meta.get("title") or "Untitled")
     sections: list[Section] = []
     matches = list(_HEADING.finditer(body))

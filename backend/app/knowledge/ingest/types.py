@@ -6,9 +6,25 @@ import hashlib
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-BlockKind = Literal["prose", "code", "caption", "slide"]
+BlockKind = Literal["prose", "code", "caption", "slide", "table"]
 
-SOURCE_TYPES = ("udemy_caption", "slides", "notebook", "pdf", "markdown", "text", "manual")
+SOURCE_TYPES = (
+    "udemy_caption",
+    "transcript",
+    "slides",
+    "notebook",
+    "pdf",
+    "markdown",
+    "text",
+    "document",
+    "book",
+    "html",
+    "code",
+    "audio",
+    "video",
+    "image",
+    "manual",
+)
 
 
 @dataclass
@@ -50,6 +66,32 @@ class ChunkDraft:
     kind: BlockKind = "prose"
 
 
+class RuntimeCallFailed(RuntimeError):
+    """A registry model call (STT, vision) failed. Carries what `model_call` needs so the failure
+    is logged with `ok=False` instead of vanishing into a skip reason."""
+
+    def __init__(
+        self,
+        *,
+        task: str,
+        provider: str,
+        registry_id: str,
+        model: str,
+        error: str,
+        latency_ms: int = 0,
+    ) -> None:
+        super().__init__(f"{task} call to {registry_id} failed: {error}")
+        self.task, self.provider = task, provider
+        self.registry_id, self.model = registry_id, model
+        self.error, self.latency_ms = error, latency_ms
+
+
 def content_hash(raw: bytes | str) -> str:
     data = raw.encode() if isinstance(raw, str) else raw
     return hashlib.sha256(data).hexdigest()
+
+
+def file_hash(path: Any) -> str:
+    """Streamed sha256 of a file (large media never fully in memory)."""
+    with open(path, "rb") as f:
+        return hashlib.file_digest(f, "sha256").hexdigest()

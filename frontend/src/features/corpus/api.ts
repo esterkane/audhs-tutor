@@ -8,11 +8,20 @@ export type IngestOut = Schemas['IngestOut']
 export type SearchRequest = Schemas['SearchRequest']
 export type SearchOut = Schemas['SearchOut']
 export type SearchHit = Schemas['SearchHit']
+export type IngestCapabilities = Schemas['IngestCapabilities']
 
 export function useCorpusStats() {
   return useQuery({
     queryKey: ['corpus', 'stats'],
     queryFn: () => apiFetch<CorpusStats>('/api/corpus/stats'),
+  })
+}
+
+export function useCapabilities() {
+  return useQuery({
+    queryKey: ['corpus', 'capabilities'],
+    queryFn: () => apiFetch<IngestCapabilities>('/api/corpus/capabilities'),
+    staleTime: 60_000,
   })
 }
 

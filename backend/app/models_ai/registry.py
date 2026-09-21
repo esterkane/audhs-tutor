@@ -19,6 +19,8 @@ RUNTIME_TO_PROVIDER = {
     "hosted": "anthropic",
     "mlx": "mlx",
     "fastembed": "fastembed",
+    "kokoro": "kokoro",
+    "onnx": "onnx",
 }
 
 
@@ -80,6 +82,12 @@ async def seed_defaults(
         if entry["runtime"] == "hosted" and "hosted" in installed:
             status = "ready"
         if entry["runtime"] == "fastembed" and f"fastembed:{entry['repo_id']}" in installed:
+            status = "ready"
+        if entry["runtime"] == "mlx" and f"mlx:{entry['repo_id']}" in installed:
+            status = "ready"
+        if entry["runtime"] == "kokoro" and "kokoro" in installed:
+            status = "ready"
+        if entry["runtime"] == "onnx" and f"onnx:{entry['repo_id']}" in installed:
             status = "ready"
         row = ModelRegistry(**entry, status=status)
         db.add(row)

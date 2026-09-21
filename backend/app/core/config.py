@@ -23,12 +23,14 @@ class Settings(BaseSettings):
     daily_budget_usd: float = 1.50
     routing_profile: str = "default"
     embed_model: str = "nomic-embed-text"
-    whisper_model: str = "mlx-community/whisper-large-v3-turbo"
     kokoro_url: str = "http://localhost:8880"
     qdrant_url: str = "http://localhost:6333"
     retrieval_max_per_document: int = 3  # diversity cap on hits from one document (0 = off)
     quarantine_below_trust: int = 2  # flagged chunks below this trust tier never reach the tutor
     ingest_roots: str = "~"  # comma-separated folders the ingest API may read (CLI is unrestricted)
+    transcript_cache_dir: str = "./data/transcripts"  # STT results by content hash
+    stt_language: str = ""  # ISO code forced for transcription; empty = auto-detect
+    voice_dir: str = "./data/voice"  # retained voice recordings (opt-in, see voice.retain_audio)
 
     @property
     def ingest_roots_resolved(self) -> list[Path]:
@@ -63,6 +65,16 @@ class Settings(BaseSettings):
     @property
     def models_dir_resolved(self) -> Path:
         p = Path(self.models_dir)
+        return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+
+    @property
+    def voice_dir_resolved(self) -> Path:
+        p = Path(self.voice_dir).expanduser()
+        return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+
+    @property
+    def transcript_cache_dir_resolved(self) -> Path:
+        p = Path(self.transcript_cache_dir).expanduser()
         return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
 
 

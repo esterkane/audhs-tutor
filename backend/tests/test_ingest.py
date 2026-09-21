@@ -446,7 +446,7 @@ async def test_unsupported_and_single_file_paths(
     lecture = tmp_path / "Course X" / "02 - Sec" / "005 - Lec.srt"
     lecture.parent.mkdir(parents=True)
     lecture.write_text(SRT)
-    (lecture.parent / "slides.pptx").write_bytes(b"PK")
+    (lecture.parent / "slides.rar").write_bytes(b"Rar!")
     report = await ingest_path(db, lecture, repo=fake_repo)  # a single file
     assert report.results[0].course == "Course X" and report.skipped == []
     prov = (await db.execute(select(ChunkProvenance))).scalars().first()
@@ -454,10 +454,10 @@ async def test_unsupported_and_single_file_paths(
     folder = await ingest_path(db, tmp_path, repo=fake_repo)
     assert (
         folder.summary()["unchanged"] == 1 and len(folder.skipped) == 1
-    )  # pptx reported, not silent
-    assert "export it to PDF" in folder.skipped[0].reason
+    )  # rar reported, not silent
+    assert "extract it first" in folder.skipped[0].reason
     forced = await ingest_path(
-        db, lecture.parent / "slides.pptx", source_type="text", repo=fake_repo
+        db, lecture.parent / "slides.rar", source_type="text", repo=fake_repo
     )
     assert forced.results == [] and len(forced.skipped) == 1  # override never widens the gate
 

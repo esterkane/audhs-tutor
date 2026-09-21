@@ -14,6 +14,7 @@ Invariants (tests/test_ingest.py):
   flagged at ingest time and stored on the provenance row."""
 
 import asyncio
+import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -23,10 +24,32 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import PROJECT_ROOT
 from app.db.models import Chunk, ChunkProvenance, Document, DocumentVersion
+from app.db.traces import ModelCallRecord, write_model_call
+from app.knowledge.ingest.archives import archive_stem, content_root, extract_archive, is_archive
 from app.knowledge.ingest.chunker import chunk_doc
-from app.knowledge.ingest.loaders import iter_source_files, load_file
+from app.knowledge.ingest.loaders import (
+    SkipFile,
+    is_expensive,
+    iter_source_files,
+    load_file,
+    provenance_from_path,
+    stub_doc,
+)
+from app.knowledge.ingest.media import (
+    DEFAULT_STT_HINT,
+    MEDIA_SUFFIXES,
+    SttSupportMissing,
+    Transcriber,
+    sidecar_transcript,
+)
 from app.knowledge.ingest.normalize import approx_tokens, norm_hash
-from app.knowledge.ingest.types import SourceDoc
+from app.knowledge.ingest.types import RuntimeCallFailed, SourceDoc, file_hash
+from app.knowledge.ingest.vision import (
+    DEFAULT_VISION_HINT,
+    IMAGE_SUFFIXES,
+    ImageReader,
+    VisionSupportMissing,
+)
 from app.knowledge.provenance import Provenance, flag_instruction_patterns
 from app.knowledge.repository import ChunkRecord, RetrievalRepository
 
@@ -47,6 +70,24 @@ class IngestResult:
     indexed: int = 0
     trust_updated: bool = False
     reverted: bool = False
+    transcribed_seconds: float | None = None  # audio/video: seconds of media transcribed
+    vision: bool = False  # image read by the vision model
+
+
+@dataclass
+class IngestOptions:
+    """Optional runtimes and knobs for a run. Everything defaults to 'text formats only'.
+    Built by `runtime.default_options()` for the API and the CLI."""
+
+    transcriber: Transcriber | None = None
+    image_reader: ImageReader | None = None
+    language: str | None = None  # forced STT language; None = auto-detect
+    media: bool = True  # False: audio/video/images are listed as skipped without decoding
+    force_media: bool = False  # re-transcribe / re-read even when the bytes are unchanged
+    transcript_cache: Path | None = None
+    expand_archives: bool = True
+    stt_hint: str = DEFAULT_STT_HINT  # skip reason when no STT model is ready
+    vision_hint: str = DEFAULT_VISION_HINT
 
 
 @dataclass
@@ -77,6 +118,10 @@ class IngestReport:
             "flagged": sum(r.flagged for r in new),
             "indexed": sum(r.indexed for r in new),
             "courses": sorted({r.course for r in self.results if r.course}),
+            "transcribed_media": sum(1 for r in new if r.transcribed_seconds is not None),
+            "audio_seconds": round(sum(r.transcribed_seconds or 0.0 for r in new), 1),
+            "images_read": sum(1 for r in new if r.vision),
+            "source_types": sorted({r.source_type for r in self.results}),
         }
 
 
@@ -207,12 +252,15 @@ async def ingest_source(
         document.section, document.lecture = doc.section, doc.lecture
 
     def result(**kw: Any) -> IngestResult:
+        tr = doc.meta.get("transcription")
         return IngestResult(
             document_id=document.id,
             title=doc.title,
             uri=doc.uri,
             course=doc.course,
             source_type=doc.source_type,
+            transcribed_seconds=float(tr["duration_s"]) if isinstance(tr, dict) else None,
+            vision="vision" in doc.meta,
             **kw,
         )
 
@@ -368,6 +416,73 @@ async def ingest_source(
     )
 
 
+async def _latest_hash(db: AsyncSession, uri: str) -> str | None:
+    row = (
+        await db.execute(
+            select(DocumentVersion.content_hash)
+            .join(Document, Document.id == DocumentVersion.document_id)
+            .where(Document.uri == uri)
+            .order_by(DocumentVersion.version.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+    return str(row) if row else None
+
+
+async def _log_runtime_call(db: AsyncSession, doc: SourceDoc) -> None:
+    """Transcription / vision are model calls: one `model_call` row each (ADR-0010 observability),
+    also when the model saw nothing."""
+    tr = doc.meta.get("transcription")
+    if isinstance(tr, dict) and not tr.get("cached") and tr.get("registry_id"):
+        await write_model_call(
+            db,
+            ModelCallRecord(
+                provider="mlx",
+                model=str(tr.get("model") or ""),
+                registry_id=str(tr["registry_id"]),
+                task="stt",
+                latency_ms=int(tr.get("latency_ms") or 0),
+                metadata={
+                    "uri": doc.uri,
+                    "duration_s": tr.get("duration_s"),
+                    "language": tr.get("language"),
+                    "decoder": tr.get("decoder"),
+                },
+            ),
+        )
+    vi = doc.meta.get("vision")
+    if isinstance(vi, dict) and vi.get("registry_id"):
+        await write_model_call(
+            db,
+            ModelCallRecord(
+                provider="ollama",
+                model=str(vi.get("model") or ""),
+                registry_id=str(vi["registry_id"]),
+                task="vision",
+                tokens_in=int(vi.get("tokens_in") or 0),
+                tokens_out=int(vi.get("tokens_out") or 0),
+                latency_ms=int(vi.get("latency_ms") or 0),
+                metadata={"uri": doc.uri, "bytes": vi.get("bytes"), "empty": vi.get("empty")},
+            ),
+        )
+
+
+async def _log_failed_call(db: AsyncSession, e: RuntimeCallFailed, uri: str) -> None:
+    await write_model_call(
+        db,
+        ModelCallRecord(
+            provider=e.provider,
+            model=e.model,
+            registry_id=e.registry_id,
+            task=e.task,
+            latency_ms=e.latency_ms,
+            ok=False,
+            error=e.error[:500],
+            metadata={"uri": uri},
+        ),
+    )
+
+
 async def ingest_file(
     db: AsyncSession,
     path: Path,
@@ -378,13 +493,163 @@ async def ingest_file(
     trust_tier: int = 2,
     skill_ids_by_slug: dict[str, str] | None = None,
     repo: RetrievalRepository | None = None,
+    options: IngestOptions | None = None,
+    provenance: dict[str, Any] | None = None,
+    uri: str | None = None,
 ) -> IngestResult:
-    doc = await asyncio.to_thread(
-        load_file, path, root=root, course=course, source_type=source_type
-    )
+    opts = options or IngestOptions()
+    raw_hash: str | None = None
+    if is_expensive(path) and not opts.force_media:
+        # decode/transcribe/OCR only when the bytes changed: compare the (streamed) hash first
+        raw_hash = await asyncio.to_thread(file_hash, path)
+        stub = await asyncio.to_thread(
+            stub_doc,
+            path,
+            root=root,
+            course=course,
+            source_type=source_type,
+            provenance=provenance,
+            uri=uri,
+            raw_hash=raw_hash,
+        )
+        if await _latest_hash(db, stub.uri) == raw_hash:
+            return await ingest_source(
+                db, stub, skill_ids_by_slug=skill_ids_by_slug, trust_tier=trust_tier, repo=repo
+            )
+    try:
+        doc = await asyncio.to_thread(
+            load_file,
+            path,
+            root=root,
+            course=course,
+            source_type=source_type,
+            provenance=provenance,
+            uri=uri,
+            raw_hash=raw_hash,
+            transcriber=opts.transcriber,
+            image_reader=opts.image_reader,
+            language=opts.language,
+            transcript_cache=opts.transcript_cache,
+            stt_hint=opts.stt_hint,
+            vision_hint=opts.vision_hint,
+        )
+    except RuntimeCallFailed as e:
+        await _log_failed_call(db, e, uri or path.resolve().as_posix())  # noqa: ASYNC240
+        raise
+    await _log_runtime_call(db, doc)
+    vi = doc.meta.get("vision")
+    if isinstance(vi, dict) and vi.get("empty"):
+        raise SkipFile("image: the vision model found no text or figure")
     return await ingest_source(
         db, doc, skill_ids_by_slug=skill_ids_by_slug, trust_tier=trust_tier, repo=repo
     )
+
+
+def _skip_reason(e: BaseException) -> str:
+    if isinstance(e, SkipFile | SttSupportMissing | VisionSupportMissing | RuntimeCallFailed):
+        return str(e)
+    return f"{type(e).__name__}: {e}"
+
+
+async def _gate(path: Path, opts: IngestOptions) -> SkippedFile | None:
+    """Per-file rules that apply before any loading, for plain files and archive members alike:
+    media/images disabled for the run, a caption next to a media file, archives disabled."""
+    suffix = path.suffix.lower()
+    if suffix in MEDIA_SUFFIXES or suffix in IMAGE_SUFFIXES:
+        if not opts.media:
+            return SkippedFile(path.as_posix(), "media disabled for this run")
+        if suffix in MEDIA_SUFFIXES:
+            sidecar = await asyncio.to_thread(sidecar_transcript, path)
+            if sidecar is not None:
+                return SkippedFile(path.as_posix(), f"transcript present: {sidecar.name}")
+    if is_archive(path) and not opts.expand_archives:
+        return SkippedFile(path.as_posix(), "archives disabled for this run")
+    return None
+
+
+def _archive_plan(
+    archive: Path, root: Path, course: str | None
+) -> tuple[str | None, dict[str, Any] | None]:
+    """How members of an archive get their provenance:
+    - archive directly under the ingest root (a downloaded repo next to the course folders) → it *is*
+      a course: `(course=<archive stem>, None)` and members read sections from their folders;
+    - archive directly inside a course folder → `(course, None)` likewise;
+    - archive inside a section/lecture → members inherit the archive's course/section/lecture and
+      are labelled by their relative path: `(None, <provenance dict>)`."""
+    prov = provenance_from_path(archive, root, course=course)
+    stem = archive_stem(archive)
+    if prov.get("lecture") == archive.stem:  # `x.tar.gz` → lecture "x", not "x.tar"
+        prov["lecture"] = stem
+    if prov.get("title") == archive.stem:
+        prov["title"] = stem
+    rel_dirs = archive.resolve().relative_to(root.resolve()).parts[:-1]
+    if not rel_dirs and course is None:
+        return stem, None
+    if len(rel_dirs) <= (0 if course is not None else 1) and not prov.get("section"):
+        return str(prov["course"]), None
+    return None, prov
+
+
+async def _ingest_archive(
+    db: AsyncSession,
+    archive: Path,
+    *,
+    root: Path,
+    course: str | None,
+    source_type: str | None,
+    trust_tier: int,
+    skill_ids_by_slug: dict[str, str] | None,
+    repo: RetrievalRepository | None,
+    opts: IngestOptions,
+    report: IngestReport,
+) -> None:
+    archive_uri, (member_course, inherited) = await asyncio.to_thread(
+        lambda: (archive.resolve().as_posix(), _archive_plan(archive, root, course))
+    )
+    with tempfile.TemporaryDirectory(prefix="audhs-archive-") as td:
+        extraction = await asyncio.to_thread(extract_archive, archive, Path(td))
+        for name, reason in extraction.skipped:
+            if reason not in ("hidden or build folder", "dotfile"):  # pure noise stays out
+                report.skipped.append(SkippedFile(f"{archive_uri}!/{name}", reason))
+        croot = await asyncio.to_thread(content_root, extraction.root, archive_stem(archive))
+        members = await asyncio.to_thread(iter_source_files, croot)
+        for member in members:
+            rel = member.relative_to(croot).as_posix()
+            uri = f"{archive_uri}!/{rel}"
+            gated = await _gate(member, opts)
+            if gated is not None:
+                report.skipped.append(SkippedFile(uri, gated.reason))
+                continue
+            if inherited is not None:
+                prov: dict[str, Any] | None = {
+                    **inherited,
+                    "title": rel.rsplit(".", 1)[0],
+                    "resource_label": rel,
+                    "archive": archive.name,
+                }
+                m_root: Path | None = None
+                m_course = None
+            else:
+                prov, m_root, m_course = None, croot, member_course
+            try:
+                res = await ingest_file(
+                    db,
+                    member,
+                    root=m_root,
+                    course=m_course,
+                    source_type=source_type,
+                    trust_tier=trust_tier,
+                    skill_ids_by_slug=skill_ids_by_slug,
+                    repo=repo,
+                    options=opts,
+                    provenance=prov,
+                    uri=uri,
+                )
+            except Exception as e:
+                await db.rollback()
+                report.skipped.append(SkippedFile(uri, _skip_reason(e)))
+                continue
+            report.results.append(res)
 
 
 async def ingest_path(
@@ -396,16 +661,42 @@ async def ingest_path(
     trust_tier: int = 2,
     skill_ids_by_slug: dict[str, str] | None = None,
     repo: RetrievalRepository | None = None,
+    options: IngestOptions | None = None,
 ) -> IngestReport:
     """Ingest one file or a directory tree. `src` itself is the root: `<src>/<Course>/<Section>/…`
     unless `course` is given, in which case `src` is the course folder. A single file is treated as
-    `<Course>/<Section>/<file>` (root two levels up). Every failure is reported, never raised."""
+    `<Course>/<Section>/<file>` (root two levels up). Every failure is reported, never raised.
+    Archives are expanded into a temporary folder; media next to a caption file is not transcribed
+    (the caption wins); with `options.media=False` media and images are listed as skipped."""
+    opts = options or IngestOptions()
     report = IngestReport()
     files = await asyncio.to_thread(iter_source_files, src)
     is_dir = await asyncio.to_thread(src.is_dir)
     # a single lecture file sits at <root>/<Course>/<Section>/<file>: the root is three levels up
     root = src if is_dir else src.parents[min(2, len(src.parents) - 1)]
     for path in files:
+        gated = await _gate(path, opts)
+        if gated is not None:
+            report.skipped.append(gated)
+            continue
+        if is_archive(path):
+            try:
+                await _ingest_archive(
+                    db,
+                    path,
+                    root=root,
+                    course=course,
+                    source_type=source_type,
+                    trust_tier=trust_tier,
+                    skill_ids_by_slug=skill_ids_by_slug,
+                    repo=repo,
+                    opts=opts,
+                    report=report,
+                )
+            except Exception as e:
+                await db.rollback()
+                report.skipped.append(SkippedFile(path.as_posix(), _skip_reason(e)))
+            continue
         try:
             res = await ingest_file(
                 db,
@@ -416,10 +707,11 @@ async def ingest_path(
                 trust_tier=trust_tier,
                 skill_ids_by_slug=skill_ids_by_slug,
                 repo=repo,
+                options=opts,
             )
         except Exception as e:
             await db.rollback()
-            report.skipped.append(SkippedFile(path.as_posix(), f"{type(e).__name__}: {e}"))
+            report.skipped.append(SkippedFile(path.as_posix(), _skip_reason(e)))
             continue
         report.results.append(res)
     return report

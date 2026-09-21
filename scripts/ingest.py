@@ -2,11 +2,15 @@
 """Ingest course material into SQLite and the retrieval index.
 
 usage: ingest.py --src PATH [--course NAME] [--trust 0-3] [--type TYPE] [--no-index] [--json]
+                 [--language xx] [--no-media] [--capabilities]
 
 PATH is a file or a folder laid out like a Udemy export: <src>/<Course>/<NN - Section>/<NNN - Lecture>.ext
-(.vtt .srt .ipynb .pdf .md .txt). With --course, <src> itself is the course folder.
-Idempotent: unchanged files are no-ops; changed files get a new version. Trust is decided here,
-never read from the files (ADR-0008). Default trust 2 = purchased course material.
+With --course, <src> itself is the course folder. Formats: captions/transcripts (vtt srt sbv ass ttml
+json tsv timestamped txt), documents (pdf docx odt rtf tex xlsx ods csv), slides (pptx odp), epub, html,
+markdown/rst/org/adoc, notebooks and source code, zip/tar archives, audio/video (transcribed with the
+registry STT model) and images (read by the registry vision model). `--capabilities` shows what this
+machine can do right now. Idempotent: unchanged files are no-ops; changed files get a new version.
+Trust is decided here, never read from the files (ADR-0008). Default trust 2 = purchased material.
 """
 
 import argparse
@@ -20,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from app.core.config import get_settings  # noqa: E402
 from app.db.migrate import upgrade_to_head  # noqa: E402
 from app.db.session import make_engine, make_session_factory  # noqa: E402
+from app.knowledge.ingest.runtime import capabilities, default_options  # noqa: E402
 from app.knowledge.ingest.service import ingest_path, rescan_flags  # noqa: E402
 from app.knowledge.reindex import build_repo  # noqa: E402
 
@@ -39,7 +44,43 @@ async def main() -> int:
         action="store_true",
         help="recompute instruction-pattern flags on all stored chunks, then exit",
     )
+    ap.add_argument("--language", default=None, help="force STT language (ISO code), default auto")
+    ap.add_argument(
+        "--no-media", action="store_true", help="skip audio/video/images (list them as skipped)"
+    )
+    ap.add_argument(
+        "--capabilities", action="store_true", help="show supported formats + runtime readiness"
+    )
+    ap.add_argument(
+        "--retranscribe",
+        action="store_true",
+        help="re-run STT/vision on unchanged media (after a model change; ignores the hash shortcut)",
+    )
     args = ap.parse_args()
+    if args.capabilities:
+        s = get_settings()
+        upgrade_to_head(s.sync_database_url)
+        engine = make_engine(s.database_url_resolved)
+        try:
+            async with make_session_factory(engine)() as db:
+                caps = await capabilities(db, s)
+        finally:
+            await engine.dispose()
+        if args.json:
+            print(json.dumps(caps, indent=2))
+            return 0
+        for group, suffixes in caps["formats"].items():
+            print(f"{group:24s} {' '.join(suffixes)}")
+        for label, tool in (("speech-to-text", caps["stt"]), ("images (vision)", caps["vision"])):
+            state = "READY" if tool["ready"] else "not ready"
+            print(f"{label:24s} {state} — {tool['detail']}")
+        print(f"{'audio decoder':24s} {caps['audio_decoder'] or 'none (brew install ffmpeg)'}")
+        print(f"{'legacy office (.doc/.ppt)':24s} {caps['legacy_office'] or 'none'}")
+        print(
+            f"{'unsupported':24s} "
+            + ", ".join(f"{k} → {v}" for k, v in caps["unsupported"].items())
+        )
+        return 0
     if args.rescan_flags:
         s = get_settings()
         upgrade_to_head(s.sync_database_url)
@@ -62,6 +103,13 @@ async def main() -> int:
         async with make_session_factory(engine)() as db:
             if not args.no_index:
                 repo = await build_repo(db, s)
+            options = await default_options(
+                db,
+                s,
+                media=not args.no_media,
+                language=args.language,
+                force_media=args.retranscribe,
+            )
             report = await ingest_path(
                 db,
                 args.src,
@@ -69,6 +117,7 @@ async def main() -> int:
                 source_type=args.type,
                 trust_tier=args.trust,
                 repo=repo,
+                options=options,
             )
     finally:
         if repo is not None:
@@ -82,6 +131,8 @@ async def main() -> int:
     for r in report.results:
         mark = "new " if r.changed else "same"
         extra = f" dedup={r.deduped} flagged={r.flagged}" if r.changed else ""
+        if r.transcribed_seconds is not None:
+            extra += f" transcribed={r.transcribed_seconds:.0f}s"
         print(f"[{mark}] v{r.version} {r.chunks:3d} chunks  {r.course} › {r.title}{extra}")
     for sk in report.skipped:
         print(f"[skip] {sk.path}: {sk.reason}")
@@ -89,6 +140,12 @@ async def main() -> int:
         f"{summary['documents']} documents ({summary['new_versions']} new versions), "
         f"{summary['chunks']} chunks, {summary['deduped']} deduped, {summary['flagged']} flagged, "
         f"{summary['indexed']} indexed; courses: {', '.join(summary['courses'])}"
+        + (
+            f"; {summary['transcribed_media']} media transcribed ({summary['audio_seconds']:.0f} s)"
+            if summary["transcribed_media"]
+            else ""
+        )
+        + (f"; {summary['images_read']} images read" if summary["images_read"] else "")
     )
     return 0
 

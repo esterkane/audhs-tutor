@@ -52,6 +52,31 @@ registry_defaults:
     role: rerank
     context_len: 512
     licence: Apache-2.0
+  - id: whisper-large-v3-turbo
+    display_name: Whisper large-v3-turbo (MLX, speech-to-text)
+    source: huggingface_mlx
+    repo_id: mlx-community/whisper-large-v3-turbo
+    file_or_tag: mlx-community/whisper-large-v3-turbo
+    runtime: mlx
+    role: stt
+    context_len: 30
+    licence: MIT
+  - id: kokoro-82m
+    display_name: Kokoro-82M (TTS, persistent server at KOKORO_URL)
+    source: kokoro_server
+    repo_id: hexgrad/Kokoro-82M
+    file_or_tag: kokoro
+    runtime: kokoro
+    role: tts
+    licence: Apache-2.0
+  - id: silero-vad
+    display_name: Silero VAD v5 (ONNX, voice activity detection)
+    source: huggingface_file
+    repo_id: snakers4/silero-vad
+    file_or_tag: src/silero_vad/data/silero_vad.onnx
+    runtime: onnx
+    role: vad
+    licence: MIT
   - id: hosted-strong
     display_name: Claude Sonnet 5
     source: hosted
@@ -97,3 +122,6 @@ profiles:
     judge:         {primary: hosted-medium, fallbacks: [hosted-strong]}
     embed:         {primary: nomic-embed-text}
     rerank:        {primary: ms-marco-minilm-l6}
+    stt:           {primary: whisper-large-v3-turbo}
+    tts:           {primary: kokoro-82m}
+    vision:        {primary: gemma3-12b}   # multimodal; llama3.1 has no vision, deliberately no fallback

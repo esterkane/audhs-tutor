@@ -9,6 +9,8 @@ from fastapi import APIRouter
 from app.api.deps import DB, Repo, SettingsDep
 from app.core.errors import AppError
 from app.knowledge import corpus_stats
+from app.knowledge.ingest.runtime import capabilities as ingest_capabilities
+from app.knowledge.ingest.runtime import default_options
 from app.knowledge.ingest.service import forget_document, ingest_path, retier_document
 from app.knowledge.reindex import latest_version_ids
 from app.knowledge.repository import SearchFilters
@@ -19,6 +21,7 @@ from app.schemas.corpus import (
     DocumentList,
     DocumentOut,
     ForgetOut,
+    IngestCapabilities,
     IngestDocResult,
     IngestOut,
     IngestRequest,
@@ -88,6 +91,15 @@ def _resolve_ingest_path(raw: str, roots: list[Path]) -> Path:
     return path
 
 
+@router.get(
+    "/capabilities",
+    summary="Supported formats and the readiness of optional runtimes (STT, vision, decoders)",
+    response_model=IngestCapabilities,
+)
+async def capabilities(db: DB, settings: SettingsDep) -> IngestCapabilities:
+    return IngestCapabilities(**await ingest_capabilities(db, settings))
+
+
 @router.post(
     "/ingest",
     summary="Ingest a local file or course folder (idempotent by content hash)",
@@ -95,6 +107,7 @@ def _resolve_ingest_path(raw: str, roots: list[Path]) -> Path:
 )
 async def ingest(req: IngestRequest, db: DB, repo: Repo, settings: SettingsDep) -> IngestOut:
     path = await asyncio.to_thread(_resolve_ingest_path, req.path, settings.ingest_roots_resolved)
+    options = await default_options(db, settings, media=req.media, language=req.language)
     report = await ingest_path(
         db,
         path,
@@ -102,6 +115,7 @@ async def ingest(req: IngestRequest, db: DB, repo: Repo, settings: SettingsDep) 
         source_type=req.source_type,
         trust_tier=req.trust_tier,
         repo=repo if req.index else None,
+        options=options,
     )
     return IngestOut(
         summary=report.summary(),
@@ -119,6 +133,8 @@ async def ingest(req: IngestRequest, db: DB, repo: Repo, settings: SettingsDep) 
                 indexed=r.indexed,
                 trust_updated=r.trust_updated,
                 reverted=r.reverted,
+                transcribed_seconds=r.transcribed_seconds,
+                vision=r.vision,
             )
             for r in report.results
         ],

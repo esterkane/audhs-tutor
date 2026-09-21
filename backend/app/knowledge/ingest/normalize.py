@@ -38,3 +38,29 @@ def clean_caption_line(line: str) -> str:
 
 def approx_tokens(text: str) -> int:
     return max(1, len(text) // 4)
+
+
+# Course repos and student notebooks sometimes carry live credentials. They are never learning
+# material, so obvious key literals are replaced before a chunk is stored or embedded.
+# Only *literal* values are redacted: a quoted string of ≥ 12 chars, or a bare token of ≥ 16
+# word/dash chars that is not followed by `.`, `(` or `[` (so `token = tokenizer.decode(ids)`,
+# `secret = settings.SECRET_KEY` and `next_token = model.generate(...)` stay intact).
+_SECRET_ASSIGN = re.compile(
+    r"(?i)\b((?:api[_-]?key|secret(?:[_-]?key)?|access[_-]?token|auth[_-]?token|token|password"
+    r"|passwd|authorization)\s*[:=]\s*)"
+    r"(?:(['\"])([^'\"\s]{12,})\2|([A-Za-z0-9_\-]{16,})(?![\w.(\[]))"
+)
+_SECRET_LITERAL = re.compile(
+    r"\b(sk-[A-Za-z0-9_\-]{16,}|ghp_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|hf_[A-Za-z0-9]{20,}"
+    r"|AKIA[0-9A-Z]{16}|xox[baprs]-[A-Za-z0-9\-]{10,}|AIza[0-9A-Za-z_\-]{30,}"
+    r"|eyJ[A-Za-z0-9_\-]{20,}\.[A-Za-z0-9_\-]{10,}\.[A-Za-z0-9_\-]{10,})"
+)
+
+
+def redact_secrets(text: str) -> str:
+    def _assign(m: re.Match[str]) -> str:
+        quote = m.group(2) or ""
+        return f"{m.group(1)}{quote}<redacted>{quote}"
+
+    text = _SECRET_ASSIGN.sub(_assign, text)
+    return _SECRET_LITERAL.sub("<redacted>", text)

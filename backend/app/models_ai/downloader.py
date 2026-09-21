@@ -179,6 +179,23 @@ class Downloader:
         )
         return Path(path_str)
 
+    async def hf_file(
+        self, repo_id: str, filename: str, registry_id: str, progress: Progress = None
+    ) -> Path:
+        """One file from a Hugging Face repo into MODELS_DIR/onnx/<registry id>/ (Silero VAD)."""
+        target = self.models_dir / "onnx" / registry_id
+        target.mkdir(parents=True, exist_ok=True)  # noqa: ASYNC240
+        if progress:
+            progress(f"download {repo_id}/{filename}")
+        path_str = await asyncio.to_thread(
+            hf_hub_download, repo_id, filename, local_dir=str(target), token=self.hf_token
+        )
+        # hf_hub_download replicates the repo layout (src/…/file.onnx); the app looks for the flat name
+        flat = target / Path(filename).name
+        if Path(path_str).resolve() != flat.resolve():  # noqa: ASYNC240
+            await asyncio.to_thread(shutil.move, path_str, flat)
+        return flat
+
     async def fastembed_cross_encoder(self, repo_id: str, progress: Progress = None) -> Path:
         """Download (and load once) a fastembed cross-encoder into MODELS_DIR/fastembed."""
         target = self.models_dir / "fastembed"
