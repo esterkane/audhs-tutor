@@ -36,6 +36,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "scipy>=1.18.1", # portable WAV resampling tests; no MLX runtime required
     "httpx>=0.28.1",
     "mypy>=2.3.1",
     "pytest>=9.1.1",

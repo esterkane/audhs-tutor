@@ -286,9 +286,20 @@ async def test_missing_runtimes_are_reported_not_raised(
 
 
 # ----------------------------------------------------------------------------- registry
+@pytest.mark.parametrize("package_installed", [False, True])
+@pytest.mark.parametrize("decoder", [None, "ffmpeg", "afconvert"])
 async def test_stt_registry_readiness_and_routing(
-    db: AsyncSession, settings: Settings, tmp_path: Path
+    db: AsyncSession,
+    settings: Settings,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    decoder: str | None,
+    package_installed: bool,
 ) -> None:
+    monkeypatch.setattr(
+        "app.knowledge.ingest.runtime.stt_package_installed", lambda: package_installed
+    )
+    monkeypatch.setattr("app.knowledge.ingest.runtime.find_decoder", lambda: decoder)
     settings = settings.model_copy(update={"models_dir": str(tmp_path / "models")})
     repo = "mlx-community/whisper-large-v3-turbo"
     assert mlx_cached(settings.models_dir_resolved, repo) == set()
@@ -311,10 +322,9 @@ async def test_stt_registry_readiness_and_routing(
     assert await image_reader_for(db, settings) is None  # gemma3-12b not pulled → no vision
     caps = await capabilities(db, settings)
     assert caps["stt"]["registry_id"] == "whisper-large-v3-turbo"
-    assert (
-        caps["stt"]["ready"] is caps["stt"]["package_installed"]
-        and caps["audio_decoder"] is not None
-    )
+    assert caps["stt"]["package_installed"] is package_installed
+    assert caps["audio_decoder"] == decoder
+    assert caps["stt"]["ready"] is (caps["stt"]["package_installed"] and decoder is not None)
     (snap / "config.json").unlink()
     assert await transcriber_for(db, settings) is None  # artefact gone → never download at ingest
 

@@ -5,3 +5,9 @@
 **Live checks (not CI, labelled).** `make bench s=<n>` (Ollama, Qdrant, pulled models), `make evals` / `make eval-retrieval` (local model), media/STT/vision ingest with a pulled model, the owner's real experiment run, browser walk-throughs. They run on the owner's machine and are recorded in ROADMAP/slice docs as *measured*, never claimed from CI.
 **Browser journeys.** Still API + component coverage: Playwright is **not** approved (see `docs/IMPROVEMENT-PLAN.md` › Dependency decisions). The workflow gains a `journeys` job the day the owner approves `@playwright/test`.
 **Verified by.** The workflow mirrors `make lint` + `make test` exactly (both green locally: backend 206, frontend 28); `uv lock --check` passes locally. The workflow itself cannot be executed here (no push); first real run = first push to GitHub.
+
+## Linux media test portability — 2026-09-21
+
+The first public CI runs exposed eight backend test failures: SciPy was available in the developer's optional STT environment but absent from the default CI dependencies, and the registry readiness test assumed a host audio decoder. SciPy is now also a declared, locked dev dependency so WAV resampling tests run without installing the Apple-only MLX stack. Readiness tests explicitly cover absent/ffmpeg/afconvert decoders crossed with absent/present speech packages; no external decoder or model is needed for those assertions.
+
+Validation in a clean checkout with frozen base/dev dependencies (no STT group): backend lint, formatting, mypy and lockfile check passed; full suite 293 passed before expanding the package-state matrix, followed by all 38 media tests passing with the final matrix. The tested backend matches the current committed Stage-3 curriculum plus the CI fix. Live learner data was not used. Remote validation is recorded by the GitHub Actions run for the fix commit.
