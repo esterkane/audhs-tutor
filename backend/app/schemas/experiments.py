@@ -51,9 +51,12 @@ class ExperimentList(BaseModel):
 class ArmStatsOut(BaseModel):
     arm_id: str
     name: str
-    n: int
+    n: int  # = n_units
     mean: float | None
     sd: float | None
+    n_units: int = 0
+    n_events: int = 0
+    fidelity: float | None = None  # share of tutor turns that delivered the arm
 
 
 class MetricOut(BaseModel):
@@ -63,6 +66,8 @@ class MetricOut(BaseModel):
     difference: float | None
     ci95: list[float] | None
     reading: str
+    available: bool = True
+    method: str = "insufficient"
 
 
 class ResultsOut(BaseModel):
@@ -70,3 +75,8 @@ class ResultsOut(BaseModel):
     primary_metric: str
     metrics: list[MetricOut]
     units: list[dict[str, Any]]  # per unit: id, arm, label
+    analysis_version: str = "v2"
+    units_without_data: int = 0
+    low_fidelity_units: int = 0
+    outcome_window_days: int = 30
+    caveats: list[str] = []

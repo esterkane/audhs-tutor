@@ -127,14 +127,30 @@ async def results(experiment_id: str, db: DB, learner: Learner, record: bool = F
                 metric=m.metric,
                 lower_is_better=m.lower_is_better,
                 arms=[
-                    ArmStatsOut(arm_id=s.arm_id, name=s.name, n=s.n, mean=s.mean, sd=s.sd)
+                    ArmStatsOut(
+                        arm_id=s.arm_id,
+                        name=s.name,
+                        n=s.n,
+                        mean=s.mean,
+                        sd=s.sd,
+                        n_units=s.n_units,
+                        n_events=s.n_events,
+                        fidelity=s.fidelity,
+                    )
                     for s in m.arms
                 ],
                 difference=m.difference,
                 ci95=list(m.ci95) if m.ci95 else None,
                 reading=m.reading,
+                available=m.available,
+                method=m.method,
             )
             for m in res.metrics
         ],
         units=units,
+        analysis_version=res.analysis_version,
+        units_without_data=res.units_without_data,
+        low_fidelity_units=res.low_fidelity_units,
+        outcome_window_days=res.outcome_window_days,
+        caveats=res.caveats,
     )
