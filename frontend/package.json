@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "format": "prettier --write src",
-    "gen:api": "openapi-typescript ../backend/openapi.json -o src/lib/api-types.ts"
+    "gen:api": "openapi-typescript ../backend/openapi.json -o src/lib/api-types.ts",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@codemirror/commands": "^6.11.1",

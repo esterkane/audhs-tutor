@@ -1,22 +1,28 @@
-.PHONY: dev dev-sandbox backend frontend services qdrant models test test-backend test-frontend lint migrate migrate-check migrate-apply backup backup-inspect backup-restore ingest evals eval-retrieval bench gen-api seed
+.PHONY: dev dev-sandbox sandbox-backend sandbox-frontend backend frontend services qdrant models test test-backend test-frontend test-e2e lint migrate migrate-check migrate-apply backup backup-inspect backup-restore ingest evals eval-retrieval bench gen-api seed
 
 dev: qdrant
 	@echo "backend :8000 | frontend :5173 | qdrant :6333"
 	@(cd backend && uv run uvicorn app.main:app --reload --port 8000) & \
 	 (cd frontend && pnpm dev) & wait
 
-# Disposable walk-through: a fresh seeded DB (never data/dev.db), hosted models off, no Qdrant reindex.
+# Disposable walk-through / browser journeys: a fresh seeded DB (never data/dev.db), hosted models
+# off, no Qdrant reindex. `sandbox-backend` and `sandbox-frontend` are the two halves Playwright
+# starts separately (each with its own readiness URL); `dev-sandbox` runs both.
 SANDBOX_DB ?= ./data/sandbox.db
 SANDBOX_API_PORT ?= 8010
 SANDBOX_UI_PORT ?= 5174
-dev-sandbox:
+SANDBOX_ENV = DATABASE_URL="sqlite+aiosqlite:///$(SANDBOX_DB)" ANTHROPIC_API_KEY= DAILY_BUDGET_USD=0
+sandbox-backend:
+	$(if $(filter %dev.db,$(SANDBOX_DB)),$(error SANDBOX_DB must not be the learner's dev database),)
 	@rm -f $(SANDBOX_DB) $(SANDBOX_DB)-wal $(SANDBOX_DB)-shm
-	@echo "sandbox DB $(SANDBOX_DB) | backend :$(SANDBOX_API_PORT) | frontend :$(SANDBOX_UI_PORT) | hosted budget 0"
-	@(cd backend && DATABASE_URL="sqlite+aiosqlite:///$(SANDBOX_DB)" ANTHROPIC_API_KEY= DAILY_BUDGET_USD=0 \
-	   uv run python ../scripts/seed_attention.py --no-index && \
-	   DATABASE_URL="sqlite+aiosqlite:///$(SANDBOX_DB)" ANTHROPIC_API_KEY= DAILY_BUDGET_USD=0 \
-	   uv run uvicorn app.main:app --port $(SANDBOX_API_PORT)) & \
-	 (cd frontend && API_PORT=$(SANDBOX_API_PORT) pnpm dev --port $(SANDBOX_UI_PORT) --strictPort) & wait
+	@echo "sandbox DB $(SANDBOX_DB) | backend :$(SANDBOX_API_PORT) | hosted budget 0"
+	@cd backend && $(SANDBOX_ENV) uv run python ../scripts/seed_attention.py --no-index && \
+	   $(SANDBOX_ENV) uv run uvicorn app.main:app --port $(SANDBOX_API_PORT)
+sandbox-frontend:
+	@cd frontend && API_PORT=$(SANDBOX_API_PORT) pnpm dev --host 127.0.0.1 --port $(SANDBOX_UI_PORT) --strictPort
+dev-sandbox:
+	@echo "frontend :$(SANDBOX_UI_PORT)"
+	@$(MAKE) sandbox-backend & $(MAKE) sandbox-frontend & wait
 
 qdrant:
 	docker compose -f docker/docker-compose.yml up -d qdrant
@@ -36,9 +42,13 @@ test-backend:
 test-frontend:
 	cd frontend && pnpm vitest run
 
+# Browser journeys (Playwright, ADR-0013) — starts `make dev-sandbox` itself; never touches data/dev.db.
+test-e2e:
+	cd frontend && pnpm exec playwright test
+
 lint:
 	cd backend && uv run ruff check . && uv run ruff format --check . && uv run mypy app
-	cd frontend && pnpm exec tsc -b && pnpm exec eslint src
+	cd frontend && pnpm exec tsc -b && pnpm lint
 
 # 1) generate only (never touches a database); 2) verify on a throwaway copy; 3) apply to the dev DB explicitly
 migrate:

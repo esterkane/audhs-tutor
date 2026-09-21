@@ -18,3 +18,6 @@ frontend/dist/
 .vite/
 coverage/
 backend/openapi.json
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/

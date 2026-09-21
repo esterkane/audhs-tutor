@@ -15,5 +15,5 @@ Layout: `frontend/src/{app,routes,features/<feature>/{components,hooks,api},comp
   - Every adaptation the UI applies goes through `useAdaptationLog()` so it is explained and undoable.
   - Timers are soft (wind-down prompt), never hard cut-offs.
 - Streaming: SSE for tutor tokens (`useTutorStream`, exists); WebSocket for voice (`features/voice/useVoiceLoop.ts`, P9: connects and records only on a click, playback stoppable, typed fallback always present). Render markdown with KaTeX + code highlighting; Mermaid for the skill map.
-- Tests: `vitest` + Testing Library + `vitest-axe` for components/hooks. Browser journey tests are wanted (P1/P5) but Playwright is **not** an approved dependency yet — record the decision before adding it.
+- Tests: `vitest` + Testing Library + `vitest-axe` for components/hooks. Browser journeys: Playwright (approved by ADR-0013) in `frontend/e2e/*.spec.ts`, run with `make test-e2e` against the sandbox stack (`make dev-sandbox`, never `data/dev.db`); controls located by role + accessible name (`getByText` only for status copy); each journey ends its session through the API (`docs/slices/browser-journeys.md`).
 - Lint: eslint (typescript-eslint, jsx-a11y) + prettier. `tsc --noEmit` must pass.

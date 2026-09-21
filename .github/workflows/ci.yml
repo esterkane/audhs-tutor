@@ -1,6 +1,7 @@
 # Regression gates (P5 `ci-gates`). Runs on every push and pull request with locked dependencies.
 # Needs no private data, local models, API keys or personal services: backend tests use the fake
-# model provider and the SQLite retrieval repository; frontend tests mock fetch. Live checks
+# model provider and the SQLite retrieval repository; frontend tests mock fetch; browser journeys run
+# Playwright against the seeded sandbox stack (`make dev-sandbox`, no Qdrant, hosted providers off). Live checks
 # (`make bench s=<n>`, `make evals`, media/STT with a pulled model) are *not* CI — they are labelled
 # "live" in docs/slices/ci-gates.md and run on the owner's machine only.
 name: ci
@@ -73,7 +74,7 @@ jobs:
       - name: Types
         run: pnpm exec tsc -b
       - name: Lint
-        run: pnpm exec eslint src
+        run: pnpm lint
       - name: Component tests (mocked fetch, axe)
         run: pnpm exec vitest run
 
@@ -100,3 +101,39 @@ jobs:
           uv run alembic downgrade -1
           uv run alembic upgrade head
           uv run alembic current
+
+  journeys:
+    name: browser journeys · playwright on the sandbox stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+      - name: Backend (locked) for the sandbox stack
+        run: |
+          uv python install 3.12
+          cd backend && uv sync --frozen
+      - name: Frontend (locked) + the pinned Chromium build
+        run: |
+          cd frontend
+          pnpm install --frozen-lockfile
+          pnpm exec playwright install --with-deps chromium
+      - name: Journeys (fresh seeded sandbox DB, hosted providers off)
+        run: make test-e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: frontend/test-results/
+          retention-days: 7
