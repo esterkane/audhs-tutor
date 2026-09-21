@@ -16,4 +16,4 @@ Write `docs/HANDOFF.md` (overwrite) with ≤ 40 lines:
 - **Next step** (one concrete command or slice to start with)
 - **Do not** (traps discovered, e.g. "don't upgrade X, breaks Y")
 
-Then update the `**Current stage:**` line and checkboxes in `docs/ROADMAP.md`. Do not commit unless asked (offer `/commit`).
+Then update the `**Current stage:**` line and checkboxes in `docs/ROADMAP.md` (never tick future stages), and the status column in `docs/IMPROVEMENT-PLAN.md` when a P-stage moved. Do not commit unless asked (offer `/commit`).

@@ -6,6 +6,12 @@
       "runtimeExecutable": "make",
       "runtimeArgs": ["dev"],
       "port": 5173
+    },
+    {
+      "name": "dev-sandbox",
+      "runtimeExecutable": "make",
+      "runtimeArgs": ["dev-sandbox"],
+      "port": 5174
     }
   ]
 }

@@ -5,7 +5,7 @@ Subjects: AI / LLMs / ML / DL / programming (primary); language + guitar + movem
 Runs on a MacBook Pro M4 Pro, 48 GB. Phase 1 = localhost only, one container (Qdrant), low cost, hybrid LLM routing.
 
 Read `docs/ARCHITECTURE.md` before touching structure. Every non-trivial choice is an ADR in `docs/adr/`.
-Detailed rules load per path from `.claude/rules/`. Procedures are skills (`/build-stage`, `/feature-slice`, …).
+Detailed rules load per path from `.claude/rules/`. Procedures are skills (`/build-stage`, `/feature-slice`, …). The improvement programme P0–P9 lives in `docs/IMPROVEMENT-PLAN.md`. `/commit`, `/build-stage`, `/handoff`, `/adr` are invoked by the owner only.
 
 ## Core principle
 **The LLM explains and reasons. The Learning Kernel remembers and decides.** The LLM never owns learner state, curriculum state, competency, memory or truth. Retrieval supplies evidence; assessments produce competency evidence; FSRS manages memory; the learner controls adaptation; observability tells us whether any of it works.
@@ -13,8 +13,8 @@ Detailed rules load per path from `.claude/rules/`. Procedures are skills (`/bui
 ## Binding decisions (change only via /adr)
 - Layers: `Learning UX → Learning Kernel (deterministic) → Tutor Orchestrator (one, tool-using) → Knowledge + Models → Persistent state → Evaluation/Observability/Security`. ADR-0007.
 - Backend: Python 3.12, FastAPI, Pydantic v2, SQLite (WAL) via SQLAlchemy 2 + Alembic, `uv`. Plain Python + Instructor for structured output; PydanticAI only when a typed tool loop is needed. No LangGraph, no multi-agent tutor in Phase 1.
-- Frontend: TypeScript, React 18, Vite, TanStack Query, Zustand, shadcn/ui + Radix, CodeMirror 6, Pyodide. `pnpm`.
-- Models: `ModelProvider` interface (`OllamaProvider`, `MlxProvider` for STT/TTS, `ClaudeProvider`) with LiteLLM **SDK** behind it. A **model registry** (`model_registry` table, `scripts/models.py`, Settings › Models) lets the learner download models from Hugging Face / Ollama library / mlx-community, benchmark them, and assign one per `TaskClass`; routing stays inspectable and logged. No proxy in Phase 1. Budget cap enforced in-app. ADR-0001, ADR-0010.
+- Frontend: TypeScript, React 19, Vite, TanStack Query, Zustand (`stores/mode.ts` = `useMode`), shadcn/ui + Radix, CodeMirror 6, Pyodide. `pnpm`. (Was written as React 18; package.json has had React 19 since Stage 0 — reconciled 2026-09-20, no design change.)
+- Models: `ModelProvider` interface (`OllamaProvider`, `ClaudeProvider`; `MlxProvider` for TTS/voice is planned for Stage 5 — STT already routes through the registry as `TaskClass.STT`) with LiteLLM **SDK** behind it. A **model registry** (`model_registry` table, `scripts/models.py`, Settings › Models) lets the learner download models from Hugging Face / Ollama library / mlx-community, benchmark them, and assign one per `TaskClass`; routing stays inspectable and logged. No proxy in Phase 1. Budget cap enforced in-app. ADR-0001, ADR-0010.
 - Retrieval: `RetrievalRepository` interface; production adapter from day one is **Qdrant** (dense + sparse named vectors, server-side fusion, payload filters, provenance, quantization). Raw chunks stay in SQLite; `reindex.py` rebuilds Qdrant. `SqliteHybridRepository` (FTS5 + sqlite-vec) only for tests/offline fallback. ADR-0002.
 - Learner model: `MemoryState` (FSRS via `py-fsrs`, per item) **≠** `CompetencyState` (per skill, derived from `competency_evidence`). Mastery is a computed view over both. Skill graph with prerequisite edges is the curriculum backbone. ADR-0004.
 - Content: `LearningObject` (concept, goal, sources, examples, exercises, success criteria) rendered into `Representation`s (map, simple/deep explanation, analogy, worked example, diagram, audio, quiz, code exercise, explain-back). "Show it differently" changes the representation, never the source of truth.
@@ -48,4 +48,4 @@ Detailed rules load per path from `.claude/rules/`. Procedures are skills (`/bui
 - Conventional Commits via `/commit`. Unsure about a product/pedagogy decision → read `docs/adr/`, then ask.
 
 ## Commands
-`make dev` (backend :8000 + frontend :5173 + Qdrant :6333) · `make models` (registry CLI) · `make test` · `make lint` · `make migrate m="msg"` · `make ingest src=<path>` · `make evals` · `make bench s=<stage>`
+`make dev` (backend :8000 + frontend :5173 + Qdrant :6333) · `make dev-sandbox` (fresh seeded `data/sandbox.db`, backend :8010 + frontend :5174, hosted budget 0 — walk-throughs never touch `data/dev.db`) · `make models` (registry CLI) · `make test` · `make lint` · `make migrate m="msg"` (generate) · `make migrate-check` (disposable DB) · `make migrate-apply` · `make ingest src=<path>` · `make evals` · `make bench s=<stage>`

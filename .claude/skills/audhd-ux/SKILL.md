@@ -9,7 +9,7 @@ Grounding (from `docs/research/audhd-learner-report.md`): autonomy support over 
 
 ## Checklist
 - [ ] **One task per screen.** Secondary info collapsed by default.
-- [ ] **State mode + energy** chosen by the learner on Home (Novelty / Steady / Low-capacity; energy 1–5). Components read from `ModeProvider`; nothing auto-switches.
+- [ ] **State mode + energy** chosen by the learner on Home (Novelty / Steady / Low-capacity; energy 1–5). Components read from the Zustand store `useMode` (`frontend/src/stores/mode.ts`); nothing auto-switches.
 - [ ] **Minimum-viable path** exists (review: capped subset; session: blocks 1+6) and is offered first on low energy.
 - [ ] **Parking lot** button always visible; capture ≤ 2 interactions; item linked to current node.
 - [ ] **Soft timers only**: wind-down prompt with "save & stop" / "5 more minutes" / "finish block". Never a hard cut.

@@ -54,7 +54,7 @@ interpret request → identify skill → assemble ContextPacket → retrieve evi
 | Memory vs competence | `MemoryState` (FSRS, per item) ≠ `CompetencyState` (per skill, from evidence rows: recall/explanation/application/transfer with count, decay, confidence). Mastery = view. New-material gating uses competency + prerequisites; review scheduling uses memory; FSRS retrievability of a skill's items feeds its recall dimension | 0004 |
 | Content | `LearningObject` → lazily rendered, cached `Representation`s; VR/AR = future renderer | 0007 |
 | Tutoring policy | Hint-first always; explicit default; Socratic/challenge opt-in; never silent switches | 0003 |
-| Models | `ModelProvider` + inspectable routing table; LiteLLM SDK, no proxy; in-app daily budget; Claude available from Phase 1 only for `grade_rubric`, `tutor_deep`, `code_review`. **Model registry**: learner downloads any HF/Ollama/MLX model, benchmarks it, assigns per TaskClass at runtime | 0001, 0010 |
+| Models | `ModelProvider` + inspectable routing table; LiteLLM SDK, no proxy; in-app daily budget; Claude available from Phase 1 only for `grade_rubric`, `tutor_deep`, `code_review`. **Model registry**: learner downloads any HF/Ollama/MLX model, benchmarks it, assigns per TaskClass at runtime. Non-chat task classes route the same way: `embed`, `rerank`, `stt` (MLX Whisper for ingest and, later, voice), `vision` (slide images) | 0001, 0010 |
 | Retrieval | `RetrievalRepository`; **Qdrant from day one** (dense + sparse named vectors, server-side RRF, payload filters, quantization) + optional local cross-encoder + trust/provenance filter; SQLite hybrid adapter for tests only | 0002 |
 | Provenance & security | Every chunk carries provenance + trust_tier; retrieved text and tool results are untrusted data passed in a tagged data block, never system role; instruction-like content flagged, not obeyed; code runs in Pyodide or a limited sandbox | 0008 |
 | Grading | deterministic → rubric checks → local LLM → hosted; structured per-criterion evidence + confidence | 0009 |
@@ -74,7 +74,9 @@ Assessment: `assessment{item, kind, rubric_id}`, `assessment_rubric{criteria_jso
 Knowledge: `document`, `document_version{content_hash, version, publication_date}`, `chunk`, `chunk_provenance{source_id, path, source_type, trust_tier, ingested_at}`, `index_state{collection, embedding_version, last_reindex}`; vectors live in Qdrant (payload mirrors provenance).
 Models: `model_registry{id, display_name, source, repo_id, file_or_tag, runtime, role, quant, size_gb, context_len, licence, status, benchmark_json, added_at}`; routing assignments in `learner_preference` (`routing.<task>`).
 UX: `parking_lot_item`, `adaptation{what, why, origin}`, `adaptation_decision{accepted|declined|never}`, `experiment{unit_type, started_at, ended_at}`, `experiment_arm`, `experiment_assignment{unit_type, unit_id, arm_id}`, `experiment_observation`; `session.experiment_arm_id`.
-Observability: `tutor_trace`, `retrieval_trace{query, bm25_scores, vector_scores, fused, reranked, chunk_ids}`, `model_call{provider, model, task, tokens, cost, latency, cached}`, `learning_event` (append-only; `docs/EVENT-SCHEMA.md`).
+Curriculum workflow (P4): `curriculum_draft{course, section, status draft|published|rejected, origin deterministic|model, payload_json, validation_json, version}` (a published draft writes a *new* `learning_object` version and new `assessment` rows; `skill_node.course` marks published-from course), `content_report{kind, turn_id, chunk_id, skill_id, note, status}`.
+Observability: `tutor_trace`, `retrieval_trace{query, bm25_scores, vector_scores, fused, reranked, chunk_ids}`, `model_call{provider, model, task, tokens, cost, latency, cached, request_id, attempt, idempotency_key, outcome, usage_source, cost_status, reserved_usd}` (one row per provider attempt; P6), `budget_reservation{request_id, registry_id, amount_usd, status open|reconciled|released|expired, expires_at}` (P6), `learning_event` (append-only; `docs/EVENT-SCHEMA.md`).
+Recovery (P5): `db/backup.py` — versioned zip (manifest + sha256, consistent SQLite snapshot, optional transcript cache; secrets/models/vectors/originals excluded; scope `learner` drops corpus text) restored only into an empty target with staged rollback; Qdrant is rebuilt from SQLite (`scripts/reindex.py`). `docs/RECOVERY.md`.
 
 ## 5. ContextPacket
 ```
@@ -90,11 +92,11 @@ Unit/integration tests; `evals/` tutoring-quality suite (hard checks + five-prin
 ## 7. Repository layout
 ```
 backend/app/{kernel,orchestrator,knowledge,models_ai,api,db,schemas,core}  + alembic/ + tests/
-  kernel/      skill_graph.py competency.py memory.py session.py planner.py adaptation.py experiments.py
-  orchestrator/ context.py actions.py tutor.py grader.py tools.py
-  knowledge/   ingest/ repository.py (interface) qdrant_hybrid.py sqlite_hybrid.py(tests/fallback) provenance.py
+  kernel/      skill_graph.py competency.py memory.py session.py blocks.py planner.py adaptation.py experiments.py practice.py vocab_import.py curriculum.py listening.py exercises.py
+  orchestrator/ context.py actions.py tutor.py grader.py tools.py challenge.py representations.py drafting.py listening.py prompts.py
+  knowledge/   ingest/ (loaders per format; media.py = STT via registry, vision.py = slide OCR via registry, archives.py, converters.py) repository.py (interface) qdrant_hybrid.py sqlite_hybrid.py(tests/fallback) provenance.py
   models_ai/   provider.py (interface) ollama.py mlx.py claude.py registry.py downloader.py routing.py routing_profiles.yaml budget.py bench.py
-  db/          models.py (ORM) events.py traces.py
+  db/          models.py (ORM) events.py traces.py migrate.py portability.py (export/wipe) backup.py (P5 backup/restore) ddl.py
 frontend/src/{app,routes,features,components/ui,lib,stores,styles}
 prompts/  evals/  scripts/  docs/{adr,slices,research}  data/ (gitignored)
 ```

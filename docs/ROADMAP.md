@@ -55,6 +55,8 @@ Benchmark: planner produces valid plans for all mode×energy combos; representat
 - [x] `hybrid-retrieval` — server-side fusion, optional local reranker, trust/provenance filter, node/course payload filters; `retrieval_trace`.
 - [x] `retrieval-evals` — labelled queries, recall@k, citation coverage.
 - [x] `untrusted-content-guard` — tagged data blocks, instruction-pattern flagging, tests with poisoned chunks.
+- [x] `ingest-formats` (2026-09-20) — every common course format with stdlib parsers: Office (docx/pptx/xlsx), ODF, EPUB, HTML, RTF, LaTeX, rst/org/adoc, 30+ source languages (secrets redacted), zip/tar archives (zip-slip guard, `<archive>!/<member>` URIs), transcript formats (SBV, ASS, TTML, Whisper/json3 JSON, TSV, timestamped text); `GET /api/corpus/capabilities`, `scripts/ingest.py --capabilities`.
+- [x] `media-transcription` (2026-09-20) — audio/video → timed chunks via the registry STT model (`TaskClass.STT`, `whisper-large-v3-turbo` on MLX, ffmpeg or macOS afconvert, sidecar captions win, transcript cache by content hash), slide images via the registry vision model (`TaskClass.VISION`, `gemma3-12b`); each call logged in `model_call`.
 Benchmark: ≥ 5 courses ingested; recall@8 ≥ 0.8 on labelled set; poisoned-chunk tests pass; p95 search < 300 ms at current corpus size; Qdrant RAM < 1 GB.
 **Measured 2026-09-19** (`make bench s=3`, isolated `data/bench3.db` + throwaway collection `corpus_v903`, nomic-embed-text 768d + BM25, no reranker; raw in `evals/results/bench_stage3.json`):
 - A ingest: 5 courses (`seeds/courses`: VTT, SRT, ipynb, markdown, text) → 17 documents, 34 chunks in 0.9 s, 0 duplicates, 0 flagged; forum dump at trust 0 → 1 chunk, flagged; re-run → 0 new versions, 0 re-indexed; index count = 35 — PASS
@@ -64,7 +66,8 @@ Benchmark: ≥ 5 courses ingested; recall@8 ≥ 0.8 on labelled set; poisoned-ch
 - E Qdrant RAM: `memory_active_bytes` **0.34 GB** (docker stats 624 MiB incl. container overhead) — PASS (< 1 GB)
 - After the kit reviews (pedagogy-reviewer: ship-with-fixes → 7 fixes applied; code-reviewer: 17 findings → all majors and most minors applied): backend 96 tests, frontend 11, bench re-run 5/5, tutoring hard checks 4/5 (= Stage 1 baseline).
 - **With the reranker** (`ms-marco-minilm-l6` pulled by the owner, 82 ms / 16 docs × 800 chars): B recall@1 0.906 → **0.938**, MRR 0.948 → **0.964**; D p50 121 ms / p95 **129 ms** — still PASS. Real corpus (`~/Downloads/Udemy Resources`, one course with 67 notebooks/PDF → 156 unique chunks + 89 duplicates dropped; two `.docx` skipped): dev corpus 294 chunks, `make eval-retrieval` recall@8 1.000 / recall@1 0.844 / MRR 0.911, p95 183 ms. `pypdf` added (owner approved). Backend 98 tests.
-- Not measured: PDF ingest (loader exists, `pypdf` not added to `pyproject.toml` — owner decision), the cross-encoder reranker (`ms-marco-minilm-l6` in the registry, not pulled), real Udemy exports (only the five sample courses).
+- Superseded note (kept for history): the benchmark run itself used no reranker and only the five sample courses; the reranker, `pypdf` and the real Udemy export were measured afterwards — see the two bullets above and the formats follow-up below.
+- **Formats follow-up, measured 2026-09-20** (scratch DB, `--no-index`, whole `~/Downloads/Udemy Resources`): 5282 files → **5086 documents** (both `.docx` parsed; the 7328-file `agents-main.zip` expanded in place: notebooks, code, markdown), 13 809 chunks, 2036 duplicates dropped, 431 flagged; 196 skipped with a reason each (101 images — no vision model pulled; 30 audio/video — no STT model pulled; 26 `.env*`/key files; 33 dataset/config JSON; 3 broken notebooks). Re-run: 5086 unchanged, 0 new. Backend 44 ingest tests (20 + 24 new), frontend Corpus test extended. Not measured: real Whisper/vision output (models not pulled — owner decision, see HANDOFF).
 
 ## Stage 4 — Adaptive learning UX
 - [x] `adaptation-proposals` — observed pattern → proposal card (Try / Make default / No / Don't suggest again) → log → undo.
@@ -81,9 +84,9 @@ Benchmark: run one 2-week experiment (Socratic vs explicit on matched nodes) and
 - E models registry: routing table resolves 18 of 20 task classes to ready models (chat/hint/… → llama31-8b, embed → nomic-embed-text, rerank → ms-marco-minilm-l6); `grade_rubric` and `judge` unresolved until an API key exists — PASS
 
 ## Stage 5 — Frontier models + voice
-- [ ] `escalation-polish` — code review, conflicting-evidence resolution, deep explanation on Claude; prompt caching; cost dashboard.
-- [ ] `voice-loop` — WS, Silero VAD, MLX Whisper, Kokoro persistent server, streaming playback, `spoke` latency events.
-- [ ] `language-voice-block` — conversation practice; optional hosted realtime mode.
+- [ ] `escalation-polish` — code review (a first Pyodide code exercise landed in P8 2026-09-20 — `docs/slices/code-exercise.md`; hosted `code_review` still needs the key), conflicting-evidence resolution, deep explanation on Claude; prompt caching; ~~cost dashboard~~ (cost view + reservation-based budget + per-attempt usage accounting done in P6 2026-09-20, `docs/slices/usage-accounting.md`; the hosted TaskClasses themselves still need `ANTHROPIC_API_KEY`).
+- [ ] `voice-loop` — WS, Silero VAD, MLX Whisper, Kokoro persistent server, streaming playback, `spoke` latency events. **Implemented with fakes in P9 (2026-09-20, `docs/slices/voice-loop.md`)**: setup lifecycle, WS loop with cooperative interruption, text fallback, retention opt-in, `spoke` events, `scripts/spike_voice.py`, `scripts/bench_voice.py`. Unticked because the benchmark gate and an ADR (TaskClass.TTS, Kokoro server instead of MLX TTS) are pending: no Whisper snapshot / `mlx-whisper` / Kokoro server installed here; the 20-turn benchmark refuses to run until they are.
+- [ ] `language-voice-block` — conversation practice; optional hosted realtime mode. (Guided *listening* landed in P7; spoken conversation practice inside the language block landed in P9 2026-09-20 — `docs/slices/language-voice-block.md`, practice-only, logged as `practiced`; hosted realtime not started — paid, unauthorised.)
 Benchmark: median ≤ 2 s to first audio over 20 turns.
 (A throwaway `scripts/spike_voice.py` may be run any time earlier to de-risk the Mac stack.)
 
