@@ -75,9 +75,13 @@ def _excerpts(mat: curriculum.SectionMaterial, start: int = 0, stop: int | None 
     parts = ["<source_excerpts>"]
     pairs = list(zip(mat.lectures[:MAX_LECTURES], curriculum.lecture_slugs(mat), strict=False))
     for lec, slug in pairs[start:stop]:
-        text = " ".join(curriculum._body(c["text"]) for c in teaching_chunks(lec["chunks"]))[
-            :MAX_EXCERPT_CHARS
-        ]
+        selected = teaching_chunks(lec["chunks"])
+        # Reserve a share for every selected passage: a long first chunk must not erase
+        # later evidence. Separate excerpts rather than joining unrelated sentence fragments.
+        separator = "\n[…]\n"
+        allowance = max(0, MAX_EXCERPT_CHARS - len(separator) * max(0, len(selected) - 1))
+        per_chunk = allowance // max(1, len(selected))
+        text = separator.join(curriculum._body(c["text"])[:per_chunk] for c in selected)
         parts.append(f'<lecture slug="{slug}">')
         parts.append("title: " + escape_data(str(lec["lecture"])).replace("\n", " "))
         parts.append(escape_data(text))
@@ -151,6 +155,14 @@ async def draft_with_model(
         obj = objects.get(sug.slug)
         if skill is None or obj is None:
             continue  # the model may not invent lectures
+        # Preserve the evidence actually supplied to the model, even when it occurs after
+        # the deterministic first-eight source window. Keep remaining original citations
+        # within the existing bound; never invent a chunk or claim one MCQ's exact source.
+        lec = next((lec for lec, s in lecture_pairs if s == sug.slug), None)
+        selected_ids = [c["id"] for c in teaching_chunks((lec or {}).get("chunks", []))]
+        obj["sources"] = list(dict.fromkeys([*selected_ids, *obj["sources"]]))[
+            : curriculum.MAX_SOURCES_PER_OBJECT
+        ]
         # every replaced field is labelled so the UI can say which lessons the model touched
         if sug.goal.strip():
             obj["goal"] = sug.goal.strip()
