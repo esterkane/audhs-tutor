@@ -505,3 +505,28 @@ async def test_every_skill_gets_an_explain_back_item_with_a_rubric(
     assert rubric[0]["keywords"][:2] == ["explains", "softmax"] and rubric[1][
         "criterion"
     ].startswith("Names")
+
+
+def test_path_numbers_read_both_course_layouts() -> None:
+    """Section and lecture numbers come from the folder names of either export layout; a course's
+    sections must never fall back to alphabetical order ("chapter 2" before "Model …") because the
+    numbers were not recognised."""
+    plain = "/r/Course/03 - Attention/012 - Masking.en.vtt"
+    assert curriculum.path_numbers(plain) == (3, 12)
+    export = "/r/Course--abc/Section 8 - Model Optimization/Lecture 7-5 - 40. Serving/app--6cc0.zip!/main.py"
+    assert curriculum.path_numbers(export) == (8, 40)
+    export_file = "/r/Course--abc/Section 10 - Deployment/Lecture 9-1 - 55. Intro/notes.pdf"
+    assert curriculum.path_numbers(export_file) == (10, 55)
+    zipped = "/r/Course/02 - Lectures/003 - starter.zip!/code/a.py"
+    assert curriculum.path_numbers(zipped) == (2, 3)
+    assert curriculum.path_numbers("https://x.test/a") == (None, None)
+    assert curriculum.path_numbers("/r/Course/fine_tune.ipynb") == (None, None)
+
+
+def test_section_label_numbers_are_a_literal_fallback() -> None:
+    assert curriculum.label_number("chapter 2 Transformers Architecture") == 2
+    assert curriculum.label_number("Abschnitt 7 - Deployment") == 7
+    assert curriculum.label_number("Module 12: Agents") == 12
+    assert curriculum.label_number("Text Classification") is None
+    assert curriculum.label_number("2nd chapter") is None
+    assert curriculum.label_number("chapters overview") is None

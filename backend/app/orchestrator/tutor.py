@@ -238,7 +238,7 @@ class TutorTurn:
             rtrace_id: str | None = None
         else:
             result = await tools.retrieve(
-                self.repo, f"{node.title}: {req.text}", skill_id=node.id, k=6
+                self.repo, f"{node.title}: {req.text}", skill_id=node.id, course=node.course, k=6
             )
             hits = list(result.hits)
             rtrace = await write_retrieval_trace(

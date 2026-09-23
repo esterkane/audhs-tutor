@@ -35,6 +35,7 @@ from app.db.models import (
     SkillNode,
 )
 from app.knowledge.ingest.loaders import clean_stem, split_number
+from app.knowledge.ingest.udemy_manifest import parse_lecture_dir, parse_section_dir
 
 STATUSES = ("draft", "published", "rejected")
 MATERIAL_STATUSES = ("imported", "searchable", "draft", "published")
@@ -255,10 +256,26 @@ def path_numbers(uri: str) -> tuple[int | None, int | None]:
     path is the durable place to read them from; archive members use the member path."""
     if not uri or uri.startswith(("http://", "https://")):
         return None, None
-    member = uri.split("!/", 1)[1] if "!/" in uri else uri
-    p = Path(member)
-    lecture_no, _ = split_number(clean_stem(p))
-    section_no, _ = split_number(p.parent.name)
+    outer, member = (uri.split("!/", 1) + [""])[:2] if "!/" in uri else (uri, "")
+    p = Path(member or outer)
+    # the resources export files assets under `Section N - title/Lecture a-b - M. title/`; the
+    # plain layout numbers files `NN - Section/MMM - Lecture.ext`; both are read from the *outer*
+    # path (an archive's member path rarely carries the course numbering)
+    op = Path(outer)
+    lecture_dir = parse_lecture_dir(op.parent.name)
+    if lecture_dir is not None:
+        lecture_no = lecture_dir[0]
+        section_dir = op.parent.parent.name
+    else:
+        lecture_no, _ = split_number(clean_stem(p))
+        section_dir = op.parent.name if not member else (op.parent.name)
+    section_dir_parsed = parse_section_dir(section_dir)
+    section_no = section_dir_parsed[0] if section_dir_parsed else split_number(section_dir)[0]
+    if member and lecture_dir is None:
+        # an archive member inside a numbered lecture file (`003 - starter.zip!/a.py`): the
+        # archive's own number is the lecture slot
+        archive_no, _ = split_number(clean_stem(op))
+        lecture_no = lecture_no if lecture_no is not None else archive_no
     return section_no, lecture_no
 
 
@@ -351,11 +368,31 @@ async def sections_of(db: AsyncSession, course: str) -> list[dict[str, Any]]:
     for section, uri in rows:
         entry = agg.setdefault(section, {"section": section, "documents": 0, "no": None})
         entry["documents"] += 1
+        if section is None:
+            continue  # loose root files have no place in the course order: they sort last
         no, _ = path_numbers(str(uri or ""))
         if no is not None and (entry["no"] is None or no < entry["no"]):
             entry["no"] = no
+    for e in agg.values():
+        if e["no"] is None and e["section"]:
+            e["no"] = label_number(str(e["section"]))
     ordered = sorted(agg.values(), key=lambda e: _order_key(e["no"], e["section"]))
     return [{"section": e["section"], "documents": e["documents"]} for e in ordered]
+
+
+_LABEL_NO = re.compile(
+    r"^(?:chapter|kapitel|section|abschnitt|part|teil|module|modul|week|woche|unit|lesson|lektion)"
+    r"\s*(\d+)\b",
+    re.I,
+)
+
+
+def label_number(label: str) -> int | None:
+    """A section whose folder carries no number may still say where it belongs in its own label
+    ("chapter 2 Transformers Architecture" from an instructor repository next to the numbered
+    export). Literal prefixes only; anything else stays unnumbered and sorts last."""
+    m = _LABEL_NO.match(label.strip())
+    return int(m.group(1)) if m else None
 
 
 async def section_material(db: AsyncSession, course: str, section: str | None) -> SectionMaterial:

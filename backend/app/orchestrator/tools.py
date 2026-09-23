@@ -14,31 +14,50 @@ from app.schemas.common import ObjectType
 TUTOR_MIN_TRUST = 1  # tier 0 (untrusted) never leaves the index for a tutor turn
 
 
+MIN_HITS = 2  # fewer than this and the search widens one step
+
+
 async def retrieve(
     repo: RetrievalRepository,
     query: str,
     *,
     skill_id: str | None,
+    course: str | None = None,
     k: int = 6,
     min_trust: int = TUTOR_MIN_TRUST,
 ) -> SearchResult:
-    """Skill-filtered search first; widen to the whole corpus when the node has too little material."""
+    """Skill-filtered search first; when the node has too little material, widen to the skill's
+    *course* before the whole corpus — a lesson published from a course is taught from that course
+    (the first rehearsal cited another course's notebooks for a course lesson, 2026-09-23). The
+    trace records how far the search widened."""
     res = await repo.search(
         query,
         SearchFilters(skill_ids=[skill_id] if skill_id else None, min_trust_tier=min_trust),
         k=k,
     )
-    if len(res.hits) >= 2 or not skill_id:
+    if len(res.hits) >= MIN_HITS or not skill_id:
         return res
-    wide = await repo.search(query, SearchFilters(min_trust_tier=min_trust), k=k)
-    seen = {h.chunk.id for h in res.hits}
-    merged = res.hits + [h for h in wide.hits if h.chunk.id not in seen]
+    steps: list[tuple[str, SearchFilters]] = []
+    if course:
+        steps.append(("course", SearchFilters(course=course, min_trust_tier=min_trust)))
+    steps.append(("corpus", SearchFilters(min_trust_tier=min_trust)))
+    merged = list(res.hits)
+    trace = res.trace
+    widened: list[str] = []
+    for label, filters in steps:
+        wide = await repo.search(query, filters, k=k)
+        seen = {h.chunk.id for h in merged}
+        merged += [h for h in wide.hits if h.chunk.id not in seen]
+        trace = wide.trace
+        widened.append(label)
+        if len(merged) >= MIN_HITS:
+            break
     for rank, h in enumerate(merged[:k]):
         h.rank = rank
-    trace = wide.trace.model_copy(
+    trace = trace.model_copy(
         update={
             "chunk_ids": [h.chunk.id for h in merged[:k]],
-            "filters": {"skill_ids": [skill_id], "widened": True},
+            "filters": {"skill_ids": [skill_id], "course": course, "widened": widened},
         }
     )
     return SearchResult(hits=merged[:k], trace=trace)

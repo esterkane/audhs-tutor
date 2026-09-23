@@ -1,0 +1,257 @@
+{
+  "course": "LLM Engineering:Understanding & Deploying Transformer models",
+  "snapshot": "/Users/saru/projects/audhs-tutor/data/rehearsal.db",
+  "at": "2026-09-23T09:09:56.020729+00:00",
+  "published": [
+    {
+      "section": "Training Transformer From Scratch",
+      "skills": 2,
+      "objects": 2,
+      "assessments": 6,
+      "edges": 1
+    },
+    {
+      "section": "Text Summarization",
+      "skills": 1,
+      "objects": 1,
+      "assessments": 3,
+      "edges": 0
+    },
+    {
+      "section": "Text Generation",
+      "skills": 4,
+      "objects": 4,
+      "assessments": 10,
+      "edges": 3
+    },
+    {
+      "section": "Text Classification",
+      "skills": 2,
+      "objects": 2,
+      "assessments": 5,
+      "edges": 1
+    },
+    {
+      "section": "Question Answering",
+      "skills": 3,
+      "objects": 3,
+      "assessments": 6,
+      "edges": 2
+    },
+    {
+      "section": "Model Optimization and Deployment",
+      "skills": 1,
+      "objects": 1,
+      "assessments": 2,
+      "edges": 0
+    },
+    {
+      "section": "chapter 2 Transformers Architecture",
+      "skills": 8,
+      "objects": 8,
+      "assessments": 30,
+      "edges": 7
+    },
+    {
+      "section": null,
+      "skills": 2,
+      "objects": 2,
+      "assessments": 4,
+      "edges": 1
+    }
+  ],
+  "course_skills": 23,
+  "skills": [
+    {
+      "skill": "llm-engineering-unde-chapter-2-transf-input-embedding",
+      "title": "Input Embedding",
+      "course": "LLM Engineering:Understanding & Deploying Transformer models",
+      "problems": [],
+      "turns": [
+        {
+          "action": "explain",
+          "latency_s": 15.62,
+          "model": "gemma3-12b",
+          "route": "primary",
+          "outcome": "ok",
+          "retrieved": 3,
+          "cited": 2,
+          "cited_outside_course": 0,
+          "citation_marks_in_text": 4,
+          "answer_chars": 706,
+          "answer_head": "(analogy) Think of input embedding like assigning a unique address to each word in your vocabulary [3]. These addresses, or vectors, capture semantic meaning\u2014words with similar meanings have addresses that are close together in a multi-dime"
+        },
+        {
+          "action": "hint",
+          "latency_s": 11.67,
+          "model": "gemma3-12b",
+          "route": "primary",
+          "outcome": "ok",
+          "retrieved": 3,
+          "cited": 1,
+          "cited_outside_course": 0,
+          "citation_marks_in_text": 2,
+          "answer_chars": 271,
+          "answer_head": "(analogy) The code downloads text data, tokenizes it, and then uses Word2Vec to create embeddings [1]. The cosine similarity function then compares the embeddings of two words [1].  Next, try running the code and observe the cosine similari"
+        }
+      ],
+      "attempts": [
+        {
+          "kind": "mcq",
+          "grader_level": "deterministic",
+          "score": 1.0,
+          "correct": true,
+          "latency_s": 0.01,
+          "criteria": [
+            [
+              "selects the correct option",
+              true
+            ]
+          ],
+          "feedback_head": "Correct: Gensim. The excerpt explicitly states that the Word2Vec model is created using the Gensim library."
+        },
+        {
+          "kind": "explain_back",
+          "grader_level": "local",
+          "score": 0.0,
+          "correct": false,
+          "latency_s": 18.83,
+          "criteria": [
+            [
+              "The code successfully downloads and reads text data.",
+              false
+            ],
+            [
+              "The code tokenizes the text into sentences and words.",
+              false
+            ],
+            [
+              "The code creates a Word2Vec model and calculates cosine simi",
+              false
+            ]
+          ],
+          "feedback_head": "You correctly mention Word2Vec and cosine similarity, but this describes the *process* of creating embeddings, not input embedding itself. Input embedding is th"
+        },
+        {
+          "kind": "mcq",
+          "grader_level": "deterministic",
+          "score": 1.0,
+          "correct": true,
+          "latency_s": 0.01,
+          "criteria": [
+            [
+              "selects the correct option",
+              true
+            ]
+          ],
+          "feedback_head": "Correct: Gensim. The excerpt explicitly states that the Word2Vec model is created using the Gensim library."
+        }
+      ],
+      "mastery": 0.417,
+      "due_items_total": 0,
+      "evidence_rows": 3
+    },
+    {
+      "skill": "llm-engineering-unde-chapter-2-transf-input-embedding",
+      "title": "Input Embedding",
+      "course": "LLM Engineering:Understanding & Deploying Transformer models",
+      "problems": [],
+      "turns": [
+        {
+          "action": "explain",
+          "latency_s": 15.83,
+          "model": "gemma3-12b",
+          "route": "primary",
+          "outcome": "ok",
+          "retrieved": 3,
+          "cited": 2,
+          "cited_outside_course": 0,
+          "citation_marks_in_text": 5,
+          "answer_chars": 719,
+          "answer_head": "(analogy) Think of input embedding like assigning a unique address to each word in your vocabulary [3]. Instead of treating words as just strings of characters, we represent them as vectors of numbers. These vectors capture semantic meaning"
+        },
+        {
+          "action": "hint",
+          "latency_s": 13.34,
+          "model": "gemma3-12b",
+          "route": "primary",
+          "outcome": "ok",
+          "retrieved": 3,
+          "cited": 1,
+          "cited_outside_course": 0,
+          "citation_marks_in_text": 3,
+          "answer_chars": 397,
+          "answer_head": "(analogy) The code downloads text data, tokenizes it, and then uses Word2Vec to create embeddings [1]. The cosine similarity calculation then compares the embeddings of two words [1].  To proceed, ensure that the words you're comparing ('bl"
+        }
+      ],
+      "attempts": [
+        {
+          "kind": "explain_back",
+          "grader_level": "local",
+          "score": 0.0,
+          "correct": false,
+          "latency_s": 16.92,
+          "criteria": [
+            [
+              "The code successfully downloads and reads text data.",
+              false
+            ],
+            [
+              "The code tokenizes the text into sentences and words.",
+              false
+            ],
+            [
+              "The code creates a Word2Vec model and calculates cosine simi",
+              false
+            ]
+          ],
+          "feedback_head": "You correctly identified Word2Vec and cosine similarity as related concepts, but you didn't explain what input embedding *is*. Input embedding is the vector rep"
+        },
+        {
+          "kind": "mcq",
+          "grader_level": "deterministic",
+          "score": 1.0,
+          "correct": true,
+          "latency_s": 0.01,
+          "criteria": [
+            [
+              "selects the correct option",
+              true
+            ]
+          ],
+          "feedback_head": "Correct: Gensim. The excerpt explicitly states that the Word2Vec model is created using the Gensim library."
+        },
+        {
+          "kind": "explain_back",
+          "grader_level": "local",
+          "score": 0.0,
+          "correct": false,
+          "latency_s": 16.63,
+          "criteria": [
+            [
+              "The code successfully downloads and reads text data.",
+              false
+            ],
+            [
+              "The code tokenizes the text into sentences and words.",
+              false
+            ],
+            [
+              "The code creates a Word2Vec model and calculates cosine simi",
+              false
+            ]
+          ],
+          "feedback_head": "You correctly identified Word2Vec and cosine similarity, but the explanation doesn't describe what input embedding *is* \u2013 it's a learned representation of words"
+        }
+      ],
+      "mastery": 0.417,
+      "due_items_total": 0,
+      "evidence_rows": 6
+    }
+  ],
+  "turn_latency_s": {
+    "median": 14.48,
+    "max": 15.83
+  },
+  "problems": []
+}

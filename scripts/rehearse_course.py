@@ -87,16 +87,23 @@ async def open_snapshot_world() -> World:
     return World(settings, engine, factory, learner.id, repo)
 
 
-def explain_back_answer(goal: str, concept: str) -> str:
-    """A plausible learner explanation built only from the published goal: what a learner who
-    read the lesson goal once might say. Grading it exercises the rubric/LLM path honestly."""
+def explain_back_answer(goal: str, concept: str, passages: list[str]) -> str:
+    """What a learner who studied the lesson would write: the goal in their words plus the
+    lecture's own explanations (prose of the cited passages, code left out). A generic answer
+    scores 0 with the rubric — correctly — so this is the honest way to show progression."""
     core = re.sub(
         r"^(understand|learn|describe|identify|explain)\s+(how\s+to\s+)?", "", goal, flags=re.I
     )
+    prose = []
+    for text in passages:
+        body = re.sub(r"```.*?```", " ", curriculum._body(text), flags=re.S)
+        body = re.sub(r"\s+", " ", body).strip()
+        if len(body.split()) >= 8:
+            prose.append(body)
+    lecture = " ".join(prose)[:700]
     return (
-        f"In my own words: {concept} is about {core.rstrip('.')}. The key idea is that the steps "
-        f"depend on each other, so I would first set up the inputs, then apply the method from the "
-        f"lecture, and finally check the output against what the lecture expects."
+        f"In my own words: {concept} is about {core.rstrip('.')}. As the lecture puts it: "
+        f"{lecture} That is why the steps come in this order and what the result should look like."
     )
 
 
@@ -184,7 +191,13 @@ async def rehearse_skill(
             elif a.kind == "cloze":
                 answer = str(a.item_json["answers"][0])
             else:
-                answer = explain_back_answer(obj.goal if obj else node.title, node.title)
+                cited = [c for c in (obj.sources_json if obj else []) if isinstance(c, str)][:4]
+                texts = []
+                for cid in cited:
+                    p = await curriculum.passage(db, cid)
+                    if p is not None:
+                        texts.append(str(p.text))
+                answer = explain_back_answer(obj.goal if obj else node.title, node.title, texts)
             t0 = time.perf_counter()
             try:
                 r = await grader.grade(

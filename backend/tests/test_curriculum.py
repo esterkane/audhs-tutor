@@ -488,6 +488,7 @@ async def test_goal_follows_course_order_not_publish_order(
     await _ingest(db, fake_repo, "PyTorch Fundamentals")
     sections = [s["section"] for s in await curriculum.sections_of(db, "PyTorch Fundamentals")]
     assert len(sections) >= 2, sections
+    assert None not in sections[:2]  # loose root files never come before numbered sections
     later = await curriculum.create_draft(
         db, learner.id, course="PyTorch Fundamentals", section=sections[1]
     )
