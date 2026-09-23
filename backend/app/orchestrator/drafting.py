@@ -145,6 +145,7 @@ async def draft_with_model(
         return payload, None, failed
     by_slug = {s["slug"]: s for s in payload["skills"]}
     objects = {o["skill"]: o for o in payload["learning_objects"]}
+    lecture_pairs = list(zip(lectures, curriculum.lecture_slugs(mat), strict=False))
     for sug in lessons:
         skill = by_slug.get(sug.slug)
         obj = objects.get(sug.slug)
@@ -157,6 +158,16 @@ async def draft_with_model(
         if sug.success_criteria:
             skill["success_criteria"] = [c.strip() for c in sug.success_criteria if c.strip()][:4]
             skill["origin"] = "model"
+            # the explain-back rubric follows the criteria the learner will be shown
+            lec = next((lec for lec, s in lecture_pairs if s == sug.slug), None)
+            for a in payload["assessments"]:
+                if a["skill"] == sug.slug and a["kind"] == "explain_back":
+                    a["rubric"] = curriculum.rubric_from_criteria(
+                        skill["success_criteria"],
+                        curriculum.salient_terms(
+                            [str(c["text"]) for c in (lec or {}).get("chunks", [])]
+                        ),
+                    )
         if sug.exercises:
             obj["exercises"] = [e.strip() for e in sug.exercises if e.strip()][:3]
             obj["origin"] = "model"

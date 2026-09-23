@@ -3,6 +3,7 @@ material, supplemental or excluded; a draft is built from primary sources only a
 left out; excluded sources cannot shape it; duplicate content does not inflate coverage;
 citations resolve; drafting never touches learning progress. Synthetic course, no models."""
 
+import json
 from pathlib import Path
 
 from httpx import AsyncClient
@@ -178,7 +179,7 @@ async def test_draft_uses_primary_sources_only_and_says_what_it_left_out(
         assert p is not None and p.course == COURSE
         assert p.document_title not in ("community-notebook", "external-links", "decorative")
     # the injected notebook sentence shaped nothing
-    assert all("INJECTED" not in a["item"]["text"] for a in payload["assessments"])
+    assert all("INJECTED" not in json.dumps(a) for a in payload["assessments"])
     mat = await curriculum.section_material(db, COURSE, SECTION)
     assert {d["title"] for d in mat.left_out} >= {
         "community-notebook",
@@ -458,3 +459,49 @@ async def test_documents_of_one_lecture_form_one_skill(
     assert len(built) == 3 and sum(1 for b in built if b["lecture"] == "Serving with FastAPI") == 2
     infos = [p["message"] for p in draft.validation_json if p["level"] == "info"]
     assert any(m.startswith("built on 3 of 3 primary document(s);") for m in infos)
+
+
+async def test_every_skill_gets_an_explain_back_item_with_a_rubric(
+    db: AsyncSession,
+    fake_repo: SqliteHybridRepository,
+    learner: models.LearnerProfile,
+    tmp_path: Path,
+) -> None:
+    """Skills require the 'explanation' dimension; a draft without an explain-back item could be
+    published and never mastered. The deterministic draft adds one per skill with a literal rubric
+    keyed on the lecture's vocabulary; the validator no longer warns about it."""
+    await _ingest(db, fake_repo, _course(tmp_path))
+    draft = await curriculum.create_draft(db, learner.id, course=COURSE, section=SECTION)
+    payload = draft.payload_json
+    slugs = [s["slug"] for s in payload["skills"]]
+    eb = [a for a in payload["assessments"] if a["kind"] == "explain_back"]
+    assert sorted(a["skill"] for a in eb) == sorted(slugs)
+    for a in eb:
+        assert a["item"]["prompt"].startswith("Explain '") and a["auto"] is True
+        assert len(a["rubric"]) == 3 and all(r["criterion"] and r["keywords"] for r in a["rubric"])
+        assert a["source_chunk_id"]
+    vec = next(a for a in eb if "vectors" in a["skill"])
+    assert "vector" in " ".join(vec["rubric"][0]["keywords"]) or "product" in " ".join(
+        vec["rubric"][0]["keywords"]
+    )
+    assert not any("no explain_back item" in p["message"] for p in draft.validation_json)
+    # publishing stores the rubric next to the item, and the grader rotation offers it
+    rep = await curriculum.publish_draft(db, learner.id, draft.id)
+    assert rep.assessments >= len(slugs)
+    rows = (
+        (
+            await db.execute(
+                select(models.Assessment).where(models.Assessment.kind == "explain_back")
+            )
+        )
+        .scalars()
+        .all()
+    )
+    assert len(rows) == len(slugs) and all(r.rubric_id for r in rows)
+    # a criterion list turns into rubric rows with the criterion's own words as keywords
+    rubric = curriculum.rubric_from_criteria(
+        ["Explains why softmax outputs sum to one", "Names the exponential step"], ["fallback"]
+    )
+    assert rubric[0]["keywords"][:2] == ["explains", "softmax"] and rubric[1][
+        "criterion"
+    ].startswith("Names")

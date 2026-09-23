@@ -535,6 +535,74 @@ def _cloze_candidates(lecture_title: str, chunks: list[dict[str, Any]]) -> list[
     return out
 
 
+_WORD = re.compile(r"[A-Za-zÀ-ÿ][A-Za-zÀ-ÿ_-]{4,}")
+
+
+def salient_terms(texts: list[str], n: int = 8) -> list[str]:
+    """The most frequent longer words of a lecture outside code fences and stop words, lowercased:
+    the vocabulary a learner's explanation would naturally use. Deterministic, order by count then
+    first appearance."""
+    counts: dict[str, int] = {}
+    first: dict[str, int] = {}
+    for text in texts:
+        body = re.sub(r"```.*?```", " ", _body(text), flags=re.S)
+        for m in _WORD.finditer(body):
+            w = m.group(0).lower().strip("_-")
+            if w in _STOP or len(w) < 5:
+                continue
+            counts[w] = counts.get(w, 0) + 1
+            first.setdefault(w, len(first))
+    return sorted(counts, key=lambda w: (-counts[w], first[w]))[:n]
+
+
+def rubric_from_criteria(criteria: list[str], fallback_terms: list[str]) -> list[dict[str, Any]]:
+    """One rubric row per success criterion; the keywords are the criterion's own longer words
+    (the deterministic level checks them, the LLM level reads the criterion text)."""
+    rows: list[dict[str, Any]] = []
+    for c in criteria:
+        kws = [w.lower() for w in _WORD.findall(c) if w.lower() not in _STOP][:5]
+        rows.append({"criterion": c.strip(), "keywords": kws or fallback_terms[:4]})
+    return rows
+
+
+def explain_back_item(
+    slug: str, title: str, chunks: list[dict[str, Any]], criteria: list[str] | None = None
+) -> dict[str, Any]:
+    """The explain-back item every published skill needs: `assessment_requirements` list the
+    'explanation' dimension, and without such an item the skill can never be mastered (found by
+    the first live rehearsal, 2026-09-23). The rubric follows the skill's success criteria when
+    the draft has them, otherwise three literal criteria keyed on the lecture's own vocabulary."""
+    terms = salient_terms([str(c["text"]) for c in chunks])
+    if criteria:
+        rubric = rubric_from_criteria(criteria, terms)
+    else:
+        rubric = [
+            {
+                "criterion": f"Says what '{title}' is for — the problem it solves or the question it answers",
+                "keywords": terms[:4],
+            },
+            {
+                "criterion": "Explains how it works in the learner's own words, step by step",
+                "keywords": terms[4:8] or terms,
+            },
+            {
+                "criterion": "Gives one concrete example, value or step taken from the lecture",
+                "keywords": terms,
+            },
+        ]
+    return {
+        "skill": slug,
+        "kind": "explain_back",
+        "item": {
+            "prompt": f"Explain '{title}' in your own words, as the lecture teaches it: what it is "
+            "for, how it works, and one concrete example or step.",
+        },
+        "rubric": rubric,
+        "source_chunk_id": str(chunks[0]["id"]) if chunks else None,
+        "auto": True,
+    }
+
+
 def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str, Any]:
     """One skill per lecture, prerequisites in lecture order, a LearningObject whose goal restates
     the lecture, and cloze candidates cut from the source. Success criteria, examples and exercises
@@ -578,6 +646,7 @@ def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str,
         )
         for cz in _cloze_candidates(title, chunks):
             assessments.append({"skill": slug, **cz})
+        assessments.append(explain_back_item(slug, title, chunks))
         prev_slug = slug
     return {
         "domain": domain,
@@ -949,14 +1018,23 @@ async def publish_draft(db: AsyncSession, learner_id: str, draft_id: str) -> Pub
         )
     report = PublishReport()
     domain = str(payload.get("domain") or "ai_ml")
+    course = str(payload.get("course") or d.course)
+    section = payload.get("section", d.section)
+    # the skill's place in the course: section order (as `sections_of` lists them) × 1000 + the
+    # lecture position in this draft — so the goal-narrowed next-skill pick follows the course
+    # regardless of the order in which sections were published
+    section_labels = [s["section"] for s in await sections_of(db, course)]
+    section_index = section_labels.index(section) + 1 if section in section_labels else None
     ids: dict[str, str] = {}
-    for s in payload["skills"]:
+    for position, s in enumerate(payload["skills"], start=1):
         node = (
             await db.execute(select(SkillNode).where(SkillNode.slug == s["slug"]))
         ).scalar_one_or_none()
         fields = dict(
             domain=domain,
-            course=payload.get("course") or d.course,
+            course=course,
+            section=section,
+            order_no=(section_index * 1000 + position) if section_index is not None else None,
             title=s["title"],
             description=s.get("description", ""),
             success_criteria_json=s.get("success_criteria", []),

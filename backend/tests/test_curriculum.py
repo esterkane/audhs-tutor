@@ -47,10 +47,16 @@ async def test_material_status_and_deterministic_draft(
     for i, s in enumerate(payload["skills"]):
         assert s["prerequisites"] == ([slugs[i - 1]] if i else [])
     assert all(o["sources"] for o in payload["learning_objects"])
-    # cloze candidates are cut from the source, never invented
+    # cloze candidates are cut from the source, never invented; every skill also gets one
+    # explain-back item with a rubric (the 'explanation' dimension must be reachable)
+    kinds = {a["kind"] for a in payload["assessments"]}
+    assert kinds == {"cloze", "explain_back"}, kinds
     for a in payload["assessments"]:
-        assert a["kind"] == "cloze" and a["auto"] and "____" in a["item"]["text"]
-        assert a["source_chunk_id"]
+        assert a["auto"] and a["source_chunk_id"]
+        if a["kind"] == "cloze":
+            assert "____" in a["item"]["text"]
+        else:
+            assert a["item"]["prompt"] and len(a["rubric"]) == 3
     problems = [p for p in draft.validation_json]
     # the deterministic draft is honest about gaps: skills without a cloze need an assessment
     assert all(p["level"] in ("error", "warning", "info") for p in problems)
@@ -273,6 +279,8 @@ async def test_lecture_order_follows_file_numbers_not_labels(
     assert "no success criteria" in text and "no exercises" in text
     # cloze blanks a content word, not the guessable title word
     for a in payload["assessments"]:
+        if a["kind"] != "cloze":
+            continue
         answer = a["item"]["answers"][0].lower()
         if not a.get("guessable"):
             assert answer not in {"tokenisation", "embeddings", "positional", "information"}
@@ -467,3 +475,41 @@ def test_model_excerpts_prefer_teaching_text_over_setup_cells() -> None:
     assert drafting.prose_words(chunks[4]["text"]) == 2  # "Output loss": bare code carries nothing
     # nothing but setup cells: the first passages are used rather than none
     assert [c["id"] for c in drafting.teaching_chunks(chunks[:2], n=4)] == ["c0", "c1"]
+
+
+async def test_goal_follows_course_order_not_publish_order(
+    db: AsyncSession,
+    fake_repo: SqliteHybridRepository,
+    learner: models.LearnerProfile,
+) -> None:
+    """Sections published in reverse order: the first lesson offered is still the first lecture of
+    the first section, because publish stamps section + position and the goal pick sorts by them.
+    Without a goal the map order is unchanged (insertion order), and edges still gate unlocks."""
+    await _ingest(db, fake_repo, "PyTorch Fundamentals")
+    sections = [s["section"] for s in await curriculum.sections_of(db, "PyTorch Fundamentals")]
+    assert len(sections) >= 2, sections
+    later = await curriculum.create_draft(
+        db, learner.id, course="PyTorch Fundamentals", section=sections[1]
+    )
+    first = await curriculum.create_draft(
+        db, learner.id, course="PyTorch Fundamentals", section=sections[0]
+    )
+    await curriculum.publish_draft(db, learner.id, later.id)  # the later section first
+    await curriculum.publish_draft(db, learner.id, first.id)
+    nodes = (
+        (await db.execute(select(SkillNode).where(SkillNode.course == "PyTorch Fundamentals")))
+        .scalars()
+        .all()
+    )
+    by_slug = {n.slug: n for n in nodes}
+    inputs_first = first.payload_json["skills"][0]["slug"]
+    attention_first = later.payload_json["skills"][0]["slug"]
+    assert by_slug[inputs_first].section == sections[0] and by_slug[inputs_first].order_no == 1001
+    assert by_slug[attention_first].order_no == 2001
+    await preferences.set_pref(db, learner.id, "goal.course", "PyTorch Fundamentals")
+    nxt = await skill_graph.next_skill(db, learner.id)
+    assert nxt is not None and nxt.slug == inputs_first, nxt.slug
+    # the map order itself (no goal) is untouched: insertion order, i.e. the section published first
+    await preferences.set_pref(db, learner.id, "goal.course", "")
+    order = await skill_graph.topological_order(db)
+    assert order[0].slug == attention_first

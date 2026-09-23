@@ -79,6 +79,11 @@ class SkillNode(IdMixin, Base):
     __tablename__ = "skill_node"
     domain: Mapped[str] = mapped_column(Text, index=True)
     course: Mapped[str | None] = mapped_column(Text, index=True)  # published-from course (P4 goal)
+    # where the skill sits in its course: the draft's section and a position that follows the
+    # course structure (section order × 1000 + lecture position). It orders the goal-narrowed
+    # "next skill" pick — it is *not* a prerequisite; edges stay the only unlock rule.
+    section: Mapped[str | None] = mapped_column(Text)
+    order_no: Mapped[int | None] = mapped_column(Integer, index=True)
     slug: Mapped[str] = mapped_column(Text, unique=True)
     title: Mapped[str] = mapped_column(Text)
     description: Mapped[str] = mapped_column(Text, default="")

@@ -123,7 +123,12 @@ async def next_skill(
     order = [n for n in await topological_order(db, domain) if teachable(n)]
     goal = str(await preferences.get(db, learner_id, "goal.course") or "").strip()
     if goal:
-        in_goal = [n for n in order if n.course == goal]
+        # course order (section, then lecture position — set at publish), not publish order;
+        # `_pick` still never returns a locked node, so edges keep the last word
+        in_goal = sorted(
+            (n for n in order if n.course == goal),
+            key=lambda n: (n.order_no is None, n.order_no or 0),
+        )
         if in_goal:  # a chosen goal narrows the map; an empty/unknown goal falls back to the map
             pick = await _pick(db, learner_id, in_goal)
             if pick is not None:
