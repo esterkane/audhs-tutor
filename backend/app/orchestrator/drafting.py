@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.kernel import curriculum
+from app.kernel.assessment_quality import course_metadata, unsuitable_question
 from app.models_ai.budget import BudgetExceeded
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, ProviderError, TaskClass
@@ -31,8 +32,13 @@ MAX_TOKENS_PER_CALL = 2000
 class LessonSuggestion(BaseModel):
     slug: str
     goal: str = Field(max_length=400)
+    assessable: bool = True
+    concept: str | None = Field(default=None, max_length=300)
+    explain_back_prompt: str | None = Field(default=None, max_length=600)
     success_criteria: list[str] = Field(default_factory=list, max_length=4)
     exercises: list[str] = Field(default_factory=list, max_length=3)
+    source_chunk_id: str | None = None
+    explain_source_chunk_id: str | None = None
     mcq_question: str | None = Field(default=None, max_length=300)
     mcq_options: list[str] = Field(default_factory=list, max_length=4)
     mcq_answer: int | None = None
@@ -81,7 +87,9 @@ def _excerpts(mat: curriculum.SectionMaterial, start: int = 0, stop: int | None 
         separator = "\n[…]\n"
         allowance = max(0, MAX_EXCERPT_CHARS - len(separator) * max(0, len(selected) - 1))
         per_chunk = allowance // max(1, len(selected))
-        text = separator.join(curriculum._body(c["text"])[:per_chunk] for c in selected)
+        text = separator.join(
+            f"[source {c['id']}]\n" + curriculum._body(c["text"])[:per_chunk] for c in selected
+        )
         parts.append(f'<lecture slug="{slug}">')
         parts.append("title: " + escape_data(str(lec["lecture"])).replace("\n", " "))
         parts.append(escape_data(text))
@@ -117,7 +125,10 @@ async def draft_with_model(
             out = await gateway.complete(
                 TaskClass.GEN_ITEMS,
                 [
-                    Message(role="system", content=prompts.curriculum_task("draft")),
+                    Message(
+                        role="system",
+                        content=prompts.base_policy() + "\n\n" + prompts.curriculum_task("draft"),
+                    ),
                     Message(
                         role="user",
                         content=_excerpts(mat, start, stop)
@@ -155,6 +166,29 @@ async def draft_with_model(
         obj = objects.get(sug.slug)
         if skill is None or obj is None:
             continue  # the model may not invent lectures
+        rejected_metadata = (
+            any(course_metadata(t) for t in [sug.goal, *sug.success_criteria, *sug.exercises])
+            or unsuitable_question(sug.mcq_question or "")
+            or unsuitable_question(sug.explain_back_prompt or "")
+        )
+        if rejected_metadata or not sug.assessable:
+            payload.setdefault("quality_notes", []).append(
+                {
+                    "skill": sug.slug,
+                    "message": (
+                        "Course-logistics suggestions omitted or teaching evidence insufficient; "
+                        "review the remaining concept and assessments."
+                    ),
+                }
+            )
+        if not sug.assessable:
+            # Keep the source-backed lesson scaffold reviewable, but never invent a
+            # competency question from a welcome page or administrative instructions.
+            payload["assessments"] = [a for a in payload["assessments"] if a["skill"] != sug.slug]
+            continue
+        if sug.concept and not unsuitable_question(sug.concept):
+            skill["title"] = sug.concept.strip()
+            obj["concept"] = sug.concept.strip()
         # Preserve the evidence actually supplied to the model, even when it occurs after
         # the deterministic first-eight source window. Keep remaining original citations
         # within the existing bound; never invent a chunk or claim one MCQ's exact source.
@@ -164,12 +198,15 @@ async def draft_with_model(
             : curriculum.MAX_SOURCES_PER_OBJECT
         ]
         # every replaced field is labelled so the UI can say which lessons the model touched
-        if sug.goal.strip():
+        if sug.goal.strip() and not course_metadata(sug.goal):
             obj["goal"] = sug.goal.strip()
             obj["origin"] = "model"
         if sug.success_criteria:
-            skill["success_criteria"] = [c.strip() for c in sug.success_criteria if c.strip()][:4]
+            skill["success_criteria"] = [
+                c.strip() for c in sug.success_criteria if c.strip() and not course_metadata(c)
+            ][:4]
             skill["origin"] = "model"
+            obj["success_criteria"] = list(skill["success_criteria"])
             # the explain-back rubric follows the criteria the learner will be shown
             lec = next((lec for lec, s in lecture_pairs if s == sug.slug), None)
             for a in payload["assessments"]:
@@ -180,15 +217,36 @@ async def draft_with_model(
                             [str(c["text"]) for c in (lec or {}).get("chunks", [])]
                         ),
                     )
+        if sug.explain_back_prompt and not unsuitable_question(sug.explain_back_prompt):
+            payload["assessments"] = [
+                a
+                for a in payload["assessments"]
+                if not (a["skill"] == sug.slug and a["kind"] == "explain_back")
+            ]
+            lec = next((lec for lec, s in lecture_pairs if s == sug.slug), None)
+            explanation = curriculum.explain_back_item(
+                sug.slug, skill["title"], (lec or {}).get("chunks", []), skill["success_criteria"]
+            )
+            explanation["item"]["prompt"] = sug.explain_back_prompt.strip()
+            explanation["source_chunk_id"] = (
+                sug.explain_source_chunk_id if sug.explain_source_chunk_id in selected_ids else None
+            )
+            explanation["origin"] = "model"
+            explanation["auto"] = False
+            payload["assessments"].append(explanation)
         if sug.exercises:
-            obj["exercises"] = [e.strip() for e in sug.exercises if e.strip()][:3]
+            obj["exercises"] = [
+                e.strip() for e in sug.exercises if e.strip() and not course_metadata(e)
+            ][:3]
             obj["origin"] = "model"
         if (
             sug.mcq_question
+            and not unsuitable_question(sug.mcq_question)
             and len(sug.mcq_options) == 4
             and sug.mcq_answer is not None
             and 0 <= sug.mcq_answer < 4
         ):
+            skill["assessment_requirements"]["dimensions"] = ["recall", "explanation"]
             payload["assessments"].append(
                 {
                     "skill": sug.slug,
@@ -199,9 +257,10 @@ async def draft_with_model(
                         "answer": sug.mcq_answer,
                         "explanation": (sug.mcq_explanation or "").strip(),
                     },
-                    # the model saw up to 4 excerpts; no single passage is *the* source, so none
-                    # is claimed (the validator warns; `auto` is reserved for source-cut items)
-                    "source_chunk_id": None,
+                    # Only retain identifiers actually supplied with this lecture's excerpts.
+                    "source_chunk_id": sug.source_chunk_id
+                    if sug.source_chunk_id in selected_ids
+                    else None,
                     "auto": False,
                     "origin": "model",
                 }

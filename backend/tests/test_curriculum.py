@@ -47,16 +47,13 @@ async def test_material_status_and_deterministic_draft(
     for i, s in enumerate(payload["skills"]):
         assert s["prerequisites"] == ([slugs[i - 1]] if i else [])
     assert all(o["sources"] for o in payload["learning_objects"])
-    # cloze candidates are cut from the source, never invented; every skill also gets one
-    # explain-back item with a rubric (the 'explanation' dimension must be reachable)
+    # Basic drafts contain explain-back scaffolds, not automatic source-word trivia.
+    # The explanation requirement stays reachable without an invented recall question.
     kinds = {a["kind"] for a in payload["assessments"]}
-    assert kinds == {"cloze", "explain_back"}, kinds
+    assert kinds == {"explain_back"}, kinds
     for a in payload["assessments"]:
         assert a["auto"] and a["source_chunk_id"]
-        if a["kind"] == "cloze":
-            assert "____" in a["item"]["text"]
-        else:
-            assert a["item"]["prompt"] and len(a["rubric"]) == 3
+        assert a["item"]["prompt"] and len(a["rubric"]) == 3
     problems = [p for p in draft.validation_json]
     # the deterministic draft is honest about gaps: skills without a cloze need an assessment
     assert all(p["level"] in ("error", "warning", "info") for p in problems)

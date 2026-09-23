@@ -4,7 +4,7 @@ Ingested material is *searchable*; it becomes *learnable* only through a reviewe
 curriculum: skill nodes with prerequisites, one LearningObject per skill (concept, goal, examples,
 exercises, success criteria, sources = chunk ids), and assessments with rubrics. This module is
 deterministic: a draft is proposed from the documents of one course section (one skill per lecture,
-prerequisites in lecture order, cloze candidates cut from the source text — never invented),
+prerequisites in lecture order and explain-back scaffolds for substantive lecture titles),
 validated (cycles, unknown prerequisites, missing objects/assessments, broken provenance), edited by
 the learner and published explicitly. Publishing writes a *new* LearningObject version and new
 assessment rows; nothing that produced historical evidence is overwritten. A model may draft the
@@ -34,6 +34,7 @@ from app.db.models import (
     SkillEdge,
     SkillNode,
 )
+from app.kernel.assessment_quality import course_metadata, orientation_title, unsuitable_question
 from app.knowledge.ingest.loaders import clean_stem, split_number
 from app.knowledge.ingest.udemy_manifest import parse_lecture_dir, parse_section_dir
 
@@ -534,7 +535,7 @@ def _cloze_candidates(lecture_title: str, chunks: list[dict[str, Any]]) -> list[
     for c in chunks:
         for sent in _SENT.split(_body(c["text"])):
             sent = " ".join(sent.split())
-            if not 40 <= len(sent) <= 220:
+            if unsuitable_question(sent) or "http" in sent or not 40 <= len(sent) <= 220:
                 continue
             hit = next(
                 (
@@ -642,7 +643,7 @@ def explain_back_item(
 
 def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str, Any]:
     """One skill per lecture, prerequisites in lecture order, a LearningObject whose goal restates
-    the lecture, and cloze candidates cut from the source. Success criteria, examples and exercises
+    the lecture, and explain-back scaffolds for substantive titles. Criteria, examples and exercises
     are left empty on purpose: transcript openers are not worked examples and a template criterion
     would silence the validator's warning. Every field is meant to be edited; nothing here is a
     claim about the material's truth."""
@@ -663,7 +664,7 @@ def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str,
                 "description": f"Lecture '{title}' in {where} ({len(chunks)} source passages{docs_note}).",
                 "success_criteria": [],
                 "assessment_requirements": {
-                    "dimensions": ["recall", "explanation"],
+                    "dimensions": ["explanation"],
                     "min_items": 1,
                 },
                 "example_applications": [],
@@ -681,9 +682,10 @@ def propose_payload(mat: SectionMaterial, *, domain: str = "ai_ml") -> dict[str,
                 "sources": [c["id"] for c in chunks[:MAX_SOURCES_PER_OBJECT]],
             }
         )
-        for cz in _cloze_candidates(title, chunks):
-            assessments.append({"skill": slug, **cz})
-        assessments.append(explain_back_item(slug, title, chunks))
+        # Source-cut blanks reward arbitrary wording, not understanding. A basic draft
+        # remains a scaffold; orientation needs substantive content before assessment.
+        if not orientation_title(title):
+            assessments.append(explain_back_item(slug, title, chunks))
         prev_slug = slug
     return {
         "domain": domain,
@@ -871,6 +873,21 @@ async def validate_payload(db: AsyncSession, payload: dict[str, Any]) -> list[Pr
         kind = a.get("kind")
         raw_item = a.get("item")
         item: dict[str, Any] = raw_item if isinstance(raw_item, dict) else {}
+        question = str(item.get("question") or item.get("prompt") or item.get("text") or "")
+        rubric = a.get("rubric")
+        metadata_rubric = isinstance(rubric, list) and any(
+            course_metadata(str(row.get("criterion", "")))
+            for row in rubric
+            if isinstance(row, dict)
+        )
+        if unsuitable_question(question) or metadata_rubric:
+            problems.append(
+                Problem(
+                    "error",
+                    sk,
+                    "assessment tests course orientation or logistics; replace it with a subject-matter question",
+                )
+            )
         if kind == "cloze" and not (item.get("text") and item.get("answers")):
             problems.append(Problem("error", sk, "cloze needs text and answers"))
         if kind == "mcq" and not (
@@ -910,6 +927,14 @@ async def validate_payload(db: AsyncSession, payload: dict[str, Any]) -> list[Pr
         }
     for s in skills:
         slug = str(s.get("slug") or "")
+        if any(course_metadata(str(c)) for c in s.get("success_criteria", [])):
+            problems.append(
+                Problem(
+                    "error",
+                    slug,
+                    "success criteria describe course logistics rather than subject competence",
+                )
+            )
         obj = objects.get(slug)
         if obj is None:
             problems.append(Problem("error", slug, "no learning object"))
@@ -938,13 +963,29 @@ async def validate_payload(db: AsyncSession, payload: dict[str, Any]) -> list[Pr
         ):
             problems.append(
                 Problem(
-                    "warning",
+                    "error",
                     slug,
                     "requirements list 'explanation' but there is no explain_back item",
                 )
             )
+        if "recall" in dims and not any(
+            a.get("kind") in ("mcq", "cloze") and str(a.get("skill")) == slug for a in assessments
+        ):
+            problems.append(
+                Problem(
+                    "error", slug, "requirements list 'recall' but there is no mcq or cloze item"
+                )
+            )
         if by_skill.get(slug, 0) < 1:
             problems.append(Problem("error", slug, "at least one assessment is required"))
+    for note in _dicts(payload.get("quality_notes"))[:60]:
+        problems.append(
+            Problem(
+                "warning",
+                str(note.get("skill", "draft")),
+                str(note.get("message", "Review assessment relevance.")),
+            )
+        )
     return problems
 
 

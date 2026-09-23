@@ -1,3 +1,11 @@
+## Assessment relevance — 2026-09-23
+
+Removed automatic source-cut clozes from new curriculum proposals. Curriculum prompt v2 requests source-supported applications and reasoning; conservative logistics filters reject unsuitable questions/criteria, and missing required assessment dimensions block activation. See `docs/slices/assessment-relevance.md` for scope, tests and evaluation limitations.
+
+A reviewed correction is saved as an unpublished local draft. Active questions and learning history are unchanged. Pending owner choice: replace existing active questions or leave the correction for review. Do not simply publish expecting replacement: current publication adds assessments. Replacement must retire old question eligibility and review cards while preserving historical answers/evidence. No retirement implementation is included here.
+
+Verification: 339 backend / 51 frontend tests and lint passed; code/pedagogy reviews cleared. Local draft-model evaluation still produced trivia, demonstrating why the validation guard is needed. Broader tutor evaluation passed 3/5 hard checks, with length and premature-solution failures; hosted rubric judging unavailable. These remain explicit follow-up items.
+
 ## Lesson activation UI — 2026-09-23
 
 The material-to-lessons screen now explains its purpose and separates course selection, section review and explicit activation. Existing drafts come first; readable goals/practice/assessments and inline source evidence replace default JSON exposure. New draft creation and source-role settings are secondary. “Activate lessons” uses the existing publication endpoint and explains that content stays in the local app. Unsaved edits and refreshed draft conflicts are guarded. No live drafts were activated during testing.
