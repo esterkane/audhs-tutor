@@ -55,6 +55,7 @@ Benchmark: planner produces valid plans for all mode×energy combos; representat
 - [x] `hybrid-retrieval` — server-side fusion, optional local reranker, trust/provenance filter, node/course payload filters; `retrieval_trace`.
 - [x] `retrieval-evals` — labelled queries, recall@k, citation coverage.
 - [x] `untrusted-content-guard` — tagged data blocks, instruction-pattern flagging, tests with poisoned chunks.
+- [x] `n8n-workflows` (2026-09-23) — built-in bounded JSON workflow reader; graph structure and teaching notes, no execution or parameter values; archive provenance and repeat-import tests.
 - [x] `ingest-formats` (2026-09-20) — every common course format with stdlib parsers: Office (docx/pptx/xlsx), ODF, EPUB, HTML, RTF, LaTeX, rst/org/adoc, 30+ source languages (secrets redacted), zip/tar archives (zip-slip guard, `<archive>!/<member>` URIs), transcript formats (SBV, ASS, TTML, Whisper/json3 JSON, TSV, timestamped text); `GET /api/corpus/capabilities`, `scripts/ingest.py --capabilities`.
 - [x] `media-transcription` (2026-09-20) — audio/video → timed chunks via the registry STT model (`TaskClass.STT`, `whisper-large-v3-turbo` on MLX, ffmpeg or macOS afconvert, sidecar captions win, transcript cache by content hash), slide images via the registry vision model (`TaskClass.VISION`, `gemma3-12b`); each call logged in `model_call`.
 Benchmark: ≥ 5 courses ingested; recall@8 ≥ 0.8 on labelled set; poisoned-chunk tests pass; p95 search < 300 ms at current corpus size; Qdrant RAM < 1 GB.

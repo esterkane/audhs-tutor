@@ -1,3 +1,7 @@
+## Workflow ingestion follow-up — 2026-09-23
+
+The built-in importer now reads n8n workflow JSON directly, including archive members (see `docs/slices/n8n-workflows.md`). This replaces reliance on the earlier private one-run structure script. Re-import: 239 versions imported, 1414 unique chunks indexed; six other-format JSON files unsupported, two images skipped by the no-media run, no parse/access/retry errors. Parameter values and runtime data remain omitted. These are searchable sources, not published lessons.
+
 # Course material download and ingestion
 
 Updated: 2026-09-21T14:41:11+02:00

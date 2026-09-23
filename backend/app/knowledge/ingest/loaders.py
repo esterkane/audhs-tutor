@@ -53,6 +53,7 @@ from app.knowledge.ingest.vision import (
     ImageReader,
     read_image,
 )
+from app.knowledge.ingest.workflows import workflow_blocks
 
 SUFFIX_TYPES: dict[str, str] = {
     ".vtt": "udemy_caption",
@@ -72,7 +73,7 @@ SUFFIX_TYPES: dict[str, str] = {
     ".adoc": "text",
     ".asciidoc": "text",
     ".textile": "text",
-    ".json": "text",  # sniffed: transcript / links list; other JSON is reported as skipped
+    ".json": "text",  # sniffed: transcript / links / n8n workflow; other JSON is reported as skipped
     ".tsv": "document",
     ".csv": "document",
     ".xml": "transcript",  # TTML only
@@ -166,7 +167,7 @@ FORMAT_GROUPS: dict[str, list[str]] = {
     "slides": [".pptx", ".odp", ".ppt*", ".key*", ".pdf (slides)"],
     "books & web": [".epub", ".html", ".htm", ".xhtml", ".webarchive*"],
     "notes": [".md", ".mdx", ".rmd", ".qmd", ".txt", ".rst", ".org", ".adoc", ".textile"],
-    "notebooks & code": [".ipynb", *sorted(LANG_BY_SUFFIX)],
+    "notebooks & code": [".ipynb", ".json (n8n workflow)", *sorted(LANG_BY_SUFFIX)],
     "archives": sorted(ARCHIVE_SUFFIXES),
     "audio (transcribed)": sorted(AUDIO_SUFFIXES),
     "video (transcribed)": sorted(MEDIA_SUFFIXES - AUDIO_SUFFIXES),
@@ -471,7 +472,13 @@ def load_file(
         if cues:
             return done(transcript_blocks(cues), source_type=source_type or "transcript")
         try:
-            blocks = _links_blocks(json.loads(text))
+            obj = json.loads(text)
+            workflow = workflow_blocks(obj)
+            if workflow is not None:
+                meta["format"] = "n8n-workflow-v1"
+                meta["omitted"] = ["parameter_values", "credentials", "runtime_data"]
+                return done(workflow, source_type=source_type or "code")
+            blocks = _links_blocks(obj)
         except json.JSONDecodeError as e:
             raise ValueError(f"json: {e.msg}") from e
         meta["reference_only"] = True  # a list of links references material; it is not material

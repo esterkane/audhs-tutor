@@ -126,7 +126,7 @@ make ingest src="/absolute/path/to/course" resume=1
 uv run --project backend python scripts/ingest.py --capabilities
 ```
 
-The importer handles documents, slides, captions, notebooks, source code and supported archives. Audio/video and images depend on available decoders and ready speech/vision models. Qdrant and the embedding model must be available for indexing. Imported code is treated as source material, not executed.
+The importer handles documents, slides, captions, notebooks, source code and supported archives. Audio/video and images depend on available decoders and ready speech/vision models. Qdrant and the embedding model must be available for indexing. Imported code is treated as source material, not executed. n8n workflow JSON exports are searchable by node types, connections and teaching notes, including inside supported archives. Credential fields, parameter values and runtime data are omitted; keep the original file for configuration.
 
 Progress and outcome classes distinguish imported/unchanged files, reference links, empty content, unsupported formats, unavailable capabilities, access restrictions and errors. Resume retains the original run settings and skips completed paths; use a normal new run to detect changed files. Progress is not reported within an individual long media conversion, and a hard-killed process may leave a run marked `running`.
 
