@@ -1,3 +1,46 @@
+## Active ownership — Codex, 2026-09-23
+
+The owner explicitly requested commit, push and full task takeover. Codex owns the remaining engineering/operations queue; Claude can resume later from this file. Do not edit concurrently.
+
+Verified implementation commits: `63e3a7b` drafting evidence, `7153f6d` n8n workflow ingestion. Final checks: lint, 319 backend and 42 frontend tests passed. These and the five inherited commits are being pushed with this handoff update. Historical uncommitted/unpushed notes below describe earlier snapshots.
+
+Active queue, in order:
+1. Verify GitHub CI for the pushed head; fix regressions if any.
+2. Fetch useful newly scanned public instructor materials with bounded downloader scope and provenance; ingest at external-source trust.
+3. Resolve the 15 three-course sample button-only resources through ordinary browser menus; preserve explicit blocked/manual statuses.
+4. Review remaining transformer draft objectives/rubrics against sources; keep drafts unpublished until explicit owner publication approval.
+5. Reassess the six non-n8n JSON formats for instructional value before adding parsers.
+6. Personal voice benchmark remains dependent on owner recordings; no microphone activation, fabricated personal evidence or automatic gate closure.
+
+## Continued implementation — Codex, 2026-09-23
+
+Built-in n8n workflow ingestion is implemented and live-tested. New `knowledge/ingest/workflows.py` parses recognizable n8n exports, including archive members, into bounded node/connection/teaching-note evidence. Integrated through `loaders.py`; credentials, parameter values, embedded scripts and runtime data remain omitted. General JSON remains unsupported. No dependencies/migrations/UI changes. README, ROADMAP, COURSE-MATERIAL-STATUS and slice updated. See `docs/slices/n8n-workflows.md`.
+
+Final `UV_NO_SYNC=1 make lint` and `UV_NO_SYNC=1 make test`: 319 backend + 42 frontend passed. Code review: no blockers/majors; both minor findings addressed with classification/bounds tests (13 workflow tests). Live existing-course import: 239 document versions, 1414 unique indexed chunks, 3108 deduped; 117 unchanged, 1 reference-only, six unsupported other JSON formats, two gated images; zero parser/access/retryable errors. Some versions replace the earlier one-off structure imports; not all 239 are new documents. Real filtered retrieval passed. SQLite quick check/FKs passed, learner profile/33 events/7 sessions unchanged.
+
+Table QA: generated on a private snapshot with local models only, then manually checked against original notebook and both stored passages. Merged only the new lesson into the live Question Answering draft (now four skills), preserving its three existing lessons. Replaced model-default MCQ with a source-backed task-string question, added page-count assumption exercise, aligned explain-back rubric. Pedagogy review: no blocker/major; removed unnecessary fine-tuning prerequisite per minor finding. Eight open drafts now total 23 skills; none published. Other notebook sections still need scope/rubric review.
+
+Changes remain uncommitted under the owner-invoked commit convention. Keep the prior drafting-evidence group separate from the n8n loader/test/README/ROADMAP/material-status/slice group; HANDOFF documents both. Five inherited commits remain ahead of origin/main. Private scripts, snapshots and course passages remain outside Git.
+
+Next: owner review/publication of selected transformer sections; ordinary-menu handling for the 15 sample scanner button-only resources; selected external-reference fetching; other-format JSON support only if useful. Voice benchmark remains open. No scanner change or new browser session in this follow-up.
+
+## Takeover update — Codex, 2026-09-23
+
+Claude's last session was complete; inherited main is five commits ahead of origin/main through `c452252`. New delta remains uncommitted, respecting the owner-invoked `/commit` convention: `backend/app/orchestrator/drafting.py`, new `backend/tests/test_draft_evidence.py`, new `docs/slices/draft-evidence.md`, and this handoff. Suggested commit: `fix(curriculum): preserve selected drafting evidence and citations`. No push this turn.
+
+Reproduced and fixed first-passage truncation erasing later model evidence, and selected passages beyond chunk eight missing from lesson citations. Code/pedagogy review: no blockers/majors; fallback regression added. Final backend 306 tests; frontend 42; lint (ruff, mypy, tsc, eslint) green. Private local-model snapshot check returned all eight architecture lessons with resolvable citations; no hosted calls. See slice for limits.
+
+Live curation: reviewed the narrative `text` training-data source, marked both copies supplemental, removed its spurious lesson/assessments from the architecture draft. Eight open transformer drafts now contain 22 skills, none published. Learner profile, all 33 learning events and seven sessions matched the pre-operation snapshot. Still review Input Embedding's conceptual rubric, notebook-only coverage and MCQ answer keys. Do not publish automatically.
+
+Authorized three-course browser scan+download sample completed:
+- Transformer: 8 sections / 49 lectures / 32 resources (26 attachments + 6 external links), zero issues/unfinished, clean complete. Recovered Table QA notebook imported/indexed: one new document, two chunks. Question Answering draft must be reviewed/extended separately.
+- LangChain: 29 sections / 197 lectures / 192 external links; six precisely located button-only issues, zero unfinished. Previously no curriculum detected; now full curriculum traversed. External links are references, not downloaded content.
+- n8n: 22 sections / 233 lectures / 303 resources (246 attachments + 57 external links); nine precisely located button-only issues, zero unfinished. Eight new PDF documents imported/indexed, 21 chunks; 109 unchanged plus one reference-only. 245 workflow JSON entries remain unsupported (including archive members); two images gated by this no-media run. No parser, access or retryable errors.
+
+Manifests under the existing Udemy Resources course directories carry exact remaining lecture/button labels. No button-only action or browser block was bypassed. This verifies the sample, not a clean 39-course rescan or all external URLs. Downloader source was not changed during this takeover; live results added to its CHANGELOG.
+
+Next: owner-reviewed course publication; bounded n8n workflow-JSON ingestion design (treat workflows as source data, never execute them); review/fetch selected new external references with existing provenance rules; ordinary-menu handling for the 15 button-only resources. Personal voice benchmark still open. Private snapshots/reports/scripts live under the Codex task work/takeover directory, never public Git.
+
 ## Latest operations — Codex, 2026-09-21
 
 The four approved slices are committed locally (not pushed): `8167925` browser journeys, `5a78dd4` CodeMirror editor, `7bd70ac` encrypted backups, `6ec89df` local pinned Pyodide. Shared Makefile/CI/editor changes were split in the index; inherited working files were preserved. Fresh validation of the combined tree: `UV_NO_SYNC=1 make lint` passed; `UV_NO_SYNC=1 make test` passed (backend 256, frontend 42); `UV_NO_SYNC=1 make test-e2e` passed all 7 journeys; `UV_NO_SYNC=1 make pyodide-verify` passed. `UV_NO_SYNC=1` preserves the installed optional STT environment. Remote CI verified on 2026-09-21: run 35620554697 on `cc5aee3` (main) passed all four jobs — frontend, browser journeys (Playwright on the sandbox stack, 1m37s), migrations, backend — after the owner's `169d819` (scipy in CI test deps; media test no longer assumes a local audio decoder).
