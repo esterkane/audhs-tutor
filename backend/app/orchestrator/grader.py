@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.events import EventWriter, Verb
 from app.db.models import (
     Assessment,
@@ -157,7 +158,7 @@ def grade_cloze(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
 
 
 def rubric_checks(criteria: list[dict[str, Any]], answer: str) -> GradeResult:
-    """Level 2: keyword rubric. Confident only when the answer is clearly complete or clearly empty."""
+    """Level 2: routing diagnostics, not semantic evidence except for explicit abstention."""
     low = answer.lower()
     results = []
     for c in criteria:
@@ -168,28 +169,31 @@ def rubric_checks(criteria: list[dict[str, Any]], answer: str) -> GradeResult:
                 criterion=c["criterion"], passed=bool(hits), evidence=", ".join(hits) or "absent"
             )
         )
-    n_pass = sum(1 for r in results if r.passed)
-    if not results:
-        conf = 0.0  # no rubric: nothing to check deterministically, force the LLM level
-    elif n_pass == len(results):
-        conf = 0.75
-    elif n_pass == 0 and len(answer.split()) < 12:
-        conf = 0.8
-    else:
-        conf = 0.35  # partial keyword overlap: a keyword match is not understanding; ask the LLM
-    missing = [r.criterion for r in results if not r.passed]
-    feedback = (
-        "Your answer covers every rubric point."
-        if not missing
-        else f"Missing or unclear: {'; '.join(missing)}."
-    )
-    next_step = (
-        "Next: move on; this node comes back in a delayed review."
-        if not missing
-        else "Next: add the missing point in one sentence."
-    )
+    # Lexical overlap cannot distinguish a causal explanation from a keyword list,
+    # negation or a correct paraphrase. Only an explicit abstention is conclusive.
+    abstained = answer.strip().casefold().rstrip(".!?") in {
+        "",
+        "no idea",
+        "i don't know",
+        "i do not know",
+    }
+    if abstained:
+        for row in results:
+            row.passed = False
+            row.evidence = "No explanation submitted."
     return GradeResult(
-        criterion_results=results, confidence=conf, feedback=feedback, next_step=next_step
+        criterion_results=results,
+        confidence=0.8 if abstained and results else 0.0,
+        feedback=(
+            "No explanation submitted."
+            if abstained
+            else "Keyword overlap alone cannot verify this explanation."
+        ),
+        next_step=(
+            "Next: ask for one hint, then try a sentence in your own words."
+            if abstained
+            else "Next: check the explanation against each rubric criterion."
+        ),
     )
 
 
@@ -275,11 +279,22 @@ class Grader:
         except (GatewayError, NoModelReady):
             return None
         result = out.result.parsed
-        if not isinstance(result, GradeResult):
+        if (
+            not isinstance(result, GradeResult)
+            or not criteria
+            or len(result.criterion_results) != len(criteria)
+            or any(not c.evidence.strip() for c in result.criterion_results)
+        ):
             return None
-        # keep the rubric's criterion wording even if the model paraphrased
-        for c, name in zip(result.criterion_results, criteria, strict=False):
-            c.criterion = name
+        # Match identities rather than relabeling positional evidence: duplicate or
+        # unknown rows must not silently stand in for an unassessed criterion.
+        names = [name.strip().casefold() for name in criteria]
+        returned = {c.criterion.strip().casefold(): c for c in result.criterion_results}
+        if len(set(names)) != len(names) or set(returned) != set(names):
+            return None
+        result.criterion_results = [returned[name] for name in names]
+        for row, name in zip(result.criterion_results, criteria, strict=True):
+            row.criterion = name
         level = "hosted" if out.hosted else "local"
         return result, level
 
@@ -328,18 +343,25 @@ class Grader:
                 )
                 if llm is not None:
                     result, level = llm
-                    if result.confidence < LLM_ESCALATE_BELOW and level != "hosted":
-                        hosted = await self._llm_grade(
-                            TaskClass.GRADE_RUBRIC,
-                            criteria,
-                            item["prompt"],
-                            req.answer,
-                            learner_id=learner_id,
-                            session_id=session.id,
-                            reference=reference,
-                        )
-                        if hosted is not None:
-                            result, level = hosted
+                if result.confidence < LLM_ESCALATE_BELOW and level != "hosted":
+                    hosted = await self._llm_grade(
+                        TaskClass.GRADE_RUBRIC,
+                        criteria,
+                        item["prompt"],
+                        req.answer,
+                        learner_id=learner_id,
+                        session_id=session.id,
+                        reference=reference,
+                    )
+                    if hosted is not None:
+                        result, level = hosted
+                if result.confidence < LLM_ESCALATE_BELOW:
+                    raise AppError(
+                        "grading_unavailable",
+                        "The explanation could not be graded reliably. Your mastery and review "
+                        "schedule have not changed. Try again, or check Models › Routing.",
+                        503,
+                    )
             correct = None if 0.0 < result.score < 1.0 else result.score == 1.0
 
         listening_meta = item.get("listening") if isinstance(item.get("listening"), dict) else None

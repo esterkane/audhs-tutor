@@ -44,15 +44,19 @@ export function ChallengePanel({
 
   async function send() {
     if (!item || confidence == null) return
-    const res = await submit.mutateAsync({
-      session_id: sessionId,
-      assessment_id: item.assessment_id,
-      answer,
-      confidence_pre: confidence,
-      latency_ms: Date.now() - startedAt,
-      hint_count: 0,
-    })
-    setResult(res)
+    try {
+      const res = await submit.mutateAsync({
+        session_id: sessionId,
+        assessment_id: item.assessment_id,
+        answer,
+        confidence_pre: confidence,
+        latency_ms: Date.now() - startedAt,
+        hint_count: 0,
+      })
+      setResult(res)
+    } catch {
+      // The mutation alert offers retry; preserve the answer and confidence.
+    }
   }
 
   if (!item) {
@@ -120,6 +124,11 @@ export function ChallengePanel({
               Stop here
             </Button>
           </div>
+          {submit.isError && (
+            <p role="alert" className="text-warn mt-2">
+              {submit.error.message}
+            </p>
+          )}
         </>
       ) : (
         <div role="status" className="mt-3">

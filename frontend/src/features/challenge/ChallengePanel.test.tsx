@@ -70,3 +70,36 @@ describe('ChallengePanel', () => {
     expect(onDone).toHaveBeenCalled()
   })
 })
+
+it('shows grading failure, retains the answer and confidence, and retries successfully', async () => {
+  const bodies: Array<Record<string, unknown>> = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/modes')) return jsonResponse(modes)
+      if (url.endsWith('/start')) return jsonResponse(item)
+      bodies.push(JSON.parse(String(init?.body)))
+      return bodies.length === 1
+        ? jsonResponse(
+            { error: { code: 'grading_unavailable', message: 'Try again; mastery unchanged.' } },
+            503,
+          )
+        : jsonResponse(result)
+    }),
+  )
+  const done = vi.fn()
+  renderApp(<ChallengePanel sessionId="s1" skillId="k1" onDone={done} />)
+  fireEvent.click(await screen.findByRole('button', { name: /planted error/i }))
+  const input = await screen.findByLabelText(/your answer/i)
+  fireEvent.change(input, { target: { value: 'Use sqrt(d_k) to scale the variance.' } })
+  fireEvent.click(screen.getByRole('button', { name: '4' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('mastery unchanged')
+  expect(input).toHaveValue('Use sqrt(d_k) to scale the variance.')
+  expect(done).not.toHaveBeenCalled()
+  expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+  expect(await screen.findByRole('status')).toHaveTextContent('Found it.')
+  expect(bodies[1]).toMatchObject({ answer: bodies[0].answer, confidence_pre: 4 })
+  vi.unstubAllGlobals()
+})

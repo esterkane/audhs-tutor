@@ -172,3 +172,47 @@ describe('Session', () => {
     expect(starts).toEqual([{ session_id: 's1', index: 1 }])
   })
 })
+
+it('preserves the assessment answer and confidence after a grading error and allows retry', async () => {
+  useMode.setState({ sessionId: 's1', skillId: 'k1', mode: 'steady' })
+  const attempts: Array<Record<string, unknown>> = []
+  const state = { ...running0, block: plan[2], block_index: 2, phase: 'assess', skill_id: 'k1' }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/api/exercises/'))
+        return jsonResponse({ error: { code: 'not_found', message: 'No exercise' } }, 404)
+      if (url.endsWith('/api/sessions/s1')) return jsonResponse(session(state))
+      if (url.includes('/api/assess/next'))
+        return jsonResponse({
+          skill_id: 'k1',
+          item: {
+            id: 'a1',
+            skill_id: 'k1',
+            kind: 'explain_back',
+            question: 'Explain the relationship.',
+          },
+        })
+      if (url.endsWith('/api/assess/attempt')) {
+        attempts.push(JSON.parse(String(init?.body)))
+        return jsonResponse(
+          { error: { code: 'grading_unavailable', message: 'Try grading again; mastery unchanged.' } },
+          503,
+        )
+      }
+      return jsonResponse({})
+    }),
+  )
+  renderApp(<Session />, { route: '/session' })
+  const input = await screen.findByLabelText('Your answer')
+  fireEvent.change(input, { target: { value: 'My explanation of the relationship.' } })
+  fireEvent.click(screen.getByRole('button', { name: '3' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('mastery unchanged')
+  expect(input).toHaveValue('My explanation of the relationship.')
+  expect(screen.queryByText(/Score .*%/)).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+  await waitFor(() => expect(attempts).toHaveLength(2))
+  expect(attempts[1]).toMatchObject({ answer: attempts[0].answer, confidence_pre: 3, assessment_id: 'a1' })
+  vi.unstubAllGlobals()
+})

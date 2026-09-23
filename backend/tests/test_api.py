@@ -10,6 +10,7 @@ from app.kernel.seed import load_seed
 from app.knowledge.reindex import load_chunks
 from app.knowledge.sqlite_hybrid import SqliteHybridRepository
 from app.models_ai import registry
+from app.models_ai.fake import FakeProvider
 
 SEED = Path(__file__).resolve().parents[2] / "seeds" / "attention"
 
@@ -154,3 +155,31 @@ async def test_stream_reports_errors_as_events(seeded_client: AsyncClient) -> No
     assert r.status_code == 200
     events = _parse_sse(r.text)
     assert events[-1][0] == "error" and "not found" in events[-1][1]
+
+
+async def test_unavailable_semantic_grade_is_retryable(
+    seeded_client: AsyncClient, db: AsyncSession, fake_local: FakeProvider
+) -> None:
+    from sqlalchemy import func
+
+    c = seeded_client
+    session = (await c.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    item = (
+        await db.execute(
+            select(models.Assessment).where(models.Assessment.kind == "explain_back").limit(1)
+        )
+    ).scalar_one()
+    fake_local.fail_times = 100
+    response = await c.post(
+        "/api/assess/attempt",
+        json={
+            "session_id": session["id"],
+            "assessment_id": item.id,
+            "answer": "A substantive explanation requiring semantic review.",
+            "confidence_pre": 3,
+        },
+    )
+    assert response.status_code == 503
+    assert response.json()["error"]["code"] == "grading_unavailable"
+    assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 0
+    assert await db.scalar(select(func.count()).select_from(models.CompetencyEvidence)) == 0

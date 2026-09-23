@@ -216,6 +216,10 @@ async def test_challenge_round_trip(
         "feedback": "You found it; the variance reason is missing.",
         "next_step": "Add why the variance grows.",
     }
+    for row, criterion in zip(
+        fake_local.structured["criterion_results"], ch["criteria"], strict=True
+    ):
+        row["criterion"] = criterion
     res = (
         await client.post(
             "/api/challenge/submit",

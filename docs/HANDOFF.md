@@ -6,10 +6,12 @@ Verified implementation commits: `63e3a7b` drafting evidence, `7153f6d` n8n work
 
 Follow-up completed: source-grounded review of existing unpublished drafts corrected unsupported objectives, assessment citations, rubric criteria and prerequisite gates. A private rehearsal passed without changing live learner history. Resource warnings were reconciled against saved artifacts and ordinary browser behavior; selected public source files were imported with provenance. Browser-blocked resources remain explicitly unresolved. Detailed operational evidence stays outside Git. No application code changed in this follow-up.
 
+Grading safeguards completed: substantive free-text answers now require semantic review; keyword overlap cannot bypass it. Structured grades require each rubric criterion exactly once with nonempty evidence. Unusable grades return a retryable error before learning-state writes; assessment/challenge/listening input remains available for retry. See `docs/slices/grading-evidence.md`. Final lint, 333 backend and 44 frontend tests passed; code and pedagogy reviews addressed. No live history changed. This closes the keyword-bypass engineering item, not model accuracy or learning-outcome evaluation.
+
 Remaining work:
 1. Owner review and explicit publication approval for course drafts; nothing was published to the live curriculum.
 2. Owner resolution of browser-blocked downloads; preserve the block rather than bypassing it.
-3. Improve semantic grading robustness beyond keyword matching and evaluate learning outcomes across lessons. The private rehearsal is not a full pedagogical validation.
+3. Evaluate semantic grading accuracy and learning outcomes across lessons. The private rehearsal and grading safeguards are not a full pedagogical validation.
 4. Add other JSON readers only when instructional value and safe extraction rules justify them; general JSON remains unsupported.
 5. Personal voice benchmark remains dependent on owner recordings; do not close the gate using substitute voices.
 

@@ -693,16 +693,20 @@ function AssessPanel({
 
   async function submit() {
     if (!item || confidence == null) return
-    const res = await attempt.mutateAsync({
-      session_id: sessionId,
-      assessment_id: item.id,
-      answer,
-      confidence_pre: confidence,
-      latency_ms: Date.now() - startedAt,
-      hint_count: hintCount,
-    })
-    setResult(res)
-    onGraded(res)
+    try {
+      const res = await attempt.mutateAsync({
+        session_id: sessionId,
+        assessment_id: item.id,
+        answer,
+        confidence_pre: confidence,
+        latency_ms: Date.now() - startedAt,
+        hint_count: hintCount,
+      })
+      setResult(res)
+      onGraded(res)
+    } catch {
+      // The mutation alert offers retry; preserve the answer and confidence.
+    }
   }
 
   function nextItem() {

@@ -249,7 +249,7 @@ def test_deterministic_graders() -> None:
         {"criterion": "B", "keywords": ["softmax"]},
     ]
     full = rubric_checks(rubric, "the variance grows so softmax saturates")
-    assert full.score == 1.0 and full.confidence >= 0.7
+    assert full.score == 1.0 and full.confidence < 0.6
     assert "missing" not in full.next_step  # nothing is missing: no contradictory next step
     empty = rubric_checks(rubric, "no idea")
     assert empty.score == 0.0 and empty.confidence >= 0.7
@@ -257,9 +257,7 @@ def test_deterministic_graders() -> None:
         rubric, "the variance grows with d_k and that is bad for the gradients somehow"
     )
     assert (
-        0 < partial.score < 1
-        and partial.confidence < 0.6
-        and "Missing or unclear: B" in partial.feedback
+        0 < partial.score < 1 and partial.confidence < 0.6 and "cannot verify" in partial.feedback
     )
 
 
@@ -308,6 +306,12 @@ async def test_grader_pipeline_mcq_and_explain_back(world: dict) -> None:  # typ
         ).scalars()
         if a.kind == "explain_back"
     )
+    rubric_row = await db.get(models.AssessmentRubric, eb.rubric_id)
+    assert rubric_row
+    for row, criterion in zip(
+        world["local"].structured["criterion_results"], rubric_row.criteria_json, strict=True
+    ):
+        row["criterion"] = criterion["criterion"]
     res2 = await grader.grade(
         AttemptRequest(
             session_id=s.id,
@@ -359,3 +363,189 @@ async def test_grader_pipeline_mcq_and_explain_back(world: dict) -> None:  # typ
     )
     mc = (await db.execute(select(models.ModelCall))).scalars().all()
     assert [m.task for m in mc] == ["grade_simple"]
+
+
+@pytest.mark.parametrize(
+    "answer",
+    [
+        "variance softmax",
+        "variance never matters and softmax never saturates",
+        "scores grow and the distribution becomes sharply peaked",
+    ],
+)
+def test_keyword_overlap_cannot_establish_understanding(answer: str) -> None:
+    rubric = [
+        {"criterion": "variance grows", "keywords": ["variance"]},
+        {"criterion": "softmax saturates", "keywords": ["softmax"]},
+    ]
+    result = rubric_checks(rubric, answer)
+    assert result.confidence < 0.6
+    assert "covers every" not in result.feedback
+
+
+async def _explanation(world: dict) -> tuple[models.Assessment, list[dict]]:  # type: ignore[type-arg]
+    db = world["db"]
+    node = await skill_graph.get_node_by_slug(db, "attn-scaled")
+    assert node
+    item = (
+        await db.execute(
+            select(models.Assessment).where(
+                models.Assessment.skill_id == node.id, models.Assessment.kind == "explain_back"
+            )
+        )
+    ).scalar_one()
+    rubric = await db.get(models.AssessmentRubric, item.rubric_id)
+    assert rubric
+    return item, rubric.criteria_json
+
+
+async def test_keyword_list_uses_semantic_verdict(world: dict) -> None:  # type: ignore[type-arg]
+    item, criteria = await _explanation(world)
+    world["local"].structured = {
+        "criterion_results": [
+            {
+                "criterion": c["criterion"],
+                "passed": False,
+                "evidence": "Only a list of terms; no relationship is explained.",
+            }
+            for c in criteria
+        ],
+        "confidence": 0.9,
+        "feedback": "The relationship is not explained.",
+        "next_step": "Explain one causal connection.",
+    }
+    answer = " ".join(k for c in criteria for k in c["keywords"])
+    result = await Grader(world["db"], world["gw"]).grade(
+        AttemptRequest(
+            session_id=world["session"].id,
+            assessment_id=item.id,
+            answer=answer,
+            confidence_pre=3,
+        )
+    )
+    assert result.grader_level == "local" and result.score == 0
+    assert len(world["local"].calls) == 1
+
+
+@pytest.mark.parametrize(
+    "failure",
+    ["unavailable", "uncertain", "missing", "extra", "empty_evidence", "duplicate", "unknown"],
+)
+async def test_unusable_grade_does_not_change_learning_state(world: dict, failure: str) -> None:  # type: ignore[type-arg]
+    from app.core.errors import AppError
+
+    item, criteria = await _explanation(world)
+    db = world["db"]
+    await Grader(db, world["gw"]).grade(
+        AttemptRequest(
+            session_id=world["session"].id,
+            assessment_id=item.id,
+            answer="no idea",
+            confidence_pre=1,
+        )
+    )
+    await ksession.save_checkpoint(
+        db, world["session"], {"skill_id": item.skill_id, "hint_level": 2}
+    )
+    tables = [
+        models.AssessmentAttempt,
+        models.CompetencyEvidence,
+        models.CompetencyState,
+        models.ReviewItem,
+        models.ReviewLog,
+        models.MemoryState,
+        models.LearningEvent,
+        models.SessionCheckpoint,
+    ]
+    before = [list((await db.execute(select(t.__table__))).all()) for t in tables]
+    rows = [
+        {"criterion": c["criterion"], "passed": True, "evidence": "Some evidence."}
+        for c in criteria
+    ]
+    if failure == "missing":
+        rows.pop()
+    elif failure == "extra":
+        rows.append(rows[0].copy())
+    elif failure == "duplicate":
+        rows[1]["criterion"] = rows[0]["criterion"]
+    elif failure == "unknown":
+        rows[0]["criterion"] = "unrelated criterion"
+    elif failure == "empty_evidence":
+        rows[0]["evidence"] = " "
+    world["local"].structured = {
+        "criterion_results": rows,
+        "confidence": 0.2 if failure == "uncertain" else 0.9,
+        "feedback": "Unverified.",
+        "next_step": "Retry.",
+    }
+    if failure == "unavailable":
+        world["gw"].providers = {}
+    with pytest.raises(AppError) as raised:
+        await Grader(db, world["gw"]).grade(
+            AttemptRequest(
+                session_id=world["session"].id,
+                assessment_id=item.id,
+                answer=" ".join(k for c in criteria for k in c["keywords"]),
+                confidence_pre=3,
+            )
+        )
+    assert raised.value.code == "grading_unavailable" and raised.value.http_status == 503
+    after = [list((await db.execute(select(t.__table__))).all()) for t in tables]
+    assert after == before
+
+
+async def test_reordered_semantic_evidence_is_matched_by_criterion(world: dict) -> None:  # type: ignore[type-arg]
+    item, criteria = await _explanation(world)
+    world["local"].structured = {
+        "criterion_results": [
+            {"criterion": c["criterion"], "passed": i == 0, "evidence": f"Explanation {i}."}
+            for i, c in reversed(list(enumerate(criteria)))
+        ],
+        "confidence": 0.9,
+        "feedback": "One point established.",
+        "next_step": "Explain another point.",
+    }
+    res = await Grader(world["db"], world["gw"]).grade(
+        AttemptRequest(
+            session_id=world["session"].id,
+            assessment_id=item.id,
+            answer="A paraphrase without matching rubric words.",
+            confidence_pre=3,
+        )
+    )
+    assert [c.criterion for c in res.criterion_results] == [c["criterion"] for c in criteria]
+    assert res.criterion_results[0].passed
+    assert all(not c.passed for c in res.criterion_results[1:])
+
+
+async def test_uncertain_local_grade_can_escalate_to_valid_hosted_evidence(world: dict) -> None:  # type: ignore[type-arg]
+    item, criteria = await _explanation(world)
+    db = world["db"]
+    hosted_model = await db.get(models.ModelRegistry, "hosted-strong")
+    assert hosted_model
+    hosted_model.status = "ready"
+    await db.commit()
+    rows = [
+        {"criterion": c["criterion"], "passed": True, "evidence": "Explains the causal link."}
+        for c in criteria
+    ]
+    world["local"].structured = {
+        "criterion_results": rows,
+        "confidence": 0.2,
+        "feedback": "Uncertain.",
+        "next_step": "Check the connection.",
+    }
+    hosted = world["gw"].providers["anthropic"]
+    hosted.structured = {**world["local"].structured, "confidence": 0.9}
+    result = await Grader(db, world["gw"]).grade(
+        AttemptRequest(
+            session_id=world["session"].id,
+            assessment_id=item.id,
+            answer="An explanation needing a second judgment.",
+            confidence_pre=3,
+        )
+    )
+    assert result.grader_level == "hosted" and result.score == 1
+    assert len(world["local"].calls) == 1 and len(hosted.calls) == 1
+    calls = (await db.execute(select(models.ModelCall))).scalars().all()
+    assert [c.task for c in calls] == ["grade_simple", "grade_rubric"]
