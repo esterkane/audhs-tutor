@@ -2,15 +2,18 @@
 
 The owner explicitly requested commit, push and full task takeover. Codex owns the remaining engineering/operations queue; Claude can resume later from this file. Do not edit concurrently.
 
-Verified implementation commits: `63e3a7b` drafting evidence, `7153f6d` n8n workflow ingestion. Final checks: lint, 319 backend and 42 frontend tests passed. These and the five inherited commits are being pushed with this handoff update. Historical uncommitted/unpushed notes below describe earlier snapshots.
+Verified implementation commits: `63e3a7b` drafting evidence, `7153f6d` n8n workflow ingestion, and `59fcc2c` takeover handoff are pushed. Lint, 319 backend and 42 frontend tests passed; all four GitHub CI jobs passed for `59fcc2c`. Historical uncommitted/unpushed notes below describe earlier snapshots.
 
-Active queue, in order:
-1. Verify GitHub CI for the pushed head; fix regressions if any.
-2. Fetch useful newly scanned public instructor materials with bounded downloader scope and provenance; ingest at external-source trust.
-3. Resolve the 15 three-course sample button-only resources through ordinary browser menus; preserve explicit blocked/manual statuses.
-4. Review remaining transformer draft objectives/rubrics against sources; keep drafts unpublished until explicit owner publication approval.
-5. Reassess the six non-n8n JSON formats for instructional value before adding parsers.
-6. Personal voice benchmark remains dependent on owner recordings; no microphone activation, fabricated personal evidence or automatic gate closure.
+Follow-up completed: source-grounded review of existing unpublished drafts corrected unsupported objectives, assessment citations, rubric criteria and prerequisite gates. A private rehearsal passed without changing live learner history. Resource warnings were reconciled against saved artifacts and ordinary browser behavior; selected public source files were imported with provenance. Browser-blocked resources remain explicitly unresolved. Detailed operational evidence stays outside Git. No application code changed in this follow-up.
+
+Remaining work:
+1. Owner review and explicit publication approval for course drafts; nothing was published to the live curriculum.
+2. Owner resolution of browser-blocked downloads; preserve the block rather than bypassing it.
+3. Improve semantic grading robustness beyond keyword matching and evaluate learning outcomes across lessons. The private rehearsal is not a full pedagogical validation.
+4. Add other JSON readers only when instructional value and safe extraction rules justify them; general JSON remains unsupported.
+5. Personal voice benchmark remains dependent on owner recordings; do not close the gate using substitute voices.
+
+Claude can continue from this queue. Source-review and resource-recovery work above supersedes the corresponding pending items in historical entries below.
 
 ## Continued implementation — Codex, 2026-09-23
 
