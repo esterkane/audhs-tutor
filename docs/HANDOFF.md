@@ -1,3 +1,9 @@
+## Lesson activation UI — 2026-09-23
+
+The material-to-lessons screen now explains its purpose and separates course selection, section review and explicit activation. Existing drafts come first; readable goals/practice/assessments and inline source evidence replace default JSON exposure. New draft creation and source-role settings are secondary. “Activate lessons” uses the existing publication endpoint and explains that content stays in the local app. Unsaved edits and refreshed draft conflicts are guarded. No live drafts were activated during testing.
+
+Verification: 333 backend tests, 51 frontend tests, lint, axe and read-only browser inspection passed. Code/pedagogy re-reviews cleared; see `docs/slices/lesson-activation-ui.md`. Detailed editing remains JSON under Advanced. Continue with the outstanding owner review/activation and evaluation queue below.
+
 ## Active ownership — Codex, 2026-09-23
 
 The owner explicitly requested commit, push and full task takeover. Codex owns the remaining engineering/operations queue; Claude can resume later from this file. Do not edit concurrently.

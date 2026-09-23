@@ -26,6 +26,7 @@ select concept → retrieve grounded material → teach → learner answers → 
 - [x] `tutor-turn` — orchestrator loop with kernel tools; SSE `/api/tutor/stream`; explicit mode; hint ladder; citations.
 - [x] `assess-evidence` — explain-back + cloze + MCQ; hierarchical grader; `competency_evidence` rows; `competency_state` refresh.
 - [x] `grading-evidence` — semantic review before free-text credit; exact criterion coverage; retryable failures preserve learning state and answers. Fake-provider and UI checks: 333 backend / 44 frontend; live semantic accuracy remains unmeasured.
+- [x] `lesson-activation-ui` — course → section → readable review → explicit local activation; secondary controls collapsed, sources inline, unsaved-edit and refreshed-version safeguards.
 - [x] `fsrs-memory` — `memory_state` via py-fsrs; due queue; minimum-viable review cap.
 - [x] `session-screen` — Home (mode + energy) → single-task session screen → review → recap with confidence. `ParkingLotButton`.
 Benchmark `bench_stage1.py`: run 3 sessions on attention; every turn has a `tutor_trace`; every attempt yields evidence + FSRS update; delayed review 2 days later works; hard-check evals pass. **If this loop is not useful, stop and rethink — agents and voice will not fix it.**
