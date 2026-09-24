@@ -1,3 +1,9 @@
+## Session guidance — 2026-09-24
+
+Simplified Session/Review/Recap guidance: current activity and explicit next action; optional plan/settings, alternate explanations, source descriptions and score details collapsed; continuing the plan is primary after feedback, another question optional. Stop/recap stays visible, with honest unchecked-text persistence wording. Experiment status remains visible. Timer prompt follows the activity instead of preceding it.
+
+Verification: 339 backend, 53 frontend, lint, axe and all 7 isolated sandbox browser journeys passed; code/pedagogy review findings addressed. See `docs/slices/session-guidance.md`. No live learning attempts or curriculum activation performed. Follow-up: broader Home/navigation clarity and persistence of unchecked answers on leaving; this slice does not claim those are resolved.
+
 ## Assessment relevance — 2026-09-23
 
 Removed automatic source-cut clozes from new curriculum proposals. Curriculum prompt v2 requests source-supported applications and reasoning; conservative logistics filters reject unsuitable questions/criteria, and missing required assessment dimensions block activation. See `docs/slices/assessment-relevance.md` for scope, tests and evaluation limitations.

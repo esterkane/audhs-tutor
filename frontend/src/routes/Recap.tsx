@@ -58,7 +58,11 @@ export function Recap() {
 
   return (
     <Card>
-      <CardTitle>Recap</CardTitle>
+      <CardTitle>Finish your session</CardTitle>
+      <p className="text-sm text-muted mb-3">
+        Choose two ratings, add an optional note, then save. These ratings describe this session; they are not
+        a test score.
+      </p>
       <Choice<number>
         label="Energy now (1–5)"
         options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
@@ -85,7 +89,7 @@ export function Recap() {
         onClick={() => void finish()}
         disabled={energyAfter == null || recall == null || end.isPending}
       >
-        Save session
+        {end.isPending ? 'Saving…' : 'Save and finish session'}
       </Button>
       {end.isError && (
         <p role="alert" className="text-warn mt-2">

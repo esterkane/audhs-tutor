@@ -65,7 +65,7 @@ test.afterEach(async ({ request }) => endOpenSession(request))
 
 test('a reload at every block boundary lands on the block the server owns', async ({ page, request }) => {
   await startFromHome(page)
-  await expect(page.getByRole('heading', { name: 'Which first?' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Choose where to begin' })).toBeVisible()
   await page.getByRole('button', { name: /then new material/ }).click()
 
   await expect(page.getByRole('heading', { name: 'Movement block' })).toBeVisible()

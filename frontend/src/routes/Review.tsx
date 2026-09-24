@@ -127,6 +127,12 @@ export function Review() {
         </p>
       )}
       <Card>
+        <CardTitle>Recall what you learned</CardTitle>
+        <p className="text-sm text-muted mb-3">
+          {revealed
+            ? 'Compare with your answer, then choose how easily you recalled it. Your rating opens the next card.'
+            : 'Answer in your head or aloud. Choose your confidence, then reveal the answer.'}
+        </p>
         <p className="text-xs text-muted">
           Review {idx + 1} of {items.length}
           {due.data.total_due > items.length

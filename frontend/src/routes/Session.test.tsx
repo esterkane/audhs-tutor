@@ -2,8 +2,9 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
 import { useMode } from '../stores/mode'
-import { jsonResponse, renderApp } from '../test/utils'
+import { jsonResponse, renderApp, sseResponse } from '../test/utils'
 import { Session } from './Session'
+import { axe } from 'vitest-axe'
 
 const plan = [
   { type: 'movement_primer', planned_min: 5, node_ids: [], optional: true, reason: '', domain: 'movement' },
@@ -112,6 +113,7 @@ describe('Session', () => {
     )
     // the running movement block comes from the server state, not from a local guess
     expect(await screen.findByText('Movement block')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Session plan and energy settings'))
     expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent(/Move/)
     // the soft timer is derived from the server start time: 30 min ago on a 5-min block → prompt
     expect(await screen.findByText(/Planned time is up \(5 min\)/)).toBeInTheDocument()
@@ -161,7 +163,7 @@ describe('Session', () => {
       </Routes>,
       { route: '/session' },
     )
-    expect(await screen.findByText('Which first?')).toBeInTheDocument()
+    expect(await screen.findByText('Choose where to begin')).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: /Move \(5 min\), then new material: Dot product/i }),
     ).toBeInTheDocument()
@@ -207,12 +209,110 @@ it('preserves the assessment answer and confidence after a grading error and all
   const input = await screen.findByLabelText('Your answer')
   fireEvent.change(input, { target: { value: 'My explanation of the relationship.' } })
   fireEvent.click(screen.getByRole('button', { name: '3' }))
-  fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('mastery unchanged')
   expect(input).toHaveValue('My explanation of the relationship.')
   expect(screen.queryByText(/Score .*%/)).not.toBeInTheDocument()
-  fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await waitFor(() => expect(attempts).toHaveLength(2))
   expect(attempts[1]).toMatchObject({ answer: attempts[0].answer, confidence_pre: 3, assessment_id: 'a1' })
+  vi.unstubAllGlobals()
+})
+
+it('guides explanation to a question with optional controls collapsed and accessible', async () => {
+  useMode.setState({ sessionId: 's1', skillId: 'k1', mode: 'steady' })
+  const state = {
+    ...running0,
+    block: plan[2],
+    block_index: 2,
+    phase: 'teach',
+    skill_id: 'k1',
+    block_started_at: new Date().toISOString(),
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.includes('/api/exercises/'))
+        return jsonResponse({ error: { code: 'not_found', message: 'No exercise' } }, 404)
+      if (url.endsWith('/api/sessions/s1')) return jsonResponse(session(state))
+      if (url.includes('/api/tutor/stream'))
+        return sseResponse([
+          ['token', { text: 'A dot product combines matching components.' }],
+          ['done', { turn_id: 't1', sources: [], outcome: 'complete' }],
+        ])
+      if (url.includes('/api/assess/next'))
+        return jsonResponse({
+          item: { id: 'a1', kind: 'explain_back', question: 'Explain the relationship.' },
+        })
+      return jsonResponse({})
+    }),
+  )
+  const { container } = renderApp(<Session />, { route: '/session' })
+  expect(
+    await screen.findByText('1. Read an explanation → 2. Try a question → 3. Continue the plan'),
+  ).toBeVisible()
+  expect(screen.getByText('More ways to learn').closest('details')).not.toHaveAttribute('open')
+  expect(screen.getByRole('button', { name: 'Stop and recap' })).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Start explanation' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Try a question' }))
+  expect(await screen.findByLabelText('Your answer')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Check my answer' })).toBeDisabled()
+  expect(await axe(container)).toHaveNoViolations()
+  vi.unstubAllGlobals()
+})
+
+it('offers continuing the plan after feedback without requiring another question', async () => {
+  useMode.setState({ sessionId: 's1', skillId: 'k1', mode: 'steady' })
+  const nextCalls: unknown[] = []
+  const state = {
+    ...running0,
+    block: plan[2],
+    block_index: 2,
+    phase: 'assess',
+    skill_id: 'k1',
+    block_started_at: new Date().toISOString(),
+  }
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.includes('/api/exercises/'))
+        return jsonResponse({ error: { code: 'not_found', message: 'No exercise' } }, 404)
+      if (url.endsWith('/api/sessions/s1')) return jsonResponse(session(state))
+      if (url.includes('/api/assess/next'))
+        return jsonResponse({
+          item: { id: 'a1', kind: 'mcq', question: 'Choose a value.', options: ['One', 'Two'] },
+        })
+      if (url.endsWith('/api/assess/attempt'))
+        return jsonResponse({
+          score: 1,
+          feedback: 'The components match.',
+          next_step: 'Continue.',
+          criterion_results: [],
+          mastery: 0.4,
+          review: { due: '2026-10-01' },
+          confidence_pre: 3,
+        })
+      if (url.endsWith('/api/plan/blocks/next')) {
+        nextCalls.push(JSON.parse(String(init?.body)))
+        return jsonResponse({ ...state, allowed: true, plan_complete: true })
+      }
+      return jsonResponse({})
+    }),
+  )
+  renderApp(
+    <Routes>
+      <Route path="/session" element={<Session />} />
+      <Route path="/recap" element={<p>RECAP SCREEN</p>} />
+    </Routes>,
+    { route: '/session' },
+  )
+  fireEvent.click(await screen.findByRole('button', { name: 'One' }))
+  fireEvent.click(screen.getByRole('button', { name: '3' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  expect(await screen.findByText('Feedback on your answer')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Try another question (optional)' })).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Continue the plan' }))
+  expect(await screen.findByText('RECAP SCREEN')).toBeVisible()
+  expect(nextCalls).toEqual([{ session_id: 's1', from_index: 2, reason: 'finished', grasp_passed: true }])
   vi.unstubAllGlobals()
 })

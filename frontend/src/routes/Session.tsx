@@ -124,7 +124,10 @@ function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut })
   }
   return (
     <Card>
-      <CardTitle>Which first?</CardTitle>
+      <CardTitle>Choose where to begin</CardTitle>
+      <p className="text-sm text-muted mb-3">
+        Follow the plan one activity at a time. You can stop and recap at any point.
+      </p>
       <PlanStrip blocks={plan} current={-1} />
       <div className="flex gap-2 flex-wrap mt-3">
         {learnIx != null && (
@@ -243,23 +246,21 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
 
   return (
     <div className="grid gap-4">
-      {st?.block_started_at && (
-        <SoftTimer
-          key={st.block_id ?? String(blockIndex)}
-          blockKey={st.block_id ?? String(blockIndex)}
-          startedAt={st.block_started_at}
-          plannedMin={timerMinutes}
-          extensionMin={st.timer_extension_min ?? 0}
-          onExtend={(min) => void transition.extend(blockIndex, min)}
-          onSaveStop={() => void finishBlock('save_and_stop')}
-          onFinishBlock={() => void finishBlock('finished')}
-          notify={notifications}
-          pending={transition.pending}
-        />
-      )}
       <AdaptationCards origin="planner" />
       <Card>
-        <PlanStrip blocks={plan} current={blockIndex} firstStarted={st?.first_started_index} />
+        <p className="text-sm text-muted">
+          Activity {blockIndex + 1} of {plan.length} · {BLOCK_LABELS[currentBlock.type] ?? currentBlock.type}{' '}
+          · about {timerMinutes} min
+        </p>
+        <p className="text-sm mt-2">
+          {phase === 'teach'
+            ? '1. Read an explanation → 2. Try a question → 3. Continue the plan'
+            : phase === 'assess'
+              ? 'Try a question, choose your confidence, then read the feedback.'
+              : phase === 'challenge'
+                ? 'Apply the idea to a challenge, then continue the plan.'
+                : 'Follow the activity below. When you finish or skip it, the next activity opens.'}
+        </p>
         {data.experiment && (
           <p className="text-sm mt-2" role="status">
             Experiment "{String(data.experiment.name)}":{' '}
@@ -269,40 +270,47 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
             .
           </p>
         )}
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-          <span id="energy-now">Energy now:</span>
-          <div role="group" aria-labelledby="energy-now" className="flex gap-1">
-            {[1, 2, 3, 4, 5].map((n) => (
-              <Button
-                key={n}
-                size="sm"
-                pressed={data.energy === n}
-                disabled={replan.isPending}
-                aria-label={`Energy ${n}`}
-                onClick={() => {
-                  if (n === data.energy) return
-                  setEnergy(n)
-                  void replan.mutateAsync({ session_id: sessionId, energy: n, from_index: blockIndex })
-                }}
-              >
-                {n}
-              </Button>
-            ))}
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm">Session plan and energy settings</summary>
+          <div className="mt-3">
+            <PlanStrip blocks={plan} current={blockIndex} firstStarted={st?.first_started_index} />
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <span id="energy-now">Energy now:</span>
+              <div role="group" aria-labelledby="energy-now" className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Button
+                    key={n}
+                    size="sm"
+                    pressed={data.energy === n}
+                    disabled={replan.isPending}
+                    aria-label={`Energy ${n}`}
+                    onClick={() => {
+                      if (n === data.energy) return
+                      setEnergy(n)
+                      void replan.mutateAsync({ session_id: sessionId, energy: n, from_index: blockIndex })
+                    }}
+                  >
+                    {n}
+                  </Button>
+                ))}
+              </div>
+              <span className="text-muted">
+                A change re-plans the remaining blocks as a suggestion, never silently; the review cap follows
+                your energy at once (undo: "Show all" on the review screen).
+              </span>
+            </div>
           </div>
-          <span className="text-muted">
-            A change re-plans the remaining blocks as a suggestion, never silently; the review cap follows
-            your energy at once (undo: "Show all" on the review screen).
-          </span>
-        </div>
+        </details>
         <CardTitle className="mt-3">
           {phase === 'practice'
             ? `${currentBlock.domain === 'language' ? 'Language' : currentBlock.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
             : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}
         </CardTitle>
         {skill && phase === 'teach' && (
-          <p className="text-sm text-muted">
-            About: {skill.description} · mastery {(skill.mastery * 100).toFixed(0)}%
-          </p>
+          <details className="mt-2 text-sm text-muted">
+            <summary className="cursor-pointer">About this lesson</summary>
+            <p className="mt-2">{skill.description}</p>
+          </details>
         )}
         {blockNote && (
           <p role="status" className="text-sm text-warn mt-2">
@@ -315,6 +323,18 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
           </p>
         )}
       </Card>
+      <div>
+        <Button
+          variant="ghost"
+          disabled={transition.pending}
+          onClick={() => void finishBlock('save_and_stop')}
+        >
+          Stop and recap
+        </Button>
+        <span className="text-xs text-muted ml-2">
+          Completed answers and ratings are saved. Unchecked text is not saved.
+        </span>
+      </div>
       {phase === 'teach' && (
         <TeachPanel
           sessionId={sessionId}
@@ -335,6 +355,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
             if (r.score >= 0.85) setGraspPassed(true)
           }}
           onFinishBlock={() => void finishBlock('finished')}
+          transitionPending={transition.pending}
         />
       )}
       {(phase === 'teach' || phase === 'assess') && activeSkillId && (
@@ -357,6 +378,20 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
           plannedMin={currentBlock.planned_min}
           onDone={() => void finishBlock('finished')}
           onSkip={() => void finishBlock('skipped')}
+        />
+      )}
+      {st?.block_started_at && (
+        <SoftTimer
+          key={st.block_id ?? String(blockIndex)}
+          blockKey={st.block_id ?? String(blockIndex)}
+          startedAt={st.block_started_at}
+          plannedMin={timerMinutes}
+          extensionMin={st.timer_extension_min ?? 0}
+          onExtend={(min) => void transition.extend(blockIndex, min)}
+          onSaveStop={() => void finishBlock('save_and_stop')}
+          onFinishBlock={() => void finishBlock('finished')}
+          notify={notifications}
+          pending={transition.pending}
         />
       )}
     </div>
@@ -412,17 +447,17 @@ function TeachPanel({
     <>
       <Card>
         <label htmlFor="ask" className="text-sm font-medium">
-          Question for the tutor (optional). Empty + Explain = the next idea for this skill.
+          Ask about this lesson (optional)
         </label>
         <Textarea
           id="ask"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="e.g. why divide by sqrt(d_k)?"
+          placeholder="Leave empty to start with an explanation."
         />
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
-            variant="primary"
+            variant={done || alt ? 'secondary' : 'primary'}
             disabled={busy}
             onClick={() =>
               void run({
@@ -432,25 +467,30 @@ function TeachPanel({
               })
             }
           >
-            Explain
+            {busy ? 'Preparing explanation…' : text ? 'Explain again' : 'Start explanation'}
           </Button>
-          <Button
-            disabled={busy}
-            onClick={() => void run({ ...base, text: input.trim() || 'I am stuck.', action: 'hint' })}
-          >
-            Hint
-          </Button>
-          <Button
-            disabled={busy}
-            onClick={() =>
-              void run({ ...base, text: input.trim() || 'Recap this skill.', action: 'summarize' })
-            }
-          >
-            Summary of this skill
-          </Button>
+          <details>
+            <summary className="cursor-pointer text-sm py-2">More ways to learn</summary>
+            <div className="flex gap-2 flex-wrap mt-2">
+              <Button
+                disabled={busy}
+                onClick={() => void run({ ...base, text: input.trim() || 'I am stuck.', action: 'hint' })}
+              >
+                Hint
+              </Button>
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  void run({ ...base, text: input.trim() || 'Recap this skill.', action: 'summarize' })
+                }
+              >
+                Summary of this skill
+              </Button>
+            </div>
+          </details>
           {busy && (
             <Button variant="ghost" onClick={stop}>
-              Stop
+              Stop explanation
             </Button>
           )}
           {voiceOn && !talking && (
@@ -506,10 +546,8 @@ function TeachPanel({
             </details>
           )}
           {done && done.sources.length > 0 && (
-            <div className="mt-3 text-sm text-muted">
-              <p className="font-medium">
-                Sources (cited in the answer as [n]; others were retrieved but not cited)
-              </p>
+            <details className="mt-3 text-sm text-muted">
+              <summary className="cursor-pointer font-medium">Sources for this explanation</summary>
               <ol className="list-decimal ml-5">
                 {done.sources.map((s) => (
                   <li key={s.chunk_id}>
@@ -540,7 +578,7 @@ function TeachPanel({
                   />
                 </div>
               )}
-            </div>
+            </details>
           )}
           {done && withheldCount(done.dropped) > 0 && (
             <p className="text-sm text-muted mt-1" role="status">
@@ -622,36 +660,41 @@ function TeachPanel({
           )}
         </Card>
       )}
-      {(done || alt) && (
+      {!busy && (done || alt) && (
         <Card>
-          <p className="text-sm font-medium mb-2">Which next?</p>
+          <p className="text-sm font-medium mb-2">Next: try one question about this idea.</p>
           <div className="flex gap-2 flex-wrap mb-3">
             <Button variant="primary" onClick={onCheck}>
-              Check yourself
-            </Button>
-            <Button variant="ghost" onClick={onSwitchEarly}>
-              Switch early (grasp check first)
+              Try a question
             </Button>
           </div>
-          <Choice<string>
-            label="Show it differently"
-            options={(kinds.data?.kinds ?? [])
-              .filter((k) => k.allowed)
-              .map((k) => ({
-                value: k.kind as string,
-                label: k.label as string,
-                hint: k.cached ? 'cached' : undefined,
-              }))}
-            value={alt?.kind ?? null}
-            onChange={(k) => void showDifferently(k)}
-            columns={3}
-          />
-          {render.isPending && <p className="text-sm text-muted mt-2">Rendering…</p>}
-          {render.isError && (
-            <p role="alert" className="text-warn mt-2">
-              {(render.error as Error).message}
-            </p>
-          )}
+          <details>
+            <summary className="cursor-pointer text-sm">
+              Need another explanation or a different activity?
+            </summary>
+            <Choice<string>
+              label="Show it differently"
+              options={(kinds.data?.kinds ?? [])
+                .filter((k) => k.allowed)
+                .map((k) => ({
+                  value: k.kind as string,
+                  label: k.label as string,
+                  hint: k.cached ? 'cached' : undefined,
+                }))}
+              value={alt?.kind ?? null}
+              onChange={(k) => void showDifferently(k)}
+              columns={3}
+            />
+            {render.isPending && <p className="text-sm text-muted mt-2">Rendering…</p>}
+            {render.isError && (
+              <p role="alert" className="text-warn mt-2">
+                {(render.error as Error).message}
+              </p>
+            )}
+            <Button className="mt-3" variant="ghost" onClick={onSwitchEarly}>
+              Request another activity (a check may be required)
+            </Button>
+          </details>
           <details className="mt-3">
             <summary className="cursor-pointer text-sm">Full solution (explicit request, logged)</summary>
             <Button
@@ -674,6 +717,7 @@ function AssessPanel({
   onBack,
   onGraded,
   onFinishBlock,
+  transitionPending,
 }: {
   sessionId: string
   skillId: string | null
@@ -681,6 +725,7 @@ function AssessPanel({
   onBack: () => void
   onGraded: (r: AttemptResult) => void
   onFinishBlock: () => void
+  transitionPending: boolean
 }) {
   const [round, setRound] = useState(0)
   const next = useNextItem(sessionId, skillId, round)
@@ -729,7 +774,15 @@ function AssessPanel({
   return (
     <>
       <Card>
-        <p className="text-xs text-muted mb-1">{item.kind.replace('_', ' ')}</p>
+        <p className="text-sm text-muted mb-2">
+          {item.kind === 'mcq'
+            ? 'Choose one answer below.'
+            : item.kind === 'cloze'
+              ? 'Fill in the missing word or phrase.'
+              : item.kind === 'explain_back'
+                ? 'Explain in your own words. A short answer is enough.'
+                : 'Answer the question below.'}
+        </p>
         <p className="text-base mb-3">{item.question}</p>
         {!result && (
           <>
@@ -764,7 +817,7 @@ function AssessPanel({
                 onClick={() => void submit()}
                 disabled={!answer || confidence == null || attempt.isPending}
               >
-                {attempt.isPending ? 'Grading…' : 'Submit'}
+                {attempt.isPending ? 'Checking your answer…' : 'Check my answer'}
               </Button>
               <Button variant="ghost" onClick={onBack}>
                 Back to explanation
@@ -780,10 +833,14 @@ function AssessPanel({
       </Card>
       {result && (
         <Card role="status" className={result.score >= 0.85 ? 'border-ok' : 'border-warn'}>
-          <p className="font-medium">
-            Score {(result.score * 100).toFixed(0)}% · graded by {result.grader_level} · confidence{' '}
-            {result.confidence_pre}/5: {result.calibration}
-          </p>
+          <h3 className="font-medium">Feedback on your answer</h3>
+          <details className="text-sm text-muted mt-2">
+            <summary className="cursor-pointer">Score and grading details</summary>
+            <p>
+              Score {(result.score * 100).toFixed(0)}% · graded by {result.grader_level} · confidence{' '}
+              {result.confidence_pre}/5: {result.calibration}
+            </p>
+          </details>
           <p className="mt-2">{result.feedback}</p>
           <p className="mt-1 text-sm">{result.next_step}</p>
           {result.misconception && (
@@ -802,11 +859,15 @@ function AssessPanel({
             {new Date(result.review.due as string).toLocaleString()}
           </p>
           <div className="flex gap-2 flex-wrap mt-3">
-            <Button variant="primary" onClick={nextItem}>
-              Next item
+            <Button variant="primary" onClick={onFinishBlock} disabled={transitionPending}>
+              {transitionPending ? 'Opening next activity…' : 'Continue the plan'}
             </Button>
-            <Button onClick={onBack}>Back to explanation</Button>
-            <Button onClick={onFinishBlock}>Finish this block</Button>
+            <Button onClick={onBack} disabled={transitionPending}>
+              Revisit the explanation
+            </Button>
+            <Button variant="ghost" onClick={nextItem} disabled={transitionPending}>
+              Try another question (optional)
+            </Button>
           </div>
         </Card>
       )}
