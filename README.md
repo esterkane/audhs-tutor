@@ -55,9 +55,22 @@ Preference and learning outcomes are tracked separately: an explanation can feel
 
 The local research notes inform the design, but are incomplete and do not establish the effectiveness of this application. Some thresholds, timing rules and adaptation policies remain provisional choices to evaluate in real use. Automated tests verify software behavior; they do not demonstrate improved learning.
 
-The next meaningful product test is one curated course followed through a complete learning loop: start easily, understand something difficult, stop safely, resume with context and later solve a new problem independently. More imported files or more AI features alone do not establish that outcome.
+The next meaningful product test is one curated knowledge area, drawing on several courses, followed through a complete learning loop: start easily, understand something difficult, stop safely, resume with context and later solve a new problem independently. More imported files or more AI features alone do not establish that outcome.
 
 The rationale is recorded in the decisions on [tutoring modes](docs/adr/0003-tutoring-mode-policy.md), [memory and competence](docs/adr/0004-learner-model-n1.md), [switching and interleaving](docs/adr/0006-interleaving-and-blocks.md), and the [personal experiment analysis](docs/slices/experiment-analysis-v2.md).
+
+### Knowledge areas across courses
+
+Learning areas organize related material across imported courses: for example retrieval, agents,
+Python or workflow automation. Area names and matching terms are editable; original courses stay
+visible as source references. A local drafting batch creates a starting draft for each matched area,
+with the sampled sources and evidence gaps visible. These drafts need review and explicit activation;
+a small sample does not represent complete course coverage.
+
+You can rate a draft or active assessment question, label why it helps or needs work, and add a note.
+Ratings can suggest more concrete applications, source-supported connections or smaller steps.
+You choose whether to apply these preferences to future area drafts and can reverse them.
+Feedback does not retrain a model, silently rewrite active lessons or change mastery scores.
 
 ## What works today
 

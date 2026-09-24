@@ -41,6 +41,7 @@ def _draft_out(d: CurriculumDraft) -> DraftOut:
     return DraftOut(
         id=d.id,
         course=d.course,
+        area_id=d.area_id,
         section=d.section,
         title=d.title,
         status=d.status,

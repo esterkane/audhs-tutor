@@ -75,9 +75,21 @@ class SessionCheckpoint(IdMixin, LearnerScoped, Base):
 
 
 # ---------------------------------------------------------------- curriculum (shared)
+class KnowledgeArea(IdMixin, Base):
+    """Shared curriculum organization; courses remain source provenance."""
+
+    __tablename__ = "knowledge_area"
+    slug: Mapped[str] = mapped_column(Text, unique=True)
+    title: Mapped[str] = mapped_column(Text)
+    terms_json: Mapped[JsonList] = mapped_column(JSON, default=list)
+    description: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class SkillNode(IdMixin, Base):
     __tablename__ = "skill_node"
     domain: Mapped[str] = mapped_column(Text, index=True)
+    area_id: Mapped[str | None] = mapped_column(ForeignKey("knowledge_area.id"), index=True)
     course: Mapped[str | None] = mapped_column(Text, index=True)  # published-from course (P4 goal)
     # where the skill sits in its course: the draft's section and a position that follows the
     # course structure (section order × 1000 + lecture position). It orders the goal-narrowed
@@ -531,7 +543,8 @@ class CurriculumDraft(IdMixin, LearnerScoped, Base):
     a re-publish writes a new learning_object version and new assessment rows."""
 
     __tablename__ = "curriculum_draft"
-    course: Mapped[str] = mapped_column(Text, index=True)
+    course: Mapped[str | None] = mapped_column(Text, index=True)
+    area_id: Mapped[str | None] = mapped_column(ForeignKey("knowledge_area.id"), index=True)
     section: Mapped[str | None] = mapped_column(Text)
     title: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(
@@ -545,6 +558,22 @@ class CurriculumDraft(IdMixin, LearnerScoped, Base):
     updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, onupdate=utcnow_iso)
     published_at: Mapped[str | None] = mapped_column(Text)
     model_call_id: Mapped[str | None] = mapped_column(Text)  # when a model drafted it
+
+
+class QuestionFeedback(IdMixin, LearnerScoped, Base):
+    """Explicit, reversible feedback on an immutable question snapshot; never competency evidence."""
+
+    __tablename__ = "question_feedback"
+    target_key: Mapped[str] = mapped_column(Text, index=True)
+    draft_id: Mapped[str | None] = mapped_column(ForeignKey("curriculum_draft.id"))
+    assessment_id: Mapped[str | None] = mapped_column(ForeignKey("assessment.id"))
+    draft_version: Mapped[int | None] = mapped_column(Integer)
+    verdict: Mapped[str] = mapped_column(Text)
+    labels_json: Mapped[JsonList] = mapped_column(JSON, default=list)
+    note: Mapped[str] = mapped_column(Text, default="")
+    snapshot_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    withdrawn_at: Mapped[str | None] = mapped_column(Text)
 
 
 class CourseSource(IdMixin, Base):

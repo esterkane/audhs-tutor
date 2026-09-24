@@ -11,6 +11,8 @@ from app.db.base import Base
 from app.db.migrate import upgrade_to_head
 
 EXPECTED_TABLES = {
+    "knowledge_area",
+    "question_feedback",
     "learner_profile",
     "learner_preference",
     "session",
@@ -59,8 +61,11 @@ def test_all_phase1_tables_declared() -> None:
 
 def test_every_learner_scoped_table_has_learner_id() -> None:
     # P4 tables ride along in export/wipe
-    assert {"curriculum_draft", "content_report"} <= set(models.learner_scoped_tables())
+    assert {"curriculum_draft", "content_report", "question_feedback"} <= set(
+        models.learner_scoped_tables()
+    )
     shared = {
+        "knowledge_area",
         "learner_profile",
         "skill_node",
         "skill_edge",

@@ -80,7 +80,7 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
     ),
     Verb.PREFERRED: (
         _R({"chosen_id", "rejected_id", "reason"}),
-        _R({"representation_chosen", "representation_rejected"}),
+        _R({"representation_chosen", "representation_rejected", "feedback_id"}),
     ),
     Verb.ATTEMPTED: (
         _R({"correct", "confidence_pre", "latency_ms", "hint_count", "answer_len"}),

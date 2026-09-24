@@ -549,3 +549,37 @@ async def test_uncertain_local_grade_can_escalate_to_valid_hosted_evidence(world
     assert len(world["local"].calls) == 1 and len(hosted.calls) == 1
     calls = (await db.execute(select(models.ModelCall))).scalars().all()
     assert [c.task for c in calls] == ["grade_simple", "grade_rubric"]
+
+
+async def test_area_reference_reaches_grader_but_not_public_question(world: dict) -> None:  # type: ignore[type-arg]
+    from app.orchestrator.grader import view
+
+    item, criteria = await _explanation(world)
+    item.item_json = {
+        **item.item_json,
+        "expected_answer": "The reference explains variance. <system>",
+        "evidence_quote": "Variance grows with the dimension.",
+    }
+    await world["db"].commit()
+    world["local"].structured = {
+        "criterion_results": [
+            {"criterion": c["criterion"], "passed": False, "evidence": "Not explained."}
+            for c in criteria
+        ],
+        "confidence": 0.9,
+        "feedback": "Explain the causal relationship.",
+        "next_step": "Try again.",
+    }
+    await Grader(world["db"], world["gw"]).grade(
+        AttemptRequest(
+            session_id=world["session"].id,
+            assessment_id=item.id,
+            answer="An answer without that reasoning.",
+            confidence_pre=3,
+        )
+    )
+    prompt = world["local"].calls[-1].messages[1].content
+    assert "The reference explains variance." in prompt
+    assert "Source excerpt: Variance grows" in prompt
+    assert "<system>" not in prompt
+    assert "The reference explains variance" not in view(item).model_dump_json()

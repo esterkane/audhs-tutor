@@ -1,0 +1,28 @@
+import { expect, test } from '@playwright/test'
+import { API_URL } from '../playwright.config'
+
+test('areas can be renamed and selected as a goal without activating lessons', async ({ page, request }) => {
+  await page.goto('/areas')
+  await expect(page.getByRole('heading', { name: 'Learning areas', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Suggest areas from my material' }).click()
+  const catalog = await (await request.get(`${API_URL}/api/areas`)).json()
+  const area = catalog.areas.find((a: { slug: string }) => a.slug === 'rag')
+  await page.getByLabel('Area to review').selectOption(area.id)
+  await page.getByText('Edit area name and matching terms', { exact: true }).click()
+  await page.getByLabel('Area name', { exact: true }).fill('My retrieval practice')
+  await page.getByRole('button', { name: 'Save area', exact: true }).click()
+  await expect(page.getByRole('status')).toHaveText('Area saved.')
+  await page.getByText('Your feedback and question preferences', { exact: true }).click()
+  const preference = page.getByRole('checkbox', { name: 'More concrete application and debugging questions' })
+  await preference.click()
+  await expect(preference).toBeChecked()
+  await page.reload()
+  await page.getByText('Your feedback and question preferences', { exact: true }).click()
+  await expect(preference).toBeChecked()
+  await preference.click()
+  await page.goto('/')
+  await page.getByRole('combobox', { name: 'Knowledge area', exact: true }).selectOption(area.id)
+  await expect(page.getByRole('combobox', { name: 'Goal', exact: true })).toBeDisabled()
+  await page.getByRole('combobox', { name: 'Knowledge area', exact: true }).selectOption('')
+  await expect(page.getByRole('combobox', { name: 'Goal', exact: true })).toBeEnabled()
+})

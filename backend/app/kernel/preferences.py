@@ -26,6 +26,30 @@ PREFERENCES: dict[str, PrefSpec] = {
     p.key: p
     for p in [
         PrefSpec(
+            key="goal.area",
+            type="str",
+            default="",
+            description="Preferred knowledge area across courses",
+        ),
+        PrefSpec(
+            key="questions.applied",
+            type="bool",
+            default=False,
+            description="Prefer application and debugging questions",
+        ),
+        PrefSpec(
+            key="questions.connections",
+            type="bool",
+            default=False,
+            description="Prefer evidence-supported connections across sources",
+        ),
+        PrefSpec(
+            key="questions.step_by_step",
+            type="bool",
+            default=False,
+            description="Prefer one focused question with optional small hints",
+        ),
+        PrefSpec(
             key="session.default_mode",
             type="enum",
             default="steady",

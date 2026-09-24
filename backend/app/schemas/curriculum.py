@@ -86,7 +86,8 @@ class ArchiveRoleOut(BaseModel):
 
 class DraftOut(BaseModel):
     id: str
-    course: str
+    area_id: str | None = None
+    course: str | None
     section: str | None
     title: str
     status: str

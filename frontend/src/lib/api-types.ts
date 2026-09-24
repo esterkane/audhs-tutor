@@ -776,6 +776,177 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/areas': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Editable areas across all imported courses */
+    get: operations['catalogue_api_areas_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/initialize': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Create missing suggested areas without changing existing labels */
+    post: operations['initialize_api_areas_initialize_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/{area_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Edit an area label and its source matching terms */
+    put: operations['edit_api_areas__area_id__put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/{area_id}/sources': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Cross-course source candidates and why they match */
+    get: operations['sources_api_areas__area_id__sources_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/draft-job/status': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Progress of the local area draft batch */
+    get: operations['job_status_api_areas_draft_job_status_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/draft-job/start': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Create missing area drafts sequentially with local models only */
+    post: operations['start_api_areas_draft_job_start_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/draft-job/stop': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Stop generation and keep completed drafts */
+    post: operations['stop_api_areas_draft_job_stop_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/feedback/questions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Question feedback and explicit generation preferences */
+    get: operations['feedback_list_api_areas_feedback_questions_get']
+    put?: never
+    /** Rate a versioned question with labels and a reason */
+    post: operations['feedback_api_areas_feedback_questions_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/feedback/questions/{feedback_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    /** Withdraw feedback without rewriting learning history */
+    delete: operations['withdraw_api_areas_feedback_questions__feedback_id__delete']
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/areas/feedback/preferences': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Explicitly apply or undo a question preference */
+    put: operations['feedback_preference_api_areas_feedback_preferences_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/adaptations': {
     parameters: {
       query?: never
@@ -1707,6 +1878,97 @@ export interface components {
       /** Documents */
       documents: number
     }
+    /** AreaEdit */
+    AreaEdit: {
+      /** Title */
+      title: string
+      /** Terms */
+      terms: string[]
+      /**
+       * Description
+       * @default
+       */
+      description: string
+    }
+    /** AreaJobIn */
+    AreaJobIn: {
+      /** Area Id */
+      area_id?: string | null
+      /**
+       * Force New
+       * @default false
+       */
+      force_new: boolean
+    }
+    /** AreaJobOut */
+    AreaJobOut: {
+      /**
+       * Running
+       * @default false
+       */
+      running: boolean
+      /** Current */
+      current?: string | null
+      /**
+       * Finished
+       * @default 0
+       */
+      finished: number
+      /**
+       * Total
+       * @default 0
+       */
+      total: number
+      /**
+       * Results
+       * @default []
+       */
+      results: {
+        [key: string]: string
+      }[]
+      /** Error */
+      error?: string | null
+    }
+    /** AreaList */
+    AreaList: {
+      /** Areas */
+      areas: components['schemas']['AreaOut'][]
+      /** Unassigned Documents */
+      unassigned_documents: number
+      /** Total Documents */
+      total_documents: number
+    }
+    /** AreaOut */
+    AreaOut: {
+      /** Title */
+      title: string
+      /** Terms */
+      terms: string[]
+      /**
+       * Description
+       * @default
+       */
+      description: string
+      /** Id */
+      id: string
+      /** Slug */
+      slug: string
+      /** Documents */
+      documents: number
+      /** Courses */
+      courses: string[]
+      /** Draft Ids */
+      draft_ids: string[]
+      /** Related */
+      related: string[]
+    }
+    /** AreaSources */
+    AreaSources: {
+      /** Sources */
+      sources: {
+        [key: string]: unknown
+      }[]
+    }
     /** ArmIn */
     ArmIn: {
       /** Name */
@@ -2404,8 +2666,10 @@ export interface components {
     DraftOut: {
       /** Id */
       id: string
+      /** Area Id */
+      area_id?: string | null
       /** Course */
-      course: string
+      course: string | null
       /** Section */
       section: string | null
       /** Title */
@@ -2570,6 +2834,90 @@ export interface components {
       ended_at: string | null
       /** Arms */
       arms: components['schemas']['ArmOut'][]
+    }
+    /** FeedbackIn */
+    FeedbackIn: {
+      /** Draft Id */
+      draft_id?: string | null
+      /** Draft Version */
+      draft_version?: number | null
+      /** Question Index */
+      question_index?: number | null
+      /** Assessment Id */
+      assessment_id?: string | null
+      /**
+       * Verdict
+       * @enum {string}
+       */
+      verdict: 'good' | 'bad'
+      /** Labels */
+      labels: (
+        | 'clear'
+        | 'useful_application'
+        | 'connects_ideas'
+        | 'incorrect'
+        | 'off_topic'
+        | 'too_vague'
+        | 'too_easy'
+        | 'too_hard'
+        | 'other'
+      )[]
+      /**
+       * Note
+       * @default
+       */
+      note: string
+    }
+    /** FeedbackList */
+    FeedbackList: {
+      /** Feedback */
+      feedback: components['schemas']['FeedbackOut'][]
+      /** Label Counts */
+      label_counts: {
+        [key: string]: number
+      }
+      /** Suggestions */
+      suggestions: components['schemas']['FeedbackSuggestion'][]
+      /** Preferences */
+      preferences: {
+        [key: string]: boolean
+      }
+    }
+    /** FeedbackOut */
+    FeedbackOut: {
+      /** Id */
+      id: string
+      /** Target Key */
+      target_key: string
+      /** Verdict */
+      verdict: string
+      /** Labels */
+      labels: string[]
+      /** Note */
+      note: string
+      /** Created At */
+      created_at: string
+      /** Withdrawn */
+      withdrawn: boolean
+    }
+    /** FeedbackPreference */
+    FeedbackPreference: {
+      /**
+       * Key
+       * @enum {string}
+       */
+      key: 'questions.applied' | 'questions.connections' | 'questions.step_by_step'
+      /** Enabled */
+      enabled: boolean
+    }
+    /** FeedbackSuggestion */
+    FeedbackSuggestion: {
+      /** Key */
+      key: string
+      /** Description */
+      description: string
+      /** Reason */
+      reason: string
     }
     /** ForgetOut */
     ForgetOut: {
@@ -5663,6 +6011,302 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SearchOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  catalogue_api_areas_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreaList']
+        }
+      }
+    }
+  }
+  initialize_api_areas_initialize_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreaList']
+        }
+      }
+    }
+  }
+  edit_api_areas__area_id__put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        area_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AreaEdit']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreaList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  sources_api_areas__area_id__sources_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        area_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreaSources']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  job_status_api_areas_draft_job_status_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreaJobOut']
+        }
+      }
+    }
+  }
+  start_api_areas_draft_job_start_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['AreaJobIn'] | null
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreaJobOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  stop_api_areas_draft_job_stop_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreaJobOut']
+        }
+      }
+    }
+  }
+  feedback_list_api_areas_feedback_questions_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FeedbackList']
+        }
+      }
+    }
+  }
+  feedback_api_areas_feedback_questions_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FeedbackIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FeedbackOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  withdraw_api_areas_feedback_questions__feedback_id__delete: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        feedback_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FeedbackList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  feedback_preference_api_areas_feedback_preferences_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['FeedbackPreference']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FeedbackList']
         }
       }
       /** @description Validation Error */

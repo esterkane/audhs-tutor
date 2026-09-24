@@ -1,3 +1,4 @@
+import { QuestionFeedback } from '../features/areas/QuestionFeedback'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
@@ -784,6 +785,7 @@ function AssessPanel({
                 : 'Answer the question below.'}
         </p>
         <p className="text-base mb-3">{item.question}</p>
+        <QuestionFeedback key={item.id} target={{ assessment_id: item.id }} />
         {!result && (
           <>
             {item.kind === 'mcq' && item.options ? (

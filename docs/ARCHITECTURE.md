@@ -107,3 +107,17 @@ prompts/  evals/  scripts/  docs/{adr,slices,research}  data/ (gitignored)
 
 ## 8. Thresholds that change the plan
 Qdrant RAM > ~1.5 GB → enable on-disk vectors/binary quantization · Local 12–14B < 10 tok/s → 8B or 30B-A3B MoE · Hosted spend > cap → move `grade_rubric` to Haiku/local · Voice turn > 3 s → Parakeet/Piper · Eval regression → block merge · Kernel logic needs >1 LLM call per decision → reconsider PydanticAI, then LangGraph.
+
+## Cross-course knowledge areas
+
+`knowledge_area` is shared curriculum organization; editable metadata rules propose source candidates.
+`kernel/areas.py` honors source roles and selects trusted, latest, nonduplicate, topic-matching prose
+across courses. `orchestrator/area_drafting.py` uses the model gateway with local providers only;
+quoted course data is escaped, citation IDs and exact evidence quotes checked, and drafts remain
+unpublished. `curriculum_draft.area_id` and `skill_node.area_id` preserve area identity separately
+from course provenance. Conditional draft writes protect concurrent manual edits.
+
+`question_feedback` is learner-scoped, included by learner export/wipe, and snapshots a rated question.
+Deterministic label rules suggest optional preferences; accepted closed guidance affects subsequent
+area drafts. Freeform feedback notes are stored locally, never interpolated as model instructions.
+There is no model fine-tuning, inferred learning-style category or mastery update from a rating.

@@ -329,6 +329,10 @@ class Grader:
             level = "rubric"
             is_challenge = a.kind.startswith("challenge_")
             reference = str(item.get("hidden_key")) if is_challenge else None
+            if a.kind == "explain_back" and item.get("expected_answer"):
+                reference = str(item["expected_answer"])[:1200]
+                if item.get("evidence_quote"):
+                    reference += "\nSource excerpt: " + str(item["evidence_quote"])[:300]
             if is_challenge:
                 result.confidence = 0.0  # challenges are always LLM-graded against the hidden key
             if result.confidence < LLM_ESCALATE_BELOW:

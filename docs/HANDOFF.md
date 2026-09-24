@@ -1,3 +1,26 @@
+# Latest: cross-course learning areas — 2026-09-24
+
+Owner chose editable topic areas across all courses. Implemented `/areas` as primary learning-content
+navigation; old `/curriculum` source-role/course-draft management remains available. ADR-0015 and
+`docs/slices/knowledge-areas.md` define the bounds. Local-only draft generation, safe restart/new-draft,
+source coverage, versioned ratings, opt-in reversible preference suggestions and area goals are included.
+Question grading now receives the bounded escaped hidden reference; public unanswered views omit it.
+
+Verification: 366 backend /59 frontend tests, lint, generated API types, all 9 isolated browser journeys.
+Migration passed on a consistent private copy of the real database. Code/pedagogy reviews corrected
+concurrent writes, missing extra citations, retry behavior and missing grader references.
+Focused local Gemma drafting checks exposed and fixed bundled sample-data topic leakage; this is not
+an exhaustive quality gate. Prior broad tutor and personal voice gates remain open.
+
+Live draft generation status will be recorded after applying this tested change. Nothing is activated
+by the batch. Defaults sample at most twelve topic-matching passages per area and create at most three
+concepts. Preserve earlier course/area drafts, active curriculum and learning history. Accepted feedback
+preferences affect future area drafts; ratings alone do not rewrite content or alter mastery.
+
+Next improvement: evaluate broader coverage and cross-source synthesis, allow richer topic membership
+curation, and make bad-question correction/retirement explicit. Do not label this initial bounded draft
+batch as a complete curriculum covering all imported courses. Maintain accurate local-first execution.
+
 ## OpenAI integration and Claude continuity audit — 2026-09-24
 
 Owner policy: execute locally whenever accurate/capable; OpenAI only for demonstrated local gaps.

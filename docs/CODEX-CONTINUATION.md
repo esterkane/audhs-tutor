@@ -1,5 +1,6 @@
 # Active continuation — 2026-09-24
 
+Latest implementation: editable cross-course learning areas and explicit question feedback (ADR-0015).
 Read the newest `docs/HANDOFF.md` section first; earlier entries below are historical.
 All Claude project skills/settings/hooks/MCP definitions were audited; see `docs/CLAUDE-CONFIG-AUDIT.md`.
 Owner policy: accurate local execution first, OpenAI only for demonstrated gaps. Provider integration

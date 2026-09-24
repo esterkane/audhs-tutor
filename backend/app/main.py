@@ -28,6 +28,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            task = getattr(app.state, "area_job_task", None)
+            if task and not task.done():
+                task.cancel()
+                await task
             from app.knowledge.ingest.jobs import stop_all
 
             await stop_all(app)  # a running ingest is recorded `interrupted`, hence resumable

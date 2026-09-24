@@ -998,14 +998,17 @@ async def create_draft(
     db: AsyncSession,
     learner_id: str,
     *,
-    course: str,
+    course: str | None,
     section: str | None,
     payload: dict[str, Any] | None = None,
     origin: str = "deterministic",
     model_call_id: str | None = None,
     notes: list[Problem] | None = None,
+    area_id: str | None = None,
 ) -> CurriculumDraft:
     if payload is None:
+        if course is None:
+            raise ValueError("course required without an area payload")
         mat = await section_material(db, course, section)
         if not mat.lectures:
             raise ValueError(no_primary_message(mat, course, section))
@@ -1016,8 +1019,10 @@ async def create_draft(
     draft = CurriculumDraft(
         learner_id=learner_id,
         course=course,
+        area_id=area_id,
         section=section,
-        title=f"{course}" + (f" › {section}" if section else ""),
+        title=str(payload.get("area_title") or course or "Knowledge area")
+        + (f" › {section}" if section else ""),
         status="draft",
         origin=origin,
         payload_json=payload,
@@ -1096,12 +1101,12 @@ async def publish_draft(db: AsyncSession, learner_id: str, draft_id: str) -> Pub
         )
     report = PublishReport()
     domain = str(payload.get("domain") or "ai_ml")
-    course = str(payload.get("course") or d.course)
+    course = None if d.area_id else str(payload.get("course") or d.course)
     section = payload.get("section", d.section)
     # the skill's place in the course: section order (as `sections_of` lists them) × 1000 + the
     # lecture position in this draft — so the goal-narrowed next-skill pick follows the course
     # regardless of the order in which sections were published
-    section_labels = [s["section"] for s in await sections_of(db, course)]
+    section_labels = [s["section"] for s in await sections_of(db, course)] if course else []
     section_index = section_labels.index(section) + 1 if section in section_labels else None
     ids: dict[str, str] = {}
     for position, s in enumerate(payload["skills"], start=1):
@@ -1110,6 +1115,7 @@ async def publish_draft(db: AsyncSession, learner_id: str, draft_id: str) -> Pub
         ).scalar_one_or_none()
         fields = dict(
             domain=domain,
+            area_id=d.area_id,
             course=course,
             section=section,
             order_no=(section_index * 1000 + position) if section_index is not None else None,

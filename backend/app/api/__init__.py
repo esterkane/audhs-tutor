@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api import (
     adaptations,
+    areas,
     assess,
     challenge,
     corpus,
@@ -41,6 +42,7 @@ for r in (
     review,
     parking,
     corpus,
+    areas,
     adaptations,
     models_admin,
     listening,

@@ -1,3 +1,4 @@
+import { QuestionFeedback } from '../features/areas/QuestionFeedback'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
@@ -327,7 +328,7 @@ function SourcesPanel({ course }: { course: string }) {
   )
 }
 
-function DraftEditor({
+export function DraftEditor({
   draft: incoming,
   onDirtyChange,
 }: {
@@ -405,7 +406,7 @@ function DraftEditor({
     <Card>
       <p className="text-xs text-muted mb-1">{statusLabel(draft.status)}</p>
       <h2 ref={heading} tabIndex={-1} className="text-lg font-semibold mb-2">
-        {draft.section ?? 'Course introduction'}
+        {draft.area_id ? draft.title : (draft.section ?? 'Course introduction')}
       </h2>
       <p className="text-sm text-muted mt-2">
         {skills.length} lessons · {assessments.length} knowledge checks
@@ -497,6 +498,32 @@ function DraftEditor({
                         ) : (
                           <p className="text-muted mt-1">No source attached to this question.</p>
                         )}
+                        <QuestionFeedback
+                          key={`${draft.id}-${draft.version}-${assessments.indexOf(a)}`}
+                          target={{
+                            draft_id: draft.id,
+                            draft_version: draft.version,
+                            question_index: assessments.indexOf(a),
+                          }}
+                        />
+                        {strings(item?.source_chunk_ids)
+                          .filter((id) => id !== a.source_chunk_id)
+                          .map((id, sourceIndex) => (
+                            <Button
+                              key={id}
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                setSource({
+                                  id,
+                                  skill: slug,
+                                  label: `${String(sk.title)} — additional question source ${sourceIndex + 1}`,
+                                })
+                              }
+                            >
+                              Read additional question source {sourceIndex + 1}
+                            </Button>
+                          ))}
                         <details className="mt-1">
                           <summary className="cursor-pointer text-muted">
                             Review answer and grading criteria
@@ -509,6 +536,7 @@ function DraftEditor({
                           {strings(item?.answers).length > 0 && (
                             <p>Accepted answers: {strings(item?.answers).join('; ')}</p>
                           )}
+                          {typeof item?.expected_answer === 'string' && <p>{item.expected_answer}</p>}
                           {typeof item?.explanation === 'string' && <p>{item.explanation}</p>}
                           {a.rubric && !Array.isArray(a.rubric) ? (
                             <p>

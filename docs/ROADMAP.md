@@ -4,6 +4,11 @@
 
 Order follows the Architecture Review Brief: prove the learning loop first, then the kernel, then the knowledge system, then adaptive UX, then frontier+voice, then offline agents. Each stage: slices (`/feature-slice`), a benchmark script, exit criteria.
 
+## Cross-course learning areas — 2026-09-24
+
+- [x] Editable area organization, local bounded drafts, source provenance, question ratings and reversible preference suggestions. See `docs/slices/knowledge-areas.md` and ADR-0015.
+- [ ] Expand evaluated coverage beyond small passage samples; validate cross-source synthesis and learning outcomes in actual use.
+
 ## Stage 0 — Skeleton (½ day)
 - [x] `repo-bootstrap` — `scripts/bootstrap.sh`, Makefile, `.env.example`, uv + pnpm projects, ruff/prettier, Qdrant container (`make services`).
 - [x] `db-core` — ORM + Alembic for all Phase-1 tables (ARCHITECTURE §4); `learning_event` append-only; `learner_id` everywhere; export/wipe scripts + test.

@@ -1,5 +1,6 @@
+import { useAreas } from '../features/areas/api'
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { Choice } from '../components/ui/choice'
@@ -38,6 +39,8 @@ export function Home() {
   const preview = usePlanPreview(mode, energy)
   const experiments = useExperiments()
   const goal = String((prefs.data?.values as Record<string, unknown> | undefined)?.['goal.course'] ?? '')
+  const areas = useAreas()
+  const areaGoal = String(prefs.data?.values?.['goal.area'] ?? '')
   const publishedCourses = (material.data?.courses ?? []).filter((c) => c.published_skills > 0)
   const defaultMode = (prefs.data?.values as Record<string, unknown> | undefined)?.['session.default_mode']
   const preselected = useRef(false)
@@ -129,12 +132,33 @@ export function Home() {
       <PromotedReminders />
       <Card>
         <CardTitle>Learn toward</CardTitle>
+        <label className="block text-sm font-medium mt-2">
+          Knowledge area
+          <select
+            className="block border border-line rounded-md px-2 py-1 mt-1"
+            value={areaGoal}
+            onChange={(e) => setPref.mutate({ key: 'goal.area', value: e.target.value })}
+          >
+            <option value="">Whole map or course goal below</option>
+            {(areas.data?.areas ?? []).map((a) => (
+              <option key={a.id} value={a.id}>
+                {a.title}
+              </option>
+            ))}
+          </select>
+        </label>
+        <p className="text-sm text-muted my-2">
+          An area goal takes precedence over the course goal below and uses activated lessons across sources.
+          Until it has active lessons, the whole map remains available.{' '}
+          <Link to="/areas">Review learning areas</Link>
+        </p>
         <div className="flex flex-wrap gap-2 items-end">
           <label className="text-sm font-medium">
             Goal
             <select
               className="block border border-line rounded-md px-2 py-1 mt-1"
               value={goal}
+              disabled={Boolean(areaGoal)}
               onChange={(e) => setPref.mutate({ key: 'goal.course', value: e.target.value })}
             >
               <option value="">Whole skill map</option>

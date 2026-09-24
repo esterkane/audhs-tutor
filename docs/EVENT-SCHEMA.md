@@ -30,7 +30,7 @@ Table `learning_event` — append-only. One row per learner-relevant interaction
 | block_started / block_ended | `actual_min` (server-measured from `block_started_at` when the client sends none), `switched_early`, `reason ∈ finished | switch_early | skipped | save_and_stop | session_end`, `timer_extension_min` (minutes the learner added via the soft timer) | `block_type, planned_min, node_ids` — object id `<session_id>:<index>`; exactly one start and one end per block (transitions are idempotent, `kernel/blocks.py`) |
 | asked | — | `text_len, node_id` |
 | explained | `sentences, cited_sources[]` | `representation (incl. `code_hint` / `full_solution` for item-scoped exercise help, P8), hint_count, model, route, prompt_version, latency_ms, tokens_in, tokens_out, cached_tokens, node_id, questioning_style (explicit \| socratic as requested), arm_intended? (experiment arm config for this turn), arm_delivered? (bool, only when the stream completed: a Socratic arm = the last sentence asks a question and the turn has ≤ 6 sentences, trailing `[n]` ignored; a representation arm = the detected representation equals the requested one; an explicit arm is delivered unless the mastery gate refused it — an explicit turn may end with a check question), arm_not_applied? (the mastery gate refused the arm's representation; P2 arm fidelity), usage_source (reported \| estimated \| unavailable — where the token counts came from; P6), cost_status (free \| reported \| estimated \| unknown; P6)` |
-| preferred | `chosen_id, rejected_id, reason?` | `representation_chosen, representation_rejected` |
+| preferred | `chosen_id, rejected_id, reason?` | `representation_chosen, representation_rejected, feedback_id?` |
 | attempted | `correct(bool\|null), confidence_pre(1–5), latency_ms, hint_count, answer_len` | `item_type, node_id` — since P7 the grader stamps `domain` from the skill node (language items → `language`, programming → `programming`; unknown → `ai_ml`) |
 | graded | `criterion_results[{criterion,passed}], score(0–1 derived), misconception?, confidence, feedback_len` | `grader_level ∈ deterministic|deterministic:client-pyodide (P8 code exercise: checks ran in the learner's browser sandbox)|rubric|local|hosted, prompt_version, rubric_version` |
 | evidenced | `skill_id, dimension, score, weight` | `attempt_id` |
@@ -57,3 +57,11 @@ Adding a key: document it here in the same commit. Removing/renaming: never — 
 ### Playground tutoring
 
 Playground help emits existing `asked`/`explained` turn events in the explicitly active session, with `activity_type=chat`, `representation=playground_<intent>` and the model route/prompt version. Local Run and practice checks do not emit attempts, grades or competency evidence. No new payload keys.
+
+### Question feedback
+
+`preferred` on an item records the versioned content hash as chosen/rejected ID. For question
+feedback, `reason` is `{labels, note}` and context includes `feedback_id`; these are learner data.
+`undone` withdraws a rating without erasing event history. `adapted` records explicit acceptance
+or reversal of `questions.applied`, `questions.connections` or `questions.step_by_step`.
+None of these events writes competency evidence, review scheduling or assessment scores.
