@@ -1,3 +1,33 @@
+## OpenAI integration and Claude continuity audit — 2026-09-24
+
+Owner policy: execute locally whenever accurate/capable; OpenAI only for demonstrated local gaps.
+The key is configured locally and the running backend recognizes `openai-luna` as ready. This means
+configured, not broadly quality-approved. Existing routing defaults and learner overrides were not changed.
+
+Implemented: distinct OpenAI adapter/key/runtime, typed replies and streaming usage, shared hosted
+accounting, conservative schema-aware reservations, retained unknown cost on interrupted streams,
+transport closure, budgeted pinned benchmarks, clear Models controls. No dependency/schema migration.
+See `docs/slices/openai-provider.md` and `docs/PROVIDER-COST-COMPARISON.md`.
+
+Verified: `UV_NO_SYNC=1 make test` initially 351 backend /57 frontend; after review fixes final
+`UV_NO_SYNC=1 make test-backend` 354 passed; `make lint` passed; `make gen-api` unchanged;
+8 Playwright journeys passed against `/private/tmp/audhs-openai-20260924.db` on ports 8021/5185.
+Independent code re-review: no remaining blocker/major. Final focused accounting/provider tests passed.
+Synthetic real OpenAI evaluation: six requests, $0.000725 conservative estimate within a $0.03 cap,
+correct whitespace debugging, typed response and streaming. Hint granularity remains imperfect;
+this was not the full tutor suite or a grading-quality gate. No private course material sent.
+
+Audited all 12 project skills, four rules, four agents, four hooks, project/local settings, launch
+and MCP definitions; `docs/CLAUDE-CONFIG-AUDIT.md` records findings. Disabled auto-enabled SQLite
+MCP pointing at the live DB; preserved optional definition and personal Claude settings. Updated
+routing guidance and continuation pointers. Secrets/runtime data/private prompt pack remain excluded.
+
+Next: task-specific local-versus-OpenAI evaluation and an inspectable escalation mechanism for
+proven local gaps; do not assign every ordinary tutoring turn to hosted. Existing specialist
+Anthropic routes also need review before replacing them. No full stage or personal voice gate closed.
+The prior CI run had backend/frontend/migrations green but journeys still in progress; do not
+claim remote CI passed until the newly pushed revision completes. Historical entries follow.
+
 ## Playground — 2026-09-24
 
 Implemented the first coding playground/guided practice slice at `/playground`: persistent browser drafts, real Python worker execution, output/checks, three-stage pipeline practice, conceptual map and contextual tutor sidebar. Tutor uses owned active sessions, bounded escaped context, normal model routing/budget accounting and asked/explained + tutor/model traces. No mastery writes or live lesson activation. See `docs/slices/playground.md`.

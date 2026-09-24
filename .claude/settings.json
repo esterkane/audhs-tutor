@@ -155,9 +155,7 @@
     ]
   },
   "enableAllProjectMcpServers": false,
-  "enabledMcpjsonServers": [
-    "sqlite-learner"
-  ],
+  "enabledMcpjsonServers": [],
   "includeCoAuthoredBy": true,
   "skillOverrides": {},
   "spinnerTipsEnabled": false

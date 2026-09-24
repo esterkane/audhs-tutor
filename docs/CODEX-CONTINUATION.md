@@ -1,3 +1,11 @@
+# Active continuation — 2026-09-24
+
+Read the newest `docs/HANDOFF.md` section first; earlier entries below are historical.
+All Claude project skills/settings/hooks/MCP definitions were audited; see `docs/CLAUDE-CONFIG-AUDIT.md`.
+Owner policy: accurate local execution first, OpenAI only for demonstrated gaps. Provider integration
+and synthetic compatibility evidence do not authorize a blanket tutoring/grading route switch.
+Do not run Claude and Codex edits concurrently. Preserve personal configuration and private data.
+
 ## Current update — 2026-09-21: accepted decisions and local TTS
 
 Owner accepted ADR-0011–0013 ("Paket annehmen"); statuses are now Accepted. Earlier pending-decision notes below are historical.

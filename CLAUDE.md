@@ -10,11 +10,18 @@ Detailed rules load per path from `.claude/rules/`. Procedures are skills (`/bui
 ## Core principle
 **The LLM explains and reasons. The Learning Kernel remembers and decides.** The LLM never owns learner state, curriculum state, competency, memory or truth. Retrieval supplies evidence; assessments produce competency evidence; FSRS manages memory; the learner controls adaptation; observability tells us whether any of it works.
 
+## Owner continuation instruction — 2026-09-24
+
+Local execution whenever accurate and capable; OpenAI only for demonstrated local gaps. Key setup
+must not silently switch task assignments. Current OpenAI slice, tests and evidence are in
+`docs/slices/openai-provider.md`; full Claude tooling audit in `docs/CLAUDE-CONFIG-AUDIT.md`.
+The extension uses the existing ModelProvider/gateway boundary; existing accepted ADRs remain intact.
+
 ## Binding decisions (change only via /adr)
 - Layers: `Learning UX → Learning Kernel (deterministic) → Tutor Orchestrator (one, tool-using) → Knowledge + Models → Persistent state → Evaluation/Observability/Security`. ADR-0007.
 - Backend: Python 3.12, FastAPI, Pydantic v2, SQLite (WAL) via SQLAlchemy 2 + Alembic, `uv`. Plain Python + Instructor for structured output; PydanticAI only when a typed tool loop is needed. No LangGraph, no multi-agent tutor in Phase 1.
 - Frontend: TypeScript, React 19, Vite, TanStack Query, Zustand (`stores/mode.ts` = `useMode`), shadcn/ui + Radix, CodeMirror 6, Pyodide. `pnpm`. (Was written as React 18; package.json has had React 19 since Stage 0 — reconciled 2026-09-20, no design change.)
-- Models: `ModelProvider` interface (`OllamaProvider`, `ClaudeProvider`; MLX Whisper handles registry-routed `TaskClass.STT`; Kokoro serves `TaskClass.TTS` via its local HTTP service (ADR-0011)) with LiteLLM **SDK** behind it. A **model registry** (`model_registry` table, `scripts/models.py`, Settings › Models) lets the learner download models from Hugging Face / Ollama library / mlx-community, benchmark them, and assign one per `TaskClass`; routing stays inspectable and logged. No proxy in Phase 1. Budget cap enforced in-app. ADR-0001, ADR-0010.
+- Models: `ModelProvider` interface (`OllamaProvider`, `ClaudeProvider`, `OpenAIProvider`; MLX Whisper handles registry-routed `TaskClass.STT`; Kokoro serves `TaskClass.TTS` via its local HTTP service (ADR-0011)) with LiteLLM **SDK** behind it. A **model registry** (`model_registry` table, `scripts/models.py`, Settings › Models) lets the learner download models from Hugging Face / Ollama library / mlx-community, benchmark them, and assign one per `TaskClass`; routing stays inspectable and logged. No proxy in Phase 1. Budget cap enforced in-app. ADR-0001, ADR-0010, ADR-0014.
 - Retrieval: `RetrievalRepository` interface; production adapter from day one is **Qdrant** (dense + sparse named vectors, server-side fusion, payload filters, provenance, quantization). Raw chunks stay in SQLite; `reindex.py` rebuilds Qdrant. `SqliteHybridRepository` (FTS5 + sqlite-vec) only for tests/offline fallback. ADR-0002.
 - Learner model: `MemoryState` (FSRS via `py-fsrs`, per item) **≠** `CompetencyState` (per skill, derived from `competency_evidence`). Mastery is a computed view over both. Skill graph with prerequisite edges is the curriculum backbone. ADR-0004.
 - Content: `LearningObject` (concept, goal, sources, examples, exercises, success criteria) rendered into `Representation`s (map, simple/deep explanation, analogy, worked example, diagram, audio, quiz, code exercise, explain-back). "Show it differently" changes the representation, never the source of truth.

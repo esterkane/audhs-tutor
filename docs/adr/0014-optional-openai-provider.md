@@ -1,6 +1,6 @@
 # 0014 — Optional OpenAI provider within local-first routing
 Date: 2026-09-24
-Status: Proposed
+Status: Accepted
 
 ## Context
 The owner requested the cheaper hosted option, approved implementation, supplied a local key and
