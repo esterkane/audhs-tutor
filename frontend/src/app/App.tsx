@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import { ParkingLotButton } from '../components/ParkingLotButton'
 import { Corpus } from '../routes/Corpus'
 import { Curriculum } from '../routes/Curriculum'
@@ -14,6 +14,7 @@ import { Preferences } from '../routes/Preferences'
 import { Recap } from '../routes/Recap'
 import { Review } from '../routes/Review'
 import { Session } from '../routes/Session'
+import { Playground } from '../routes/Playground'
 import { MODE_LABELS, useMode } from '../stores/mode'
 
 const queryClient = new QueryClient({
@@ -23,14 +24,16 @@ const queryClient = new QueryClient({
 export function Shell({ children }: { children: React.ReactNode }) {
   const { mode, energy, sessionId } = useMode()
   useSensory()
+  const wide = useLocation().pathname === '/playground'
   return (
     <div className="min-h-screen">
-      <header className="flex items-center justify-between px-4 py-3 border-b border-line bg-card">
+      <header className="flex flex-wrap gap-3 items-center justify-between px-4 py-3 border-b border-line bg-card">
         <Link to="/" className="font-semibold no-underline text-fg">
           AuDHS-Tutor
         </Link>
-        <nav className="flex gap-3 text-sm">
+        <nav className="flex flex-wrap gap-3 text-sm">
           <Link to="/map">Skill map</Link>
+          <Link to="/playground">Playground</Link>
           <Link to="/together">Together</Link>
           <Link to="/experiments">Experiments</Link>
           <Link to="/vocab">Vocab</Link>
@@ -44,7 +47,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {sessionId ? ' · session running' : ''}
         </div>
       </header>
-      <main className="max-w-3xl mx-auto p-4 pb-24">{children}</main>
+      <main className={`${wide ? 'max-w-7xl' : 'max-w-3xl'} mx-auto p-4 pb-24`}>{children}</main>
       <ParkingLotButton />
     </div>
   )
@@ -58,6 +61,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/session" element={<Session />} />
+            <Route path="/playground" element={<Playground />} />
             <Route path="/review" element={<Review />} />
             <Route path="/recap" element={<Recap />} />
             <Route path="/map" element={<Map />} />

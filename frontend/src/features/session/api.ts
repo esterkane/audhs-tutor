@@ -43,7 +43,12 @@ export function useCheckpoint() {
 }
 
 export function useStartSession() {
-  return useMutation({ mutationFn: api.startSession })
+  const qc = useQueryClient()
+  return useMutation({
+    mutationKey: ['session-start'],
+    mutationFn: api.startSession,
+    onSuccess: (s) => qc.setQueryData(['session-current'], s),
+  })
 }
 
 export function useEndSession() {

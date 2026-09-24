@@ -48,3 +48,7 @@ def listening_task(name: str) -> str:
 
 def voice_task(name: str) -> str:
     return _read(f"voice/{name}.v1.md")
+
+
+def playground_task() -> str:
+    return _read("playground/tutor.v1.md")

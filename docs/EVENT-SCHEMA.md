@@ -53,3 +53,7 @@ Table `learning_event` — append-only. One row per learner-relevant interaction
 - `v_cost_by_task` — from llm_call_log.
 
 Adding a key: document it here in the same commit. Removing/renaming: never — add a new key and stop writing the old one.
+
+### Playground tutoring
+
+Playground help emits existing `asked`/`explained` turn events in the explicitly active session, with `activity_type=chat`, `representation=playground_<intent>` and the model route/prompt version. Local Run and practice checks do not emit attempts, grades or competency evidence. No new payload keys.

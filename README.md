@@ -202,3 +202,9 @@ CI runs backend lint/type checks/tests, frontend checks/tests, database migratio
 | Exercises | CodeMirror and local Pyodide |
 
 Start with [architecture](docs/ARCHITECTURE.md), [ADRs](docs/adr/), [improvement plan](docs/IMPROVEMENT-PLAN.md) and [handoff](docs/HANDOFF.md). Coding agents should read [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md); shared procedures, reviews and hooks live in `.claude/`. Keep `.env`, `data/`, downloaded Pyodide files and private prompt packages out of commits.
+
+### Coding playground
+
+Open **Playground** for saved Python experiments with a tutor alongside the editor. Start freely or follow a worked example → complete a transformation → build a new transformation. Code runs in the existing browser Python runtime; practice checks do not update mastery. Code, predictions and recent chat stay in this browser. Tutor requests share the current workspace and bounded recent chat through the configured model route; a learning session is required for tutor activity logging. AI guidance is fallible—verify explanations against actual output.
+
+The big-picture panel shows a conceptual input → transform → output pipeline. Visual workflow editing and real LangChain/n8n execution are later stages, not included in this version. See [playground scope](docs/slices/playground.md) and the [hosted-provider cost comparison](docs/PROVIDER-COST-COMPARISON.md).

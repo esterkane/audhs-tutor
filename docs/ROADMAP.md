@@ -110,3 +110,9 @@ ARCHITECTURE §8. Tripped → `/adr` first.
 
 ## Deferred
 Cloud, auth, Tauri, LangGraph, Elasticsearch, Langfuse (optional compose profile), hosted realtime voice as default.
+
+## Playground extension — 2026-09-24
+
+- [x] Initial Python playground and guided pipeline practice; implementation checks pass (see `slices/playground.md`).
+- [ ] Tutor correctness gate: local debugging failure remains; evaluate the selected hosted candidate.
+- [ ] Interactive workflow builder and real LangChain/n8n integrations.

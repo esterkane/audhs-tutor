@@ -1,0 +1,23 @@
+import { expect, test } from '@playwright/test'
+
+test('playground runs locally, keeps separate drafts and identifies stale output', async ({ page }) => {
+  await page.goto('/playground')
+  await expect(page.getByRole('heading', { name: 'Coding playground' })).toBeVisible()
+  await page.getByRole('combobox', { name: 'Workspace', exact: true }).selectOption('worked')
+  await page.getByRole('button', { name: 'Run code' }).click()
+  await expect(page.getByText("['Ada', 'Lin']", { exact: true })).toBeVisible({ timeout: 45000 })
+  await page.getByText('Editor and runtime options', { exact: true }).click()
+  await page.getByRole('button', { name: 'Use plain editor' }).click()
+  const editor = page.getByLabel(/Python code/)
+  await editor.fill('print("saved experiment")')
+  await expect(page.getByText(/output is from earlier code/)).toBeVisible()
+  await page.getByRole('combobox', { name: 'Workspace', exact: true }).selectOption('scratch')
+  await expect(page.getByLabel(/Python code/)).not.toHaveValue('print("saved experiment")')
+  await page.getByRole('combobox', { name: 'Workspace', exact: true }).selectOption('worked')
+  await expect(page.getByLabel(/Python code/)).toHaveValue('print("saved experiment")')
+  await page.reload()
+  await page.getByRole('combobox', { name: 'Workspace', exact: true }).selectOption('worked')
+  await expect(page.getByLabel(/Python code/)).toHaveValue('print("saved experiment")')
+  await page.getByRole('button', { name: 'Run code' }).click()
+  await expect(page.getByText('saved experiment', { exact: true })).toBeVisible({ timeout: 45000 })
+})

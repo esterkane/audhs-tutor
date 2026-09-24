@@ -1,3 +1,13 @@
+## Playground — 2026-09-24
+
+Implemented the first coding playground/guided practice slice at `/playground`: persistent browser drafts, real Python worker execution, output/checks, three-stage pipeline practice, conceptual map and contextual tutor sidebar. Tutor uses owned active sessions, bounded escaped context, normal model routing/budget accounting and asked/explained + tutor/model traces. No mastery writes or live lesson activation. See `docs/slices/playground.md`.
+
+Verified: 342 backend /57 frontend tests, lint, axe and 8 sandbox browser journeys. Code/pedagogy reviews cleared. Local prompt smoke test did not pass correctness: a debugging explanation remained wrong even after using the explanation role; broader tutor hard checks remain 3/5. Keep these quality limitations explicit.
+
+Owner asked for hosted cost comparison and the cheaper choice: OpenAI GPT-6 Luna selected as budget candidate, with official rates and assumptions in `docs/PROVIDER-COST-COMPARISON.md`. No key accessed, no paid requests or live routing changes. Next provider slice must add OpenAI adapter/configuration, provider-aware registry/readiness and hosted budget accounting, then evaluate quality before enabling. Do not map it into the existing Anthropic-only hosted runtime without those changes.
+
+Next playground stages: broader exercises, visual workflow editing, then real LangChain/n8n integration. Do not mark the full playground roadmap complete from this first slice.
+
 ## Session guidance — 2026-09-24
 
 Simplified Session/Review/Recap guidance: current activity and explicit next action; optional plan/settings, alternate explanations, source descriptions and score details collapsed; continuing the plan is primary after feedback, another question optional. Stop/recap stays visible, with honest unchecked-text persistence wording. Experiment status remains visible. Timer prompt follows the activity instead of preceding it.
