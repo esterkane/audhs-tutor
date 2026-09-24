@@ -45,3 +45,15 @@ prerequisite inference, source conflict resolution or active-question replacemen
 A bad rating alone does not quarantine content; it remains reviewable feedback. Preferences affect
 future area drafts, not every tutoring turn. Draft-job progress is process-local; saved drafts survive
 restart, but no background daemon restarts work automatically. A stopped untouched scaffold is retryable.
+
+
+## Live completion
+
+All 16 areas have unpublished starting drafts with 29 questions across their latest versions.
+21 local Ollama calls (initial batch plus bounded retries) used $0 of hosted API budget. Thirteen
+areas obtained model drafts; LangChain, MCP and prompt design still failed evidence validation.
+Three source-reviewed drafts were therefore authored from inspected ingested passages and reviewed
+separately, with explicit preparation metadata. They compare state versus ingestion, MCP graph
+connections versus operational claims, and concrete prompt specification across course sources.
+No model-output quality gate was relaxed, and no lesson was activated. Earlier failed drafts remain.
+These 29 questions are a starting sample, not full coverage of 21,689 imported documents.

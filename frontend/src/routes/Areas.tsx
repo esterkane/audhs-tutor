@@ -177,8 +177,8 @@ export function Areas() {
               {String(
                 (draft.payload.area_coverage as Record<string, unknown> | undefined)?.selected_passages ?? 0,
               )}{' '}
-              passages from the first topic-matching prose passage in each selected document. This sample does
-              not cover every course or lesson.
+              passages.{' '}
+              {String(coverage?.basis ?? 'This is a bounded starting draft, not complete course coverage.')}
             </p>
             <p className="text-sm mt-2">
               {String(coverage?.eligible_documents ?? 0)} eligible documents ·{' '}
@@ -191,6 +191,9 @@ export function Areas() {
                   coverage.selected_courses.map((c) => <li key={String(c)}>{String(c)}</li>)}
               </ul>
             </details>
+            {typeof draft.payload.area_preparation === 'string' && (
+              <p className="text-sm mt-2">{draft.payload.area_preparation}</p>
+            )}
             {typeof draft.payload.area_error === 'string' && <p role="alert">{draft.payload.area_error}</p>}
           </Card>
           <DraftEditor key={draft.id} draft={draft} onDirtyChange={setDirty} />

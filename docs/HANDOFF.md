@@ -12,8 +12,19 @@ concurrent writes, missing extra citations, retry behavior and missing grader re
 Focused local Gemma drafting checks exposed and fixed bundled sample-data topic leakage; this is not
 an exhaustive quality gate. Prior broad tutor and personal voice gates remain open.
 
-Live draft generation status will be recorded after applying this tested change. Nothing is activated
-by the batch. Defaults sample at most twelve topic-matching passages per area and create at most three
+Live completion: all 16 areas now have a usable unpublished starting draft, 29 questions total.
+The local Gemma batch plus five bounded retries produced usable drafts for 13 areas (21 Ollama
+calls, $0 API cost). LangChain, MCP and prompt design failed exact evidence checks twice; three
+additional drafts were manually prepared from inspected ingested passages, validated and pedagogy
+reviewed. They are marked `area_curated` / `source_reviewed_draft`, with their actual selection basis.
+There are 24 area draft rows including preserved rejected/empty attempts; use the latest draft per area.
+No lessons were activated, and pre-existing assessments/mastery/reviews/sessions were compared with
+the pre-migration snapshot and remained unchanged; foreign-key integrity is clean.
+
+CI: feature run 35978177388 passed all nine browser tests but hung in Linux teardown until timeout.
+Fixed bounded SIGTERM shutdown and direct Vite startup in commit 0b1c310; run 35982944918 passed
+all four jobs. Final coverage-copy changes passed lint, 59 component tests and the area browser journey.
+Nothing is activated by the batch. Defaults sample at most twelve topic-matching passages per area and create at most three
 concepts. Preserve earlier course/area drafts, active curriculum and learning history. Accepted feedback
 preferences affect future area drafts; ratings alone do not rewrite content or alter mastery.
 

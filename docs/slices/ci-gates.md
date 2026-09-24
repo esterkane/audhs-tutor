@@ -19,5 +19,5 @@ Run 35978177388 completed all nine browser tests, then hung before the suite sum
 25-minute job timeout. Logs show surviving make/package-manager/server descendants at cleanup.
 Playwright web servers now receive SIGTERM with a five-second grace period, and the frontend runs
 Vite directly under Node rather than a make → package-manager chain. This allows child shutdown
-before forced cleanup and reduces inherited output-pipe owners. Local CI-mode validation passed all nine journeys in 26.2 seconds and exited cleanly. Remote
-verification is pending the new GitHub run; the cancelled run is not reported as passing.
+before forced cleanup and reduces inherited output-pipe owners. Local CI-mode validation passed all nine journeys in 26.2 seconds and exited cleanly. GitHub run 35982944918 passed all four jobs, including browser journeys. The earlier cancelled
+run is not reported as passing.
