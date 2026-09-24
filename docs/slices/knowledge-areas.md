@@ -50,7 +50,7 @@ restart, but no background daemon restarts work automatically. A stopped untouch
 ## Live completion
 
 All 16 areas have unpublished starting drafts with 29 questions across their latest versions.
-21 local Ollama calls (initial batch plus bounded retries) used $0 of hosted API budget. Thirteen
+21 local draft requests (25 recorded Ollama provider attempts, including retries) used $0 of hosted API budget. Thirteen
 areas obtained model drafts; LangChain, MCP and prompt design still failed evidence validation.
 Three source-reviewed drafts were therefore authored from inspected ingested passages and reviewed
 separately, with explicit preparation metadata. They compare state versus ingestion, MCP graph
