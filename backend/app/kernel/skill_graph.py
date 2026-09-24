@@ -113,16 +113,21 @@ async def _pick(db: AsyncSession, learner_id: str, order: list[SkillNode]) -> Sk
 
 
 async def next_skill(
-    db: AsyncSession, learner_id: str, domain: str | None = None
+    db: AsyncSession,
+    learner_id: str,
+    domain: str | None = None,
+    *,
+    goals: dict[str, Any] | None = None,
 ) -> SkillNode | None:
     """Stage-1 planner rule: the first unlocked *teachable* node (topological order) below
     MASTERY_DONE; if everything unlocked is done, the unlocked node with the lowest mastery.
     A `goal.course` preference narrows the order to that course; when every goal node is still
-    locked, the unlocked prerequisites *of* the goal come next, then the whole map. A locked node
-    is never returned while an unlocked one exists."""
+    locked, the unlocked prerequisites *of* the goal come next. An empty selected goal returns
+    None; it never substitutes an unrelated lesson."""
     order = [n for n in await topological_order(db, domain) if teachable(n)]
-    goal = str(await preferences.get(db, learner_id, "goal.course") or "").strip()
-    area = str(await preferences.get(db, learner_id, "goal.area") or "").strip()
+    goals = goals if goals is not None else await preferences.get_all(db, learner_id)
+    goal = str(goals.get("goal.course") or "").strip()
+    area = str(goals.get("goal.area") or "").strip()
     if goal or area:
         # course order (section, then lecture position — set at publish), not publish order;
         # `_pick` still never returns a locked node, so edges keep the last word
@@ -130,7 +135,7 @@ async def next_skill(
             (n for n in order if (n.area_id == area if area else n.course == goal)),
             key=lambda n: (n.order_no is None, n.order_no or 0),
         )
-        if in_goal:  # a chosen goal narrows the map; an empty/unknown goal falls back to the map
+        if in_goal:
             pick = await _pick(db, learner_id, in_goal)
             if pick is not None:
                 return pick
@@ -144,6 +149,7 @@ async def next_skill(
             pick = await _pick(db, learner_id, [n for n in order if n.id in needed])
             if pick is not None:
                 return pick
+        return None  # Never substitute unrelated material for an explicit goal.
     pick = await _pick(db, learner_id, order)
     if pick is not None:
         return pick
@@ -201,3 +207,38 @@ def to_mermaid(nodes: list[dict[str, Any]], edges: list[dict[str, Any]]) -> str:
         "  classDef locked fill:#f0f1f3,stroke:#d9dde3,color:#5b6470",
     ]
     return "\n".join(lines)
+
+
+async def goal_scope(
+    db: AsyncSession, learner_id: str, *, goals: dict[str, Any] | None = None
+) -> list[str] | None:
+    """Selected goal and its genuine prerequisites; None means an explicit whole-map choice."""
+    goals = goals if goals is not None else await preferences.get_all(db, learner_id)
+    area = str(goals.get("goal.area") or "").strip()
+    course = str(goals.get("goal.course") or "").strip()
+    if not (area or course):
+        return None
+    nodes = await all_nodes(db)
+    ids = {n.id for n in nodes if (n.area_id == area if area else n.course == course)}
+    frontier = list(ids)
+    while frontier:
+        for pre in await prerequisites(db, frontier.pop()):
+            if pre.id not in ids:
+                ids.add(pre.id)
+                frontier.append(pre.id)
+    return sorted(ids)
+
+
+async def selection(
+    db: AsyncSession, learner_id: str, chosen_skill_id: str | None = None
+) -> tuple[SkillNode | None, list[str] | None]:
+    """Resolve the goal preference once so plan, checkpoint and review share one scope."""
+    if chosen_skill_id:
+        node = await get_node(db, chosen_skill_id)
+        if not teachable(node):
+            raise ValueError("Choose a teaching lesson")
+        return node, [chosen_skill_id]
+    goals = await preferences.get_all(db, learner_id)
+    return await next_skill(db, learner_id, goals=goals), await goal_scope(
+        db, learner_id, goals=goals
+    )

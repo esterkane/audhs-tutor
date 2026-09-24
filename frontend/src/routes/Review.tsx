@@ -1,8 +1,13 @@
+import { QuestionHelp } from '../features/assess/QuestionHelp'
+import { ReadAloud } from '../features/voice/ReadAloud'
+import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
+import { useSkills } from '../features/skills/api'
+import { OptionalConfidence } from '../components/OptionalConfidence'
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
-import { Choice } from '../components/ui/choice'
+import { SessionControls } from '../features/session/SessionControls'
 import { useDue, useRate } from '../features/review/api'
 import { REVIEW_BLOCK_TYPES, routeForPhase, useBlockTransition, useSession } from '../features/session/api'
 import { nowMs } from '../lib/time'
@@ -17,6 +22,8 @@ const RATINGS = [
 
 export function Review() {
   const { sessionId } = useMode()
+  const skills = useSkills()
+  const [, refreshHelp] = useState(0)
   const [showAll, setShowAll] = useState(false)
   // confidence is per card: it is sent with the rating and cleared for the next card
   const [confidence, setConfidence] = useState<number | null>(null)
@@ -41,6 +48,8 @@ export function Review() {
   if (due.isLoading || !due.data) return <Card>Loading review…</Card>
   const items = due.data.items
   const item = items[idx]
+  const helpKey = `audhs-review:${sessionId}:${item?.item_id ?? ''}`
+  const hintCount = readDraft(helpKey).hints
   const state = session.data?.state
   const inReviewBlock =
     !!state && state.block_status === 'running' && REVIEW_BLOCK_TYPES.includes(state.block?.type ?? '')
@@ -70,6 +79,7 @@ export function Review() {
   if (!item)
     return (
       <Card>
+        <SessionControls sessionId={sessionId} />
         <CardTitle>Review done</CardTitle>
         <p>
           {items.length === 0
@@ -107,9 +117,11 @@ export function Review() {
         rating,
         latency_ms: nowMs() - shownAt.current,
         confidence_pre: confidence ?? undefined,
+        hint_count: hintCount,
       },
     })
     setRevealed(false)
+    clearDraft(helpKey)
     setConfidence(null)
     shownAt.current = nowMs()
     setIdx((i) => i + 1)
@@ -117,6 +129,7 @@ export function Review() {
 
   return (
     <div className="grid gap-4">
+      <SessionControls sessionId={sessionId} skillId={item.skill_id} />
       {state && !inReviewBlock && (
         <p className="text-sm text-muted" role="status">
           Off-plan review: rating cards here is always useful, but it does not advance the session plan
@@ -131,7 +144,7 @@ export function Review() {
         <p className="text-sm text-muted mb-3">
           {revealed
             ? 'Compare with your answer, then choose how easily you recalled it. Your rating opens the next card.'
-            : 'Answer in your head or aloud. Choose your confidence, then reveal the answer.'}
+            : 'Answer in your head or aloud. Then reveal the answer when ready.'}
         </p>
         <p className="text-xs text-muted">
           Review {idx + 1} of {items.length}
@@ -140,7 +153,20 @@ export function Review() {
             : ''}{' '}
           · {item.skill_title}
         </p>
+        <p className="text-sm mt-2">{skills.data?.skills.find((s) => s.id === item.skill_id)?.description}</p>
         <p className="text-base mt-2">{item.question}</p>
+        {!revealed && (
+          <QuestionHelp
+            key={item.item_id}
+            sessionId={sessionId}
+            skillId={item.skill_id}
+            question={item.question}
+            onHint={() => {
+              writeDraft(helpKey, { hints: readDraft(helpKey).hints + 1 })
+              refreshHelp((n) => n + 1)
+            }}
+          />
+        )}
         {item.options && (
           <ol className="list-decimal ml-5 mt-2 text-sm">
             {item.options.map((o) => (
@@ -150,19 +176,8 @@ export function Review() {
         )}
         {!revealed ? (
           <div className="mt-3">
-            <Choice<number>
-              label="Before revealing: how sure are you of your recall? (1 = no idea, 5 = certain)"
-              options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
-              value={confidence}
-              onChange={setConfidence}
-              columns={5}
-            />
-            <Button
-              variant="primary"
-              className="mt-3"
-              onClick={() => setRevealed(true)}
-              disabled={confidence == null}
-            >
+            <OptionalConfidence value={confidence} onChange={setConfidence} />
+            <Button variant="primary" className="mt-3" onClick={() => setRevealed(true)}>
               Show answer
             </Button>
           </div>
@@ -170,9 +185,13 @@ export function Review() {
           <div className="mt-3">
             <p className="font-medium">Answer</p>
             <p>{item.reveal}</p>
+            <ReadAloud key={item.item_id} text={item.reveal} />
+            {hintCount > 0 && (
+              <p className="text-sm">Help was used. Choose Again or Hard so this question returns sooner.</p>
+            )}
             <p className="text-sm font-medium mt-3 mb-2">How did recall go?</p>
             <div className="grid grid-cols-4 gap-2">
-              {RATINGS.map((r) => (
+              {RATINGS.filter((r) => !hintCount || r.value <= 2).map((r) => (
                 <Button
                   key={r.value}
                   onClick={() => void rateIt(r.value)}

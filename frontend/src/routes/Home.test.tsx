@@ -82,6 +82,7 @@ describe('Home', () => {
       'aria-pressed',
       'true',
     )
+    await waitFor(() => expect(screen.getByRole('button', { name: /start session/i })).toBeEnabled())
     fireEvent.click(screen.getByRole('button', { name: /start session/i }))
     await waitFor(() => expect(fetchMock).toHaveBeenCalled())
     const post = fetchMock.mock.calls.find(
@@ -131,7 +132,7 @@ describe('Home', () => {
         <Route path="/session" element={<p>SESSION SCREEN</p>} />
       </Routes>,
     )
-    const resume = await screen.findByRole('button', { name: /resume session \(review\)/i })
+    const resume = await screen.findByRole('button', { name: /resume previous session \(review\)/i })
     fireEvent.click(resume)
     expect(await screen.findByText('REVIEW SCREEN')).toBeInTheDocument()
     expect(useMode.getState().sessionId).toBe('s1')

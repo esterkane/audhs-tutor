@@ -1,3 +1,4 @@
+import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
@@ -43,7 +44,7 @@ export function ChallengePanel({
   }
 
   async function send() {
-    if (!item || confidence == null) return
+    if (!item) return
     try {
       const res = await submit.mutateAsync({
         session_id: sessionId,
@@ -104,20 +105,10 @@ export function ChallengePanel({
           </label>
           <Textarea id="challenge-answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
           <div className="mt-3">
-            <Choice<number>
-              label="Before feedback: how confident are you? (1–5)"
-              options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
-              value={confidence}
-              onChange={setConfidence}
-              columns={5}
-            />
+            <OptionalConfidence value={confidence} onChange={setConfidence} />
           </div>
           <div className="flex gap-2 mt-3">
-            <Button
-              variant="primary"
-              disabled={!answer || confidence == null || submit.isPending}
-              onClick={() => void send()}
-            >
+            <Button variant="primary" disabled={!answer || submit.isPending} onClick={() => void send()}>
               {submit.isPending ? 'Grading…' : 'Submit'}
             </Button>
             <Button variant="ghost" onClick={onDone}>
@@ -134,7 +125,9 @@ export function ChallengePanel({
         <div role="status" className="mt-3">
           <p className="font-medium">
             Score {(result.score * 100).toFixed(0)}% · graded by {result.grader_level} · confidence{' '}
-            {result.confidence_pre}/5: {result.calibration}
+            {result.confidence_pre == null
+              ? 'not supplied'
+              : `${result.confidence_pre}/5: ${result.calibration}`}
           </p>
           <p className="mt-2">{result.feedback}</p>
           <p className="mt-1 text-sm">{result.next_step}</p>

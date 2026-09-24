@@ -22,11 +22,12 @@ class SessionStart(BaseModel):
     mode: Mode = Mode.STEADY
     energy: int = Field(ge=1, le=5, default=3)
     socratic: bool = False
+    skill_id: str | None = None  # explicit saved-lesson choice, independent of the default goal
 
 
 class SessionEnd(BaseModel):
-    energy_after: int = Field(ge=1, le=5)
-    self_report: int = Field(ge=1, le=5)
+    energy_after: int | None = Field(default=None, ge=1, le=5)
+    self_report: int | None = Field(default=None, ge=1, le=5)
     notes: str | None = None
 
 
@@ -74,8 +75,14 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
     st = await blocks.state(db, s)
     active = await skill_graph.get_node(db, st.skill_id) if st.skill_id else None
     cap = memory.review_cap(s.mode, s.energy)
+    cp = await ksession.load_checkpoint(db, s.id) or {}
     due = await memory.due_items(
-        db, learner_id, now=datetime.now(UTC), cap=100, exclude_domains=("language",)
+        db,
+        learner_id,
+        now=datetime.now(UTC),
+        cap=100,
+        exclude_domains=("language",),
+        skill_ids=cp.get("scope_skill_ids"),
     )
     minimum = (
         ["retrieval", "recap"]
@@ -109,6 +116,14 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
     status_code=201,
 )
 async def start(body: SessionStart, db: DB, learner: Learner) -> SessionOut:
+    chosen = await skill_graph.selection(db, learner.id, body.skill_id)
+    nxt, scope = chosen
+    if scope is not None and nxt is None:
+        raise AppError(
+            "no_active_lesson",
+            "No available lesson in this selection. Review and activate a draft in Learning areas first.",
+            http_status=409,
+        )
     s = await ksession.start(
         db, learner.id, mode=body.mode, energy=body.energy, socratic=body.socratic, emit=False
     )
@@ -118,13 +133,26 @@ async def start(body: SessionStart, db: DB, learner: Learner) -> SessionOut:
     arm_pair = await experiments.arm_for_session(db, learner.id, s)
     overrides = dict(arm_pair[1].config_json) if arm_pair else None
     # 3. plan with the learner's preferences (+ the arm's overrides, disclosed in SessionOut)
-    plan = await build_plan(db, learner.id, str(body.mode), body.energy, overrides=overrides)
+    plan = await build_plan(
+        db,
+        learner.id,
+        str(body.mode),
+        body.energy,
+        overrides=overrides,
+        selection=chosen,
+    )
     s.planned_blocks_json = plan_to_json(plan)
     await db.commit()
     # the active skill is persisted here; `next_skill` stays a recommendation that may change
-    nxt = await skill_graph.next_skill(db, learner.id)
     await ksession.save_checkpoint(
-        db, s, {"skill_id": nxt.id if nxt else None, "plan_version": 1, "block_status": None}
+        db,
+        s,
+        {
+            "skill_id": nxt.id if nxt else None,
+            "plan_version": 1,
+            "block_status": None,
+            "scope_skill_ids": scope,
+        },
     )
     await ksession.emit_started(db, s, [b.type for b in plan.blocks])
     # 4. look for patterns worth a card
@@ -168,6 +196,7 @@ RESERVED_CHECKPOINT_KEYS = frozenset(
         "plan_version",
         "timer_extension_min",
         "first_started_index",
+        "scope_skill_ids",
     }
 )
 SUB_PHASES = {"new_material": {"teach", "assess"}}
@@ -218,9 +247,18 @@ async def get(session_id: str, db: DB, learner: Learner) -> SessionOut:
 
 
 @router.post(
-    "/{session_id}/end", summary="End with confidence-rated recap", response_model=SessionOut
+    "/{session_id}/end",
+    summary="End a session; recap ratings are optional",
+    response_model=SessionOut,
 )
-async def end(session_id: str, body: SessionEnd, db: DB, learner: Learner) -> SessionOut:
+async def end(
+    session_id: str, body: SessionEnd, request: Request, db: DB, learner: Learner
+) -> SessionOut:
+    async with session_lock(request, session_id):
+        return await _end_session(session_id, body, db, learner)
+
+
+async def _end_session(session_id: str, body: SessionEnd, db: DB, learner: Learner) -> SessionOut:
     await ensure_recall_item_for_explained_skill(db, learner.id, session_id)
     await blocks.end_running(db, await ksession.get(db, session_id), reason="session_end")
     await ksession.prune_checkpoints(db, session_id)

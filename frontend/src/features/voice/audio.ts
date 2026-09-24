@@ -81,6 +81,12 @@ export class Player {
     return this.sources.length
   }
 
+  async unlock() {
+    if (typeof AudioContext === 'undefined') throw new Error('Audio playback is unavailable in this browser.')
+    this.ctx = this.ctx ?? new AudioContext()
+    if (this.ctx.state === 'suspended') await this.ctx.resume()
+  }
+
   enqueue(pcm16: Int16Array, sampleRate: number) {
     if (typeof AudioContext === 'undefined') return
     this.ctx = this.ctx ?? new AudioContext()

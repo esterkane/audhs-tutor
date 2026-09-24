@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import { Card, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button'
@@ -22,7 +22,8 @@ export function Areas() {
     }
     wasRunning.current = Boolean(job.data?.running)
   }, [job.data?.running, qc])
-  const [selected, setSelected] = useState(''),
+  const [search] = useSearchParams()
+  const [selected, setSelected] = useState(() => search.get('area') ?? ''),
     [draftId, setDraftId] = useState(''),
     [dirty, setDirty] = useState(false)
   const area = query.data?.areas.find((a) => a.id === selected)

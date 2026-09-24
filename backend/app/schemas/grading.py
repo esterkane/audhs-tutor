@@ -32,14 +32,14 @@ class AssessmentView(BaseModel):
     question: str
     options: list[str] | None = None
     criteria: list[str] | None = None
-    confidence_required: bool = True
+    confidence_required: bool = False
 
 
 class AttemptRequest(BaseModel):
     session_id: str
     assessment_id: str
     answer: str = Field(max_length=20_000)  # code submissions carry code + check results
-    confidence_pre: int = Field(ge=1, le=5)
+    confidence_pre: int | None = Field(default=None, ge=1, le=5)
     latency_ms: int | None = None
     hint_count: int = 0
 
@@ -58,7 +58,7 @@ class AttemptResult(BaseModel):
     grader_level: str
     feedback: str
     next_step: str
-    confidence_pre: int
+    confidence_pre: int | None
     calibration: str
     review: dict[str, Any]
     mastery: float

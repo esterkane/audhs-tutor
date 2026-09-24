@@ -119,6 +119,7 @@ async def due_items(
     cap: int = 10,
     domain: str | None = None,
     exclude_domains: tuple[str, ...] = (),
+    skill_ids: list[str] | None = None,
 ) -> list[tuple[ReviewItem, MemoryState]]:
     """Due cards, oldest first. Domain filters keep blocks pure (ADR-0006): the AI/ML review block
     excludes language cards, the language block asks for them explicitly."""
@@ -135,6 +136,8 @@ async def due_items(
         .order_by(MemoryState.due)
         .limit(cap)
     )
+    if skill_ids is not None:
+        stmt = stmt.where(ReviewItem.skill_id.in_(skill_ids))
     if domain is not None:
         stmt = stmt.where(SkillNode.domain == domain)
     if exclude_domains:
@@ -152,6 +155,7 @@ async def review(
     latency_ms: int | None = None,
     events: EventWriter | None = None,
     confidence_pre: int | None = None,
+    hint_count: int = 0,
 ) -> ReviewLog:
     now = now or datetime.now(UTC)
     ms = (
@@ -204,6 +208,7 @@ async def review(
                 "stability_before": stability_before,
                 "stability_after": new_card.stability,
                 "confidence_pre": confidence_pre,
+                "hint_count": hint_count,
             },
             context={"item_type": item.item_type, "node_id": item.skill_id},
         )

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { streamTurn, type TurnDone, type TurnMeta, type TurnRequest } from '../../lib/api'
 
 export function useTutorStream() {
@@ -8,6 +8,8 @@ export function useTutorStream() {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const abort = useRef<AbortController | null>(null)
+
+  useEffect(() => () => abort.current?.abort(), [])
 
   const run = useCallback(async (req: TurnRequest) => {
     abort.current?.abort()

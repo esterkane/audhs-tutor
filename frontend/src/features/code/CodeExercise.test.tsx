@@ -153,7 +153,8 @@ describe('CodeExercise', () => {
     expect(screen.getByText(/Running is not an attempt/)).toBeInTheDocument()
     expect(posts).toHaveLength(0) // Run posted nothing
     const submit = screen.getByRole('button', { name: 'Submit this attempt' })
-    expect(submit).toBeDisabled() // confidence still missing
+    expect(submit).toBeEnabled() // confidence is optional
+    fireEvent.click(screen.getByText('Confidence (optional)'))
     fireEvent.click(screen.getByRole('button', { name: '4' }))
     expect(submit).toBeEnabled()
     // editing after the run makes the results stale: run again first

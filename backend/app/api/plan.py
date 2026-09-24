@@ -7,7 +7,7 @@ from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Learner
-from app.db.models import Session
+from app.db.models import Session, SkillNode
 from app.kernel import (
     adaptation,
     blocks,
@@ -33,11 +33,14 @@ async def build_plan(
     energy: int,
     *,
     overrides: dict[str, Any] | None = None,
+    selection: tuple[SkillNode | None, list[str] | None] | None = None,
 ) -> planner.Plan:
     """`overrides` = an experiment arm's config for this session (e.g. new_material_min), merged
     over the learner's preferences; disclosed on the session screen."""
-    nxt = await skill_graph.next_skill(db, learner_id)
-    due = await memory.due_items(db, learner_id, cap=100, exclude_domains=("language",))
+    nxt, scope = selection if selection is not None else await skill_graph.selection(db, learner_id)
+    due = await memory.due_items(
+        db, learner_id, cap=100, exclude_domains=("language",), skill_ids=scope
+    )
     prefs = await preferences.get_all(db, learner_id)
     for key, value in (overrides or {}).items():
         if key in ARM_PREF_KEYS:

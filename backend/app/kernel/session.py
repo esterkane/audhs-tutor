@@ -77,8 +77,8 @@ async def end(
     db: AsyncSession,
     session_id: str,
     *,
-    energy_after: int,
-    self_report: int,
+    energy_after: int | None,
+    self_report: int | None,
     notes: str | None = None,
 ) -> Session:
     s = await get(db, session_id)

@@ -7,7 +7,7 @@ paths:
 ---
 # Prompt & pedagogy rules
 
-Every tutor/grader prompt is built from `prompts/_base/pedagogy.v1.md` (LearnLM's five principles + this project's guardrails) plus a task-specific file. Do not fork the base; extend it.
+Every tutor/grader prompt is built from `prompts/_base/pedagogy.v2.md` (LearnLM's five principles + this project's guardrails) plus a task-specific file. Do not fork the base; extend it.
 
 Hard constraints in any tutor prompt:
 1. Hint-first. Reveal one step at a time. Full solution only on explicit request, and then still ask a check question.
@@ -26,3 +26,6 @@ Grading is hierarchical (ADR-0009): deterministic → rubric checks → local LL
 Critical-thinking modes (`prompts/challenge/*.md`): planted-error, steelman, teach-back (learner explains to a "student" persona), calibration quiz. Each ends with a delayed-review item created via the FSRS service.
 
 Evals: any prompt change needs an eval run (`/tutor-eval`). Evals live in `evals/cases/*.yaml` and are scored by rubric (LLM-as-judge with the five-principle rubric) + hard checks (no solution leak, citation present, brevity).
+
+
+Owner decision (2026-09-24): confidence ratings are optional and collapsed by default. Never block feedback, revealing a review answer, stopping, or changing topic on confidence or a grasp check. Omitted confidence stays null; clear/later labels are self-report, not mastery evidence. This supersedes mandatory-confidence guidance above.

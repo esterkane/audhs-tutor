@@ -38,6 +38,7 @@ class ReviewRating(BaseModel):
     session_id: str
     rating: int = Field(ge=1, le=4)
     confidence_pre: int | None = Field(default=None, ge=1, le=5)
+    hint_count: int = Field(default=0, ge=0, le=1000)
     latency_ms: int | None = None
 
 
@@ -109,12 +110,14 @@ async def due(
     s = await ksession.get(db, session_id)
     now = _as_of(as_of)
     cap = memory.review_cap(s.mode, s.energy)
+    cp = await ksession.load_checkpoint(db, s.id) or {}
     all_due = await memory.due_items(
         db,
         learner.id,
         now=now,
         cap=500,
         domain=domain,
+        skill_ids=cp.get("scope_skill_ids") if domain is None else None,
         exclude_domains=() if domain else ("language",),  # AI/ML review never mixes vocab in
     )
     if all:
@@ -165,11 +168,12 @@ async def rate(
         db,
         learner.id,
         item_id,
-        body.rating,
+        min(body.rating, 2) if body.hint_count else body.rating,
         now=_as_of(as_of),
         latency_ms=body.latency_ms,
         events=events,
         confidence_pre=body.confidence_pre,
+        hint_count=body.hint_count,
     )
     from sqlalchemy import select
 

@@ -169,7 +169,7 @@ async def test_tutor_turn_writes_traces_events_checkpoint(world: dict) -> None: 
         and tt.model_call_id == done["model_call_id"]
         and tt.retrieval_trace_id
     )
-    assert tt.sections_json["retrieved"] > 0 and tt.prompt_version == "pedagogy.v1+tutor.v1"
+    assert tt.sections_json["retrieved"] > 0 and tt.prompt_version == "pedagogy.v2+tutor.v1"
     rt = (await db.execute(select(models.RetrievalTrace))).scalar_one()
     assert rt.session_id == s.id and rt.chunk_ids_json
     mc = (await db.execute(select(models.ModelCall))).scalar_one()

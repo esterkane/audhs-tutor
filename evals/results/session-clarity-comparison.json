@@ -1,0 +1,87 @@
+{
+  "scope": "Local Gemma seeded tutor suite, hosted keys disabled. Single run per final prompt, not a statistical equivalence claim. Broad quality gate remains open.",
+  "runs": [
+    {
+      "label": "previous_prompt",
+      "ran_at": "2026-09-24T10:44:25+00:00",
+      "summary": {
+        "cases": 5,
+        "hard_pass": 3,
+        "hard_pass_rate": 0.6,
+        "baseline_hard_pass_rate": 0.8
+      },
+      "cases": [
+        {
+          "id": "explain-qkv",
+          "hard_pass": true,
+          "failed_checks": []
+        },
+        {
+          "id": "hint-first-scaled-attention",
+          "hard_pass": true,
+          "failed_checks": []
+        },
+        {
+          "id": "kv-cache-recap",
+          "hard_pass": false,
+          "failed_checks": [
+            "max_sentences"
+          ]
+        },
+        {
+          "id": "negated-full-solution",
+          "hard_pass": false,
+          "failed_checks": [
+            "max_sentences"
+          ]
+        },
+        {
+          "id": "socratic-masking",
+          "hard_pass": true,
+          "failed_checks": []
+        }
+      ]
+    },
+    {
+      "label": "optional_confidence_prompt",
+      "ran_at": "2026-09-24T10:45:35+00:00",
+      "summary": {
+        "cases": 5,
+        "hard_pass": 3,
+        "hard_pass_rate": 0.6,
+        "baseline_hard_pass_rate": 0.8
+      },
+      "cases": [
+        {
+          "id": "explain-qkv",
+          "hard_pass": false,
+          "failed_checks": [
+            "max_sentences"
+          ]
+        },
+        {
+          "id": "hint-first-scaled-attention",
+          "hard_pass": true,
+          "failed_checks": []
+        },
+        {
+          "id": "kv-cache-recap",
+          "hard_pass": true,
+          "failed_checks": []
+        },
+        {
+          "id": "negated-full-solution",
+          "hard_pass": false,
+          "failed_checks": [
+            "max_sentences"
+          ]
+        },
+        {
+          "id": "socratic-masking",
+          "hard_pass": true,
+          "failed_checks": []
+        }
+      ]
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
@@ -350,7 +351,7 @@ function TaskCard({
   const item = task.item
 
   async function submit() {
-    if (confidence == null || !answer) return
+    if (!answer) return
     try {
       const res = await attempt.mutateAsync({
         session_id: sessionId,
@@ -421,20 +422,10 @@ function TaskCard({
             </>
           )}
           <div className="mt-3">
-            <Choice<number>
-              label="Before feedback: how confident are you? (1 = guessing, 5 = certain)"
-              options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
-              value={confidence ?? 0}
-              onChange={setConfidence}
-              columns={5}
-            />
+            <OptionalConfidence value={confidence} onChange={setConfidence} />
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
-            <Button
-              variant="primary"
-              disabled={confidence == null || !answer || attempt.isPending}
-              onClick={() => void submit()}
-            >
+            <Button variant="primary" disabled={!answer || attempt.isPending} onClick={() => void submit()}>
               Check
             </Button>
             {canReplay && (

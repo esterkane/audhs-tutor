@@ -278,10 +278,21 @@ async def verify_stt(
 
 
 async def verify_tts(
-    db: AsyncSession, tts: Tts, *, learner_id: str, voice: str, lang: str | None
+    db: AsyncSession,
+    tts: Tts,
+    *,
+    learner_id: str,
+    voice: str,
+    lang: str | None,
+    text: str | None = None,
 ) -> dict[str, Any]:
     """Synthesize one fixed sentence; returns PCM16 24 kHz bytes + timing; logged as a model_call."""
-    sentence = "The local voice is ready. This sentence was spoken on this machine."
+    sentence = (
+        text
+        if text is not None
+        else "The local voice is ready. This sentence was spoken on this machine."
+    )
+    purpose = "lesson-read-aloud" if text is not None else "voice-setup-test"
     t0 = time.perf_counter()
     pcm = bytearray()
     first_ms: int | None = None
@@ -306,7 +317,7 @@ async def verify_tts(
                 usage_source="unavailable",
                 cost_status="free",
                 learner_id=learner_id,
-                metadata={"purpose": "voice-setup-test"},
+                metadata={"purpose": purpose},
             ),
         )
         raise
@@ -322,7 +333,7 @@ async def verify_tts(
             usage_source="estimated",
             cost_status="free",
             learner_id=learner_id,
-            metadata={"purpose": "voice-setup-test", "voice": voice},
+            metadata={"purpose": purpose, "voice": voice},
         ),
     )
     return {

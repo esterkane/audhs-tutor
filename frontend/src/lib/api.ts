@@ -71,7 +71,7 @@ export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> 
 export const api = {
   me: () => apiFetch<LearnerOut>('/api/learner/me'),
   skills: () => apiFetch<SkillList>('/api/skills'),
-  startSession: (body: { mode: string; energy: number; socratic: boolean }) =>
+  startSession: (body: { mode: string; energy: number; socratic: boolean; skill_id?: string }) =>
     apiFetch<SessionOut>('/api/sessions', {
       method: 'POST',
       body: JSON.stringify(body),
@@ -83,7 +83,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  endSession: (id: string, body: { energy_after: number; self_report: number; notes?: string }) =>
+  endSession: (id: string, body: { energy_after?: number; self_report?: number; notes?: string }) =>
     apiFetch<SessionOut>(`/api/sessions/${id}/end`, {
       method: 'POST',
       body: JSON.stringify(body),
@@ -101,7 +101,13 @@ export const api = {
     apiFetch<DueList>(`/api/review/due?session_id=${encodeURIComponent(sessionId)}${all ? '&all=true' : ''}`),
   rate: (
     itemId: string,
-    body: { session_id: string; rating: number; latency_ms?: number; confidence_pre?: number },
+    body: {
+      session_id: string
+      rating: number
+      latency_ms?: number
+      confidence_pre?: number
+      hint_count?: number
+    },
   ) =>
     apiFetch<ReviewOut>(`/api/review/${itemId}`, {
       method: 'POST',

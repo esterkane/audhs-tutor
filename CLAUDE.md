@@ -59,3 +59,6 @@ The extension uses the existing ModelProvider/gateway boundary; existing accepte
 
 ## Commands
 `make dev` (backend :8000 + frontend :5173 + Qdrant :6333) · `make dev-sandbox` (fresh seeded `data/sandbox.db`, backend :8010 + frontend :5174, hosted budget 0 — walk-throughs never touch `data/dev.db`) · `make pyodide` (pinned local Python runtime for the code exercise) · `make models` (registry CLI) · `make test` · `make lint` · `make migrate m="msg"` (generate) · `make migrate-check` (disposable DB) · `make migrate-apply` · `make ingest src=<path>` · `make evals` · `make bench s=<stage>`
+
+
+Owner decision (2026-09-24): confidence ratings are optional and collapsed by default. Never block feedback, revealing a review answer, stopping, or changing topic on confidence or a grasp check. Omitted confidence stays null; clear/later labels are self-report, not mastery evidence. This supersedes mandatory-confidence guidance above.

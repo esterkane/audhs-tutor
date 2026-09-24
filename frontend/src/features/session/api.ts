@@ -58,7 +58,7 @@ export function useEndSession() {
       body,
     }: {
       id: string
-      body: { energy_after: number; self_report: number; notes?: string }
+      body: { energy_after?: number; self_report?: number; notes?: string }
     }) => api.endSession(id, body),
   })
 }

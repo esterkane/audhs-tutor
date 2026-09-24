@@ -6,7 +6,7 @@ import logging
 from typing import Any
 
 from fastapi import APIRouter, Request, WebSocket
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Learner, SettingsDep, get_budget
 from app.core.errors import AppError
@@ -248,3 +248,51 @@ async def ws(websocket: WebSocket) -> None:
             except RuntimeError:
                 pass
         break
+
+
+class SpeakIn(BaseModel):
+    text: str = Field(min_length=1, max_length=1200)
+
+
+class SpeakOut(BaseModel):
+    pcm16_b64: str
+    sample_rate: int
+
+
+@router.post(
+    "/speak",
+    summary="Read a short passage aloud locally; no microphone needed",
+    response_model=SpeakOut,
+)
+async def speak(
+    body: SpeakIn, request: Request, db: DB, learner: Learner, settings: SettingsDep
+) -> SpeakOut:
+    from app.kernel import preferences
+    from app.voice.tts import kokoro_reachable
+
+    overrides = getattr(request.app.state, "voice_overrides", None)
+    tts = (
+        overrides.get("tts")
+        if overrides
+        else setup.tts_for(settings, await kokoro_reachable(settings.kokoro_url))
+    )
+    if tts is None:
+        raise AppError(
+            "tts_unavailable",
+            "Local speech is unavailable. Start Kokoro in Models > Voice; no microphone or API key is needed.",
+            http_status=503,
+        )
+    voice = str(await preferences.get(db, learner.id, "voice.voice") or "af_heart")
+    try:
+        audio = await setup.verify_tts(
+            db, tts, learner_id=learner.id, voice=voice, lang=None, text=body.text
+        )
+    except Exception as exc:
+        raise AppError(
+            "tts_failed",
+            "Local speech failed. Check Models > Voice and try again.",
+            http_status=503,
+        ) from exc
+    return SpeakOut(
+        pcm16_b64=base64.b64encode(audio["pcm16"]).decode(), sample_rate=audio["sample_rate"]
+    )

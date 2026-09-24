@@ -65,3 +65,5 @@ feedback, `reason` is `{labels, note}` and context includes `feedback_id`; these
 `undone` withdraws a rating without erasing event history. `adapted` records explicit acceptance
 or reversal of `questions.applied`, `questions.connections` or `questions.step_by_step`.
 None of these events writes competency evidence, review scheduling or assessment scores.
+
+Session clarity (2026-09-24): `attempted.confidence_pre` and `reviewed.confidence_pre` may be null when omitted. `reviewed.result.hint_count` records delivered question help; assisted review ratings are capped at Hard (2). Clear/later material marks are reversible explicit preferences and do not emit competency evidence.

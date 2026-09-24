@@ -122,3 +122,5 @@ Cloud, auth, Tauri, LangGraph, Elasticsearch, Langfuse (optional compose profile
 - [x] Initial Python playground and guided pipeline practice; implementation checks pass (see `slices/playground.md`).
 - [ ] Tutor correctness gate: local debugging failure remains; evaluate the selected hosted candidate.
 - [ ] Interactive workflow builder and real LangChain/n8n integrations.
+
+- [x] Session clarity (2026-09-24): strict topic scope, optional confidence, direct stop/change topic, clear/later bookmarks, inline question help and local read-aloud. ADR-0016; broad model-quality and personal voice gates remain open.

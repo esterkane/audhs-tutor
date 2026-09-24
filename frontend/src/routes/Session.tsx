@@ -1,3 +1,9 @@
+import { useStopSession } from '../features/session/useStopSession'
+import { SessionControls } from '../features/session/SessionControls'
+import { ReadAloud } from '../features/voice/ReadAloud'
+import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
+import { QuestionHelp } from '../features/assess/QuestionHelp'
+import { OptionalConfidence } from '../components/OptionalConfidence'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -59,11 +65,14 @@ export function Session() {
   // keyed by the server's block id: a new block (or a resumed session) starts with fresh UI state
   const st = session.data.state
   return (
-    <SessionBody
-      key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
-      sessionId={sessionId}
-      data={session.data}
-    />
+    <div className="grid gap-4">
+      <SessionControls sessionId={sessionId} skillId={st.skill_id} />
+      <SessionBody
+        key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
+        sessionId={sessionId}
+        data={session.data}
+      />
+    </div>
   )
 }
 
@@ -162,6 +171,7 @@ function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut })
 }
 
 function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut }) {
+  const stopSession = useStopSession(sessionId)
   const { skillId, setSkill, mode, setEnergy } = useMode()
   const nav = useNavigate()
   const checkpoint = useCheckpoint()
@@ -221,12 +231,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
   async function doFinish(reason: 'finished' | 'save_and_stop' | 'switch_early' | 'skipped') {
     if (blockIndex == null) return
     if (reason === 'save_and_stop') {
-      const res = await transition.end({ index: blockIndex, reason, switched_early: true })
-      if (!res.allowed) {
-        setBlockNote(res.message)
-        return
-      }
-      nav('/recap')
+      await stopSession.mutateAsync()
       return
     }
     const res = await transition.next({ from_index: blockIndex, reason, grasp_passed: graspPassed })
@@ -248,6 +253,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
   return (
     <div className="grid gap-4">
       <AdaptationCards origin="planner" />
+      {stopSession.error && <p role="alert">{stopSession.error.message}</p>}
       <Card>
         <p className="text-sm text-muted">
           Activity {blockIndex + 1} of {plan.length} · {BLOCK_LABELS[currentBlock.type] ?? currentBlock.type}{' '}
@@ -255,9 +261,9 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
         </p>
         <p className="text-sm mt-2">
           {phase === 'teach'
-            ? '1. Read an explanation → 2. Try a question → 3. Continue the plan'
+            ? 'Start with an explanation. Try a question when ready, or save this topic for later.'
             : phase === 'assess'
-              ? 'Try a question, choose your confidence, then read the feedback.'
+              ? 'Read the context, use a hint if helpful, and try an answer when ready.'
               : phase === 'challenge'
                 ? 'Apply the idea to a challenge, then continue the plan.'
                 : 'Follow the activity below. When you finish or skip it, the next activity opens.'}
@@ -307,11 +313,12 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
             ? `${currentBlock.domain === 'language' ? 'Language' : currentBlock.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
             : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}
         </CardTitle>
-        {skill && phase === 'teach' && (
-          <details className="mt-2 text-sm text-muted">
-            <summary className="cursor-pointer">About this lesson</summary>
-            <p className="mt-2">{skill.description}</p>
-          </details>
+        {skill && (phase === 'teach' || phase === 'assess') && (
+          <div className="mt-2 text-sm">
+            <h3 className="font-medium">What you are learning</h3>
+            <p className="mt-1">{skill.description || skill.title}</p>
+            <ReadAloud key={skill.id} text={skill.description || skill.title} />
+          </div>
         )}
         {blockNote && (
           <p role="status" className="text-sm text-warn mt-2">
@@ -324,26 +331,17 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
           </p>
         )}
       </Card>
-      <div>
-        <Button
-          variant="ghost"
-          disabled={transition.pending}
-          onClick={() => void finishBlock('save_and_stop')}
-        >
-          Stop and recap
-        </Button>
-        <span className="text-xs text-muted ml-2">
-          Completed answers and ratings are saved. Unchecked text is not saved.
-        </span>
-      </div>
-      {phase === 'teach' && (
-        <TeachPanel
-          sessionId={sessionId}
-          skillId={activeSkillId}
-          onCheck={() => changePhase('assess')}
-          onHintLevel={setHintCount}
-          onSwitchEarly={() => void finishBlock('switch_early')}
-        />
+      {(phase === 'teach' || phase === 'assess') && (
+        <div hidden={phase !== 'teach'}>
+          <TeachPanel
+            active={phase === 'teach'}
+            sessionId={sessionId}
+            skillId={activeSkillId}
+            onCheck={() => changePhase('assess')}
+            onHintLevel={setHintCount}
+            onSwitchEarly={() => void finishBlock('switch_early')}
+          />
+        </div>
       )}
       {phase === 'assess' && (
         <AssessPanel
@@ -400,6 +398,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
 }
 
 function TeachPanel({
+  active,
   sessionId,
   skillId,
   onCheck,
@@ -411,9 +410,13 @@ function TeachPanel({
   onCheck: () => void
   onHintLevel: (n: number) => void
   onSwitchEarly: () => void
+  active: boolean
 }) {
   const [input, setInput] = useState('')
   const { text, meta, done, error, busy, run, stop } = useTutorStream()
+  useEffect(() => {
+    if (!active) stop()
+  }, [active, stop])
   const kinds = useKinds(skillId)
   const render = useRender()
   const prefer = usePrefer()
@@ -501,7 +504,7 @@ function TeachPanel({
           )}
         </div>
       </Card>
-      {voiceOn && talking && (
+      {active && voiceOn && talking && (
         <VoicePanel sessionId={sessionId} skillId={skillId} onClose={() => setTalking(false)} />
       )}
       {(text || busy || error) && (
@@ -519,7 +522,10 @@ function TeachPanel({
               {error}
             </p>
           ) : (
-            <Markdown text={text || '…'} />
+            <>
+              <Markdown text={text || '…'} />
+              {active && done && !busy && <ReadAloud key={done.turn_id} text={text} />}
+            </>
           )}
           {done && (
             <p role="status" className="sr-only">
@@ -622,6 +628,7 @@ function TeachPanel({
             {alt.kind.replace('_', ' ')} · same learning object{alt.cached ? ' · from cache' : ''}
           </p>
           <Markdown text={alt.content} />
+          {active && <ReadAloud key={alt.representation_id} text={alt.content} />}
           {prevAlt && prevAlt.representation_id !== alt.representation_id && (
             <div className="mt-3">
               <p className="text-sm font-medium mb-1">Which explanation worked better?</p>
@@ -736,18 +743,22 @@ function AssessPanel({
   const [result, setResult] = useState<AttemptResult | null>(null)
   const [startedAt, setStartedAt] = useState(() => Date.now())
   const item = next.data?.item
+  const answerKey = `audhs-answer:${sessionId}:${item?.id ?? ''}`
+  const savedAnswer = item ? readDraft(answerKey).answer : ''
+  const currentAnswer = answer || savedAnswer
 
   async function submit() {
-    if (!item || confidence == null) return
+    if (!item) return
     try {
       const res = await attempt.mutateAsync({
         session_id: sessionId,
         assessment_id: item.id,
-        answer,
+        answer: currentAnswer,
         confidence_pre: confidence,
         latency_ms: Date.now() - startedAt,
-        hint_count: hintCount,
+        hint_count: hintCount + readDraft(answerKey).hints,
       })
+      clearDraft(answerKey)
       setResult(res)
       onGraded(res)
     } catch {
@@ -785,6 +796,15 @@ function AssessPanel({
                 : 'Answer the question below.'}
         </p>
         <p className="text-base mb-3">{item.question}</p>
+        {!result && (
+          <QuestionHelp
+            key={item.id}
+            sessionId={sessionId}
+            skillId={skillId}
+            question={item.question}
+            onHint={() => writeDraft(answerKey, { hints: readDraft(answerKey).hints + 1 })}
+          />
+        )}
         <QuestionFeedback key={item.id} target={{ assessment_id: item.id }} />
         {!result && (
           <>
@@ -792,8 +812,11 @@ function AssessPanel({
               <Choice<string>
                 label="Your answer"
                 options={item.options.map((o, i) => ({ value: String(i), label: o }))}
-                value={answer || null}
-                onChange={setAnswer}
+                value={currentAnswer || null}
+                onChange={(value) => {
+                  setAnswer(value)
+                  writeDraft(answerKey, { answer: value })
+                }}
                 columns={1}
               />
             ) : (
@@ -801,23 +824,24 @@ function AssessPanel({
                 <label htmlFor="answer" className="text-sm font-medium">
                   Your answer
                 </label>
-                <Textarea id="answer" value={answer} onChange={(e) => setAnswer(e.target.value)} />
+                <Textarea
+                  id="answer"
+                  value={currentAnswer}
+                  onChange={(e) => {
+                    setAnswer(e.target.value)
+                    writeDraft(answerKey, { answer: e.target.value })
+                  }}
+                />
               </>
             )}
             <div className="mt-3">
-              <Choice<number>
-                label="Before feedback: how confident are you? (1 = guessing, 5 = certain)"
-                options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
-                value={confidence}
-                onChange={setConfidence}
-                columns={5}
-              />
+              <OptionalConfidence value={confidence} onChange={setConfidence} />
             </div>
             <div className="flex gap-2 mt-3">
               <Button
                 variant="primary"
                 onClick={() => void submit()}
-                disabled={!answer || confidence == null || attempt.isPending}
+                disabled={!currentAnswer.trim() || attempt.isPending}
               >
                 {attempt.isPending ? 'Checking your answer…' : 'Check my answer'}
               </Button>
@@ -840,7 +864,9 @@ function AssessPanel({
             <summary className="cursor-pointer">Score and grading details</summary>
             <p>
               Score {(result.score * 100).toFixed(0)}% · graded by {result.grader_level} · confidence{' '}
-              {result.confidence_pre}/5: {result.calibration}
+              {result.confidence_pre == null
+                ? 'not supplied'
+                : `${result.confidence_pre}/5: ${result.calibration}`}
             </p>
           </details>
           <p className="mt-2">{result.feedback}</p>

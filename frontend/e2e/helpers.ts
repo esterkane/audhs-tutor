@@ -78,8 +78,6 @@ export async function finishReview(page: Page) {
     if (await done.isVisible()) return
     const show = page.getByRole('button', { name: 'Show answer' })
     if (await show.isVisible()) {
-      const group = page.getByRole('group', { name: /how sure are you of your recall/i })
-      await group.getByRole('button', { name: '3', exact: true }).click()
       await show.click()
       await page.getByRole('button', { name: /^Good/ }).click()
     } else {

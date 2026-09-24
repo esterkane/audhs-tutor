@@ -516,8 +516,10 @@ class Grader:
         )
 
 
-def _calibration(confidence_pre: int, score: float) -> str:
+def _calibration(confidence_pre: int | None, score: float) -> str:
     """Describes the estimate, never the person."""
+    if confidence_pre is None:
+        return "confidence not supplied"
     expected = (confidence_pre - 1) / 4
     gap = expected - score
     if abs(gap) <= 0.25:

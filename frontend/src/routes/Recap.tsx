@@ -1,3 +1,4 @@
+import { SessionControls } from '../features/session/SessionControls'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
@@ -28,12 +29,12 @@ export function Recap() {
     )
 
   async function finish() {
-    if (!sessionId || energyAfter == null || recall == null) return
+    if (!sessionId) return
     const s = await end.mutateAsync({
       id: sessionId,
       body: {
-        energy_after: energyAfter,
-        self_report: recall,
+        energy_after: energyAfter ?? undefined,
+        self_report: recall ?? undefined,
         notes: notes || undefined,
       },
     })
@@ -58,10 +59,11 @@ export function Recap() {
 
   return (
     <Card>
+      {sessionId && <SessionControls sessionId={sessionId} />}
       <CardTitle>Finish your session</CardTitle>
       <p className="text-sm text-muted mb-3">
-        Choose two ratings, add an optional note, then save. These ratings describe this session; they are not
-        a test score.
+        Ratings and notes are optional. You can save immediately. These ratings describe this session; they
+        are not a test score.
       </p>
       <Choice<number>
         label="Energy now (1–5)"
@@ -83,12 +85,7 @@ export function Recap() {
         One line for next time (optional)
       </label>
       <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-16" />
-      <Button
-        variant="primary"
-        className="mt-3"
-        onClick={() => void finish()}
-        disabled={energyAfter == null || recall == null || end.isPending}
-      >
+      <Button variant="primary" className="mt-3" onClick={() => void finish()} disabled={end.isPending}>
         {end.isPending ? 'Saving…' : 'Save and finish session'}
       </Button>
       {end.isError && (

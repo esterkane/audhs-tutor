@@ -25,3 +25,6 @@ Why these exist (evidence, short): unguarded LLM help boosts practice scores but
 
 ## Session template (reference for the planner)
 0 movement primer 5–10 · 1 retrieval warm-up 5–10 · 2 new material (worked → faded) 20–25 · 3 critical-thinking challenge 10 · 4 interleaved review 10 · 5 domain switch (language/guitar) 15–20 · 6 confidence-rated recap 5. Minimum-viable session = blocks 1 + 6. Low-capacity mode = 1 + (2 or 4 short) + 6.
+
+
+Owner decision (2026-09-24): confidence ratings are optional and collapsed by default. Never block feedback, revealing a review answer, stopping, or changing topic on confidence or a grasp check. Omitted confidence stays null; clear/later labels are self-report, not mastery evidence. This supersedes mandatory-confidence guidance above.

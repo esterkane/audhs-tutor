@@ -53,8 +53,8 @@ export function Home() {
   }, [defaultMode, sessionId])
   const runningExperiment = (experiments.data?.experiments ?? []).find((e) => e.status === 'running')
 
-  async function begin() {
-    const s = await start.mutateAsync({ mode, energy, socratic })
+  async function begin(skill_id?: string) {
+    const s = await start.mutateAsync({ mode, energy, socratic, skill_id })
     setSession(s.id, s.state?.skill_id ?? s.next_skill?.id ?? null)
     // Offer, never auto-route: the learner picks which comes first. Without due items the plan
     // starts at its first block on the session screen (StartCard).
@@ -108,8 +108,8 @@ export function Home() {
             disabled={transition.pending}
           >
             {learnIx != null
-              ? startLabel(plan, learnIx, offer.next_skill?.title)
-              : `New material: ${offer.next_skill?.title ?? 'next skill'}`}
+              ? startLabel(plan, learnIx, (offer.active_skill ?? offer.next_skill)?.title)
+              : `New material: ${(offer.active_skill ?? offer.next_skill)?.title ?? 'next skill'}`}
           </Button>
         </div>
         {transition.error && (
@@ -124,12 +124,29 @@ export function Home() {
   // "Next up" is always a skill title: from the running session, else the map's next node.
   // A block *reason* ("worked example first") is scaffolding, never shown as a title.
   const mapNext = skills.data?.skills.find((n) => n.id === skills.data?.next_skill_id) ?? null
-  const nextSkill = current.data?.next_skill ?? mapNext
+  const nextSkill = mapNext
   const scaffold = preview.data?.blocks.find((b) => b.type === 'new_material')?.reason
   return (
     <div className="grid gap-4">
       <AdaptationCards />
       <PromotedReminders />
+      <details className="border border-line rounded-md p-3">
+        <summary className="cursor-pointer">Saved material · clear / ask me later</summary>
+        <p className="text-sm text-muted">
+          Your labels are reminders, separate from assessed mastery and scheduled reviews.
+        </p>
+        {Object.entries(
+          (prefs.data?.values?.['learning.material_marks'] ?? {}) as Record<string, string>,
+        ).map(([id, status]) => (
+          <p key={id} className="mt-2">
+            {status === 'later' ? 'Ask me later' : 'Clear'}:{' '}
+            {skills.data?.skills.find((s) => s.id === id)?.title ?? id}{' '}
+            <Button size="sm" disabled={start.isPending} onClick={() => void begin(id)}>
+              Revisit this lesson
+            </Button>
+          </p>
+        ))}
+      </details>
       <Card>
         <CardTitle>Learn toward</CardTitle>
         <label className="block text-sm font-medium mt-2">
@@ -149,34 +166,45 @@ export function Home() {
         </label>
         <p className="text-sm text-muted my-2">
           An area goal takes precedence over the course goal below and uses activated lessons across sources.
-          Until it has active lessons, the whole map remains available.{' '}
+          If it has no active lessons yet, review and activate a draft before starting.{' '}
           <Link to="/areas">Review learning areas</Link>
         </p>
-        <div className="flex flex-wrap gap-2 items-end">
-          <label className="text-sm font-medium">
-            Goal
-            <select
-              className="block border border-line rounded-md px-2 py-1 mt-1"
-              value={goal}
-              disabled={Boolean(areaGoal)}
-              onChange={(e) => setPref.mutate({ key: 'goal.course', value: e.target.value })}
-            >
-              <option value="">Whole skill map</option>
-              {publishedCourses.map((c) => (
-                <option key={c.course} value={c.course}>
-                  {c.course} ({c.published_skills} skills)
-                </option>
-              ))}
-            </select>
-          </label>
-          <span className="text-sm text-muted">
-            {publishedCourses.length === 0
-              ? 'No published course lessons yet — publish a draft under Lessons to learn toward a course.'
-              : goal
-                ? `Next skills come from "${goal}" first (its unlocked, unmastered skills in prerequisite order).`
-                : 'The next skill is the first unlocked, unmastered node on the whole map.'}
-          </span>
-        </div>
+        {!areaGoal && (
+          <div className="flex flex-wrap gap-2 items-end">
+            <label className="text-sm font-medium">
+              Goal
+              <select
+                className="block border border-line rounded-md px-2 py-1 mt-1"
+                value={goal}
+                disabled={Boolean(areaGoal)}
+                onChange={(e) => setPref.mutate({ key: 'goal.course', value: e.target.value })}
+              >
+                <option value="">Whole skill map</option>
+                {publishedCourses.map((c) => (
+                  <option key={c.course} value={c.course}>
+                    {c.course} ({c.published_skills} skills)
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="text-sm text-muted">
+              {publishedCourses.length === 0
+                ? 'No published course lessons yet — publish a draft under Lessons to learn toward a course.'
+                : goal
+                  ? `Next skills come from "${goal}" first (its unlocked, unmastered skills in prerequisite order).`
+                  : 'The next skill is the first unlocked, unmastered node on the whole map.'}
+            </span>
+          </div>
+        )}
+        {(areaGoal || goal) && !nextSkill && !skills.isFetching && (
+          <p role="status" className="mt-2">
+            No available lesson in this selection.{' '}
+            <Link to={areaGoal ? `/areas?area=${encodeURIComponent(areaGoal)}` : '/curriculum'}>
+              Review and activate a lesson
+            </Link>{' '}
+            to begin. Your topic will not be replaced by another one.
+          </p>
+        )}
         {setPref.isError && (
           <p role="alert" className="text-sm text-warn mt-2">
             The goal was not saved: {(setPref.error as Error).message}
@@ -278,7 +306,7 @@ export function Home() {
               nav(routeForPhase(current.data?.state))
             }}
           >
-            Resume session
+            Resume previous session{current.data?.active_skill ? `: ${current.data.active_skill.title}` : ''}
             {current.data?.state?.block_status === 'running' && current.data.state.phase
               ? ` (${current.data.state.phase})`
               : ''}
@@ -288,7 +316,12 @@ export function Home() {
           variant={sessionId || resumable ? 'secondary' : 'primary'}
           size="lg"
           onClick={() => void begin()}
-          disabled={start.isPending}
+          disabled={
+            start.isPending ||
+            setPref.isPending ||
+            skills.isFetching ||
+            Boolean((areaGoal || goal) && !nextSkill)
+          }
         >
           {start.isPending ? 'Starting…' : 'Start session'}
         </Button>

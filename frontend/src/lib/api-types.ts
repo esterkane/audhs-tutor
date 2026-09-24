@@ -89,6 +89,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/skills/{skill_id}/mark': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Save a lesson bookmark, without changing mastery */
+    put: operations['mark_material_api_skills__skill_id__mark_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/sessions': {
     parameters: {
       query?: never
@@ -166,7 +183,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** End with confidence-rated recap */
+    /** End a session; recap ratings are optional */
     post: operations['end_api_sessions__session_id__end_post']
     delete?: never
     options?: never
@@ -507,7 +524,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Submit an answer with a prior confidence rating; graded hierarchically */
+    /** Submit an answer with an optional prior confidence rating; graded hierarchically */
     post: operations['attempt_api_assess_attempt_post']
     delete?: never
     options?: never
@@ -1407,6 +1424,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/voice/speak': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Read a short passage aloud locally; no microphone needed */
+    post: operations['speak_api_voice_speak_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/experiments': {
     parameters: {
       query?: never
@@ -2066,7 +2100,7 @@ export interface components {
       criteria?: string[] | null
       /**
        * Confidence Required
-       * @default true
+       * @default false
        */
       confidence_required: boolean
     }
@@ -2084,7 +2118,7 @@ export interface components {
       /** Answer */
       answer: string
       /** Confidence Pre */
-      confidence_pre: number
+      confidence_pre?: number | null
       /** Latency Ms */
       latency_ms?: number | null
       /**
@@ -2122,7 +2156,7 @@ export interface components {
       /** Next Step */
       next_step: string
       /** Confidence Pre */
-      confidence_pre: number
+      confidence_pre: number | null
       /** Calibration */
       calibration: string
       /** Review */
@@ -3493,6 +3527,18 @@ export interface components {
       /** Courses */
       courses: components['schemas']['MaterialStatus'][]
     }
+    /** MaterialMarkIn */
+    MaterialMarkIn: {
+      /** Status */
+      status?: ('clear' | 'later') | null
+    }
+    /** MaterialMarkOut */
+    MaterialMarkOut: {
+      /** Skill Id */
+      skill_id: string
+      /** Status */
+      status?: ('clear' | 'later') | null
+    }
     /** MaterialStatus */
     MaterialStatus: {
       /** Course */
@@ -4078,6 +4124,11 @@ export interface components {
       rating: number
       /** Confidence Pre */
       confidence_pre?: number | null
+      /**
+       * Hint Count
+       * @default 0
+       */
+      hint_count: number
       /** Latency Ms */
       latency_ms?: number | null
     }
@@ -4194,9 +4245,9 @@ export interface components {
     /** SessionEnd */
     SessionEnd: {
       /** Energy After */
-      energy_after: number
+      energy_after?: number | null
       /** Self Report */
-      self_report: number
+      self_report?: number | null
       /** Notes */
       notes?: string | null
     }
@@ -4252,6 +4303,8 @@ export interface components {
        * @default false
        */
       socratic: boolean
+      /** Skill Id */
+      skill_id?: string | null
     }
     /**
      * SkillIn
@@ -4367,6 +4420,18 @@ export interface components {
        * @default false
        */
       cited: boolean
+    }
+    /** SpeakIn */
+    SpeakIn: {
+      /** Text */
+      text: string
+    }
+    /** SpeakOut */
+    SpeakOut: {
+      /** Pcm16 B64 */
+      pcm16_b64: string
+      /** Sample Rate */
+      sample_rate: number
     }
     /** TaskIn */
     TaskIn: {
@@ -4660,6 +4725,41 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SkillView']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  mark_material_api_skills__skill_id__mark_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        skill_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MaterialMarkIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MaterialMarkOut']
         }
       }
       /** @description Validation Error */
@@ -7109,6 +7209,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ReadinessOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  speak_api_voice_speak_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SpeakIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SpeakOut']
         }
       }
       /** @description Validation Error */

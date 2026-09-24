@@ -65,7 +65,7 @@ test.afterEach(async ({ request }) => endOpenSession(request))
 
 test('a reload at every block boundary lands on the block the server owns', async ({ page, request }) => {
   await startFromHome(page)
-  await expect(page.getByRole('heading', { name: 'Choose where to begin' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: /Choose where to begin|Which first/ })).toBeVisible()
   await page.getByRole('button', { name: /then new material/ }).click()
 
   await expect(page.getByRole('heading', { name: 'Movement block' })).toBeVisible()
@@ -92,15 +92,19 @@ test('a reload at every block boundary lands on the block the server owns', asyn
   await other.close()
 })
 
-test('review asks for confidence before revealing, then the plan continues', async ({ page, request }) => {
+test('review offers optional confidence before revealing, then the plan continues', async ({
+  page,
+  request,
+}) => {
   await makeOneCardDue(request, 0)
   await startFromHome(page)
   await page.getByRole('button', { name: /^Review \(/ }).click()
 
-  const confidence = page.getByRole('group', { name: /how sure are you of your recall/i })
+  await page.getByText('Confidence (optional)', { exact: true }).click()
+  const confidence = page.getByRole('group', { name: /how sure are you/i })
   await expect(confidence).toBeVisible()
   const show = page.getByRole('button', { name: 'Show answer' })
-  await expect(show).toBeDisabled()
+  await expect(show).toBeEnabled()
   await confidence.getByRole('button', { name: '3', exact: true }).click()
   await expect(show).toBeEnabled()
   await show.click()
@@ -136,7 +140,7 @@ test('stop here keeps the session resumable from Home at the next block', async 
   try {
     const home = await fresh.newPage()
     await home.goto('/')
-    await home.getByRole('button', { name: /^Resume session/ }).click()
+    await home.getByRole('button', { name: /^Resume previous session/ }).click()
     await expect(home.getByRole('heading', { name: 'Continue the plan?' })).toBeVisible()
     await home.getByRole('button', { name: /^Continue: / }).click()
     await expect(home.getByRole('heading', { name: /^Learn: / })).toBeVisible()

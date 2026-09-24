@@ -16,7 +16,13 @@ export function useRate() {
       body,
     }: {
       itemId: string
-      body: { session_id: string; rating: number; latency_ms?: number; confidence_pre?: number }
+      body: {
+        session_id: string
+        rating: number
+        latency_ms?: number
+        confidence_pre?: number
+        hint_count?: number
+      }
     }) => api.rate(itemId, body),
   })
 }

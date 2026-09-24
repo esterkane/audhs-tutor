@@ -43,7 +43,7 @@ async def next_item(
 
 @router.post(
     "/attempt",
-    summary="Submit an answer with a prior confidence rating; graded hierarchically",
+    summary="Submit an answer with an optional prior confidence rating; graded hierarchically",
     response_model=AttemptResult,
 )
 async def attempt(body: AttemptRequest, db: DB, gateway: Gateway) -> AttemptResult:

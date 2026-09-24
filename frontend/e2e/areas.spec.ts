@@ -22,7 +22,7 @@ test('areas can be renamed and selected as a goal without activating lessons', a
   await preference.click()
   await page.goto('/')
   await page.getByRole('combobox', { name: 'Knowledge area', exact: true }).selectOption(area.id)
-  await expect(page.getByRole('combobox', { name: 'Goal', exact: true })).toBeDisabled()
+  await expect(page.getByRole('combobox', { name: 'Goal', exact: true })).toHaveCount(0)
   await page.getByRole('combobox', { name: 'Knowledge area', exact: true }).selectOption('')
   await expect(page.getByRole('combobox', { name: 'Goal', exact: true })).toBeEnabled()
 })

@@ -1,11 +1,12 @@
-from typing import Any
+from typing import Any, Literal
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app.api.deps import DB, Learner
+from app.api.plan import session_lock
 from app.db.models import SkillNode
-from app.kernel import competency, skill_graph
+from app.kernel import competency, preferences, skill_graph
 from app.schemas.tutor import SkillView
 
 router = APIRouter(prefix="/skills", tags=["skills"])
@@ -64,3 +65,31 @@ async def skill_map(db: DB, learner: Learner) -> MapOut:
 @router.get("/{skill_id}", summary="One skill with its state", response_model=SkillView)
 async def get_skill(skill_id: str, db: DB, learner: Learner) -> SkillView:
     return await _view(db, learner.id, await skill_graph.get_node(db, skill_id))
+
+
+class MaterialMarkIn(BaseModel):
+    status: Literal["clear", "later"] | None = None
+
+
+class MaterialMarkOut(BaseModel):
+    skill_id: str
+    status: Literal["clear", "later"] | None = None
+
+
+@router.put(
+    "/{skill_id}/mark",
+    summary="Save a lesson bookmark, without changing mastery",
+    response_model=MaterialMarkOut,
+)
+async def mark_material(
+    skill_id: str, body: MaterialMarkIn, request: Request, db: DB, learner: Learner
+) -> MaterialMarkOut:
+    await skill_graph.get_node(db, skill_id)
+    async with session_lock(request, "material-marks:" + learner.id):
+        marks = dict(await preferences.get(db, learner.id, "learning.material_marks"))
+        if body.status is None:
+            marks.pop(skill_id, None)
+        else:
+            marks[skill_id] = body.status
+        await preferences.set_pref(db, learner.id, "learning.material_marks", marks)
+    return MaterialMarkOut(skill_id=skill_id, status=body.status)

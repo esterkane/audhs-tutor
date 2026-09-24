@@ -165,7 +165,7 @@ async def test_publish_versions_objects_and_keeps_history(
     nxt = await skill_graph.next_skill(db, learner.id)
     assert nxt is not None and nxt.course == "LLM Evaluation"
     await preferences.set_pref(db, learner.id, "goal.course", "Nope", origin="explicit")
-    assert await skill_graph.next_skill(db, learner.id) is not None  # unknown goal → whole map
+    assert await skill_graph.next_skill(db, learner.id) is None  # no unrelated fallback
 
 
 async def test_reject_and_routes(

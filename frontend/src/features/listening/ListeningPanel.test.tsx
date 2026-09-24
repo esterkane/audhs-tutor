@@ -140,7 +140,8 @@ describe('ListeningPanel', () => {
     const check = screen.getByRole('button', { name: 'Check' })
     expect(check).toBeDisabled()
     fireEvent.change(screen.getByLabelText('The missing word'), { target: { value: 'numbers' } })
-    expect(check).toBeDisabled() // confidence still missing
+    expect(check).toBeEnabled() // confidence is optional
+    fireEvent.click(screen.getByText('Confidence (optional)'))
     fireEvent.click(screen.getByRole('button', { name: '4' }))
     expect(check).toBeEnabled()
     fireEvent.click(check)
@@ -175,6 +176,7 @@ describe('ListeningPanel', () => {
     fireEvent.change(await screen.findByLabelText('The missing word'), { target: { value: 'numbers' } })
     // reading version: nothing was played, so no `listened` event is sent
     expect(posts.some((p) => p.url.endsWith('/listened'))).toBe(false)
+    fireEvent.click(screen.getByText('Confidence (optional)'))
     fireEvent.click(screen.getByRole('button', { name: '3' }))
     fireEvent.click(screen.getByRole('button', { name: 'Check' }))
     expect(await screen.findByText(/The word was "numbers"/)).toBeInTheDocument()

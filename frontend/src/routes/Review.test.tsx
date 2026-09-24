@@ -77,6 +77,7 @@ describe('Review', () => {
     useMode.setState({ sessionId: 's1' })
     const posts: Array<[string, unknown]> = []
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
       if (url.startsWith('/api/review/due')) return jsonResponse(due)
       if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
       if (init?.method === 'POST') posts.push([url, JSON.parse(String(init.body))])
@@ -99,7 +100,8 @@ describe('Review', () => {
     )
     expect(await screen.findByText(/capped at 5; 7 due in total/)).toBeInTheDocument()
     expect(screen.queryByText(/largest dominates/)).not.toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /show answer/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /show answer/i })).toBeEnabled()
+    fireEvent.click(screen.getByText('Confidence (optional)'))
     fireEvent.click(screen.getByRole('button', { name: '4' }))
     fireEvent.click(screen.getByRole('button', { name: /show answer/i }))
     expect(screen.getByText(/largest dominates/)).toBeInTheDocument()
@@ -112,10 +114,11 @@ describe('Review', () => {
     })
     // second card: confidence is reset, so "Show answer" is disabled again until chosen
     expect(await screen.findByText(/Review 2 of 2/)).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /show answer/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /show answer/i })).toBeEnabled()
+    fireEvent.click(screen.getByText('Confidence (optional)'))
     fireEvent.click(screen.getByRole('button', { name: '2' }))
     fireEvent.click(screen.getByRole('button', { name: /show answer/i }))
-    fireEvent.click(screen.getByRole('button', { name: /again/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^again/i }))
     await waitFor(() => expect(posts.filter(([u]) => u.startsWith('/api/review/i')).length).toBe(2))
     expect(posts.find(([u]) => u === '/api/review/i2')?.[1]).toMatchObject({ rating: 1, confidence_pre: 2 })
     expect(await screen.findByText(/review done/i)).toBeInTheDocument()

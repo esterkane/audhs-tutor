@@ -12,6 +12,10 @@ export function useSetPreference() {
   return useMutation({
     mutationFn: (body: { key: string; value: unknown }) =>
       apiFetch<PrefOut>('/api/preferences', { method: 'PUT', body: JSON.stringify(body) }),
-    onSuccess: (data) => qc.setQueryData(['preferences'], data),
+    onSuccess: (data, variables) => {
+      qc.setQueryData(['preferences'], data)
+      if (variables.key.startsWith('goal.'))
+        void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'preferences' })
+    },
   })
 }

@@ -26,6 +26,12 @@ PREFERENCES: dict[str, PrefSpec] = {
     p.key: p
     for p in [
         PrefSpec(
+            key="learning.material_marks",
+            type="material_marks",
+            default={},
+            description="Explicit clear/later lesson bookmarks; never mastery evidence",
+        ),
+        PrefSpec(
             key="goal.area",
             type="str",
             default="",
@@ -210,7 +216,17 @@ def validate(key: str, value: Any) -> Any:
     spec = PREFERENCES.get(key)
     if spec is None:
         raise ValueError(f"unknown preference {key!r}")
-    if spec.type == "bool":
+    if spec.type == "material_marks":
+        if (
+            not isinstance(value, dict)
+            or len(value) > 10000
+            or any(
+                not isinstance(k, str) or len(k) > 100 or v not in ("clear", "later")
+                for k, v in value.items()
+            )
+        ):
+            raise ValueError("material marks must map skill IDs to clear or later")
+    elif spec.type == "bool":
         if not isinstance(value, bool):
             raise ValueError(f"{key} must be a boolean")
     elif spec.type == "int":

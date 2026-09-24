@@ -1,7 +1,7 @@
+import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
-import { Choice } from '../../components/ui/choice'
 import { useAttempt } from '../assess/api'
 import type { AttemptResult } from '../../lib/api'
 import { useExercise, useHint, useSolution, type ExerciseView } from './api'
@@ -131,7 +131,7 @@ function Editor({
   }
 
   async function submit() {
-    if (!last || last.code !== code || confidence == null) return
+    if (!last || last.code !== code) return
     const res = await attempt.mutateAsync({
       session_id: sessionId,
       assessment_id: exercise.assessment_id,
@@ -153,7 +153,7 @@ function Editor({
   }
 
   async function submitCheck() {
-    if (!exercise.check_assessment_id || checkConfidence == null || !checkAnswer.trim()) return
+    if (!exercise.check_assessment_id || !checkAnswer.trim()) return
     const res = await attempt.mutateAsync({
       session_id: sessionId,
       assessment_id: exercise.check_assessment_id,
@@ -166,7 +166,7 @@ function Editor({
   }
 
   const stale = last != null && last.code !== code
-  const canSubmit = last != null && !stale && confidence != null && !attempt.isPending
+  const canSubmit = last != null && !stale && !attempt.isPending
 
   return (
     <Card>
@@ -322,13 +322,7 @@ function Editor({
             {stale ? ' You changed the code since — run it again first.' : ''}
           </p>
           <div className="mt-2">
-            <Choice<number>
-              label="Before feedback: how confident are you? (1 = guessing, 5 = certain)"
-              options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
-              value={confidence ?? 0}
-              onChange={setConfidence}
-              columns={5}
-            />
+            <OptionalConfidence value={confidence} onChange={setConfidence} />
           </div>
           <Button className="mt-2" variant="primary" disabled={!canSubmit} onClick={() => void submit()}>
             Submit this attempt
@@ -445,7 +439,7 @@ function CheckQuestion({
   answer: string
   setAnswer: (v: string) => void
   confidence: number | null
-  setConfidence: (v: number) => void
+  setConfidence: (v: number | null) => void
   onSubmit: () => void
   pending: boolean
 }) {
@@ -462,20 +456,9 @@ function CheckQuestion({
         onChange={(e) => setAnswer(e.target.value)}
       />
       <div className="mt-2">
-        <Choice<number>
-          label="Before feedback: how confident are you? (1 = guessing, 5 = certain)"
-          options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
-          value={confidence ?? 0}
-          onChange={setConfidence}
-          columns={5}
-        />
+        <OptionalConfidence value={confidence} onChange={setConfidence} />
       </div>
-      <Button
-        size="sm"
-        className="mt-2"
-        disabled={pending || confidence == null || !answer.trim()}
-        onClick={onSubmit}
-      >
+      <Button size="sm" className="mt-2" disabled={pending || !answer.trim()} onClick={onSubmit}>
         Check my answer
       </Button>
     </div>

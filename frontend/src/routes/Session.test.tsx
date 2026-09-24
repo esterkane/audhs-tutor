@@ -1,10 +1,16 @@
+import { clearDraft } from '../features/assess/draft'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
 import { useMode } from '../stores/mode'
 import { jsonResponse, renderApp, sseResponse } from '../test/utils'
 import { Session } from './Session'
 import { axe } from 'vitest-axe'
+
+beforeEach(() => {
+  sessionStorage.clear()
+  clearDraft('audhs-answer:s1:a1')
+})
 
 const plan = [
   { type: 'movement_primer', planned_min: 5, node_ids: [], optional: true, reason: '', domain: 'movement' },
@@ -208,6 +214,7 @@ it('preserves the assessment answer and confidence after a grading error and all
   renderApp(<Session />, { route: '/session' })
   const input = await screen.findByLabelText('Your answer')
   fireEvent.change(input, { target: { value: 'My explanation of the relationship.' } })
+  fireEvent.click(screen.getByText('Confidence (optional)'))
   fireEvent.click(screen.getByRole('button', { name: '3' }))
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('mastery unchanged')
@@ -249,10 +256,12 @@ it('guides explanation to a question with optional controls collapsed and access
   )
   const { container } = renderApp(<Session />, { route: '/session' })
   expect(
-    await screen.findByText('1. Read an explanation → 2. Try a question → 3. Continue the plan'),
+    await screen.findByText(
+      'Start with an explanation. Try a question when ready, or save this topic for later.',
+    ),
   ).toBeVisible()
   expect(screen.getByText('More ways to learn').closest('details')).not.toHaveAttribute('open')
-  expect(screen.getByRole('button', { name: 'Stop and recap' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Stop session' })).toBeVisible()
   fireEvent.click(screen.getByRole('button', { name: 'Start explanation' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Try a question' }))
   expect(await screen.findByLabelText('Your answer')).toBeVisible()
@@ -307,6 +316,7 @@ it('offers continuing the plan after feedback without requiring another question
     { route: '/session' },
   )
   fireEvent.click(await screen.findByRole('button', { name: 'One' }))
+  fireEvent.click(screen.getByText('Confidence (optional)'))
   fireEvent.click(screen.getByRole('button', { name: '3' }))
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   expect(await screen.findByText('Feedback on your answer')).toBeVisible()
