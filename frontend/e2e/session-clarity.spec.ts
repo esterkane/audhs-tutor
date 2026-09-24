@@ -8,7 +8,10 @@ test.beforeEach(async ({ request }) => {
 })
 test.afterEach(async ({ request }) => endOpenSession(request))
 
-test('context, optional confidence, saved labels and stopping without recap', async ({ page, request }) => {
+test('context, optional confidence, saved labels and stopping without recap', async ({
+  page,
+  request,
+}, testInfo) => {
   const res = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
   await expectOk(res)
   const session = await res.json()
@@ -31,7 +34,7 @@ test('context, optional confidence, saved labels and stopping without recap', as
   await expect(page.getByRole('button', { name: 'Check my answer' })).toBeEnabled()
   await expect(page.getByText('Confidence (optional)')).toBeVisible()
   await expect(page.getByRole('group', { name: /How sure are you/ })).not.toBeVisible()
-  await page.screenshot({ path: '/private/tmp/audhs-session-assessment.png', fullPage: true })
+  await page.screenshot({ path: testInfo.outputPath('session-assessment.png'), fullPage: true })
   await page.getByRole('button', { name: 'Ask me again later' }).click()
   await expect(page.getByRole('status')).toContainText('Ask me later list')
   await page.getByRole('button', { name: 'Change topic' }).click()
