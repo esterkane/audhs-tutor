@@ -13,9 +13,11 @@ at its reserved worst case, never as free). Local fallback (`route=fallback`) an
 """
 
 import asyncio
+import json
 import re
 import time
 from collections.abc import AsyncGenerator
+from contextlib import suppress
 from typing import Any
 
 from pydantic import BaseModel
@@ -103,6 +105,18 @@ def _accounting(
     if usage_source == "unavailable":
         return 0.0, "unknown"
     return spec.cost(tokens_in, tokens_out), "estimated"
+
+
+def reservation_chars(messages: list[Message], schema: type[BaseModel] | None = None) -> int:
+    """Use encoded bytes as a conservative token ceiling, including tool schema/wrappers.
+
+    worst_case_usd divides by three, so multiply here to preserve that ceiling. This is
+    deliberately more conservative than the chars/4 display estimate.
+    """
+    size = len(json.dumps([m.model_dump() for m in messages]).encode("utf-8"))
+    if schema is not None:
+        size += len(json.dumps(schema.model_json_schema()).encode("utf-8"))
+    return (size + 4096) * 3
 
 
 class ModelGateway:
@@ -225,7 +239,7 @@ class ModelGateway:
                     request_id=request_id,
                     task=task,
                     learner_id=learner_id,
-                    prompt_chars=sum(len(m.content) for m in msgs),
+                    prompt_chars=reservation_chars(msgs, response_model),
                     max_tokens=max_tokens,
                     n_messages=len(msgs),
                     next_rid=next((r for r in chain[pos + 1 :] if r in ready), None),
@@ -443,7 +457,7 @@ class ModelGateway:
                 request_id=request_id,
                 task=task,
                 learner_id=learner_id,
-                prompt_chars=prompt_chars,
+                prompt_chars=reservation_chars(messages),
                 max_tokens=max_tokens,
                 n_messages=len(messages),
                 next_rid=next((r for r in chain[pos + 1 :] if r in ready), None),
@@ -477,10 +491,9 @@ class ModelGateway:
             failure: str | None = None
             outcome = "ok"
             logged = False
+            stream = provider.stream(spec, messages, max_tokens=max_tokens, temperature=temperature)
             try:
-                async for ev in provider.stream(
-                    spec, messages, max_tokens=max_tokens, temperature=temperature
-                ):
+                async for ev in stream:
                     if isinstance(ev, StreamUsage):
                         usage = ev
                         continue
@@ -522,7 +535,11 @@ class ModelGateway:
                 outcome = "cancelled"
                 raise
             finally:
-                if (started or usage is not None) and not logged:
+                close = getattr(stream, "aclose", None)
+                if close is not None:
+                    with suppress(Exception):
+                        await close()
+                if (started or usage is not None or outcome == "cancelled") and not logged:
                     if usage is not None:
                         source = "reported"
                         tin, tout, cached = usage.tokens_in, usage.tokens_out, usage.cached_tokens
@@ -532,6 +549,8 @@ class ModelGateway:
                         tin, tout, cached = prompt_chars // 4, max(1, out_chars // 4), 0
                         reported = None
                     cost, status = _accounting(spec, tin, tout, reported, usage_source=source)
+                    if spec.hosted and usage is None and outcome in ("partial", "cancelled"):
+                        source, status = "unavailable", "unknown"
                     result = ProviderResult(
                         text="",
                         tokens_in=tin,
@@ -549,7 +568,7 @@ class ModelGateway:
                         result,
                         learner_id,
                         session_id,
-                        {**meta, "estimated_tokens": source == "estimated"},
+                        {**meta, "estimated_tokens": usage is None},
                         request_id=request_id,
                         attempt=attempt,
                         outcome=outcome,

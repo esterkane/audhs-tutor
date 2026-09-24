@@ -12,7 +12,14 @@ import {
   type ModelRow,
 } from '../features/models/api'
 
-const SOURCES = ['ollama_library', 'huggingface_gguf', 'huggingface_mlx', 'huggingface_fastembed', 'hosted']
+const SOURCES = [
+  'ollama_library',
+  'huggingface_gguf',
+  'huggingface_mlx',
+  'huggingface_fastembed',
+  'hosted',
+  'openai',
+]
 const ROLES = ['chat', 'code', 'embed', 'rerank', 'judge', 'stt', 'tts']
 
 function benchSummary(b: Record<string, unknown> | null | undefined): string {
@@ -28,6 +35,7 @@ function benchSummary(b: Record<string, unknown> | null | undefined): string {
 
 function Row({ m, busy, onStart }: { m: ModelRow; busy: boolean; onStart: () => void }) {
   const { pull, bench, remove } = useModelActions()
+  const hosted = ['hosted', 'openai'].includes(m.runtime)
   const canPull = ['available', 'failed', 'removed'].includes(m.status)
   return (
     <tr>
@@ -48,7 +56,7 @@ function Row({ m, busy, onStart }: { m: ModelRow; busy: boolean; onStart: () => 
               pull.mutate(m.id)
             }}
           >
-            Download
+            {hosted ? 'Check key setup' : 'Download'}
           </Button>
         )}
         {m.status === 'ready' && (
@@ -60,10 +68,10 @@ function Row({ m, busy, onStart }: { m: ModelRow; busy: boolean; onStart: () => 
               bench.mutate(m.id)
             }}
           >
-            Bench
+            {hosted ? 'Benchmark (paid)' : 'Bench'}
           </Button>
         )}
-        {m.status === 'ready' && m.runtime !== 'hosted' && (
+        {m.status === 'ready' && !hosted && (
           <Button
             size="sm"
             variant="ghost"
@@ -90,6 +98,8 @@ function AddForm() {
     file: '',
     tag: '',
     role: 'chat',
+    price_in: '',
+    price_out: '',
   })
   return (
     <div className="grid gap-3">
@@ -140,8 +150,8 @@ function AddForm() {
             file: form.file || null,
             tag: form.tag || null,
             role: form.role,
-            price_in: 0,
-            price_out: 0,
+            price_in: Number(form.price_in),
+            price_out: Number(form.price_out),
           })
         }}
       >
@@ -170,10 +180,10 @@ function AddForm() {
           GGUF file / hosted tag
           <input
             className="block border border-line rounded-md px-2 py-1 mt-1"
-            value={form.source === 'hosted' ? form.tag : form.file}
+            value={['hosted', 'openai'].includes(form.source) ? form.tag : form.file}
             onChange={(e) =>
               setForm(
-                form.source === 'hosted'
+                ['hosted', 'openai'].includes(form.source)
                   ? { ...form, tag: e.target.value }
                   : { ...form, file: e.target.value },
               )
@@ -192,6 +202,21 @@ function AddForm() {
             ))}
           </select>
         </label>
+        {['hosted', 'openai'].includes(form.source) &&
+          (['price_in', 'price_out'] as const).map((field) => (
+            <label key={field} className="text-sm font-medium">
+              {field === 'price_in' ? 'Input USD / million tokens' : 'Output USD / million tokens'}
+              <input
+                type="number"
+                min="0.000001"
+                step="any"
+                required
+                className="block border border-line rounded-md px-2 py-1 mt-1"
+                value={form[field]}
+                onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+              />
+            </label>
+          ))}
         <Button type="submit" variant="primary" disabled={add.isPending || !form.repo_id}>
           Add to registry
         </Button>
@@ -420,6 +445,12 @@ export function Models() {
       <VoiceSetup />
       <Card>
         <CardTitle>Models</CardTitle>
+        <p className="text-sm text-muted">
+          OpenAI uses OPENAI_API_KEY; Claude uses ANTHROPIC_API_KEY in your local .env. Restart the backend
+          after saving a key. Ready means a key is configured, not that access or tutoring quality has been
+          verified. Hosted benchmarks make paid requests within the shared daily budget. Benchmark and review
+          a model before assigning it to a task.
+        </p>
         <p className="text-sm text-muted mb-2">
           Everything the tutor can run, where it comes from, whether it is downloaded and benchmarked, and
           which task uses it. Nothing downloads without your click.

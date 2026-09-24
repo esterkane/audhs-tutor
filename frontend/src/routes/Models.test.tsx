@@ -44,6 +44,16 @@ const models = {
       local_path: null,
       updated_at: 'now',
     },
+    {
+      id: 'openai-luna',
+      display_name: 'GPT-6 Luna',
+      runtime: 'openai',
+      role: 'chat',
+      status: 'available',
+      benchmark: null,
+      size_gb: null,
+      licence: null,
+    },
   ],
 }
 const routing = {
@@ -169,6 +179,8 @@ describe('Models', () => {
     expect(await screen.findByText('Llama 3.1 8B')).toBeInTheDocument()
     expect(screen.getByText(/47.5 tok\/s · first token 120 ms · tutoring checks 4\/5/)).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Download' })).toHaveLength(1) // only the available one
+    expect(screen.getByRole('button', { name: 'Check key setup' })).toBeInTheDocument()
+    expect(screen.getByText(/Ready means a key is configured/)).toBeInTheDocument()
     expect(pulls).toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: 'Download' }))
     await waitFor(() => expect(pulls).toHaveLength(1))

@@ -4,6 +4,18 @@
 # Hosted entries need ANTHROPIC_API_KEY and are subject to the daily budget (degraded -> next local).
 
 registry_defaults:
+  # Budget uses the cache-write ceiling ($0.125/M), not the $0.10 uncached headline rate.
+  # Short requests only; the adapter rejects oversized prompts before the network call.
+  - id: openai-luna
+    display_name: GPT-6 Luna (OpenAI, evaluation candidate)
+    source: openai
+    repo_id: gpt-6-luna
+    file_or_tag: gpt-6-luna
+    runtime: openai
+    role: chat
+    context_len: 32768
+    price_in_per_mtok: 0.125
+    price_out_per_mtok: 0.50
   - id: llama31-8b
     display_name: Llama 3.1 8B (Q4_K_M)
     source: ollama_library

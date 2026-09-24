@@ -8,7 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Request
 from ulid import ULID
 
-from app.api.deps import DB, BudgetDep, Learner, SettingsDep
+from app.api.deps import DB, BudgetDep, Learner, SettingsDep, get_budget
 from app.core.errors import AppError
 from app.db.models import ModelRegistry
 from app.models_ai import manage, registry, usage
@@ -130,7 +130,13 @@ def _start_job(request: Request, kind: str, registry_id: str, settings: Any) -> 
                 if kind == "pull":
                     await manage.pull(db, settings, registry_id, job.log.append)
                 else:
-                    job.result = await manage.bench(db, settings, registry_id, job.log.append)
+                    job.result = await manage.bench(
+                        db,
+                        settings,
+                        registry_id,
+                        job.log.append,
+                        budget=get_budget(request, settings),
+                    )
             job.status = "done"
         except Exception as e:
             job.status, job.error = "failed", f"{type(e).__name__}: {e}"

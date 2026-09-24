@@ -11,7 +11,7 @@ dev: qdrant
 SANDBOX_DB ?= ./data/sandbox.db
 SANDBOX_API_PORT ?= 8010
 SANDBOX_UI_PORT ?= 5174
-SANDBOX_ENV = DATABASE_URL="sqlite+aiosqlite:///$(SANDBOX_DB)" ANTHROPIC_API_KEY= DAILY_BUDGET_USD=0
+SANDBOX_ENV = DATABASE_URL="sqlite+aiosqlite:///$(SANDBOX_DB)" ANTHROPIC_API_KEY= OPENAI_API_KEY= DAILY_BUDGET_USD=0
 sandbox-backend:
 	$(if $(filter %dev.db,$(SANDBOX_DB)),$(error SANDBOX_DB must not be the learner's dev database),)
 	@rm -f $(SANDBOX_DB) $(SANDBOX_DB)-wal $(SANDBOX_DB)-shm

@@ -42,7 +42,7 @@ class Message(BaseModel):
     content: str
 
 
-HOSTED_PROVIDERS = ("anthropic",)
+HOSTED_PROVIDERS = ("anthropic", "openai")
 
 
 class ModelSpec(BaseModel):

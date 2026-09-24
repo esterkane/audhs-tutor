@@ -58,10 +58,9 @@ async def test_concurrent_hosted_calls_cannot_overshoot_the_cap(
     seeded: AsyncSession,
     session_factory,  # type: ignore[no-untyped-def]
 ) -> None:
-    """Five calls start together. Worst case per attempt = (prompt/3 + 32) tokens in at $2/M +
-    1024 out at $10/M ≈ $0.0104; actual $0.007. With a $0.0235 cap the policy alone — never the
-    interleaving — admits exactly two: two open reservations ($0.0208) fit, two settled costs plus
-    a third bound ($0.0244) do not."""
+    """Five calls start together. The conservative byte/schema-wrapper reservation is about
+    $0.019; actual $0.007. At a $0.0235 cap, one reservation fits but a second does not,
+    even after the first settles. Admission is independent of coroutine interleaving."""
     lock = asyncio.Lock()
     hosted = FakeProvider(text="hosted", tokens_in=1000, tokens_out=500)  # $0.007 actual
     local = FakeProvider(text="local")
@@ -74,18 +73,18 @@ async def test_concurrent_hosted_calls_cannot_overshoot_the_cap(
             return out.route
 
     routes = await asyncio.gather(*(one() for _ in range(5)))
-    assert sorted(routes) == ["degraded", "degraded", "degraded", "primary", "primary"]
+    assert sorted(routes) == ["degraded", "degraded", "degraded", "degraded", "primary"]
     calls = await _calls(seeded)
     hosted_ok = [c for c in calls if c.provider == "anthropic" and c.ok]
-    assert len(hosted_ok) == 2 and all(c.cost_status == "estimated" for c in hosted_ok)
+    assert len(hosted_ok) == 1 and all(c.cost_status == "estimated" for c in hosted_ok)
     blocked = [c for c in calls if c.outcome == "blocked"]
-    assert len(blocked) >= 3 and all(c.cost_usd == 0 and c.cost_status == "free" for c in blocked)
+    assert len(blocked) >= 4 and all(c.cost_usd == 0 and c.cost_status == "free" for c in blocked)
     spend = await Budget(cap).spend_today(seeded)
-    assert spend.open_reservations == 0 and spend.counted == pytest.approx(0.014)
+    assert spend.open_reservations == 0 and spend.counted == pytest.approx(0.007)
     assert all(r.status == "reconciled" for r in await _reservations(seeded))
     # what the reservations guarantee: admitted worst cases never passed the cap, so the settled
     # cost cannot either
-    assert 2 * max(c.reserved_usd for c in hosted_ok) < cap
+    assert max(c.reserved_usd for c in hosted_ok) < cap
     assert sum(c.cost_usd for c in hosted_ok) <= cap
 
 

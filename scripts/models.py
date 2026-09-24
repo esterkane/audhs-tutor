@@ -10,7 +10,7 @@
   models.py bench <id>                 # tok/s, first-token ms, 5-case tutoring hard checks -> benchmark_json
   models.py assign <task> <id> [--learner L]   # learner_preference routing.<task>; refuses unbenchmarked
   models.py rm <id>                    # delete artifact + ollama model, mark removed
-Sources: ollama_library | huggingface_gguf | huggingface_mlx | hosted
+Sources: ollama_library | huggingface_gguf | huggingface_mlx | hosted | openai
 """
 
 import argparse

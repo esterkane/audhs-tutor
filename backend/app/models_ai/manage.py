@@ -14,8 +14,12 @@ from app.core.config import Settings
 from app.db.models import ModelRegistry
 from app.models_ai import registry
 from app.models_ai.bench import bench_model
+from app.models_ai.benchmark_gateway import BenchmarkProvider, BenchmarkRouter
+from app.models_ai.budget import Budget
 from app.models_ai.downloader import Downloader, dir_size_gb, hf_info, hf_search, slugify
 from app.models_ai.factory import build_providers, installed_models, mlx_snapshot_dir
+from app.models_ai.gateway import ModelGateway
+from app.models_ai.openai import supported_model
 from app.models_ai.provider import TaskClass
 from app.models_ai.routing import Router
 
@@ -27,6 +31,7 @@ RUNTIME_FOR_SOURCE = {
     "huggingface_mlx": "mlx",
     "huggingface_fastembed": "fastembed",
     "hosted": "hosted",
+    "openai": "openai",
     "kokoro_server": "kokoro",  # a persistent server the owner starts; nothing is downloaded here
     "huggingface_file": "onnx",  # one file from a HF repo (Silero VAD)
 }
@@ -47,7 +52,7 @@ async def seed(db: AsyncSession, settings: Settings) -> list[ModelRegistry]:
     """Insert missing defaults and refresh readiness of local/hosted rows."""
     installed = await installed_models(settings)
     rows = await registry.seed_defaults(db, installed_ollama_tags=installed)
-    for r in rows:
+    for r in await registry.list_models(db):
         if r.status not in ("available", "ready"):
             continue
         if r.runtime == "ollama":
@@ -57,6 +62,8 @@ async def seed(db: AsyncSession, settings: Settings) -> list[ModelRegistry]:
             )
         elif r.runtime == "hosted":
             r.status = "ready" if settings.anthropic_api_key else "available"
+        elif r.runtime == "openai":
+            r.status = "ready" if settings.openai_api_key else "available"
         elif r.runtime == "fastembed":
             r.status = "ready" if f"fastembed:{r.repo_id}" in installed else "available"
         elif r.runtime == "mlx":
@@ -105,6 +112,13 @@ async def add(
         raise ValueError("huggingface_gguf needs a .gguf file name (see model info)")
     if source == "hosted" and not tag:
         raise ValueError("hosted needs a model id tag, e.g. claude-sonnet-5")
+    if source == "openai":
+        if not tag:
+            raise ValueError("openai needs an API model id tag")
+        if not supported_model(tag):
+            raise ValueError("OpenAI model is not in the verified registry defaults")
+        if not (0 < price_in < float("inf") and 0 < price_out < float("inf")):
+            raise ValueError("OpenAI needs positive finite input/output prices per million tokens")
     file_or_tag = (
         file or tag or (repo_id if source in ("ollama_library", "huggingface_fastembed") else None)
     )
@@ -133,7 +147,10 @@ async def add(
             "size_gb": size_gb,
             "context_len": context_len,
             "status": "ready"
-            if (source == "hosted" and settings.anthropic_api_key)
+            if (
+                (source == "hosted" and settings.anthropic_api_key)
+                or (source == "openai" and settings.openai_api_key)
+            )
             else "available",
             "price_in_per_mtok": price_in,
             "price_out_per_mtok": price_out,
@@ -171,10 +188,11 @@ async def pull(
             await registry.set_status(
                 db, row.id, "ready", local_path=str(path), size_gb=dir_size_gb(path)
             )
-        elif row.source == "hosted":
-            if not settings.anthropic_api_key:
-                await registry.set_status(db, row.id, "available")
-                raise ValueError("hosted model: set ANTHROPIC_API_KEY in .env first")
+        elif row.source in ("hosted", "openai"):
+            key_name = "OPENAI_API_KEY" if row.source == "openai" else "ANTHROPIC_API_KEY"
+            key = settings.openai_api_key if row.source == "openai" else settings.anthropic_api_key
+            if not key:
+                raise ValueError(f"set {key_name} in .env and restart the backend first")
             await registry.set_status(db, row.id, "ready")
         elif row.source == "kokoro_server":
             from app.voice.tts import kokoro_reachable
@@ -192,7 +210,9 @@ async def pull(
     except Exception as e:
         # a server that is simply not running is not a broken artefact: the row stays available
         await registry.set_status(
-            db, row.id, "available" if row.source == "kokoro_server" else "failed"
+            db,
+            row.id,
+            "available" if row.source in ("kokoro_server", "hosted", "openai") else "failed",
         )
         _say(progress, f"pull failed: {e}")
         raise
@@ -247,7 +267,12 @@ async def bench_stt(local_path: str, registry_id: str) -> dict[str, float]:
 
 
 async def bench(
-    db: AsyncSession, settings: Settings, registry_id: str, progress: Progress = None
+    db: AsyncSession,
+    settings: Settings,
+    registry_id: str,
+    progress: Progress = None,
+    *,
+    budget: Budget | None = None,
 ) -> dict[str, Any]:
     row = await registry.get_row(db, registry_id)
     if row.status != "ready":
@@ -263,9 +288,18 @@ async def bench(
         provider = build_providers(settings).get(spec.provider)
         if provider is None:
             raise ValueError(
-                f"no provider for runtime {row.runtime} (hosted needs ANTHROPIC_API_KEY)"
+                f"no provider for runtime {row.runtime}; configure its API key and restart"
             )
         _say(progress, f"benchmarking {row.id} …")
+        if spec.hosted:
+            provider = BenchmarkProvider(
+                ModelGateway(
+                    db,
+                    BenchmarkRouter(row.id),
+                    {spec.provider: provider},
+                    budget or Budget(settings.daily_budget_usd),
+                )
+            )
         result = await bench_model(provider, spec)
     await registry.set_status(db, row.id, "ready", benchmark_json=result)
     return result
@@ -325,7 +359,7 @@ def route_problem(
             rid
             for rid in chain
             if rid in rows
-            and rows[rid].runtime != "hosted"
+            and rows[rid].runtime not in ("hosted", "openai")
             and rows[rid].status in ("available", "removed")
         ),
         None,
@@ -336,15 +370,17 @@ def route_problem(
             f"{first} is not in the registry",
             f"add {first} under Models (or fix routing_profiles.yaml)",
         )
-    if row.runtime == "hosted":
-        if not settings.anthropic_api_key:
-            problem = f"{first} is hosted and ANTHROPIC_API_KEY is empty"
+    if row.runtime in ("hosted", "openai"):
+        key_name = "OPENAI_API_KEY" if row.runtime == "openai" else "ANTHROPIC_API_KEY"
+        key = settings.openai_api_key if row.runtime == "openai" else settings.anthropic_api_key
+        if not key:
+            problem = f"{first} is hosted and {key_name} is empty"
             if local_pull:
                 return (
                     problem,
-                    f"pull {local_pull} under Models (local fallback), or set ANTHROPIC_API_KEY in .env",
+                    f"pull {local_pull} under Models (local fallback), or set {key_name} in .env",
                 )
-            return problem, "set ANTHROPIC_API_KEY in .env and restart the backend"
+            return problem, f"set {key_name} in .env and restart the backend"
         return f"{first} is {row.status}", "check the API key and network, then reload Models"
     if row.status == "downloading":
         return f"{first} is still downloading", "wait for the download to finish (Models › jobs)"

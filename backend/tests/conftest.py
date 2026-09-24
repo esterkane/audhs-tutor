@@ -28,6 +28,7 @@ def settings(db_path: Path, tmp_path_factory: pytest.TempPathFactory) -> Setting
         database_url=f"sqlite+aiosqlite:///{db_path}",
         auto_migrate=False,
         anthropic_api_key="",
+        openai_api_key="",
         daily_budget_usd=1.0,
         ingest_roots=f"{Path(__file__).resolve().parents[2]},{tmp_path_factory.getbasetemp()}",
         voice_dir=str(

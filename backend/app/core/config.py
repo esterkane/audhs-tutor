@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     auto_migrate: bool = True
     ollama_host: str = "http://localhost:11434"
     anthropic_api_key: str = ""
+    openai_api_key: str = ""
     daily_budget_usd: float = 1.50
     routing_profile: str = "default"
     embed_model: str = "nomic-embed-text"

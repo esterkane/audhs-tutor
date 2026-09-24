@@ -12,6 +12,7 @@ from app.models_ai.budget import Budget
 from app.models_ai.claude import ClaudeProvider
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.ollama import OllamaProvider
+from app.models_ai.openai import OpenAIProvider
 from app.models_ai.provider import ModelProvider
 from app.models_ai.routing import Router, load_profiles
 
@@ -20,6 +21,8 @@ def build_providers(settings: Settings) -> dict[str, ModelProvider]:
     providers: dict[str, ModelProvider] = {"ollama": OllamaProvider(settings.ollama_host)}
     if settings.anthropic_api_key:
         providers["anthropic"] = ClaudeProvider(settings.anthropic_api_key)
+    if settings.openai_api_key:
+        providers["openai"] = OpenAIProvider(settings.openai_api_key)
     return providers
 
 
@@ -99,4 +102,6 @@ async def installed_models(settings: Settings) -> set[str]:
         installed.add("kokoro")
     if settings.anthropic_api_key:
         installed.add("hosted")
+    if settings.openai_api_key:
+        installed.add("openai")
     return installed

@@ -1,6 +1,6 @@
 # Hosted provider cost decision — 2026-09-24
 
-Selected budget candidate: **OpenAI GPT-6 Luna** for routine tutoring, subject to task-quality evaluation. Keep local models available. Do not infer equivalent teaching quality from a lower token price.
+Selected budget candidate: **OpenAI GPT-6 Luna** only when a local model cannot perform a task accurately, subject to task-quality evaluation. Local execution is the default (owner clarification, 2026-09-24). Do not infer equivalent teaching quality from a lower token price.
 
 Standard short-context list rates, USD per million tokens, checked on official pages:
 
@@ -17,6 +17,22 @@ Sources: [OpenAI API pricing](https://developers.openai.com/api/docs/pricing), [
 
 ## Integration status
 
-Selection only: OpenAI is not yet wired into the app and live routing has not changed. Existing hosted runtime assumes Anthropic. Before enabling OpenAI, add a distinct provider/configuration, provider-aware registry/readiness, streaming/structured output support and the shared hosted budget/accounting path. Test billing and fallback behavior; evaluate hints, explanations and grading separately. Never classify OpenAI usage as free local inference.
+OpenAI is integrated as a distinct provider/runtime. OPENAI_API_KEY is server-side configuration;
+Claude remains available through its own key and entries. Existing routing defaults and learner
+assignments are unchanged. Presence of a key means configured, not verified quality or account access.
 
-The API key belongs in local environment configuration, never chat, frontend storage or Git. No key was requested or accessed for this comparison; no paid requests were made. Preserve Claude as an optional provider rather than overwriting its registry entries.
+A capped synthetic evaluation completed six requests: four playground cases, one typed response
+and one stream. Estimated total: $0.000725. Luna correctly explained the whitespace bug missed by
+the local model. Hint granularity and broader grading quality remain unevaluated or incomplete;
+this does not justify a blanket switch. See `evals/results/report-2026-09-24-openai.md`.
+
+App estimates deliberately price all input at the short-context cache-write ceiling ($0.125/M),
+with output $0.50/M, ignoring cache-read discounts. They are conservative estimates, not invoices.
+The adapter bounds prompt size below the long-context tier, uses standard processing, disables
+reasoning for Chat Completions/tool compatibility and disables hidden transport retries.
+Reservations include structured schemas and wrapper allowance. Interrupted streams lacking final
+usage retain unknown billing at the reserved amount. Paid model benchmarks use the same accounting.
+
+The API key is excluded from Git, browser storage, backup reconstruction and docs. No course content
+or learner records were sent in this synthetic evaluation. Provider pricing/account limits can change;
+keep the local daily cap and provider-side billing limits configured.

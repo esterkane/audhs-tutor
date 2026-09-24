@@ -71,7 +71,7 @@ MANIFEST_SUM = "manifest.sha256"
 # which embed retrieved passages). Derived learner artefacts — assessment items cut from lectures,
 # cached representations — may still quote short passages; the manifest says so.
 CORPUS_TEXT_TABLES = ("chunk_provenance", "chunk", "index_state", "session_checkpoint")
-EXCLUDED_SETTINGS = ("anthropic_api_key", "hf_token")
+EXCLUDED_SETTINGS = ("anthropic_api_key", "openai_api_key", "hf_token")
 RECONSTRUCTION_SETTINGS = (
     "app_env",
     "routing_profile",

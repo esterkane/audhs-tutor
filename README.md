@@ -92,7 +92,16 @@ cd audhs-tutor
 
 The script installs missing CLI tools through Homebrew, installs backend/frontend dependencies, creates `.env` if absent, starts Qdrant and attempts to pull `llama3.1:8b`, `gemma3:12b` and `nomic-embed-text`. Model downloads require network access and disk space. Use `./scripts/bootstrap.sh --no-models` to skip those model pulls.
 
-Review `.env` before starting. For local-only use, leave `ANTHROPIC_API_KEY` empty and set `DAILY_BUDGET_USD=0`; tasks that require an unavailable hosted model will remain unavailable. Ollama must be running for local inference and embeddings.
+Review `.env` before starting. For local-only use, leave both `ANTHROPIC_API_KEY` and `OPENAI_API_KEY` empty and set `DAILY_BUDGET_USD=0`; tasks that require an unavailable hosted model will remain unavailable. Ollama must be running for local inference and embeddings.
+
+Optional OpenAI setup: add `OPENAI_API_KEY=your_key` to the local `.env`, then restart the backend.
+The Models screen lists **GPT-6 Luna** as an evaluation candidate; adding a key does not change
+routing. Hosted benchmarks are paid and use the shared daily cap. Keep accurate tasks local;
+use hosted inference only for a demonstrated local capability/accuracy gap, with task-specific
+evaluation before assignment. The six-request synthetic compatibility check passed, including a
+code explanation that the local model missed; this is not a general tutoring/grading quality gate.
+See [provider evaluation](docs/slices/openai-provider.md) and [cost comparison](docs/PROVIDER-COST-COMPARISON.md).
+
 
 ```bash
 # Install and verify the browser Python runtime on each machine serving the app.

@@ -33,13 +33,17 @@ flowchart TB
     ING[Ingestion + provenance]
   end
   subgraph MD["Models"]
-    MP[ModelProvider: Ollama | MLX | Claude]
+    MP[ModelProvider: Ollama | Claude | OpenAI]
     RG[Model registry: HF / Ollama / MLX download + bench]
     RT[Routing table TaskClass→registry id]
   end
   KN & MD --> ST[("SQLite: learner state, content, chunks, traces, events")]
   ST --> OBS["Evaluation · Observability · Security"]
 ```
+
+OpenAI is an optional provider behind the existing gateway, with separate server-side credentials,
+conservative budget reservations and unchanged task defaults. Keep capable, accurate execution local;
+a key/transport benchmark does not prove pedagogical suitability. See `slices/openai-provider.md`.
 
 ### Kernel tools exposed to the orchestrator (deterministic, typed)
 `retrieve()`, `get_skill_state()`, `get_memory_state()`, `get_learning_goal()`, `get_preferences()`, `generate_example()`*, `grade_answer()`, `record_evidence()`, `update_competency()`, `schedule_review()`, `save_checkpoint()`, `park_tangent()`, `propose_adaptation()`. (*LLM-backed but schema-validated.)
