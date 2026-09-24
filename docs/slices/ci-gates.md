@@ -11,3 +11,13 @@
 The first public CI runs exposed eight backend test failures: SciPy was available in the developer's optional STT environment but absent from the default CI dependencies, and the registry readiness test assumed a host audio decoder. SciPy is now also a declared, locked dev dependency so WAV resampling tests run without installing the Apple-only MLX stack. Readiness tests explicitly cover absent/ffmpeg/afconvert decoders crossed with absent/present speech packages; no external decoder or model is needed for those assertions.
 
 Validation in a clean checkout with frozen base/dev dependencies (no STT group): backend lint, formatting, mypy and lockfile check passed; full suite 293 passed before expanding the package-state matrix, followed by all 38 media tests passing with the final matrix. The tested backend matches the current committed Stage-3 curriculum plus the CI fix. Live learner data was not used. Remote validation is recorded by the GitHub Actions run for the fix commit.
+
+
+### Linux browser teardown — 2026-09-24
+
+Run 35978177388 completed all nine browser tests, then hung before the suite summary until the
+25-minute job timeout. Logs show surviving make/package-manager/server descendants at cleanup.
+Playwright web servers now receive SIGTERM with a five-second grace period, and the frontend runs
+Vite directly under Node rather than a make → package-manager chain. This allows child shutdown
+before forced cleanup and reduces inherited output-pipe owners. Local CI-mode validation passed all nine journeys in 26.2 seconds and exited cleanly. Remote
+verification is pending the new GitHub run; the cancelled run is not reported as passing.

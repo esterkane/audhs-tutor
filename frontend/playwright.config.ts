@@ -5,7 +5,8 @@ import { defineConfig, devices } from '@playwright/test'
  * fresh `data/sandbox.db` (never `data/dev.db`) and serves the API with hosted providers off (empty
  * API key, daily budget 0); `make sandbox-frontend` runs Vite against it. Both are started here,
  * each waited for on its own URL, and never reused: a sandbox that is already running holds state
- * from someone's walk-through, so Playwright fails fast on a busy port instead of running on it.
+ * from someone's walk-through, so Playwright fails fast on a busy port instead of running on it. Vite runs directly under Node;
+ * both servers receive bounded graceful shutdown.
  * Tests share that one database, so they run serially and each ends the session it started.
  * No paid provider, no microphone, no model pull. 127.0.0.1 avoids IPv6-first `localhost` flakes.
  */
@@ -33,6 +34,7 @@ export default defineConfig({
   webServer: [
     {
       command: 'make -C .. sandbox-backend',
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
       url: `${API_URL}/api/health`,
       reuseExistingServer: false,
       timeout: 180_000,
@@ -41,13 +43,15 @@ export default defineConfig({
       env: { SANDBOX_API_PORT: API_PORT },
     },
     {
-      command: 'make -C .. sandbox-frontend',
+      // Run Vite directly so package-manager descendants cannot retain output pipes on Linux.
+      command: `node node_modules/vite/bin/vite.js --host 127.0.0.1 --port ${UI_PORT} --strictPort`,
+      gracefulShutdown: { signal: 'SIGTERM', timeout: 5000 },
       url: UI_URL,
       reuseExistingServer: false,
       timeout: 120_000,
       stdout: 'ignore',
       stderr: 'pipe',
-      env: { SANDBOX_API_PORT: API_PORT, SANDBOX_UI_PORT: UI_PORT },
+      env: { API_PORT },
     },
   ],
 })
