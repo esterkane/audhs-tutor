@@ -3,12 +3,12 @@
 Owner reported repeated confidence demands, questions without help, unclear exits and dot-product questions for every area. ADR-0016 and docs/slices/session-clarity.md implement the new flow.
 
 - Goal selection is strict: no active lesson means a clear review/activation link. Area links preselect the right area. Starting snapshots one selection for lesson plan and review scope; old sessions explicitly show their own topic.
-- Confidence is optional/collapsed for assessments, challenges, code, listening and review. Omission remains null. Recap ratings are optional. Stop session and Change topic finish without a question or recap; soft-timer stop uses the same path.
+- Confidence is optional/collapsed for assessments, challenges, code, listening and review. Omission remains null. Recap ratings are optional. Stop session and Change topic finish without a question or recap; soft-timer stop uses the same path. Stopping before an explanation creates no unseen recall item.
 - Lesson context, inline question hints/explanations and opt-in local read-aloud are available. Draft answers and delivered assistance survive explanation navigation; storage failures cannot hide a successful grade. Review assistance is logged and caps FSRS ratings at Hard.
 - Clear/Ask me later labels persist as explicit bookmarks, never mastery evidence. Home lists saved lessons with Revisit. No new database migration/dependency, no live draft activation or learner-history rewrite.
 - pedagogy.v2 versions the optional-confidence prompt; v1 stays unchanged. Required code/pedagogy reviews rechecked and cleared all major findings.
 
-Verification: 372 backend tests, 63 component tests, 10 isolated Playwright journeys, generated API types and lint passed. Browser screenshot inspected. Required code and pedagogy re-reviews report no remaining majors. Tests use fakes/disposable data; the local 3/5 tutor comparison remains a separate incomplete quality gate.
+Verification: 374 backend tests, 63 component tests, 10 isolated Playwright journeys, generated API types and lint passed. Browser screenshot inspected. Required code and pedagogy re-reviews report no remaining majors. Tests use fakes/disposable data; the local 3/5 tutor comparison remains a separate incomplete quality gate.
 
 Quality evidence: local Gemma broad tutor suite remained 3/5 hard checks with both old and final prompts (different brevity failures); the broader quality gate stays open. This UI change does not certify generated explanations/hints as always correct or answer-withholding. No paid API was used. Personal voice benchmark gate remains unchanged.
 

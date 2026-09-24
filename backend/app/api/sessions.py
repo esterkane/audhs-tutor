@@ -279,6 +279,21 @@ async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, sessio
     skill_id = cp.get("skill_id")
     if not skill_id:
         return
+    explained = (
+        await db.execute(
+            select(models.LearningEvent).where(
+                models.LearningEvent.learner_id == learner_id,
+                models.LearningEvent.session_id == session_id,
+                models.LearningEvent.verb == "explained",
+            )
+        )
+    ).scalars()
+    if not any(
+        (event.context_json or {}).get("node_id") == skill_id
+        and int((event.result_json or {}).get("sentences") or 0) > 0
+        for event in explained
+    ):
+        return  # stopping before an explanation must not create an unseen recall card
     has = (
         await db.execute(
             select(ReviewItem.id)

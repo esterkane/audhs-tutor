@@ -26,4 +26,6 @@ Clear/later bookmarks are explicit reminders and can be revisited on Home; they 
 The old base and final pedagogy.v2 each passed 3/5 hard checks in one local Gemma run. Old: recap and negated-solution brevity failed. New: QKV explanation and negated-solution brevity failed; hint withholding and Socratic checks passed in this run. These are limited single-run observations, not proof of equal quality. A discarded broader wording change scored 2/5; it is not shipped. `evals/results/session-clarity-comparison.json` records the final comparison. No hosted model/key was used.
 
 ## Verification
-Verification: 372 backend tests, 63 component tests, 10 isolated Playwright journeys, generated API types and lint passed. Browser screenshot inspected. Required code and pedagogy re-reviews report no remaining majors. Tests use fakes/disposable data; the local 3/5 tutor comparison remains a separate incomplete quality gate.
+Verification: 374 backend tests, 63 component tests, 10 isolated Playwright journeys, generated API types and lint passed. Browser screenshot inspected. Required code and pedagogy re-reviews report no remaining majors. Tests use fakes/disposable data; the local 3/5 tutor comparison remains a separate incomplete quality gate.
+
+Early-stop follow-up: session end only schedules a first recall item after a non-empty explanation event on that session/skill. Negative and positive regression tests preserve this boundary. GitHub first caught a macOS-only screenshot path; the portable Playwright output-path fix passed all four CI jobs (run 35989913285).

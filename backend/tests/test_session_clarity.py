@@ -142,3 +142,35 @@ async def test_assisted_review_is_not_logged_as_unaided_easy(
         )
     ).scalar_one()
     assert event.result_json["rating"] == 2 and event.result_json["hint_count"] == 1
+
+
+async def test_stopping_before_teaching_does_not_schedule_unseen_material(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    await load_seed(db, SEED)
+    s = (await client.post("/api/sessions", json={})).json()
+    response = await client.post(f"/api/sessions/{s['id']}/end", json={})
+    assert response.status_code == 200
+    assert not list((await db.execute(select(models.ReviewItem))).scalars())
+
+
+async def test_explained_lesson_still_gets_a_recall_item(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    from app.db.events import EventWriter, Verb
+    from app.kernel import session as ksession
+    from app.schemas.common import ObjectType
+
+    await load_seed(db, SEED)
+    s = (await client.post("/api/sessions", json={})).json()
+    row = await ksession.get(db, s["id"])
+    await EventWriter(db, ksession.event_context(row)).emit(
+        Verb.EXPLAINED,
+        ObjectType.TURN,
+        "synthetic-explanation",
+        result={"sentences": 2, "cited_sources": []},
+        context={"node_id": s["active_skill"]["id"]},
+    )
+    assert (await client.post(f"/api/sessions/{s['id']}/end", json={})).status_code == 200
+    item = (await db.execute(select(models.ReviewItem))).scalar_one()
+    assert item.skill_id == s["active_skill"]["id"]
