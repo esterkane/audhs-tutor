@@ -16,6 +16,7 @@ from app.db.models import (
     KnowledgeArea,
 )
 from app.kernel import curriculum
+from app.kernel.assessment_quality import course_metadata, orientation_title
 
 DEFAULTS = [
     (
@@ -127,17 +128,90 @@ async def get(db: AsyncSession, area_id: str) -> KnowledgeArea:
     return area
 
 
+# Retain the explicitly stemmed terms shipped in the original catalog. Other terms
+# match tokens (including ordinary English plurals), not arbitrary identifier prefixes.
+_LEGACY_STEMS = {"statisti", "evaluat", "fine-tun", "finetun", "deploy"}
+
+
+def _has_term(text: str, terms: list[Any]) -> bool:
+    low = text.casefold()
+    for term in terms:
+        value = str(term).strip().casefold()
+        if not value:
+            continue
+        tail = "" if value in _LEGACY_STEMS else r"(?!\w)"
+        if value in {
+            "database",
+            "tensor",
+            "gradient",
+            "regression",
+            "classification",
+            "optimization",
+            "character",
+            "prompt",
+            "agent",
+            "transformer",
+            "container",
+            "embedding",
+            "vector",
+            "guardrail",
+            "workflow",
+            "keyframe",
+            "prototype",
+        }:
+            tail = r"s?(?!\w)"
+        if re.search(r"(?<!\w)" + re.escape(value) + tail, low):
+            return True
+    return False
+
+
+def teachable_passage(text: str, terms: list[Any]) -> bool:
+    """Bounded evidence filter, not a semantic quality guarantee."""
+    body = curriculum._body(text)
+    low = body.casefold()
+    if (
+        sum(
+            marker in low
+            for marker in (
+                "report created:",
+                "source files collected",
+                "collected comps:",
+                "rendering plug-ins:",
+            )
+        )
+        >= 2
+    ):
+        return False
+    opening = re.sub(r"^#+[^\n]*\n", "", body).strip()
+    if course_metadata(body) or orientation_title(opening[:250]):
+        return False
+    if not passage_matches(text, terms):
+        return False
+    # Code is evidence only when a programming-language term itself is requested.
+    # Do not admit RAG sample data just because it sits in a RAG lesson folder.
+    languages = {
+        "css": {"css"},
+        "javascript": {"javascript", "js"},
+        "python": {"python", "py"},
+        "sql": {"sql"},
+    }
+    for term in terms:
+        for language in languages.get(str(term).strip().casefold(), set()):
+            code = re.search(r"```" + language + r"\s*\n(.*?)```", body, re.S | re.I)
+            if code and len(re.findall(r"[A-Za-z_]\w*", code[1])) >= 8:
+                return True
+    prose = re.sub(r"```.*?```", " ", body, flags=re.S)
+    return len(re.findall(r"[A-Za-zÀ-ÿ]{3,}", prose)) >= 25
+
+
 def match(doc: Document, terms: list[Any]) -> str | None:
     # A course-wide fallback is explicit; its chapters are not all assumed to teach the topic.
     for level, text in [
         ("title/section", " ".join([doc.title, doc.section or "", doc.lecture or ""])),
         ("course context", doc.course or ""),
     ]:
-        low = text.casefold()
-        for term in terms:
-            value = str(term).strip().casefold()
-            if value and re.search(r"(?<!\w)" + re.escape(value), low):
-                return level
+        if _has_term(text, terms):
+            return level
     return None
 
 
@@ -145,11 +219,7 @@ def passage_matches(text: str, terms: list[Any]) -> bool:
     # Exclude the ingestion title/header: bundled example data may live in a topic folder
     # without teaching that topic (e.g. billing FAQs in a RAG exercise).
     body = text.split("\n", 1)[1] if "\n" in text else text
-    return any(
-        re.search(r"(?<!\w)" + re.escape(str(term).strip().casefold()), body.casefold())
-        for term in terms
-        if str(term).strip()
-    )
+    return _has_term(body, terms)
 
 
 async def source_rows(db: AsyncSession, area: KnowledgeArea) -> list[dict[str, Any]]:
@@ -249,21 +319,13 @@ async def excerpts(
         .order_by(Document.course, Document.id, Chunk.ordinal)
     )
 
-    # Round-robin across courses and documents. Keep substantive prose rather than setup code.
-    def prose_words(text: str) -> int:
-        body = re.sub(r"```.*?```", " ", curriculum._body(text), flags=re.S)
-        return len(re.findall(r"[A-Za-zÀ-ÿ]{3,}", body))
-
+    # Round-robin across courses and documents, after bounded evidence filtering.
     pools: dict[str, list[dict[str, Any]]] = defaultdict(list)
     seen_docs: set[str] = set()
     total = 0
     for chunk, doc in (await db.execute(stmt)).all():
         total += 1
-        if (
-            doc.id in seen_docs
-            or prose_words(chunk.text) < 25
-            or not passage_matches(chunk.text[:1200], area.terms_json)
-        ):
+        if doc.id in seen_docs or not teachable_passage(chunk.text[:1200], area.terms_json):
             continue
         seen_docs.add(doc.id)
         pools[doc.course or "Unlabelled source"].append(
@@ -291,7 +353,8 @@ async def excerpts(
         "selected_courses": sorted({str(c["course"]) for c in chosen}),
         "basis": (
             "Direct metadata matches; trusted, latest, nonduplicate passages. "
-            "Up to 12 documents, balanced across courses; first topic-matching prose passage per document. "
+            "Up to 12 documents, balanced across courses; first substantive topic-matching prose "
+            "or requested-language code passage per document. "
             "Not exhaustive coverage."
         ),
     }
