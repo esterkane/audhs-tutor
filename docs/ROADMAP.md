@@ -124,3 +124,23 @@ Cloud, auth, Tauri, LangGraph, Elasticsearch, Langfuse (optional compose profile
 - [ ] Interactive workflow builder and real LangChain/n8n integrations.
 
 - [x] Session clarity (2026-09-24): strict topic scope, optional confidence, direct stop/change topic, clear/later bookmarks, inline question help and local read-aloud. ADR-0016; broad model-quality and personal voice gates remain open.
+
+## Creative learning continuation — 2026-09-24
+
+- [x] Creative source-selection regressions fixed; six reviewed area drafts now cover 12 starter lessons, unpublished. Two missing downloads explicitly skipped by owner.
+- [x] Browser audio visualizer lab in Playground: local audio/demo, bounded presets, repeatable guided experiments, accessibility and lifecycle checks. 72 frontend tests, 11 browser journeys, lint pass.
+- [x] Visualizer direct controls, three examples and deterministic block explanations; explicit draft/apply/save separation. 77 frontend tests, targeted browser journey and lint/types pass.
+- [x] Optional visualizer signal-flow diagram with selectable blocks, draft labels and style-aware output bindings. 79 frontend tests; targeted browser journey and lint/types pass.
+- [x] React Flow canvas for existing visualizer blocks, validated rewiring and keyboard alternatives. 82 frontend tests; real connector-drag journey, lint/types and production build pass.
+- [x] Fixed-sample block walkthrough with input/output values, explicit progression and draft-reset behavior. 83 frontend tests, targeted browser journey and lint/types pass.
+- [x] Visualizer UX clarity pass: simple first-use path, adjacent Apply/status, optional JSON/lesson, prevent saving stale preview. 84 frontend tests, browser journey and lint/types pass.
+- [x] Local-file playback UX: WaveSurfer overview, explicit sound/motion semantics, position and completion states. 86 frontend tests, browser journey, lint/types/build pass.
+- [x] Local audio pause/resume and accessible seek timeline through one playback controller. 87 frontend tests, browser transport journey, lint/types pass.
+- [x] Explicit approximate audio section repeat with pause/stop/seek semantics and cancellation regression. 88 frontend tests, real-loop browser journey, lint/types pass.
+- [x] Optional bounded low-frequency spectrogram with time/frequency explanation and local two-tone verification. 90 frontend tests, browser journey, lint/types/build pass.
+- [x] V2 bounded block authoring, draft undo/redo and staged local preset import; validated dependency refusal and preservation of applied/saved state.
+- [x] V3 three local fixed-sample comparisons: frequency selection, smoothing and mapping/clipping; no learner-state or audio mutation. Combined checkpoint: 100 frontend tests, 3 visualizer journeys, lint/build pass.
+- [ ] V1 owner comprehension check (desktop/narrow implementation and automated checks complete).
+- [ ] V4 portable format decision/converter: proposal and four browser reference fixtures ready; native conformance unverified.
+- [ ] Separate native macOS visualizer: Core Audio capture and Metal renderer; not implemented by the browser teaching stage.
+- [ ] Optional Jev benchmark on public/synthetic source-relevance cases before any provider integration.

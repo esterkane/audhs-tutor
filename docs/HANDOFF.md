@@ -1,3 +1,191 @@
+# Latest: complete working-tree publication checkpoint — 2026-09-25
+
+Owner requested commit everything and push. All remaining tracked/untracked project changes are included in scoped commits: creative source selection, browser audio visualizer V0–V3 with associated research/proposed portable contract, and shared status docs. V4 proposal remains unaccepted; committing the proposal does not authorize implementation. Private downloaded materials, secrets, ignored runtime assets and private prompt packages remain excluded.
+
+Fresh verification before publication: make lint passed; backend 378 passed (3 warnings); frontend 45 files/111 tests passed; production build passed; full Chromium suite 15 passed against disposable sandbox. Known build bundle-size and WaveSurfer worker_threads warnings remain. Full suite also logged duplicate React child keys during session-clarity journey: investigate separately; tests passed but this warning is not resolved. No new local/hosted model quality or owner-comprehension claims.
+
+Audit stream recovery F10 was inspected but not yet edited when publication request arrived. Resume R2 with request-identity guards and preserved partial response UI, then voice transport F12. Existing audit commits 0efdb0b, 0fb9765, 71ccf4c, 1726b32, e06e4e6 included in this push. Udemy Unreal/menu gaps and After Effects pending remain open. See earlier entries for implementation evidence.
+
+# Latest: audit commits, sandbox acceptance and R2a worker recovery — 2026-09-25
+
+Owner authorized commit and continue. Committed only scoped audit changes: 0efdb0b plan/skills, 0fb9765 review queue, 71ccf4c explicit lesson intent. Unrelated inherited visualizer/area work and mixed historical HANDOFF remain unstaged; nothing pushed.
+
+Continuation: real sandbox Chromium acceptance added for Map/Home explicit lesson with/without existing session, keep-current, replacement, reload and persisted server checkpoint. These two plus three existing session journeys all passed (5). Updated obsolete completion-copy assertion. Show-all refetch race remains component-tested rather than browser-race tested; owner comprehension not certified.
+
+R2a/F11 worker crash reproduced (reported timeout instead). Added run error listener, shared cleanup, disposal settlement for load/run, generation guard and rejection of concurrent runs. Five fake-worker tests pass; full frontend 45 files/111 tests and make lint pass. Backend 378 passed before this frontend-only continuation. No new schema/API/dependencies. Code review found no run-lifecycle majors; load initial postMessage synchronous-throw cleanup remains a pre-existing minor outside this bounded fix. Details docs/slices/audit-worker-recovery.md. Tests use sandbox/fakes, no live learner changes or paid calls.
+
+Next: R2 stream identity and partial-text recovery (F10), voice transport (F12), error/reset/parking cases. R0 full evidence ledger remains partial, broader accessibility and owner UX acceptance stay open. No pushes.
+
+# Latest: audit R1b lesson selection and focus context — 2026-09-25
+
+F01/F13 implemented: Map carries explicit lesson ID in URL; Home selected-lesson panel keeps the current session or explicitly ends/starts chosen lesson. Nonmutating eligibility preflight prevents ending for invalid/non-teachable/locked target; POST validates again. Failed replacement retains selection and discloses an already-ended prior session. Together shows active topic and phase-aware return. API types regenerated.
+
+Fresh checks: backend 378 passed (3 existing warnings), frontend 45 files/107 tests passed, make lint passed. Map failure reproduced first. Cross-route Map/Home tests for with/without session, keep-current and invalid preflight; backend confirms stored checkpoint/active skill; Together distinguishes recommendation. Code and pedagogy reviews clear majors. docs/slices/audit-lesson-intent.md contains details. No live browser/owner-comprehension pass claimed.
+
+R1 implementation covers F01/F02/F13; sandbox browser acceptance remains open. R0 full ledger remains partial. Next: finish R1 browser acceptance then R2 reliability. No commit/push, dependency, migration, paid model call or live learner-state modification; inherited changes preserved.
+
+# Latest: audit R1a review queue fix implemented — 2026-09-25
+
+Started audit implementation with bounded F02. Reproduced Show all skipping B after rating A; replaced mutable index with stable IDs and tab-local v1 checkpoint (admitted/reviewed/current/revealed/all). Cap remains selected until explicit expansion. Ratings finishing after unmount persist; shared pending state prevents same-runtime remount duplicates. Review-only cache reconciliation preserves vocabulary behavior. Completion copy distinguishes subset versus no due cards.
+
+Fresh verification: backend 377 passed (3 existing warnings); frontend 44 files/103 tests passed; make lint passed (ruff, formatting, mypy, TypeScript, eslint). Four focused Review tests include cap/refetch/remount and deferred mutation. Code and pedagogy reviews cleared blocker/major findings after fixes. No browser/owner usability pass claimed. Details: docs/slices/audit-review-queue.md.
+
+Delta: frontend/src/routes/Review.tsx, Review.test.tsx, features/review/api.ts and docs. No dependencies, schema migration, live learner state, paid API, commits or pushes. Inherited work preserved. R0 full evidence ledger remains partial; R1 not complete. Next: F01 map → explicit lesson intent → server checkpoint, with existing-session choice, then F13 active topic/return route. F04 backend idempotency remains necessary; this client fix cannot prevent duplicates after lost responses/reload.
+
+# Latest: UX/technical audit implementation plan and skills — 2026-09-25
+
+Owner requested detailed audit review, implementation plan and reusable skills. Created docs/AUDIT-IMPLEMENTATION-PLAN.md: 48 findings mapped to R0–R11, dependencies, acceptance gates, copyable prompts and decision boundaries. R IDs are separate from historic P0–P9. No audit application fixes or fresh application test runs in this planning slice. Current source checks confirm several defect patterns; remaining findings need reconciliation. Preserve existing uncommitted visualizer and area work. React Flow/WaveSurfer already installed; do not duplicate dependencies. Owner comprehension and real voice/model quality gates remain separate.
+
+Four new skills installed in .claude/skills and ~/.codex/skills: audhs-audit-slice, audhs-state-reliability, audhs-content-correction, audhs-learning-ux. Existing skills/settings/hooks remain intact. Start with R0 evidence ledger and R1 lesson intent/review identity; then early reliability including voice transport. Existing owner-only ADR/commit conventions remain. No live publication, migrations, paid model calls, commit or push authorized by this package. User deliverable: /Users/saru/Documents/Codex/2026-09-20/an/outputs/audhs-audit-implementation-plan.md.
+
+Udemy status correction to older entries: retry stopped again at Unreal, After Effects still pending. React Three Fiber scan recovered; Next.js external files recovered; remaining resource-menu limitations require targeted work. Do not infer completion from older running-batch notes.
+
+# Latest: 15 selected Udemy courses scanning and ingesting — 2026-09-25
+
+Owner confirmed access to all 16 requested Udemy courses except interactive posters. Explicitly exclude gem-seedtouchdesigner-dynamic-interactive-posters-course. A private fixed 15-course queue is running in signed-in Chrome, with the existing resource helper and a private explicit-queue adaptation; downloader source unchanged. Report: Downloads/Udemy Resources/udemy-batch-creative-selected-20260925.json. Chrome My Lists and worker tabs must remain open. Do not start a competing browser batch.
+
+At handoff: TypeScript scan complete (197 verified attachments, 196 ZIP CRC checks); ingestion complete (1,243 imported documents, 338 indexed unique chunks; skipped XML diagrams/media and other unsupported inputs recorded). External npm link HTTP403 retained as unavailable. React scan running; remaining 13 queued. Do not claim the whole batch complete.
+
+Private scripts, backup, logs and progress: /Users/saru/Documents/Codex/2026-09-20/an/work/udemy-new-courses/. process.py is running and processes completed course folders with hosted keys disabled and --no-media. finalize.py updates the user report every 30 seconds and runs verify.py after terminal batch status. User report: /Users/saru/Documents/Codex/2026-09-20/an/outputs/selected-udemy-import-status.md. Inspect progress.json, process.log and verification.json for actual results before resuming. No course publication or learner-state edits. Browser/processor are resumable; operational errors and unsupported content need honest follow-up. Public-source import below remains completed. Visualizer V4 decision stays pending.
+
+# Latest: requested public creative-learning sources imported — 2026-09-25
+
+Owner supplied 52 URLs (36 public/tool/course pages and 16 Udemy listings). Completed bounded public acquisition: 425 pages checked including linked lessons, 296 documents ingested with 3,621 latest unique chunks. Source URL/heading provenance retained, WEB trust tier 1; local embeddings only, hosted keys disabled for the operation. No lessons activated/published, no learner-state edits, no purchases, no app code changes or commits. Raw snapshots and SQLite backup stay private outside the Git repository.
+
+Verified SQLite latest unique chunks = Qdrant points = 90,284. Retrieval checks return three source-attributed hits each for p5.js, Book of Shaders, ComfyUI and Motion. Repeated imports use URI/content hashes; final run has 228 unchanged and 68 imported/new-version outcomes, totaling 296 present source documents. Data provenance labels Web learning — <host> are source groupings, not separate learning-path decisions.
+
+Coverage report: /Users/saru/Documents/Codex/2026-09-20/an/outputs/web-learning-import-status.md. Private acquisition/curation/import/verification scripts, fetch and ingest manifests, snapshots and backup: same workspace work/web-materials/. Read the report before claiming complete course/site/video capture. Initial crawl bounded at 320 pages/2 levels/45 children per host, then 40 Agents pages and 65 linked tool-doc pages. Pricing/launcher/index/thin video-description content kept as references rather than teaching chunks. Binary project assets and embedded video/audio not ingested.
+
+Open: 16 listed Udemy URLs match none of the local course manifests; owner asked whether enrolled or local files available (answer pending). No new signed-in session accessed. Shadertoy HTTP403; Adobe two timeouts after one retry each; seven child HTTP errors, dynamic/empty pages and one oversized asset documented. No access controls bypassed. Resume existing source gaps selectively; do not rerun older blocked Udemy attachments. Visualizer V4 decision remains independently pending.
+
+# Latest: visualizer V0–V3 executed; V4 format decision pending — 2026-09-24
+
+Owner authorized continuing the consolidated phases. V0 audit complete; V1 desktop/narrow workspace consolidation implemented/reviewed (owner comprehension remains unverified). V2 adds validated block creation, dependency-aware refusal to delete referenced blocks, bounded valid-checkpoint undo/redo, staged file import and explicit reset-to-applied. V3 adds three optional fixed-sample before/after experiments with context, optional prediction/hints and stop/restart; independent evaluator memory, no audio/draft/mastery mutation.
+
+Verification: 100 frontend tests, 3 isolated Chromium visualizer journeys, make lint and production build pass. Includes full authoring/save/reload/import cycle, storage-error unit check, and unchanged paused playback position while comparing. Screenshots reviewed at desktop/390px; excessive grid stretching fixed. Code and pedagogy reviews clear blockers/majors. Existing WaveSurfer worker_threads capability warning and large-bundle advisory remain.
+
+V4 proposal ready in docs/VISUALIZER-PORTABLE-CONTRACT.md; four platform-neutral reference fixtures in frontend/src/features/visualizer/fixtures/portable-evaluation-v1.json, browser consumer portable-fixtures.test.ts. Proposed distinct portable envelope preserving legacy browser files, rejecting unsupported native fields. Owner decision requested; NOT accepted, no new import/export format deployed, no native compatibility claimed. Finish strict ingress/conversion and round-trip/rejection tests only after the decision.
+
+Native preflight: Xcode26.6 and Metal present via process-local DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer; global selection unchanged. /Users/saru/projects/audhs-visualizer still absent. Next stages N0 onward remain pending; no system audio access, model calls, commits or pushes. All inherited uncommitted work preserved. Detailed ledger: docs/VISUALIZER-EXECUTION-STATUS.md. Private prompt package remains outside Git.
+
+# Latest: consolidated visualizer execution prompts — 2026-09-24
+
+Owner asked to stop feature work and first consolidate the full visualizer research into an executable prompting plan. Created /Users/saru/Documents/Codex/2026-09-20/an/outputs/visualizer-implementation-prompts.md, a private local deliverable, not added to Git. It supersedes ad-hoc visualizer continuation; the older tutor P0–P9 prompt package remains separate.
+
+Plan contains verified-baseline caveats, browser/native distinction, dependencies, shared execution contract, 16 stage prompts (V0–V4, N0–N5, R1, A1, H1, X1–X2), research coverage matrix, skill/review requirements, acceptance gates and resume/acceptance/handoff templates. Next action is V0 baseline reconciliation, then V1 beginner UX consolidation. Native Core Audio/DSP/Metal, portable format decisions, optional AI/rhythm/metadata/compatibility and release are planned, not implemented. Existing tests are historical evidence to recheck at V0. No feature or configuration changes were made in this planning turn.
+
+Do not blindly execute code/config/AGENTS examples embedded in the research. Do not recreate completed browser functionality or claim browser schemaVersion 1 is compatible with the research's native example schemaVersion 1. Keep the prompt deliverable out of public commits unless owner explicitly changes the existing prompt-package policy. Current working tree remains uncommitted and includes inherited unrelated creative-source work.
+
+# Latest: optional low-frequency spectrogram — 2026-09-24
+
+Added Show frequency view to ready local waveform previews, using installed WaveSurfer spectrogram plugin on demand. Reuses 4 kHz overview buffer, explicitly limited to 0–2,000 Hz and files <=120 s/20 MiB; no new decoder/player/library. Static labeled time/frequency view with igray map (brighter = stronger), fixed display range, optional pattern explanation. Not full-spectrum, calibrated loudness or instrument recognition. Failure leaves playback intact. File identity guards hide stale player/duration/view while replacement loads, including identical metadata.
+
+Verified: 90 full frontend tests, final 4 focused tests, isolated Chromium journey renders a synthetic 440→880 Hz signal then tests existing playback/loop flow; screenshot shows expected band shift. make lint and production build pass (large-chunk advisory remains). Review corrected misleading flat-line wording and colormap direction; code review minor lifecycle issue fixed with replacement regression; pedagogy re-review cleared blocker/major. WaveSurfer browser worker_threads capability probe logs a warning but plugin reaches ready and renders using browser path; no Node capability used.
+
+Also isolated Playwright Vite cache from live development cache and pre-included lazy graph/audio plugins. This fixes the recurring React identity error during dependency re-optimization without stopping owner processes. All changes uncommitted. Full-spectrum analysis and separate native macOS app remain future work.
+
+# Latest: repeatable audio section — 2026-09-24
+
+Added optional Repeat a short section control with explicit start/end seconds and Enable/Update/Off. Validation at UI and media boundary requires finite in-duration range at least 0.5 s. Enable seeks to start; paused remains paused. Native timeupdate loops approximately (not sample-accurate). Pause retains repeat; Stop/new file/demo clear it; manual timeline seek turns it off. Wrap resets visual smoothing; no automatic announcement per wrap. No new library/backend/API/model/persistence change.
+
+Verified: full frontend 88 tests, isolated Chromium journey including observed real loop wrap, make lint. Code review found a major pause-during-ended-repeat-start cancellation race; operation generation now ignores stale rejections. Regression confirms paused player survives and resumes; focused tests and final frontend lint/types pass. Re-review cleared blockers/majors. Pedagogy review cleared blockers/majors; improved off-state instructions when playback already loaded. Changes remain uncommitted. Region dragging on waveform, sample-accurate editing and spectrogram are not implemented.
+
+# Latest: familiar audio transport — 2026-09-24
+
+Added Pause file/Resume file and keyboard-accessible playback timeline using the existing Web Audio media element. Pause retains position/context; Stop disposes it and next Play restarts. Timeline available once metadata is loaded, including while paused; seeking clamps to duration, resets smoothing/current picture and synchronizes oscillator time to actual media position. Capture still requires running playback (explicitly explained); no stale paused analyser read. Resume completion cannot revive stopped/replaced input. No additional dependency/API/model/learner state.
+
+Verified: all 87 frontend tests pass, isolated Chromium journey passes real pause→seek to 3s→resume→capture→stop, make lint passes backend/frontend checks and types. Tests cover seek bounds/nonfinite input and Stop during pending Resume. Code and pedagogy reviews cleared blockers/majors; clarified capture after paused seek. Existing sound/reduced-motion policy retained. Changes remain uncommitted. Selected-region repeat and spectrogram remain future work.
+
+# Latest: clear local-file audio playback + WaveSurfer — 2026-09-24
+
+Owner requested detailed comparison of similar tools and clearer library-based UX. Compared official Audacity import/transport, Sonic Visualiser waveform/time ruler and WaveSurfer docs; details in docs/AUDIO-UX-COMPARISON.md (user copy in outputs/audio-ux-comparison.md). This was documentation/source analysis, not hands-on competitor usability testing.
+
+Added pinned wavesurfer.js 8.0.0 for muted, noninteractive local waveform overview (20 MiB preview limit; existing playback limit 100 MiB). Choosing file does not play it. Renamed Start analysis to Play file silently/with sound; added selected filename, playback position, natural-completion status, clear real-time level-analysis explanation and Stop/restart semantics. File mode uses Capture current picture in place of ambiguous Next sample. Explicit reduced-motion and sound preference explanations. Existing Web Audio adapter remains sole playback source; no seek/pause/regions in this slice. No upload, transcription, model call, persistence or learner-state change.
+
+Verified: full frontend 86 tests; after copy/status fixes 8 focused tests; isolated Chromium journey asserts waveform ready without autoplay, play/capture/stop and existing graph interactions. make lint and final frontend lint/types/build pass; build retains large-chunk advisory. Screenshot inspected. Initial browser run hit stale Vite dependency-cache React identity after package install; clearing generated node_modules/.vite fixed it and rerun passed. Reviews cleared blockers/majors; fixed completion→demo stale state and stale waveform-ready copy. No owner processes stopped. Backend behavior unchanged.
+
+All work remains uncommitted. Next audio improvements: single-controller pause/seek then repeatable selected-region replay; spectrogram only with teaching labels. Do not claim those features implemented or the whole app UX reviewed.
+
+# Latest: visualizer UX clarity review — 2026-09-24
+
+Owner reported confusing UX. Reviewed default browser screenshot and flow: raw JSON visible, Apply buried below optional tools, duplicate example loader and default lesson competing with custom experiments. Simplified start path to silent sample → change picture → Apply; moved primary Apply beside basic controls, labeled pending/invalid state, disabled Save/Export until draft matches preview, collapsed JSON and example-specific lesson, kept desktop contextual help sticky, removed duplicate loader. Clarified fixed-sample tools as optional, custom-preset low-energy guidance and demo reset after Apply. No data/model/API changes.
+
+Verified: 84 frontend tests pass, isolated Chromium visualizer journey passes, make lint passes. After final review wording adjustments, affected five route tests and frontend lint/types pass. Default screenshot inspected. Code and pedagogy reviews cleared blocker/major findings; minor copy suggestions addressed. This is a visualizer UX pass, not a review of every app screen or proof of user usability. Existing advanced functionality preserved. Changes remain uncommitted.
+
+# Latest: repeatable sample walkthrough — 2026-09-24
+
+Added optional Walk through one sample below the signal diagram. It evaluates the validated editor draft with fixed demoFrame(1), t=1 s, dt=0.1 s and fresh smoothing memory, then reveals each node's input, mechanism and output plus final clipped visual bindings. Explicit start/next/end/restart; semantic draft edits reset it. Independent of live playback/preview/saved presets. No new dependency/API/mastery/events/AI calls.
+
+Verified: 83 frontend tests, targeted isolated Chromium journey, make lint (backend/frontend types and lint). Browser verifies numeric progression, reset after changing the feature and stop; component test independently asserts expected values and axe. Code/pedagogy reviews both cleared blockers/majors. docs/slices/visualizer-sample-trace.md, README and roadmap updated. Changes remain uncommitted with preceding slices. This is an isolated worked example, not a historical live-audio trace. Block creation/removal and RAG/automation teaching examples remain future slices.
+
+# Latest: React Flow visualizer block editor — 2026-09-24
+
+Owner approved the suggested React Flow integration. Added pinned MIT @xyflow/react 12.11.6 and lazy-loaded canvas under Signal flow diagram → Open block canvas. Existing nodes can be dragged, inspected with click/Enter and rewired by connector gestures; native dropdowns provide equivalent connection editing. All edits pass shared connectPreset/parsePreset validation before replacing the editor draft. Cycles/invalid targets preserve prior draft. Apply changes preview; Save persists connections. Layout positions are temporary. No new API/database/events/mastery/model call. No RAG/n8n execution or block creation/deletion in this first slice.
+
+Verification: full frontend 82 tests passed; make lint passed; production build passed with bundle-size advisory. After final fixes, focused connection tests (3) and isolated Chromium journey passed again. Journey covers node dragging, keyboard inspection, actual connector drag, dropdown editing, cycle rejection, apply/save/reload and valid constructor node ID. Screenshot inspected. Code/pedagogy reviews cleared blockers/majors; review fixes include explicit Apply/Save wording, null-prototype layout and actual gesture coverage. Browser found missing controlled node measurements; applyNodeChanges preserves them now. Dependency peer warnings are existing eslint-plugin-jsx-a11y/eslint and openapi-typescript/TypeScript mismatches, not React Flow peers.
+
+See docs/slices/visualizer-block-editor.md. README/roadmap updated. All changes remain uncommitted alongside inherited work. Next extensions: add/remove typed blocks, guided node-by-node tracing, then separate simulated RAG/automation lessons; audio-region tooling and native app remain later. Do not claim those extensions implemented.
+
+# Latest: visualizer signal-flow diagram — 2026-09-24
+
+Added an optional collapsed Signal flow diagram in the visualizer editor. It shows each validated draft dependency separately, independent fixed/time sources and visual bindings; Inspect selects the existing block explanation. Invalid JSON hides draft connections and unapplied graphs are labeled. Rings explicitly labels its energy binding unused. No new API, state persistence, model request, mastery change or dependencies.
+
+Verification: 79 frontend tests passed; make lint passed (backend and frontend checks). After review wording fixes, both focused diagram tests, isolated Chromium visualizer journey and frontend lint/types passed again. Browser screenshot inspected. Code review had no blocker/major; pedagogy review's energy-binding accuracy major was fixed and re-review cleared. Backend behavior unchanged; prior 377-test backend result was not rerun. README, roadmap and docs/slices/visualizer-flow.md updated. All changes remain uncommitted, including inherited creative/visualizer slices. Native macOS application remains future work.
+
+# Latest: visualizer controls and block explanations — 2026-09-24
+
+Continued the in-tutor visualizer with labeled style/color and block parameter controls, three explicit-load examples, and Explain buttons for deterministic block-specific mechanisms and hints. Controls share the JSON draft; Apply and Save remain explicit. Draft explanations do not present values from the previous applied graph as their own. Numeric edits allow intermediate input and validate on blur/Enter. Bars now respond to scale, covered by a renderer regression test. No new dependency, API, model call, database or mastery changes.
+
+Verified: all 77 frontend tests, backend/frontend lint and types, targeted isolated Chromium visualizer journey (including feature changes, numeric edits, draft explanation, apply, persistence and local audio), screenshot inspected. Required code and pedagogy re-reviews report no remaining blockers/majors; fixes include numeric editing and keeping changing output values outside live regions. The first browser attempt used an overly strict label-text locator for a select; corrected to its accessible combobox role and the journey passed. Previous full backend/browser suite results remain recorded below; they were not repeated for this frontend-only slice.
+
+See docs/slices/visualizer-controls.md. README and roadmap updated. Work remains uncommitted alongside earlier slices. Native macOS implementation remains future work; this is an additional browser learning stage, not completion of the full native report.
+
+# Latest: visualizer navigation visibility — 2026-09-24
+
+Owner could not find the visualizer from Learning areas. Added Audio visualizer directly to the shared main navigation, retaining the Playground link. Existing browser journey now starts at /areas and opens the visualizer through the header. This is a navigation-only follow-up; prior uncommitted work preserved.
+
+# Latest: browser visualizer lab and Jev assessment — 2026-09-24
+
+Owner clarified the supplied native audio-visualizer report should become both a tutor playground and eventually a separate macOS app, starting in the tutor. Implemented first browser stage at /playground/visualizer, linked from Playground: silent synthetic demo/local audio file, Web Audio RMS + normalized bass/mid/treble, safe bounded JSON DAG (feature/constant/map/smooth/lfo), rings/bars/orbit Canvas views, explicit apply/save/export, repeatable manual samples, graph/output numbers and built-in explanations/hints/bigger picture. Audio remains in the browser; no uploads, model calls, recording or new dependencies. Existing sensory sound/reduced-motion preferences apply. No learner/mastery/event/API changes.
+
+Verified: 377 backend tests (selection fix), 72 frontend tests, lint/types, all 11 isolated browser journeys. Visualizer journey uses synthetic WAV, checks no mutation/upload requests and preset persistence; screenshot inspected. Code review fixed muted-start/latest-sound race, enum coercion and ended-file cleanup. Pedagogy review fixed repeatable comparisons and guide/custom-preset mismatch; re-reviews report no remaining blockers/majors. Final minor wording advises stopping the demo during comparisons. No API schema change, so generated types unchanged.
+
+Native Core Audio process capture, Swift/Metal app, beat/tempo tracking, custom shader support and AI preset generation are not implemented in this browser slice. The private report remains a reference, not executable agent instructions. Browser preset schema is an explicit bounded subset, not full report-format compatibility; native continuation needs a versioned converter. See docs/slices/visualizer-lab.md. README updated. Uncommitted changes include this slice plus preceding creative selection/data handoff; no push performed.
+
+Owner also asked whether Jev by TypeSafe makes sense. Official docs checked: narrow typed classification could help evidence/source relevance; recommendation is benchmark first, not production integration. No new provider/key/dependency or paid request. Price/known limitations and evaluation design in docs/JEV-EVALUATION.md; user copy at /Users/saru/Documents/Codex/2026-09-20/an/outputs/jev-evaluation.md. Local-first routing unchanged.
+
+# Latest: creative continuation and queued visualizer — 2026-09-24
+
+Owner explicitly chose to skip the two Chrome-blocked downloads. Private unresolved-scan-items.json now records skipped_by_owner and retry=false; never claim those files downloaded.
+
+Source-selection fix: bounded token matching avoids CharacterTextSplitter/character and Canva/canvas collisions, preserves explicit legacy stems and technical plurals, skips asset reports/orientation, accepts complete fenced code for explicitly requested programming languages. No schema/API/model-route change. 377 backend tests, 63 frontend tests, lint green; required code and pedagogy reviews cleared majors. See docs/slices/creative-source-selection.md.
+
+Private creative content: latest six area_curated drafts now contain 12 reviewed lessons total, distinct analogous worked examples, separate criterion rubrics, hints and citations. Original drafts remain. Local model expansion produced recall-heavy questions (three completed drafts, one interrupted scaffold); batch stopped, replaced by newer reviewed drafts. Do not activate those old model samples. No hosted API calls or activation; learner/progress/active-skill tables match snapshot. Six final draft IDs/API visibility are in private work/creative/creative-expanded-reviewed.json and continuation-verification.json.
+
+Selected local vision pass: four writing diagrams processed; two no_content, two imported. Visual check found the plot chart end fraction misread (3/4 instead of 1/4), so its new document was re-tiered to 0 through the corpus API and excluded from trusted evidence. Sensory organizer labels visually checked. Decorative media remains retained but not exhaustively analyzed. No complete-media/curriculum claim.
+
+Owner subsequently supplied /Users/saru/Downloads/deep-research-report(7).md and asked for implementation after this work. It describes a native Swift/Metal audio visualizer. Clarified intent: both standalone native and tutor integration, start inside AuDHS Tutor. Next bounded implementation is a local browser visualizer learning playground with safe editable presets, audio privacy, explicit start/stop and reduced-motion handling; native capture/Metal remains later, not an implicit architecture replacement.
+
+# Latest: creative topic drafts — 2026-09-24
+
+Owner requested continuation after the creative collection import. Added six editable areas with one unpublished source-reviewed starting lesson each: creative/design thinking, writing/storytelling, visual design/image creation, video/motion, creative coding/web animation, music creation/arrangement. Used existing ORM and curriculum validation; no app code, dependency, schema or routing changes. Draft origin area_curated and state source_reviewed_draft; creative-code domain programming, other new drafts domain creative. No model API calls. This is bounded starter content, not complete curriculum coverage. Two drafts cite multiple courses. Stored reference answers, examples and hints; hint UI rendering was not separately tested.
+
+Automatic candidate inspection exposed remaining sampler limits: character matched CharacterTextSplitter, canvas matched business canvases, After Effects asset reports passed prose filtering, and pure CSS examples were skipped. These six drafts use explicitly inspected passages instead. Catalogue matching still uses metadata heuristics; the global selector was not fixed. Narrowed terms on the new areas only. Avoid blindly batch-generating further creative lessons until source relevance and code selection are handled.
+
+Verified six new areas/drafts through localhost /api/areas, empty validation findings for each draft, SQLite integrity ok and zero FK errors. Full-row comparisons against the private pre-draft snapshot show unchanged prior area/draft rows, active skill nodes, learner/session/assessment/mastery/review/preferences/feedback and corpus tables. No lessons activated. Bulk media analysis and two Chrome-blocked attachments remain deferred/unresolved. No browser walkthrough or full code suite was needed for this data-only operation.
+
+Private continuation scripts/results/backup: /Users/saru/Documents/Codex/2026-09-20/an/work/creative/{curate_drafts.py,creative-drafts-created.json,creative-drafts-verification.json,before-creative-drafts.db}; user report outputs/creative-materials-status.md. Do not commit purchased content, private scripts containing excerpts, or database backups. HANDOFF remains uncommitted, including the preceding import section.
+
+# Latest: creative-course materials — 2026-09-24
+
+Owner requested the same download/import process for the Udemy collection `creative`. All 35 courses were scanned, followed by a corrected retry for incomplete courses. Verified 583 direct attachments, 191 ZIPs and 301 external files; imported 743 documents with 1,758 new unique searchable chunks. SQLite integrity and foreign keys pass; Qdrant and latest unique SQLite chunks both count 86,661. Three course-filtered retrieval checks pass. Learner, session, assessment, memory, preference, active curriculum and draft tables match the private pre-import snapshot.
+
+Downloaded originals stay in the existing local Udemy Resources directory. Text/code/documents were prioritized; stock images, media and native project formats are not all semantically ingested. Ten RARs have validated ZIP copies, with image analysis deferred. No new lessons activated, area drafts generated, model routes changed or paid API used. Area/curriculum curation of the new creative subjects remains separate work.
+
+Final scanner report is honestly completed-with-issues (30 clean, five partial): 25 remaining warnings reference already captured records. Two actual missing attachments were tested through their normal Udemy links and Chrome blocked them with ERR_BLOCKED_BY_CLIENT: the end-to-end multimodal voice notebook and animation fill mode ZIP. No protection bypassed. Public external webpage/login links remain references/manual entries.
+
+Downloader changes outside this Git repo fix delayed button-to-anchor hydration and transient JSON report reads; 38 focused tests pass and the revised scanner was live-tested. Private report and continuation artifacts: `/Users/saru/Documents/Codex/2026-09-20/an/outputs/creative-materials-status.md` and `work/creative/`. Do not stage downloaded material or the private database backup. This is a material import, not a complete creative curriculum or a quality-gate claim.
+
 # Latest: session clarity and topic isolation — 2026-09-24
 
 Owner reported repeated confidence demands, questions without help, unclear exits and dot-product questions for every area. ADR-0016 and docs/slices/session-clarity.md implement the new flow.
