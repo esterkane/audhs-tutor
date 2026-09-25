@@ -3,12 +3,12 @@ import { ReadAloud } from '../features/voice/ReadAloud'
 import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
 import { useSkills } from '../features/skills/api'
 import { OptionalConfidence } from '../components/OptionalConfidence'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { SessionControls } from '../features/session/SessionControls'
-import { useDue, useRate } from '../features/review/api'
+import { useDue, useRate, useRatingPending } from '../features/review/api'
 import { REVIEW_BLOCK_TYPES, routeForPhase, useBlockTransition, useSession } from '../features/session/api'
 import { nowMs } from '../lib/time'
 import { useMode } from '../stores/mode'
@@ -20,21 +20,65 @@ const RATINGS = [
   { value: 4, label: 'Easy', hint: 'Instant' },
 ]
 
+type ReviewCheckpoint = {
+  version: 1
+  admitted: string[] | null
+  reviewed: string[]
+  current: string | null
+  revealed: string | null
+  all: boolean
+}
+function restoreQueue(key: string): ReviewCheckpoint {
+  try {
+    const v = JSON.parse(sessionStorage.getItem(key) ?? 'null')
+    if (
+      v?.version === 1 &&
+      (v.admitted === null ||
+        (Array.isArray(v.admitted) && v.admitted.every((id: unknown) => typeof id === 'string'))) &&
+      Array.isArray(v.reviewed) &&
+      v.reviewed.every((id: unknown) => typeof id === 'string') &&
+      (v.current === null || typeof v.current === 'string') &&
+      (v.revealed === null || typeof v.revealed === 'string') &&
+      typeof v.all === 'boolean'
+    )
+      return v
+  } catch {
+    /* unavailable storage: keep this visit usable */
+  }
+  return { version: 1, admitted: null, reviewed: [], current: null, revealed: null, all: false }
+}
+
 export function Review() {
   const { sessionId } = useMode()
+  return <ReviewSession key={sessionId ?? 'none'} sessionId={sessionId} />
+}
+
+function ReviewSession({ sessionId }: { sessionId: string | null }) {
+  const queueKey = `audhs-review-queue:v1:${sessionId}`
+  const [queue, setQueue] = useState(() => restoreQueue(queueKey))
+  const saving = useRef(false)
+  useEffect(() => {
+    if (!sessionId) return
+    try {
+      sessionStorage.setItem(queueKey, JSON.stringify(queue))
+    } catch {
+      /* no progress writes depend on browser storage */
+    }
+  }, [queue, queueKey, sessionId])
   const skills = useSkills()
   const [, refreshHelp] = useState(0)
-  const [showAll, setShowAll] = useState(false)
+  const showAll = queue.all
+  const setShowAll = (all: boolean) => setQueue((q) => ({ ...q, all }))
   // confidence is per card: it is sent with the rating and cleared for the next card
   const [confidence, setConfidence] = useState<number | null>(null)
   const due = useDue(sessionId, showAll)
-  const rate = useRate()
+  const rate = useRate(true)
+  const ratingPending = useRatingPending()
   const session = useSession(sessionId)
   const transition = useBlockTransition(sessionId)
   const nav = useNavigate()
-  const [idx, setIdx] = useState(0)
-  const [revealed, setRevealed] = useState(false)
-  const shownAt = useRef(nowMs())
+
+  const [shownAt, setShownAt] = useState(nowMs)
 
   if (!sessionId)
     return (
@@ -45,9 +89,31 @@ export function Review() {
         </Button>
       </Card>
     )
+  if (due.isError)
+    return (
+      <Card>
+        <p role="alert">Could not load review cards. Your saved ratings are retained.</p>
+        <Button onClick={() => void due.refetch()}>Retry</Button>
+        <SessionControls sessionId={sessionId} />
+      </Card>
+    )
   if (due.isLoading || !due.data) return <Card>Loading review…</Card>
   const items = due.data.items
-  const item = items[idx]
+  const admitted = queue.admitted ?? items.map((i) => i.item_id)
+  if (queue.admitted === null) setQueue((q) => ({ ...q, admitted }))
+  const remaining = items.filter(
+    (i) => !queue.reviewed.includes(i.item_id) && (showAll || admitted.includes(i.item_id)),
+  )
+  const item = remaining.find((i) => i.item_id === queue.current) ?? remaining[0]
+  const currentId = item?.item_id ?? null
+  if (currentId !== queue.current) {
+    setQueue((q) => ({ ...q, current: currentId, revealed: null }))
+    setConfidence(null)
+    setShownAt(nowMs())
+  }
+  const revealed = currentId !== null && queue.revealed === currentId
+  const setRevealed = (value: boolean) => setQueue((q) => ({ ...q, revealed: value ? currentId : null }))
+  const idx = queue.reviewed.length
   const helpKey = `audhs-review:${sessionId}:${item?.item_id ?? ''}`
   const hintCount = readDraft(helpKey).hints
   const state = session.data?.state
@@ -82,10 +148,13 @@ export function Review() {
         <SessionControls sessionId={sessionId} />
         <CardTitle>Review done</CardTitle>
         <p>
-          {items.length === 0
+          {due.data.total_due === 0
             ? 'Nothing is due right now.'
-            : `${items.length} of ${due.data.total_due} due items reviewed (capped at ${due.data.cap} for this session).`}
+            : `${queue.reviewed.length} cards reviewed in this session. This selected review set is complete.`}
         </p>
+        {!showAll && due.data.total_due > remaining.length && (
+          <Button onClick={() => setShowAll(true)}>Show all due cards</Button>
+        )}
         <div className="flex gap-2 mt-3 flex-wrap">
           {inReviewBlock ? (
             <Button variant="primary" onClick={() => void continuePlan()} disabled={transition.pending}>
@@ -109,22 +178,44 @@ export function Review() {
     )
 
   async function rateIt(rating: number) {
-    if (rate.isPending) return
-    await rate.mutateAsync({
-      itemId: item.item_id,
-      body: {
-        session_id: sessionId!,
-        rating,
-        latency_ms: nowMs() - shownAt.current,
-        confidence_pre: confidence ?? undefined,
-        hint_count: hintCount,
-      },
-    })
-    setRevealed(false)
-    clearDraft(helpKey)
-    setConfidence(null)
-    shownAt.current = nowMs()
-    setIdx((i) => i + 1)
+    if (saving.current || ratingPending) return
+    saving.current = true
+    try {
+      await rate.mutateAsync({
+        itemId: item.item_id,
+        body: {
+          session_id: sessionId!,
+          rating,
+          latency_ms: nowMs() - shownAt,
+          confidence_pre: confidence ?? undefined,
+          hint_count: hintCount,
+        },
+      })
+      setRevealed(false)
+      clearDraft(helpKey)
+      setConfidence(null)
+      setShownAt(nowMs())
+      // Persist in the successful request continuation even if this view has unmounted.
+      const saved = restoreQueue(queueKey)
+      const next: ReviewCheckpoint = {
+        ...queue,
+        ...saved,
+        admitted: saved.admitted ?? queue.admitted,
+        reviewed: [...new Set([...queue.reviewed, ...saved.reviewed, item.item_id])],
+        current: null,
+        revealed: null,
+      }
+      try {
+        sessionStorage.setItem(queueKey, JSON.stringify(next))
+      } catch {
+        /* server rating remains saved */
+      }
+      setQueue(next)
+    } catch {
+      /* mutation error is displayed; retain the card for retry */
+    } finally {
+      saving.current = false
+    }
   }
 
   return (
@@ -147,7 +238,7 @@ export function Review() {
             : 'Answer in your head or aloud. Then reveal the answer when ready.'}
         </p>
         <p className="text-xs text-muted">
-          Review {idx + 1} of {items.length}
+          Review {idx + 1} of {idx + remaining.length}
           {due.data.total_due > items.length
             ? ` (capped at ${due.data.cap}; ${due.data.total_due} due in total)`
             : ''}{' '}
@@ -195,7 +286,7 @@ export function Review() {
                 <Button
                   key={r.value}
                   onClick={() => void rateIt(r.value)}
-                  disabled={rate.isPending}
+                  disabled={ratingPending}
                   className="flex-col h-auto py-2"
                 >
                   <span>{r.label}</span>
