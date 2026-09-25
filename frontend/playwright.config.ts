@@ -51,7 +51,7 @@ export default defineConfig({
       timeout: 120_000,
       stdout: 'ignore',
       stderr: 'pipe',
-      env: { API_PORT },
+      env: { API_PORT, AUDHS_VITE_CACHE_DIR: 'node_modules/.vite-browser-tests' },
     },
   ],
 })

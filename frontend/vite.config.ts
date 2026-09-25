@@ -5,6 +5,8 @@ import { configDefaults } from 'vitest/config'
 
 // https://vite.dev/config/
 export default defineConfig({
+  cacheDir: process.env.AUDHS_VITE_CACHE_DIR ?? 'node_modules/.vite',
+  optimizeDeps: { include: ['@xyflow/react', 'wavesurfer.js', 'wavesurfer.js/dist/plugins/spectrogram.js'] },
   plugins: [react(), tailwindcss()],
   // API_PORT lets `make dev-sandbox` proxy to a second backend; ws:true carries the voice WebSocket.
   server: {

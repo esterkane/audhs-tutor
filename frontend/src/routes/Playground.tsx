@@ -45,6 +45,7 @@ export function Playground({ runnerFactory = createPyodideRunner }: { runnerFact
     <div className="grid gap-4">
       <div>
         <h1 className="text-xl font-semibold">Coding playground</h1>
+        <Link to="/playground/visualizer">Open audio visualizer lab →</Link>
         <p className="text-sm text-muted mt-1">
           Experiment with Python. Ask the tutor about your code. Practice here does not change mastery scores.
         </p>

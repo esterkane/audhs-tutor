@@ -15,6 +15,7 @@ import { Preferences } from '../routes/Preferences'
 import { Recap } from '../routes/Recap'
 import { Review } from '../routes/Review'
 import { Session } from '../routes/Session'
+import { Visualizer } from '../routes/Visualizer'
 import { Playground } from '../routes/Playground'
 import { MODE_LABELS, useMode } from '../stores/mode'
 
@@ -25,7 +26,7 @@ const queryClient = new QueryClient({
 export function Shell({ children }: { children: React.ReactNode }) {
   const { mode, energy, sessionId } = useMode()
   useSensory()
-  const wide = useLocation().pathname === '/playground'
+  const wide = useLocation().pathname.startsWith('/playground')
   return (
     <div className="min-h-screen">
       <header className="flex flex-wrap gap-3 items-center justify-between px-4 py-3 border-b border-line bg-card">
@@ -35,6 +36,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <nav className="flex flex-wrap gap-3 text-sm">
           <Link to="/map">Skill map</Link>
           <Link to="/playground">Playground</Link>
+          <Link to="/playground/visualizer">Audio visualizer</Link>
           <Link to="/together">Together</Link>
           <Link to="/experiments">Experiments</Link>
           <Link to="/vocab">Vocab</Link>
@@ -63,6 +65,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/session" element={<Session />} />
             <Route path="/playground" element={<Playground />} />
+            <Route path="/playground/visualizer" element={<Visualizer />} />
             <Route path="/review" element={<Review />} />
             <Route path="/recap" element={<Recap />} />
             <Route path="/map" element={<Map />} />
