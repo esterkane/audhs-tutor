@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { useSkillMap } from '../features/map/api'
-import { useMode } from '../stores/mode'
 
 /** Whole map first (open learner model): Mermaid picture + an accessible list with the same data. */
 export function Map() {
   const map = useSkillMap()
-  const { sessionId, setSkill } = useMode()
   const nav = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [svgError, setSvgError] = useState<string | null>(null)
@@ -34,8 +32,7 @@ export function Map() {
   if (map.isLoading || !map.data) return <Card>Loading map…</Card>
 
   function learn(id: string) {
-    setSkill(id)
-    nav(sessionId ? '/session' : '/')
+    nav(`/?lesson=${encodeURIComponent(id)}`)
   }
 
   return (

@@ -174,3 +174,22 @@ async def test_explained_lesson_still_gets_a_recall_item(
     assert (await client.post(f"/api/sessions/{s['id']}/end", json={})).status_code == 200
     item = (await db.execute(select(models.ReviewItem))).scalar_one()
     assert item.skill_id == s["active_skill"]["id"]
+
+
+async def test_explicit_selection_validates_before_creating_session(
+    client: AsyncClient, db: AsyncSession
+) -> None:
+    await load_seed(db, SEED)
+    a = await skill_graph.get_node_by_slug(db, "vec-dot-product")
+    locked = await skill_graph.get_node_by_slug(db, "attn-dot-product")
+    assert a and locked
+    before = len(list((await db.execute(select(models.Session.id))).scalars()))
+    for skill_id, status in (("missing", 404), (locked.id, 409)):
+        response = await client.post("/api/sessions", json={"skill_id": skill_id})
+        assert response.status_code == status
+    assert len(list((await db.execute(select(models.Session.id))).scalars())) == before
+    result = (await client.post("/api/sessions", json={"skill_id": a.id})).json()
+    restored = (await client.get(f"/api/sessions/{result['id']}")).json()
+    assert restored["active_skill"]["id"] == a.id
+    assert restored["state"]["skill_id"] == a.id
+    assert restored["checkpoint"]["skill_id"] == a.id

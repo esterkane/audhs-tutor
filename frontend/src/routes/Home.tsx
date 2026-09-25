@@ -1,6 +1,7 @@
+import { SelectedLesson } from '../features/session/SelectedLesson'
 import { useAreas } from '../features/areas/api'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { Choice } from '../components/ui/choice'
@@ -25,6 +26,12 @@ import { skipNote, startLabel } from '../features/plan/labels'
 import { MODE_LABELS, useMode, type Mode } from '../stores/mode'
 
 export function Home() {
+  const [params] = useSearchParams()
+  const selected = params.get('lesson')
+  return selected ? <SelectedLesson key={selected} skillId={selected} /> : <HomeOverview />
+}
+
+function HomeOverview() {
   const { mode, energy, socratic, setMode, setEnergy, setSocratic, setSession, sessionId } = useMode()
   const start = useStartSession()
   const nav = useNavigate()

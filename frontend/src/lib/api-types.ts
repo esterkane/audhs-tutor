@@ -106,6 +106,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/sessions/selection/{skill_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Check explicit lesson eligibility without ending a session */
+    get: operations['check_selection_api_sessions_selection__skill_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/sessions': {
     parameters: {
       query?: never
@@ -4760,6 +4777,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['MaterialMarkOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  check_selection_api_sessions_selection__skill_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        skill_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SkillView']
         }
       }
       /** @description Validation Error */

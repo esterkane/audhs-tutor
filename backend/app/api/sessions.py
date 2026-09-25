@@ -109,6 +109,26 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
     )
 
 
+@router.get(
+    "/selection/{skill_id}",
+    response_model=SkillView,
+    summary="Check explicit lesson eligibility without ending a session",
+)
+async def check_selection(skill_id: str, db: DB, learner: Learner) -> SkillView:
+    from app.api.skills import _view
+
+    node = await skill_graph.get_node(db, skill_id)
+    if not skill_graph.teachable(node):
+        raise AppError(
+            "lesson_unavailable", "Choose an available teaching lesson.", http_status=409
+        )
+    if not await skill_graph.is_unlocked(db, learner.id, skill_id):
+        raise AppError(
+            "lesson_locked", "Complete this lesson's prerequisites first.", http_status=409
+        )
+    return await _view(db, learner.id, node)
+
+
 @router.post(
     "",
     summary="Start a session (learner-chosen mode + energy)",
@@ -116,6 +136,8 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
     status_code=201,
 )
 async def start(body: SessionStart, db: DB, learner: Learner) -> SessionOut:
+    if body.skill_id:
+        await check_selection(body.skill_id, db, learner)
     chosen = await skill_graph.selection(db, learner.id, body.skill_id)
     nxt, scope = chosen
     if scope is not None and nxt is None:

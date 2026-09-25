@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { useSensory } from '../features/sensory/useSensory'
-import { useCurrentSession } from '../features/session/api'
+import { routeForPhase, useCurrentSession } from '../features/session/api'
 import { useMode } from '../stores/mode'
 
 function nowMs() {
@@ -60,12 +60,14 @@ export function Together() {
     setPlaying(false)
   }
 
-  const task = session.data?.next_skill?.title
+  const task = session.data?.active_skill?.title
   return (
     <div className="grid gap-4">
       <Card>
         <CardTitle>Working alongside</CardTitle>
-        <p className="text-2xl mt-2">{task ? `Now: ${task}` : 'No session running.'}</p>
+        <p className="text-2xl mt-2">
+          {task ? `Now: ${task}` : session.data ? 'Current session' : 'No session running.'}
+        </p>
         <p className="text-sm text-muted mt-1">
           {session.data
             ? `${mode.replace('_', ' ')} mode · ${minutes} min here`
@@ -74,7 +76,7 @@ export function Together() {
         <div className="flex flex-wrap gap-2 mt-4">
           {session.data ? (
             <Button variant="primary" asChild>
-              <Link to="/session">Back to the session</Link>
+              <Link to={routeForPhase(session.data?.state)}>Back to the session</Link>
             </Button>
           ) : (
             <Button variant="primary" asChild>
@@ -89,7 +91,7 @@ export function Together() {
             ))}
         </div>
         <p className="text-sm text-muted mt-3">
-          This screen keeps you company: nothing is timed, tracked or scored here.
+          This is a quiet focus screen, not a live human companion. Nothing is scored here.
           {ambient === 'off' ? ' Ambient sound can be enabled under Preferences.' : ''}
         </p>
       </Card>

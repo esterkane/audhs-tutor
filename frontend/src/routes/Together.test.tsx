@@ -15,7 +15,9 @@ describe('Together', () => {
             id: 's1',
             mode: 'steady',
             energy: 3,
-            next_skill: { id: 'k', title: 'Softmax' },
+            active_skill: { id: 'k', title: 'Softmax' },
+            next_skill: { id: 'other', title: 'Next recommendation' },
+            state: { phase: 'review', block_status: 'running', plan_complete: false },
           })
         if (url.endsWith('/api/preferences'))
           return jsonResponse({ values: { 'ui.ambient': 'off' }, specs: [] })
@@ -25,6 +27,8 @@ describe('Together', () => {
     renderApp(<Together />)
     expect(await screen.findByText('Now: Softmax')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /brown noise/i })).not.toBeInTheDocument()
-    expect(screen.getByText(/nothing is timed, tracked or scored/)).toBeInTheDocument()
+    expect(screen.getByText(/not a live human companion/)).toBeInTheDocument()
+    expect(screen.queryByText(/Next recommendation/)).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Back to the session' })).toHaveAttribute('href', '/review')
   })
 })

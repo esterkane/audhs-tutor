@@ -4,6 +4,10 @@ import { Route, Routes } from 'react-router-dom'
 import { useMode } from '../stores/mode'
 import { jsonResponse, renderApp } from '../test/utils'
 import { Map } from './Map'
+import { useLocation } from 'react-router-dom'
+function SelectedLesson() {
+  return <p>{useLocation().search}</p>
+}
 
 vi.mock('mermaid', () => ({
   default: { initialize: vi.fn(), render: vi.fn(async () => ({ svg: '<svg data-testid="map-svg"></svg>' })) },
@@ -61,7 +65,7 @@ describe('Map', () => {
     renderApp(
       <Routes>
         <Route path="/map" element={<Map />} />
-        <Route path="/session" element={<p>SESSION SCREEN</p>} />
+        <Route path="/" element={<SelectedLesson />} />
       </Routes>,
       { route: '/map' },
     )
@@ -72,7 +76,7 @@ describe('Map', () => {
     const locked = screen.getByRole('button', { name: /locked/i })
     expect(locked).toBeDisabled()
     fireEvent.click(screen.getAllByRole('button', { name: /learn this/i })[1])
-    expect(useMode.getState().skillId).toBe('b')
-    expect(await screen.findByText('SESSION SCREEN')).toBeInTheDocument()
+    expect(await screen.findByText('?lesson=b')).toBeInTheDocument()
+    expect(useMode.getState().skillId).toBeNull()
   })
 })
