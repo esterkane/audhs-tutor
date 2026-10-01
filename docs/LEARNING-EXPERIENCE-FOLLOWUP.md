@@ -48,7 +48,7 @@ Acceptance: choose a notebook step without moving/executing the editor; know wha
 
 ### Q1 — Resume first, fewer decisions
 
-Coverage: UX26-F2/F4/F6/F7. Dependency: Q0.
+Coverage: UX26-F2/F4/F6/F7. Dependency: Q0. Status: partial — Home resume card implemented; see docs/slices/home-resume-card.md. Broader onboarding, notebook checkpoints and terminology tasks remain.
 Start with `routes/Home.tsx`, `app/App.tsx`, session checkpoint/selection APIs, prior audit R1 and Home tests. Put one primary resume/start card above optional settings, showing real area, last task and next small action. Offer short review and change topic as secondary actions. Empty areas explain what is missing and link to the correct source/setup screen; never substitute a random skill. Keep existing routes/deep links.
 
 Acceptance: fresh learner, active lesson, stopped lesson, notebook task and unavailable source states each have an honest primary action; reload resumes correct topic; changing topic does not erase work; keyboard and 390/800/1280px work. Baseline time-to-first-useful-action locally; <60s is a hypothesis, not a promise. Create a small glossary in the slice doc rather than mass-renaming every technical noun.

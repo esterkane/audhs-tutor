@@ -38,7 +38,7 @@ function HomeOverview() {
   const [offer, setOffer] = useState<SessionOut | null>(null)
   const transition = useBlockTransition(offer?.id ?? sessionId)
   const current = useCurrentSession()
-  const resumable = current.data && current.data.id
+  const resumable = !current.isError && current.data?.id
   const prefs = usePreferences()
   const setPref = useSetPreference()
   const material = useMaterial()
@@ -135,6 +135,107 @@ function HomeOverview() {
   const scaffold = preview.data?.blocks.find((b) => b.type === 'new_material')?.reason
   return (
     <div className="grid gap-4">
+      <h1 className="text-2xl font-semibold">Your next step</h1>
+      <Card aria-label="Start or resume learning">
+        <CardTitle>{resumable ? 'Continue where you left off' : 'Start with one useful step'}</CardTitle>
+        {current.isPending ? (
+          <p role="status">Checking your saved session…</p>
+        ) : current.isError ? (
+          <p role="alert">
+            Could not check your saved session. Your work has not been replaced.{' '}
+            <Button onClick={() => void current.refetch()}>Retry session check</Button>
+          </p>
+        ) : resumable ? (
+          <>
+            <p className="font-medium mt-2">{current.data?.active_skill?.title ?? 'Your saved session'}</p>
+            <p>
+              {current.data?.state?.plan_complete
+                ? 'Next: review your session recap.'
+                : current.data?.state?.block_status !== 'running'
+                  ? 'Next: choose the next block in your saved plan.'
+                  : current.data?.state?.phase === 'review'
+                    ? 'Next: continue your saved review.'
+                    : current.data?.state?.phase === 'recap'
+                      ? 'Next: review your session recap.'
+                      : 'Next: return to your current learning step.'}
+            </p>
+            <p className="text-sm text-muted">
+              Resuming keeps this session’s topic and place. Settings below apply to a new session.
+            </p>
+          </>
+        ) : (
+          <>
+            <p className="font-medium mt-2">{nextSkill?.title ?? 'Choose an available lesson'}</p>
+            <p className="text-sm text-muted">
+              {nextSkill
+                ? 'Start with the current settings; you can stop at any time.'
+                : 'Review your learning areas to find or activate a lesson. Your selected topic will not be replaced.'}
+            </p>
+          </>
+        )}
+        {(skills.isError || prefs.isError) && (
+          <p role="alert">
+            Could not load your lesson selection.{' '}
+            <Button
+              onClick={() => {
+                void skills.refetch()
+                void prefs.refetch()
+              }}
+            >
+              Retry lesson selection
+            </Button>
+          </p>
+        )}
+        <div className="flex gap-2 flex-wrap">
+          {resumable && (
+            <Button
+              variant="primary"
+              size="lg"
+              onClick={() => {
+                if (current.data)
+                  setSession(
+                    current.data.id,
+                    current.data.state?.skill_id ?? current.data.next_skill?.id ?? null,
+                  )
+                nav(routeForPhase(current.data?.state))
+              }}
+            >
+              Resume previous session
+              {current.data?.active_skill ? `: ${current.data.active_skill.title}` : ''}
+              {current.data?.state?.block_status === 'running' && current.data.state.phase
+                ? ` (${current.data.state.phase})`
+                : ''}
+            </Button>
+          )}
+          <Button
+            variant={resumable ? 'secondary' : 'primary'}
+            size="lg"
+            onClick={() => void begin()}
+            disabled={
+              current.isPending ||
+              current.isError ||
+              prefs.isPending ||
+              prefs.isError ||
+              skills.isError ||
+              start.isPending ||
+              setPref.isPending ||
+              skills.isFetching ||
+              Boolean((areaGoal || goal) && !nextSkill)
+            }
+          >
+            {start.isPending ? 'Starting…' : 'Start session'}
+          </Button>
+        </div>
+        {start.isError && (
+          <p role="alert" className="text-warn">
+            Could not start: {(start.error as Error).message}
+          </p>
+        )}
+        <p className="mt-3">
+          <Link to="/areas">Choose another topic</Link> ·{' '}
+          <Link to="/programs">Return to project notebooks</Link>
+        </p>
+      </Card>
       <AdaptationCards />
       <PromotedReminders />
       <details className="border border-line rounded-md p-3">
@@ -225,8 +326,11 @@ function HomeOverview() {
           </p>
         )}
       </Card>
-      <Card>
-        <CardTitle>Set up this session</CardTitle>
+      <details className="border border-line rounded-md p-3">
+        <summary className="cursor-pointer font-medium">Session options</summary>
+        <p className="text-sm text-muted my-2">
+          Optional: adjust pace, energy and teaching style for a new session.
+        </p>
         <Choice<Mode>
           label="State mode"
           options={(Object.keys(MODE_LABELS) as Mode[]).map((m) => ({
@@ -298,46 +402,7 @@ function HomeOverview() {
             )}
           </div>
         </details>
-      </Card>
-      <div className="flex gap-2 flex-wrap">
-        {(sessionId || resumable) && (
-          <Button
-            variant="primary"
-            size="lg"
-            onClick={() => {
-              if (current.data)
-                setSession(
-                  current.data.id,
-                  current.data.state?.skill_id ?? current.data.next_skill?.id ?? null,
-                )
-              nav(routeForPhase(current.data?.state))
-            }}
-          >
-            Resume previous session{current.data?.active_skill ? `: ${current.data.active_skill.title}` : ''}
-            {current.data?.state?.block_status === 'running' && current.data.state.phase
-              ? ` (${current.data.state.phase})`
-              : ''}
-          </Button>
-        )}
-        <Button
-          variant={sessionId || resumable ? 'secondary' : 'primary'}
-          size="lg"
-          onClick={() => void begin()}
-          disabled={
-            start.isPending ||
-            setPref.isPending ||
-            skills.isFetching ||
-            Boolean((areaGoal || goal) && !nextSkill)
-          }
-        >
-          {start.isPending ? 'Starting…' : 'Start session'}
-        </Button>
-      </div>
-      {start.isError && (
-        <p role="alert" className="text-warn">
-          Could not start: {(start.error as Error).message}
-        </p>
-      )}
+      </details>
     </div>
   )
 }

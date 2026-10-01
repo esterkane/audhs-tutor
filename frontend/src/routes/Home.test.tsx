@@ -213,3 +213,44 @@ describe('Home', () => {
     )
   })
 })
+
+it('puts the actual running topic and next action before optional setup', async () => {
+  useMode.setState({ sessionId: 'stale', mode: 'steady', energy: 3, socratic: false })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      jsonResponse(
+        url.endsWith('/api/sessions/current')
+          ? {
+              ...session,
+              active_skill: { ...session.next_skill, title: 'Missing values' },
+              state: { ...session.state, block_status: 'running', phase: 'review' },
+            }
+          : null,
+      ),
+    ),
+  )
+  renderApp(<Home />)
+  const resume = await screen.findByRole('button', { name: /Resume previous session: Missing values/ })
+  const setup = screen.getByText('Session options', { selector: 'summary' })
+  expect(resume.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  expect(screen.getByText('Next: continue your saved review.')).toBeVisible()
+  expect(setup.parentElement).not.toHaveAttribute('open')
+  expect(screen.getByRole('heading', { level: 1, name: 'Your next step' })).toBeVisible()
+})
+
+it('does not offer a stale local session as a verified resume after a server failure', async () => {
+  useMode.setState({ sessionId: 'stale', mode: 'steady', energy: 3, socratic: false })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) =>
+      url.endsWith('/api/sessions/current')
+        ? jsonResponse({ detail: 'Unavailable' }, 503)
+        : jsonResponse(null),
+    ),
+  )
+  renderApp(<Home />)
+  expect(await screen.findByText(/Could not check your saved session/)).toBeVisible()
+  expect(screen.queryByRole('button', { name: /Resume previous session/ })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+})
