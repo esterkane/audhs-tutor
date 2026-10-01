@@ -182,7 +182,8 @@ class VoiceLoop:
                 kind = data.get("type")
                 if kind == "start":
                     if state is not None:
-                        await self._interrupt()  # a restart ends the running turn first
+                        if not await self._wait_previous(ws):
+                            continue
                     state = await self._start(ws, data)
                 elif state is None:
                     await self._send(
@@ -193,7 +194,8 @@ class VoiceLoop:
                 elif kind == "text":
                     text = str(data.get("text") or "").strip()
                     if text:
-                        await self._interrupt()
+                        if not await self._wait_previous(ws):
+                            continue
                         self._turn_task = asyncio.create_task(
                             self._respond(ws, state, text, stt_ms=0)
                         )
@@ -209,6 +211,24 @@ class VoiceLoop:
             pass
         finally:
             await self._interrupt()
+
+    async def _wait_previous(self, ws: WebSocket) -> bool:
+        """Do not reuse the shared DB session while cooperative interruption is unfinished."""
+        await self._interrupt()
+        if not self._busy_beyond_interrupt:
+            return True
+        await self._send(
+            ws,
+            {
+                "type": "error",
+                "message": (
+                    "The previous voice response is still finishing. "
+                    "This new request was not started or queued. Wait, then send it again."
+                ),
+                "fallback": "text",
+            },
+        )
+        return False
 
     async def _send(self, ws: WebSocket, payload: dict[str, Any]) -> None:
         try:
@@ -274,7 +294,8 @@ class VoiceLoop:
             return  # leading / trailing silence: nothing to do, never a barge-in
         if status == "speech" and self.speaking_now():
             # barge-in: the learner talks while the tutor speaks → stop playback first
-            await self._interrupt()
+            if not await self._wait_previous(ws):
+                return
             await self._send(ws, {"type": "interrupted"})
         if not state.buffer:
             await self._send(ws, {"type": "listening"})
@@ -297,16 +318,7 @@ class VoiceLoop:
             return
         # a new utterance ends the running answer first: the shared DB session is used by one
         # coroutine at a time (SQLAlchemy async sessions are not safe for concurrent use)
-        await self._interrupt()
-        if self._busy_beyond_interrupt:
-            await self._send(
-                ws,
-                {
-                    "type": "error",
-                    "message": "Still finishing the previous answer — wait a moment or type.",
-                    "fallback": "text",
-                },
-            )
+        if not await self._wait_previous(ws):
             return
         t0 = time.perf_counter()
         try:

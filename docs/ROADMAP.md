@@ -125,3 +125,14 @@ clear keeps the panel open. Context changes dispose the previous connection. Fro
 lint/types/build and two isolated desktop/narrow keyboard journeys passed; zero voice sockets
 opened by recovery. Required reviews clear. See docs/slices/voice-text-recovery.md. Server voice
 turn identity and terminal text retrieval remain next; no full voice recovery/benchmark claim.
+
+
+## Voice session exclusivity — 2026-10-02
+
+Typed fallback and session restart now respect the previous voice task's cooperative cleanup
+timeout, as do speech and barge-in. Unfinished work keeps its task/session ownership; a new
+request is explicitly rejected, never silently queued. Regression reproduced before fix.
+Backend579, focused voice tests and lint/types passed; required reviews clear. See
+`docs/slices/voice-session-exclusivity.md`. This is per-connection admission safety; provider-
+resistant teardown and durable voice identities/recovery remain open. No paid calls or live
+microphone work. Previous interruption CI passed in both repositories.
