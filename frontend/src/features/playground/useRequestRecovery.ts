@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
 import type { TutorRequest } from './api'
+import type { Schemas } from '../../lib/api'
 
-export type PendingTutorRequest = {
+export type FollowupRetryBody = Schemas['AnswerFollowup'] & { parent_answer_id: string }
+export type PendingTutorRequest<T = TutorRequest> = {
   key: string
-  body: TutorRequest
+  body: T
   view: { snapshot: string; submitted: string; display: string; mode: 'explicit' | 'socratic' }
 }
 const memoryWarning =
@@ -11,8 +13,11 @@ const memoryWarning =
 const warning =
   'Retry details could not be saved in this tab. Keep this page open; recovery after reload is unavailable.'
 
-function read(storageKey: string): {
-  pending: PendingTutorRequest | null
+function read<T>(
+  storageKey: string,
+  validBody: (body: unknown) => body is T,
+): {
+  pending: PendingTutorRequest<T> | null
   error: string
   blocked: boolean
   inaccessible?: boolean
@@ -31,21 +36,11 @@ function read(storageKey: string): {
   try {
     if (!raw) return { pending: null, error: '', blocked: false }
     if (raw.length > 200000) throw new Error('Oversized retry record')
-    const value = JSON.parse(raw) as PendingTutorRequest
+    const value = JSON.parse(raw) as PendingTutorRequest<T>
     if (
       !value ||
       !/^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value.key) ||
-      !value.body ||
-      typeof value.body.session_id !== 'string' ||
-      typeof value.body.exercise !== 'string' ||
-      typeof value.body.code !== 'string' ||
-      (value.body.history !== undefined &&
-        (!Array.isArray(value.body.history) ||
-          value.body.history.length > 6 ||
-          !value.body.history.every(
-            (message) =>
-              message && ['user', 'assistant'].includes(message.role) && typeof message.text === 'string',
-          ))) ||
+      !validBody(value.body) ||
       !value.view ||
       !['snapshot', 'submitted', 'display'].every((k) => typeof value.view[k as 'snapshot'] === 'string') ||
       !['explicit', 'socratic'].includes(value.view.mode)
@@ -63,9 +58,9 @@ function read(storageKey: string): {
 }
 
 /** One unresolved request per surface. Retry storage is tab-local; normal tutor calls still send context. */
-export function useRequestRecovery(scope: string) {
+function useTypedRequestRecovery<T>(scope: string, validBody: (body: unknown) => body is T) {
   const storageKey = `tutor-request:v1:${scope}`
-  const [initial] = useState(() => read(storageKey))
+  const [initial] = useState(() => read(storageKey, validBody))
   const current = useRef(initial.pending)
   const blocked = useRef(initial.blocked)
   const memoryOnly = useRef(false)
@@ -74,11 +69,11 @@ export function useRequestRecovery(scope: string) {
   const [error, setError] = useState(initial.error)
   const [needsDiscard, setNeedsDiscard] = useState(initial.blocked)
 
-  function prepare(body: TutorRequest, view: PendingTutorRequest['view']): PendingTutorRequest {
+  function prepare(body: T, view: PendingTutorRequest<T>['view']): PendingTutorRequest<T> {
     if (blocked.current)
       throw new Error('Discard the unreadable retry details before starting a new request.')
     // Freeze exactly what is sent; optional undefined fields disappear as on the HTTP wire.
-    const frozen = JSON.parse(JSON.stringify(body)) as TutorRequest
+    const frozen = JSON.parse(JSON.stringify(body)) as T
     if (current.current) {
       if (JSON.stringify(current.current.body) === JSON.stringify(frozen)) return current.current
       throw new Error(
@@ -151,4 +146,40 @@ export function useRequestRecovery(scope: string) {
   }
 
   return { pending, error, needsDiscard, canUseMemoryOnly, continueInMemory, prepare, accept, discard }
+}
+
+function workspaceBody(body: unknown): body is TutorRequest {
+  if (!body || typeof body !== 'object') return false
+  const value = body as TutorRequest
+  return (
+    typeof value.session_id === 'string' &&
+    typeof value.exercise === 'string' &&
+    typeof value.code === 'string' &&
+    (value.history === undefined ||
+      (Array.isArray(value.history) &&
+        value.history.length <= 6 &&
+        value.history.every(
+          (message) =>
+            message && ['user', 'assistant'].includes(message.role) && typeof message.text === 'string',
+        )))
+  )
+}
+function followupBody(body: unknown): body is FollowupRetryBody {
+  if (!body || typeof body !== 'object') return false
+  const value = body as FollowupRetryBody
+  return (
+    typeof value.session_id === 'string' &&
+    typeof value.parent_answer_id === 'string' &&
+    value.parent_answer_id.length > 0 &&
+    value.parent_answer_id.length <= 128 &&
+    typeof value.question === 'string' &&
+    !!value.question.trim() &&
+    value.question.length <= 2000
+  )
+}
+export function useRequestRecovery(scope: string) {
+  return useTypedRequestRecovery(scope, workspaceBody)
+}
+export function useFollowupRequestRecovery(scope: string) {
+  return useTypedRequestRecovery(scope, followupBody)
 }

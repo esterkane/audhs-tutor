@@ -1,8 +1,9 @@
 """Local saved history. Reopening never regenerates or awards learning evidence."""
 
 from typing import Annotated, Literal
+from uuid import UUID
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, Header, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
@@ -10,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.deps import DB, Gateway, Learner
 from app.core.answer_recovery import MAX_RECEIPT
 from app.core.errors import AppError
-from app.db import answer_feedback, answer_sources
+from app.db import answer_feedback, answer_sources, workspace_requests
 from app.db.answer_search import literal_query
 from app.db.answers import save_completed
 from app.db.models import TutorAnswer, TutorAnswerFeedback
@@ -188,12 +189,29 @@ async def followup(
     learner: Learner,
     gateway: Gateway,
     request: Request,
+    idempotency_key: Annotated[UUID | None, Header()] = None,
 ) -> PlaygroundReply:
     row = await db.scalar(
         select(TutorAnswer).where(TutorAnswer.id == answer_id, TutorAnswer.learner_id == learner.id)
     )
     if row is None:
         raise KeyError("saved answer not found")
+    learner_id = learner.id
+    identity = None
+    if idempotency_key is not None:
+        identity, saved = await workspace_requests.claim(
+            db,
+            learner_id,
+            body.session_id,
+            str(idempotency_key),
+            {
+                "surface": "answer_followup",
+                "parent_answer_id": answer_id,
+                **body.model_dump(mode="json"),
+            },
+        )
+        if saved is not None:
+            return PlaygroundReply.model_validate(saved)
     clipped: list[str] = []
 
     def excerpt(value: object, maximum: int, label: str) -> str:
@@ -229,10 +247,10 @@ async def followup(
         if isinstance(context, dict)
         else None,
     )
-    return await playground.respond(
+    reply = await playground.respond(
         db,
         gateway,
-        learner.id,
+        learner_id,
         workspace_request,
         historical=historical,
         recovery=request.app.state.answer_recovery,
@@ -242,6 +260,10 @@ async def followup(
             "area_id": row.metadata_json.get("area_id"),
         },
     )
+
+    if identity is not None:
+        await workspace_requests.complete(db, learner_id, identity, reply.model_dump(mode="json"))
+    return reply
 
 
 @router.get(

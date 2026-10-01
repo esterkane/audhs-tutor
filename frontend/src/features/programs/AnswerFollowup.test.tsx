@@ -20,7 +20,10 @@ vi.mock('../../lib/api', async (importOriginal) => {
 })
 vi.mock('../voice/ReadAloud', () => ({ ReadAloud: () => null }))
 vi.mock('../voice/DictationButton', () => ({ DictationButton: () => null }))
-beforeEach(() => localStorage.clear())
+beforeEach(() => {
+  localStorage.clear()
+  sessionStorage.clear()
+})
 afterEach(() => vi.unstubAllGlobals())
 it('sends explicitly, follows the newly saved parent and restores an unsent draft', async () => {
   const fetcher = vi.fn(async (url: string) =>
@@ -88,9 +91,16 @@ it('retains a failed-save reply and pauses continuation rather than using the wr
 })
 
 it('continues from a recovered saved reply without regenerating it', async () => {
-  const fetcher = vi.fn(async (url: string) => url === '/api/answers/recover-save'
-    ? jsonResponse({ answer_id: 'recovered' })
-    : jsonResponse({ turn_id: 'reply-turn', text: 'Retained reply', save_error: 'Save failed', save_receipt: 'receipt' }))
+  const fetcher = vi.fn(async (url: string) =>
+    url === '/api/answers/recover-save'
+      ? jsonResponse({ answer_id: 'recovered' })
+      : jsonResponse({
+          turn_id: 'reply-turn',
+          text: 'Retained reply',
+          save_error: 'Save failed',
+          save_receipt: 'receipt',
+        }),
+  )
   vi.stubGlobal('fetch', fetcher)
   renderApp(<AnswerFollowup answerId="parent" />)
   await waitFor(() => expect(screen.queryByText(/Checking feedback for/)).not.toBeInTheDocument())
@@ -105,4 +115,35 @@ it('continues from a recovered saved reply without regenerating it', async () =>
   fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
   await waitFor(() => expect(fetcher.mock.calls[2][0]).toBe('/api/answers/recovered/followup'))
   expect(fetcher.mock.calls[1][0]).toBe('/api/answers/recover-save')
+})
+
+it('retries the original parent and question after reload while preserving a new draft', async () => {
+  const fetcher = vi
+    .fn()
+    .mockRejectedValueOnce(new Error('Lost response'))
+    .mockResolvedValue(jsonResponse({ text: 'Recovered reply', answer_id: 'child', turn_id: 'turn' }))
+  vi.stubGlobal('fetch', fetcher)
+  const first = renderApp(<AnswerFollowup answerId="parent" />)
+  fireEvent.change(screen.getByLabelText('Your follow-up question'), {
+    target: { value: 'Original question' },
+  })
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Send follow-up' })).toBeEnabled())
+  fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
+  await screen.findByText(/Lost response/)
+  const original = fetcher.mock.calls[0]
+  first.unmount()
+  renderApp(<AnswerFollowup answerId="parent" />)
+  fireEvent.change(screen.getByLabelText('Your follow-up question'), {
+    target: { value: 'My next question' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Retry previous request' }))
+  await screen.findByText('Recovered reply')
+  expect(fetcher.mock.calls[1][0]).toBe(original[0])
+  expect(fetcher.mock.calls[1][1].body).toBe(original[1].body)
+  expect(fetcher.mock.calls[1][1].headers['Idempotency-Key']).toBe(original[1].headers['Idempotency-Key'])
+  expect(screen.getByLabelText('Your follow-up question')).toHaveValue('My next question')
+  expect(screen.getByRole('link', { name: 'latest saved follow-up' })).toHaveAttribute(
+    'href',
+    '/answers/child',
+  )
 })

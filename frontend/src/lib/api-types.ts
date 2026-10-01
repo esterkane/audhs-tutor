@@ -5091,7 +5091,9 @@ export interface operations {
   followup_api_answers__answer_id__followup_post: {
     parameters: {
       query?: never
-      header?: never
+      header?: {
+        'idempotency-key'?: string | null
+      }
       path: {
         answer_id: string
       }

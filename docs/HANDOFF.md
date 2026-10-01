@@ -243,3 +243,15 @@ journeys passed. Code review storage-denial major fixed and re-reviewed; pedagog
 See docs/slices/workspace-request-recovery.md. Saved-follow-up, lesson-stream and voice request
 identities remain separate; broader content-correction, UX, materials and visual queues remain
 open. Foundation commits31ef40a/89fa9f6 passed both remote CI workflows. Both repos private.
+
+
+## 2026-10-02 — saved follow-up retry recovery
+
+Saved-answer follow-ups now share durable request identities. Fingerprints include parent
+answer and route plus typed question/session; owner checks precede replay. The UI freezes
+parent/question, restores explicit retry after reload and retains a newly edited next draft.
+Changed feedback cannot silently regenerate an old request. Full backend570/frontend243,
+lint/build, seven isolated recovery journeys and required code/pedagogy reviews passed.
+No paid inference, new dependency or migration. See docs/slices/followup-request-recovery.md.
+Lesson-stream/voice request recovery and broader correction/UX/material/visual queues remain
+open. Both repositories remain private; private snapshot refreshed before commit.

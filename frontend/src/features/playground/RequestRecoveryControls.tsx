@@ -1,12 +1,20 @@
 import { Button } from '../../components/ui/button'
-import type { useRequestRecovery } from './useRequestRecovery'
 
 export function RequestRecoveryControls({
   recovery,
   busy,
   retry,
+  originalContext = 'answer, code and material',
 }: {
-  recovery: ReturnType<typeof useRequestRecovery>
+  recovery: {
+    pending: { view: { display: string } } | null
+    error: string
+    needsDiscard: boolean
+    canUseMemoryOnly: boolean
+    discard: () => void
+    continueInMemory: () => void
+  }
+  originalContext?: string
   busy: boolean
   retry: () => void
 }) {
@@ -27,7 +35,7 @@ export function RequestRecoveryControls({
             </>
           )}
           <p className="text-sm text-muted">
-            Retry uses the original answer, code and material. Your later edits are not sent. It can recover a
+            Retry uses the original {originalContext}. Your later edits are not sent. It can recover a
             completed result without generating again. An interrupted request may remain unavailable.
           </p>
           <details>

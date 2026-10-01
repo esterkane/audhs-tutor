@@ -1,3 +1,9 @@
+import {
+  useFollowupRequestRecovery,
+  type PendingTutorRequest,
+  type FollowupRetryBody,
+} from '../playground/useRequestRecovery'
+import { RequestRecoveryControls } from '../playground/RequestRecoveryControls'
 import { AnswerSaveStatus } from './AnswerSaveStatus'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -43,6 +49,7 @@ export function AnswerFollowup({ answerId }: { answerId: string }) {
 
 function Conversation({ answerId, sessionId }: { answerId: string; sessionId: string }) {
   const key = `saved-answer-followup:v1:${answerId}`
+  const recovery = useFollowupRequestRecovery(`${key}:${sessionId}`)
   const [restored] = useState(() => {
     try {
       const saved = JSON.parse(localStorage.getItem(key) ?? 'null')
@@ -100,13 +107,25 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     request.current = null
     setBusy(false)
     setError(
-      'Stopped waiting. Your draft is kept. The server may still finish and save a reply; check history before sending again.',
+      'Stopped waiting. Your draft is kept. The server may still finish; retry the original request to check for its result.',
     )
     input.current?.focus()
   }
   async function send() {
     if (request.current || !draft.trim() || !parentFeedback.isSuccess) return
-    const question = draft.trim()
+    try {
+      const pending = recovery.prepare(
+        { session_id: sessionId, question: draft.trim(), parent_answer_id: parentId },
+        { snapshot: parentId, submitted: draft, display: draft.trim(), mode: 'explicit' },
+      )
+      await execute(pending)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  async function execute(pending: PendingTutorRequest<FollowupRetryBody>) {
+    if (request.current) return
+    const { question, parent_answer_id: originalParent, session_id: originalSession } = pending.body
     const ctl = new AbortController()
     request.current = ctl
     setBusy(true)
@@ -116,8 +135,13 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     }, 120_000)
     try {
       const reply = await apiFetch<Schemas['PlaygroundReply']>(
-        `/api/answers/${encodeURIComponent(parentId)}/followup`,
-        { method: 'POST', body: JSON.stringify({ session_id: sessionId, question }), signal: ctl.signal },
+        `/api/answers/${encodeURIComponent(originalParent)}/followup`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ session_id: originalSession, question }),
+          signal: ctl.signal,
+          headers: { 'Idempotency-Key': pending.key },
+        },
       )
       if (request.current !== ctl || ctl.signal.aborted) return
       setReplies((old) => [...old, { question, reply }])
@@ -125,12 +149,13 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
         setParentId(reply.answer_id)
         void qc.invalidateQueries({ queryKey: ['answers'] })
       }
-      edit('', reply.answer_id ?? parentId)
+      edit(draft === pending.view.submitted ? '' : draft, reply.answer_id ?? originalParent)
+      recovery.accept(pending.key)
       input.current?.focus()
-    } catch {
+    } catch (e) {
       if (request.current === ctl && !ctl.signal.aborted)
         setError(
-          'Could not receive a reply. Your draft is kept. Check saved history before retrying; a response may have completed on the server.',
+          `${(e as Error).message} Your draft is kept. Retry the previous request to check for its original result.`,
         )
     } finally {
       clearTimeout(timer)
@@ -171,15 +196,30 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
           <p className="whitespace-pre-wrap">{question}</p>
           <Markdown text={reply.text} />
           <ReadAloud text={`Your question: ${question}\n\n${reply.text}`} />
-          <AnswerSaveStatus answerId={reply.answer_id} receipt={reply.save_receipt}
-            error={reply.save_error || (!reply.answer_id ? 'This reply was not saved. Keep a copy before leaving.' : null)}
-            text={reply.text} linkLabel="Open saved follow-up"
+          <AnswerSaveStatus
+            answerId={reply.answer_id}
+            receipt={reply.save_receipt}
+            error={
+              reply.save_error ||
+              (!reply.answer_id ? 'This reply was not saved. Keep a copy before leaving.' : null)
+            }
+            text={reply.text}
+            linkLabel="Open saved follow-up"
             onSaved={(id) => {
-              setReplies((old) => old.map((entry) => entry.reply.turn_id === reply.turn_id
-                ? { ...entry, reply: { ...entry.reply, answer_id: id, save_error: null, save_receipt: null } } : entry))
+              setReplies((old) =>
+                old.map((entry) =>
+                  entry.reply.turn_id === reply.turn_id
+                    ? {
+                        ...entry,
+                        reply: { ...entry.reply, answer_id: id, save_error: null, save_receipt: null },
+                      }
+                    : entry,
+                ),
+              )
               setParentId(id)
               edit(draft, id)
-            }} />
+            }}
+          />
         </div>
       ))}
       {unsaved && (
@@ -214,6 +254,14 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
         {busy && <Button onClick={stop}>Stop</Button>}
       </div>
       {busy && <p role="status">Preparing a follow-up…</p>}
+      <RequestRecoveryControls
+        originalContext="parent answer and question"
+        recovery={recovery}
+        busy={busy}
+        retry={() => {
+          if (recovery.pending) void execute(recovery.pending)
+        }}
+      />
       {error && <p role="alert">{error}</p>}
       {storageError && <p role="alert">{storageError}</p>}
     </div>
