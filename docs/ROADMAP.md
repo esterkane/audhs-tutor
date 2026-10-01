@@ -114,3 +114,14 @@ Frontend254, lint/types/build and strict fake socket/microphone tests passed. In
 and pedagogy findings were fixed and re-reviewed clear. No live audio benchmark claim. Full
 voice reload/identity recovery remains open; implementation sequence is recorded in
 `docs/slices/voice-interruption-recovery.md`. Previous lesson CI passed in both repositories.
+
+
+## Voice text/draft recovery — 2026-10-02
+
+Voice panels retain bounded tab-local transcript, reply text and unsent draft, scoped by session,
+skill, language and conversation. Restore stays disconnected, without audio or receipts; text
+is explicitly potentially incomplete. Stop preserves work; Clear removes it and failed storage
+clear keeps the panel open. Context changes dispose the previous connection. Frontend258,
+lint/types/build and two isolated desktop/narrow keyboard journeys passed; zero voice sockets
+opened by recovery. Required reviews clear. See docs/slices/voice-text-recovery.md. Server voice
+turn identity and terminal text retrieval remain next; no full voice recovery/benchmark claim.

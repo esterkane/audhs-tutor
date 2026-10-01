@@ -1,6 +1,7 @@
 import { AnswerSaveStatus } from '../programs/AnswerSaveStatus'
 import { AudioControls } from '../audio/AudioControls'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useVoiceTextRecovery } from './useVoiceTextRecovery'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { Textarea } from '../../components/ui/textarea'
@@ -13,7 +14,7 @@ import { useVoiceLoop } from './useVoiceLoop'
  * available in the same conversation (text-only fallback), and the transcript is always shown.
  * In conversation mode (language block) the reply follows the conversation prompt in `lang`.
  */
-export function VoicePanel({
+function ScopedVoicePanel({
   sessionId,
   skillId,
   lang,
@@ -21,6 +22,7 @@ export function VoicePanel({
   title = 'Talk to the tutor',
   makeSocket,
   onClose,
+  onReset,
 }: {
   sessionId: string
   skillId?: string | null
@@ -29,14 +31,39 @@ export function VoicePanel({
   title?: string
   makeSocket?: (url: string) => WebSocket
   onClose?: () => void
+  onReset: () => void
 }) {
-  const v = useVoiceLoop({ sessionId, skillId, lang, conversation, makeSocket })
-  const [typed, setTyped] = useState('')
+  const scope = JSON.stringify([sessionId, skillId ?? null, lang ?? null, conversation])
+  const recovery = useVoiceTextRecovery(scope)
+  const v = useVoiceLoop({
+    sessionId,
+    skillId,
+    lang,
+    conversation,
+    makeSocket,
+    initialText: recovery.initial,
+  })
+  const [typed, setTyped] = useState(recovery.initial.draft)
+  const { save } = recovery
+  useEffect(() => {
+    save({ draft: typed, transcript: v.transcript, answer: v.answer, interrupted: v.interrupted })
+  }, [save, typed, v.transcript, v.answer, v.interrupted])
   const textOnly = v.ready?.text_only === true
   return (
     <Card>
       <CardTitle>{title}</CardTitle>
       <AudioControls />
+      {recovery.restored && (
+        <p role="status" className="text-sm mt-2">
+          Restored voice text from this tab; it may be incomplete. No connection, recording or playback has
+          restarted. Check saved answers for completed replies.
+        </p>
+      )}
+      {recovery.error && (
+        <p role="alert" className="text-sm mt-2">
+          {recovery.error}
+        </p>
+      )}
       {(v.status === 'idle' || v.status === 'error') && (
         <div className="mt-2">
           <p className="text-sm text-muted mb-2">
@@ -151,17 +178,38 @@ export function VoicePanel({
           Send
         </Button>
       </div>
-      {onClose && (
+      {
         <Button
           variant="ghost"
           onClick={() => {
             v.close()
-            onClose()
+            if (recovery.clear()) {
+              if (onClose) onClose()
+              else onReset()
+            }
           }}
         >
-          Clear and close panel
+          {onClose ? 'Clear and close panel' : 'Clear voice text'}
         </Button>
-      )}
+      }
     </Card>
+  )
+}
+
+/** Context changes dispose the old socket before another learning target gets its text. */
+export function VoicePanel(props: Omit<Parameters<typeof ScopedVoicePanel>[0], 'onReset'>) {
+  const [generation, setGeneration] = useState(0)
+  const scope = JSON.stringify([
+    props.sessionId,
+    props.skillId ?? null,
+    props.lang ?? null,
+    props.conversation ?? false,
+  ])
+  return (
+    <ScopedVoicePanel
+      key={`${scope}:${generation}`}
+      {...props}
+      onReset={() => setGeneration((value) => value + 1)}
+    />
   )
 }

@@ -18,12 +18,13 @@ export function useVoiceLoop(opts: {
   lang?: string | null
   conversation?: boolean
   textOnly?: boolean
+  initialText?: { transcript: string; answer: string; interrupted: boolean }
   makeSocket?: (url: string) => WebSocket
 }) {
   const [status, setStatus] = useState<VoiceStatus>('idle')
   const [ready, setReady] = useState<VoiceMessage | null>(null)
-  const [transcript, setTranscript] = useState('')
-  const [answer, setAnswer] = useState('')
+  const [transcript, setTranscript] = useState(opts.initialText?.transcript ?? '')
+  const [answer, setAnswer] = useState(opts.initialText?.answer ?? '')
   const [saveTurn, setSaveTurn] = useState<Pick<
     TurnDone,
     'turn_id' | 'text' | 'answer_id' | 'save_error' | 'save_receipt'
@@ -32,7 +33,7 @@ export function useVoiceLoop(opts: {
   const [error, setError] = useState<string | null>(null)
   const [latency, setLatency] = useState<Record<string, unknown> | null>(null)
   const [nothingHeard, setNothingHeard] = useState(false)
-  const [interrupted, setInterrupted] = useState(false)
+  const [interrupted, setInterrupted] = useState(opts.initialText?.interrupted ?? false)
   const socket = useRef<WebSocket | null>(null)
   const mic = useRef<Mic | null>(null)
   const player = useRef(new Player())

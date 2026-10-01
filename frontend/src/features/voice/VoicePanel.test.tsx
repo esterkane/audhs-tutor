@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { renderApp } from '../../test/utils'
 import { VoicePanel } from './VoicePanel'
@@ -35,6 +35,11 @@ class FakeSocket {
     this.onmessage?.({ data: JSON.stringify(msg) })
   }
 }
+
+beforeEach(() => {
+  sessionStorage.clear()
+  FakeSocket.last = null
+})
 
 const makeSocket = (url: string) => new FakeSocket(url) as unknown as WebSocket
 
@@ -210,4 +215,46 @@ it('offers save-only recovery for a completed voice answer', async () => {
   )
   expect(FakeSocket.last!.sent).toHaveLength(1)
   fetcher.mockRestore()
+})
+
+it('restores scoped voice text and draft without reconnecting or replaying audio', async () => {
+  const factory = vi.fn(makeSocket)
+  const first = renderApp(<VoicePanel sessionId="recovery" skillId="one" makeSocket={factory} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }))
+  await waitFor(() => expect(FakeSocket.last?.sent).toHaveLength(1))
+  act(() => {
+    FakeSocket.last!.push({ type: 'transcript', text: 'Explain my first question' })
+    FakeSocket.last!.push({ type: 'token', text: 'Partial voice explanation' })
+  })
+  fireEvent.change(screen.getByLabelText('Type instead'), { target: { value: 'Next unsent question' } })
+  first.unmount()
+  const restored = renderApp(<VoicePanel sessionId="recovery" skillId="one" makeSocket={factory} />)
+  expect(screen.getByLabelText('Type instead')).toHaveValue('Next unsent question')
+  expect(screen.getByText('Partial voice explanation')).toBeVisible()
+  expect(screen.getByText(/Restored voice text/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Connect' })).toBeVisible()
+  expect(factory).toHaveBeenCalledTimes(1)
+  restored.rerender(<VoicePanel sessionId="recovery" skillId="two" makeSocket={factory} />)
+  expect(screen.getByLabelText('Type instead')).toHaveValue('')
+  expect(screen.queryByText('Partial voice explanation')).not.toBeInTheDocument()
+  expect(factory).toHaveBeenCalledTimes(1)
+})
+
+it('clears saved voice text on explicit close and keeps the panel open if clearing is denied', () => {
+  const onClose = vi.fn()
+  const first = renderApp(<VoicePanel sessionId="clear" onClose={onClose} />)
+  fireEvent.change(screen.getByLabelText('Type instead'), { target: { value: 'Draft to clear' } })
+  const deny = vi.spyOn(Storage.prototype, 'removeItem').mockImplementation(() => {
+    throw new Error('denied')
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Clear and close panel' }))
+  expect(onClose).not.toHaveBeenCalled()
+  expect(screen.getByRole('alert')).toHaveTextContent('could not be cleared')
+  expect(screen.getByLabelText('Type instead')).toHaveValue('Draft to clear')
+  deny.mockRestore()
+  fireEvent.click(screen.getByRole('button', { name: 'Clear and close panel' }))
+  expect(onClose).toHaveBeenCalledOnce()
+  first.unmount()
+  renderApp(<VoicePanel sessionId="clear" />)
+  expect(screen.getByLabelText('Type instead')).toHaveValue('')
 })
