@@ -39,3 +39,15 @@ Use existing `audhs-tutor-evidence`, `audhs-state-reliability`, `audhs-learning-
 ```text
 Implement the next dependency-ready QA task in docs/TUTOR-ANSWER-LIBRARY-QUEUE.md. Read latest HANDOFF and existing Q/authoring plans. Reconcile current response/event/storage paths first. Save actual completed answers locally with stable context and provenance, keep partial/stale/disputed output distinct, and expose local course/area-filtered search plus relevant saved question suggestions. Reuse existing routing, correction and backup boundaries; do not regenerate history or index model answers as independent source truth. Add behavioral failure/isolation/idempotency tests and required code/pedagogy review. Follow current paired publication policy with only synthetic data in public. Leave later tasks queued and record exact verification/limitations.
 ```
+
+## Retrieval before generation — owner follow-up 2026-10-01
+
+Goal: use previous useful explanations without regenerating everything. Implement after source status checks, preserving the current learner's scope and current work.
+
+1. Candidate lookup: bounded local FTS query before generation, scoped to topic/task and owner; exclude hidden, incorrect and outdated reports. Keep failed/empty retrieval non-blocking. Surface saved answers explicitly; no similarity score may certify correctness.
+2. Direct reuse: offer the original dated answer only when question and relevant context match. Notebook reuse requires matching code, dataset identity, output and task, not just wording. Changed/missing/unverifiable sources must prevent any claim of verified reuse. Offer fresh generation and a different explanation.
+3. Related memory: feed a few short excerpts as untrusted historical context alongside current source evidence. Generate the new explanation or difference; do not imply earlier model text is an independent source. Bound total context and preserve current teaching mode.
+4. Semantic retrieval: evaluate local embeddings through the existing registry/retrieval boundary, combining semantic and literal search. No new paid route. Keep answer index separate from original corpus evidence, rebuildable and owner-filtered.
+5. Evaluation: compare first-response and complete-response latency, model calls avoided, prompt size, relevant matches and harmful reuse. Include changed notebook code/output, stale sources, negative feedback, same wording across different tasks and prompt injection. Synthetic contracts and actual local-model results must be reported separately.
+
+Current source-status work is only the prerequisite. Automatic reuse, semantic answer indexing and a measured performance gain remain unimplemented.

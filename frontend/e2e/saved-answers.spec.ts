@@ -31,6 +31,9 @@ for (const width of [1280, 390]) {
         },
       }),
     )
+    await page.route('**/api/answers/saved-one/source-status', (route) =>
+      route.fulfill({ json: { sources: [{ chunk_id: 'source-one', status: 'changed', newer_version: true }], omitted: 0 } }),
+    )
     await page.goto('/answers?surface=playground')
     await page.getByRole('searchbox', { name: 'Search saved answers' }).fill('groups')
     await page.getByRole('button', { name: 'Search', exact: true }).click()
@@ -41,6 +44,10 @@ for (const width of [1280, 390]) {
     await page.keyboard.press('Enter')
     await expect(page.getByText('Compare representation before and after cleaning.')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Saved answer', exact: true })).toBeFocused()
+    await page.getByRole('button', { name: 'Check saved source text' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByText(/Source text has changed/)).toBeVisible()
+    await expect(page.getByText(/a newer local document version exists/)).toBeVisible()
     await page.getByText('Conversation supplied at the time').click()
     await expect(page.getByText('What changed after cleaning?')).toBeVisible()
     await page.getByText('Material and code supplied at the time').click()

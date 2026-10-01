@@ -117,3 +117,8 @@ Owned saved answers now support explicit bounded follow-up through the local-fir
 ## Saved-answer feedback — 2026-10-01
 
 Separate owner-scoped revision-checked reports preserve immutable answers. Helpful/confusing/incorrect/outdated labels, optional reason and hidden state are explicit/reversible; contextual suggestions omit hidden/incorrect/outdated items while history retains them. Follow-up warnings and historical report target the actual resumed parent. Full backend438/frontend219 suites plus final focused concurrency and warning regressions, lint/build, four desktop/narrow browser journeys and independent re-review pass. Backup/restore and two-learner export/wipe cover the new table. No automatic training/mastery or verified correction. Source freshness, actual correction/replacement and save-retry lifecycle remain queued. See docs/slices/answer-feedback.md.
+
+
+## 2026-10-01 — saved-source comparison
+
+Added explicit owner-scoped, bounded local source hash checks to answer history: changed, unchanged, missing, unverifiable and newer-version notices. No model call or evidence write; unchanged text does not certify truth. Verification: 440 backend, 221 frontend, two isolated browser journeys, lint/types/build; independent code/pedagogy review clear. Next: bounded retrieval before generation, exact-context reuse, then evaluated local semantic search. Both repositories remain private.

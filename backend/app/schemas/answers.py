@@ -47,3 +47,14 @@ class AnswerFeedbackState(BaseModel):
     note: str = Field(default="", max_length=2000)
     hidden: bool = False
     revision: int = Field(default=0, ge=0)
+
+
+class SavedSourceStatus(BaseModel):
+    chunk_id: str
+    status: Literal["unchanged", "changed", "missing", "unverifiable"]
+    newer_version: bool = False
+
+
+class SavedSourceCheck(BaseModel):
+    sources: list[SavedSourceStatus]
+    omitted: int = 0

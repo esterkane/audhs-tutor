@@ -1,3 +1,4 @@
+import { AnswerSourceStatus } from '../features/programs/AnswerSourceStatus'
 import { AnswerFeedback } from '../features/programs/AnswerFeedback'
 import { AnswerFollowup } from '../features/programs/AnswerFollowup'
 import { useQuery } from '@tanstack/react-query'
@@ -262,6 +263,7 @@ function Answer({ id }: { id: string }) {
                 </pre>
               </details>
             )}
+            <AnswerSourceStatus key={`sources:${data.id}`} answerId={data.id} />
             <AnswerFeedback key={`feedback:${data.id}`} answerId={data.id} />
             <AnswerFollowup key={data.id} answerId={data.id} />
             {sources.length > 0 ? (

@@ -6,7 +6,7 @@ from fastapi import APIRouter, Query
 from sqlalchemy import select, text
 
 from app.api.deps import DB, Gateway, Learner
-from app.db import answer_feedback
+from app.db import answer_feedback, answer_sources
 from app.db.answer_search import literal_query
 from app.db.models import TutorAnswer, TutorAnswerFeedback
 from app.orchestrator import playground
@@ -16,6 +16,7 @@ from app.schemas.answers import (
     AnswerFollowup,
     AnswerPage,
     AnswerSummary,
+    SavedSourceCheck,
 )
 from app.schemas.playground import PlaygroundContext, PlaygroundReply, PlaygroundRequest
 
@@ -218,3 +219,12 @@ async def put_feedback(
     answer_id: str, body: AnswerFeedbackState, db: DB, learner: Learner
 ) -> AnswerFeedbackState:
     return await answer_feedback.save(db, learner.id, answer_id, body)
+
+
+@router.get(
+    "/{answer_id}/source-status",
+    response_model=SavedSourceCheck,
+    summary="Compare saved source text with the current local corpus",
+)
+async def source_status(answer_id: str, db: DB, learner: Learner) -> SavedSourceCheck:
+    return await answer_sources.check(db, learner.id, answer_id)

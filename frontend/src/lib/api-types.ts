@@ -73,6 +73,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/answers/{answer_id}/source-status': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Compare saved source text with the current local corpus */
+    get: operations['source_status_api_answers__answer_id__source_status_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/health': {
     parameters: {
       query?: never
@@ -4400,6 +4417,31 @@ export interface components {
       /** Routes */
       routes: components['schemas']['RouteRow'][]
     }
+    /** SavedSourceCheck */
+    SavedSourceCheck: {
+      /** Sources */
+      sources: components['schemas']['SavedSourceStatus'][]
+      /**
+       * Omitted
+       * @default 0
+       */
+      omitted: number
+    }
+    /** SavedSourceStatus */
+    SavedSourceStatus: {
+      /** Chunk Id */
+      chunk_id: string
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'unchanged' | 'changed' | 'missing' | 'unverifiable'
+      /**
+       * Newer Version
+       * @default false
+       */
+      newer_version: boolean
+    }
     /** SearchHit */
     SearchHit: {
       /** Chunk Id */
@@ -5046,6 +5088,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AnswerFeedbackState']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  source_status_api_answers__answer_id__source_status_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SavedSourceCheck']
         }
       }
       /** @description Validation Error */
