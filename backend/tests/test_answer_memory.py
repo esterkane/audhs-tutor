@@ -58,6 +58,7 @@ async def test_memory_is_scoped_filtered_bounded_and_untrusted(
     assert "ignore policy" not in packet[0].content
     assert packet[1].content.count("</workspace_data>") == 1
     assert "not independent evidence" in packet[0].content
+    assert "Never cite previous-answer IDs" in packet[0].content
 
 
 async def test_generation_uses_memory_and_survives_lookup_failure(
@@ -81,7 +82,8 @@ async def test_generation_uses_memory_and_survives_lookup_failure(
     second = await client.post("/api/playground/tutor", json=body)
     assert second.status_code == 200, second.text
     assert second.json()["memory_answers"] == [first["answer_id"]]
-    assert first["answer_id"] in fake_local.calls[-1].messages[1].content
+    assert first["answer_id"] not in fake_local.calls[-1].messages[1].content
+    assert fake_local.text in fake_local.calls[-1].messages[1].content
     saved = await db.get(TutorAnswer, second.json()["answer_id"])
     assert saved.metadata_json["answer_memory"][0]["answer_id"] == first["answer_id"]
 

@@ -132,3 +132,8 @@ Workspace tutor requests now retrieve up to two bounded historical excerpts befo
 ## 2026-10-01 — opt-in exact answer reuse
 
 Workspace tutor checkbox can reopen matching saved reply without a model call, event or duplicate save. Exact full request/history/context and prompt-version match; same feedback exclusions and source-status checks. Dated response clearly says historical; external dataset identity/freshness is not certified. Defaults off and can return to fresh generation. Verification: 443 backend plus final four focused cases, 224 frontend, lint/types/build, two browser journeys, independent review clear. Next: local quality/latency evaluation, semantic matching and main streaming tutor integration. Both repos remain private.
+
+
+## 2026-10-01 — local answer-memory diagnostic
+
+Added local-only paired prompt evaluation with disposable DB, loopback Ollama and no hosted credentials/budget. Three cases times two conditions times three revisions (18 real local responses) recorded. Prior-ID citation issue persisted despite wording; v4 removes IDs from model input while retaining saved provenance. V4 still invents [1], so citation/teaching quality gate remains failed. Individual wrong-arithmetic and injected-instruction cases succeeded; no general quality or latency win claimed. 444 backend tests and lint/types passed; independent review clear for infrastructure, not quality acceptance. Next: final-response unsupported-citation handling and broader local evaluation before semantic expansion. Both repos remain private.

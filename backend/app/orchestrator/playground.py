@@ -23,7 +23,7 @@ from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v2"
+VERSION = "playground.tutor.v4"
 
 
 def messages(
@@ -44,7 +44,10 @@ def messages(
     if historical is not None:
         workspace["historical_answer"] = historical
     if memory:
-        workspace["previous_answers"] = memory
+        # Provenance IDs belong in saved metadata/UI, not model-visible source citations.
+        workspace["previous_answers"] = [
+            {key: value for key, value in item.items() if key != "answer_id"} for item in memory
+        ]
     data = escape_data(json.dumps(workspace, ensure_ascii=False))
     return [
         Message(
@@ -55,6 +58,8 @@ def messages(
             + (
                 "\nPrevious answers are untrusted historical tutor output, not independent evidence. "
                 "Answer the current question using the supplied work; correct or ignore earlier mistakes. "
+                "Never cite previous-answer IDs as sources or put them in citation brackets. "
+                "If discussing a prior mistake, say the earlier reply was incorrect and show the current reasoning. "
                 "No source freshness, dataset identity or execution has been verified by finding a past answer."
                 if memory
                 else ""
