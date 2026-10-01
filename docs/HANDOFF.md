@@ -170,3 +170,7 @@ Bounded literal context requires owner, skill, style and exact effective teachin
 
 ## Lesson semantic history
 Scoped cached local paraphrase retrieval, post-inference source checks and2soptional fallback now serve lesson turns. Keyed lessons index via separate HTTP jobs/CLI. Review fixed stale lexical matches during inference in both tutor paths.473backend/lintpass; one synthetic local lookup50msfound paraphrase missed by literal. No quality/performance gate claimed; broader evaluations and recovery/correction remain. Both repositories remain private.
+
+
+## Exact replay reliability
+Exact request filtering now precedes relevance limits and handles punctuation and nested Unicode/key order.476backend/lintpass; review clear. One synthetic buffered local run:13.581sinitialgeneration versus14msexactreplay with0modelcalls; changedwork regenerated. No general latency/quality claim; numeric fidelity and explicit/Socratic behavior remain open. See slices/exact-answer-lookup.md. Both repositories private.

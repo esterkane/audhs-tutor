@@ -1,7 +1,10 @@
 """Bounded historical hints, not an authoritative knowledge source."""
 
+from typing import Any
+
 from sqlalchemy import Select, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.elements import ColumnElement
 
 from app.db.answer_search import literal_query
 from app.db.models import TutorAnswer, TutorAnswerFeedback
@@ -81,11 +84,34 @@ async def exact_saved(
     from app.db.answer_sources import check
 
     expected = body.model_dump(exclude={"session_id", "prefer_saved"})
-    # Use the same ownership, negative-feedback and workspace filters as memory retrieval.
-    for candidate in await retrieve(db, learner_id, body):
-        row = await db.get(TutorAnswer, candidate["answer_id"])
-        if row is None or row.metadata_json.get("prompt_version") != prompt_version:
-            continue
+    # Exact reuse is independent of relevance/FTS ranking: newer related conversations
+    # must not displace an identical request, and punctuation-only questions still match.
+    stmt = candidates(learner_id, body)
+    if stmt is None:
+        return None
+    stmt = stmt.where(TutorAnswer.metadata_json["prompt_version"].as_string() == prompt_version)
+
+    def fields(value: Any, path: str) -> list[ColumnElement[bool]]:
+        field = func.json_extract(TutorAnswer.request_json, path)
+        kind = func.json_type(TutorAnswer.request_json, path)
+        if isinstance(value, dict):
+            return [kind == "object"] + [
+                clause for key, child in value.items() for clause in fields(child, path + "." + key)
+            ]
+        if isinstance(value, list):
+            return [kind == "array", func.json_array_length(field) == len(value)] + [
+                clause for i, child in enumerate(value) for clause in fields(child, f"{path}[{i}]")
+            ]
+        if value is None:
+            return [kind == "null"]
+        if isinstance(value, bool):
+            return [kind == ("true" if value else "false")]
+        return [kind == "text", field == value]
+
+    for key, value in expected.items():
+        stmt = stmt.where(*fields(value, "$." + key))
+    rows = await db.scalars(stmt.order_by(TutorAnswer.id.desc()).limit(20))
+    for row in rows:
         previous = {key: value for key, value in row.request_json.items() if key != "prefer_saved"}
         if previous != expected:
             continue

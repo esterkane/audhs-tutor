@@ -1,0 +1,48 @@
+{
+  "synthetic": true,
+  "scope": "Single paired buffered runs; no streaming or quality gate",
+  "runs": [
+    {
+      "case": "first",
+      "elapsed_ms": 13581,
+      "model_calls": 1,
+      "reused": false,
+      "model": "gemma3-12b",
+      "text": "(analogy) Comparing retention rates, rather than raw counts, normalizes for the initial size of each group. Think of it like comparing the success rate of two different-sized classes \u2013 a higher success rate is more informative than simply knowing the number of students who passed. Retention rate expresses the proportion of individuals who remain over time, allowing for a fairer comparison between groups with different starting points [no course source for this].\n\nWhat do you think the advantage of using a rate instead of a count would be in a real-world scenario?",
+      "saved": true
+    },
+    {
+      "case": "exact_reuse",
+      "elapsed_ms": 14,
+      "model_calls": 0,
+      "reused": true,
+      "model": "gemma3-12b",
+      "text": "(analogy) Comparing retention rates, rather than raw counts, normalizes for the initial size of each group. Think of it like comparing the success rate of two different-sized classes \u2013 a higher success rate is more informative than simply knowing the number of students who passed. Retention rate expresses the proportion of individuals who remain over time, allowing for a fairer comparison between groups with different starting points [no course source for this].\n\nWhat do you think the advantage of using a rate instead of a count would be in a real-world scenario?",
+      "saved": true
+    },
+    {
+      "case": "changed_work",
+      "elapsed_ms": 3969,
+      "model_calls": 1,
+      "reused": false,
+      "model": "gemma3-12b",
+      "text": "(analogy) Comparing retention rates, rather than raw counts, normalizes for differences in the initial size of the dataset. Think of it like comparing the success rate of two different-sized batches of experiments \u2013 the percentage is more informative than the total number of successes. Retention rate expresses the proportion of rows kept, allowing for a fairer comparison across datasets with varying starting points [no course source for this].",
+      "saved": true
+    },
+    {
+      "case": "fresh_requested",
+      "elapsed_ms": 5052,
+      "model_calls": 2,
+      "reused": false,
+      "model": "gemma3-12b",
+      "text": "(analogy) Comparing retention rates normalizes for the initial size of each group, as we discussed previously. Think of it like comparing the success rate of two different-sized classes \u2013 a higher success rate is more informative than simply knowing the number of students who passed [no course source for this].\n\nWhat's one scenario where retention rate would be more useful than a simple count?",
+      "saved": true
+    }
+  ],
+  "index": {
+    "selected": 1,
+    "indexed": 1,
+    "skipped": 0
+  },
+  "index_ms": 398
+}

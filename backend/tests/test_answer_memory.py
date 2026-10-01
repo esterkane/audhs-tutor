@@ -173,3 +173,109 @@ async def test_exact_reuse_rejects_unavailable_sources_and_old_prompt(client, db
     row.metadata_json = {**row.metadata_json, "sources": [{"chunk_id": "missing"}]}
     await db.commit()
     assert await exact_saved(db, owner, body, "v2") is None
+
+
+async def test_exact_reuse_not_displaced_by_newer_related_answers(client, db):  # type: ignore[no-untyped-def]
+    from app.db.answer_memory import exact_saved
+
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    body = PlaygroundRequest(
+        session_id="unused",
+        question="group",
+        exercise="Groups",
+        code="",
+        learning_context=PlaygroundContext(target_id="step"),
+    )
+    for i in range(4):
+        request = body.model_dump(exclude={"session_id"})
+        if i:
+            request["history"] = [{"role": "user", "text": f"Different assumption {i}"}]
+        db.add(
+            TutorAnswer(
+                id=f"answer-{i}",
+                learner_id=owner,
+                turn_id=f"answer-{i}",
+                surface="playground",
+                request_json=request,
+                text="group",
+                fingerprint=str(i),
+                metadata_json={
+                    "learning_context": body.learning_context.model_dump(),
+                    "prompt_version": "test",
+                },
+            )
+        )
+    await db.commit()
+    found = await exact_saved(db, owner, body, "test")
+    assert found is not None and found.id == "answer-0"
+
+
+async def test_exact_reuse_handles_nonword_questions(client, db):  # type: ignore[no-untyped-def]
+    from app.db.answer_memory import exact_saved
+
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    body = PlaygroundRequest(
+        session_id="unused",
+        question="?",
+        exercise="Explain this output",
+        code="",
+        learning_context=PlaygroundContext(target_id="step"),
+    )
+    db.add(
+        TutorAnswer(
+            id="punctuation",
+            learner_id=owner,
+            turn_id="punctuation",
+            surface="playground",
+            request_json=body.model_dump(exclude={"session_id"}),
+            text="Clarify the output.",
+            fingerprint="punctuation",
+            metadata_json={
+                "learning_context": body.learning_context.model_dump(),
+                "prompt_version": "test",
+            },
+        )
+    )
+    await db.commit()
+    assert await exact_saved(db, owner, body, "test") is not None
+
+
+async def test_exact_reuse_compares_nested_values_not_json_encoding(client, db):  # type: ignore[no-untyped-def]
+    from app.db.answer_memory import exact_saved
+    from app.schemas.playground import PlaygroundMessage
+
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    body = PlaygroundRequest(
+        session_id="unused",
+        question="Warum?",
+        exercise="Größen",
+        code="",
+        learning_context=PlaygroundContext(target_id="step", target_label="Änderung"),
+        history=[PlaygroundMessage(role="user", text="Größer → kleiner?")],
+    )
+    request = body.model_dump(exclude={"session_id"})
+    request["learning_context"] = dict(reversed(list(request["learning_context"].items())))
+    request["history"] = [dict(reversed(list(request["history"][0].items())))]
+    row = TutorAnswer(
+        id="unicode",
+        learner_id=owner,
+        turn_id="unicode",
+        surface="playground",
+        request_json=request,
+        text="Explanation",
+        fingerprint="unicode",
+        metadata_json={
+            "learning_context": body.learning_context.model_dump(),
+            "prompt_version": "test",
+        },
+    )
+    db.add(row)
+    await db.commit()
+    assert await exact_saved(db, owner, body, "test") is not None
+    # Missing fields and wrong JSON types cannot pass as a current identical request.
+    row.request_json = {key: value for key, value in request.items() if key != "learner_question"}
+    await db.commit()
+    assert await exact_saved(db, owner, body, "test") is None
+    row.request_json = {**request, "output_stale": 0}
+    await db.commit()
+    assert await exact_saved(db, owner, body, "test") is None

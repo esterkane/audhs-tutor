@@ -1,6 +1,6 @@
 # Saved tutor answers and suggested questions
 
-Status: queued by owner, 2026-10-01. Implement after current work; coordinate with Q2/Q3 and authoring A01 rather than create duplicate answer stores. QA00 inventory and proposed ADR-0017 prepared; QA01 completed workspace and shared lesson/hint/voice-text persistence is partially implemented (docs/slices/saved-workspace-answers.md and saved-lesson-answers.md). Local full-text search and browser history are implemented; exact-target previous replies are available in guided/notebook tutor panels; broader suggestions remain pending. See docs/design/tutor-answer-lifecycle.md.
+Status: active, 2026-10-01. Durable completed workspace and lesson/hint/voice-text history, scoped search, feedback, contextual lists and follow-up are implemented in bounded slices. Workspace exact replay is opt-in; local literal/semantic historical context is integrated into workspace and lesson tutoring. Failed-save recovery, correction/replacement lineage and full path coverage remain open. QA00 ADR-0017 is still a proposal; no blanket completion is implied. See `docs/design/tutor-answer-lifecycle.md` and latest slice records.
 
 ## Requested outcome
 
@@ -8,7 +8,9 @@ Completed tutor answers are saved automatically in the local database, searchabl
 
 ## Current evidence
 
-StudyTutor restores bounded conversation history from browser localStorage; that is not a durable searchable answer library. `TutorTrace` stores operational metadata and model/retrieval references, not the complete question/answer. `/api/playground/tutor` returns text and a turn_id. Reconcile the session text, voice, representation and feedback paths before choosing the shared persistence boundary. Do not assume old answers can be reconstructed from metadata or re-generate them as if they were historical records.
+`tutor_answer` stores actual completed replies, bounded request/work snapshots and metadata; raw trace rows remain operational evidence, not reconstructed conversations. `/answers` lists/searches existing records without model calls, supports feedback and source-current checks, and links follow-ups and historical excerpts. Lesson retrieval requires exact teaching-contract scope and current source hashes. Workspace context is supplied by the client and does not verify external datasets. Negative feedback filters candidate reuse; historical model text is never original corpus evidence.
+
+Local semantic indexing runs in separate bounded jobs or the explicit CLI. Original source-free workspace answers remain unverified guidance. The optional exact-replay checkbox returns a dated original only for identical supplied context and current prompt version; otherwise generation proceeds. Main lesson exact replay remains pending. Tests prove contracts, not model accuracy or learning benefit.
 
 ## Design requirements
 
@@ -50,4 +52,4 @@ Goal: use previous useful explanations without regenerating everything. Implemen
 4. Semantic retrieval: evaluate local embeddings through the existing registry/retrieval boundary, combining semantic and literal search. No new paid route. Keep answer index separate from original corpus evidence, rebuildable and owner-filtered.
 5. Evaluation: compare first-response and complete-response latency, model calls avoided, prompt size, relevant matches and harmful reuse. Include changed notebook code/output, stale sources, negative feedback, same wording across different tasks and prompt injection. Synthetic contracts and actual local-model results must be reported separately.
 
-Current source-status work is only the prerequisite. Automatic reuse, semantic answer indexing and a measured performance gain remain unimplemented.
+Source checks, opt-in workspace exact replay and local semantic indexing/retrieval are implemented. Always-on automatic replay is not enabled. Main lesson exact replay, broader latency/quality evaluation and source/code correction lineage remain open; individual diagnostics must not be presented as a general performance or learning gain.
