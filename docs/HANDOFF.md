@@ -202,3 +202,8 @@ The complete GitHub journey suite exposed one stale assertion after the answer-b
 ## 2026-10-01 — quoted-feedback diagnostic
 
 Experimental exact-answer quotation validation and seven synthetic cases per model completed. Local models still made interpretation errors; hosted comparison improved the sampled judgments but repeated a solved Socratic question. No runtime routing or learning-state change. 547 backend tests and lint/types passed; independent code/pedagogy review clear. Evidence, estimated cost and limitations: docs/slices/quoted-feedback-diagnostic.md. Earlier runtime CI passed both workflows. Both repositories remain private.
+
+
+## 2026-10-01 — expanded feedback comparison
+
+13 synthetic cases with the version2 prompt completed. Hosted sample supports narrowly scoped explicit answer feedback; local model still makes material interpretation errors despite valid quotations. No runtime integration or routing change. Lint/types, script checks, five contract tests and independent review passed. See quoted-feedback-diagnostic and planned explicit-answer-feedback slice docs for evidence, estimated cost and limits. Both repos remain private.

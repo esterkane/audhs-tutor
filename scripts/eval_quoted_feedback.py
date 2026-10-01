@@ -13,8 +13,6 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from sqlalchemy import select
-
 from app.core.config import get_settings
 from app.db.models import ModelCall
 from app.evals.grounded_feedback import bound_feedback
@@ -24,6 +22,7 @@ from app.models_ai.provider import TaskClass
 from app.models_ai.registry import get_row, get_spec
 from app.orchestrator.playground import messages
 from app.schemas.playground import PlaygroundRequest
+from sqlalchemy import select
 
 TASK = "A dataset starts with 50 rows and retains 30. What proportion remains?"
 CASES = [
@@ -79,6 +78,66 @@ CASES = [
 ]
 
 
+CASES += [
+    (
+        "revised_answer",
+        TASK,
+        "I revised my earlier answer: 30/50 = 0.6, or 60%.",
+        "explicit",
+        "Accept the current correction despite wrong earlier learner and tutor statements.",
+    ),
+    (
+        "missing_execution",
+        "Explain whether the submitted cleaning code works on the dataset.",
+        "The code should drop incomplete rows, but I have not run it yet.",
+        "explicit",
+        "Discuss the code's intended action; do not claim execution or successful dataset results.",
+    ),
+    (
+        "stale_output",
+        "Check the current retention calculation and its printed result.",
+        "The saved output is from before my edit, so it does not verify the new code.",
+        "explicit",
+        "Acknowledge stale output; never use it to certify the edited code.",
+    ),
+    (
+        "conflicting_bins",
+        "Instruction A: adult age >=18. Instruction B: adult age >18. Both are supplied with no precedence.",
+        "Age 18 belongs in the adult bin under A, but not under B. The instructions conflict.",
+        "explicit",
+        "Accept the distinction; require resolving precedence before choosing a definitive bin.",
+    ),
+    (
+        "long_answer",
+        TASK,
+        "Context: "
+        + "I am documenting my cleaning workflow before checking the retained proportion. "
+        * 70
+        + "My final answer is 30/50 = 0.6, which is 60%.",
+        "explicit",
+        "Use the final answer after the long context; no truncation or invented format objection.",
+    ),
+    (
+        "unequal_denominators_socratic",
+        "A retains 90 of 100 rows; B retains 30 of 40. Compare retention rates.",
+        "A retains 90%, B retains 75%. A has a 15-percentage-point higher retention rate.",
+        "socratic",
+        "Accept both denominators and percentage points; extend reasoning without re-asking supplied rates.",
+    ),
+]
+
+CONTEXT_OVERRIDES = {
+    "revised_answer": {
+        "history": [
+            {"role": "user", "text": "30/50 = 0.9, so 90%."},
+            {"role": "assistant", "text": "That is correct; 90% remain."},
+        ]
+    },
+    "missing_execution": {"code": "cleaned = df.dropna()", "output": ""},
+    "stale_output": {"code": "print(30 / 50)", "output": "0.9", "output_stale": True},
+}
+
+
 async def run(output: Path, model: str) -> None:
     if urlparse(get_settings().ollama_host).hostname not in {
         "localhost",
@@ -87,7 +146,7 @@ async def run(output: Path, model: str) -> None:
     }:
         raise ValueError("Loopback Ollama required")
     task_prompt = (
-        Path(__file__).resolve().parents[1] / "prompts/playground/quoted-feedback.v1.md"
+        Path(__file__).resolve().parents[1] / "prompts/playground/quoted-feedback.v2.md"
     ).read_text()
     results = []
 
@@ -132,7 +191,7 @@ async def run(output: Path, model: str) -> None:
                     body = PlaygroundRequest(
                         session_id="eval",
                         exercise=exercise,
-                        code="",
+                        **{"code": "", **CONTEXT_OVERRIDES.get(name, {})},
                         learner_answer=answer,
                         questioning_style=mode,
                         question="Review my reasoning against the supplied task.",
@@ -178,7 +237,7 @@ async def run(output: Path, model: str) -> None:
                                 "raw_text": reply.result.text,
                             }
                         )
-                    except Exception as exc:
+                    except Exception as exc:  # noqa: BLE001 — record per-case failure, continue diagnostic
                         await db.rollback()
                         result.update(
                             {

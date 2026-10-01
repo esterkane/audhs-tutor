@@ -17,8 +17,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
-from sqlalchemy import select
-
 from app.core.config import get_settings
 from app.db.models import ModelCall
 from app.db.session import make_engine, make_session_factory
@@ -31,7 +29,8 @@ from app.models_ai.provider import TaskClass
 from app.models_ai.registry import get_row, get_spec
 from app.orchestrator.playground import messages
 from app.schemas.playground import PlaygroundRequest
-from eval_quoted_feedback import CASES
+from eval_quoted_feedback import CASES, CONTEXT_OVERRIDES
+from sqlalchemy import select
 
 
 async def run(output: Path) -> None:
@@ -39,7 +38,7 @@ async def run(output: Path) -> None:
     if not settings.openai_api_key:
         raise ValueError("Configure the existing server-side key locally first")
     task_prompt = (
-        Path(__file__).resolve().parents[1] / "prompts/playground/quoted-feedback.v1.md"
+        Path(__file__).resolve().parents[1] / "prompts/playground/quoted-feedback.v2.md"
     ).read_text()
     engine = make_engine(settings.database_url_resolved)
     evaluation_id = str(uuid.uuid4())
@@ -98,7 +97,7 @@ async def run(output: Path) -> None:
                 body = PlaygroundRequest(
                     session_id="eval",
                     exercise=exercise,
-                    code="",
+                    **{"code": "", **CONTEXT_OVERRIDES.get(name, {})},
                     learner_answer=answer,
                     questioning_style=mode,
                     question="Review my reasoning against the supplied task.",
@@ -145,7 +144,7 @@ async def run(output: Path) -> None:
                             "raw_text": reply.result.text,
                         }
                     )
-                except Exception as exc:
+                except Exception as exc:  # noqa: BLE001 — record per-case failure, continue diagnostic
                     await db.rollback()
                     result.update(
                         {

@@ -35,3 +35,20 @@ Next: expand the synthetic cases to revised answers/history, missing execution o
 Five contract tests cover quote substitution, request isolation, schema privacy, explicit-mode fields, Unicode/whitespace, oversized/empty answers and duplicate quotes. Review corrected an empty-string follow-up loophole by requiring `null` in explicit mode. No API, UI, dependency or database schema changed, so new UI journeys or generated API types are not required for this diagnostic. The preceding runtime commits passed both remote CI workflows, including all browser journeys.
 
 Final verification: **547 backend tests passed**, with three existing warnings; full lint/format/mypy/TypeScript/ESLint passed. Independent code and pedagogy review found no remaining blockers or majors. The reviewer confirmed the narrow hosted findings and the redundant Socratic follow-up; broader reliability remains unproven.
+
+
+## Expanded comparison — completed
+
+Version 2 explicitly distinguishes revised claims from history, missing execution evidence, stale output and conflicting bin instructions, and prevents asking again for a calculation already supplied. The same original seven cases remain, plus six synthetic edge cases: revised answer with a wrong historical tutor endorsement, absent execution output, stale output after editing code, conflicting interval boundaries, a long answer with its conclusion at the end, and unequal denominators in Socratic mode. Both scripts now share these context overrides; earlier v1 artifacts stay immutable. No live tutoring route changed.
+
+Acceptance: inspect semantic correctness separately for each case; exact quote validity alone cannot pass. Explicit mode stays question-free; a Socratic extension must go beyond the supplied/corrected calculation. Missing and stale evidence must remain unverified. Only synthetic input is sent in the explicitly paid comparison; the same accounting cap and limitations apply.
+
+Expanded results: hosted 13/13 literal contracts valid, median complete response **1.945 s**, total **$0.004363 estimated** across these 13 calls. Manual inspection found correct handling of the supplied judgments and denominator-based Socratic extensions. This remains one sample per synthetic case, not a general accuracy guarantee.
+
+Local Gemma: 12/13 literal contracts valid, median case duration **15.356 s** across all 13 cases including the failed case. It still rejected a correct revised answer and a correct 15-percentage-point difference, invented a fraction-format requirement, and hid extra questions in prose. The long-answer case recorded one error attempt and GatewayError after about 29.9 seconds; the artifact does not establish the underlying cause. Do not reinterpret this as a semantic pass. The contract can reject malformed quotes but cannot repair these wrong judgments. Raw attempts remain in the expanded artifacts.
+
+Next runtime direction is specified in `docs/slices/explicit-answer-feedback.md`: a narrowly scoped explicit answer-check action, with provider disclosure, exact answer binding, deterministic arithmetic, retained work on errors, shared read-aloud and unchanged broader conversation routing. This diagnostic does not implement that action.
+
+Verification: full lint/types passed; both CLI files pass Python compilation and targeted Ruff (E402 excluded for their explicit repository path bootstrap). All 13 request fixtures validate within existing bounds. Five exact-quotation contract tests passed. No backend runtime implementation changed since the 547-test pass. Earlier diagnostic commits now have separate CI runs; do not conflate those with this uncommitted delta.
+
+Independent code/pedagogy review cleared the expanded diagnostic and planned runtime slice; it corrected an unsupported explanation of the long-answer failure. No remaining blockers or majors in this diagnostic.
