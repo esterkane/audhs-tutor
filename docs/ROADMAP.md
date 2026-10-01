@@ -18,3 +18,5 @@ Notebook workspace can prepare an explicit private bundle, preserve existing edi
 - 2026-10-01: archive-member retry preserves completed work; see docs/slices/archive-retry.md.
 
 - 2026-10-01: current tutor explanation controls implemented; Q2 remains partial, including model adherence. See docs/slices/tutor-explanation-controls.md.
+
+- 2026-10-01: StudyTutor elapsed waiting, nearby Stop and completion announcement verified; see docs/slices/tutor-waiting.md.

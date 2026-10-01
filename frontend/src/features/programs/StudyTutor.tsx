@@ -6,6 +6,7 @@ import { askTutor, type TutorReply, type TutorRequest } from '../playground/api'
 import { useCurrentSession } from '../session/api'
 import { ReadAloud } from '../voice/ReadAloud'
 import { DictationButton } from '../voice/DictationButton'
+import { WaitingElapsed } from '../tutor/WaitingElapsed'
 
 type Props = {
   targetLabel?: string
@@ -137,6 +138,8 @@ function Conversation({
   const socratic = mode === 'socratic' && replySnapshot === snapshot
   const [storageError, setStorageError] = useState(restored.error)
   const [busy, setBusy] = useState(false)
+  const [startedAt, setStartedAt] = useState(0)
+  const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
   const operation = useRef<AbortController | null>(null)
   useEffect(
@@ -210,6 +213,8 @@ function Conversation({
     if (!requests[action]) return
     const ctl = new AbortController()
     operation.current = ctl
+    setStartedAt(performance.now())
+    setReady(false)
     setBusy(true)
     setError('')
     const submitted = question
@@ -237,6 +242,7 @@ function Conversation({
       )
       if (operation.current !== ctl || ctl.signal.aborted) return
       setReply(next)
+      setReady(true)
       setReplySnapshot(snapshot)
       setMode(
         action === 'socratic' || (socratic && (action === 'chat' || action === 'hint'))
@@ -290,6 +296,21 @@ function Conversation({
           {reviewOnly ? 'Check my answer' : 'Review my answer'}
         </Button>
       </div>
+      <p role="status" aria-label="Tutor response status" aria-atomic="true" className="mt-2">
+        {busy
+          ? 'Tutor is preparing a response…'
+          : ready && replySnapshot === snapshot
+            ? 'Tutor response ready.'
+            : ''}
+      </p>
+      {busy && (
+        <div className="my-2">
+          <WaitingElapsed key={startedAt} startedAt={startedAt} />
+          <Button type="button" onClick={stop}>
+            {reviewOnly && !reply ? 'Stop answer check' : 'Stop tutor response'}
+          </Button>
+        </div>
+      )}
       <p className="text-xs text-muted mt-2">
         Feedback is guidance, not a verified grade. Uses your configured explanation/hint model; this does not
         change routing.
@@ -396,16 +417,9 @@ function Conversation({
           <Button type="submit" disabled={busy || !question.trim()}>
             {socratic ? 'Discuss my answer' : reviewOnly ? 'Send follow-up' : 'Send to tutor'}
           </Button>
-          {busy && (
-            <Button type="button" onClick={stop}>
-              Stop tutor response
-            </Button>
-          )}
         </form>
       )}
-      {reviewOnly && busy && !reply && <Button onClick={stop}>Stop answer check</Button>}
       {reviewOnly && !answer.trim() && <p>Write your explanation above, then check it for feedback.</p>}
-      {busy && <p role="status">Tutor is preparing a response…</p>}
       {error && <p role="alert">{error}</p>}
       {storageError && <p role="alert">{storageError}</p>}
     </>

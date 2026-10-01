@@ -43,6 +43,7 @@ for (const width of [1280, 390]) {
       }),
     )
     let requests = 0
+    let release: (() => void) | undefined
     await page.route('**/api/playground/tutor', async (route) => {
       const body = route.request().postDataJSON()
       expect(body.exercise).toContain('Compare group retention')
@@ -54,6 +55,10 @@ for (const width of [1280, 390]) {
         requests++ === 0
           ? 'Why compare proportions rather than counts?'
           : 'You identified unequal group sizes. What would you compare next?'
+      if (requests === 6)
+        await new Promise<void>((resolve) => {
+          release = resolve
+        })
       await route.fulfill({
         json: { text, model: 'fixture', route: 'fake', turn_id: 'fixture', source_note: 'Synthetic' },
       })
@@ -89,11 +94,24 @@ for (const width of [1280, 390]) {
       const control = page.getByRole('button', { name: label, exact: true })
       await control.focus()
       await page.keyboard.press('Enter')
+      if (label === 'Show an example') {
+        await expect(page.getByRole('status', { name: 'Tutor response status' })).toContainText('preparing')
+        await expect(page.getByText(/Waiting [1-9]\d* seconds?/)).toBeVisible()
+        const stop = page.getByRole('button', { name: 'Stop tutor response', exact: true })
+        await stop.focus()
+        await page.keyboard.press('Enter')
+        await expect(page.getByRole('status', { name: 'Tutor response status' })).toBeEmpty()
+        release!()
+        await control.click()
+      }
       await expect(control).toBeEnabled()
       await expect(draft).toHaveValue('Keep this draft')
       await expect(page.getByText('Discussing: Step — Compare')).toBeVisible()
     }
-    expect(requests).toBe(6)
+    expect(requests).toBe(7)
+    await expect(page.getByRole('status', { name: 'Tutor response status' })).toHaveText(
+      'Tutor response ready.',
+    )
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }

@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { renderApp } from '../../test/utils'
 import { StudyTutor } from './StudyTutor'
@@ -23,6 +23,7 @@ function active() {
   } as ReturnType<typeof useCurrentSession>)
 }
 afterEach(() => {
+  vi.useRealTimers()
   vi.resetAllMocks()
   localStorage.clear()
 })
@@ -268,4 +269,60 @@ it('requires explicit explanation switch before adapting a Socratic question', a
   expect(screen.queryByRole('button', { name: 'Shorter' })).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Explain instead' }))
   await screen.findByRole('button', { name: 'Shorter' })
+})
+
+it('shows elapsed waiting quietly and announces only the accepted completion', async () => {
+  active()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance'] })
+  const completions: ((value: typeof reply) => void)[] = []
+  vi.mocked(askTutor).mockImplementation(() => new Promise((resolve) => completions.push(resolve)))
+  const view = renderApp(<StudyTutor context="Retention" identity="wait" />)
+  const status = screen.getByRole('status', { name: 'Tutor response status' })
+  expect(status).toBeEmptyDOMElement()
+  const input = screen.getByLabelText('Your tutor message or response')
+  fireEvent.change(input, { target: { value: 'Keep this draft' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Explain this step' }))
+  expect(status).toHaveTextContent('Tutor is preparing a response')
+  await act(async () => vi.advanceTimersByTime(4000))
+  expect(screen.getByText(/Waiting 4 seconds/)).toHaveAttribute('aria-live', 'off')
+  expect(status).not.toHaveTextContent('seconds')
+  fireEvent.click(screen.getByRole('button', { name: 'Stop tutor response' }))
+  expect(status).toBeEmptyDOMElement()
+  expect(screen.queryByText(/Waiting 4 seconds/)).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Explain this step' }))
+  expect(screen.getByText(/Waiting 0 seconds/)).toBeVisible()
+  await act(async () => completions[0]({ ...reply, text: 'Discard this stale response' }))
+  expect(screen.queryByText('Discard this stale response')).toBeNull()
+  expect(status).toHaveTextContent('Tutor is preparing a response')
+  await act(async () => completions[1](reply))
+  expect(status).toHaveTextContent('Tutor response ready.')
+  expect(input).toHaveValue('Keep this draft')
+  expect(screen.queryByText(/Waiting \d+ seconds/)).toBeNull()
+  view.unmount()
+  renderApp(<StudyTutor context="Retention" identity="wait" />)
+  expect(screen.getByRole('status', { name: 'Tutor response status' })).toBeEmptyDOMElement()
+  expect(screen.getByText(reply.text)).toBeVisible()
+})
+
+it('times out waiting without announcing a late completion or losing the draft', async () => {
+  active()
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance'] })
+  let finish!: (value: typeof reply) => void
+  vi.mocked(askTutor).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  renderApp(<StudyTutor context="Retention" />)
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), {
+    target: { value: 'My question' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
+  await act(async () => vi.advanceTimersByTime(90000))
+  expect(screen.getByRole('alert')).toHaveTextContent('took too long')
+  expect(vi.mocked(askTutor).mock.lastCall![1].aborted).toBe(true)
+  await act(async () => finish(reply))
+  expect(screen.getByRole('status', { name: 'Tutor response status' })).toBeEmptyDOMElement()
+  expect(screen.getByLabelText('Your tutor message or response')).toHaveValue('My question')
 })
