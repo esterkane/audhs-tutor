@@ -142,3 +142,8 @@ Added local-only paired prompt evaluation with disposable DB, loopback Ollama an
 ## 2026-10-01 — workspace citation disclosure
 
 Final source-free workspace replies now disclose possible unsupported numeric citations before display/save/read-aloud, preserving raw text in metadata. Common code spans/fences/indexing are exempt. Prompt version v5 invalidates exact reuse of earlier unguarded replies. 453 backend tests, lint/types and independent code/pedagogy review passed; six recorded outputs replayed through finalizer without text loss. Heuristic limitations and underlying model-quality failures remain explicit. Next: broader provenance/quality evaluation alongside semantic candidate search; no new correctness claim or extra generation call. Both repos private.
+
+
+## 2026-10-01 — semantic retrieval feasibility
+
+Measured installed local nomic embeddings with six synthetic candidate answers and four paraphrases: batch330ms, subsequent queries15–16ms (single trials, not end-to-end). Deliberately wrong reversed formula outranked the correct answer, confirming semantic scores cannot establish truth or authorize replay. Three other top1 matches correct. Added reproducible local-only diagnostic and staged cache/filter/lifecycle design; no runtime integration yet. Lint/types and independent review clear. Next: owner-scoped derived vector cache with wipe/model invalidation, then lexical-semantic fusion; quality gates remain open. Both repos private.

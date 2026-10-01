@@ -1,0 +1,160 @@
+{
+  "model": "nomic-embed-text",
+  "synthetic": true,
+  "scope": "unprefixed embedding cosine only, no production integration or truth validation",
+  "document_batch_ms": 330,
+  "query_ms": [
+    16,
+    15,
+    15,
+    15
+  ],
+  "documents": [
+    [
+      "retention",
+      "Why compare retention rates? Divide retained rows by initial group size to compare proportions."
+    ],
+    [
+      "incorrect",
+      "Why compare retention rates? Divide initial group size by retained rows to compare proportions."
+    ],
+    [
+      "missing",
+      "How can missing data bias cleaning? Dropping rows may remove more members of some groups."
+    ],
+    [
+      "syntax",
+      "How do I access the second list item in Python? Use values[1]; indexing starts at zero."
+    ],
+    [
+      "bins",
+      "Which bin contains the boundary? Specify whether each interval includes its left or right endpoint."
+    ],
+    [
+      "unrelated",
+      "How do I tune a guitar? Standard strings are E A D G B E."
+    ]
+  ],
+  "results": [
+    {
+      "query": "How do I compare the fraction remaining when groups started at different sizes?",
+      "expected": "retention",
+      "ranking": [
+        {
+          "id": "incorrect",
+          "score": 0.7544748027959594
+        },
+        {
+          "id": "retention",
+          "score": 0.7421339576045288
+        },
+        {
+          "id": "missing",
+          "score": 0.5694488224192357
+        },
+        {
+          "id": "bins",
+          "score": 0.5199998537962767
+        },
+        {
+          "id": "unrelated",
+          "score": 0.40596417717091526
+        },
+        {
+          "id": "syntax",
+          "score": 0.39580633925520503
+        }
+      ]
+    },
+    {
+      "query": "Could removing incomplete records distort who is represented?",
+      "expected": "missing",
+      "ranking": [
+        {
+          "id": "missing",
+          "score": 0.6844208692339412
+        },
+        {
+          "id": "incorrect",
+          "score": 0.5437158034098599
+        },
+        {
+          "id": "retention",
+          "score": 0.5424164490292825
+        },
+        {
+          "id": "bins",
+          "score": 0.4325703334100718
+        },
+        {
+          "id": "syntax",
+          "score": 0.3501808753869203
+        },
+        {
+          "id": "unrelated",
+          "score": 0.33063951748813375
+        }
+      ]
+    },
+    {
+      "query": "Retrieve element number two from a Python sequence",
+      "expected": "syntax",
+      "ranking": [
+        {
+          "id": "syntax",
+          "score": 0.7021198053153433
+        },
+        {
+          "id": "bins",
+          "score": 0.4477438051549854
+        },
+        {
+          "id": "incorrect",
+          "score": 0.4042861507130311
+        },
+        {
+          "id": "retention",
+          "score": 0.3944509600431224
+        },
+        {
+          "id": "missing",
+          "score": 0.3586760138924412
+        },
+        {
+          "id": "unrelated",
+          "score": 0.358027522273734
+        }
+      ]
+    },
+    {
+      "query": "Where does a value exactly on a bucket edge belong?",
+      "expected": "bins",
+      "ranking": [
+        {
+          "id": "bins",
+          "score": 0.5560923296438728
+        },
+        {
+          "id": "syntax",
+          "score": 0.5169993114204186
+        },
+        {
+          "id": "missing",
+          "score": 0.48234020524215643
+        },
+        {
+          "id": "incorrect",
+          "score": 0.4677502090629761
+        },
+        {
+          "id": "retention",
+          "score": 0.4669866402998614
+        },
+        {
+          "id": "unrelated",
+          "score": 0.3751518546684428
+        }
+      ]
+    }
+  ]
+}
