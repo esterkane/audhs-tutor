@@ -85,3 +85,7 @@ QA01 partial: completed workspace tutor answers persist in learner-scoped SQLite
 ## Saved lesson answers — 2026-10-01
 
 Completed shared tutor replies now persist final text with source hashes/citations and selected skill/area. Partial/aborted generation excluded. Lesson/hint/voice panels show save status; completed stream and voice text match canonical saved response. 430 backend/202 frontend tests, lint/build and independent review pass. Request-level recovery, workspace scope, other history paths and search remain pending. See docs/slices/saved-lesson-answers.md.
+
+## Publication guard hardening — 2026-10-01
+
+Guard checks indexed blobs, runtime/private snapshot paths and prohibited source tokens; clean unstaged copies cannot hide staged private content. Three regression tests, lint/types and independent review pass. Current staged public index verified. Publication commands must stop on guard failure. No runtime feature change. See docs/slices/publication-index-guard.md.
