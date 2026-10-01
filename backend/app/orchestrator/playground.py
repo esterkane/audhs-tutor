@@ -8,7 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.db.answer_memory import retrieve
+from app.db.answer_memory import exact_saved, retrieve
 from app.db.answers import save_completed
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
@@ -32,7 +32,14 @@ def messages(
     memory: list[dict[str, str]] | None = None,
 ) -> list[Message]:
     workspace = body.model_dump(
-        exclude={"session_id", "question", "intent", "learning_context", "learner_question"}
+        exclude={
+            "session_id",
+            "question",
+            "intent",
+            "learning_context",
+            "learner_question",
+            "prefer_saved",
+        }
     )
     if historical is not None:
         workspace["historical_answer"] = historical
@@ -86,6 +93,26 @@ async def respond(
     session = await ksession.get(db, body.session_id)
     if session.learner_id != learner_id or session.ended_at:
         raise AppError("not_found", "Start or resume a session to use the tutor.", http_status=404)
+    if body.prefer_saved and historical is None:
+        try:
+            async with db.begin_nested():
+                saved = await exact_saved(db, learner_id, body, VERSION)
+            if saved is not None:
+                return PlaygroundReply(
+                    text=saved.text,
+                    model=str(saved.metadata_json.get("model", "unknown")),
+                    route=str(saved.metadata_json.get("route", "unknown")),
+                    turn_id=saved.turn_id,
+                    answer_id=saved.id,
+                    reused=True,
+                    saved_at=saved.created_at,
+                    source_note=(
+                        "Reopened a saved reply for identical supplied context. "
+                        "No model call or new checks; external files and datasets may have changed."
+                    ),
+                )
+        except SQLAlchemyError as exc:
+            logger.warning("Saved answer reuse unavailable: %s", type(exc).__name__)
     turn_id = new_id()
     memory: list[dict[str, str]] = []
     if historical is None:

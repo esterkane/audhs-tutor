@@ -64,7 +64,7 @@ for (const width of [1280, 390]) {
           release = resolve
         })
       await route.fulfill({
-        json: { text, model: 'fixture', route: 'fake', turn_id: 'fixture', source_note: 'Synthetic historical context', memory_answers: ['prior'] },
+        json: { text, model: 'fixture', route: 'fake', turn_id: 'fixture', source_note: 'Synthetic historical context', memory_answers: ['prior'], reused: body.prefer_saved, saved_at: '2026-10-01T09:00:00Z' },
       })
     })
     await page.route('**/api/answers?*', async (route) => {
@@ -106,11 +106,13 @@ for (const width of [1280, 390]) {
     await expect(savedLink).toBeVisible()
     await expect(savedLink).toHaveAttribute('href', /course_id=fixture/)
     await page.getByText('Previously answered here').click()
+    await page.getByRole('checkbox', { name: /Use a saved answer/ }).check()
     const socratic = page.getByRole('button', { name: 'Ask me a Socratic question', exact: true })
     await socratic.focus()
     await page.keyboard.press('Enter')
     const answer = page.getByLabel('Your answer to the tutor’s question', { exact: true })
     await expect(answer).toBeFocused()
+    await expect(page.getByText(/Saved answer from 2026-10-01/)).toBeVisible()
     await answer.fill('The groups have different sizes.')
     await page.getByRole('button', { name: 'Discuss my answer', exact: true }).click()
     await expect(

@@ -66,3 +66,27 @@ async def retrieve(
         if len(result) == 2:
             break
     return result
+
+
+async def exact_saved(
+    db: AsyncSession, learner_id: str, body: PlaygroundRequest, prompt_version: str
+) -> TutorAnswer | None:
+    """Reopen identical supplied requests, never certify dataset or external-source freshness."""
+    from app.db.answer_sources import check
+
+    expected = body.model_dump(exclude={"session_id", "prefer_saved"})
+    # Use the same ownership, negative-feedback and workspace filters as memory retrieval.
+    for candidate in await retrieve(db, learner_id, body):
+        row = await db.get(TutorAnswer, candidate["answer_id"])
+        if row is None or row.metadata_json.get("prompt_version") != prompt_version:
+            continue
+        previous = {key: value for key, value in row.request_json.items() if key != "prefer_saved"}
+        if previous != expected:
+            continue
+        sources = await check(db, learner_id, row.id)
+        if sources.omitted or any(
+            source.status != "unchanged" or source.newer_version for source in sources.sources
+        ):
+            continue
+        return row
+    return None

@@ -211,6 +211,7 @@ function Workspace({
       const reply = await askTutor(
         {
           session_id: sessionId,
+          prefer_saved: false,
           intent,
           question: text,
           exercise: activity.task,

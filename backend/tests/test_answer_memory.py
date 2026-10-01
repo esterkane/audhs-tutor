@@ -93,3 +93,81 @@ async def test_generation_uses_memory_and_survives_lookup_failure(
     assert third.status_code == 200, third.text
     assert third.json()["memory_answers"] == []
     assert third.json()["answer_id"]
+
+
+async def test_opt_in_exact_reuse_skips_model_and_does_not_duplicate_saved_answer(
+    client, db, fake_local
+):  # type: ignore[no-untyped-def]
+    from sqlalchemy import func, select
+
+    from app.models_ai.registry import seed_defaults
+
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    body = {
+        "session_id": session["id"],
+        "exercise": "Groups",
+        "code": "",
+        "question": "group",
+        "learning_context": {"target_id": "step"},
+    }
+    first = (await client.post("/api/playground/tutor", json=body)).json()
+    assert len(fake_local.calls) == 1
+    reused = (
+        await client.post("/api/playground/tutor", json={**body, "prefer_saved": True})
+    ).json()
+    assert reused["reused"] is True
+    assert reused["answer_id"] == first["answer_id"]
+    assert reused["text"] == first["text"]
+    assert reused["saved_at"]
+    assert len(fake_local.calls) == 1
+    assert await db.scalar(select(func.count()).select_from(TutorAnswer)) == 1
+    # Different conversation cannot reuse a reply to an earlier conversation.
+    changed = await client.post(
+        "/api/playground/tutor",
+        json={
+            **body,
+            "prefer_saved": True,
+            "history": [{"role": "user", "text": "A different assumption"}],
+        },
+    )
+    assert changed.status_code == 200
+    assert changed.json()["reused"] is False
+    assert len(fake_local.calls) == 2
+    # Explicit fresh generation always calls the model.
+    fresh = await client.post("/api/playground/tutor", json=body)
+    assert fresh.json()["reused"] is False
+    assert len(fake_local.calls) == 3
+
+
+async def test_exact_reuse_rejects_unavailable_sources_and_old_prompt(client, db):  # type: ignore[no-untyped-def]
+    from app.db.answer_memory import exact_saved
+
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    body = PlaygroundRequest(
+        session_id="unused",
+        question="group",
+        exercise="Groups",
+        code="",
+        learning_context=PlaygroundContext(target_id="step"),
+    )
+    row = TutorAnswer(
+        id="saved",
+        learner_id=owner,
+        turn_id="saved",
+        surface="playground",
+        request_json=body.model_dump(exclude={"session_id"}),
+        text="group",
+        fingerprint="saved",
+        metadata_json={
+            "learning_context": body.learning_context.model_dump(),
+            "prompt_version": "v2",
+        },
+    )
+    db.add(row)
+    await db.commit()
+    assert await exact_saved(db, owner, body, "v2") is not None
+    assert await exact_saved(db, owner, body, "v3") is None
+    row.metadata_json = {**row.metadata_json, "sources": [{"chunk_id": "missing"}]}
+    await db.commit()
+    assert await exact_saved(db, owner, body, "v2") is None

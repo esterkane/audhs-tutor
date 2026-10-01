@@ -9,6 +9,7 @@ vi.mock('../session/api', () => ({ useCurrentSession: vi.fn() }))
 vi.mock('../voice/ReadAloud', () => ({ ReadAloud: () => <button>Listen to explanation</button> }))
 vi.mock('../voice/DictationButton', () => ({ DictationButton: () => <button type="button">Dictate</button> }))
 const reply = {
+  reused: false,
   text: 'Keep held-out data separate.',
   model: 'local',
   route: 'local',
@@ -373,4 +374,20 @@ it('shows links to the prior answers used as historical context', async () => {
   fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Why compare?' } })
   fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
   expect(await screen.findByRole('link', { name: 'Open previous answer' })).toHaveAttribute('href', '/answers/previous-one')
+})
+it('opts into saved reuse explicitly and labels the original dated response', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue({ ...reply, reused: true, saved_at: '2026-10-01T09:00:00Z', answer_id: 'old' })
+  renderApp(<StudyTutor context="Groups" />)
+  const reuse = screen.getByRole('checkbox', { name: /Use a saved answer/ })
+  expect(reuse).not.toBeChecked()
+  fireEvent.click(reuse)
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Why compare?' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
+  await screen.findByText(/Saved answer from 2026-10-01/)
+  expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: true }), expect.any(AbortSignal))
+  fireEvent.click(reuse)
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Explain again' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
+  await waitFor(() => expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: false }), expect.any(AbortSignal)))
 })

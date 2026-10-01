@@ -3984,6 +3984,13 @@ export interface components {
       answer_id?: string | null
       /** Save Error */
       save_error?: string | null
+      /**
+       * Reused
+       * @default false
+       */
+      reused: boolean
+      /** Saved At */
+      saved_at?: string | null
       /** Memory Answers */
       memory_answers?: string[]
       /**
@@ -3996,6 +4003,11 @@ export interface components {
     PlaygroundRequest: {
       /** Session Id */
       session_id: string
+      /**
+       * Prefer Saved
+       * @default false
+       */
+      prefer_saved: boolean
       learning_context?: components['schemas']['PlaygroundContext'] | null
       /** Learner Question */
       learner_question?: string | null

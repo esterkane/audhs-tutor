@@ -21,6 +21,7 @@ class PlaygroundContext(BaseModel):
 
 class PlaygroundRequest(BaseModel):
     session_id: str
+    prefer_saved: bool = False
     learning_context: PlaygroundContext | None = None
     learner_question: str | None = Field(default=None, max_length=2000)
     intent: Literal["chat", "explain", "hint", "big_picture"] = "chat"
@@ -39,5 +40,7 @@ class PlaygroundReply(BaseModel):
     turn_id: str
     answer_id: str | None = None
     save_error: str | None = None
+    reused: bool = False
+    saved_at: str | None = None
     memory_answers: list[str] = Field(default_factory=list)
     source_note: str = "General coding guidance; no course sources retrieved."

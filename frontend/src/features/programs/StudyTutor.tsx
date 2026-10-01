@@ -154,6 +154,7 @@ function Conversation({
   const socratic = mode === 'socratic' && replySnapshot === snapshot
   const [storageError, setStorageError] = useState(restored.error)
   const [busy, setBusy] = useState(false)
+  const [preferSaved, setPreferSaved] = useState(false)
   const [startedAt, setStartedAt] = useState(0)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
@@ -252,6 +253,7 @@ function Conversation({
       const next = await askTutor(
         {
           session_id: sessionId,
+          prefer_saved: preferSaved,
           learning_context: {
             course_id: courseId,
             section_id: sectionId,
@@ -348,6 +350,11 @@ function Conversation({
         Feedback is guidance, not a verified grade. Uses your configured explanation/hint model; this does not
         change routing.
       </p>
+      <label className="flex gap-2 items-center text-sm my-2">
+        <input type="checkbox" checked={preferSaved} disabled={busy}
+          onChange={(event) => setPreferSaved(event.target.checked)} />
+        Use a saved answer when this request matches (no new model call)
+      </label>
       {(context.length > 1000 || code.length > 16000 || answer.length > 1950 || output.length > 1950) && (
         <p role="status">
           Only the first 1,000 characters of material, 16,000 of code, 1,950 of your answer and 1,950 of run
@@ -388,6 +395,7 @@ function Conversation({
                   ? 'Your turn: answer this question below, or choose Explain instead.'
                   : 'You can ask a follow-up below.'}
             </p>
+            {reply.reused && <p role="status">Saved answer from {reply.saved_at}. To generate fresh, turn off saved-answer reuse and ask again.</p>}
             <Markdown text={reply.text} />
             {!socratic && replySnapshot === snapshot && (
               <div role="group" aria-label="Adapt this explanation" className="flex flex-wrap gap-2 my-3">
