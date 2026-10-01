@@ -62,6 +62,15 @@ async def _seed(db: AsyncSession, name: str) -> models.LearnerProfile:
             hidden=True,
         )
     )
+    db.add(
+        models.TutorAnswerVector(
+            learner_id=lp.id,
+            answer_id=saved.id,
+            answer_fingerprint=saved.fingerprint,
+            model_key="synthetic:v1",
+            vector_json=[1.0, 0.0],
+        )
+    )
     await db.commit()
     return lp
 
@@ -81,6 +90,9 @@ async def test_export_then_wipe_keeps_other_learners(db: AsyncSession, db_path: 
     assert exported["tutor_answer"][0]["text"] == "Answer for A"
     deleted = wipe_learner(conn, a.id)
     assert deleted["tutor_answer"] == 1
+    assert deleted["tutor_answer_vector"] == 1
+    assert exported["tutor_answer_vector"][0]["model_key"] == "synthetic:v1"
+    assert len(export_learner(conn, b.id)["tutor_answer_vector"]) == 1
     assert exported["tutor_answer_feedback"][0]["note"] == "Report by A"
     assert deleted["tutor_answer_feedback"] == 1
     assert export_learner(conn, b.id)["tutor_answer_feedback"][0]["note"] == "Report by B"

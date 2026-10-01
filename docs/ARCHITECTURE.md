@@ -135,3 +135,7 @@ Saved history has read-only owner-scoped `/api/answers` list/detail endpoints wi
 ### Saved-answer reports
 
 `tutor_answer_feedback` holds owner-scoped verdict, optional note, hidden flag and optimistic revision separately from immutable replies. Unique owner/answer key and conditional updates protect concurrent edits. Reports do not produce mastery evidence. Contextual lists omit hidden/incorrect/outdated records; general history retains them. Feedback participates in learner export/wipe and database backups.
+
+
+### Derived answer embedding cache (2026-10-01)
+`tutor_answer_vector` is learner-scoped private derived state keyed uniquely by learner/answer, with answer fingerprint, embedding model/format key and bounded finite vector JSON. It is never indexed as original corpus evidence. Reads rejoin current answer ownership/fingerprint and feedback visibility; model changes miss. Answer deletion cascades; generic learner export/wipe and private backup include the table. Population/ranking integration is a later slice; embedding inference must happen outside write transactions.

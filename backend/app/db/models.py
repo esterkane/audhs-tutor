@@ -686,3 +686,19 @@ from app.db.answer_search import ANSWER_SEARCH_DDL  # noqa: E402
 
 for _search_ddl in ANSWER_SEARCH_DDL:
     event.listen(TutorAnswer.__table__, "after_create", DDL(_search_ddl))  # type: ignore[no-untyped-call]
+
+
+class TutorAnswerVector(IdMixin, LearnerScoped, Base):
+    """Derived private cache; never a corpus source or correctness signal."""
+
+    __tablename__ = "tutor_answer_vector"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "answer_id", name="uq_answer_vector_owner_answer"),
+    )
+    answer_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("tutor_answer.id", ondelete="CASCADE"), index=True
+    )
+    answer_fingerprint: Mapped[str] = mapped_column(Text)
+    model_key: Mapped[str] = mapped_column(Text)
+    vector_json: Mapped[JsonList] = mapped_column(JSON)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
