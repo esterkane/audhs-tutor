@@ -71,8 +71,8 @@ async def kinds(skill_id: str, db: DB, learner: Learner) -> KindsOut:
     summary="Record which of two representations worked better (preferred event)",
     status_code=204,
 )
-async def prefer(skill_id: str, body: PreferIn, db: DB) -> None:
-    s = await ksession.get(db, body.session_id)
+async def prefer(skill_id: str, body: PreferIn, db: DB, learner: Learner) -> None:
+    s = await ksession.get_owned(db, body.session_id, learner.id)
     await orep.prefer(db, s, body.chosen_id, body.rejected_id, body.reason)
 
 
@@ -82,9 +82,9 @@ async def prefer(skill_id: str, body: PreferIn, db: DB) -> None:
     response_model=RenderOut,
 )
 async def render(
-    skill_id: str, kind: str, body: RenderIn, db: DB, gateway: Gateway, repo: Repo
+    skill_id: str, kind: str, body: RenderIn, db: DB, gateway: Gateway, repo: Repo, learner: Learner
 ) -> RenderOut:
-    s = await ksession.get(db, body.session_id)
+    s = await ksession.get_owned(db, body.session_id, learner.id)
     node = await skill_graph.get_node(db, skill_id)
     out = await orep.render(db, gateway, repo, s, node, kind, force=body.force)
     return RenderOut.model_validate(out)

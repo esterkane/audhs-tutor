@@ -4,8 +4,9 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from app.api.deps import DB, Gateway, Repo, SettingsDep
+from app.api.deps import DB, Gateway, Learner, Repo, SettingsDep
 from app.api.sse import sse
+from app.kernel import session as ksession
 from app.orchestrator.tutor import TutorTurn
 from app.schemas.tutor import TurnDone, TurnRequest
 
@@ -19,12 +20,13 @@ router = APIRouter(prefix="/tutor", tags=["tutor"])
 
 @router.post("/stream", summary="One tutor turn as SSE (meta, token*, done | error)")
 async def stream(
-    body: TurnRequest, db: DB, gateway: Gateway, repo: Repo, settings: SettingsDep
+    body: TurnRequest, db: DB, gateway: Gateway, repo: Repo, settings: SettingsDep, learner: Learner
 ) -> StreamingResponse:
     turn = TutorTurn(db, gateway, repo, quarantine_below_trust=settings.quarantine_below_trust)
 
     async def gen() -> AsyncIterator[bytes]:
         try:
+            await ksession.get_owned(db, body.session_id, learner.id)
             async for kind, data in turn.run(body):
                 yield sse(kind, data)
         except (KeyError, ValueError) as e:
@@ -46,8 +48,9 @@ async def stream(
     response_model=TurnDone,
 )
 async def turn(
-    body: TurnRequest, db: DB, gateway: Gateway, repo: Repo, settings: SettingsDep
+    body: TurnRequest, db: DB, gateway: Gateway, repo: Repo, settings: SettingsDep, learner: Learner
 ) -> TurnDone:
+    await ksession.get_owned(db, body.session_id, learner.id)
     done = None
     turn = TutorTurn(db, gateway, repo, quarantine_below_trust=settings.quarantine_below_trust)
     async for kind, data in turn.run(body):

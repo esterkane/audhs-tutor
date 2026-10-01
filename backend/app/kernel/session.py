@@ -73,6 +73,16 @@ async def get(db: AsyncSession, session_id: str) -> Session:
     return s
 
 
+async def get_owned(db: AsyncSession, session_id: str, learner_id: str) -> Session:
+    """Resolve a session without revealing whether another learner owns it."""
+    s = await db.scalar(
+        select(Session).where(Session.id == session_id, Session.learner_id == learner_id)
+    )
+    if s is None:
+        raise KeyError("session not found")
+    return s
+
+
 async def end(
     db: AsyncSession,
     session_id: str,
