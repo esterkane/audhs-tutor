@@ -28,7 +28,7 @@ function NotebookReader({
     [],
   )
   return (
-    <Card className="grid gap-3">
+    <Card className="min-w-0 grid gap-3">
       <h2 className="text-lg font-semibold">Understand a notebook</h2>
       <p>
         Open a notebook to read instructions, edit its starter code and try a local experiment. Nothing runs
@@ -58,7 +58,7 @@ function NotebookReader({
       <label>
         Local notebook
         <input
-          className="block"
+          className="block w-full min-w-0 max-w-full"
           type="file"
           accept=".ipynb"
           onChange={async (e) => {

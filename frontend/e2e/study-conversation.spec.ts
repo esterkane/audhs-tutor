@@ -64,6 +64,10 @@ for (const width of [1280, 390]) {
       })
     })
     await page.goto('/programs')
+    if (width === 390)
+      await page.addStyleTag({
+        content: 'body { font-family: Arial, sans-serif; } input[type=file] { font-size: 20px; }',
+      })
     await page.getByRole('button', { name: 'Notebook workspace', exact: true }).click()
     await page.getByRole('button', { name: 'Open saved project notebook' }).click()
     await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('2')
@@ -112,6 +116,20 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('status', { name: 'Tutor response status' })).toHaveText(
       'Tutor response ready.',
     )
+    const overflow = await page.evaluate(() =>
+      [...document.querySelectorAll('body *')]
+        .filter((el) => {
+          const rect = el.getBoundingClientRect()
+          return rect.width > 0 && rect.right > innerWidth + 1
+        })
+        .map((el) => ({
+          tag: el.tagName,
+          text: el.textContent?.slice(0, 90),
+          className: el.className,
+          right: el.getBoundingClientRect().right,
+        })),
+    )
+    expect(overflow).toEqual([])
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
