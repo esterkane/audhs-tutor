@@ -26,6 +26,7 @@ class SourceRef(BaseModel):
 
 
 class TurnMeta(BaseModel):
+    replayed: bool = False  # transport replay only; never new hint/learning evidence
     turn_id: str
     session_id: str
     skill_id: str

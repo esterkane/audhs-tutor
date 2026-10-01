@@ -60,7 +60,12 @@ async def stream(
             if saved is not None:
                 restored = TurnDone.model_validate(saved["done"])
                 if saved.get("meta") is not None:
-                    yield sse("meta", TurnMeta.model_validate(saved["meta"]).model_dump())
+                    yield sse(
+                        "meta",
+                        TurnMeta.model_validate(saved["meta"])
+                        .model_copy(update={"replayed": True})
+                        .model_dump(),
+                    )
                 # Existing clients assemble partial output from tokens; replay it without inference.
                 if restored.text:
                     yield sse("token", {"text": restored.text})

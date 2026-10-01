@@ -4,6 +4,7 @@ import { streamTurn, type StreamHandlers } from '../../lib/api'
 import { useTutorStream } from './useTutorStream'
 vi.mock('../../lib/api', () => ({ streamTurn: vi.fn() }))
 afterEach(() => {
+  sessionStorage.clear()
   vi.clearAllMocks()
   vi.useRealTimers()
 })
@@ -23,6 +24,8 @@ it('ignores old callbacks and finalization after a replacement starts', async ()
     runs[0].h.onToken?.('old')
   })
   act(() => {
+    result.current.stop()
+    result.current.recovery.discard()
     second = result.current.run({ ...request, text: 'New question' })
   })
   await act(async () => {
@@ -206,3 +209,73 @@ it.each(['ok', 'partial'])(
     expect(result.current.status).toBe(outcome === 'ok' ? 'complete' : 'partial')
   },
 )
+
+it('restores partial text and the exact retry identity after unmount without automatic sending', async () => {
+  const runs: Array<{ h: StreamHandlers; finish: () => void }> = []
+  vi.mocked(streamTurn).mockImplementation((_req, h) => new Promise((finish) => runs.push({ h, finish })))
+  const first = renderHook(() => useTutorStream(60000, 'block-one'))
+  act(() => {
+    void first.result.current.run(request)
+  })
+  const originalKey = vi.mocked(streamTurn).mock.calls[0][3]
+  act(() => {
+    runs[0].h.onToken?.('Keep these words')
+    first.result.current.stop()
+  })
+  first.unmount()
+  const second = renderHook(() => useTutorStream(60000, 'block-one'))
+  expect(second.result.current.text).toBe('Keep these words')
+  expect(second.result.current.restored).toBe(true)
+  expect(streamTurn).toHaveBeenCalledTimes(1)
+  act(() => {
+    void second.result.current.retry()
+  })
+  expect(vi.mocked(streamTurn).mock.calls[1][0]).toEqual(request)
+  expect(vi.mocked(streamTurn).mock.calls[1][3]).toBe(originalKey)
+  expect(second.result.current.previous?.text).toBe('Keep these words')
+  await act(async () => {
+    runs.forEach((run) => run.finish())
+  })
+})
+
+it('does not replace unresolved work without explicit discard', async () => {
+  vi.mocked(streamTurn).mockImplementation(async (_req, h) => {
+    h.onToken?.('Partial')
+  })
+  const { result } = renderHook(() => useTutorStream(60000, 'durable-conflict'))
+  await act(async () => {
+    await result.current.run(request)
+  })
+  await act(async () => {
+    await result.current.run({ ...request, text: 'Changed question' })
+  })
+  expect(streamTurn).toHaveBeenCalledTimes(1)
+  expect(result.current.text).toBe('Partial')
+  expect(result.current.error).toMatch(/earlier request/)
+})
+
+it('keeps unscoped question help ephemeral across different questions and sessions', async () => {
+  sessionStorage.clear()
+  vi.mocked(streamTurn).mockImplementation(async (_request, handlers) => {
+    handlers.onToken?.('Help for the first question')
+  })
+  const first = renderHook(() => useTutorStream())
+  await act(async () => {
+    await first.result.current.run(request)
+  })
+  expect(first.result.current.text).toBe('Help for the first question')
+  expect(sessionStorage.length).toBe(0)
+  expect(vi.mocked(streamTurn).mock.calls[0][3]).toBeUndefined()
+  first.unmount()
+  const second = renderHook(() => useTutorStream())
+  expect(second.result.current.text).toBe('')
+  expect(second.result.current.recovery.pending).toBeNull()
+  await act(async () => {
+    await second.result.current.run({ ...request, session_id: 'other', text: 'Different question' })
+  })
+  await act(async () => {
+    await second.result.current.run({ ...request, session_id: 'other', text: 'Explain instead' })
+  })
+  expect(streamTurn).toHaveBeenCalledTimes(3)
+  expect(sessionStorage.length).toBe(0)
+})

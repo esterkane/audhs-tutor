@@ -33,3 +33,27 @@ describe('streamTurn', () => {
     expect(done).toMatchObject({ turn_id: 't1' })
   })
 })
+
+it('sends the identity header and exposes an unresolved claim without generic HTTP wording', async () => {
+  const fetcher = vi.fn<(url: string, init?: RequestInit) => Promise<Response>>(
+    async () =>
+      new Response(
+        JSON.stringify({
+          error: {
+            code: 'request_unresolved',
+            message: 'The original request is still unresolved.',
+          },
+        }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } },
+      ),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const onError = vi.fn()
+  await streamTurn({ session_id: 's', text: 'x' }, { onError }, undefined, 'request-identity')
+  expect(fetcher.mock.calls[0][1]?.headers).toMatchObject({ 'Idempotency-Key': 'request-identity' })
+  expect(onError).toHaveBeenCalledWith({
+    code: 'request_unresolved',
+    message: 'The original request is still unresolved.',
+  })
+  vi.unstubAllGlobals()
+})

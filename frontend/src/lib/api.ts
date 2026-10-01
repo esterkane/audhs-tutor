@@ -10,6 +10,7 @@ export type TurnRequest = Omit<Schemas['TurnRequest'], 'action' | 'spoken'> & {
 }
 /** Emitted on the SSE stream only (not part of the OpenAPI response models). */
 export type TurnMeta = {
+  replayed?: boolean
   turn_id: string
   session_id: string
   skill_id: string
@@ -129,18 +130,28 @@ export type StreamHandlers = {
 }
 
 /** Consume the SSE tutor stream (fetch + ReadableStream; EventSource cannot POST). */
-export async function streamTurn(body: TurnRequest, h: StreamHandlers, signal?: AbortSignal): Promise<void> {
+export async function streamTurn(
+  body: TurnRequest,
+  h: StreamHandlers,
+  signal?: AbortSignal,
+  requestKey?: string,
+): Promise<void> {
   const res = await fetch('/api/tutor/stream', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(requestKey ? { 'Idempotency-Key': requestKey } : {}) },
     body: JSON.stringify(body),
     signal,
   })
   if (!res.ok || !res.body) {
-    h.onError?.({
-      code: 'http_error',
-      message: `${res.status} ${res.statusText}`,
-    })
+    let error = { code: 'http_error', message: `${res.status} ${res.statusText}` }
+    try {
+      const body = (await res.json()) as { error?: { code?: unknown; message?: unknown } }
+      if (typeof body.error?.code === 'string' && typeof body.error.message === 'string')
+        error = { code: body.error.code, message: body.error.message }
+    } catch {
+      /* retain bounded HTTP fallback */
+    }
+    h.onError?.(error)
     return
   }
   const reader = res.body.getReader()

@@ -1,6 +1,6 @@
 # Lesson turn request recovery
 
-Status: backend foundation verified; browser and voice integration remain pending.
+Status: backend and scoped lesson browser recovery verified; voice integration remains pending.
 
 A repeated lesson request must not repeat model calls, explained events or checkpoint writes.
 Optional UUID transport identity covers the normalized lesson request across SSE and buffered
@@ -31,17 +31,27 @@ and emits an honest failure message. The durable claim remains unresolved and fo
 automatic rerun. On replay, text is sent as one token event followed by the original done event
 so existing clients preserve partial text. Normal first-delivery streaming remains unchanged.
 
-## Next UI slice (not implemented here)
+## Browser recovery — 2026-10-02
 
-- Add server replay metadata and visible recovered-result wording. Applying old meta must not
-  lower/change the current block's hint evidence or retarget its skill; currently TeachPanel
-  applies meta.hint_level through onHintLevel, so this needs explicit replay/context gating.
-- Persist request identity and original payload scoped to session/block/skill; preserve unsent
-  drafts across target changes. Do not blindly key/remount TeachPanel and lose its input.
-- Retain delivered partial text across reload separately from server-confirmed completion, with
-  bounded storage and honest failures. Preserve previous text during retry and explicit new work.
-- Parse HTTP claim conflicts into clear retry status; no silent inference restart. Test reload,
-  stopped/cancelled streams, stale callbacks and live progress changes with actual event counts.
-- Offer explicit retry/discard/storage-denial controls; no automatic audio on recovered results.
-- Then design voice turn identities separately: capture, interruption and playback cannot be
-  treated as interchangeable with text SSE. Personal-recording benchmark gate stays open.
+Lesson panels retain an exact request UUID/body, unsent draft and bounded received-text cache
+in tab-local sessionStorage, scoped by session/block instance/skill. Retry and discard are
+explicit; reload never submits or plays audio. Storage failures retain current work and show
+recovery limits. Previous text remains available during a retry. Restored text does not restore
+source-validation metadata; saved answers remain the durable source-details view.
+
+Server replay metadata prevents recovered hints from changing current lesson hint evidence.
+Checkpoint hint level initializes assessment assistance after reload. Browser regression asserts
+the outgoing assessment hint count, not just the notice. Unscoped question-help callers retain
+their previous ephemeral behavior; question-help durable recovery is not implemented here.
+
+Verification: full backend576, frontend250 before final additional isolation regression; final
+hook12 (including the additional isolation test), focused storage3, lint/types and production
+build pass. Three isolated browser journeys cover desktop/narrow reload, exact key/body replay,
+retained partial text and unsent draft, keyboard retry, and existing question-help flow. Fake
+providers only; no live learner DB mutation, paid calls or audio capture. Existing bundle-size
+advisory remains. Independent code/pedagogy reviews found one shared-hook major; persistence
+was made explicitly opt-in, regression tested and re-reviewed with no remaining blockers/majors.
+
+Limits: tab storage is not durable across closing/clearing the tab. Unresolved server claims do
+not rerun automatically. No live stream reattachment or exactly-once provider guarantee. Voice
+capture/interruption/playback needs its own identity design next. Personal voice gate stays open.

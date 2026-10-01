@@ -352,3 +352,77 @@ it('offers continuing the plan after feedback without requiring another question
   expect(nextCalls).toEqual([{ session_id: 's1', from_index: 2, reason: 'finished', grasp_passed: true }])
   vi.unstubAllGlobals()
 })
+
+it('does not apply recovered hint metadata to the current assessment and keeps the lesson draft on reload', async () => {
+  useMode.setState({ sessionId: 's1', skillId: 'k1', mode: 'steady' })
+  const state = {
+    ...running0,
+    block: plan[2],
+    block_index: 2,
+    phase: 'teach',
+    skill_id: 'k1',
+    block_started_at: '2026-10-02T00:00:00Z',
+  }
+  let submitted: Record<string, unknown> | null = null
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/api/sessions/s1'))
+      return jsonResponse({ ...session(state), checkpoint: { hint_level: 2 } })
+    if (url.includes('/api/exercises/')) return jsonResponse({}, 404)
+    if (url.endsWith('/api/tutor/stream'))
+      return sseResponse([
+        [
+          'meta',
+          {
+            replayed: true,
+            session_id: 's1',
+            skill_id: 'k1',
+            turn_id: 'old',
+            action: 'hint',
+            hint_level: 0,
+            questioning_style: 'explicit',
+          },
+        ],
+        ['token', { text: 'Recovered explanation.' }],
+        [
+          'done',
+          {
+            turn_id: 'old',
+            outcome: 'ok',
+            text: 'Recovered explanation.',
+            sources: [],
+            dropped: [],
+            flagged: [],
+          },
+        ],
+      ])
+    if (url.includes('/api/assess/next'))
+      return jsonResponse({ item: { id: 'a1', kind: 'explain_back', question: 'Explain.' } })
+    if (url.endsWith('/api/assess/attempt')) {
+      submitted = JSON.parse(String(init?.body))
+      return jsonResponse({
+        score: 1,
+        feedback: 'Recorded',
+        criterion_results: [],
+        next_step: '',
+        mastery: 0.4,
+        review: { due: '2026-10-03' },
+      })
+    }
+    return jsonResponse({})
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const first = renderApp(<Session />, { route: '/session' })
+  const draft = await screen.findByLabelText('Ask about this lesson (optional)')
+  fireEvent.change(draft, { target: { value: 'My unsent question' } })
+  first.unmount()
+  renderApp(<Session />, { route: '/session' })
+  expect(await screen.findByLabelText('Ask about this lesson (optional)')).toHaveValue('My unsent question')
+  fireEvent.click(screen.getByRole('button', { name: 'Send lesson question' }))
+  await screen.findByText('Recovered explanation.')
+  expect(screen.getByText(/Recovered the original reply/)).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Try a question' }))
+  fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: 'My reasoning' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await waitFor(() => expect(submitted).toMatchObject({ hint_count: 2 }))
+  vi.unstubAllGlobals()
+})

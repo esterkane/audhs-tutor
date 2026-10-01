@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import type { TutorRequest } from './api'
-import type { Schemas } from '../../lib/api'
+import type { Schemas, TurnRequest } from '../../lib/api'
 
 export type FollowupRetryBody = Schemas['AnswerFollowup'] & { parent_answer_id: string }
 export type PendingTutorRequest<T = TutorRequest> = {
@@ -58,9 +58,17 @@ function read<T>(
 }
 
 /** One unresolved request per surface. Retry storage is tab-local; normal tutor calls still send context. */
-function useTypedRequestRecovery<T>(scope: string, validBody: (body: unknown) => body is T) {
+function useTypedRequestRecovery<T>(
+  scope: string,
+  validBody: (body: unknown) => body is T,
+  persistent = true,
+) {
   const storageKey = `tutor-request:v1:${scope}`
-  const [initial] = useState(() => read(storageKey, validBody))
+  const [initial] = useState(() =>
+    persistent
+      ? read(storageKey, validBody)
+      : { pending: null, error: '', blocked: false, inaccessible: false },
+  )
   const current = useRef(initial.pending)
   const blocked = useRef(initial.blocked)
   const memoryOnly = useRef(false)
@@ -83,6 +91,7 @@ function useTypedRequestRecovery<T>(scope: string, validBody: (body: unknown) =>
     const next = { key: crypto.randomUUID(), body: frozen, view: { ...view } }
     current.current = next
     setPending(next)
+    if (!persistent) return next
     if (memoryOnly.current) {
       setError(memoryWarning)
       return next
@@ -100,7 +109,7 @@ function useTypedRequestRecovery<T>(scope: string, validBody: (body: unknown) =>
   function accept(key: string) {
     if (current.current?.key !== key) return
     try {
-      if (!memoryOnly.current) sessionStorage.removeItem(storageKey)
+      if (persistent && !memoryOnly.current) sessionStorage.removeItem(storageKey)
     } catch {
       current.current = null
       blocked.current = true
@@ -121,7 +130,7 @@ function useTypedRequestRecovery<T>(scope: string, validBody: (body: unknown) =>
     if (key && current.current?.key !== key) return
     // Clear disk first. Failure cannot make the next request silently replace this identity.
     try {
-      if (!memoryOnly.current) sessionStorage.removeItem(storageKey)
+      if (persistent && !memoryOnly.current) sessionStorage.removeItem(storageKey)
     } catch {
       setCanUseMemoryOnly(true)
       setError('Retry details could not be removed. Keep this page open; retry will reuse the same request.')
@@ -182,4 +191,19 @@ export function useRequestRecovery(scope: string) {
 }
 export function useFollowupRequestRecovery(scope: string) {
   return useTypedRequestRecovery(scope, followupBody)
+}
+
+function lessonBody(body: unknown): body is TurnRequest {
+  if (!body || typeof body !== 'object') return false
+  const value = body as TurnRequest
+  return (
+    typeof value.session_id === 'string' &&
+    typeof value.text === 'string' &&
+    value.text.length > 0 &&
+    value.text.length <= 4000 &&
+    (value.skill_id == null || typeof value.skill_id === 'string')
+  )
+}
+export function useLessonRequestRecovery(scope: string, persistent = true) {
+  return useTypedRequestRecovery(scope, lessonBody, persistent)
 }

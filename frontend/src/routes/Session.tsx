@@ -1,3 +1,5 @@
+import { RequestRecoveryControls } from '../features/playground/RequestRecoveryControls'
+import { useLessonDraft } from '../features/tutor/useLessonDraft'
 import { LessonReader, SavedLessonNotes } from '../features/tutor/LessonReader'
 import { useStopSession } from '../features/session/useStopSession'
 import { SessionControls } from '../features/session/SessionControls'
@@ -192,7 +194,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
       ? serverPhase
       : 'teach',
   )
-  const [hintCount, setHintCount] = useState(0)
+  const [hintCount, setHintCount] = useState(() => Math.max(0, Number(data.checkpoint?.hint_level) || 0))
   const [graspPassed, setGraspPassed] = useState(false)
   const [blockNote, setBlockNote] = useState<string | null>(null)
   const skill = data.active_skill ?? data.next_skill // the block's skill, not the map's recommendation
@@ -334,6 +336,13 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
       {(phase === 'teach' || phase === 'assess') && (
         <div hidden={phase !== 'teach'}>
           <TeachPanel
+            key={JSON.stringify([sessionId, blockIndex, st?.block_started_at ?? null, activeSkillId])}
+            recoveryScope={JSON.stringify([
+              sessionId,
+              blockIndex,
+              st?.block_started_at ?? null,
+              activeSkillId,
+            ])}
             active={phase === 'teach'}
             sessionId={sessionId}
             skillId={activeSkillId}
@@ -398,6 +407,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
 }
 
 function TeachPanel({
+  recoveryScope,
   active,
   sessionId,
   skillId,
@@ -405,6 +415,7 @@ function TeachPanel({
   onHintLevel,
   onSwitchEarly,
 }: {
+  recoveryScope: string
   sessionId: string
   skillId: string | null
   onCheck: () => void
@@ -412,8 +423,23 @@ function TeachPanel({
   onSwitchEarly: () => void
   active: boolean
 }) {
-  const [input, setInput] = useState('')
-  const { text, meta, done, error, busy, run, stop, retry, status, previous, startedAt } = useTutorStream()
+  const { input, setInput, error: draftError } = useLessonDraft(recoveryScope)
+  const {
+    text,
+    meta,
+    done,
+    error,
+    busy,
+    run,
+    stop,
+    retry,
+    status,
+    previous,
+    startedAt,
+    recovery,
+    storageError,
+    restored,
+  } = useTutorStream(60_000, recoveryScope)
   useEffect(() => {
     if (!active) stop()
   }, [active, stop])
@@ -428,8 +454,9 @@ function TeachPanel({
   const [talking, setTalking] = useState(false)
   const base = { session_id: sessionId, skill_id: skillId }
   useEffect(() => {
-    if (meta) onHintLevel(meta.hint_level)
-  }, [meta, onHintLevel])
+    if (meta && !meta.replayed && meta.session_id === sessionId && meta.skill_id === skillId)
+      onHintLevel(meta.hint_level)
+  }, [meta, onHintLevel, sessionId, skillId])
   // "Reported" belongs to one turn: a new answer starts clean.
   const reportedThisTurn =
     reportTurn.isSuccess && done != null && reportTurn.variables?.turn_id === done.turn_id
@@ -512,6 +539,24 @@ function TeachPanel({
           )}
         </div>
         <TutorResponseStatus status={status} startedAt={startedAt} />
+        {active && (
+          <RequestRecoveryControls
+            recovery={recovery}
+            busy={busy}
+            retry={() => void retry()}
+            originalContext="lesson and question"
+          />
+        )}
+        {draftError && <p role="alert">{draftError}</p>}
+        {storageError && <p role="alert">{storageError}</p>}
+        {restored && (
+          <p role="status">
+            Restored text from this tab. No new generation or checks; open saved answers for source details.
+          </p>
+        )}
+        {meta?.replayed && (
+          <p role="status">Recovered the original reply. No new generation or learning progress.</p>
+        )}
       </Card>
       {active && voiceOn && talking && (
         <VoicePanel sessionId={sessionId} skillId={skillId} onClose={() => setTalking(false)} />
@@ -612,9 +657,6 @@ function TeachPanel({
             </details>
           )}
           {status === 'stopped' && <p role="status">Explanation stopped. Received text is kept.</p>}
-          {active && !busy && (status === 'stopped' || status === 'failed' || status === 'partial') && (
-            <Button onClick={() => void retry()}>Retry last request</Button>
-          )}
           {status === 'complete' && (
             <p role="status" className="sr-only">
               Answer complete.

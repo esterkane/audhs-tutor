@@ -1,11 +1,19 @@
+import { useLessonRequestRecovery, type PendingTutorRequest } from '../playground/useRequestRecovery'
+import { cacheWarning, readTextCache, writeTextCache } from './streamCache'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ResponseStatus } from './TutorResponseStatus'
 import { streamTurn, type TurnDone, type TurnMeta, type TurnRequest } from '../../lib/api'
 
 type Status = ResponseStatus
 type Answer = { text: string; meta: TurnMeta | null; done: TurnDone | null; status: Status }
-type State = Answer & { error: string | null; previous: Answer | null; startedAt: number | null }
+type State = Answer & {
+  error: string | null
+  previous: Answer | null
+  startedAt: number | null
+  restored: boolean
+}
 const empty: State = {
+  restored: false,
   text: '',
   meta: null,
   done: null,
@@ -15,15 +23,57 @@ const empty: State = {
   startedAt: null,
 }
 
-export function useTutorStream(idleMs = 60_000) {
-  const [state, setState] = useState<State>(empty)
-  const snapshot = useRef<State>(empty)
+export function useTutorStream(idleMs = 60_000, scope?: string) {
+  const recovery = useLessonRequestRecovery(`lesson:${scope ?? 'ephemeral'}`, scope !== undefined)
+  const [cached] = useState(() => (scope === undefined ? { value: null, error: '' } : readTextCache(scope)))
+  const [initial] = useState<State>(() =>
+    cached.value
+      ? {
+          ...empty,
+          restored: true,
+          text: cached.value.text,
+          status: cached.value.status === 'streaming' ? 'partial' : cached.value.status,
+          previous: cached.value.previousText
+            ? { text: cached.value.previousText, meta: null, done: null, status: 'stopped' }
+            : null,
+        }
+      : empty,
+  )
+  const [state, setState] = useState<State>(initial)
+  const [storageError, setStorageError] = useState(cached.error)
+  const snapshot = useRef<State>(initial)
+  const storageTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const active = useRef<{ ctl: AbortController; cancel: () => void } | null>(null)
-  const lastRequest = useRef<TurnRequest | null>(null)
-  const update = useCallback((patch: Partial<State>) => {
-    snapshot.current = { ...snapshot.current, ...patch }
-    setState(snapshot.current)
-  }, [])
+  const flush = useCallback(() => {
+    clearTimeout(storageTimer.current)
+    storageTimer.current = undefined
+    if (scope === undefined) return
+    try {
+      writeTextCache(scope, {
+        text: snapshot.current.text,
+        previousText: snapshot.current.previous?.text ?? null,
+        status: snapshot.current.status,
+      })
+    } catch {
+      setStorageError(cacheWarning)
+    }
+  }, [scope])
+  const update = useCallback(
+    (patch: Partial<State>) => {
+      snapshot.current = { ...snapshot.current, ...patch }
+      setState(snapshot.current)
+      if (snapshot.current.status !== 'streaming') flush()
+      else if (!storageTimer.current) storageTimer.current = setTimeout(flush, 250)
+    },
+    [flush],
+  )
+  useEffect(() => {
+    window.addEventListener('pagehide', flush)
+    return () => {
+      window.removeEventListener('pagehide', flush)
+      flush()
+    }
+  }, [flush])
   useEffect(
     () => () => {
       active.current?.cancel()
@@ -32,8 +82,9 @@ export function useTutorStream(idleMs = 60_000) {
     [],
   )
 
-  const run = useCallback(
-    async (req: TurnRequest) => {
+  const execute = useCallback(
+    async (pending: PendingTutorRequest<TurnRequest>) => {
+      const req = pending.body
       active.current?.cancel()
       const ctl = new AbortController()
       let timer: ReturnType<typeof setTimeout> | undefined
@@ -56,7 +107,6 @@ export function useTutorStream(idleMs = 60_000) {
             status: old.status === 'streaming' ? 'stopped' : old.status,
           }
         : old.previous
-      lastRequest.current = { ...req }
       update({ ...empty, previous, status: 'streaming', startedAt: performance.now() })
       const fail = (message: string) => {
         if (!current()) return
@@ -98,10 +148,12 @@ export function useTutorStream(idleMs = 60_000) {
                 text: done.outcome === 'partial' ? snapshot.current.text : done.text,
                 status: done.outcome === 'partial' ? 'partial' : 'complete',
               })
+              recovery.accept(pending.key)
             },
             onError: (e) => fail(e.message),
           },
           ctl.signal,
+          scope === undefined ? undefined : pending.key,
         )
         if (current()) fail('The response ended before completion. Your received text is kept.')
       } catch (e) {
@@ -111,7 +163,7 @@ export function useTutorStream(idleMs = 60_000) {
         if (active.current === own) active.current = null
       }
     },
-    [idleMs, update],
+    [idleMs, update, recovery, scope],
   )
 
   const stop = useCallback(() => {
@@ -120,6 +172,26 @@ export function useTutorStream(idleMs = 60_000) {
     active.current = null
     if (snapshot.current.status === 'streaming') update({ status: 'stopped' })
   }, [update])
-  const retry = useCallback(() => (lastRequest.current ? run(lastRequest.current) : Promise.resolve()), [run])
-  return { ...state, busy: state.status === 'streaming', run, stop, retry }
+  const run = useCallback(
+    async (req: TurnRequest) => {
+      try {
+        if (scope === undefined) recovery.discard()
+        const pending = recovery.prepare(req, {
+          snapshot: scope ?? '',
+          submitted: req.text,
+          display: req.text,
+          mode: 'explicit',
+        })
+        await execute(pending)
+      } catch (e) {
+        update({ error: (e as Error).message })
+      }
+    },
+    [execute, recovery, scope, update],
+  )
+  const retry = useCallback(
+    () => (recovery.pending ? execute(recovery.pending) : Promise.resolve()),
+    [execute, recovery],
+  )
+  return { ...state, busy: state.status === 'streaming', run, stop, retry, recovery, storageError }
 }

@@ -56,6 +56,9 @@ async def test_lost_lesson_reply_replays_across_transports_without_progress_writ
     replay = dict(events(stream))
     assert replay["done"] == done
     assert replay["meta"]["turn_id"] == done["turn_id"]
+    assert replay["meta"]["replayed"] is True
+    if first_stream:
+        assert dict(events(first))["meta"]["replayed"] is False
     assert replay["token"]["text"] == done["text"]
     buffered = await client.post("/api/tutor/turn", json=body, headers=headers)
     assert buffered.json() == done

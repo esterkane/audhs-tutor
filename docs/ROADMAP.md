@@ -91,3 +91,14 @@ lint/types and code/pedagogy reviews passed. No new migration, dependency or pai
 Browser identity/preserved partial-text integration remains next, with explicit replay metadata
 and hint-evidence gating required before shipping it; see docs/slices/lesson-request-recovery.md.
 Voice remains separate. Both repos private, broader project queues still open.
+
+
+## Lesson browser recovery — 2026-10-02
+
+Scoped lesson requests now survive reload with their exact retry identity, received text and
+unsent draft. Explicit retry/discard controls and storage failure notices preserve choice.
+Recovered metadata cannot reapply lesson hints; checkpoint hint evidence survives reload.
+Question-help remains ephemeral and isolated. Backend576/frontend250 plus final hook12,
+lint/types/build and three isolated browser journeys passed. Code/pedagogy review major fixed
+and re-reviewed clear. See docs/slices/lesson-request-recovery.md. Voice lifecycle recovery,
+question-help persistence and broader queues remain open; no personal voice gate claim.
