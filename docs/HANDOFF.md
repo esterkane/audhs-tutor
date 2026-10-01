@@ -312,3 +312,13 @@ Backend579, focused voice tests and lint/types passed; required reviews clear. S
 `docs/slices/voice-session-exclusivity.md`. This is per-connection admission safety; provider-
 resistant teardown and durable voice identities/recovery remain open. No paid calls or live
 microphone work. Previous interruption CI passed in both repositories.
+
+
+## Typed voice request correlation — 2026-10-02
+
+Negotiated typed-v1 UUIDs now follow typed voice metadata/tokens/audio/errors/done through
+response and speaker tasks. Client ignores late content from another request; reconnect resets
+negotiation before startup errors. Legacy clients and microphone turns remain compatible.
+Backend580/frontend260, lint/types/build and fake-provider WebSocket regressions passed; required
+reviews clear. Correlation only, not idempotency or durable replay. See voice-request-identities
+slice; microphone identities, terminal lookup and provider-resistant teardown remain open.

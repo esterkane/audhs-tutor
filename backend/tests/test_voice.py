@@ -494,3 +494,34 @@ async def test_voice_loop_speaks_first_clause_then_sentences_and_respects_the_pr
     assert spoken[0] == "Scaling keeps the scores small, so softmax stays soft."
     ev = (await db.execute(select(models.LearningEvent))).scalars().all()
     assert [e for e in ev if e.verb == "spoke"][-1].context_json["first_chunk"] == "sentence"
+
+
+async def test_typed_voice_identity_covers_content_and_does_not_leak_to_legacy_turns(
+    ws_app,
+    spoken_world: dict[str, str],  # type: ignore[no-untyped-def]
+) -> None:
+    ws_app.state.voice_overrides = {"stt": FakeStt("hello"), "tts": FakeTts(), "vad": EnergyVad()}
+    identity = "4981194c-0ca6-4c53-9e3e-6d583aedc018"
+
+    def drive() -> None:
+        with TestClient(ws_app) as tc, _connect(tc) as ws:
+            ws.send_text(json.dumps({"type": "start", "session_id": spoken_world["session_id"]}))
+            ready = json.loads(ws.receive_text())
+            assert ready["request_identity"] == "typed-v1"
+            ws.send_text(
+                json.dumps({"type": "text", "text": "Must not start", "request_id": "invalid"})
+            )
+            rejected = json.loads(ws.receive_text())
+            assert rejected["type"] == "error" and rejected["protocol"] is True
+            ws.send_text(
+                json.dumps({"type": "text", "text": "Explain attention", "request_id": identity})
+            )
+            identified = _collect(ws, {"done"})
+            assert {"token", "audio", "done"} <= {m["type"] for m in identified}
+            assert all(m["request_id"] == identity for m in identified)
+            ws.send_text(json.dumps({"type": "text", "text": "Explain again"}))
+            legacy = _collect(ws, {"done"})
+            assert all("request_id" not in m for m in legacy)
+            ws.send_text(json.dumps({"type": "stop"}))
+
+    await asyncio.to_thread(drive)

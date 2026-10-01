@@ -23,10 +23,12 @@ import json
 import re
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +43,8 @@ from app.schemas.tutor import TurnRequest
 from app.voice.stt import Stt
 from app.voice.tts import Tts
 from app.voice.vad import Vad, pcm16_seconds, wav_bytes
+
+_request_identity: ContextVar[str | None] = ContextVar("voice_request_identity", default=None)
 
 MAX_UTTERANCE_S = 60.0
 MIN_SPEECH_MS = 300
@@ -193,12 +197,31 @@ class VoiceLoop:
                     await self._finish_utterance(ws, state)
                 elif kind == "text":
                     text = str(data.get("text") or "").strip()
-                    if text:
-                        if not await self._wait_previous(ws):
+                    identity = data.get("request_id")
+                    if identity is not None:
+                        try:
+                            identity = str(UUID(str(identity)))
+                        except ValueError:
+                            await self._send(
+                                ws,
+                                {
+                                    "type": "error",
+                                    "message": "Invalid voice request identity.",
+                                    "protocol": True,
+                                },
+                            )
                             continue
-                        self._turn_task = asyncio.create_task(
-                            self._respond(ws, state, text, stt_ms=0)
-                        )
+                    if text:
+                        token = _request_identity.set(identity)
+                        try:
+                            if not await self._wait_previous(ws):
+                                continue
+                            # Child response and speaker tasks inherit this immutable context.
+                            self._turn_task = asyncio.create_task(
+                                self._respond(ws, state, text, stt_ms=0)
+                            )
+                        finally:
+                            _request_identity.reset(token)
                 elif kind == "interrupt":
                     # acknowledge at once (playback stops client-side), then let the turn wind down
                     self._interrupted.set()
@@ -231,6 +254,9 @@ class VoiceLoop:
         return False
 
     async def _send(self, ws: WebSocket, payload: dict[str, Any]) -> None:
+        identity = _request_identity.get()
+        if identity is not None:
+            payload = {**payload, "request_id": identity}
         try:
             await ws.send_text(json.dumps(payload, ensure_ascii=False))
         except (WebSocketDisconnect, RuntimeError):
@@ -264,6 +290,7 @@ class VoiceLoop:
             ws,
             {
                 "type": "ready",
+                "request_identity": "typed-v1",
                 "stt": self.stt.registry_id if self.stt else None,
                 "tts": self.tts.model if self.tts else None,
                 "vad": self.vad.name,

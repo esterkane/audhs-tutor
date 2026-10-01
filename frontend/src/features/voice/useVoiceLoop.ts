@@ -42,6 +42,8 @@ export function useVoiceLoop(opts: {
   const interruptTerminal = useRef(false)
   const turnDone = useRef(false)
   const handshake = useRef(false)
+  const identifiedText = useRef(false)
+  const requestIdentity = useRef<string | null>(null)
   const turnBusy = useRef(false)
   const micGeneration = useRef(0)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -97,6 +99,8 @@ export function useVoiceLoop(opts: {
 
   const connect = useCallback(() => {
     if (socket.current) return
+    identifiedText.current = false
+    requestIdentity.current = null
     setError(null)
     setStatus('connecting')
     const url = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/voice/ws`
@@ -161,6 +165,17 @@ export function useVoiceLoop(opts: {
         fail('The voice connection returned an unreadable response. Reconnect to send.')
         return
       }
+      if (
+        identifiedText.current &&
+        ['transcript', 'meta', 'token', 'audio', 'done', 'error'].includes(msg.type) &&
+        !msg.protocol
+      ) {
+        if (
+          (requestIdentity.current !== null || msg.request_id !== undefined) &&
+          msg.request_id !== requestIdentity.current
+        )
+          return
+      }
       if (interruptedTurn.current && msg.type === 'error' && !msg.protocol) {
         fail('The interrupted turn could not finish. Received text is kept; reconnect when ready.')
         return
@@ -170,6 +185,8 @@ export function useVoiceLoop(opts: {
       if (interruptedTurn.current && ['transcript', 'meta', 'token', 'audio'].includes(msg.type)) return
       switch (msg.type) {
         case 'ready':
+          identifiedText.current = msg.request_identity === 'typed-v1'
+          requestIdentity.current = null
           turnBusy.current = false
           clearTimer()
           handshake.current = true
@@ -281,6 +298,7 @@ export function useVoiceLoop(opts: {
       status !== 'ready'
     )
       return
+    requestIdentity.current = null
     interruptedTurn.current = false
     setInterrupted(false)
     turnDone.current = false
@@ -369,13 +387,15 @@ export function useVoiceLoop(opts: {
         !text.trim()
       )
         return false
+      const identity = identifiedText.current ? crypto.randomUUID() : null
       try {
-        ws.send(JSON.stringify({ type: 'text', text }))
+        ws.send(JSON.stringify({ type: 'text', text, ...(identity ? { request_id: identity } : {}) }))
       } catch {
         setError('Your message was not sent. The draft is kept; reconnect to try again.')
         setStatus('error')
         return false
       }
+      requestIdentity.current = identity
       interruptedTurn.current = false
       setInterrupted(false)
       player.current.stop()

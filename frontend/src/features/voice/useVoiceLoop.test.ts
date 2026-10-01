@@ -225,3 +225,60 @@ it('waits for empty-transcription acknowledgement and clears its timer before a 
   expect(result.current.status).toBe('thinking')
   expect(ws.readyState).toBe(1)
 })
+
+it('negotiates typed identities and rejects late content from another request', () => {
+  const audio = vi.spyOn(Player.prototype, 'enqueue').mockImplementation(() => {})
+  const ws = new Socket()
+  const { result } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  const message = (value: object) => act(() => ws.onmessage?.({ data: JSON.stringify(value) }))
+  act(() => result.current.connect())
+  act(() => ws.open())
+  message({ type: 'ready', request_identity: 'typed-v1' })
+  act(() => {
+    expect(result.current.sendText('First')).toBe(true)
+  })
+  const first = JSON.parse(ws.sent.at(-1)!).request_id
+  expect(first).toMatch(/^[a-f0-9-]{36}$/)
+  message({ type: 'token', request_id: first, text: 'First answer' })
+  message({ type: 'done', request_id: first, turn: { turn_id: 'one', text: 'First answer', outcome: 'ok' } })
+  act(() => {
+    expect(result.current.sendText('Second')).toBe(true)
+  })
+  const second = JSON.parse(ws.sent.at(-1)!).request_id
+  expect(second).not.toBe(first)
+  message({ type: 'token', request_id: first, text: 'Stale' })
+  message({ type: 'audio', request_id: first, pcm16_b64: 'AAA=', sample_rate: 24000 })
+  expect(audio).not.toHaveBeenCalled()
+  message({ type: 'done', request_id: first, turn: { turn_id: 'one', text: 'Stale final', outcome: 'ok' } })
+  message({ type: 'token', text: 'Unidentified stale text' })
+  expect(result.current.answer).toBe('')
+  expect(result.current.status).toBe('thinking')
+  message({ type: 'token', request_id: second, text: 'Second answer' })
+  expect(result.current.answer).toBe('Second answer')
+  audio.mockRestore()
+})
+
+it('shows untagged startup errors after reconnecting an identified conversation', () => {
+  const first = new Socket(),
+    second = new Socket()
+  const factory = vi.fn().mockReturnValueOnce(first).mockReturnValueOnce(second)
+  const { result } = renderHook(() => useVoiceLoop({ sessionId: 's', makeSocket: factory }))
+  act(() => result.current.connect())
+  act(() => {
+    first.open()
+    first.onmessage?.({ data: JSON.stringify({ type: 'ready', request_identity: 'typed-v1' }) })
+  })
+  act(() => {
+    result.current.sendText('First')
+  })
+  act(() => first.onerror?.())
+  act(() => result.current.connect())
+  act(() => {
+    second.open()
+    second.onmessage?.({ data: JSON.stringify({ type: 'error', message: 'Session unavailable' }) })
+  })
+  expect(result.current.error).toBe('Session unavailable')
+  expect(result.current.status).toBe('error')
+})
