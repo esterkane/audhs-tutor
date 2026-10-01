@@ -14,6 +14,7 @@ import httpx
 from app.core.config import Settings
 
 PACKAGES = [
+    "pip==26.2.1",
     "jupyterlab==4.6.4",
     "ipykernel==7.4.0",
     "numpy==2.5.3",
@@ -152,7 +153,7 @@ class NotebookLab:
                     [
                         str(python),
                         "-c",
-                        "import jupyterlab, ipykernel, numpy, pandas, matplotlib, sklearn",
+                        "import pip, jupyterlab, ipykernel, numpy, pandas, matplotlib, sklearn",
                     ]
                 )
             except ValueError:
@@ -172,7 +173,12 @@ class NotebookLab:
                     "--ServerApp.port=8890",
                     "--ServerApp.port_retries=0",
                     f"--ServerApp.root_dir={self.root / 'data/notebooks'}",
-                    env={**self.env, "JUPYTER_TOKEN": self.token},
+                    env={
+                        **self.env,
+                        "PATH": str(python.parent) + os.pathsep + self.env.get("PATH", os.defpath),
+                        "VIRTUAL_ENV": str(python.parent.parent),
+                        "JUPYTER_TOKEN": self.token,
+                    },
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,
                 )

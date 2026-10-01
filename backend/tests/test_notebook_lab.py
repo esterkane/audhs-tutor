@@ -1,5 +1,7 @@
 import asyncio
 import json
+import os
+import shutil
 from pathlib import Path
 
 import pytest
@@ -137,3 +139,54 @@ async def test_incomplete_environment_offers_repair(
     await lab.task
     assert lab.status == "needs_install"
     assert lab.process is None
+
+
+async def test_launched_lab_resolves_environment_pip(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import httpx
+
+    bundle(tmp_path)
+    bindir = tmp_path / "data/notebook-env/bin"
+    bindir.mkdir(parents=True)
+    for name in ("python", "pip"):
+        tool = bindir / name
+        tool.write_text("#!/bin/sh\nexit 0\n")
+        tool.chmod(0o755)
+    monkeypatch.setenv("PATH", os.defpath)
+    monkeypatch.setenv("OPENAI_API_KEY", "synthetic-secret")
+    lab = NotebookLab(Settings(_env_file=None))  # type: ignore[call-arg]
+    lab.root = tmp_path
+    launches: list[dict[str, str]] = []
+
+    class Process:
+        returncode: int | None = None
+
+        def terminate(self) -> None:
+            self.returncode = 0
+
+        async def wait(self) -> int:
+            return 0
+
+    async def launch(*args: object, **kwargs: object) -> Process:
+        env = kwargs["env"]
+        assert isinstance(env, dict)
+        launches.append(env)
+        return Process()
+
+    async def ready(args: list[str]) -> None:
+        pass
+
+    original_client = httpx.AsyncClient
+    transport = httpx.MockTransport(lambda request: httpx.Response(200))
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: original_client(transport=transport))
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", launch)
+    monkeypatch.setattr(lab, "command", ready)
+    lab.start("test", False)
+    assert lab.task
+    await lab.task
+    assert lab.status == "ready"
+    assert shutil.which("pip", path=launches[0]["PATH"]) == str(bindir / "pip")
+    assert launches[0]["VIRTUAL_ENV"] == str(bindir.parent)
+    assert "OPENAI_API_KEY" not in launches[0]
+    await lab.close()

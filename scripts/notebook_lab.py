@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 PACKAGES = [
+    "pip==26.2.1",
     "jupyterlab==4.6.4",
     "ipykernel==7.4.0",
     "numpy==2.5.3",
@@ -62,6 +63,8 @@ def main():
         for k, v in os.environ.items()
         if not any(x in k.upper() for x in ("API_KEY", "TOKEN", "SECRET", "PASSWORD"))
     }
+    clean_env["PATH"] = str(python.parent) + os.pathsep + clean_env.get("PATH", os.defpath)
+    clean_env["VIRTUAL_ENV"] = str(env)
     command = [
         str(python),
         "-m",
