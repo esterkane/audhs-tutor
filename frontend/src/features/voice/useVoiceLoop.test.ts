@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
-import { startMic } from './audio'
+import { Player, startMic } from './audio'
 import { useVoiceLoop } from './useVoiceLoop'
 vi.mock('./audio', async (original) => ({
   ...(await original<typeof import('./audio')>()),
@@ -125,12 +125,103 @@ it('disposes late microphone permission after Stop and prevents same-render dupl
 
 it('retains recovery only for completed voice turns', () => {
   const ws = new Socket()
-  const { result } = renderHook(() => useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }))
-  act(() => { result.current.connect(); ws.open(); ws.ready() })
+  const { result } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  act(() => {
+    result.current.connect()
+    ws.open()
+    ws.ready()
+  })
   const turn = { turn_id: 't', text: 'Delivered answer', save_error: 'Save failed', save_receipt: 'receipt' }
   act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', turn: { ...turn, outcome: 'ok' } }) }))
   expect(result.current.saveTurn?.save_receipt).toBe('receipt')
   act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', turn: { ...turn, outcome: 'partial' } }) }))
   expect(result.current.saveTurn).toBeNull()
   expect(result.current.answer).toBe('Delivered answer')
+})
+
+it('keeps interrupted text and ignores late turn messages until an explicit new turn', () => {
+  const audio = vi.spyOn(Player.prototype, 'enqueue').mockImplementation(() => {})
+  const ws = new Socket()
+  const { result } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  const message = (value: object) => act(() => ws.onmessage?.({ data: JSON.stringify(value) }))
+  act(() => result.current.connect())
+  act(() => {
+    ws.open()
+    ws.ready()
+  })
+  act(() => {
+    result.current.sendText('Original question')
+  })
+  message({ type: 'token', text: 'Keep this partial text' })
+  act(() => result.current.interrupt())
+  message({ type: 'token', text: ' stale continuation' })
+  message({ type: 'audio', pcm16_b64: 'AAA=', sample_rate: 24000 })
+  expect(audio).not.toHaveBeenCalled()
+  message({ type: 'interrupted' })
+  expect(result.current.status).toBe('stopping')
+  expect(result.current.sendText('Too early')).toBe(false)
+  message({ type: 'done', turn: { turn_id: 'old', outcome: 'ok', text: 'Old final text' } })
+  expect(result.current.answer).toBe('Keep this partial text')
+  expect(result.current.saveTurn?.turn_id).toBe('old')
+  expect(result.current.status).toBe('ready')
+  act(() => {
+    expect(result.current.sendText('New question')).toBe(true)
+  })
+  message({ type: 'token', text: 'New answer' })
+  expect(result.current.answer).toBe('New answer')
+  audio.mockRestore()
+})
+
+it('closes a stalled interrupted turn without losing delivered text or allowing stale callbacks', () => {
+  vi.useFakeTimers()
+  const ws = new Socket()
+  const { result } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  act(() => result.current.connect())
+  act(() => {
+    ws.open()
+    ws.ready()
+  })
+  act(() => {
+    result.current.sendText('Question')
+  })
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'token', text: 'Retain this' }) }))
+  act(() => result.current.interrupt())
+  act(() => vi.advanceTimersByTime(15000))
+  expect(result.current.status).toBe('error')
+  expect(ws.readyState).toBe(3)
+  expect(result.current.answer).toBe('Retain this')
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'token', text: 'Too late' }) }))
+  expect(result.current.answer).toBe('Retain this')
+})
+
+it('waits for empty-transcription acknowledgement and clears its timer before a new turn', () => {
+  vi.useFakeTimers()
+  const ws = new Socket()
+  const { result } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  act(() => result.current.connect())
+  act(() => {
+    ws.open()
+    ws.ready()
+  })
+  act(() => result.current.stopListening())
+  act(() => result.current.interrupt())
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'nothing_heard' }) }))
+  expect(result.current.status).toBe('stopping')
+  expect(result.current.sendText('Too soon')).toBe(false)
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'interrupted' }) }))
+  expect(result.current.status).toBe('ready')
+  act(() => {
+    expect(result.current.sendText('Next question')).toBe(true)
+  })
+  act(() => vi.advanceTimersByTime(15000))
+  expect(result.current.status).toBe('thinking')
+  expect(ws.readyState).toBe(1)
 })

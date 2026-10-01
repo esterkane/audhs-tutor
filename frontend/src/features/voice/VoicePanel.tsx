@@ -66,6 +66,7 @@ export function VoicePanel({
             {v.status === 'connecting' && 'Connecting…'}
             {v.status === 'listening' && 'Listening…'}
             {v.status === 'thinking' && 'Thinking…'}
+            {v.status === 'stopping' && 'Stopping the previous turn… Received text is kept.'}
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             {!textOnly && v.status !== 'listening' && (
@@ -109,13 +110,27 @@ export function VoicePanel({
           <span className="text-muted">You said:</span> {v.transcript}
         </p>
       )}
+      {v.interrupted && (
+        <p role="status" className="text-sm mt-2">
+          Response stopped. The text below may be incomplete.
+          {v.saveTurn &&
+            ' Saved-answer status refers to the completed response, which may contain more text.'}
+        </p>
+      )}
       {v.answer && (
         <div className="mt-2">
           <Markdown text={v.answer} />
         </div>
       )}
-      {v.saveTurn && <AnswerSaveStatus key={v.saveTurn.turn_id} answerId={v.saveTurn.answer_id}
-        receipt={v.saveTurn.save_receipt} error={v.saveTurn.save_error} text={v.saveTurn.text} />}
+      {v.saveTurn && (
+        <AnswerSaveStatus
+          key={v.saveTurn.turn_id}
+          answerId={v.saveTurn.answer_id}
+          receipt={v.saveTurn.save_receipt}
+          error={v.saveTurn.save_error}
+          text={v.saveTurn.text}
+        />
+      )}
       {!v.saveTurn && v.saveNote && (
         <p role="status" className="text-sm mt-2">
           {v.saveNote}

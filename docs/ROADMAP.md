@@ -102,3 +102,15 @@ Question-help remains ephemeral and isolated. Backend576/frontend250 plus final 
 lint/types/build and three isolated browser journeys passed. Code/pedagogy review major fixed
 and re-reviewed clear. See docs/slices/lesson-request-recovery.md. Voice lifecycle recovery,
 question-help persistence and broader queues remain open; no personal voice gate claim.
+
+
+## Voice interruption fence — 2026-10-02
+
+Interrupt retains displayed text, suppresses queued audio/content and waits for both terminal
+and acknowledgement before accepting new work. Empty transcription is a terminal path; stale
+timers cannot close the next turn. Cleanup timeout closes the socket with explicit reconnect.
+Persistent wording distinguishes partial display from separately saved completed replies.
+Frontend254, lint/types/build and strict fake socket/microphone tests passed. Independent code
+and pedagogy findings were fixed and re-reviewed clear. No live audio benchmark claim. Full
+voice reload/identity recovery remains open; implementation sequence is recorded in
+`docs/slices/voice-interruption-recovery.md`. Previous lesson CI passed in both repositories.
