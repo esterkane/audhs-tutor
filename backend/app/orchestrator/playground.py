@@ -1,10 +1,13 @@
 """Contextual coding help; never runs code or writes competency evidence."""
 
 import json
+import logging
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
+from app.db.answers import save_completed
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
 from app.db.traces import TutorTraceRecord, write_tutor_trace
@@ -15,6 +18,8 @@ from app.orchestrator import prompts
 from app.orchestrator.context import escape_data
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.playground import PlaygroundReply, PlaygroundRequest
+
+logger = logging.getLogger(__name__)
 
 VERSION = "playground.tutor.v1"
 
@@ -94,6 +99,36 @@ async def respond(
             "prompt_version": VERSION,
         },
     )
+    answer_id = None
+    save_error = None
+    try:
+        answer = await save_completed(
+            db,
+            learner_id=learner_id,
+            session_id=session.id,
+            turn_id=turn_id,
+            surface="playground",
+            request=body.model_dump(exclude={"session_id"}),
+            text=out.result.text,
+            metadata={
+                "model": out.registry_id,
+                "route": out.route,
+                "prompt_version": VERSION,
+                "model_call_id": out.model_call_id,
+                "sources": [],
+                "context_scope": "supplied_workspace_only",
+            },
+        )
+        answer_id = answer.id
+    except SQLAlchemyError as exc:
+        # Do not log SQL parameters: they can contain private learner text/code.
+        logger.warning("Tutor answer save failed: %s", type(exc).__name__)
+        save_error = "This answer could not be saved to the database. Keep a copy before leaving."
     return PlaygroundReply(
-        text=out.result.text, model=out.registry_id, route=out.route, turn_id=turn_id
+        text=out.result.text,
+        model=out.registry_id,
+        route=out.route,
+        turn_id=turn_id,
+        answer_id=answer_id,
+        save_error=save_error,
     )

@@ -503,6 +503,23 @@ class TutorTrace(IdMixin, LearnerScoped, Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class TutorAnswer(IdMixin, LearnerScoped, Base):
+    """Delivered response snapshot; not curriculum truth or competency evidence."""
+
+    __tablename__ = "tutor_answer"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "turn_id", name="uq_tutor_answer_learner_turn"),
+    )
+    turn_id: Mapped[str] = mapped_column(Text)
+    session_id: Mapped[str | None] = mapped_column(Text, ForeignKey("session.id"))
+    surface: Mapped[str] = mapped_column(Text)
+    request_json: Mapped[JsonDict] = mapped_column(JSON)
+    text: Mapped[str] = mapped_column(Text)
+    metadata_json: Mapped[JsonDict] = mapped_column(JSON)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class LearningEvent(IdMixin, LearnerScoped, Base):
     """Append-only. Envelope per docs/EVENT-SCHEMA.md; guarded by triggers in app.db.ddl."""
 

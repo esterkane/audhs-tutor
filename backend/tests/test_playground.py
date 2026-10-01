@@ -4,7 +4,14 @@ from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AssessmentAttempt, CompetencyEvidence, ModelCall, Session, TutorTrace
+from app.db.models import (
+    AssessmentAttempt,
+    CompetencyEvidence,
+    ModelCall,
+    Session,
+    TutorAnswer,
+    TutorTrace,
+)
 from app.models_ai.fake import FakeProvider
 from app.models_ai.registry import seed_defaults
 from app.orchestrator.playground import messages
@@ -49,6 +56,12 @@ async def test_tutor_logs_without_grading(
     assert response.status_code == 200, response.text
     assert response.json()["text"] == fake_local.text
     assert "no course" in response.json()["source_note"].lower()
+    assert response.json()["answer_id"]
+    saved = await db.get(TutorAnswer, response.json()["answer_id"])
+    assert saved is not None and saved.text == response.json()["text"]
+    assert saved.request_json["output_stale"] is True
+    assert saved.session_id == session["id"]
+    assert response.json()["save_error"] is None
     assert len(fake_local.calls) == 1
     assert '"output_stale": true' in fake_local.calls[0].messages[1].content
     assert await db.scalar(select(func.count()).select_from(TutorTrace)) == 1

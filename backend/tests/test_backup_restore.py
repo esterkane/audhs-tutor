@@ -147,6 +147,8 @@ def test_learner_scope_drops_corpus_text_but_keeps_source_references(
     before = dump_tables(url)
     assert restored["chunk"] == [] and restored["document"] == before["document"]
     assert restored["memory_state"] == before["memory_state"]
+    assert len(before["tutor_answer"]) == 1
+    assert restored["tutor_answer"] == before["tutor_answer"]
     assert "re-ingest" in (target / "RESTORE-NOTES.md").read_text()
 
 

@@ -34,6 +34,18 @@ async def _seed(db: AsyncSession, name: str) -> models.LearnerProfile:
             energy=3,
         )
     )
+    db.add(
+        models.TutorAnswer(
+            learner_id=lp.id,
+            session_id=sess.id,
+            turn_id=f"turn-{name}",
+            surface="playground",
+            request_json={"question": f"Question by {name}"},
+            text=f"Answer for {name}",
+            metadata_json={"sources": []},
+            fingerprint=f"fingerprint-{name}",
+        )
+    )
     await db.commit()
     return lp
 
@@ -50,7 +62,10 @@ async def test_export_then_wipe_keeps_other_learners(db: AsyncSession, db_path: 
     assert len(exported["learning_event"]) == 1
     assert exported["learning_event"][0]["verb"] == "started"
 
+    assert exported["tutor_answer"][0]["text"] == "Answer for A"
     deleted = wipe_learner(conn, a.id)
+    assert deleted["tutor_answer"] == 1
+    assert export_learner(conn, b.id)["tutor_answer"][0]["text"] == "Answer for B"
     assert deleted["learning_event"] == 1 and deleted["learner_profile"] == 1
 
     conn.row_factory = None

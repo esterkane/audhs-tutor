@@ -3786,6 +3786,10 @@ export interface components {
       route: string
       /** Turn Id */
       turn_id: string
+      /** Answer Id */
+      answer_id?: string | null
+      /** Save Error */
+      save_error?: string | null
       /**
        * Source Note
        * @default General coding guidance; no course sources retrieved.

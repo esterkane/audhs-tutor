@@ -26,4 +26,6 @@ class PlaygroundReply(BaseModel):
     model: str
     route: str
     turn_id: str
+    answer_id: str | None = None
+    save_error: str | None = None
     source_note: str = "General coding guidance; no course sources retrieved."

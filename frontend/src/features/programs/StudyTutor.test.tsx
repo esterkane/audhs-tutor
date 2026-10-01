@@ -349,3 +349,20 @@ it('does not steal focus when the learner moves to another control before the co
     schedule.mockRestore()
   }
 })
+
+it('distinguishes a durable saved reply from a delivered reply whose save failed', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValueOnce({ ...reply, answer_id: 'answer-1' })
+  renderApp(<StudyTutor context="Data split" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Explain this step' }))
+  await screen.findByText('Saved to your local answer history.')
+  vi.mocked(askTutor).mockResolvedValueOnce({
+    ...reply,
+    answer_id: null,
+    save_error: 'This answer could not be saved to the database. Keep a copy before leaving.',
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Shorter' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('could not be saved')
+  expect(screen.getAllByText(reply.text)).toHaveLength(2)
+  expect(screen.queryByText('Saved to your local answer history.')).not.toBeInTheDocument()
+})

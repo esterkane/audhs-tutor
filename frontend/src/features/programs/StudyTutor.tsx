@@ -383,6 +383,13 @@ function Conversation({
               label={reviewOnly ? 'Listen to feedback' : 'Listen to tutor response'}
             />
             <p className="text-sm text-muted">{reply.source_note}</p>
+            {reply.save_error ? (
+              <p role="alert" className="text-sm text-warn">
+                {reply.save_error}
+              </p>
+            ) : reply.answer_id ? (
+              <p className="text-sm text-muted">Saved to your local answer history.</p>
+            ) : null}
             <details className="text-xs text-muted">
               <summary>Response details</summary>
               {reply.model} · {reply.route}.

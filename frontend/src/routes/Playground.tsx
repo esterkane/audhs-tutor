@@ -240,7 +240,10 @@ function Workspace({
           ].slice(-24),
         }))
         setQuestion((currentQuestion) => (currentQuestion === submittedQuestion ? '' : currentQuestion))
-        setModelNote(`${reply.model} · ${reply.route}. ${reply.source_note}`)
+        setModelNote(
+          `${reply.model} · ${reply.route}. ${reply.source_note}${reply.answer_id ? ' Saved to your local answer history.' : ''}`,
+        )
+        if (reply.save_error) setTutorError(reply.save_error)
       }
     } catch (e) {
       if (tutorAbort.current === request && !ctl.signal.aborted) {
