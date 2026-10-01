@@ -152,3 +152,8 @@ Measured installed local nomic embeddings with six synthetic candidate answers a
 ## 2026-10-01 — private answer-vector cache foundation
 
 Added learner/answer unique derived vector cache with answer fingerprint and model/format key, bounded finite vectors, owner/current-answer joins and live feedback exclusions. Delete cascade and populated two-learner export/wipe verified. Migration c16887272890 reviewed outside watched tree, copied up/down/up preserved FTS/FK, snapshot then local application. 460 backend tests, lint/types, migration checks and independent review pass. No vectors populated and no semantic runtime integration yet; next is local embedding population and scoped fusion. Both repos private; sanitized checkout has schema only, no runtime database.
+
+
+## 2026-10-01 — explicit local answer indexing
+
+Added scripts/index_answers.py bounded missing-vector population/rebuild using installed loopback Ollama and registry+tag+artifact digest cache identity. Exclusions precede limit; batches16 run outside DB transactions, log attempts and preserve completed writes on later failure. Live smoke found0eligible answers, so no embeddings fabricated. 462 backend tests plus3focused post-review regressions, lint/types pass. Review fixed skipped-write transaction leak between batches. Next: automatic post-save population and query-time scoped fusion. Both repos private.
