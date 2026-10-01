@@ -36,18 +36,23 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <Link to="/" className="font-semibold no-underline text-fg">
           AuDHS-Tutor
         </Link>
-        <nav className="flex flex-wrap gap-3 text-sm">
-          <Link to="/map">Skill map</Link>
-          <Link to="/playground">Playground</Link>
-          <Link to="/playground/visualizer">Audio visualizer</Link>
-          <Link to="/together">Together</Link>
-          <Link to="/experiments">Experiments</Link>
-          <Link to="/vocab">Vocab</Link>
-          <Link to="/corpus">Corpus</Link>
+        <nav aria-label="Main navigation" className="flex flex-wrap gap-3 text-sm items-center">
           <Link to="/areas">Learning areas</Link>
           <Link to="/programs">Degree projects</Link>
-          <Link to="/models">Models</Link>
-          <Link to="/preferences">Preferences</Link>
+          <Link to="/playground">Playground</Link>
+          <Link to="/playground/visualizer">Audio visualizer</Link>
+          <details key={pathname} className="relative">
+            <summary className="cursor-pointer">More tools</summary>
+            <div className="absolute right-0 z-30 grid gap-3 p-4 mt-2 min-w-44 rounded-lg border border-line bg-card shadow-lg">
+              <Link to="/map">Skill map</Link>
+              <Link to="/together">Together</Link>
+              <Link to="/experiments">Experiments</Link>
+              <Link to="/vocab">Vocab</Link>
+              <Link to="/corpus">Corpus</Link>
+              <Link to="/models">Models</Link>
+              <Link to="/preferences">Preferences</Link>
+            </div>
+          </details>
         </nav>
         <div className="text-sm text-muted" aria-live="polite">
           {MODE_LABELS[mode].title} · energy {energy}
@@ -55,7 +60,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className={`${wide ? 'max-w-7xl' : 'max-w-3xl'} mx-auto p-4 pb-24`}>{children}</main>
-      <LearningCompanion key={useLocation().pathname} />
+      <LearningCompanion key={pathname} />
       <ParkingLotButton />
     </div>
   )

@@ -7,7 +7,7 @@ from app.core.config import PROJECT_ROOT
 
 PROMPTS_DIR = PROJECT_ROOT / "prompts"
 BASE_VERSION = "pedagogy.v2"
-TUTOR_VERSION = "tutor.v1"
+TUTOR_VERSION = "tutor.v2"
 GRADER_VERSION = "grader.explain_back.v1"
 CURRICULUM_VERSION = "curriculum.draft.v2"
 LISTENING_VERSION = "listening.comprehension.v1"
@@ -27,7 +27,8 @@ def base_policy() -> str:
 
 
 def tutor_task(name: str) -> str:
-    return _read(f"tutor/{name}.v1.md")
+    version = "v2" if name == "explain" else "v1"
+    return _read(f"tutor/{name}.{version}.md")
 
 
 def grader_task(name: str) -> str:

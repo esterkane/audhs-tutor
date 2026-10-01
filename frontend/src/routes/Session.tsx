@@ -1,3 +1,4 @@
+import { LessonReader, SavedLessonNotes } from '../features/tutor/LessonReader'
 import { useStopSession } from '../features/session/useStopSession'
 import { SessionControls } from '../features/session/SessionControls'
 import { ReadAloud } from '../features/voice/ReadAloud'
@@ -458,32 +459,46 @@ function TeachPanel({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           placeholder="Leave empty to start with an explanation."
+          aria-describedby={input.length > 4000 ? 'lesson-question-limit' : undefined}
         />
+        {input.length > 4000 && (
+          <p id="lesson-question-limit" role="alert">
+            Your draft is preserved. Shorten it to 4,000 characters before sending ({input.length} currently).
+          </p>
+        )}
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
             variant={done || alt ? 'secondary' : 'primary'}
-            disabled={busy}
+            disabled={busy || input.length > 4000}
             onClick={() =>
               void run({
                 ...base,
-                text: input.trim() || 'Explain the next idea for this skill.',
+                text:
+                  input.trim() ||
+                  'Explain the next idea for this skill in three short sections with Markdown headings: The idea, A worked example, and Try one step. Give enough context to attempt that step. Keep code blocks complete. Do not require a confidence rating.',
                 action: 'explain',
               })
             }
           >
-            {busy ? 'Preparing explanation…' : text ? 'Explain again' : 'Start explanation'}
+            {busy
+              ? 'Preparing explanation…'
+              : input.trim()
+                ? 'Send lesson question'
+                : text
+                  ? 'Explain again'
+                  : 'Start explanation'}
           </Button>
           <details>
             <summary className="cursor-pointer text-sm py-2">More ways to learn</summary>
             <div className="flex gap-2 flex-wrap mt-2">
               <Button
-                disabled={busy}
+                disabled={busy || input.length > 4000}
                 onClick={() => void run({ ...base, text: input.trim() || 'I am stuck.', action: 'hint' })}
               >
                 Hint
               </Button>
               <Button
-                disabled={busy}
+                disabled={busy || input.length > 4000}
                 onClick={() =>
                   void run({ ...base, text: input.trim() || 'Recap this skill.', action: 'summarize' })
                 }
@@ -507,6 +522,7 @@ function TeachPanel({
       {active && voiceOn && talking && (
         <VoicePanel sessionId={sessionId} skillId={skillId} onClose={() => setTalking(false)} />
       )}
+      <SavedLessonNotes sessionId={sessionId} />
       {previous && (
         <details className="border border-line rounded-md p-3">
           <summary>Previous answer · {previous.status}</summary>
@@ -546,8 +562,61 @@ function TeachPanel({
               {error}
             </p>
           )}
-          <Markdown text={text || (busy ? '…' : '')} />
-          {active && done && !busy && <ReadAloud key={done.turn_id} text={text} />}
+          {status === 'complete' && done ? (
+            <LessonReader
+              key={done.turn_id}
+              identity={`${sessionId}:${done.turn_id}`}
+              text={text}
+              sources={done.sources}
+              active={active}
+            />
+          ) : (
+            <Markdown text={text || (busy ? '…' : '')} />
+          )}
+          {active && status === 'complete' && done && (
+            <details className="mt-4 border-t border-line pt-3">
+              <summary className="cursor-pointer font-semibold">Think deeper about this explanation</summary>
+              <p className="text-sm mt-2">
+                Choose a direction to add to your question above. Your existing draft is kept. Edit it, then
+                send it. This is optional practice, not a graded assessment.
+              </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                {[
+                  [
+                    'Why does it work?',
+                    'Choose one specific claim from this explanation. Explain the mechanism and the assumptions it relies on, using a small worked example.',
+                  ],
+                  [
+                    'Find a counterexample',
+                    'Choose one specific claim from this explanation and show a concrete case where it would fail or need qualification. Explain the limiting assumption.',
+                  ],
+                  [
+                    'Try a changed situation',
+                    'Create one small transfer exercise in a changed scenario based on this explanation. Give the necessary facts and one concrete next step to try without giving its solution.',
+                  ],
+                ].map(([label, request]) => (
+                  <Button
+                    key={label}
+                    onClick={() => {
+                      setInput(
+                        (draft) =>
+                          `${draft.trim() ? `${draft}\n\n` : ''}${request}\n\nExplanation to discuss (quoted material):\n${text.slice(0, 2800)}`,
+                      )
+                      document.getElementById('ask')?.focus()
+                    }}
+                  >
+                    {label}
+                  </Button>
+                ))}
+              </div>
+              {text.length > 2800 && (
+                <p className="text-sm text-muted">
+                  The prepared request includes the first 2,800 characters. Replace it with the passage you
+                  want to discuss if it is later in the explanation.
+                </p>
+              )}
+            </details>
+          )}
           {status === 'stopped' && <p role="status">Explanation stopped. Received text is kept.</p>}
           {active && !busy && (status === 'stopped' || status === 'failed' || status === 'partial') && (
             <Button onClick={() => void retry()}>Retry last request</Button>

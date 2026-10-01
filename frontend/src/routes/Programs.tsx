@@ -218,7 +218,7 @@ export function Programs() {
                 {paused ? 'Resume this step' : 'Pause study'}
               </Button>
             </div>
-            <div className="flex gap-2" aria-label="Study view">
+            <div className="flex flex-wrap gap-2" aria-label="Study view">
               <Button
                 variant={notebookView ? 'outline' : 'primary'}
                 aria-pressed={!notebookView}
@@ -258,7 +258,7 @@ export function Programs() {
             {!notebookView && section && (
               <nav
                 aria-label="Adjacent project steps"
-                className="flex justify-between gap-3 border-t border-line pt-4"
+                className="flex flex-wrap justify-between gap-3 border-t border-line pt-4"
               >
                 <Button
                   disabled={sectionIndex <= 0}

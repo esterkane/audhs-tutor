@@ -12,5 +12,5 @@ Requirements: desktop/narrow outline and reading layout; direct phase and adjace
 - DOM and screenshots inspected on desktop and 390px width. No horizontal overflow at narrow width; viewport restored. No quiz submitted on the source service.
 - Review fixes: phase-aware tutor context includes the worked example; phase change unmounts previous helper/audio; practice notes reach the tutor rather than an unrelated answer.
 
-## Remaining objective
-Apply equivalent explicit chunking and deeper reasoning scaffolds to generated session explanations; inspect that flow with synthetic/disposable data. Check zoom, keyboard navigation and light theme across the changed learning routes. Owner comprehension and retention effects are not yet measured. Do not mark platform-wide UX work complete from project-page checks alone.
+## Follow-through
+Generated-session reading and deeper reasoning scaffolds are implemented in `session-reading.md`. Disposable browser journeys cover keyboard navigation and light-theme 200% text at 390px as well as desktop dark theme; project navigation now wraps under large text. Owner comprehension and retention effects remain unmeasured; automated checks are not a platform-wide accessibility certification.

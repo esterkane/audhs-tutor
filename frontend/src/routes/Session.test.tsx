@@ -107,6 +107,7 @@ describe('Session', () => {
           calls.push([url, JSON.parse(String(init?.body))])
           return jsonResponse({ ...session(running0).state, timer_extension_min: 5, message: 'extended' })
         }
+        if (url.includes('/api/exercises/for-skill/')) return jsonResponse({ detail: 'No exercise' }, 404)
         return jsonResponse({})
       }),
     )
@@ -159,6 +160,7 @@ describe('Session', () => {
             phase: 'review',
           })
         }
+        if (url.includes('/api/exercises/for-skill/')) return jsonResponse({ detail: 'No exercise' }, 404)
         return jsonResponse({})
       }),
     )
@@ -208,6 +210,7 @@ it('preserves the assessment answer and confidence after a grading error and all
           503,
         )
       }
+      if (url.includes('/api/exercises/for-skill/')) return jsonResponse({ detail: 'No exercise' }, 404)
       return jsonResponse({})
     }),
   )
@@ -251,6 +254,7 @@ it('guides explanation to a question with optional controls collapsed and access
         return jsonResponse({
           item: { id: 'a1', kind: 'explain_back', question: 'Explain the relationship.' },
         })
+      if (url.includes('/api/exercises/for-skill/')) return jsonResponse({ detail: 'No exercise' }, 404)
       return jsonResponse({})
     }),
   )
@@ -263,6 +267,19 @@ it('guides explanation to a question with optional controls collapsed and access
   expect(screen.getByText('More ways to learn').closest('details')).not.toHaveAttribute('open')
   expect(screen.getByRole('button', { name: 'Stop session' })).toBeVisible()
   fireEvent.click(screen.getByRole('button', { name: 'Start explanation' }))
+  await screen.findByText('A dot product combines matching components.')
+  fireEvent.click(screen.getByText('Think deeper about this explanation'))
+  fireEvent.change(screen.getByLabelText('Ask about this lesson (optional)'), {
+    target: { value: 'Keep my own reasoning.' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Find a counterexample' }))
+  expect((screen.getByLabelText('Ask about this lesson (optional)') as HTMLTextAreaElement).value).toContain(
+    'Keep my own reasoning.',
+  )
+  expect((screen.getByLabelText('Ask about this lesson (optional)') as HTMLTextAreaElement).value).toContain(
+    'A dot product combines matching components.',
+  )
+  expect(screen.getByRole('button', { name: 'Send lesson question' })).toBeEnabled()
   fireEvent.click(await screen.findByRole('button', { name: 'Try a question' }))
   expect(await screen.findByLabelText('Your answer')).toBeVisible()
   expect(screen.getByRole('button', { name: 'Check my answer' })).toBeDisabled()
@@ -305,6 +322,7 @@ it('offers continuing the plan after feedback without requiring another question
         nextCalls.push(JSON.parse(String(init?.body)))
         return jsonResponse({ ...state, allowed: true, plan_complete: true })
       }
+      if (url.includes('/api/exercises/for-skill/')) return jsonResponse({ detail: 'No exercise' }, 404)
       return jsonResponse({})
     }),
   )
