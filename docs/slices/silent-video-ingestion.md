@@ -1,0 +1,5 @@
+# Silent video ingestion
+
+A video-only project asset has no speech track to transcribe. Before audio decoding, an optional local ffprobe inspection identifies a valid video stream with no audio stream. That precise result becomes `no_content` with an explicit reason; the original asset remains unchanged. Missing tools, malformed/failed probes, unknown streams and decode failures retain their existing behavior rather than being labelled empty. No learner events, model calls, curriculum changes or platform-specific acquisition code are added. Existing progress/outcome UI presents the reason.
+
+Reproduction: locally inspected failed video assets contain only video streams; previous conversion treated them as decoder failures. Regression tests check audio-present and uncertain cases still reach the decoder, absent audio never does, and service classification is no_content. Targeted media/ingestion tests passed (54 before additional uncertainty cases); independent code review found no blockers or majors. Probing currently covers MP4/M4V/MOV/MKV/WebM/AVI; other video containers retain prior behavior. Full backend and lint results are recorded in the handoff.

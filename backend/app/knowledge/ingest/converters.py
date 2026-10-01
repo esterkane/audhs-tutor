@@ -4,6 +4,7 @@ LibreOffice `soffice` (`.doc`/`.ppt`/`.pages`/`.key` → docx/pptx), `ffmpeg` or
 (media → 16 kHz mono WAV), macOS `sips` (image formats → PNG). A missing tool means the file is
 reported as skipped with the tool named — nothing fails silently."""
 
+import json
 import platform
 import shutil
 import subprocess
@@ -117,8 +118,55 @@ def decoder_supports(decoder: str | None, suffix: str) -> bool:
     return False
 
 
+class NoAudioTrack(ValueError):
+    """A valid video has no audio stream; there is nothing for speech recognition."""
+
+
+def check_video_audio(src: Path) -> None:
+    """Only a successful probe of a real video can establish absent audio."""
+    if src.suffix.lower() not in {".mp4", ".m4v", ".mov", ".mkv", ".webm", ".avi"}:
+        return
+    probe = find_tool("ffprobe")
+    if not probe:
+        return  # optional; preserve existing decoder behaviour
+    try:
+        result = subprocess.run(
+            [
+                probe,
+                "-v",
+                "error",
+                "-show_entries",
+                "stream=codec_type",
+                "-of",
+                "json",
+                f"file:{src.resolve()}",
+            ],
+            capture_output=True,
+            timeout=30,
+            check=False,
+        )
+        if result.returncode:
+            return
+        payload = json.loads(result.stdout)
+        streams = payload.get("streams") if isinstance(payload, dict) else None
+        if not isinstance(streams, list) or not all(isinstance(s, dict) for s in streams):
+            return
+        if any(
+            not isinstance(s.get("codec_type"), str)
+            or s["codec_type"] not in {"video", "audio", "subtitle", "data", "attachment"}
+            for s in streams
+        ):
+            return
+        kinds = {s["codec_type"] for s in streams}
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        return  # an uncertain probe never turns corrupt/unreadable input into no_content
+    if "video" in kinds and "audio" not in kinds:
+        raise NoAudioTrack("video has no audio track; no speech to transcribe; original retained")
+
+
 def decode_to_wav(src: Path, dst: Path, decoder: str) -> None:
     """16 kHz, mono, 16-bit PCM — what Whisper expects."""
+    check_video_audio(src)
     if decoder == "ffmpeg":
         _run(
             [

@@ -36,6 +36,7 @@ from app.db.models import (
 from app.db.traces import ModelCallRecord, write_model_call
 from app.knowledge.ingest.archives import archive_stem, content_root, extract_archive, is_archive
 from app.knowledge.ingest.chunker import chunk_doc
+from app.knowledge.ingest.converters import NoAudioTrack
 from app.knowledge.ingest.loaders import (
     SkipFile,
     is_expensive,
@@ -651,6 +652,8 @@ def _skip_reason(e: BaseException) -> str:
 def classify(e: BaseException) -> Outcome:
     """The outcome class of a failure — what the owner can do about it, not the exception name.
     Unknown exceptions are parser errors: the format was claimed supported and the parse failed."""
+    if isinstance(e, NoAudioTrack):
+        return "no_content"
     reason = str(e).lower()
     if isinstance(e, SkipFile):
         if "empty" in reason or "no text or figure" in reason:
