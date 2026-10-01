@@ -24,6 +24,32 @@ const cells: NotebookCell[] = [
   { cell_type: 'code', source: 'print(x + 1)' },
 ]
 const result: RunResult = { stdout: '2', error: null, ms: 1, results: [], timedOut: false, truncated: false }
+
+it('lets the tutor focus on a named step without moving or running the editor', () => {
+  const runner = fake()
+  render(
+    <NotebookWorkspace
+      identity="steps"
+      runnerFactory={() => runner}
+      cells={[
+        { cell_type: 'markdown', source: '## Step 1: Explore\nInspect rows.' },
+        { cell_type: 'code', source: 'rows = 10' },
+        { cell_type: 'markdown', source: '## Step 2: Compare' },
+        { cell_type: 'markdown', source: 'Compare groups before and after cleaning.' },
+        { cell_type: 'code', source: 'print(rows)' },
+        { cell_type: 'markdown', source: '## Step 3: Conclude\nWrite a summary.' },
+      ]}
+    />,
+  )
+  fireEvent.change(screen.getByLabelText('Tutor focus'), { target: { value: '2' } })
+  expect(screen.getByLabelText('Notebook cell')).toHaveValue('0')
+  const payload = JSON.parse(screen.getByTestId('tutor-context').textContent!)
+  expect(payload.context).toContain('Compare groups before and after cleaning.')
+  expect(payload.context).not.toContain('Inspect rows.')
+  expect(payload.context).not.toContain('Write a summary.')
+  expect(payload.code).toMatch(/^# Selected notebook cell 5\nprint\(rows\)/)
+  expect(runner.run).not.toHaveBeenCalled()
+})
 function fake(run = vi.fn(async () => result)): Runner {
   return { load: vi.fn(), run, dispose: vi.fn() }
 }

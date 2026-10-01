@@ -75,6 +75,7 @@ function Workspace({
   const [draft, setDraft] = useState(restored.draft)
   const [saveStatus, setSaveStatus] = useState(restored.status)
   const [plain, setPlain] = useState(false)
+  const [tutorTarget, setTutorTarget] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
   const [checked, setChecked] = useState(false)
   const [result, setResult] = useState<RunResult | null>(null)
@@ -342,35 +343,39 @@ function Workspace({
           {result.truncated && <p>Output was shortened.</p>}
         </div>
       )}
-      <StudyTutor
-        identity={`${storageKey}:${draft.selected}`}
-        key={`${identity}:${draft.selected}`}
-        context={`Notebook cell ${draft.selected + 1}. ${cell.cell_type !== 'code' ? cell.source : ''} ${explanations?.[String(draft.selected + 1)] ?? ''} ${context?.c.source ?? ''}`.slice(
-          0,
-          1000,
-        )}
-        code={
-          cell.cell_type === 'code'
-            ? cells
-                .slice(0, draft.selected + 1)
-                .flatMap((c, i) =>
-                  c.cell_type === 'code' ? [`# Notebook cell ${i + 1}\n${draft.sources[i]}`] : [],
-                )
-                .join('\n\n')
-            : undefined
-        }
-        output={
-          result
-            ? [
-                result.stdout,
-                result.error ? `Python error: ${result.error}` : '',
-                result.truncated ? 'Output truncated.' : '',
-              ]
-                .filter(Boolean)
-                .join('\n')
-            : ''
-        }
-        answer={draft.predictions[String(draft.selected)] ?? ''}
+      <label className="block">
+        Tutor focus
+        <select
+          className="block w-full border rounded p-2 bg-surface"
+          value={tutorTarget ?? 'current'}
+          onChange={(event) =>
+            setTutorTarget(event.target.value === 'current' ? null : Number(event.target.value))
+          }
+        >
+          <option value="current">Follow the selected notebook cell</option>
+          {cells.map((entry, index) => {
+            const title =
+              entry.cell_type === 'markdown' ? draft.sources[index].match(/^#{1,3}\s+(.+)$/m)?.[1] : null
+            return title ? (
+              <option key={index} value={index}>
+                Cell {index + 1}: {title}
+              </option>
+            ) : null
+          })}
+        </select>
+      </label>
+      <p className="text-sm text-muted">
+        Choose a step to discuss, or select any notebook cell above. This does not run or change your code.
+      </p>
+      <NotebookTutor
+        cells={cells}
+        sources={draft.sources}
+        index={tutorTarget ?? draft.selected}
+        sectionFocus={tutorTarget !== null}
+        identity={storageKey}
+        explanations={explanations}
+        answer={draft.predictions[String(tutorTarget ?? draft.selected)] ?? ''}
+        output={tutorTarget === null || tutorTarget === draft.selected ? result : null}
       />
       {result?.results.map((c, i) => (
         <p key={i} role={c.passed ? 'status' : 'alert'}>
@@ -410,5 +415,89 @@ function Workspace({
       <p>{saveStatus}</p>
       <Button onClick={download}>Export edited notebook</Button>
     </section>
+  )
+}
+
+function NotebookTutor({
+  cells,
+  sources,
+  index,
+  sectionFocus,
+  identity,
+  explanations,
+  answer,
+  output,
+}: {
+  cells: NotebookCell[]
+  sources: string[]
+  index: number
+  sectionFocus: boolean
+  identity: string
+  explanations?: Record<string, string>
+  answer: string
+  output: RunResult | null
+}) {
+  const cell = cells[index]
+  const level = sources[index].match(/^(#{1,3})\s+.+$/m)?.[1].length
+  let end = index + 1
+  if (sectionFocus && level) {
+    const next = cells.findIndex(
+      (entry, i) =>
+        i > index &&
+        entry.cell_type === 'markdown' &&
+        (sources[i].match(/^(#{1,3})\s+.+$/m)?.[1].length ?? 99) <= level,
+    )
+    end = next < 0 ? cells.length : next
+  }
+  const focused = cells.slice(index, end).map((entry, offset) => ({ entry, i: index + offset }))
+  const focusedCode = focused
+    .filter(({ entry }) => entry.cell_type === 'code')
+    .map(({ i }) => `# Selected notebook cell ${i + 1}\n${sources[i]}`)
+    .join('\n\n')
+  const previous = cells
+    .slice(0, index)
+    .map((c, i) => ({ c, i }))
+    .filter(({ c }) => c.cell_type === 'markdown')
+    .at(-1)
+  const title =
+    sources[index]
+      .split('\n')
+      .find((line) => line.trim())
+      ?.replace(/^#+\s*/, '')
+      .slice(0, 100) || '(empty cell)'
+  return (
+    <StudyTutor
+      targetLabel={`${sectionFocus ? 'Step' : 'Notebook cell ' + (index + 1)} — ${title}`}
+      identity={`${identity}:${index}${sectionFocus ? ':step' : ''}`}
+      key={`${identity}:${index}${sectionFocus ? ':step' : ''}`}
+      context={`Notebook cell ${index + 1}. ${focused
+        .filter(({ entry }) => entry.cell_type !== 'code')
+        .map(({ i }) => sources[i])
+        .join(
+          '\n\n',
+        )} ${explanations?.[String(index + 1)] ?? ''} ${cell.cell_type === 'code' && previous ? sources[previous.i] : ''}`}
+      code={
+        focusedCode
+          ? focusedCode +
+            `\n\n# Earlier cells for context only\n` +
+            cells
+              .slice(0, index)
+              .flatMap((c, i) => (c.cell_type === 'code' ? [`# Notebook cell ${i + 1}\n${sources[i]}`] : []))
+              .join('\n\n')
+          : undefined
+      }
+      output={
+        output
+          ? [
+              output.stdout,
+              output.error ? `Python error: ${output.error}` : '',
+              output.truncated ? 'Output truncated.' : '',
+            ]
+              .filter(Boolean)
+              .join('\n')
+          : ''
+      }
+      answer={answer}
+    />
   )
 }

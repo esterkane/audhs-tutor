@@ -187,3 +187,50 @@ it('checks an answer explicitly against the selected question and offers spoken 
     expect.any(AbortSignal),
   )
 })
+
+it('guides a Socratic answer, preserves earlier messages, and can return to explanation', async () => {
+  active()
+  vi.mocked(askTutor)
+    .mockResolvedValueOnce({ ...reply, text: 'Which group loses more rows?' })
+    .mockResolvedValueOnce({ ...reply, text: 'Group B loses more. What changes in its representation?' })
+    .mockResolvedValueOnce({ ...reply, text: 'Here is a direct explanation.' })
+  renderApp(<StudyTutor context="Compare groups after cleaning." targetLabel="Step 1: data cleaning" />)
+  expect(screen.getByText('Discussing: Step 1: data cleaning')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Ask me a Socratic question' }))
+  await screen.findByText('Which group loses more rows?')
+  const answer = screen.getByLabelText('Your answer to the tutor’s question')
+  fireEvent.change(answer, { target: { value: 'Group B loses more rows.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Discuss my answer' }))
+  await screen.findByText('Group B loses more. What changes in its representation?')
+  const sent = vi.mocked(askTutor).mock.calls[1][0]
+  expect(sent.question).toContain('Group B loses more rows.')
+  expect(sent.question).toContain('Give direct feedback on my answer first')
+  expect(sent.history?.at(-1)?.text).toBe('Which group loses more rows?')
+  fireEvent.click(screen.getByText('Earlier messages (2)'))
+  expect(screen.getByText('Which group loses more rows?')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Explain instead' }))
+  await screen.findByText('Here is a direct explanation.')
+  expect(screen.getByLabelText('Your tutor message or response')).toBeVisible()
+  expect(vi.mocked(askTutor).mock.calls[2][0].question).toContain('Switch back to direct explanation')
+})
+
+it('allows follow-up questions after answer checking and keeps earlier feedback after edits', async () => {
+  active()
+  vi.mocked(askTutor)
+    .mockResolvedValueOnce(reply)
+    .mockResolvedValueOnce({ ...reply, text: 'The rule affects group sizes differently.' })
+  const view = renderApp(
+    <StudyTutor reviewOnly context="Question: Why?" identity="review" answer="My answer" />,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await screen.findByText(reply.text)
+  fireEvent.change(screen.getByLabelText('Ask about this feedback'), {
+    target: { value: 'Why does the rule matter?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
+  await screen.findByText('The rule affects group sizes differently.')
+  expect(vi.mocked(askTutor).mock.calls[1][0].history?.at(-1)?.text).toBe(reply.text)
+  view.rerender(<StudyTutor reviewOnly context="Question: Why?" identity="review" answer="Revised answer" />)
+  fireEvent.click(screen.getByText('Earlier messages (2)'))
+  expect(screen.getByText(reply.text)).toBeVisible()
+})

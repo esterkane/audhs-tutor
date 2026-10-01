@@ -228,6 +228,7 @@ function Content({ section, course, paused }: { section: Section; course: string
           {!paused && (
             <StudyTutor
               reviewOnly
+              targetLabel={`${section.title} — ${question.question}`}
               key={`review:${question.id}`}
               identity={`${key}:review:${question.id}`}
               context={`Question: ${question.question}\nCriteria: ${question.criteria}\n${example}\nBackground: ${section.explanation}`}
@@ -278,6 +279,7 @@ function Content({ section, course, paused }: { section: Section; course: string
       {!paused && tutorOpen && (
         <aside aria-label="Help with this step">
           <StudyTutor
+            targetLabel={`${section.title} — ${work.phase}`}
             key={`${work.phase}:${question.id}`}
             identity={`${key}:${work.phase}:${question.id}`}
             context={context}
