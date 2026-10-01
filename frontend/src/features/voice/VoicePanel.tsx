@@ -1,3 +1,4 @@
+import { AudioControls } from '../audio/AudioControls'
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
@@ -34,6 +35,7 @@ export function VoicePanel({
   return (
     <Card>
       <CardTitle>{title}</CardTitle>
+      <AudioControls />
       {(v.status === 'idle' || v.status === 'error') && (
         <div className="mt-2">
           <p className="text-sm text-muted mb-2">

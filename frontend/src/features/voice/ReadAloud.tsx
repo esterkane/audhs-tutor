@@ -1,3 +1,4 @@
+import { AudioControls } from '../audio/AudioControls'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
@@ -63,6 +64,7 @@ export function ReadAloud({ text }: { text: string }) {
       <Button size="sm" onClick={() => (busy ? stop() : void speak())} disabled={!text.trim()}>
         {busy ? 'Stop audio' : 'Listen to explanation'}
       </Button>
+      <AudioControls />
       <span className="text-xs text-muted ml-2">Local voice · no microphone · English voice</span>
       {error && (
         <p role="alert" className="text-sm mt-1">

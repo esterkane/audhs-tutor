@@ -221,6 +221,7 @@ export function useVoiceLoop(opts: {
       status !== 'ready'
     )
       return
+    player.current.stop() // explicit new response boundary, including delayed audio chunks
     turnBusy.current = true
     const generation = ++micGeneration.current
     setStatus('listening')
@@ -291,6 +292,7 @@ export function useVoiceLoop(opts: {
         setStatus('error')
         return false
       }
+      player.current.stop()
       turnBusy.current = true
       turnDone.current = false
       setTranscript(text)

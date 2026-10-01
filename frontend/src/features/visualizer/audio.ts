@@ -1,3 +1,4 @@
+import { bindOutput, useAudioSettings } from '../audio/settings'
 import { measure, type Measurement } from './measurement'
 import type { ToneSettings } from './tone'
 import { features, type Frame } from './engine'
@@ -27,6 +28,12 @@ export async function openAudio(
   const context = new AudioContext()
   const audio = new Audio()
   const url = URL.createObjectURL(file)
+  let releaseOutput = () => {}
+  const applyRate = () => {
+    audio.playbackRate = useAudioSettings.getState().rate
+  }
+  applyRate()
+  const releaseMedia = useAudioSettings.subscribe(applyRate)
   let stopped = false
   let paused = false
   let operation = 0
@@ -45,6 +52,8 @@ export async function openAudio(
     operation += 1
     lastPosition = position()
     stopped = true
+    releaseOutput()
+    releaseMedia()
     audio.pause()
     audio.removeAttribute('src')
     audio.load()
@@ -98,7 +107,7 @@ export async function openAudio(
     source.connect(analyser)
     analyser.connect(gain)
     gain.connect(context.destination)
-    gain.gain.value = audible ? 0.5 : 0
+    releaseOutput = bindOutput(gain, audible ? 1 : 0)
     await context.resume()
     await audio.play()
     if (signal.aborted) throw new Error('Audio start cancelled.')
@@ -157,7 +166,8 @@ export async function openAudio(
       },
       stop,
       setAudible(value) {
-        gain.gain.value = value ? 0.5 : 0
+        releaseOutput()
+        releaseOutput = bindOutput(gain, value ? 1 : 0)
       },
     }
   } catch (e) {

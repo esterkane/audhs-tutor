@@ -1,3 +1,4 @@
+import { bindOutput, useAudioSettings } from '../audio/settings'
 /** Browser audio helpers for the voice loop: microphone → PCM16 16 kHz frames, PCM playback queue,
  *  WAV encoding for the setup test. All start only on a learner action (no autoplay). */
 
@@ -72,6 +73,9 @@ export async function startMic(onFrame: (pcm: Int16Array) => void): Promise<Mic>
 /** Plays PCM16 chunks back to back; `stop()` cuts playback immediately (interruption). */
 export class Player {
   private ctx: AudioContext | null = null
+  private output: GainNode | null = null
+  private releaseOutput: (() => void) | null = null
+  private rate: number | null = null
   private nextAt = 0
   private sources: AudioBufferSourceNode[] = []
 
@@ -96,10 +100,17 @@ export class Player {
     for (let i = 0; i < pcm16.length; i++) data[i] = pcm16[i] / 32768
     const node = this.ctx.createBufferSource()
     node.buffer = buffer
-    node.connect(this.ctx.destination)
+    if (!this.output) {
+      this.output = this.ctx.createGain()
+      this.output.connect(this.ctx.destination)
+      this.releaseOutput = bindOutput(this.output)
+    }
+    this.rate ??= useAudioSettings.getState().rate
+    node.playbackRate.value = this.rate
+    node.connect(this.output)
     const at = Math.max(this.ctx.currentTime, this.nextAt)
     node.start(at)
-    this.nextAt = at + buffer.duration
+    this.nextAt = at + buffer.duration / this.rate
     this.sources.push(node)
     node.onended = () => {
       this.sources = this.sources.filter((s) => s !== node)
@@ -108,6 +119,7 @@ export class Player {
   }
 
   stop() {
+    this.rate = null
     for (const s of this.sources) {
       try {
         s.stop()
@@ -121,6 +133,9 @@ export class Player {
 
   close() {
     this.stop()
+    this.releaseOutput?.()
+    this.releaseOutput = null
+    this.output = null
     void this.ctx?.close()
     this.ctx = null
   }

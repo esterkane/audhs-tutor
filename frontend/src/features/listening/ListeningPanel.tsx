@@ -1,3 +1,5 @@
+import { AudioControls } from '../audio/AudioControls'
+import { bindMedia } from '../audio/settings'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -123,6 +125,7 @@ function ClipCard({
   useEffect(() => {
     const el = audio.current
     if (!el) return
+    const releaseAudio = bindMedia(el)
     const onTime = () => {
       if (lastTick.current != null && el.currentTime > lastTick.current) {
         playedSeconds.current += Math.min(el.currentTime - lastTick.current, 2)
@@ -149,6 +152,7 @@ function ClipCard({
     el.addEventListener('ended', onPause)
     el.addEventListener('error', onError)
     return () => {
+      releaseAudio()
       el.pause()
       el.removeEventListener('timeupdate', onTime)
       el.removeEventListener('pause', onPause)
@@ -219,6 +223,7 @@ function ClipCard({
         {lesson.language ? ` · ${lesson.language.toUpperCase()}` : ''}
       </p>
       {lesson.media_url && <audio ref={audio} src={lesson.media_url} preload="none" aria-hidden="true" />}
+      {!textOnly && <AudioControls />}
       {textOnly ? (
         <p className="text-sm mt-2" role="status">
           {playbackError ?? lesson.media_note ?? 'No audio for this clip'} — reading version.

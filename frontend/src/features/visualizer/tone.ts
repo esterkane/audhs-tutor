@@ -1,3 +1,4 @@
+import { bindOutput } from '../audio/settings'
 import type { AudioInput } from './audio'
 import { features } from './engine'
 import { measure } from './measurement'
@@ -14,6 +15,7 @@ export async function openTone(settings: ToneSettings, signal: AbortSignal): Pro
   const level = context.createGain()
   const analyser = context.createAnalyser()
   const monitor = context.createGain()
+  let releaseOutput = () => {}
   let stopped = false
   const update = (s: ToneSettings) => {
     oscillator.type = s.waveform
@@ -31,6 +33,7 @@ export async function openTone(settings: ToneSettings, signal: AbortSignal): Pro
   const stop = () => {
     if (stopped) return
     stopped = true
+    releaseOutput()
     oscillator.stop()
     signal.removeEventListener('abort', stop)
     void context.close().catch(() => {})
@@ -59,7 +62,8 @@ export async function openTone(settings: ToneSettings, signal: AbortSignal): Pro
         if (!stopped) await context.resume()
       },
       setAudible: (value) => {
-        monitor.gain.value = value ? 0.5 : 0
+        releaseOutput()
+        releaseOutput = bindOutput(monitor, value ? 1 : 0)
       },
     }
   } catch (e) {

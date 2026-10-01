@@ -1,3 +1,5 @@
+import { AudioControls } from '../features/audio/AudioControls'
+import { bindOutput } from '../features/audio/settings'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
@@ -19,7 +21,7 @@ export function Together() {
   const [startedAt] = useState(() => nowMs())
   const [minutes, setMinutes] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const audio = useRef<{ ctx: AudioContext; node: AudioBufferSourceNode } | null>(null)
+  const audio = useRef<{ ctx: AudioContext; node: AudioBufferSourceNode; release: () => void } | null>(null)
 
   useEffect(() => {
     const id = setInterval(() => setMinutes(Math.floor((nowMs() - startedAt) / 60_000)), 15_000)
@@ -47,13 +49,15 @@ export function Together() {
     node.buffer = buffer
     node.loop = true
     const gain = ctx.createGain()
-    gain.gain.value = 0.15
+    const release = bindOutput(gain, 0.3)
     node.connect(gain).connect(ctx.destination)
     node.start()
-    audio.current = { ctx, node }
+    audio.current = { ctx, node, release }
+    void ctx.resume().catch(() => stopSound())
     setPlaying(true)
   }
   function stopSound() {
+    audio.current?.release()
     audio.current?.node.stop()
     void audio.current?.ctx.close()
     audio.current = null
@@ -64,6 +68,7 @@ export function Together() {
   return (
     <div className="grid gap-4">
       <Card>
+        <AudioControls />
         <CardTitle>Working alongside</CardTitle>
         <p className="text-2xl mt-2">
           {task ? `Now: ${task}` : session.data ? 'Current session' : 'No session running.'}

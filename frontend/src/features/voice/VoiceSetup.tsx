@@ -1,3 +1,4 @@
+import { AudioControls } from '../audio/AudioControls'
 import { useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
@@ -56,6 +57,7 @@ export function VoiceSetup() {
   return (
     <Card>
       <CardTitle>Voice</CardTitle>
+      <AudioControls />
       <p className="text-sm text-muted mb-2">
         Talk to the tutor and hear the answer. Speech recognition runs on this Mac (MLX Whisper); the voice
         comes from a Kokoro server you start yourself. Four separate steps, all yours to click: install,

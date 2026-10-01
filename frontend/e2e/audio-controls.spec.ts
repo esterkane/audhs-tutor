@@ -1,0 +1,25 @@
+import { expect, test } from '@playwright/test'
+
+test('audio controls persist across routes and remain usable on narrow screens', async ({ page }) => {
+  await page.goto('/areas')
+  const controls = page.locator('header details').filter({ hasText: 'Audio controls' })
+  await controls.locator('summary').click()
+  await controls.getByLabel('Audio volume').fill('0.25')
+  await controls.getByLabel('Playback speed').selectOption('1.5')
+  await controls.getByRole('button', { name: 'Mute', exact: true }).click()
+  await expect(controls.getByRole('button', { name: 'Test sound' })).toBeDisabled()
+  await page.getByRole('link', { name: 'Audio visualizer', exact: true }).click()
+  await expect(controls.getByLabel('Audio volume')).toHaveValue('0.25')
+  await expect(controls.getByLabel('Playback speed')).toHaveValue('1.5')
+  await page.reload()
+  await controls.locator('summary').click()
+  await expect(controls.getByRole('button', { name: 'Unmute', exact: true })).toBeVisible()
+  await page.setViewportSize({ width: 390, height: 844 })
+  await controls.getByRole('button', { name: 'Unmute', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(controls.getByRole('button', { name: 'Test sound' })).toBeEnabled()
+  // Headless browser verifies output lifecycle, not physical headphone audibility.
+  await controls.getByRole('button', { name: 'Test sound' }).click()
+  await expect(controls.getByRole('status')).toContainText('Test finished')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+})

@@ -1,3 +1,4 @@
+import { AudioControls } from '../features/audio/AudioControls'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
@@ -586,6 +587,7 @@ export function Visualizer() {
                   Open audio
                 </Button>
               </div>
+              <AudioControls />
               <p className="text-sm">
                 Sound: {source === 'demo' ? 'silent synthetic demo' : audible && sound ? 'on' : 'off'} ·
                 Motion:{' '}

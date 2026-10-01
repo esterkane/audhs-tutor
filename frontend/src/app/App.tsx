@@ -1,3 +1,4 @@
+import { AudioControls } from '../features/audio/AudioControls'
 import { LearningCompanion } from '../features/programs/LearningCompanion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
@@ -58,6 +59,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           {MODE_LABELS[mode].title} · energy {energy}
           {sessionId ? ' · session running' : ''}
         </div>
+        <AudioControls />
       </header>
       <main className={`${wide ? 'max-w-7xl' : 'max-w-3xl'} mx-auto p-4 pb-24`}>{children}</main>
       <LearningCompanion key={pathname} />
