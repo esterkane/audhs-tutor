@@ -11,6 +11,7 @@ from app.core.errors import register_error_handlers
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
 from app.models_ai.factory import build_providers
+from app.notebooks.lab import NotebookLab
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -28,6 +29,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         try:
             yield
         finally:
+            await app.state.notebook_lab.close()
             task = getattr(app.state, "area_job_task", None)
             if task and not task.done():
                 task.cancel()
@@ -44,6 +46,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.providers = None
     app.state.repo = None
+    app.state.notebook_lab = NotebookLab(settings)
     register_error_handlers(app)
     app.include_router(api_router)
     return app

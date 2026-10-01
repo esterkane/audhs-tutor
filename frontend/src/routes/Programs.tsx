@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { LocalNotebookLab } from '../features/programs/LocalNotebookLab'
 import { NotebookWorkspace } from '../features/programs/NotebookWorkspace'
 import { GuidedSection } from '../features/programs/GuidedSection'
 import { Button } from '../components/ui/button'
@@ -7,10 +8,12 @@ import { parseNotebook, parseProgram, type NotebookCell, type Program } from '..
 
 function NotebookReader({
   notebook,
+  courseId,
   explanations,
   paused,
 }: {
   paused: boolean
+  courseId: string
   notebook?: string
   explanations?: Record<string, string>
 }) {
@@ -84,24 +87,9 @@ function NotebookReader({
           explanations={isSavedNotebook ? explanations : undefined}
         />
       )}
-      <details id="complete-notebook-guide" open>
-        <summary>Run the complete notebook with datasets and scientific libraries</summary>
-        <p>
-          For full notebooks, use the local Jupyter lab. It opens data/notebooks; upload your notebook and
-          datasets there using its Upload button. Keep the notebook and dataset files in the same folder. Read
-          the first markdown cells, then run cells in order with Shift+Enter. Check outputs and errors before
-          continuing.
-        </p>
-        <pre className="whitespace-pre-wrap">python3 scripts/notebook_lab.py --install</pre>
-        <p>
-          Run once from the project folder in a terminal; on later starts omit --install. The authenticated
-          local lab does not execute cells automatically. Review course-specific dependencies before
-          installing them.
-        </p>
-        <a href="http://127.0.0.1:8890/lab" target="_blank" rel="noreferrer">
-          Open local notebook lab (after starting it)
-        </a>
-      </details>
+      <div id="complete-notebook-guide">
+        <LocalNotebookLab courseId={courseId} />
+      </div>
     </Card>
   )
 }
@@ -250,6 +238,7 @@ export function Programs() {
             <div hidden={!notebookView || paused}>
               <NotebookReader
                 key={course.id}
+                courseId={course.id}
                 paused={paused || !notebookView}
                 notebook={course.notebook}
                 explanations={course.explanations}

@@ -583,6 +583,40 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/notebooks/status': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read local notebook setup status */
+    get: operations['status_api_notebooks_status_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/notebooks/start': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Prepare and start local notebook lab without executing cells */
+    post: operations['start_api_notebooks_start_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/parking': {
     parameters: {
       query?: never
@@ -3674,6 +3708,17 @@ export interface components {
       /** Skill Id */
       skill_id: string
     }
+    /** NotebookStatus */
+    NotebookStatus: {
+      /** Status */
+      status: string
+      /** Message */
+      message: string
+      /** Url */
+      url: string | null
+      /** Course Id */
+      course_id: string
+    }
     /** ParkIn */
     ParkIn: {
       /** Session Id */
@@ -4449,6 +4494,16 @@ export interface components {
       pcm16_b64: string
       /** Sample Rate */
       sample_rate: number
+    }
+    /** StartNotebook */
+    StartNotebook: {
+      /** Course Id */
+      course_id: string
+      /**
+       * Install
+       * @default false
+       */
+      install: boolean
     }
     /** TaskIn */
     TaskIn: {
@@ -5700,6 +5755,59 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ReviewOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  status_api_notebooks_status_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NotebookStatus']
+        }
+      }
+    }
+  }
+  start_api_notebooks_start_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StartNotebook']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NotebookStatus']
         }
       }
       /** @description Validation Error */
