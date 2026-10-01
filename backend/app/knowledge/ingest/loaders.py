@@ -26,6 +26,7 @@ from app.knowledge.ingest.course_manifest import (
     parse_section_dir,
     provenance_from_manifest,
 )
+from app.knowledge.ingest.drawio import drawio_blocks
 from app.knowledge.ingest.epub import epub_blocks
 from app.knowledge.ingest.htmltext import html_blocks
 from app.knowledge.ingest.latex import latex_blocks
@@ -78,6 +79,7 @@ SUFFIX_TYPES: dict[str, str] = {
     ".tsv": "document",
     ".csv": "document",
     ".xml": "transcript",  # sniff TTML, otherwise validated XML source
+    ".drawio": "document",
     ".docx": "document",
     ".docm": "document",
     ".odt": "document",
@@ -151,6 +153,7 @@ FORMAT_GROUPS: dict[str, list[str]] = {
         }
     ),
     "documents": [
+        ".drawio",
         ".pdf",
         ".docx",
         ".doc*",
@@ -461,9 +464,17 @@ def load_file(
         )
     if st == "course_caption":
         return done(caption_blocks(text))
+    if suffix == ".drawio":
+        diagram = drawio_blocks(text)
+        if diagram is None:
+            raise ValueError("Not a draw.io graph document")
+        return done(diagram, source_type=source_type or "document")
     if suffix in TRANSCRIPT_SUFFIXES or suffix == ".xml":
         cues = transcript_cues(text, suffix)
         if cues is None and suffix == ".xml":
+            diagram = drawio_blocks(text)
+            if diagram is not None:
+                return done(diagram, source_type=source_type or "document")
             return done(xml_source_blocks(text), source_type=source_type or "code")
         if cues is None:
             raise ValueError("not a supported transcript")
