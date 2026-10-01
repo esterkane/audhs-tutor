@@ -234,3 +234,38 @@ it('allows follow-up questions after answer checking and keeps earlier feedback 
   fireEvent.click(screen.getByText('Earlier messages (2)'))
   expect(screen.getByText(reply.text)).toBeVisible()
 })
+
+it('adapts current feedback with history and preserves drafts, but rejects stale work', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue(reply)
+  const view = renderApp(<StudyTutor context="Compare retention" identity="step" answer="First" />)
+  expect(screen.queryByRole('button', { name: 'Shorter' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Review my answer' }))
+  await screen.findByText(reply.text)
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), {
+    target: { value: 'Keep draft' },
+  })
+  for (const label of ['Shorter', 'Smaller steps', 'Show an example']) {
+    fireEvent.click(screen.getByRole('button', { name: label }))
+    await waitFor(() => expect(screen.getByRole('button', { name: label })).toBeEnabled())
+    const request = vi.mocked(askTutor).mock.lastCall![0]
+    expect(request.exercise).toBe('Compare retention')
+    expect(request.history?.at(-1)?.text).toBe(reply.text)
+    expect(screen.getByLabelText('Your tutor message or response')).toHaveValue('Keep draft')
+  }
+  expect(vi.mocked(askTutor).mock.lastCall![0].question).toContain('illustrative')
+  view.rerender(<StudyTutor context="Compare retention" identity="step" answer="Edited" />)
+  expect(screen.queryByRole('button', { name: 'Shorter' })).toBeNull()
+  expect(screen.getByText(/Earlier feedback/)).toBeVisible()
+})
+
+it('requires explicit explanation switch before adapting a Socratic question', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue(reply)
+  renderApp(<StudyTutor context="Compare retention" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Ask me a Socratic question' }))
+  await screen.findByText(reply.text)
+  expect(screen.queryByRole('button', { name: 'Shorter' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Explain instead' }))
+  await screen.findByRole('button', { name: 'Shorter' })
+})

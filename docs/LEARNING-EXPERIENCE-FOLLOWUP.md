@@ -1,6 +1,6 @@
 # Learning experience follow-up plan
 
-Status: **queued; implementation not started**. Prepared 2026-10-01 after the tutor-focus/conversation fix. This supplements, not replaces, `docs/AUDIT-IMPLEMENTATION-PLAN.md` and existing roadmap. Finish the active slice and its publication gates first. Keep live acquisition/import work separate and avoid concurrent database writers.
+Status: **in progress; Q0 completed, Q1/Q2 partially implemented**. Prepared 2026-10-01 after the tutor-focus/conversation fix. This supplements, not replaces, `docs/AUDIT-IMPLEMENTATION-PLAN.md` and existing roadmap. Finish the active slice and its publication gates first. Keep live acquisition/import work separate and avoid concurrent database writers.
 
 ## What the report changes
 
@@ -55,7 +55,7 @@ Acceptance: fresh learner, active lesson, stopped lesson, notebook task and unav
 
 ### Q2 — Predictable teaching and controllable waiting
 
-Coverage: UX26-F5/F10/F12. Dependency: Q0; can follow Q1.
+Coverage: UX26-F5/F10/F12. Dependency: Q0; can follow Q1. Status: partial — current-response adaptation controls implemented; see docs/slices/tutor-explanation-controls.md. Local model adherence remains partial, elapsed/announcement/source work remains open.
 Reuse StudyTutor, common Markdown, source viewer, local routing and streaming recovery. Offer Shorter, Smaller steps, Example and Explain instead against the current target, preserving the conversation. Keep brief answer/example/next action structure where useful; do not force every reply into five empty headings. Use the existing output contract first; only propose structured JSON after local-model compatibility/evaluation evidence. Show immediate pending state, elapsed time and Stop without an unsupported estimate. Announce completed replies, not every token.
 
 Acceptance: controls stay on selected step; no hidden mode switch; delayed/error/stopped reply retains drafts; sources open the matching passage when available and unsupported claims remain labeled; answer checking discusses actual answer before a follow-up. Test long answers and changed code. Separate synthetic contract tests from a local-model rubric: directness, relevance, source honesty, one-question pacing and useful feedback. Preferences never count as mastery.

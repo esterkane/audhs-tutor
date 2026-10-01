@@ -16,7 +16,7 @@ type Props = {
   answer?: string
   output?: string
 }
-type Action = 'explain' | 'hint' | 'socratic' | 'review' | 'chat'
+type Action = 'explain' | 'hint' | 'socratic' | 'review' | 'chat' | 'shorter' | 'steps' | 'example'
 export function StudyTutor(props: Props) {
   const session = useCurrentSession()
   return (
@@ -177,6 +177,8 @@ function Conversation({
   async function ask(action: Action) {
     if (
       operation.current ||
+      (['shorter', 'steps', 'example'].includes(action) &&
+        (!reply || replySnapshot !== snapshot || socratic)) ||
       (action === 'review' && !answer.trim()) ||
       (action === 'chat' && !question.trim())
     )
@@ -186,6 +188,12 @@ function Conversation({
       return
     }
     const requests = {
+      shorter:
+        'Make your last response shorter while preserving its key reasoning, uncertainty and source limitations. Explicitly retain any missing-data or unverified-output caveat; do not introduce a new judgment of my answer. Stay on this same step; do not introduce a new question or claim new checks.',
+      steps:
+        'Break your last response into smaller numbered steps. Explain why each step matters and identify the first action I can try. Stay on the same task; do not claim code execution or new checks.',
+      example:
+        'Show one small worked example that clarifies your last response on this same step. Label invented numbers or scenarios as illustrative, not facts from the source. Prefer a tiny concrete example in plain language; include code only if I requested code. Check that totals, rates and conclusions agree. Connect it back to the task without claiming execution or new checks.',
       explain:
         'Explain the supplied material before asking questions. Switch back to direct explanation if we were using Socratic questions. Give a small worked example, why each step matters, and one concrete next action.',
       hint: socratic
@@ -327,6 +335,19 @@ function Conversation({
                   : 'You can ask a follow-up below.'}
             </p>
             <Markdown text={reply.text} />
+            {!socratic && replySnapshot === snapshot && (
+              <div role="group" aria-label="Adapt this explanation" className="flex flex-wrap gap-2 my-3">
+                <Button disabled={busy} onClick={() => void ask('shorter')}>
+                  Shorter
+                </Button>
+                <Button disabled={busy} onClick={() => void ask('steps')}>
+                  Smaller steps
+                </Button>
+                <Button disabled={busy} onClick={() => void ask('example')}>
+                  Show an example
+                </Button>
+              </div>
+            )}
             <ReadAloud
               text={reply.text}
               label={reviewOnly ? 'Listen to feedback' : 'Listen to tutor response'}
@@ -392,6 +413,9 @@ function Conversation({
 }
 
 function displayMessage(text: string): string {
+  if (text.startsWith('Make your last response shorter')) return 'Make this explanation shorter.'
+  if (text.startsWith('Break your last response')) return 'Explain this in smaller steps.'
+  if (text.startsWith('Show one small worked example')) return 'Show me a worked example.'
   if (text.startsWith('Explain the supplied material')) return 'Explain this step.'
   if (text.startsWith('Give one small hint')) return 'Give me one hint.'
   if (text.startsWith('I explicitly choose Socratic')) return 'Ask me one guided question about this step.'

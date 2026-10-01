@@ -82,6 +82,18 @@ for (const width of [1280, 390]) {
     await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('2')
     await expect(answer).toHaveValue('Keep this draft')
     expect(requests).toBe(2)
+    await page.getByRole('button', { name: 'Explain instead', exact: true }).click()
+    const draft = page.getByLabel('Your tutor message or response', { exact: true })
+    await expect(draft).toHaveValue('Keep this draft')
+    for (const label of ['Shorter', 'Smaller steps', 'Show an example']) {
+      const control = page.getByRole('button', { name: label, exact: true })
+      await control.focus()
+      await page.keyboard.press('Enter')
+      await expect(control).toBeEnabled()
+      await expect(draft).toHaveValue('Keep this draft')
+      await expect(page.getByText('Discussing: Step — Compare')).toBeVisible()
+    }
+    expect(requests).toBe(6)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
