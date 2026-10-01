@@ -1,12 +1,15 @@
 """Contextual coding help; never runs code or writes competency evidence."""
 
+import asyncio
 import json
 import logging
 from typing import Any
 
+import httpx
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.answer_memory import exact_saved, retrieve
 from app.db.answers import save_completed
@@ -15,8 +18,9 @@ from app.db.events import EventWriter, Verb
 from app.db.traces import TutorTraceRecord, write_tutor_trace
 from app.kernel import session as ksession
 from app.models_ai.gateway import GatewayError, ModelGateway
-from app.models_ai.provider import Message, TaskClass
-from app.orchestrator import prompts
+from app.models_ai.provider import Message, ProviderError, TaskClass
+from app.models_ai.routing import NoModelReady
+from app.orchestrator import answer_semantic, prompts
 from app.orchestrator.context import escape_data
 from app.orchestrator.workspace_provenance import disclose
 from app.schemas.common import ActivityType, ObjectType
@@ -94,6 +98,7 @@ async def respond(
     body: PlaygroundRequest,
     *,
     historical: dict[str, Any] | None = None,
+    settings: Settings | None = None,
     parent_metadata: dict[str, Any] | None = None,
 ) -> PlaygroundReply:
     session = await ksession.get(db, body.session_id)
@@ -127,6 +132,24 @@ async def respond(
                 memory = await retrieve(db, learner_id, body)
         except SQLAlchemyError as exc:
             logger.warning("Saved answer lookup unavailable: %s", type(exc).__name__)
+    if settings is not None and historical is None and len(memory) < 2:
+        try:
+            related = await asyncio.wait_for(
+                answer_semantic.retrieve(db, settings, learner_id, body), timeout=2.0
+            )
+            seen = {item["answer_id"] for item in memory}
+            memory = (memory + [item for item in related if item["answer_id"] not in seen])[:2]
+        except (
+            SQLAlchemyError,
+            httpx.HTTPError,
+            ValueError,
+            ProviderError,
+            NoModelReady,
+            TimeoutError,
+        ) as exc:
+            await db.rollback()
+            logger.warning("Semantic answer lookup unavailable: %s", type(exc).__name__)
+            session = await ksession.get(db, body.session_id)
     packet = messages(body, historical, memory)
     events = EventWriter(db, ksession.event_context(session, activity=ActivityType.CHAT))
     await events.emit(

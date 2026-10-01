@@ -1,6 +1,6 @@
 """Bounded historical hints, not an authoritative knowledge source."""
 
-from sqlalchemy import select, text
+from sqlalchemy import Select, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.answer_search import literal_query
@@ -8,32 +8,21 @@ from app.db.models import TutorAnswer, TutorAnswerFeedback
 from app.schemas.playground import PlaygroundRequest
 
 
-async def retrieve(
-    db: AsyncSession, learner_id: str, body: PlaygroundRequest
-) -> list[dict[str, str]]:
+def candidates(learner_id: str, body: PlaygroundRequest) -> Select[tuple[TutorAnswer]] | None:
     context = body.learning_context
-    question = (body.learner_question or body.question).strip()
-    expression = literal_query(question[:200])
-    if not context or not context.target_id or not expression:
-        return []
+    if not context or not context.target_id:
+        return None
     excluded = select(TutorAnswerFeedback.answer_id).where(
         TutorAnswerFeedback.learner_id == learner_id,
         TutorAnswerFeedback.hidden.is_(True)
         | TutorAnswerFeedback.verdict.in_(["incorrect", "outdated"]),
     )
-    stmt = (
-        select(TutorAnswer)
-        .where(
-            TutorAnswer.learner_id == learner_id,
-            TutorAnswer.surface == "playground",
-            TutorAnswer.id.not_in(excluded),
-            TutorAnswer.id.in_(
-                select(text("id"))
-                .select_from(text("tutor_answer_fts"))
-                .where(text("tutor_answer_fts MATCH :memory_query"))
-            ),
-        )
-        .params(memory_query=expression)
+    stmt = select(TutorAnswer).where(
+        TutorAnswer.learner_id == learner_id,
+        TutorAnswer.surface == "playground",
+        TutorAnswer.id.not_in(excluded),
+        func.coalesce(func.json_array_length(TutorAnswer.metadata_json["answer_memory"]), 0) == 0,
+        TutorAnswer.request_json["historical_answer"].as_string().is_(None),
     )
     for key in ("course_id", "section_id", "target_id"):
         value = getattr(context, key)
@@ -46,6 +35,23 @@ async def retrieve(
             (field.as_boolean() if key == "output_stale" else field.as_string())
             == getattr(body, key)
         )
+    return stmt
+
+
+async def retrieve(
+    db: AsyncSession, learner_id: str, body: PlaygroundRequest
+) -> list[dict[str, str]]:
+    stmt = candidates(learner_id, body)
+    expression = literal_query((body.learner_question or body.question).strip()[:200])
+    if stmt is None or not expression:
+        return []
+    stmt = stmt.where(
+        TutorAnswer.id.in_(
+            select(text("id"))
+            .select_from(text("tutor_answer_fts"))
+            .where(text("tutor_answer_fts MATCH :memory_query"))
+        )
+    ).params(memory_query=expression)
     rows = await db.scalars(stmt.order_by(TutorAnswer.id.desc()).limit(20))
     result = []
     for row in rows:
