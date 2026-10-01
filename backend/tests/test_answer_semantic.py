@@ -118,3 +118,29 @@ async def test_tiny_cached_vector_does_not_break_tutor_generation(
     assert result.status_code == 200, result.text
     assert result.json()["text"] == fake_local.text
     assert result.json()["memory_answers"] == ["tiny"]
+
+
+async def test_literal_answer_reported_during_semantic_lookup_is_excluded(client, db, monkeypatch):  # type: ignore[no-untyped-def]
+    from app.models_ai.registry import seed_defaults
+
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    body = {
+        "session_id": session["id"],
+        "question": "group",
+        "exercise": "Groups",
+        "code": "",
+        "learning_context": {"target_id": "step"},
+    }
+    original = (await client.post("/api/playground/tutor", json=body)).json()
+
+    async def changing(*args):
+        db.add(TutorAnswerFeedback(learner_id=owner, answer_id=original["answer_id"], hidden=True))
+        await db.commit()
+        return []
+
+    monkeypatch.setattr(answer_semantic, "retrieve", changing)
+    response = await client.post("/api/playground/tutor", json=body)
+    assert response.status_code == 200, response.text
+    assert response.json()["memory_answers"] == []

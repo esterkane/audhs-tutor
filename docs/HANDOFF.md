@@ -166,3 +166,7 @@ Literal-first lookup now fills remaining historical-context slots from scoped ca
 
 ## Lesson historical context
 Bounded literal context requires owner, skill, style and exact effective teaching contract plus unchanged source hashes. History is labeled separately from evidence. 468 backend,225 frontend,lint/build and isolated explanation-reader journey pass. Review fixed hint-level leakage. Local six-trial diagnostic shows arithmetic correction and injection resistance but remaining style/brevity errors; no broad quality or speed claim. Semantic lesson retrieval remains pending. See slices/lesson-answer-memory.md. Both repositories remain private.
+
+
+## Lesson semantic history
+Scoped cached local paraphrase retrieval, post-inference source checks and2soptional fallback now serve lesson turns. Keyed lessons index via separate HTTP jobs/CLI. Review fixed stale lexical matches during inference in both tutor paths.473backend/lintpass; one synthetic local lookup50msfound paraphrase missed by literal. No quality/performance gate claimed; broader evaluations and recovery/correction remain. Both repositories remain private.

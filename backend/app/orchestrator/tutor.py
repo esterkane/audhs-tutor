@@ -4,6 +4,7 @@ action → stream generation → traces + events → checkpoint. Yields SSE-read
 A turn without a trace is a bug: the tutor_trace is written in a `finally`, also when the client
 aborts the stream mid-way (the explanation is then flagged partial)."""
 
+import asyncio
 import dataclasses
 import hashlib
 import json
@@ -13,9 +14,11 @@ import time
 from collections.abc import AsyncIterator
 from typing import Any
 
+import httpx
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
 from app.db.answers import save_completed
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
@@ -26,8 +29,9 @@ from app.kernel import experiments, practice, representations, skill_graph
 from app.kernel import session as ksession
 from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import GatewayError, ModelGateway, StreamHandle
-from app.models_ai.provider import TaskClass
-from app.orchestrator import actions, prompts, tools
+from app.models_ai.provider import ProviderError, TaskClass
+from app.models_ai.routing import NoModelReady
+from app.orchestrator import actions, lesson_semantic, prompts, tools
 from app.orchestrator.context import QUARANTINE_BELOW_TRUST, build_packet, render_messages
 from app.schemas.common import ActivityType, Actor, Domain, ObjectType
 from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
@@ -104,7 +108,9 @@ class TutorTurn:
         repo: RetrievalRepository,
         *,
         quarantine_below_trust: int = QUARANTINE_BELOW_TRUST,
+        settings: Settings | None = None,
     ) -> None:
+        self.settings = settings
         self.db = db
         self.gateway = gateway
         self.repo = repo
@@ -283,6 +289,54 @@ class TutorTurn:
                     )
             except SQLAlchemyError as exc:
                 logger.warning("Lesson answer lookup unavailable: %s", type(exc).__name__)
+        if not conversation and self.settings is not None and len(historical) < 2:
+            node_id = node.id
+            related: list[dict[str, str]] = []
+            try:
+                related = await asyncio.wait_for(
+                    lesson_semantic.retrieve(
+                        db,
+                        self.settings,
+                        learner_id,
+                        node_id,
+                        req.text,
+                        str(action),
+                        "socratic" if socratic else "explicit",
+                        contract_key,
+                    ),
+                    timeout=2.0,
+                )
+            except (
+                SQLAlchemyError,
+                httpx.HTTPError,
+                ValueError,
+                ProviderError,
+                NoModelReady,
+                TimeoutError,
+            ) as exc:
+                await db.rollback()
+                logger.warning("Lesson semantic lookup unavailable: %s", type(exc).__name__)
+                session = await ksession.get(db, req.session_id)
+                node = await skill_graph.get_node(db, node_id)
+            # Literal candidates may have been reported/changed during semantic inference.
+            historical = []
+            try:
+                async with db.begin_nested():
+                    historical = await lesson_memory(
+                        db,
+                        learner_id,
+                        node_id,
+                        req.text,
+                        str(action),
+                        "socratic" if socratic else "explicit",
+                        contract_key,
+                    )
+            except SQLAlchemyError as exc:
+                logger.warning("Lesson history recheck unavailable: %s", type(exc).__name__)
+            seen = {item["answer_id"] for item in historical}
+            historical = (historical + [item for item in related if item["answer_id"] not in seen])[
+                :2
+            ]
         packet = build_packet(
             policy=prompts.base_policy(),
             historical=historical,

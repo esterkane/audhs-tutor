@@ -1,11 +1,31 @@
 """Scoped, source-current historical lesson answers; not learning evidence."""
 
-from sqlalchemy import func, select, text
+from sqlalchemy import Select, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.answer_search import literal_query
 from app.db.answer_sources import check
 from app.db.models import TutorAnswer, TutorAnswerFeedback
+
+
+def candidates(
+    learner_id: str, skill_id: str, action: str, questioning_style: str, contract_key: str
+) -> Select[tuple[TutorAnswer]]:
+    excluded = select(TutorAnswerFeedback.answer_id).where(
+        TutorAnswerFeedback.learner_id == learner_id,
+        TutorAnswerFeedback.hidden.is_(True)
+        | TutorAnswerFeedback.verdict.in_(["incorrect", "outdated"]),
+    )
+    return select(TutorAnswer).where(
+        TutorAnswer.learner_id == learner_id,
+        TutorAnswer.surface == "tutor",
+        TutorAnswer.metadata_json["teaching_contract_key"].as_string() == contract_key,
+        TutorAnswer.metadata_json["skill_id"].as_string() == skill_id,
+        TutorAnswer.metadata_json["teaching_action"].as_string() == action,
+        TutorAnswer.metadata_json["questioning_style"].as_string() == questioning_style,
+        func.coalesce(func.json_array_length(TutorAnswer.metadata_json["answer_memory"]), 0) == 0,
+        TutorAnswer.id.not_in(excluded),
+    )
 
 
 async def retrieve(
@@ -20,23 +40,9 @@ async def retrieve(
     expression = literal_query(question[:200])
     if not expression:
         return []
-    excluded = select(TutorAnswerFeedback.answer_id).where(
-        TutorAnswerFeedback.learner_id == learner_id,
-        TutorAnswerFeedback.hidden.is_(True)
-        | TutorAnswerFeedback.verdict.in_(["incorrect", "outdated"]),
-    )
     rows = await db.scalars(
-        select(TutorAnswer)
+        candidates(learner_id, skill_id, action, questioning_style, contract_key)
         .where(
-            TutorAnswer.learner_id == learner_id,
-            TutorAnswer.surface == "tutor",
-            TutorAnswer.metadata_json["teaching_contract_key"].as_string() == contract_key,
-            TutorAnswer.metadata_json["skill_id"].as_string() == skill_id,
-            TutorAnswer.metadata_json["teaching_action"].as_string() == action,
-            TutorAnswer.metadata_json["questioning_style"].as_string() == questioning_style,
-            func.coalesce(func.json_array_length(TutorAnswer.metadata_json["answer_memory"]), 0)
-            == 0,
-            TutorAnswer.id.not_in(excluded),
             TutorAnswer.id.in_(
                 select(text("id"))
                 .select_from(text("tutor_answer_fts"))

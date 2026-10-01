@@ -133,12 +133,11 @@ async def respond(
         except SQLAlchemyError as exc:
             logger.warning("Saved answer lookup unavailable: %s", type(exc).__name__)
     if settings is not None and historical is None and len(memory) < 2:
+        related: list[dict[str, str]] = []
         try:
             related = await asyncio.wait_for(
                 answer_semantic.retrieve(db, settings, learner_id, body), timeout=2.0
             )
-            seen = {item["answer_id"] for item in memory}
-            memory = (memory + [item for item in related if item["answer_id"] not in seen])[:2]
         except (
             SQLAlchemyError,
             httpx.HTTPError,
@@ -150,6 +149,14 @@ async def respond(
             await db.rollback()
             logger.warning("Semantic answer lookup unavailable: %s", type(exc).__name__)
             session = await ksession.get(db, body.session_id)
+        memory = []
+        try:
+            async with db.begin_nested():
+                memory = await retrieve(db, learner_id, body)
+        except SQLAlchemyError as exc:
+            logger.warning("Saved answer recheck unavailable: %s", type(exc).__name__)
+        seen = {item["answer_id"] for item in memory}
+        memory = (memory + [item for item in related if item["answer_id"] not in seen])[:2]
     packet = messages(body, historical, memory)
     events = EventWriter(db, ksession.event_context(session, activity=ActivityType.CHAT))
     await events.emit(

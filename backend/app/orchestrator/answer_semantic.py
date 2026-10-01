@@ -3,6 +3,7 @@
 import math
 import time
 
+from sqlalchemy import Select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -22,6 +23,16 @@ async def retrieve(
     query = (body.learner_question or body.question).strip()[:2000]
     if stmt is None or not query:
         return []
+    return await ranked(db, settings, learner_id, stmt, query)
+
+
+async def ranked(
+    db: AsyncSession,
+    settings: Settings,
+    learner_id: str,
+    stmt: Select[tuple[TutorAnswer]],
+    query: str,
+) -> list[dict[str, str]]:
     rows = list((await db.scalars(stmt.order_by(TutorAnswer.id.desc()).limit(256))).all())
     rows = [
         row
@@ -57,7 +68,10 @@ async def retrieve(
             "answer_id": row.id,
             "saved_at": row.created_at,
             "question": str(
-                row.request_json.get("learner_question") or row.request_json.get("question") or ""
+                row.request_json.get("learner_question")
+                or row.request_json.get("question")
+                or row.request_json.get("text")
+                or ""
             )[:400],
             "excerpt": row.text[:1200],
         }

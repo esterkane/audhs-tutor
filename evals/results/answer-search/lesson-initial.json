@@ -1,0 +1,14 @@
+{
+  "synthetic": true,
+  "scope": "one lookup; excludes generation; not a benchmark",
+  "index": {
+    "selected": 1,
+    "indexed": 1,
+    "skipped": 0
+  },
+  "literal_ids": [],
+  "semantic_ids": [
+    "synthetic-retention"
+  ],
+  "lookup_ms": 50
+}

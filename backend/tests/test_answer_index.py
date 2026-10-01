@@ -128,3 +128,49 @@ async def test_stale_last_write_does_not_hold_transaction_across_batches(client,
     result = await answer_index.populate(db, Settings(), owner)
     assert calls == 2 and result["indexed"] == 16
     assert not db.in_transaction()
+
+
+async def test_index_includes_keyed_lessons_with_question_text(client, db, monkeypatch):  # type: ignore[no-untyped-def]
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    for identifier, metadata, request in [
+        ("eligible", {"teaching_contract_key": "key"}, {"text": "Why initial count?"}),
+        ("old", {}, {"text": "Old question"}),
+        (
+            "conversation",
+            {"teaching_contract_key": "key"},
+            {"text": "Hello", "conversation_lang": "en"},
+        ),
+        (
+            "recursive",
+            {"teaching_contract_key": "key", "answer_memory": [{"answer_id": "old"}]},
+            {"text": "Derived"},
+        ),
+    ]:
+        db.add(
+            TutorAnswer(
+                id=identifier,
+                learner_id=owner,
+                turn_id=identifier,
+                surface="tutor",
+                text="Answer",
+                request_json=request,
+                metadata_json=metadata,
+                fingerprint=identifier,
+            )
+        )
+    await db.commit()
+
+    async def identity(*args):
+        return ModelSpec(registry_id="local", provider="ollama", model="local"), "key"
+
+    seen = []
+
+    async def embed(self, spec, texts):
+        assert not db.in_transaction()
+        seen.extend(texts)
+        return [[1.0, 0.0] for _ in texts]
+
+    monkeypatch.setattr(answer_index, "identity", identity)
+    monkeypatch.setattr(answer_index.OllamaProvider, "embed", embed)
+    assert (await answer_index.populate(db, Settings(), owner))["indexed"] == 1
+    assert seen == ["Why initial count?\nAnswer"]

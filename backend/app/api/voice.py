@@ -220,7 +220,13 @@ async def ws(websocket: WebSocket) -> None:
 
                 repo = await build_repo(db, settings)
             app.state.repo = repo
-        turn = TutorTurn(db, gateway, repo, quarantine_below_trust=settings.quarantine_below_trust)
+        turn = TutorTurn(
+            db,
+            gateway,
+            repo,
+            quarantine_below_trust=settings.quarantine_below_trust,
+            settings=settings,
+        )
         loop = VoiceLoop(
             db,
             turn,

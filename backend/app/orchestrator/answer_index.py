@@ -6,7 +6,7 @@ import time
 from urllib.parse import urlparse
 
 import httpx
-from sqlalchemy import func, select, true
+from sqlalchemy import and_, func, or_, select, true
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
@@ -88,7 +88,16 @@ async def populate(
                     )
                     == 0,
                     TutorAnswer.request_json["historical_answer"].as_string().is_(None),
-                    TutorAnswer.surface == "playground",
+                    or_(
+                        TutorAnswer.surface == "playground",
+                        and_(
+                            TutorAnswer.surface == "tutor",
+                            TutorAnswer.metadata_json["teaching_contract_key"]
+                            .as_string()
+                            .is_not(None),
+                            TutorAnswer.request_json["conversation_lang"].as_string().is_(None),
+                        ),
+                    ),
                 )
                 .order_by(TutorAnswer.id)
                 .limit(limit)
@@ -99,9 +108,12 @@ async def populate(
         (
             row.id,
             row.fingerprint,
-            str(row.request_json.get("learner_question") or row.request_json.get("question") or "")[
-                :2000
-            ]
+            str(
+                row.request_json.get("learner_question")
+                or row.request_json.get("question")
+                or row.request_json.get("text")
+                or ""
+            )[:2000]
             + "\n"
             + row.text[:4000],
         )
