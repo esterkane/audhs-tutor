@@ -7,14 +7,21 @@ import { useCurrentSession } from '../session/api'
 import { ReadAloud } from '../voice/ReadAloud'
 import { DictationButton } from '../voice/DictationButton'
 
-type Props = { context: string; identity?: string; code?: string; answer?: string; output?: string }
+type Props = {
+  reviewOnly?: boolean
+  context: string
+  identity?: string
+  code?: string
+  answer?: string
+  output?: string
+}
 type Action = 'explain' | 'hint' | 'socratic' | 'review' | 'chat'
 export function StudyTutor(props: Props) {
   const session = useCurrentSession()
   return (
     <section aria-label="Study tutor" className="border border-border rounded-lg p-4 mt-4">
-      <h3 className="font-semibold">Study tutor</h3>
-      <p>Start with an explanation, then try one step. Questions are optional.</p>
+      <h3 className="font-semibold">{props.reviewOnly ? 'Answer feedback' : 'Study tutor'}</h3>
+      {!props.reviewOnly && <p>Start with an explanation, then try one step. Questions are optional.</p>}
       {session.isPending ? (
         <p role="status">Checking tutor session…</p>
       ) : session.isError ? (
@@ -39,6 +46,7 @@ export function StudyTutor(props: Props) {
 }
 function Conversation({
   context,
+  reviewOnly = false,
   identity,
   code = '',
   answer = '',
@@ -148,7 +156,7 @@ function Conversation({
       socratic:
         'I explicitly choose Socratic questioning for this turn. Ask just one focused question about the supplied material, with enough context to answer. Wait for my response.',
       review:
-        'Review my answer in workspace output as formative feedback. Identify what is supported, what needs revision and one concrete next step. Do not claim verified correctness, code execution, grades or mastery.',
+        'Check the learner answer against the supplied question and criteria. Give formative feedback under: What is correct, What needs revision or is missing, and One next step. Explain why, and distinguish an incorrect claim from an incomplete answer. If the evidence is insufficient, say so. Do not claim code execution, an official grade, mastery, or course completion. Do not give a full replacement answer unless requested.',
       chat: question.trim(),
     }
     if (!requests[action]) return
@@ -204,17 +212,21 @@ function Conversation({
   return (
     <>
       <div className="flex flex-wrap gap-2 mt-3">
-        <Button disabled={busy} onClick={() => void ask('explain')}>
-          Explain this step
-        </Button>
-        <Button disabled={busy} onClick={() => void ask('hint')}>
-          Tutor: one hint
-        </Button>
-        <Button disabled={busy} onClick={() => void ask('socratic')}>
-          Ask me a Socratic question
-        </Button>
+        {!reviewOnly && (
+          <>
+            <Button disabled={busy} onClick={() => void ask('explain')}>
+              Explain this step
+            </Button>
+            <Button disabled={busy} onClick={() => void ask('hint')}>
+              Tutor: one hint
+            </Button>
+            <Button disabled={busy} onClick={() => void ask('socratic')}>
+              Ask me a Socratic question
+            </Button>
+          </>
+        )}
         <Button disabled={busy || !answer.trim()} onClick={() => void ask('review')}>
-          Review my answer
+          {reviewOnly ? 'Check my answer' : 'Review my answer'}
         </Button>
       </div>
       <p className="text-xs text-muted mt-2">
@@ -227,35 +239,39 @@ function Conversation({
           output fit this tutor request. Focus on one smaller step for complete feedback.
         </p>
       )}
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          void ask('chat')
-        }}
-        className="mt-3"
-      >
-        <label htmlFor={id}>Your tutor message or response</label>
-        <textarea
-          id={id}
-          value={question}
-          maxLength={2000}
-          onChange={(event) => setQuestion(event.target.value)}
-          rows={3}
-          className="block w-full border rounded p-2 bg-surface"
-        />
-        <DictationButton
-          disabled={busy}
-          onTranscript={(text) => setQuestion((old) => `${old}${old ? '\n' : ''}${text}`.slice(0, 2000))}
-        />
-        <Button type="submit" disabled={busy || !question.trim()}>
-          Send to tutor
-        </Button>
-        {busy && (
-          <Button type="button" onClick={stop}>
-            Stop tutor response
+      {!reviewOnly && (
+        <form
+          onSubmit={(event) => {
+            event.preventDefault()
+            void ask('chat')
+          }}
+          className="mt-3"
+        >
+          <label htmlFor={id}>Your tutor message or response</label>
+          <textarea
+            id={id}
+            value={question}
+            maxLength={2000}
+            onChange={(event) => setQuestion(event.target.value)}
+            rows={3}
+            className="block w-full border rounded p-2 bg-surface"
+          />
+          <DictationButton
+            disabled={busy}
+            onTranscript={(text) => setQuestion((old) => `${old}${old ? '\n' : ''}${text}`.slice(0, 2000))}
+          />
+          <Button type="submit" disabled={busy || !question.trim()}>
+            Send to tutor
           </Button>
-        )}
-      </form>
+          {busy && (
+            <Button type="button" onClick={stop}>
+              Stop tutor response
+            </Button>
+          )}
+        </form>
+      )}
+      {reviewOnly && busy && <Button onClick={stop}>Stop answer check</Button>}
+      {reviewOnly && !answer.trim() && <p>Write your explanation above, then check it for feedback.</p>}
       {busy && <p role="status">Tutor is preparing a response…</p>}
       {error && <p role="alert">{error}</p>}
       {storageError && <p role="alert">{storageError}</p>}
@@ -267,7 +283,10 @@ function Conversation({
               : 'Feedback on the work you sent.'}
           </p>
           <Markdown text={reply.text} />
-          <ReadAloud text={reply.text} />
+          <ReadAloud
+            text={reply.text}
+            label={reviewOnly ? 'Listen to feedback' : 'Listen to tutor response'}
+          />
           <p className="text-xs text-muted">
             {reply.model} · {reply.route}. {reply.source_note}
           </p>

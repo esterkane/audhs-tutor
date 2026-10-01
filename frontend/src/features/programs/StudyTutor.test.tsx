@@ -162,3 +162,28 @@ it('keeps identical text in different notebook identities independent', () => {
   view.rerender(<StudyTutor context="Same instructions" identity="book-a:cell-1" />)
   expect(screen.getByLabelText('Your tutor message or response')).toHaveValue('Question A')
 })
+
+it('checks an answer explicitly against the selected question and offers spoken feedback', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue(reply)
+  renderApp(
+    <StudyTutor
+      reviewOnly
+      identity="question-1"
+      context="Question: Why? Criteria: Mention selection bias."
+      answer="Some groups lose more rows."
+    />,
+  )
+  expect(askTutor).not.toHaveBeenCalled()
+  expect(screen.queryByRole('button', { name: 'Explain this step' })).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await screen.findByText(reply.text)
+  expect(askTutor).toHaveBeenCalledWith(
+    expect.objectContaining({
+      exercise: 'Question: Why? Criteria: Mention selection bias.',
+      question: expect.stringContaining('What needs revision'),
+      output: expect.stringContaining('Some groups lose more rows.'),
+    }),
+    expect.any(AbortSignal),
+  )
+})

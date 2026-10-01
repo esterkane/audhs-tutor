@@ -55,3 +55,20 @@ it('closing the explanation stops playback and aborts a pending request', async 
   expect(signal?.aborted).toBe(true)
   expect(audio.close).toHaveBeenCalled()
 })
+
+it('speaks the question and resets playback when selected content changes', async () => {
+  const fetcher = vi.fn<(url: string, init: RequestInit) => Promise<Response>>(async () =>
+    jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const view = renderApp(<ReadAloud text="Why does missingness matter?" label="Listen to question" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Listen to question' }))
+  await waitFor(() => expect(audio.enqueue).toHaveBeenCalled())
+  expect(JSON.parse(fetcher.mock.calls[0][1].body as string).text).toBe('Why does missingness matter?')
+  view.rerender(
+    <ReadAloud text="Why does missingness matter? Hint: compare groups." label="Listen to question" />,
+  )
+  expect(audio.close).toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Listen to question' })).toBeVisible()
+  expect(fetcher).toHaveBeenCalledOnce()
+})

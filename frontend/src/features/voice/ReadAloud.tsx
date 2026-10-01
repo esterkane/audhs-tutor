@@ -5,7 +5,10 @@ import { Button } from '../../components/ui/button'
 import { apiFetch, type Schemas } from '../../lib/api'
 import { Player, b64ToPcm16 } from './audio'
 
-export function ReadAloud({ text }: { text: string }) {
+export function ReadAloud(props: { text: string; label?: string }) {
+  return <Speech key={props.text} {...props} />
+}
+function Speech({ text, label = 'Listen to explanation' }: { text: string; label?: string }) {
   const playback = useRef<Player | null>(null)
   const controller = useRef<AbortController | null>(null)
   const [busy, setBusy] = useState(false)
@@ -62,7 +65,7 @@ export function ReadAloud({ text }: { text: string }) {
   return (
     <div className="mt-2">
       <Button size="sm" onClick={() => (busy ? stop() : void speak())} disabled={!text.trim()}>
-        {busy ? 'Stop audio' : 'Listen to explanation'}
+        {busy ? 'Stop audio' : label}
       </Button>
       <AudioControls />
       <span className="text-xs text-muted ml-2">Local voice · no microphone · English voice</span>

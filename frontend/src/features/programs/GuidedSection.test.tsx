@@ -2,15 +2,25 @@ import { fireEvent, screen } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { renderApp } from '../../test/utils'
 import { GuidedSection } from './GuidedSection'
-vi.mock('../voice/ReadAloud', () => ({ ReadAloud: () => <button>Listen to active text</button> }))
-vi.mock('./StudyTutor', () => ({
-  StudyTutor: (props: { context: string; answer: string }) => (
-    <div>
-      <span>Contextual tutor</span>
-      <output aria-label="Tutor context">{props.context}</output>
-      <output aria-label="Tutor answer">{props.answer}</output>
-    </div>
+vi.mock('../voice/ReadAloud', () => ({
+  ReadAloud: (props: { text: string; label?: string }) => (
+    <button aria-label={props.label}>{props.text}</button>
   ),
+}))
+vi.mock('./StudyTutor', () => ({
+  StudyTutor: (props: { context: string; answer: string; reviewOnly?: boolean }) =>
+    props.reviewOnly ? (
+      <div>
+        <output aria-label="Answer check context">{props.context}</output>
+        <output aria-label="Answer to check">{props.answer}</output>
+      </div>
+    ) : (
+      <div>
+        <span>Contextual tutor</span>
+        <output aria-label="Tutor context">{props.context}</output>
+        <output aria-label="Tutor answer">{props.answer}</output>
+      </div>
+    ),
 }))
 const section = {
   id: 'split',
@@ -40,7 +50,7 @@ it('starts with explanation and example without an answer form, then focuses use
   expect(screen.queryByText('Contextual tutor')).toBeNull()
   fireEvent.click(screen.getByRole('button', { name: 'Try' }))
   expect(screen.getByRole('heading', { name: 'Your next project task' })).toHaveFocus()
-  expect(screen.getByText(section.task)).toBeVisible()
+  expect(screen.getByText(section.task, { selector: 'p' })).toBeVisible()
   fireEvent.click(screen.getByRole('button', { name: 'Think deeper' }))
   expect(screen.getByLabelText('Your explanation')).toBeVisible()
 })
@@ -73,7 +83,7 @@ it('unmounts audio and tutor on pause while preserving phase and written work', 
   expect(screen.getByText('Contextual tutor')).toBeVisible()
   view.rerender(<GuidedSection section={section} course="course" paused />)
   expect(screen.queryByText('Contextual tutor')).toBeNull()
-  expect(screen.queryByRole('button', { name: 'Listen to active text' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Listen to question' })).toBeNull()
   view.rerender(<GuidedSection section={section} course="course" paused={false} />)
   expect(screen.getByLabelText('Your explanation')).toHaveValue('My work')
 })
@@ -102,4 +112,24 @@ it('sends phase-specific complete questions, numerical examples and Try notes; c
   expect(screen.getByLabelText('Tutor context')).toHaveTextContent(material.question)
   expect(screen.getByLabelText('Tutor context')).toHaveTextContent(material.example)
   expect(screen.getByLabelText('Tutor context')).toHaveTextContent(material.criteria)
+})
+
+it('pairs the selected question with its answer check and spoken question, hint and criteria', () => {
+  renderApp(<GuidedSection section={section} course="course" paused={false} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Think deeper' }))
+  fireEvent.change(screen.getByLabelText('Question to explore'), { target: { value: 'challenge:tradeoff' } })
+  fireEvent.change(screen.getByLabelText('Your explanation'), {
+    target: { value: 'The estimate is uncertain.' },
+  })
+  expect(screen.getByLabelText('Answer check context')).toHaveTextContent(
+    'What if the test set is too small?',
+  )
+  expect(screen.getByLabelText('Answer to check')).toHaveTextContent('The estimate is uncertain.')
+  expect(screen.getByLabelText('Answer check context')).toHaveTextContent(section.example)
+  const audio = screen.getByRole('button', { name: 'Listen to question' })
+  expect(audio).toHaveTextContent('What if the test set is too small?')
+  fireEvent.click(screen.getByRole('button', { name: 'One hint' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Show self-check checklist' }))
+  expect(audio).toHaveTextContent('Think variance.')
+  expect(audio).toHaveTextContent('Explain uncertainty.')
 })

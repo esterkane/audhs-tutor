@@ -103,8 +103,8 @@ function Content({ section, course, paused }: { section: Section; course: string
         ? [`Task: ${section.task}`, example, `Background: ${section.explanation}`]
         : [
             `Question: ${question.question}`,
-            example,
             `Criteria: ${question.criteria}`,
+            example,
             `Background: ${section.explanation}`,
           ]
   )
@@ -225,6 +225,15 @@ function Content({ section, course, paused }: { section: Section; course: string
               }
             />
           </label>
+          {!paused && (
+            <StudyTutor
+              reviewOnly
+              key={`review:${question.id}`}
+              identity={`${key}:review:${question.id}`}
+              context={`Question: ${question.question}\nCriteria: ${question.criteria}\n${example}\nBackground: ${section.explanation}`}
+              answer={answer}
+            />
+          )}
           <div className="flex flex-wrap gap-2">
             <Button onClick={() => setHint(!hint)}>{hint ? 'Hide hint' : 'One hint'}</Button>
             <Button onClick={() => setCheck(!check)}>
@@ -240,7 +249,29 @@ function Content({ section, course, paused }: { section: Section; course: string
           )}
         </>
       )}
-      {!paused && <ReadAloud key={`${work.phase}:${question.id}`} text={activeText} />}
+      {!paused && (
+        <ReadAloud
+          key={`${work.phase}:${question.id}`}
+          text={
+            work.phase === 'Think deeper'
+              ? [
+                  question.question,
+                  hint ? `Hint: ${question.hint}` : '',
+                  check ? `Self-check criteria: ${question.criteria}` : '',
+                ]
+                  .filter(Boolean)
+                  .join('\n\n')
+              : activeText
+          }
+          label={
+            work.phase === 'Think deeper'
+              ? 'Listen to question'
+              : work.phase === 'Try'
+                ? 'Listen to task'
+                : 'Listen to explanation'
+          }
+        />
+      )}
       <Button aria-expanded={tutorOpen} onClick={() => setTutorOpen(!tutorOpen)}>
         {tutorOpen ? 'Close tutor help' : 'Ask the tutor'}
       </Button>
