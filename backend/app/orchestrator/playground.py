@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.answer_recovery import AnswerRecovery
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.answer_memory import exact_saved, retrieve
@@ -124,6 +125,7 @@ async def respond(
     historical: dict[str, Any] | None = None,
     settings: Settings | None = None,
     parent_metadata: dict[str, Any] | None = None,
+    recovery: AnswerRecovery | None = None,
 ) -> PlaygroundReply:
     session = await ksession.get(db, body.session_id)
     if session.learner_id != learner_id or session.ended_at:
@@ -248,47 +250,48 @@ async def respond(
     )
     answer_id = None
     save_error = None
+    save_receipt = None
+    snapshot: dict[str, Any] = dict(
+        learner_id=learner_id,
+        session_id=session.id,
+        turn_id=turn_id,
+        surface="playground",
+        request={
+            **body.model_dump(exclude={"session_id"}),
+            **({"historical_answer": historical} if historical else {}),
+        },
+        text=response_text,
+        metadata={
+            "model": out.registry_id,
+            "route": out.route,
+            "prompt_version": VERSION,
+            "model_call_id": out.model_call_id,
+            "sources": [],
+            "citation_warning": citation_warning,
+            **(
+                {"raw_model_text": out.result.text}
+                if citation_warning or arithmetic or checked_feedback
+                else {}
+            ),
+            **({"quoted_feedback": checked_feedback.model_dump()} if checked_feedback else {}),
+            "arithmetic_checks": [asdict(check) for check in arithmetic],
+            "arithmetic_checker_version": ARITHMETIC_VERSION,
+            "answer_memory": memory,
+            "context_scope": "saved_answer_followup" if historical else "supplied_workspace_only",
+            **(parent_metadata or {}),
+            "learning_context": body.learning_context.model_dump()
+            if body.learning_context
+            else None,
+        },
+    )
     try:
-        answer = await save_completed(
-            db,
-            learner_id=learner_id,
-            session_id=session.id,
-            turn_id=turn_id,
-            surface="playground",
-            request={
-                **body.model_dump(exclude={"session_id"}),
-                **({"historical_answer": historical} if historical else {}),
-            },
-            text=response_text,
-            metadata={
-                "model": out.registry_id,
-                "route": out.route,
-                "prompt_version": VERSION,
-                "model_call_id": out.model_call_id,
-                "sources": [],
-                "citation_warning": citation_warning,
-                **(
-                    {"raw_model_text": out.result.text}
-                    if citation_warning or arithmetic or checked_feedback
-                    else {}
-                ),
-                **({"quoted_feedback": checked_feedback.model_dump()} if checked_feedback else {}),
-                "arithmetic_checks": [asdict(check) for check in arithmetic],
-                "arithmetic_checker_version": ARITHMETIC_VERSION,
-                "answer_memory": memory,
-                "context_scope": "saved_answer_followup"
-                if historical
-                else "supplied_workspace_only",
-                **(parent_metadata or {}),
-                "learning_context": body.learning_context.model_dump()
-                if body.learning_context
-                else None,
-            },
-        )
+        answer = await save_completed(db, **snapshot)
         answer_id = answer.id
     except SQLAlchemyError as exc:
         # Do not log SQL parameters: they can contain private learner text/code.
         logger.warning("Tutor answer save failed: %s", type(exc).__name__)
+        if recovery is not None:
+            save_receipt = recovery.issue(snapshot)
         save_error = "This answer could not be saved to the database. Keep a copy before leaving."
     return PlaygroundReply(
         text=response_text,
@@ -297,6 +300,7 @@ async def respond(
         turn_id=turn_id,
         answer_id=answer_id,
         save_error=save_error,
+        save_receipt=save_receipt,
         source_note=(
             "Used previous tutor replies as unverified context; no course sources or execution checked."
             if memory

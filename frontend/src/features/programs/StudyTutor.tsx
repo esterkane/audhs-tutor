@@ -1,3 +1,4 @@
+import { AnswerSaveStatus } from './AnswerSaveStatus'
 import { useQueryClient } from '@tanstack/react-query'
 import { SavedContextAnswers } from './SavedContextAnswers'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -435,16 +436,10 @@ function Conversation({
             {reply.memory_answers?.length ? <ul aria-label="Previous answers used">
               {reply.memory_answers.map((id) => <li key={id}><Link to={`/answers/${id}`}>Open previous answer</Link></li>)}
             </ul> : null}
-            {reply.save_error ? (
-              <p role="alert" className="text-sm text-warn">
-                {reply.save_error}
-              </p>
-            ) : reply.answer_id ? (
-              <p className="text-sm text-muted">
-                Saved to your local answer history.{' '}
-                <Link to={`/answers/${reply.answer_id}`}>Open saved answer</Link>
-              </p>
-            ) : null}
+            <AnswerSaveStatus key={reply.turn_id} answerId={reply.answer_id} receipt={reply.save_receipt}
+              error={reply.save_error} text={reply.text}
+              onSaved={(id) => setReply((current) => current?.turn_id === reply.turn_id
+                ? { ...current, answer_id: id, save_error: null, save_receipt: null } : current)} />
             <details className="text-xs text-muted">
               <summary>Response details</summary>
               {reply.model} · {reply.route}.

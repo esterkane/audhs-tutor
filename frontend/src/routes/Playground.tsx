@@ -1,3 +1,4 @@
+import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
 import { useIsMutating } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -9,7 +10,7 @@ import { CodeEditor } from '../features/code/CodeEditor'
 import { createPyodideRunner, type Runner, type RunResult } from '../features/code/runner'
 import { readPlainPreference, writePlainPreference } from '../features/code/editorPreference'
 import { activities, type Activity } from '../features/playground/exercises'
-import { askTutor, type TutorRequest } from '../features/playground/api'
+import { askTutor, type TutorRequest, type TutorReply } from '../features/playground/api'
 import { useCurrentSession, useStartSession } from '../features/session/api'
 import { TutorResponseStatus, type ResponseStatus } from '../features/tutor/TutorResponseStatus'
 import { useMode } from '../stores/mode'
@@ -92,6 +93,7 @@ function Workspace({
   const [runError, setRunError] = useState('')
   const [question, setQuestion] = useState('')
   const [tutorError, setTutorError] = useState('')
+  const [saveReply, setSaveReply] = useState<TutorReply | null>(null)
   const [tutorStatus, setTutorStatus] = useState<ResponseStatus>('idle')
   const [tutorStartedAt, setTutorStartedAt] = useState<number | null>(null)
   const busy = tutorStatus === 'streaming'
@@ -245,7 +247,7 @@ function Workspace({
         setModelNote(
           `${reply.model} · ${reply.route}. ${reply.source_note}${reply.answer_id ? ' Saved to your local answer history.' : ''}`,
         )
-        if (reply.save_error) setTutorError(reply.save_error)
+        setSaveReply(reply)
       }
     } catch (e) {
       if (tutorAbort.current === request && !ctl.signal.aborted) {
@@ -505,6 +507,8 @@ function Workspace({
                   </Button>
                 ))}
               </div>
+              {saveReply && <AnswerSaveStatus key={saveReply.turn_id} answerId={saveReply.answer_id}
+                receipt={saveReply.save_receipt} error={saveReply.save_error} text={saveReply.text} />}
               <TutorResponseStatus status={tutorStatus} startedAt={tutorStartedAt} />
               {tutorError && (
                 <p role="alert" className="text-warn mt-2">

@@ -18,6 +18,7 @@ import httpx
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.answer_recovery import AnswerRecovery
 from app.core.config import Settings
 from app.db.answers import save_completed
 from app.db.base import new_id
@@ -109,8 +110,10 @@ class TutorTurn:
         *,
         quarantine_below_trust: int = QUARANTINE_BELOW_TRUST,
         settings: Settings | None = None,
+        recovery: AnswerRecovery | None = None,
     ) -> None:
         self.settings = settings
+        self.recovery = recovery
         self.db = db
         self.gateway = gateway
         self.repo = repo
@@ -477,40 +480,44 @@ class TutorTurn:
 
         answer_id = None
         save_error = None
+        save_receipt = None
+        trace_id = trace.id
         if completed and text.strip():
-            try:
-                answer = await save_completed(
-                    db,
-                    learner_id=learner_id,
-                    session_id=session.id,
-                    turn_id=turn_id,
-                    surface="tutor",
-                    request=req.model_dump(exclude={"session_id"}),
-                    text=text,
-                    metadata={
-                        "skill_id": node.id,
-                        "teaching_action": str(action),
-                        "teaching_contract_key": contract_key,
-                        "memory_context_version": "lesson.v1",
-                        "answer_memory": packet.historical,
-                        "area_id": node.area_id,
-                        "course_label": node.course,
-                        "model": handle.registry_id,
-                        "route": handle.route,
-                        "prompt_version": prompts.PROMPT_VERSION,
-                        "model_call_id": handle.model_call_id,
-                        "questioning_style": "socratic" if socratic else "explicit",
-                        "sources": [source.model_dump() for source in sources],
-                        "source_text_hashes": {
-                            c.chunk_id: hashlib.sha256(c.text.encode()).hexdigest()
-                            for c in packet.retrieved
-                        },
-                        "dropped": packet.dropped,
+            snapshot: dict[str, Any] = dict(
+                learner_id=learner_id,
+                session_id=session.id,
+                turn_id=turn_id,
+                surface="tutor",
+                request=req.model_dump(exclude={"session_id"}),
+                text=text,
+                metadata={
+                    "skill_id": node.id,
+                    "teaching_action": str(action),
+                    "teaching_contract_key": contract_key,
+                    "memory_context_version": "lesson.v1",
+                    "answer_memory": packet.historical,
+                    "area_id": node.area_id,
+                    "course_label": node.course,
+                    "model": handle.registry_id,
+                    "route": handle.route,
+                    "prompt_version": prompts.PROMPT_VERSION,
+                    "model_call_id": handle.model_call_id,
+                    "questioning_style": "socratic" if socratic else "explicit",
+                    "sources": [source.model_dump() for source in sources],
+                    "source_text_hashes": {
+                        c.chunk_id: hashlib.sha256(c.text.encode()).hexdigest()
+                        for c in packet.retrieved
                     },
-                )
+                    "dropped": packet.dropped,
+                },
+            )
+            try:
+                answer = await save_completed(db, **snapshot)
                 answer_id = answer.id
             except SQLAlchemyError as exc:
                 logger.warning("Tutor answer save failed: %s", type(exc).__name__)
+                if self.recovery is not None:
+                    save_receipt = self.recovery.issue(snapshot)
                 save_error = (
                     "This answer could not be saved to the database. Keep a copy before leaving."
                 )
@@ -522,8 +529,9 @@ class TutorTurn:
                 answer_id=answer_id,
                 memory_answers=[item["answer_id"] for item in packet.historical],
                 save_error=save_error,
+                save_receipt=save_receipt,
                 model_call_id=handle.model_call_id,
-                tutor_trace_id=trace.id,
+                tutor_trace_id=trace_id,
                 registry_id=handle.registry_id,
                 route=handle.route,
                 outcome="partial" if partial else "ok",

@@ -48,6 +48,7 @@ class PlaygroundReply(BaseModel):
     turn_id: str
     answer_id: str | None = None
     save_error: str | None = None
+    save_receipt: str | None = None
     reused: bool = False
     saved_at: str | None = None
     memory_answers: list[str] = Field(default_factory=list)

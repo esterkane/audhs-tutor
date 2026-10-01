@@ -32,7 +32,12 @@ async def stream(
 ) -> StreamingResponse:
     learner_id = learner.id
     turn = TutorTurn(
-        db, gateway, repo, quarantine_below_trust=settings.quarantine_below_trust, settings=settings
+        db,
+        gateway,
+        repo,
+        quarantine_below_trust=settings.quarantine_below_trust,
+        settings=settings,
+        recovery=request.app.state.answer_recovery,
     )
 
     async def gen() -> AsyncIterator[bytes]:
@@ -75,7 +80,12 @@ async def turn(
     done = None
     learner_id = learner.id
     turn = TutorTurn(
-        db, gateway, repo, quarantine_below_trust=settings.quarantine_below_trust, settings=settings
+        db,
+        gateway,
+        repo,
+        quarantine_below_trust=settings.quarantine_below_trust,
+        settings=settings,
+        recovery=request.app.state.answer_recovery,
     )
     async for kind, data in turn.run(body):
         if kind == "done":

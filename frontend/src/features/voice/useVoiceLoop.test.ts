@@ -122,3 +122,15 @@ it('disposes late microphone permission after Stop and prevents same-render dupl
   })
   expect(fresh.sent.filter((x) => JSON.parse(x).type === 'text')).toHaveLength(1)
 })
+
+it('retains recovery only for completed voice turns', () => {
+  const ws = new Socket()
+  const { result } = renderHook(() => useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }))
+  act(() => { result.current.connect(); ws.open(); ws.ready() })
+  const turn = { turn_id: 't', text: 'Delivered answer', save_error: 'Save failed', save_receipt: 'receipt' }
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', turn: { ...turn, outcome: 'ok' } }) }))
+  expect(result.current.saveTurn?.save_receipt).toBe('receipt')
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', turn: { ...turn, outcome: 'partial' } }) }))
+  expect(result.current.saveTurn).toBeNull()
+  expect(result.current.answer).toBe('Delivered answer')
+})

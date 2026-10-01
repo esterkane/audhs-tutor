@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.api import api_router
+from app.core.answer_recovery import AnswerRecovery
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
 from app.db.migrate import upgrade_to_head
@@ -44,6 +45,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="AuDHS-Tutor", version="0.1.0", lifespan=lifespan)
     app.state.settings = settings
+    app.state.answer_recovery = AnswerRecovery()
     app.state.providers = None
     app.state.repo = None
     app.state.notebook_lab = NotebookLab(settings)

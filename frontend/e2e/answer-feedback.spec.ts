@@ -32,7 +32,13 @@ test(`checks the selected answer and offers question and feedback audio at ${wid
       },
     }),
   )
+  let generations = 0
+  await page.route('**/api/answers/recover-save', async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ receipt: 'synthetic-receipt' })
+    await route.fulfill({ json: { answer_id: 'recovered-answer' } })
+  })
   await page.route('**/api/playground/tutor', async (route) => {
+    generations++
     const body = route.request().postDataJSON()
     expect(body.exercise).toContain('Group A retains 90')
     expect(body.learner_answer).toBe('Different proportions remain')
@@ -44,6 +50,8 @@ test(`checks the selected answer and offers question and feedback audio at ${wid
         model: 'fixture',
         route: 'fake',
         turn_id: 'fixture',
+        save_error: 'Temporary save failure.',
+        save_receipt: 'synthetic-receipt',
         source_note: 'Synthetic test feedback',
       },
     })
@@ -61,6 +69,11 @@ test(`checks the selected answer and offers question and feedback audio at ${wid
   ).toBeVisible()
   await expect(page.getByRole('button', { name: 'Listen to question', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Listen to feedback', exact: true })).toBeVisible()
+  const retry = page.getByRole('button', { name: 'Retry saving', exact: true })
+  await retry.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('link', { name: 'Open saved answer', exact: true })).toHaveAttribute('href', '/answers/recovered-answer')
+  expect(generations).toBe(1)
   await page.screenshot({ path: testInfo.outputPath('answer-feedback.png'), fullPage: true })
   await page.getByLabel('Your explanation').fill('Changed reasoning')
   await expect(page.getByText(/Earlier feedback:/)).toBeVisible()

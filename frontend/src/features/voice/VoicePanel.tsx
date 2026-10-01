@@ -1,3 +1,4 @@
+import { AnswerSaveStatus } from '../programs/AnswerSaveStatus'
 import { AudioControls } from '../audio/AudioControls'
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -113,7 +114,9 @@ export function VoicePanel({
           <Markdown text={v.answer} />
         </div>
       )}
-      {v.saveNote && (
+      {v.saveTurn && <AnswerSaveStatus key={v.saveTurn.turn_id} answerId={v.saveTurn.answer_id}
+        receipt={v.saveTurn.save_receipt} error={v.saveTurn.save_error} text={v.saveTurn.text} />}
+      {!v.saveTurn && v.saveNote && (
         <p role="status" className="text-sm mt-2">
           {v.saveNote}
         </p>

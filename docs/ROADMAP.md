@@ -36,3 +36,8 @@ Implemented literal numeric equality checks, separate from model guidance and le
 ### 2026-10-01 — bounded formative answer checks
 
 Explicit answer-check integration completed; see docs/slices/explicit-answer-feedback.md. Broader teaching-quality and unrelated gates remain open.
+
+
+### 2026-10-01 — completed-answer save recovery
+
+Retry saving without regeneration implemented. Process-bound one-hour receipts; lost-delivery and request-level inference idempotency remain open. See docs/slices/answer-save-recovery.md.

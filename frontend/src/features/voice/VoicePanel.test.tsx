@@ -175,3 +175,17 @@ it('Stop retains text with a real unmounting owner; only Clear and close removes
   fireEvent.click(screen.getByRole('button', { name: 'Clear and close panel' }))
   expect(screen.getByText('Panel closed')).toBeVisible()
 })
+
+it('offers save-only recovery for a completed voice answer', async () => {
+  const fetcher = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(JSON.stringify({ answer_id: 'voice-saved' }), { headers: { 'Content-Type': 'application/json' } }))
+  renderApp(<VoicePanel sessionId="s1" makeSocket={makeSocket} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Connect' }))
+  await waitFor(() => expect(FakeSocket.last?.sent).toHaveLength(1))
+  act(() => FakeSocket.last!.push({ type: 'done', turn: { turn_id: 'voice-turn', outcome: 'ok', text: 'Completed voice explanation.', save_error: 'Save failed', save_receipt: 'voice-receipt' } }))
+  expect(screen.getByText('Completed voice explanation.')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry saving' }))
+  expect(await screen.findByRole('link', { name: 'Open saved answer' })).toHaveAttribute('href', '/answers/voice-saved')
+  expect(fetcher).toHaveBeenCalledWith('/api/answers/recover-save', expect.objectContaining({ body: JSON.stringify({ receipt: 'voice-receipt' }) }))
+  expect(FakeSocket.last!.sent).toHaveLength(1)
+  fetcher.mockRestore()
+})

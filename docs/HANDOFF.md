@@ -212,3 +212,8 @@ Experimental exact-answer quotation validation and seven synthetic cases per mod
 ## 2026-10-01 — explicit formative answer checks
 
 Connected Check/Review my answer to a separate evaluated task with exact quotations, provider disclosure, exclusive model overrides, full bounded material, saved replay and shared audio text. Other tutoring defaults unchanged. 556backend/230frontend, lint/build and desktop/narrow keyboard journeys pass, including final focused checks. Code/pedagogy review clear. 13 synthetic runtime cases recorded; model judgments remain fallible. See docs/slices/explicit-answer-feedback.md. Both repos private; no learner content/database in this checkout.
+
+
+## 2026-10-01 — completed-answer save recovery
+
+Retry saving now preserves the exact completed turn without model calls across study/workspace/follow-up/lesson/voice surfaces. Signed receipts expire after one hour or backend restart; text copy remains available. Owner/session and duplicate checks preserve provenance; partial results excluded. 561backend then6final focused,236frontend then18final focused, lint/build and two desktop/narrow keyboard journeys passed. Independent review clear. Previous sanitized CI exposed a premature follow-up click in a test; it now waits for query readiness. See docs/slices/answer-save-recovery.md for limits and remaining request-idempotency work. Both repos private.

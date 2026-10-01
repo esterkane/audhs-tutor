@@ -23,7 +23,9 @@ async def tutor(
     background: BackgroundTasks,
 ) -> PlaygroundReply:
     learner_id = learner.id
-    reply = await playground.respond(db, gateway, learner_id, body, settings=settings)
+    reply = await playground.respond(
+        db, gateway, learner_id, body, settings=settings, recovery=request.app.state.answer_recovery
+    )
     if reply.answer_id and not reply.reused:
         schedule_index(request, background, settings, learner_id)
     return reply

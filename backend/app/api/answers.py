@@ -2,12 +2,17 @@
 
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
+from pydantic import BaseModel, Field
 from sqlalchemy import select, text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import DB, Gateway, Learner
+from app.core.answer_recovery import MAX_RECEIPT
+from app.core.errors import AppError
 from app.db import answer_feedback, answer_sources
 from app.db.answer_search import literal_query
+from app.db.answers import save_completed
 from app.db.models import TutorAnswer, TutorAnswerFeedback
 from app.orchestrator import playground
 from app.schemas.answers import (
@@ -21,6 +26,37 @@ from app.schemas.answers import (
 from app.schemas.playground import PlaygroundContext, PlaygroundReply, PlaygroundRequest
 
 router = APIRouter(prefix="/answers", tags=["answers"])
+
+
+class AnswerSaveReceipt(BaseModel):
+    receipt: str = Field(min_length=1, max_length=MAX_RECEIPT)
+
+
+class AnswerSaveResult(BaseModel):
+    answer_id: str
+
+
+@router.post(
+    "/recover-save",
+    response_model=AnswerSaveResult,
+    summary="Retry saving a completed answer without regeneration",
+)
+async def recover_save(
+    body: AnswerSaveReceipt,
+    db: DB,
+    learner: Learner,
+    request: Request,
+) -> AnswerSaveResult:
+    snapshot = request.app.state.answer_recovery.read(body.receipt, learner.id)
+    try:
+        answer = await save_completed(db, **snapshot)
+    except SQLAlchemyError as exc:
+        raise AppError(
+            "answer_save_failed",
+            "The database is still unavailable. Keep the answer and retry saving.",
+            http_status=503,
+        ) from exc
+    return AnswerSaveResult(answer_id=answer.id)
 
 
 def summary(row: TutorAnswer) -> AnswerSummary:
@@ -146,7 +182,12 @@ async def get_answer(answer_id: str, db: DB, learner: Learner) -> AnswerDetail:
     summary="Ask about an owned saved answer",
 )
 async def followup(
-    answer_id: str, body: AnswerFollowup, db: DB, learner: Learner, gateway: Gateway
+    answer_id: str,
+    body: AnswerFollowup,
+    db: DB,
+    learner: Learner,
+    gateway: Gateway,
+    request: Request,
 ) -> PlaygroundReply:
     row = await db.scalar(
         select(TutorAnswer).where(TutorAnswer.id == answer_id, TutorAnswer.learner_id == learner.id)
@@ -176,7 +217,7 @@ async def followup(
         "truncated_fields": clipped,
     }
     context = row.metadata_json.get("learning_context")
-    request = PlaygroundRequest(
+    workspace_request = PlaygroundRequest(
         session_id=body.session_id,
         question=body.question,
         learner_question=body.question,
@@ -192,8 +233,9 @@ async def followup(
         db,
         gateway,
         learner.id,
-        request,
+        workspace_request,
         historical=historical,
+        recovery=request.app.state.answer_recovery,
         parent_metadata={
             "parent_answer_id": row.id,
             "skill_id": row.metadata_json.get("skill_id"),

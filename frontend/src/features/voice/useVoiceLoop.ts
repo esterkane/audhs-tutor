@@ -1,3 +1,4 @@
+import type { TurnDone } from '../../lib/api'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { b64ToPcm16, Player, startMic, type Mic } from './audio'
 
@@ -22,6 +23,7 @@ export function useVoiceLoop(opts: {
   const [ready, setReady] = useState<VoiceMessage | null>(null)
   const [transcript, setTranscript] = useState('')
   const [answer, setAnswer] = useState('')
+  const [saveTurn, setSaveTurn] = useState<Pick<TurnDone, 'turn_id' | 'text' | 'answer_id' | 'save_error' | 'save_receipt'> | null>(null)
   const [saveNote, setSaveNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [latency, setLatency] = useState<Record<string, unknown> | null>(null)
@@ -173,10 +175,12 @@ export function useVoiceLoop(opts: {
           setTranscript(String(msg.text))
           setAnswer('')
           setSaveNote(null)
+          setSaveTurn(null)
           setStatus('thinking')
           break
         case 'meta':
           setSaveNote(null)
+          setSaveTurn(null)
           break
         case 'token':
           setAnswer((a) => a + String(msg.text))
@@ -192,11 +196,17 @@ export function useVoiceLoop(opts: {
           break
         case 'done': {
           const turn = msg.turn as {
+            turn_id?: string
+            outcome?: string
+            save_receipt?: string | null
             answer_id?: string | null
             save_error?: string | null
             text?: string
           } | null
           if (typeof turn?.text === 'string') setAnswer(turn.text)
+          setSaveTurn(turn?.outcome !== 'partial' && typeof turn?.turn_id === 'string' && typeof turn.text === 'string'
+            ? { turn_id: turn.turn_id, text: turn.text, answer_id: turn.answer_id,
+                save_error: turn.save_error, save_receipt: turn.save_receipt } : null)
           setSaveNote(turn?.save_error ?? (turn?.answer_id ? 'Saved to your local answer history.' : null))
           turnBusy.current = false
           setLatency((msg.latency as Record<string, unknown>) ?? null)
@@ -311,6 +321,7 @@ export function useVoiceLoop(opts: {
       setTranscript(text)
       setAnswer('')
       setSaveNote(null)
+      setSaveTurn(null)
       setError(null)
       setStatus('thinking')
       return true
@@ -320,6 +331,7 @@ export function useVoiceLoop(opts: {
 
   return {
     saveNote,
+    saveTurn,
     status,
     canSend: status === 'ready',
     ready,

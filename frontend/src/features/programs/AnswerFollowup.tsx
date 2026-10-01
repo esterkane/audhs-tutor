@@ -1,3 +1,4 @@
+import { AnswerSaveStatus } from './AnswerSaveStatus'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -170,13 +171,15 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
           <p className="whitespace-pre-wrap">{question}</p>
           <Markdown text={reply.text} />
           <ReadAloud text={`Your question: ${question}\n\n${reply.text}`} />
-          {reply.answer_id ? (
-            <Link className="underline" to={`/answers/${encodeURIComponent(reply.answer_id)}`}>
-              Open saved follow-up
-            </Link>
-          ) : (
-            <p role="alert">{reply.save_error || 'This reply was not saved. Keep a copy before leaving.'}</p>
-          )}
+          <AnswerSaveStatus answerId={reply.answer_id} receipt={reply.save_receipt}
+            error={reply.save_error || (!reply.answer_id ? 'This reply was not saved. Keep a copy before leaving.' : null)}
+            text={reply.text} linkLabel="Open saved follow-up"
+            onSaved={(id) => {
+              setReplies((old) => old.map((entry) => entry.reply.turn_id === reply.turn_id
+                ? { ...entry, reply: { ...entry.reply, answer_id: id, save_error: null, save_receipt: null } } : entry))
+              setParentId(id)
+              edit(draft, id)
+            }} />
         </div>
       ))}
       {unsaved && (

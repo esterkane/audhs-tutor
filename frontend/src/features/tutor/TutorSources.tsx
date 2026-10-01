@@ -1,3 +1,4 @@
+import { AnswerSaveStatus } from '../programs/AnswerSaveStatus'
 import { Link } from 'react-router-dom'
 import { useRef, useState } from 'react'
 import type { TurnDone } from '../../lib/api'
@@ -16,15 +17,7 @@ function TurnSources({ turn }: { turn: TurnDone }) {
   const withheld = withheldCount(turn.dropped)
   return (
     <div className="text-sm mt-3">
-      {turn.save_error ? (
-        <p role="alert" className="text-warn">
-          {turn.save_error}
-        </p>
-      ) : turn.answer_id ? (
-        <p className="text-muted">
-          Saved to your local answer history. <Link to={`/answers/${turn.answer_id}`}>Open saved answer</Link>
-        </p>
-      ) : null}
+      <AnswerSaveStatus answerId={turn.answer_id} receipt={turn.save_receipt} error={turn.save_error} text={turn.text} />
       {(turn.memory_answers ?? []).length > 0 && (
         <p className="text-muted">
           Earlier answers informed this explanation; they are not verified evidence.{' '}

@@ -226,6 +226,7 @@ async def ws(websocket: WebSocket) -> None:
             repo,
             quarantine_below_trust=settings.quarantine_below_trust,
             settings=settings,
+            recovery=app.state.answer_recovery,
         )
         loop = VoiceLoop(
             db,

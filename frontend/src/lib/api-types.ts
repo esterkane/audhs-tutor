@@ -4,6 +4,23 @@
  */
 
 export interface paths {
+  '/api/answers/recover-save': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Retry saving a completed answer without regeneration */
+    post: operations['recover_save_api_answers_recover_save_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/answers': {
     parameters: {
       query?: never
@@ -2094,6 +2111,16 @@ export interface components {
       /** Next Cursor */
       next_cursor?: string | null
     }
+    /** AnswerSaveReceipt */
+    AnswerSaveReceipt: {
+      /** Receipt */
+      receipt: string
+    }
+    /** AnswerSaveResult */
+    AnswerSaveResult: {
+      /** Answer Id */
+      answer_id: string
+    }
     /** AnswerSummary */
     AnswerSummary: {
       /** Id */
@@ -3984,6 +4011,8 @@ export interface components {
       answer_id?: string | null
       /** Save Error */
       save_error?: string | null
+      /** Save Receipt */
+      save_receipt?: string | null
       /**
        * Reused
        * @default false
@@ -4804,6 +4833,8 @@ export interface components {
       answer_id?: string | null
       /** Save Error */
       save_error?: string | null
+      /** Save Receipt */
+      save_receipt?: string | null
       /** Turn Id */
       turn_id: string
       /** Model Call Id */
@@ -4953,6 +4984,39 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  recover_save_api_answers_recover_save_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnswerSaveReceipt']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerSaveResult']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   list_answers_api_answers_get: {
     parameters: {
       query?: {
