@@ -4,6 +4,40 @@
  */
 
 export interface paths {
+  '/api/answers': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** List the current learner's completed saved answers */
+    get: operations['list_answers_api_answers_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/answers/{answer_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Open one saved answer without regenerating */
+    get: operations['get_answer_api_answers__answer_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/health': {
     parameters: {
       query?: never
@@ -1938,6 +1972,65 @@ export interface components {
        * @default 0
        */
       price_out: number
+    }
+    /** AnswerDetail */
+    AnswerDetail: {
+      /** Id */
+      id: string
+      /** Turn Id */
+      turn_id: string
+      /** Session Id */
+      session_id: string | null
+      /** Surface */
+      surface: string
+      /** Created At */
+      created_at: string
+      /** Request Text */
+      request_text: string
+      /** Preview */
+      preview: string
+      /** Skill Id */
+      skill_id: string | null
+      /** Area Id */
+      area_id: string | null
+      /** Text */
+      text: string
+      /** Request */
+      request: {
+        [key: string]: unknown
+      }
+      /** Metadata */
+      metadata: {
+        [key: string]: unknown
+      }
+    }
+    /** AnswerPage */
+    AnswerPage: {
+      /** Items */
+      items: components['schemas']['AnswerSummary'][]
+      /** Next Cursor */
+      next_cursor?: string | null
+    }
+    /** AnswerSummary */
+    AnswerSummary: {
+      /** Id */
+      id: string
+      /** Turn Id */
+      turn_id: string
+      /** Session Id */
+      session_id: string | null
+      /** Surface */
+      surface: string
+      /** Created At */
+      created_at: string
+      /** Request Text */
+      request_text: string
+      /** Preview */
+      preview: string
+      /** Skill Id */
+      skill_id: string | null
+      /** Area Id */
+      area_id: string | null
     }
     /** ArchiveRoleIn */
     ArchiveRoleIn: {
@@ -4707,6 +4800,72 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  list_answers_api_answers_get: {
+    parameters: {
+      query?: {
+        limit?: number
+        cursor?: string | null
+        skill_id?: string | null
+        area_id?: string | null
+        surface?: ('tutor' | 'playground') | null
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerPage']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_answer_api_answers__answer_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerDetail']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   health_api_health_get: {
     parameters: {
       query?: never

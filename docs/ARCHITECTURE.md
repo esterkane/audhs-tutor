@@ -125,3 +125,5 @@ There is no model fine-tuning, inferred learning-style category or mastery updat
 ### Saved workspace answers (QA01, partial)
 
 `tutor_answer` stores immutable learner-scoped completed workspace replies with supplied bounded request context, model metadata and payload fingerprint; learner/turn uniqueness prevents duplicate snapshot writes. `db/answers.py` owns the short save transaction after existing producer trace/events commit. This is private response history, not corpus truth or competency evidence. Save failures preserve the delivered reply with explicit unsaved status. Request-level inference deduplication, other answer paths, scoped search and suggestion UI remain pending; see `docs/slices/saved-workspace-answers.md`.
+
+Saved history has read-only owner-scoped `/api/answers` list/detail endpoints with bounded keyset pagination and exact skill/area/surface filters. They make no model calls or learning writes. Search and UI remain pending; see `docs/slices/answer-history-api.md`.

@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api import (
     adaptations,
+    answers,
     areas,
     assess,
     challenge,
@@ -29,6 +30,7 @@ from app.api import (
 
 api_router = APIRouter(prefix="/api")
 for r in (
+    answers,
     health,
     learner,
     skills,

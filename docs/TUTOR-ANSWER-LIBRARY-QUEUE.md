@@ -27,7 +27,7 @@ StudyTutor restores bounded conversation history from browser localStorage; that
 |---|---|---|
 | QA00 (draft prepared) | Map every answer path and draft storage/lifecycle ADR | Coverage matrix for lesson, notebook/playground, answer feedback, representations and voice; ownership, context IDs and relation to authoring/correction decided. |
 | QA01 (partial) | Durable answer persistence; QA00 | Migration/restore on disposable data, learner isolation, exact text/source snapshot, duplicate request and failed-save recovery tests. Completed vs partial state explicit. |
-| QA02 | Local scoped search and retrieval; QA01 | Course/area/step filters, full text, pagination, deleted/stale states, cross-learner denial; opening a record makes zero model calls. |
+| QA02 (read API partial) | Local scoped search and retrieval; QA01 | Course/area/step filters, full text, pagination, deleted/stale states, cross-learner denial; opening a record makes zero model calls. |
 | QA03 | Suggested Q&A on course/area learning pages; QA02 | Relevant previously answered list, useful display labels, full answer/source view and follow-up preserving context; empty/loading/error, keyboard and narrow-screen journeys. |
 | QA04 | Corrections and reusable-answer rules; QA03 | Report/hide/replace workflow, source/code freshness, no stale personal feedback suggested as general advice, idempotent votes, no mastery changes. |
 | QA05 | Backfill/portability; QA01–QA04 | Import only real available browser/history records with provenance and consent for scope; no fabricated history; encrypted backup/export round-trip; sanitized public check. |
