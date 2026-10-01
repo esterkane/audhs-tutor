@@ -79,3 +79,15 @@ lint/build, seven isolated recovery journeys and required code/pedagogy reviews 
 No paid inference, new dependency or migration. See docs/slices/followup-request-recovery.md.
 Lesson-stream/voice request recovery and broader correction/UX/material/visual queues remain
 open. Both repositories remain private; private snapshot refreshed before commit.
+
+
+## 2026-10-02 — lesson transport recovery foundation
+
+SSE and buffered lesson API now accept a shared UUID request identity. Original terminal meta/
+done (including partial outcome) persist before delivery; replay repeats neither inference,
+explained events nor checkpoint writes. Unresolved claims do not rerun. Failure copy no longer
+claims nothing changed after a late persistence error. Six regression tests, full backend576,
+lint/types and code/pedagogy reviews passed. No new migration, dependency or paid calls.
+Browser identity/preserved partial-text integration remains next, with explicit replay metadata
+and hint-evidence gating required before shipping it; see docs/slices/lesson-request-recovery.md.
+Voice remains separate. Both repos private, broader project queues still open.

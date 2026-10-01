@@ -6091,7 +6091,9 @@ export interface operations {
   stream_api_tutor_stream_post: {
     parameters: {
       query?: never
-      header?: never
+      header?: {
+        'idempotency-key'?: string | null
+      }
       path?: never
       cookie?: never
     }
@@ -6124,7 +6126,9 @@ export interface operations {
   turn_api_tutor_turn_post: {
     parameters: {
       query?: never
-      header?: never
+      header?: {
+        'idempotency-key'?: string | null
+      }
       path?: never
       cookie?: never
     }
