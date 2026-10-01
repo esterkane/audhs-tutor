@@ -217,3 +217,16 @@ Connected Check/Review my answer to a separate evaluated task with exact quotati
 ## 2026-10-01 — completed-answer save recovery
 
 Retry saving now preserves the exact completed turn without model calls across study/workspace/follow-up/lesson/voice surfaces. Signed receipts expire after one hour or backend restart; text copy remains available. Owner/session and duplicate checks preserve provenance; partial results excluded. 561backend then6final focused,236frontend then18final focused, lint/build and two desktop/narrow keyboard journeys passed. Independent review clear. Previous sanitized CI exposed a premature follow-up click in a test; it now waits for query readiness. See docs/slices/answer-save-recovery.md for limits and remaining request-idempotency work. Both repos private.
+
+
+## 2026-10-01 — durable workspace request foundation
+
+Optional UUID Idempotency-Key on workspace tutor now claims a learner-scoped SQLite row
+before inference. Same payload replays the original completed response; changed payload
+conflicts, and running/interrupted claims never silently generate again. Records export/wipe
+with learner data; session deletion cascades. Six regression tests, full backend568 and lint
+passed; disposable snapshot migration upgrade/downgrade and independent code review clear.
+UI does not send keys yet: next implement persistent retry identity, explicit new-request
+choice, storage-failure handling and browser journeys. Main lesson/voice request dedup remains
+separate. See docs/slices/workspace-request-recovery.md. Both repositories remain private.
+Previous recovery commits041e7b6/cefa84a now have successful remote CI.

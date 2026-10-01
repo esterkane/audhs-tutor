@@ -1,7 +1,11 @@
-from fastapi import APIRouter, BackgroundTasks, Request
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, BackgroundTasks, Header, Request
 
 from app.api.answer_jobs import schedule_index
 from app.api.deps import DB, Gateway, Learner, SettingsDep
+from app.db import workspace_requests
 from app.orchestrator import playground
 from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
@@ -21,11 +25,21 @@ async def tutor(
     settings: SettingsDep,
     request: Request,
     background: BackgroundTasks,
+    idempotency_key: Annotated[UUID | None, Header()] = None,
 ) -> PlaygroundReply:
     learner_id = learner.id
+    identity = None
+    if idempotency_key is not None:
+        identity, saved = await workspace_requests.claim(
+            db, learner_id, body.session_id, str(idempotency_key), body.model_dump(mode="json")
+        )
+        if saved is not None:
+            return PlaygroundReply.model_validate(saved)
     reply = await playground.respond(
         db, gateway, learner_id, body, settings=settings, recovery=request.app.state.answer_recovery
     )
+    if identity is not None:
+        await workspace_requests.complete(db, learner_id, identity, reply.model_dump(mode="json"))
     if reply.answer_id and not reply.reused:
         schedule_index(request, background, settings, learner_id)
     return reply

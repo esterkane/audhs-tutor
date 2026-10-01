@@ -139,3 +139,13 @@ Saved history has read-only owner-scoped `/api/answers` list/detail endpoints wi
 
 ### Derived answer embedding cache (2026-10-01)
 `tutor_answer_vector` is learner-scoped private derived state keyed uniquely by learner/answer, with answer fingerprint, embedding model/format key and bounded finite vector JSON. It is never indexed as original corpus evidence. Reads rejoin current answer ownership/fingerprint and feedback visibility; model changes miss. Answer deletion cascades; generic learner export/wipe and private backup include the table. Population/ranking integration is a later slice; embedding inference must happen outside write transactions.
+
+
+### Workspace transport recovery
+
+`workspace_request` is learner-scoped private request state: a unique learner/key pair,
+owned session FK (delete cascade), typed-payload SHA-256 and optional completed response.
+The claim commits before inference; completed retries return the original response without
+model calls or events. An empty response is unresolved, never a license to retry inference.
+No automatic expiry; generic learner export/wipe and private backups include these records.
+This is transport deduplication, separate from optional saved-answer semantic retrieval.

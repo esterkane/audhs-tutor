@@ -66,6 +66,20 @@ class Session(IdMixin, LearnerScoped, Base):
     experiment_arm_id: Mapped[str | None] = mapped_column(Text)  # session-unit n-of-1 assignment
 
 
+class WorkspaceRequest(IdMixin, LearnerScoped, Base):
+    """Durable transport identity; pending claims are never automatically re-executed."""
+
+    __tablename__ = "workspace_request"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "request_key", name="uq_workspace_request_owner_key"),
+    )
+    session_id: Mapped[str] = mapped_column(Text, ForeignKey("session.id", ondelete="CASCADE"))
+    request_key: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    response_json: Mapped[JsonDict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class SessionCheckpoint(IdMixin, LearnerScoped, Base):
     __tablename__ = "session_checkpoint"
     session_id: Mapped[str] = mapped_column(Text, ForeignKey("session.id"), index=True)

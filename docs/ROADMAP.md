@@ -41,3 +41,16 @@ Explicit answer-check integration completed; see docs/slices/explicit-answer-fee
 ### 2026-10-01 — completed-answer save recovery
 
 Retry saving without regeneration implemented. Process-bound one-hour receipts; lost-delivery and request-level inference idempotency remain open. See docs/slices/answer-save-recovery.md.
+
+
+## 2026-10-01 — durable workspace request foundation
+
+Optional UUID Idempotency-Key on workspace tutor now claims a learner-scoped SQLite row
+before inference. Same payload replays the original completed response; changed payload
+conflicts, and running/interrupted claims never silently generate again. Records export/wipe
+with learner data; session deletion cascades. Six regression tests, full backend568 and lint
+passed; disposable snapshot migration upgrade/downgrade and independent code review clear.
+UI does not send keys yet: next implement persistent retry identity, explicit new-request
+choice, storage-failure handling and browser journeys. Main lesson/voice request dedup remains
+separate. See docs/slices/workspace-request-recovery.md. Both repositories remain private.
+Previous recovery commits041e7b6/cefa84a now have successful remote CI.

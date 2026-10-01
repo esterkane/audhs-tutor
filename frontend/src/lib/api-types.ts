@@ -5784,7 +5784,9 @@ export interface operations {
   tutor_api_playground_tutor_post: {
     parameters: {
       query?: never
-      header?: never
+      header?: {
+        'idempotency-key'?: string | null
+      }
       path?: never
       cookie?: never
     }
