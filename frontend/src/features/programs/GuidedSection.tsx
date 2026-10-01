@@ -1,0 +1,251 @@
+import { useRef, useState } from 'react'
+import { Button } from '../../components/ui/button'
+import { Card } from '../../components/ui/card'
+import { Markdown } from '../../components/Markdown'
+import { ReadAloud } from '../voice/ReadAloud'
+import { StudyTutor } from './StudyTutor'
+import type { Section } from './manifest'
+
+type Phase = 'Understand' | 'Try' | 'Think deeper'
+type Work = {
+  answer: string
+  note: string
+  label: string
+  answers: Record<string, string>
+  phase: Phase
+  questionId: string
+}
+const phases: Phase[] = ['Understand', 'Try', 'Think deeper']
+export function GuidedSection(props: { section: Section; course: string; paused: boolean }) {
+  return <Content key={`${props.course}:${props.section.id}`} {...props} />
+}
+function Content({ section, course, paused }: { section: Section; course: string; paused: boolean }) {
+  const key = `project-study:v1:${course}:${section.id}`
+  const [restored] = useState(() => {
+    const fresh: Work = {
+      answer: '',
+      note: '',
+      label: 'Learning',
+      answers: {},
+      phase: 'Understand',
+      questionId: 'original',
+    }
+    try {
+      const value = JSON.parse(localStorage.getItem(key) ?? 'null')
+      if (!value) return { work: fresh, status: '' }
+      if (!['answer', 'note', 'label'].every((k) => typeof value[k] === 'string'))
+        throw new Error('Invalid saved work')
+      const answers =
+        value.answers &&
+        typeof value.answers === 'object' &&
+        !Array.isArray(value.answers) &&
+        Object.values(value.answers).every((a) => typeof a === 'string')
+          ? value.answers
+          : {}
+      return {
+        work: {
+          ...fresh,
+          answer: value.answer,
+          note: value.note,
+          label: value.label,
+          answers,
+          phase: phases.includes(value.phase) ? (value.phase as Phase) : ('Understand' as Phase),
+          questionId: typeof value.questionId === 'string' ? value.questionId : 'original',
+        },
+        status: 'Saved work restored.',
+      }
+    } catch {
+      return { work: fresh, status: 'Saved work could not be restored. Keep a copy before leaving.' }
+    }
+  })
+  const [work, setWork] = useState<Work>(restored.work)
+  const [saved, setSaved] = useState(restored.status)
+  const [hint, setHint] = useState(false)
+  const [check, setCheck] = useState(false)
+  const [tutorOpen, setTutorOpen] = useState(false)
+  const heading = useRef<HTMLHeadingElement>(null)
+  const questions = [
+    { id: 'original', question: section.question, hint: section.hint, criteria: section.criteria },
+    ...(section.challenges ?? []).map((q) => ({ ...q, id: `challenge:${q.id}` })),
+  ]
+  const question = questions.find((q) => q.id === work.questionId) ?? questions[0]
+  const answer = question.id === 'original' ? work.answer : (work.answers[question.id] ?? '')
+  function update(next: Work) {
+    setWork(next)
+    try {
+      localStorage.setItem(key, JSON.stringify(next))
+      setSaved('Saved on this browser.')
+    } catch {
+      setSaved('Could not save. Keep this page open and copy your work before leaving.')
+    }
+  }
+  function choosePhase(phase: Phase) {
+    update({ ...work, phase })
+    setHint(false)
+    setCheck(false)
+    setTutorOpen(false)
+    heading.current?.focus()
+  }
+  const activeText =
+    work.phase === 'Understand'
+      ? [section.explanation, section.example ?? ''].join('\n\n')
+      : work.phase === 'Try'
+        ? section.task
+        : question.question
+  // Preserve the complete passage; StudyTutor reports its API boundary visibly.
+  const example = section.example ? `Worked example: ${section.example}` : ''
+  const context = (
+    work.phase === 'Understand'
+      ? [`Explanation: ${section.explanation}`, example]
+      : work.phase === 'Try'
+        ? [`Task: ${section.task}`, example, `Background: ${section.explanation}`]
+        : [
+            `Question: ${question.question}`,
+            example,
+            `Criteria: ${question.criteria}`,
+            `Background: ${section.explanation}`,
+          ]
+  )
+    .filter(Boolean)
+    .join('\n\n')
+  const tutorAnswer = work.phase === 'Try' ? work.note : work.phase === 'Think deeper' ? answer : ''
+  return (
+    <Card className="grid gap-4">
+      <h2 className="text-lg font-semibold">{section.title}</h2>
+      <p>Understand the idea, try one task, then explore your reasoning. Move freely between these steps.</p>
+      <nav aria-label="Learning steps" className="flex flex-wrap gap-2">
+        {phases.map((phase) => (
+          <Button
+            key={phase}
+            variant={work.phase === phase ? 'primary' : 'outline'}
+            aria-current={work.phase === phase ? 'step' : undefined}
+            onClick={() => choosePhase(phase)}
+          >
+            {phase}
+          </Button>
+        ))}
+      </nav>
+      <h3 ref={heading} tabIndex={-1} className="font-semibold">
+        {work.phase === 'Understand'
+          ? 'The idea'
+          : work.phase === 'Try'
+            ? 'Your next project task'
+            : 'Explain your reasoning'}
+      </h3>
+      {work.phase === 'Understand' && (
+        <>
+          <Markdown text={section.explanation} />
+          {section.example && (
+            <div className="border-l-4 border-line pl-4">
+              <h4 className="font-semibold">Worked example</h4>
+              <Markdown text={section.example} />
+            </div>
+          )}
+          <p className="text-sm text-muted">Tutor-authored learning guide. Source: {section.source}</p>
+          <Button onClick={() => choosePhase('Try')}>Try this idea</Button>
+        </>
+      )}
+      {work.phase === 'Try' && (
+        <>
+          <Markdown text={section.task} />
+          <p>
+            Use the notebook workspace for code. Record what you tried here; you can ask for help at any
+            point.
+          </p>
+          <label>
+            Project notes
+            <textarea
+              className="block border rounded p-2 w-full bg-card"
+              value={work.note}
+              onChange={(e) => update({ ...work, note: e.target.value })}
+            />
+          </label>
+          <Button onClick={() => choosePhase('Think deeper')}>Explore the reasoning</Button>
+        </>
+      )}
+      {work.phase === 'Think deeper' && (
+        <>
+          {questions.length > 1 && (
+            <label>
+              Question to explore
+              <select
+                className="block w-full border rounded p-2 bg-card"
+                value={question.id}
+                onChange={(e) => {
+                  update({ ...work, questionId: e.target.value })
+                  setHint(false)
+                  setCheck(false)
+                }}
+              >
+                {questions.map((q, i) => (
+                  <option key={q.id} value={q.id}>
+                    {i === 0 ? 'Core question' : `Deeper question ${i}`}: {q.question}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <Markdown text={question.question} />
+          <label>
+            Your explanation
+            <textarea
+              className="block border rounded p-2 w-full bg-card"
+              value={answer}
+              onChange={(e) =>
+                update(
+                  question.id === 'original'
+                    ? { ...work, answer: e.target.value }
+                    : { ...work, answers: { ...work.answers, [question.id]: e.target.value } },
+                )
+              }
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => setHint(!hint)}>{hint ? 'Hide hint' : 'One hint'}</Button>
+            <Button onClick={() => setCheck(!check)}>
+              {check ? 'Hide checklist' : 'Show self-check checklist'}
+            </Button>
+          </div>
+          {hint && <Markdown text={question.hint} />}
+          {check && (
+            <div>
+              <p>Self-check, not automated grading:</p>
+              <Markdown text={question.criteria} />
+            </div>
+          )}
+        </>
+      )}
+      {!paused && <ReadAloud key={`${work.phase}:${question.id}`} text={activeText} />}
+      <Button aria-expanded={tutorOpen} onClick={() => setTutorOpen(!tutorOpen)}>
+        {tutorOpen ? 'Close tutor help' : 'Ask the tutor'}
+      </Button>
+      {!paused && tutorOpen && (
+        <aside aria-label="Help with this step">
+          <StudyTutor
+            key={`${work.phase}:${question.id}`}
+            identity={`${key}:${work.phase}:${question.id}`}
+            context={context}
+            answer={tutorAnswer}
+          />
+        </aside>
+      )}
+      <details>
+        <summary>Bookmark and saved work</summary>
+        <label>
+          My bookmark
+          <select
+            className="block border rounded p-2 bg-card"
+            value={work.label}
+            onChange={(e) => update({ ...work, label: e.target.value })}
+          >
+            <option>Learning</option>
+            <option>Clear</option>
+            <option>Ask later again</option>
+          </select>
+        </label>
+        <p>Bookmarks are your reminders, not grades or mastery.</p>
+      </details>
+      <p role="status">{saved}</p>
+    </Card>
+  )
+}

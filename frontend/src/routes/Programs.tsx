@@ -1,110 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { NotebookWorkspace } from '../features/programs/NotebookWorkspace'
-import { StudyTutor } from '../features/programs/StudyTutor'
-import { ReadAloud } from '../features/voice/ReadAloud'
+import { GuidedSection } from '../features/programs/GuidedSection'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
-import {
-  parseNotebook,
-  parseProgram,
-  type NotebookCell,
-  type Program,
-  type Section,
-} from '../features/programs/manifest'
-
-type Work = { answer: string; note: string; label: string }
-function SectionStudy({ section, course, paused }: { section: Section; course: string; paused: boolean }) {
-  const key = `project-study:v1:${course}:${section.id}`
-  const [work, setWork] = useState<Work>(() => {
-    try {
-      const value = JSON.parse(localStorage.getItem(key) ?? 'null')
-      if (value && ['answer', 'note', 'label'].every((k) => typeof value[k] === 'string')) return value
-    } catch {
-      /* editable in-memory fallback */
-    }
-    return { answer: '', note: '', label: 'Learning' }
-  })
-  const [saved, setSaved] = useState('')
-  const [hint, setHint] = useState(false)
-  const [check, setCheck] = useState(false)
-  function update(next: Work) {
-    setWork(next)
-    try {
-      localStorage.setItem(key, JSON.stringify(next))
-      setSaved('Saved on this browser.')
-    } catch {
-      setSaved('Could not save. Keep this page open and copy your notes before leaving.')
-    }
-  }
-  return (
-    <Card className="grid gap-4">
-      <h2 className="text-lg font-semibold">{section.title}</h2>
-      <p className="whitespace-pre-wrap">{section.explanation}</p>
-      {!paused && <ReadAloud text={section.explanation} />}
-      <p className="text-sm text-muted">Tutor-authored learning guide. Source: {section.source}</p>
-      <h3 className="font-semibold">Build this part of the project</h3>
-      <p>{section.task}</p>
-      <p className="text-sm">
-        Read the explanation, try the task, then write your reasoning. Use a hint whenever you need one.
-      </p>
-      <h3 className="font-semibold">Think it through</h3>
-      <p>{section.question}</p>
-      <label>
-        Your explanation
-        <textarea
-          className="block border rounded p-2 w-full bg-card"
-          value={work.answer}
-          onChange={(e) => update({ ...work, answer: e.target.value })}
-        />
-      </label>
-      <div className="flex gap-2 flex-wrap">
-        <Button variant="outline" onClick={() => setHint(!hint)}>
-          {hint ? 'Hide hint' : 'One hint'}
-        </Button>
-        <Button variant="outline" onClick={() => setCheck(!check)}>
-          {check ? 'Hide checklist' : 'Show self-check checklist'}
-        </Button>
-      </div>
-      {hint && <p>{section.hint}</p>}
-      {check && <p>Self-check, not automated grading: {section.criteria}</p>}
-      <label>
-        Project notes
-        <textarea
-          className="block border rounded p-2 w-full bg-card"
-          value={work.note}
-          onChange={(e) => update({ ...work, note: e.target.value })}
-        />
-      </label>
-      <label>
-        My bookmark
-        <select
-          className="block border rounded p-2 bg-card"
-          value={work.label}
-          onChange={(e) => update({ ...work, label: e.target.value })}
-        >
-          <option>Learning</option>
-          <option>Clear</option>
-          <option>Ask later again</option>
-        </select>
-      </label>
-      <p className="text-sm">Bookmarks do not mark the official project complete or award mastery.</p>
-      <p role="status">{saved}</p>
-      {!paused && (
-        <StudyTutor
-          identity={key}
-          context={[
-            section.title,
-            section.explanation,
-            section.task,
-            section.question,
-            section.criteria,
-          ].join('\n')}
-          answer={work.answer}
-        />
-      )}
-    </Card>
-  )
-}
+import { parseNotebook, parseProgram, type NotebookCell, type Program } from '../features/programs/manifest'
 
 function NotebookReader({
   notebook,
@@ -213,6 +112,7 @@ export function Programs() {
   const [courseId, setCourseId] = useState('')
   const [sectionId, setSectionId] = useState('')
   const [paused, setPaused] = useState(false)
+  const [notebookView, setNotebookView] = useState(false)
   useEffect(() => {
     const ctl = new AbortController()
     void fetch('/local-learning/program.json', { signal: ctl.signal })
@@ -228,84 +128,157 @@ export function Programs() {
   }, [])
   const course = program?.courses.find((c) => c.id === courseId) ?? program?.courses[0]
   const section = course?.sections.find((s) => s.id === sectionId) ?? course?.sections[0]
+  const sectionIndex = course?.sections.findIndex((s) => s.id === section?.id) ?? -1
+  function chooseStep(id: string) {
+    setSectionId(id)
+    setPaused(false)
+    setNotebookView(false)
+  }
   return (
-    <div className="grid gap-4">
-      <h1 className="text-xl font-semibold">{program?.title ?? 'Degree projects'}</h1>
-      <p>Understand the ideas, work through the code, and build one useful part of your project at a time.</p>
+    <div className="grid gap-5">
+      <header className="border-b border-line pb-4">
+        <p className="text-sm text-muted">Project study · one idea at a time</p>
+        <h1 className="text-2xl font-semibold">{program?.title ?? 'Degree projects'}</h1>
+        <p className="mt-2">Understand an idea, try it, then explore where it holds—and where it breaks.</p>
+      </header>
       {error && <p role="alert">{error} Local course content is separate from the application.</p>}
       {!program && !error && <p role="status">Loading local programme…</p>}
       {program && course && (
-        <>
-          <label>
-            Course
-            <select
-              className="block w-full border rounded p-2 bg-card"
-              value={course.id}
-              onChange={(e) => {
-                setCourseId(e.target.value)
-                setSectionId('')
-                setPaused(false)
-              }}
-            >
-              {program.courses.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <Card>
-            <h2 className="font-semibold">What you are building</h2>
-            <p>{course.project}</p>
-            <p className="text-sm mt-2">Material coverage: {course.status}</p>
-          </Card>
-          {section ? (
-            <>
-              <label>
-                Project step
-                <select
-                  className="block w-full border rounded p-2 bg-card"
-                  value={section.id}
-                  onChange={(e) => {
-                    setSectionId(e.target.value)
-                    setPaused(false)
-                  }}
-                >
-                  {course.sections.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
+        <div className="grid gap-6 lg:grid-cols-[15rem_minmax(0,1fr)] items-start">
+          <aside
+            className="lg:sticky lg:top-4 border border-line bg-card rounded-xl p-4 grid gap-4"
+            aria-label="Lesson outline"
+          >
+            <label className="text-sm font-medium">
+              Course
+              <select
+                className="block w-full min-w-0 border border-line rounded p-2 bg-card mt-2"
+                value={course.id}
+                onChange={(e) => {
+                  setCourseId(e.target.value)
+                  setSectionId('')
+                  setPaused(false)
+                  setNotebookView(false)
+                }}
+              >
+                {program.courses.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <details open className="hidden lg:block">
+              <summary className="font-semibold cursor-pointer">Project steps</summary>
+              <nav aria-label="Project steps" className="grid gap-1 mt-3">
+                {course.sections.map((s, i) => (
+                  <button
+                    key={s.id}
+                    aria-current={s.id === section?.id ? 'step' : undefined}
+                    className={`text-left rounded-lg p-3 text-sm border ${s.id === section?.id ? 'border-accent bg-bg font-semibold' : 'border-transparent'}`}
+                    onClick={() => chooseStep(s.id)}
+                  >
+                    <span className="text-muted mr-2">{i + 1}.</span>
+                    {s.title}
+                  </button>
+                ))}
+              </nav>
+            </details>
+            <label className="lg:hidden text-sm">
+              Project step
+              <select
+                className="block w-full border border-line rounded p-2 bg-card mt-2"
+                value={section?.id ?? ''}
+                onChange={(e) => chooseStep(e.target.value)}
+              >
+                {course.sections.map((s, i) => (
+                  <option key={s.id} value={s.id}>
+                    {i + 1}. {s.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="text-xs text-muted">
+              Your place in the guide, not a completion score. You can revisit any step.
+            </p>
+            <details>
+              <summary className="cursor-pointer">Project goal and sources</summary>
+              <p className="mt-2 text-sm">{course.project}</p>
+              <p className="mt-2 text-xs text-muted">Material coverage: {course.status}</p>
+            </details>
+          </aside>
+          <div className="min-w-0 grid gap-4">
+            <div className="flex flex-wrap gap-2 items-center justify-between">
+              <p className="text-sm text-muted">
+                {section
+                  ? `Step ${sectionIndex + 1} of ${course.sections.length} · ${section.title}`
+                  : 'No guide yet'}
+              </p>
               <Button variant="outline" onClick={() => setPaused(!paused)}>
                 {paused ? 'Resume this step' : 'Pause study'}
               </Button>
-              <div hidden={paused}>
-                <SectionStudy
+            </div>
+            <div className="flex gap-2" aria-label="Study view">
+              <Button
+                variant={notebookView ? 'outline' : 'primary'}
+                aria-pressed={!notebookView}
+                onClick={() => setNotebookView(false)}
+              >
+                Guided lesson
+              </Button>
+              <Button
+                variant={notebookView ? 'primary' : 'outline'}
+                aria-pressed={notebookView}
+                onClick={() => setNotebookView(true)}
+              >
+                Notebook workspace
+              </Button>
+            </div>
+            {paused && <p role="status">Paused. Your notes stay available; resume or choose another step.</p>}
+            <div hidden={paused || notebookView}>
+              {section ? (
+                <GuidedSection
                   key={course.id + ':' + section.id}
                   section={section}
                   course={course.id}
-                  paused={paused}
+                  paused={paused || notebookView}
                 />
-              </div>
-              {paused && (
-                <p role="status">
-                  Paused. Your notes stay available; you can resume or choose another course.
-                </p>
+              ) : (
+                <p>No verified project guide is available for this course yet.</p>
               )}
-            </>
-          ) : (
-            <p>No verified project guide is available for this course yet.</p>
-          )}
-        </>
+            </div>
+            <div hidden={!notebookView || paused}>
+              <NotebookReader
+                key={course.id}
+                paused={paused || !notebookView}
+                notebook={course.notebook}
+                explanations={course.explanations}
+              />
+            </div>
+            {!notebookView && section && (
+              <nav
+                aria-label="Adjacent project steps"
+                className="flex justify-between gap-3 border-t border-line pt-4"
+              >
+                <Button
+                  disabled={sectionIndex <= 0}
+                  onClick={() => chooseStep(course.sections[sectionIndex - 1].id)}
+                >
+                  Previous step
+                </Button>
+                {sectionIndex < course.sections.length - 1 ? (
+                  <Button onClick={() => chooseStep(course.sections[sectionIndex + 1].id)}>
+                    Next project step
+                  </Button>
+                ) : (
+                  <p className="text-sm">End of guide. Review your project against its checklist.</p>
+                )}
+              </nav>
+            )}
+          </div>
+        </div>
       )}
-      <NotebookReader
-        key={course?.id ?? 'empty'}
-        paused={paused}
-        notebook={course?.notebook}
-        explanations={course?.explanations}
-      />
+      {!program && !error && <p>You can pause at any time.</p>}
     </div>
   )
 }

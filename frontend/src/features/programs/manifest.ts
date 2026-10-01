@@ -7,6 +7,8 @@ export type Section = {
   hint: string
   criteria: string
   source: string
+  example?: string
+  challenges?: { id: string; question: string; hint: string; criteria: string }[]
 }
 export type Course = {
   id: string
@@ -55,6 +57,22 @@ export function parseProgram(raw: unknown): Program {
         sectionIds.has(s.id)
       )
         throw new Error('Invalid section entry.')
+      if (s.example !== undefined && typeof s.example !== 'string') throw new Error('Invalid worked example.')
+      if (s.challenges !== undefined) {
+        if (!Array.isArray(s.challenges) || s.challenges.length > 8) throw new Error('Invalid challenges.')
+        const challengeIds = new Set<string>()
+        for (const q of s.challenges) {
+          if (
+            !q ||
+            ['id', 'question', 'hint', 'criteria'].some((k) => typeof q[k as keyof typeof q] !== 'string') ||
+            !q.id.trim() ||
+            q.id === 'main' ||
+            challengeIds.has(q.id)
+          )
+            throw new Error('Invalid challenge entry.')
+          challengeIds.add(q.id)
+        }
+      }
       sectionIds.add(s.id)
     }
   }

@@ -38,6 +38,7 @@ it('explains first, preserves notes through pause and remount, and makes checks 
   const page = renderApp(<Programs />)
   expect(await screen.findByText('Keep test data separate.')).toBeVisible()
   expect(screen.queryByText('Think of unseen data.')).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Think deeper' }))
   fireEvent.click(screen.getByText('One hint'))
   expect(screen.getByText('Think of unseen data.')).toBeVisible()
   fireEvent.change(screen.getByLabelText('Your explanation'), {
@@ -82,4 +83,33 @@ it('rejects invalid saved notebook paths', () => {
       courses: [{ ...fixture.courses[0], notebook: '/local-learning/starter.ipynb' }],
     }).courses[0].notebook,
   ).toBe('/local-learning/starter.ipynb')
+})
+
+it('validates authored examples and distinct deeper questions', () => {
+  const section = fixture.courses[0].sections[0]
+  const parse = (extra: object) =>
+    parseProgram({ ...fixture, courses: [{ ...fixture.courses[0], sections: [{ ...section, ...extra }] }] })
+  expect(() => parse({ example: 42 })).toThrow()
+  expect(() =>
+    parse({
+      challenges: [
+        { id: 'same', question: 'Why?', hint: 'Look closer', criteria: 'Give evidence' },
+        { id: 'same', question: 'Why?', hint: 'Look closer', criteria: 'Give evidence' },
+      ],
+    }),
+  ).toThrow()
+  expect(() => parse({ challenges: [{ id: 'missing', question: 'Why?' }] })).toThrow()
+  expect(
+    parse({
+      example: 'A synthetic worked example.',
+      challenges: [
+        {
+          id: 'transfer',
+          question: 'What changes?',
+          hint: 'Change one assumption.',
+          criteria: 'Explain the effect.',
+        },
+      ],
+    }).courses[0].sections[0].challenges,
+  ).toHaveLength(1)
 })

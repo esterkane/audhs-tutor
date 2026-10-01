@@ -28,7 +28,8 @@ const queryClient = new QueryClient({
 export function Shell({ children }: { children: React.ReactNode }) {
   const { mode, energy, sessionId } = useMode()
   useSensory()
-  const wide = useLocation().pathname.startsWith('/playground')
+  const pathname = useLocation().pathname
+  const wide = ['/playground', '/programs'].some((path) => pathname.startsWith(path))
   return (
     <div className="min-h-screen">
       <header className="flex flex-wrap gap-3 items-center justify-between px-4 py-3 border-b border-line bg-card">
