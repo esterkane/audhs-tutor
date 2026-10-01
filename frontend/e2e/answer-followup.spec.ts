@@ -4,6 +4,12 @@ for (const width of [1280, 390]) {
   test(`saved follow-up sends explicitly and retains lineage (${width}px)`, async ({ page }) => {
     await page.setViewportSize({ width, height: 900 })
     await page.route('**/api/sessions/current', (route) => route.fulfill({ json: { id: 'session' } }))
+    let feedback = { verdict: null as string | null, note: '', hidden: false, revision: 0 }
+    await page.route('**/api/answers/*/feedback', async (route) => {
+      if (route.request().method() === 'PUT')
+        feedback = { ...route.request().postDataJSON(), revision: feedback.revision + 1 }
+      await route.fulfill({ json: feedback })
+    })
     const parent = {
       id: 'parent',
       text: 'Compare group representation.',
@@ -35,6 +41,11 @@ for (const width of [1280, 390]) {
       }),
     )
     await page.goto('/answers/parent')
+    await page.getByRole('combobox', { name: 'How was this answer?' }).selectOption('incorrect')
+    await page.getByRole('textbox', { name: 'Why? (optional)' }).fill('Check the totals')
+    await page.getByRole('button', { name: 'Save feedback', exact: true }).click()
+    await expect(page.getByText('Feedback saved.')).toBeVisible()
+    await expect(page.getByText(/The reply you will continue from is marked incorrect/)).toBeVisible()
     const input = page.getByRole('textbox', { name: 'Your follow-up question' })
     await expect(input).toBeVisible()
     expect(calls).toBe(0)

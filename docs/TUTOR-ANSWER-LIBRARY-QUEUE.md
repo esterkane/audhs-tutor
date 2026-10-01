@@ -29,7 +29,7 @@ StudyTutor restores bounded conversation history from browser localStorage; that
 | QA01 (partial) | Durable answer persistence; QA00 | Migration/restore on disposable data, learner isolation, exact text/source snapshot, duplicate request and failed-save recovery tests. Completed vs partial state explicit. |
 | QA02 (local search + browser partial) | Local scoped search and retrieval; QA01 | Course/area/step filters, full text, pagination, deleted/stale states, cross-learner denial; opening a record makes zero model calls. |
 | QA03 (target history partial) | Suggested Q&A on course/area learning pages; QA02 | Relevant previously answered list, useful display labels, full answer/source view and follow-up preserving context; empty/loading/error, keyboard and narrow-screen journeys. |
-| QA04 | Corrections and reusable-answer rules; QA03 | Report/hide/replace workflow, source/code freshness, no stale personal feedback suggested as general advice, idempotent votes, no mastery changes. |
+| QA04 (reports/visibility partial) | Corrections and reusable-answer rules; QA03 | Report/hide/replace workflow, source/code freshness, no stale personal feedback suggested as general advice, idempotent votes, no mastery changes. |
 | QA05 | Backfill/portability; QA01–QA04 | Import only real available browser/history records with provenance and consent for scope; no fabricated history; encrypted backup/export round-trip; sanitized public check. |
 
 Use existing `audhs-tutor-evidence`, `audhs-state-reliability`, `audhs-learning-ux` and, where capture/versioning overlaps, `audhs-learner-authoring`. No new skill needed solely for another queue entry.

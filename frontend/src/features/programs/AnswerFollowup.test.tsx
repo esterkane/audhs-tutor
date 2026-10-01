@@ -3,6 +3,21 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { AnswerFollowup } from './AnswerFollowup'
 vi.mock('../session/api', () => ({ useCurrentSession: () => ({ data: { id: 'session' } }) }))
+vi.mock('../../lib/api', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../../lib/api')>()
+  return {
+    ...original,
+    apiFetch: (url: string, init?: RequestInit) =>
+      url.endsWith('/feedback')
+        ? Promise.resolve({
+            verdict: url.includes('/child/') ? 'incorrect' : null,
+            note: '',
+            hidden: false,
+            revision: 0,
+          })
+        : original.apiFetch(url, init),
+  }
+})
 vi.mock('../voice/ReadAloud', () => ({ ReadAloud: () => null }))
 vi.mock('../voice/DictationButton', () => ({ DictationButton: () => null }))
 beforeEach(() => localStorage.clear())
@@ -13,6 +28,7 @@ it('sends explicitly, follows the newly saved parent and restores an unsent draf
   )
   vi.stubGlobal('fetch', fetcher)
   const view = renderApp(<AnswerFollowup answerId="parent" />)
+  await waitFor(() => expect(screen.queryByText(/Checking feedback for/)).not.toBeInTheDocument())
   expect(fetcher).not.toHaveBeenCalled()
   fireEvent.change(screen.getByLabelText('Your follow-up question'), { target: { value: 'Why?' } })
   fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
@@ -26,6 +42,7 @@ it('sends explicitly, follows the newly saved parent and restores an unsent draf
   view.unmount()
   renderApp(<AnswerFollowup answerId="parent" />)
   expect(screen.getByLabelText('Your follow-up question')).toHaveValue('Draft for later')
+  expect(await screen.findByText(/reply you will continue from is marked incorrect/)).toBeVisible()
   expect(screen.getByRole('link', { name: 'latest saved follow-up' })).toHaveAttribute(
     'href',
     '/answers/child',
@@ -45,6 +62,7 @@ it('keeps the question after Stop and ignores a late response', async () => {
     ),
   )
   renderApp(<AnswerFollowup answerId="parent" />)
+  await waitFor(() => expect(screen.queryByText(/Checking feedback for/)).not.toBeInTheDocument())
   fireEvent.change(screen.getByLabelText('Your follow-up question'), { target: { value: 'Explain' } })
   fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
   fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
@@ -61,6 +79,7 @@ it('retains a failed-save reply and pauses continuation rather than using the wr
     ),
   )
   renderApp(<AnswerFollowup answerId="parent" />)
+  await waitFor(() => expect(screen.queryByText(/Checking feedback for/)).not.toBeInTheDocument())
   fireEvent.change(screen.getByLabelText('Your follow-up question'), { target: { value: 'Explain' } })
   fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
   expect(await screen.findByText('Keep this reply')).toBeVisible()

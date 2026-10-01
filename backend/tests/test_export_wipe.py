@@ -46,6 +46,22 @@ async def _seed(db: AsyncSession, name: str) -> models.LearnerProfile:
             fingerprint=f"fingerprint-{name}",
         )
     )
+    await db.flush()
+    from sqlalchemy import select
+
+    saved = await db.scalar(
+        select(models.TutorAnswer).where(models.TutorAnswer.learner_id == lp.id)
+    )
+    assert saved is not None
+    db.add(
+        models.TutorAnswerFeedback(
+            learner_id=lp.id,
+            answer_id=saved.id,
+            verdict="incorrect",
+            note=f"Report by {name}",
+            hidden=True,
+        )
+    )
     await db.commit()
     return lp
 
@@ -65,6 +81,9 @@ async def test_export_then_wipe_keeps_other_learners(db: AsyncSession, db_path: 
     assert exported["tutor_answer"][0]["text"] == "Answer for A"
     deleted = wipe_learner(conn, a.id)
     assert deleted["tutor_answer"] == 1
+    assert exported["tutor_answer_feedback"][0]["note"] == "Report by A"
+    assert deleted["tutor_answer_feedback"] == 1
+    assert export_learner(conn, b.id)["tutor_answer_feedback"][0]["note"] == "Report by B"
     assert export_learner(conn, b.id)["tutor_answer"][0]["text"] == "Answer for B"
     assert deleted["learning_event"] == 1 and deleted["learner_profile"] == 1
 

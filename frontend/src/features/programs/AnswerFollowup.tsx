@@ -1,4 +1,4 @@
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
@@ -71,6 +71,13 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
   const request = useRef<AbortController | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const qc = useQueryClient()
+  const parentFeedback = useQuery({
+    queryKey: ['answer-feedback', parentId],
+    queryFn: ({ signal }) =>
+      apiFetch<Schemas['AnswerFeedbackState']>(`/api/answers/${encodeURIComponent(parentId)}/feedback`, {
+        signal,
+      }),
+  })
   useEffect(
     () => () => {
       request.current?.abort()
@@ -97,7 +104,7 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     input.current?.focus()
   }
   async function send() {
-    if (request.current || !draft.trim()) return
+    if (request.current || !draft.trim() || !parentFeedback.isSuccess) return
     const question = draft.trim()
     const ctl = new AbortController()
     request.current = ctl
@@ -144,6 +151,19 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
           .
         </p>
       )}
+      {parentFeedback.isPending && <p role="status">Checking feedback for the reply you will continue…</p>}
+      {parentFeedback.isError && (
+        <p role="alert">
+          Could not check feedback for this reply.{' '}
+          <Button onClick={() => void parentFeedback.refetch()}>Retry continuation feedback</Button>
+        </p>
+      )}
+      {(parentFeedback.data?.verdict === 'incorrect' || parentFeedback.data?.verdict === 'outdated') && (
+        <p role="alert">
+          The reply you will continue from is marked {parentFeedback.data.verdict}. Your report will be
+          included with the follow-up.
+        </p>
+      )}
       {replies.map(({ question, reply }, index) => (
         <div key={index} className="border-t border-line pt-3">
           <h3 className="font-medium">Your follow-up</h3>
@@ -178,7 +198,10 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
         />
       </label>
       <div className="flex flex-wrap gap-2">
-        <Button onClick={() => void send()} disabled={busy || unsaved || !draft.trim()}>
+        <Button
+          onClick={() => void send()}
+          disabled={busy || unsaved || !draft.trim() || !parentFeedback.isSuccess}
+        >
           Send follow-up
         </Button>
         <DictationButton

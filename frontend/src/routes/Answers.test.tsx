@@ -4,6 +4,7 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { jsonResponse, renderApp } from '../test/utils'
 import { Answers } from './Answers'
 
+vi.mock('../features/programs/AnswerFeedback', () => ({ AnswerFeedback: () => null }))
 vi.mock('../features/programs/AnswerFollowup', () => ({ AnswerFollowup: () => null }))
 vi.mock('../features/voice/ReadAloud', () => ({ ReadAloud: () => <button>Listen</button> }))
 afterEach(() => vi.unstubAllGlobals())

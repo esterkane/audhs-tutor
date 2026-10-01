@@ -1,6 +1,6 @@
 """Read-only access to completed saved responses; not a grading result."""
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -40,3 +40,10 @@ class AnswerFollowup(BaseModel):
         if not value.strip():
             raise ValueError("Enter a follow-up question")
         return value.strip()
+
+
+class AnswerFeedbackState(BaseModel):
+    verdict: Literal["helpful", "confusing", "incorrect", "outdated"] | None = None
+    note: str = Field(default="", max_length=2000)
+    hidden: bool = False
+    revision: int = Field(default=0, ge=0)

@@ -649,6 +649,21 @@ class IngestRunItem(IdMixin, Base):
     ts: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 
+class TutorAnswerFeedback(IdMixin, LearnerScoped, Base):
+    """Explicit mutable report beside an immutable answer; never competency evidence."""
+
+    __tablename__ = "tutor_answer_feedback"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "answer_id", name="uq_answer_feedback_owner_answer"),
+    )
+    answer_id: Mapped[str] = mapped_column(ForeignKey("tutor_answer.id"), index=True)
+    verdict: Mapped[str | None] = mapped_column(Text)
+    note: Mapped[str] = mapped_column(Text, default="")
+    hidden: Mapped[bool] = mapped_column(Boolean, default=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, onupdate=utcnow_iso)
+
+
 class ContentReport(IdMixin, LearnerScoped, Base):
     """P4: 'this source / explanation is wrong' — kept as a report next to the evidence, never a
     silent rewrite of what the learner saw."""

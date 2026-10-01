@@ -47,6 +47,7 @@ EXPECTED_TABLES = {
     "experiment_observation",
     "tutor_trace",
     "tutor_answer",
+    "tutor_answer_feedback",
     "retrieval_trace",
     "model_call",
     "learning_event",

@@ -55,6 +55,24 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/answers/{answer_id}/feedback': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read your saved-answer feedback */
+    get: operations['get_feedback_api_answers__answer_id__feedback_get']
+    /** Save reversible feedback without changing learning evidence */
+    put: operations['put_feedback_api_answers__answer_id__feedback_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/health': {
     parameters: {
       query?: never
@@ -2024,6 +2042,26 @@ export interface components {
       metadata: {
         [key: string]: unknown
       }
+    }
+    /** AnswerFeedbackState */
+    AnswerFeedbackState: {
+      /** Verdict */
+      verdict?: ('helpful' | 'confusing' | 'incorrect' | 'outdated') | null
+      /**
+       * Note
+       * @default
+       */
+      note: string
+      /**
+       * Hidden
+       * @default false
+       */
+      hidden: boolean
+      /**
+       * Revision
+       * @default 0
+       */
+      revision: number
     }
     /** AnswerFollowup */
     AnswerFollowup: {
@@ -4860,6 +4898,7 @@ export interface operations {
         section_id?: string | null
         target_id?: string | null
         q?: string | null
+        suggestions?: boolean
         surface?: ('tutor' | 'playground') | null
       }
       header?: never
@@ -4941,6 +4980,72 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['PlaygroundReply']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_feedback_api_answers__answer_id__feedback_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerFeedbackState']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  put_feedback_api_answers__answer_id__feedback_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnswerFeedbackState']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerFeedbackState']
         }
       }
       /** @description Validation Error */

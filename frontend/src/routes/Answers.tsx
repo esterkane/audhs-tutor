@@ -1,3 +1,4 @@
+import { AnswerFeedback } from '../features/programs/AnswerFeedback'
 import { AnswerFollowup } from '../features/programs/AnswerFollowup'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -261,6 +262,7 @@ function Answer({ id }: { id: string }) {
                 </pre>
               </details>
             )}
+            <AnswerFeedback key={`feedback:${data.id}`} answerId={data.id} />
             <AnswerFollowup key={data.id} answerId={data.id} />
             {sources.length > 0 ? (
               <details>

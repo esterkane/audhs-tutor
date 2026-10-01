@@ -131,3 +131,7 @@ Saved history has read-only owner-scoped `/api/answers` list/detail endpoints wi
 ### Saved-answer search index
 
 `tutor_answer_fts` is a derived local SQLite FTS5 index of request labels and completed answer text. Migration `58e8952b930d` backfills existing answers; insert/update/delete triggers keep it transactional, including learner wipe. Ownership is enforced by joining matches back to `tutor_answer`; code/output/prior chat are not indexed. Backup validation recognizes the exact FTS objects and triggers. Downgrade removes only the derived index. No model request or learning evidence is produced by search.
+
+### Saved-answer reports
+
+`tutor_answer_feedback` holds owner-scoped verdict, optional note, hidden flag and optimistic revision separately from immutable replies. Unique owner/answer key and conditional updates protect concurrent edits. Reports do not produce mastery evidence. Contextual lists omit hidden/incorrect/outdated records; general history retains them. Feedback participates in learner export/wipe and database backups.

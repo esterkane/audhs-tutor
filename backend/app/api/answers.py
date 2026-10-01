@@ -6,10 +6,17 @@ from fastapi import APIRouter, Query
 from sqlalchemy import select, text
 
 from app.api.deps import DB, Gateway, Learner
+from app.db import answer_feedback
 from app.db.answer_search import literal_query
-from app.db.models import TutorAnswer
+from app.db.models import TutorAnswer, TutorAnswerFeedback
 from app.orchestrator import playground
-from app.schemas.answers import AnswerDetail, AnswerFollowup, AnswerPage, AnswerSummary
+from app.schemas.answers import (
+    AnswerDetail,
+    AnswerFeedbackState,
+    AnswerFollowup,
+    AnswerPage,
+    AnswerSummary,
+)
 from app.schemas.playground import PlaygroundContext, PlaygroundReply, PlaygroundRequest
 
 router = APIRouter(prefix="/answers", tags=["answers"])
@@ -53,9 +60,19 @@ async def list_answers(
     section_id: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
     target_id: Annotated[str | None, Query(min_length=1, max_length=1000)] = None,
     q: Annotated[str | None, Query(max_length=200)] = None,
+    suggestions: bool = False,
     surface: Literal["tutor", "playground"] | None = None,
 ) -> AnswerPage:
     stmt = select(TutorAnswer).where(TutorAnswer.learner_id == learner.id)
+    if suggestions:
+        excluded = select(TutorAnswerFeedback.answer_id).where(
+            TutorAnswerFeedback.learner_id == learner.id,
+            (
+                TutorAnswerFeedback.hidden.is_(True)
+                | TutorAnswerFeedback.verdict.in_(["incorrect", "outdated"])
+            ),
+        )
+        stmt = stmt.where(TutorAnswer.id.not_in(excluded))
     if q is not None and q.strip():
         expression = literal_query(q)
         if expression is None:
@@ -146,6 +163,7 @@ async def followup(
     old = row.request_json
     historical = {
         "parent_answer_id": row.id,
+        "learner_report": (await answer_feedback.read(db, learner.id, row.id)).model_dump(),
         "saved_at": row.created_at,
         "request": excerpt(old.get("question", old.get("text")), 2000, "earlier request"),
         "answer": excerpt(row.text, 8000, "earlier answer"),
@@ -180,3 +198,23 @@ async def followup(
             "area_id": row.metadata_json.get("area_id"),
         },
     )
+
+
+@router.get(
+    "/{answer_id}/feedback",
+    response_model=AnswerFeedbackState,
+    summary="Read your saved-answer feedback",
+)
+async def get_feedback(answer_id: str, db: DB, learner: Learner) -> AnswerFeedbackState:
+    return await answer_feedback.read(db, learner.id, answer_id)
+
+
+@router.put(
+    "/{answer_id}/feedback",
+    response_model=AnswerFeedbackState,
+    summary="Save reversible feedback without changing learning evidence",
+)
+async def put_feedback(
+    answer_id: str, body: AnswerFeedbackState, db: DB, learner: Learner
+) -> AnswerFeedbackState:
+    return await answer_feedback.save(db, learner.id, answer_id, body)

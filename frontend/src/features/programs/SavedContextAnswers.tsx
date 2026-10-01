@@ -25,7 +25,7 @@ export function SavedContextAnswers({
   if (sectionId) params.set('section_id', sectionId)
   const query = useQuery({
     queryKey: ['answers', 'context', params.toString()],
-    queryFn: ({ signal }) => apiFetch<Schemas['AnswerPage']>(`/api/answers?${params}&limit=5`, { signal }),
+    queryFn: ({ signal }) => apiFetch<Schemas['AnswerPage']>(`/api/answers?${params}&limit=5&suggestions=true`, { signal }),
     enabled: open && Boolean(targetId || courseId || areaId),
   })
   if (!targetId && !courseId && !areaId) return null
