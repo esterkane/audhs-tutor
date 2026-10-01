@@ -39,15 +39,13 @@ import { useReplan } from '../features/plan/api'
 import { useSensory } from '../features/sensory/useSensory'
 import { TutorResponseStatus } from '../features/tutor/TutorResponseStatus'
 import { useTutorStream } from '../features/tutor/useTutorStream'
-import { SourceViewer } from '../features/curriculum/SourceViewer'
+import { TutorSources } from '../features/tutor/TutorSources'
+import { withheldCount } from '../features/tutor/sourceFlags'
 import { useReport } from '../features/curriculum/api'
 import type { AttemptResult, SessionOut } from '../lib/api'
 import { SOFT_TIMER_MIN, useMode } from '../stores/mode'
 
 type Phase = 'teach' | 'assess' | 'challenge' | 'practice'
-function withheldCount(dropped: string[] | undefined): number {
-  return (dropped ?? []).filter((d) => d.endsWith(':quarantined')).length
-}
 
 export function Session() {
   const { sessionId } = useMode()
@@ -424,11 +422,6 @@ function TeachPanel({
   const prefer = usePrefer()
   const [alt, setAlt] = useState<RenderOut | null>(null)
   const [prevAlt, setPrevAlt] = useState<RenderOut | null>(null)
-  const [openSource, setOpenSource] = useState<{
-    chunkId: string
-    citation: string
-    turnId: string
-  } | null>(null)
   const reportTurn = useReport()
   const prefs = usePreferences()
   const voiceOn = (prefs.data?.values as Record<string, unknown> | undefined)?.['voice.enabled'] === true
@@ -437,10 +430,9 @@ function TeachPanel({
   useEffect(() => {
     if (meta) onHintLevel(meta.hint_level)
   }, [meta, onHintLevel])
-  // "Reported" and an open source belong to one turn: derived, so a new answer starts clean
+  // "Reported" belongs to one turn: a new answer starts clean.
   const reportedThisTurn =
     reportTurn.isSuccess && done != null && reportTurn.variables?.turn_id === done.turn_id
-  const sourceForThisTurn = openSource && done && openSource.turnId === done.turn_id ? openSource : null
 
   async function showDifferently(kind: string) {
     if (!skillId) return
@@ -648,51 +640,7 @@ function TeachPanel({
               {done.usage_source === 'estimated' ? ' · token usage estimated' : ''}
             </details>
           )}
-          {done && done.sources.length > 0 && (
-            <details className="mt-3 text-sm text-muted">
-              <summary className="cursor-pointer font-medium">Sources for this explanation</summary>
-              <ol className="list-decimal ml-5">
-                {done.sources.map((s) => (
-                  <li key={s.chunk_id}>
-                    <button
-                      type="button"
-                      className="underline text-left"
-                      onClick={() =>
-                        setOpenSource({ chunkId: s.chunk_id, citation: s.citation, turnId: done.turn_id })
-                      }
-                    >
-                      {s.citation}
-                    </button>
-                    {s.cited ? '' : ' — not cited'}
-                    {(s.flagged ?? []).length > 0 && (
-                      <span className="text-warn"> (flagged: {(s.flagged ?? []).join(', ')})</span>
-                    )}
-                  </li>
-                ))}
-              </ol>
-              {sourceForThisTurn && (
-                <div className="mt-2">
-                  <SourceViewer
-                    key={sourceForThisTurn.chunkId}
-                    chunkId={sourceForThisTurn.chunkId}
-                    citation={sourceForThisTurn.citation}
-                    turnId={done.turn_id}
-                    onClose={() => setOpenSource(null)}
-                  />
-                </div>
-              )}
-            </details>
-          )}
-          {done && withheldCount(done.dropped) > 0 && (
-            <p className="text-sm text-muted mt-1" role="status">
-              {withheldCount(done.dropped)} source{withheldCount(done.dropped) === 1 ? '' : 's'} withheld:
-              flagged text from a web or untrusted tier is not sent to the tutor. You can inspect and re-tier
-              it under Corpus.
-            </p>
-          )}
-          {done && done.sources.length === 0 && withheldCount(done.dropped) === 0 && (
-            <p className="text-sm text-muted mt-2">no course source for this</p>
-          )}
+          {done && <TutorSources turn={done} />}
           {done && (
             <p className="text-xs mt-2">
               {reportedThisTurn ? (

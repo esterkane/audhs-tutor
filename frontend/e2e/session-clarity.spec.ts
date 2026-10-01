@@ -44,6 +44,40 @@ test('context, optional confidence, saved labels and stopping without recap', as
     'Keep this question feedback draft',
   )
   await expect(page.getByRole('button', { name: 'Give me a hint' })).toHaveCount(1)
+  await page.route('**/api/tutor/stream', async (route) => {
+    const done = {
+      turn_id: 'hint-source',
+      sources: [{ chunk_id: 'hint-chunk', citation: '[Example hint source]', cited: true, flagged: [] }],
+      dropped: [],
+      text: 'Consider the units in the example.',
+    }
+    await route.fulfill({
+      contentType: 'text/event-stream',
+      body: `event: meta\ndata: ${JSON.stringify({ turn_id: 'hint-source' })}\n\nevent: token\ndata: ${JSON.stringify({ text: done.text })}\n\nevent: done\ndata: ${JSON.stringify(done)}\n\n`,
+    })
+  })
+  await page.route('**/api/curriculum/chunks/hint-chunk', (route) =>
+    route.fulfill({
+      json: {
+        chunk_id: 'hint-chunk',
+        citation: '[Example hint source]',
+        text: 'Compare both quantities using the same units.',
+        document_title: 'Synthetic source',
+        source_type: 'text',
+        trust_tier: 2,
+        uri: '/materials/example.txt',
+        open_url: null,
+      },
+    }),
+  )
+  await page.getByRole('button', { name: 'Give me a hint' }).click()
+  await page.getByText('Sources for this explanation', { exact: true }).click()
+  const citation = page.getByRole('button', { name: '[Example hint source]', exact: true })
+  await citation.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Compare both quantities using the same units.')).toBeVisible()
+  await page.getByRole('button', { name: 'Close', exact: true }).click()
+  await expect(citation).toBeFocused()
   await expect(page.getByText('Confidence (optional)')).toBeVisible()
   await expect(page.getByRole('group', { name: /How sure are you/ })).not.toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('session-assessment.png'), fullPage: true })

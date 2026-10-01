@@ -11,11 +11,11 @@ const chunk = {
   course: 'Transformers from Scratch',
   section: 'Attention',
   lecture: 'Self-attention',
-  source_type: 'course_caption',
+  source_type: 'caption',
   trust_tier: 2,
   document_title: 'Self-attention',
-  uri: '/Users/x/course/Course/Section/lecture.en.vtt',
-  open_url: 'file:///Users/x/course/Course/Section/lecture.en.vtt',
+  uri: '/materials/example/lecture.en.vtt',
+  open_url: '/api/curriculum/files/example',
   t_start: 12,
   t_end: 40,
   prev_text: 'Scores come from query-key dot products.',
@@ -60,7 +60,7 @@ describe('SourceViewer', () => {
     expect(screen.getByText(/Scores come from query-key/)).toBeInTheDocument()
     expect(screen.getByRole('link', { name: /Open the original \(lecture.en.vtt\)/ })).toHaveAttribute(
       'href',
-      'file:///Users/x/course/Course/Section/lecture.en.vtt',
+      '/api/curriculum/files/example',
     )
     expect(await axe(container)).toHaveNoViolations()
     fireEvent.click(screen.getByRole('button', { name: /Report this source as wrong/ }))
@@ -86,5 +86,19 @@ describe('SourceViewer', () => {
     renderApp(<SourceViewer chunkId="missing" citation="[Course › Lecture @01:00]" onClose={() => {}} />)
     expect(await screen.findByText(/no longer in the corpus/)).toBeInTheDocument()
     expect(screen.getByText('[Course › Lecture @01:00]')).toBeInTheDocument()
+  })
+  it('retries a temporary error without claiming the source was removed', async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ error: { code: 'unavailable', message: 'offline' } }, 503))
+      .mockResolvedValueOnce(jsonResponse(chunk))
+    vi.stubGlobal('fetch', fetch)
+    renderApp(<SourceViewer chunkId="c1" citation="[cit]" onClose={() => {}} />)
+    expect(await screen.findByText(/does not mean the source was removed/)).toBeInTheDocument()
+    expect(screen.queryByText(/no longer in the corpus/)).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Retry passage' }))
+    expect(await screen.findByText(/We divide by the square root/)).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Retry passage' })).not.toBeInTheDocument()
+    expect(fetch).toHaveBeenCalledTimes(2)
   })
 })

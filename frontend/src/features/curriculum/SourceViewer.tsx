@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Textarea } from '../../components/ui/textarea'
+import { ApiError } from '../../lib/api'
 import { useChunk, useReport } from './api'
 
 function mmss(t: number | null | undefined): string | null {
@@ -28,11 +29,12 @@ export function SourceViewer({
   turnId?: string | null
   onClose: () => void
 }) {
+  const noteId = useId()
   const chunk = useChunk(chunkId)
   const report = useReport()
   const [note, setNote] = useState('')
   const [reporting, setReporting] = useState(false)
-  const c = chunk.data
+  const c = chunk.isError ? undefined : chunk.data
   return (
     <Card role="region" aria-label={`Source ${citation}`} className="border-accent">
       <div className="flex justify-between gap-2 items-start">
@@ -43,10 +45,16 @@ export function SourceViewer({
       </div>
       {chunk.isLoading && <p className="text-sm text-muted">Loading passage…</p>}
       {chunk.isError && (
-        <p className="text-sm text-muted" role="status">
-          This passage is no longer in the corpus (it may have been re-ingested or removed). The citation
-          above is what the tutor saw.
-        </p>
+        <div role="status" className="text-sm text-muted">
+          <p>
+            {chunk.error instanceof ApiError && chunk.error.status === 404
+              ? 'This passage is no longer in the corpus (it may have been re-ingested or removed). The citation is retained, but the passage cannot be shown.'
+              : 'The passage could not be loaded. This does not mean the source was removed.'}
+          </p>
+          <Button size="sm" disabled={chunk.isFetching} onClick={() => void chunk.refetch()}>
+            {chunk.isFetching ? 'Loading passage…' : 'Retry passage'}
+          </Button>
+        </div>
       )}
       {c && (
         <>
@@ -85,11 +93,11 @@ export function SourceViewer({
           </p>
         ) : (
           <div className="grid gap-2">
-            <label htmlFor="report-note" className="text-sm">
+            <label htmlFor={noteId} className="text-sm">
               What is wrong? (one line is enough)
             </label>
             <Textarea
-              id="report-note"
+              id={noteId}
               value={note}
               onChange={(e) => setNote(e.target.value)}
               className="min-h-16"

@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Button } from '../../components/ui/button'
 import { Markdown } from '../../components/Markdown'
+import { TutorSources } from '../tutor/TutorSources'
 import { TutorResponseStatus } from '../tutor/TutorResponseStatus'
 import { useTutorStream } from '../tutor/useTutorStream'
 import { ReadAloud } from '../voice/ReadAloud'
@@ -63,13 +64,7 @@ export function QuestionHelp({
           {!tutor.busy && <ReadAloud key={tutor.text} text={tutor.text} />}
         </div>
       )}
-      {tutor.done && (
-        <p className="text-xs text-muted mt-2">
-          {tutor.done.sources.length
-            ? tutor.done.sources.map((s) => s.citation).join(' · ')
-            : 'No course source for this explanation.'}
-        </p>
-      )}
+      {tutor.done && <TutorSources turn={tutor.done} />}
       {tutor.error && <p role="alert">{tutor.error}</p>}
     </div>
   )

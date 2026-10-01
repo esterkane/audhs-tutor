@@ -382,9 +382,10 @@ function Conversation({
               text={reply.text}
               label={reviewOnly ? 'Listen to feedback' : 'Listen to tutor response'}
             />
+            <p className="text-sm text-muted">{reply.source_note}</p>
             <details className="text-xs text-muted">
               <summary>Response details</summary>
-              {reply.model} · {reply.route}. {reply.source_note}
+              {reply.model} · {reply.route}.
             </details>
           </div>
         </div>
