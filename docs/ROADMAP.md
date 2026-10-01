@@ -14,3 +14,5 @@ Think deeper exposes Check my answer using the existing session/tutor routing; q
 Notebook workspace can prepare an explicit private bundle, preserve existing edits, install/repair pinned base tools on request and start loopback authenticated Jupyter. No cells execute automatically. Eight backend regressions, 181 frontend tests, lint/build, isolated browser journey and code/pedagogy reviews pass; real launch returned ready and HTTP 200. Course-specific legacy dependencies remain a separate compatibility task. See docs/slices/local-notebook-launch.md.
 
 - 2026-10-01: bounded draw.io text ingestion implemented and reviewed; see docs/slices/diagram-ingestion.md.
+
+- 2026-10-01: archive-member retry preserves completed work; see docs/slices/archive-retry.md.

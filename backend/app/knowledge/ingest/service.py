@@ -814,26 +814,32 @@ async def latest_resumable_run(
 
 
 async def _done_uris(db: AsyncSession, run_id: str) -> set[str]:
-    """Terminal URIs of a run *and* of the runs it resumed (the chain), so a third attempt does
-    not redo what the first one finished."""
-    done: set[str] = set()
+    """Latest outcomes across the resume chain, reopening archives with retryable members.
+
+    A completed archive traversal does not imply that every member succeeded. Keep successful
+    members terminal while reopening the container; a newer successful retry supersedes an
+    older failure so later resumes do not keep re-extracting the archive.
+    """
+    outcomes: dict[str, str] = {}
     seen: set[str] = set()
     current: str | None = run_id
     while current is not None and current not in seen and len(seen) < 50:
         seen.add(current)
-        rows = (
-            await db.execute(
-                select(IngestRunItem.uri).where(
-                    IngestRunItem.run_id == current,
-                    IngestRunItem.outcome != "retryable_error",  # a resume retries these
-                )
-            )
-        ).scalars()
-        done.update(rows)
+        rows = await db.execute(
+            select(IngestRunItem.uri, IngestRunItem.outcome)
+            .where(IngestRunItem.run_id == current)
+            .order_by(IngestRunItem.ts.desc(), IngestRunItem.id.desc())
+        )
+        for uri, outcome in rows:
+            outcomes.setdefault(uri, outcome)
         parent = (
             await db.execute(select(IngestRun.resumed_from).where(IngestRun.id == current))
         ).scalar_one_or_none()
         current = parent
+    done = {uri for uri, outcome in outcomes.items() if outcome != "retryable_error"}
+    for uri, outcome in outcomes.items():
+        if outcome == "retryable_error" and "!/" in uri:
+            done.discard(uri.split("!/", 1)[0])
     return done
 
 
