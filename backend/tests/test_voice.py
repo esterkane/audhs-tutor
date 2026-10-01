@@ -563,6 +563,9 @@ async def test_identified_capture_tags_speech_and_discards_frames_after_processi
             )
             messages = _collect(ws, {"done"})
             assert all(m["request_id"] == typed for m in messages)
+            ws.send_text(json.dumps({"type": "interrupt", "request_id": capture}))
+            ws.send_text(json.dumps({"type": "interrupt", "request_id": typed}))
+            assert json.loads(ws.receive_text()) == {"type": "interrupted", "request_id": typed}
             ws.send_text(json.dumps({"type": "stop"}))
 
     await asyncio.to_thread(drive)

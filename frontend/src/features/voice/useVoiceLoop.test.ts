@@ -320,3 +320,27 @@ it('identifies microphone capture and stops recording at the matching processing
   )
   expect(result.current.transcript).toBe('My speech')
 })
+
+it('sends scoped interruption controls and ignores stale acknowledgements', () => {
+  const ws = new Socket()
+  const { result } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  const message = (value: object) => act(() => ws.onmessage?.({ data: JSON.stringify(value) }))
+  act(() => result.current.connect())
+  act(() => ws.open())
+  message({ type: 'ready', request_identity: 'utterance-v1', control_identity: true })
+  act(() => {
+    result.current.sendText('Current question')
+  })
+  const identity = JSON.parse(ws.sent.at(-1)!).request_id
+  act(() => result.current.interrupt())
+  expect(JSON.parse(ws.sent.at(-1)!)).toEqual({ type: 'interrupt', request_id: identity })
+  message({ type: 'done', request_id: identity, turn: null })
+  message({ type: 'interrupted', request_id: 'previous' })
+  message({ type: 'interrupted' })
+  expect(result.current.status).toBe('stopping')
+  expect(result.current.sendText('Too soon')).toBe(false)
+  message({ type: 'interrupted', request_id: identity })
+  expect(result.current.status).toBe('ready')
+})

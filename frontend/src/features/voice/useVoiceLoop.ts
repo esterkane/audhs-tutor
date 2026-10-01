@@ -44,6 +44,7 @@ export function useVoiceLoop(opts: {
   const handshake = useRef(false)
   const identifiedText = useRef(false)
   const identifiedCapture = useRef(false)
+  const identifiedControls = useRef(false)
   const requestIdentity = useRef<string | null>(null)
   const turnBusy = useRef(false)
   const micGeneration = useRef(0)
@@ -102,6 +103,7 @@ export function useVoiceLoop(opts: {
     if (socket.current) return
     identifiedText.current = false
     identifiedCapture.current = false
+    identifiedControls.current = false
     requestIdentity.current = null
     setError(null)
     setStatus('connecting')
@@ -189,6 +191,12 @@ export function useVoiceLoop(opts: {
         )
           return
       }
+      if (
+        identifiedControls.current &&
+        msg.type === 'interrupted' &&
+        msg.request_id !== requestIdentity.current
+      )
+        return
       if (interruptedTurn.current && msg.type === 'error' && !msg.protocol) {
         fail('The interrupted turn could not finish. Received text is kept; reconnect when ready.')
         return
@@ -198,6 +206,7 @@ export function useVoiceLoop(opts: {
       if (interruptedTurn.current && ['transcript', 'meta', 'token', 'audio'].includes(msg.type)) return
       switch (msg.type) {
         case 'ready':
+          identifiedControls.current = msg.control_identity === true
           identifiedCapture.current = msg.request_identity === 'utterance-v1'
           identifiedText.current = identifiedCapture.current || msg.request_identity === 'typed-v1'
           requestIdentity.current = null
@@ -363,7 +372,7 @@ export function useVoiceLoop(opts: {
       ws.send(
         JSON.stringify({
           type,
-          ...(identifiedCapture.current && requestIdentity.current
+          ...((identifiedCapture.current || identifiedControls.current) && requestIdentity.current
             ? { request_id: requestIdentity.current }
             : {}),
         }),

@@ -97,6 +97,7 @@ class VoiceState:
     speaking: bool = False
     identified_capture: bool = False
     capture_id: str | None = None
+    active_request_id: str | None = None
 
 
 def sentences(text: str) -> list[str]:
@@ -221,6 +222,7 @@ class VoiceLoop:
                         state.buffer.clear()
                         self.vad.reset()
                         state.capture_id = identity
+                        state.active_request_id = identity
                     finally:
                         _request_identity.reset(token)
                 elif kind == "end_of_speech":
@@ -258,6 +260,7 @@ class VoiceLoop:
                                 state.capture_id = None
                                 state.buffer.clear()
                                 self.vad.reset()
+                            state.active_request_id = identity
                             # Child response and speaker tasks inherit this immutable context.
                             self._turn_task = asyncio.create_task(
                                 self._respond(ws, state, text, stt_ms=0)
@@ -265,10 +268,19 @@ class VoiceLoop:
                         finally:
                             _request_identity.reset(token)
                 elif kind == "interrupt":
-                    # acknowledge at once (playback stops client-side), then let the turn wind down
-                    self._interrupted.set()
-                    await self._send(ws, {"type": "interrupted"})
-                    await self._interrupt()
+                    identity = data.get("request_id")
+                    if (
+                        identity is not None or state.identified_capture
+                    ) and identity != state.active_request_id:
+                        continue  # delayed controls cannot interrupt a newer request
+                    token = _request_identity.set(state.active_request_id)
+                    try:
+                        # Playback stops locally; acknowledgement is not terminal cleanup.
+                        self._interrupted.set()
+                        await self._send(ws, {"type": "interrupted"})
+                        await self._interrupt()
+                    finally:
+                        _request_identity.reset(token)
                 elif kind == "stop":
                     await self._interrupt()
                     break
@@ -333,6 +345,7 @@ class VoiceLoop:
             ws,
             {
                 "type": "ready",
+                "control_identity": True,
                 "request_identity": "utterance-v1" if state.identified_capture else "typed-v1",
                 "stt": self.stt.registry_id if self.stt else None,
                 "tts": self.tts.model if self.tts else None,

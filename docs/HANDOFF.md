@@ -333,3 +333,13 @@ Typed turns invalidate old capture buffers. Legacy protocol remains supported. B
 frontend261, lint/types/build and required reviews passed with fakes only. See
 `docs/slices/voice-capture-identities.md`. No durable voice replay or personal benchmark claim;
 control identities, terminal lookup, unresolved UX and provider-resistant teardown remain open.
+
+
+## Voice interruption controls — 2026-10-02
+
+Current request identity now survives capture closure. Stale/missing interrupts cannot affect
+a newer identified request; matching acknowledgements carry identity and the client still waits
+for terminal completion. Connection-wide Stop and legacy behavior remain intact. Backend582,
+frontend262, lint/types/build and required reviews passed with synthetic tests. See
+voice-control-identities slice. Durable terminal lookup, unresolved recovery and resistant-provider
+teardown remain open. Correlation is not an exactly-once or full-recovery claim.

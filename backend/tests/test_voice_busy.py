@@ -74,3 +74,46 @@ async def test_wait_previous_allows_work_only_after_cleanup_finishes():
     loop._busy_beyond_interrupt = False
     assert await loop._wait_previous(ws)
     assert ws.send_text.await_count == 1
+
+
+async def test_stale_interrupt_does_not_touch_new_request_and_acknowledgement_is_scoped():
+    loop = VoiceLoop(
+        Mock(), Mock(), stt=None, tts=None, vad=Mock(), voice_dir=Mock(), learner_id="owner"
+    )
+    current = "5981194c-0ca6-4c53-9e3e-6d583aedc018"
+    stale = "4981194c-0ca6-4c53-9e3e-6d583aedc018"
+    state = VoiceState(
+        session_id="s",
+        skill_id=None,
+        lang=None,
+        text_only=True,
+        conversation=False,
+        voice="",
+        identified_capture=True,
+        active_request_id=current,
+    )
+    loop._start = AsyncMock(return_value=state)
+    loop._interrupt = AsyncMock()
+    ws = Mock()
+    ws.receive = AsyncMock(
+        side_effect=[
+            {"type": "websocket.receive", "text": json.dumps({"type": "start"})},
+            {
+                "type": "websocket.receive",
+                "text": json.dumps({"type": "interrupt", "request_id": stale}),
+            },
+            {"type": "websocket.receive", "text": json.dumps({"type": "interrupt"})},
+            {
+                "type": "websocket.receive",
+                "text": json.dumps({"type": "interrupt", "request_id": current}),
+            },
+            {"type": "websocket.disconnect"},
+        ]
+    )
+    ws.send_text = AsyncMock()
+    await loop.serve(ws)
+    # One matching interrupt plus final cleanup; stale/missing controls do neither.
+    assert loop._interrupt.await_count == 2
+    assert [json.loads(call.args[0]) for call in ws.send_text.await_args_list] == [
+        {"type": "interrupted", "request_id": current}
+    ]
