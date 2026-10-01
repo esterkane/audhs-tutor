@@ -282,3 +282,41 @@ it('shows untagged startup errors after reconnecting an identified conversation'
   expect(result.current.error).toBe('Session unavailable')
   expect(result.current.status).toBe('error')
 })
+
+it('identifies microphone capture and stops recording at the matching processing boundary', async () => {
+  const ws = new Socket()
+  const stop = vi.fn()
+  let frame!: (pcm: Int16Array) => void
+  vi.mocked(startMic).mockImplementation(async (callback) => {
+    frame = callback
+    return { stop }
+  })
+  const { result } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  act(() => result.current.connect())
+  act(() => {
+    ws.open()
+    ws.onmessage?.({ data: JSON.stringify({ type: 'ready', request_identity: 'utterance-v1' }) })
+  })
+  await act(async () => {
+    await result.current.listen()
+  })
+  const capture = JSON.parse(ws.sent.at(-1)!)
+  expect(capture.type).toBe('capture')
+  expect(capture.request_id).toMatch(/^[a-f0-9-]{36}$/)
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'processing', request_id: 'another' }) }))
+  expect(stop).not.toHaveBeenCalled()
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'processing', request_id: capture.request_id }) }))
+  expect(stop).toHaveBeenCalledOnce()
+  expect(result.current.status).toBe('thinking')
+  const sends = ws.sent.length
+  act(() => frame(new Int16Array([1, 2])))
+  expect(ws.sent).toHaveLength(sends)
+  act(() =>
+    ws.onmessage?.({
+      data: JSON.stringify({ type: 'transcript', request_id: capture.request_id, text: 'My speech' }),
+    }),
+  )
+  expect(result.current.transcript).toBe('My speech')
+})

@@ -43,6 +43,7 @@ export function useVoiceLoop(opts: {
   const turnDone = useRef(false)
   const handshake = useRef(false)
   const identifiedText = useRef(false)
+  const identifiedCapture = useRef(false)
   const requestIdentity = useRef<string | null>(null)
   const turnBusy = useRef(false)
   const micGeneration = useRef(0)
@@ -100,6 +101,7 @@ export function useVoiceLoop(opts: {
   const connect = useCallback(() => {
     if (socket.current) return
     identifiedText.current = false
+    identifiedCapture.current = false
     requestIdentity.current = null
     setError(null)
     setStatus('connecting')
@@ -144,6 +146,7 @@ export function useVoiceLoop(opts: {
         ws.send(
           JSON.stringify({
             type: 'start',
+            request_identity: 'utterance-v1',
             session_id: sessionId,
             skill_id: skillId ?? null,
             lang: lang ?? null,
@@ -167,7 +170,17 @@ export function useVoiceLoop(opts: {
       }
       if (
         identifiedText.current &&
-        ['transcript', 'meta', 'token', 'audio', 'done', 'error'].includes(msg.type) &&
+        [
+          'processing',
+          'listening',
+          'nothing_heard',
+          'transcript',
+          'meta',
+          'token',
+          'audio',
+          'done',
+          'error',
+        ].includes(msg.type) &&
         !msg.protocol
       ) {
         if (
@@ -185,7 +198,8 @@ export function useVoiceLoop(opts: {
       if (interruptedTurn.current && ['transcript', 'meta', 'token', 'audio'].includes(msg.type)) return
       switch (msg.type) {
         case 'ready':
-          identifiedText.current = msg.request_identity === 'typed-v1'
+          identifiedCapture.current = msg.request_identity === 'utterance-v1'
+          identifiedText.current = identifiedCapture.current || msg.request_identity === 'typed-v1'
           requestIdentity.current = null
           turnBusy.current = false
           clearTimer()
@@ -193,6 +207,12 @@ export function useVoiceLoop(opts: {
           setReady(msg)
           setError(null)
           setStatus('ready')
+          break
+        case 'processing':
+          micGeneration.current++
+          mic.current?.stop()
+          mic.current = null
+          if (!interruptedTurn.current) setStatus('thinking')
           break
         case 'listening':
           if (interruptedTurn.current) break
@@ -271,6 +291,9 @@ export function useVoiceLoop(opts: {
         case 'error':
           if (msg.protocol) break // a client-side protocol slip, never shown to the learner
           if (msg.fallback === 'text') {
+            micGeneration.current++
+            mic.current?.stop()
+            mic.current = null
             turnBusy.current = false
             setError(String(msg.message))
             setStatus('ready')
@@ -298,7 +321,7 @@ export function useVoiceLoop(opts: {
       status !== 'ready'
     )
       return
-    requestIdentity.current = null
+    requestIdentity.current = identifiedCapture.current ? crypto.randomUUID() : null
     interruptedTurn.current = false
     setInterrupted(false)
     turnDone.current = false
@@ -307,6 +330,8 @@ export function useVoiceLoop(opts: {
     const generation = ++micGeneration.current
     setStatus('listening')
     try {
+      if (identifiedCapture.current)
+        ws.send(JSON.stringify({ type: 'capture', request_id: requestIdentity.current }))
       const opened = await startMic((pcm) => {
         if (socket.current === ws && ws.readyState === 1 && micGeneration.current === generation) {
           const bytes = new Uint8Array(pcm.byteLength)
@@ -335,7 +360,14 @@ export function useVoiceLoop(opts: {
     const ws = socket.current
     if (ws?.readyState !== 1) return false
     try {
-      ws.send(JSON.stringify({ type }))
+      ws.send(
+        JSON.stringify({
+          type,
+          ...(identifiedCapture.current && requestIdentity.current
+            ? { request_id: requestIdentity.current }
+            : {}),
+        }),
+      )
       return true
     } catch {
       return false

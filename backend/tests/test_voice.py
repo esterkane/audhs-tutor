@@ -525,3 +525,45 @@ async def test_typed_voice_identity_covers_content_and_does_not_leak_to_legacy_t
             ws.send_text(json.dumps({"type": "stop"}))
 
     await asyncio.to_thread(drive)
+
+
+async def test_identified_capture_tags_speech_and_discards_frames_after_processing(
+    ws_app,
+    spoken_world: dict[str, str],  # type: ignore[no-untyped-def]
+) -> None:
+    stt = FakeStt("Explain this idea")
+    ws_app.state.voice_overrides = {"stt": stt, "tts": FakeTts(), "vad": EnergyVad()}
+    capture = "4981194c-0ca6-4c53-9e3e-6d583aedc018"
+    typed = "5981194c-0ca6-4c53-9e3e-6d583aedc018"
+
+    def drive() -> None:
+        with TestClient(ws_app) as tc, _connect(tc) as ws:
+            ws.send_text(
+                json.dumps(
+                    {
+                        "type": "start",
+                        "session_id": spoken_world["session_id"],
+                        "request_identity": "utterance-v1",
+                    }
+                )
+            )
+            assert json.loads(ws.receive_text())["request_identity"] == "utterance-v1"
+            ws.send_text(json.dumps({"type": "capture", "request_id": capture}))
+            for frame in [tone(0.1)] * 6 + [silence(0.1)] * 9:
+                ws.send_bytes(frame)
+            messages = _collect(ws, {"done"})
+            assert {"processing", "transcript", "audio", "done"} <= {m["type"] for m in messages}
+            assert all(m["request_id"] == capture for m in messages)
+            # Leftover frames and a late Done click are not another microphone capture.
+            for frame in [tone(0.1)] * 6:
+                ws.send_bytes(frame)
+            ws.send_text(json.dumps({"type": "end_of_speech", "request_id": capture}))
+            ws.send_text(
+                json.dumps({"type": "text", "text": "Next typed question", "request_id": typed})
+            )
+            messages = _collect(ws, {"done"})
+            assert all(m["request_id"] == typed for m in messages)
+            ws.send_text(json.dumps({"type": "stop"}))
+
+    await asyncio.to_thread(drive)
+    assert len(stt.heard) == 1

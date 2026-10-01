@@ -322,3 +322,14 @@ negotiation before startup errors. Legacy clients and microphone turns remain co
 Backend580/frontend260, lint/types/build and fake-provider WebSocket regressions passed; required
 reviews clear. Correlation only, not idempotency or durable replay. See voice-request-identities
 slice; microphone identities, terminal lookup and provider-resistant teardown remain open.
+
+
+## Microphone capture identity — 2026-10-02
+
+Negotiated utterance-v1 adds a capture UUID before explicit Talk. Processing closes the capture
+and browser microphone; late PCM frames or end controls cannot start another STT call. All
+speech response/audio events retain the capture ID and stale client messages are ignored.
+Typed turns invalidate old capture buffers. Legacy protocol remains supported. Backend581,
+frontend261, lint/types/build and required reviews passed with fakes only. See
+`docs/slices/voice-capture-identities.md`. No durable voice replay or personal benchmark claim;
+control identities, terminal lookup, unresolved UX and provider-resistant teardown remain open.

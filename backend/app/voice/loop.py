@@ -95,6 +95,8 @@ class VoiceState:
     early_speech: bool = True
     buffer: bytearray = field(default_factory=bytearray)
     speaking: bool = False
+    identified_capture: bool = False
+    capture_id: str | None = None
 
 
 def sentences(text: str) -> list[str]:
@@ -176,7 +178,13 @@ class VoiceLoop:
                 if msg.get("bytes") is not None:
                     if state is None:
                         continue
-                    await self._on_audio(ws, state, msg["bytes"])
+                    if state.identified_capture and state.capture_id is None:
+                        continue  # frames queued after a finished capture cannot start another turn
+                    token = _request_identity.set(state.capture_id)
+                    try:
+                        await self._on_audio(ws, state, msg["bytes"])
+                    finally:
+                        _request_identity.reset(token)
                     continue
                 try:
                     data = json.loads(msg.get("text") or "{}")
@@ -193,8 +201,38 @@ class VoiceLoop:
                     await self._send(
                         ws, {"type": "error", "message": "send start first", "protocol": True}
                     )
+                elif kind == "capture" and state.identified_capture:
+                    try:
+                        identity = str(UUID(str(data.get("request_id"))))
+                    except ValueError:
+                        await self._send(
+                            ws,
+                            {
+                                "type": "error",
+                                "message": "Invalid capture identity.",
+                                "protocol": True,
+                            },
+                        )
+                        continue
+                    token = _request_identity.set(identity)
+                    try:
+                        if not await self._wait_previous(ws):
+                            continue
+                        state.buffer.clear()
+                        self.vad.reset()
+                        state.capture_id = identity
+                    finally:
+                        _request_identity.reset(token)
                 elif kind == "end_of_speech":
-                    await self._finish_utterance(ws, state)
+                    if state.identified_capture and (
+                        state.capture_id is None or data.get("request_id") != state.capture_id
+                    ):
+                        continue
+                    token = _request_identity.set(state.capture_id)
+                    try:
+                        await self._finish_utterance(ws, state)
+                    finally:
+                        _request_identity.reset(token)
                 elif kind == "text":
                     text = str(data.get("text") or "").strip()
                     identity = data.get("request_id")
@@ -216,6 +254,10 @@ class VoiceLoop:
                         try:
                             if not await self._wait_previous(ws):
                                 continue
+                            if state.identified_capture:
+                                state.capture_id = None
+                                state.buffer.clear()
+                                self.vad.reset()
                             # Child response and speaker tasks inherit this immutable context.
                             self._turn_task = asyncio.create_task(
                                 self._respond(ws, state, text, stt_ms=0)
@@ -285,12 +327,13 @@ class VoiceLoop:
             conversation=bool(data.get("conversation")),
             voice=voice,
             early_speech=early,
+            identified_capture=data.get("request_identity") == "utterance-v1",
         )
         await self._send(
             ws,
             {
                 "type": "ready",
-                "request_identity": "typed-v1",
+                "request_identity": "utterance-v1" if state.identified_capture else "typed-v1",
                 "stt": self.stt.registry_id if self.stt else None,
                 "tts": self.tts.model if self.tts else None,
                 "vad": self.vad.name,
@@ -336,6 +379,9 @@ class VoiceLoop:
         )
 
     async def _finish_utterance(self, ws: WebSocket, state: VoiceState) -> None:
+        if state.identified_capture:
+            state.capture_id = None
+            await self._send(ws, {"type": "processing"})
         pcm = bytes(state.buffer)
         state.buffer = bytearray()
         heard_ms = getattr(self.vad, "heard_ms", 0)
