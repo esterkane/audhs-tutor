@@ -3984,6 +3984,8 @@ export interface components {
       answer_id?: string | null
       /** Save Error */
       save_error?: string | null
+      /** Memory Answers */
+      memory_answers?: string[]
       /**
        * Source Note
        * @default General coding guidance; no course sources retrieved.

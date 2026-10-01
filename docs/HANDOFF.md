@@ -122,3 +122,8 @@ Separate owner-scoped revision-checked reports preserve immutable answers. Helpf
 ## 2026-10-01 — saved-source comparison
 
 Added explicit owner-scoped, bounded local source hash checks to answer history: changed, unchanged, missing, unverifiable and newer-version notices. No model call or evidence write; unchanged text does not certify truth. Verification: 440 backend, 221 frontend, two isolated browser journeys, lint/types/build; independent code/pedagogy review clear. Next: bounded retrieval before generation, exact-context reuse, then evaluated local semantic search. Both repositories remain private.
+
+
+## 2026-10-01 — workspace answer memory
+
+Workspace tutor requests now retrieve up to two bounded historical excerpts before generation using local literal search, owner/target/exact supplied-work/intent filters and negative-feedback exclusions. Memory-assisted replies are not recursively reused. Retrieval SQL failure falls back to normal generation. Prior excerpts/dates/links persist and remain inspectable after reopening; they are not independent evidence. No automatic replay or measured performance win. Verification: 442 backend, frontend suite plus 26 focused post-review tests, lint/types/build and isolated desktop/narrow notebook journeys; code/pedagogy re-review clear. Next: local quality/latency evaluation, explicit direct reuse and semantic search; main streaming tutor integration remains separate. Both repos private.

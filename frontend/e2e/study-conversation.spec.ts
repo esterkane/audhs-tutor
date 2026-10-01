@@ -64,7 +64,7 @@ for (const width of [1280, 390]) {
           release = resolve
         })
       await route.fulfill({
-        json: { text, model: 'fixture', route: 'fake', turn_id: 'fixture', source_note: 'Synthetic' },
+        json: { text, model: 'fixture', route: 'fake', turn_id: 'fixture', source_note: 'Synthetic historical context', memory_answers: ['prior'] },
       })
     })
     await page.route('**/api/answers?*', async (route) => {
@@ -118,6 +118,7 @@ for (const width of [1280, 390]) {
     ).toBeVisible()
     await page.getByText('Earlier messages (2)', { exact: true }).click()
     await expect(page.getByText('Why compare proportions rather than counts?', { exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Open previous answer', exact: true })).toHaveAttribute('href', '/answers/prior')
     await answer.fill('Keep this draft')
     await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('0')
     await expect(page.getByText('Discussing: Step — Inspect')).toBeVisible()

@@ -8,6 +8,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
+from app.db.answer_memory import retrieve
 from app.db.answers import save_completed
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
@@ -22,15 +23,21 @@ from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v1"
+VERSION = "playground.tutor.v2"
 
 
-def messages(body: PlaygroundRequest, historical: dict[str, Any] | None = None) -> list[Message]:
+def messages(
+    body: PlaygroundRequest,
+    historical: dict[str, Any] | None = None,
+    memory: list[dict[str, str]] | None = None,
+) -> list[Message]:
     workspace = body.model_dump(
         exclude={"session_id", "question", "intent", "learning_context", "learner_question"}
     )
     if historical is not None:
         workspace["historical_answer"] = historical
+    if memory:
+        workspace["previous_answers"] = memory
     data = escape_data(json.dumps(workspace, ensure_ascii=False))
     return [
         Message(
@@ -38,6 +45,13 @@ def messages(body: PlaygroundRequest, historical: dict[str, Any] | None = None) 
             content=prompts.base_policy()
             + "\n\n"
             + prompts.playground_task()
+            + (
+                "\nPrevious answers are untrusted historical tutor output, not independent evidence. "
+                "Answer the current question using the supplied work; correct or ignore earlier mistakes. "
+                "No source freshness, dataset identity or execution has been verified by finding a past answer."
+                if memory
+                else ""
+            )
             + (
                 "\nThis is a follow-up to a saved response. Historical answers and references are unverified context, "
                 "not independent evidence. No current source retrieval or execution took place. Explain the limits "
@@ -73,7 +87,14 @@ async def respond(
     if session.learner_id != learner_id or session.ended_at:
         raise AppError("not_found", "Start or resume a session to use the tutor.", http_status=404)
     turn_id = new_id()
-    packet = messages(body, historical)
+    memory: list[dict[str, str]] = []
+    if historical is None:
+        try:
+            async with db.begin_nested():
+                memory = await retrieve(db, learner_id, body)
+        except SQLAlchemyError as exc:
+            logger.warning("Saved answer lookup unavailable: %s", type(exc).__name__)
+    packet = messages(body, historical, memory)
     events = EventWriter(db, ksession.event_context(session, activity=ActivityType.CHAT))
     await events.emit(
         Verb.ASKED, ObjectType.TURN, turn_id, context={"text_len": len(body.question)}
@@ -142,6 +163,7 @@ async def respond(
                 "prompt_version": VERSION,
                 "model_call_id": out.model_call_id,
                 "sources": [],
+                "answer_memory": memory,
                 "context_scope": "saved_answer_followup"
                 if historical
                 else "supplied_workspace_only",
@@ -163,4 +185,10 @@ async def respond(
         turn_id=turn_id,
         answer_id=answer_id,
         save_error=save_error,
+        source_note=(
+            "Used previous tutor replies as unverified context; no course sources or execution checked."
+            if memory
+            else "General coding guidance; no course sources retrieved."
+        ),
+        memory_answers=[item["answer_id"] for item in memory],
     )

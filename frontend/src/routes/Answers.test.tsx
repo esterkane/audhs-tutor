@@ -146,3 +146,15 @@ it('submits search explicitly and retains it through answer opening and return',
   fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
   await waitFor(() => expect(fetcher.mock.calls.at(-1)?.[0]).not.toContain('q='))
 })
+it('retains the exact historical memory snapshot when reopening a generated reply', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({
+    ...summary, text: 'New response', request: {}, metadata: { answer_memory: [{
+      answer_id: 'old', saved_at: '2026-10-01T09:00:00Z', question: 'Which group?', excerpt: 'Exact prior excerpt',
+    }] },
+  })))
+  open('/answers/a1')
+  fireEvent.click(await screen.findByText('Previous tutor answers supplied as context'))
+  expect(screen.getByText('Exact prior excerpt')).toBeVisible()
+  expect(screen.getByText(/not independent evidence/)).toBeVisible()
+  expect(screen.getByRole('link', { name: 'Open previous answer' })).toHaveAttribute('href', '/answers/old')
+})

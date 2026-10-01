@@ -188,6 +188,12 @@ function Answer({ id }: { id: string }) {
           !!s && typeof s === 'object' && typeof s.chunk_id === 'string' && typeof s.citation === 'string',
       )
     : []
+  const memory = Array.isArray(data?.metadata.answer_memory)
+    ? data.metadata.answer_memory.filter(
+        (m): m is { answer_id: string; saved_at: string; question: string; excerpt: string } =>
+          !!m && typeof m === 'object' && typeof m.answer_id === 'string' &&
+          typeof m.saved_at === 'string' && typeof m.question === 'string' && typeof m.excerpt === 'string',
+      ).slice(0, 2) : []
   const dropped = Array.isArray(data?.metadata.dropped)
     ? data.metadata.dropped.filter((value): value is string => typeof value === 'string')
     : []
@@ -263,6 +269,16 @@ function Answer({ id }: { id: string }) {
                 </pre>
               </details>
             )}
+            {memory.length > 0 && <details>
+              <summary>Previous tutor answers supplied as context</summary>
+              <p>Unverified historical tutor output, not independent evidence. These bounded excerpts may omit part of the original answer.</p>
+              {memory.map((item) => <div key={item.answer_id}>
+                <Link to={`/answers/${encodeURIComponent(item.answer_id)}`}>Open previous answer</Link>
+                <p>Saved {item.saved_at}</p>
+                <p>{item.question}</p>
+                <pre className="whitespace-pre-wrap break-words text-sm">{item.excerpt}</pre>
+              </div>)}
+            </details>}
             <AnswerSourceStatus key={`sources:${data.id}`} answerId={data.id} />
             <AnswerFeedback key={`feedback:${data.id}`} answerId={data.id} />
             <AnswerFollowup key={data.id} answerId={data.id} />

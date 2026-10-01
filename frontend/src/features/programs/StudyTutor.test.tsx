@@ -366,3 +366,11 @@ it('distinguishes a durable saved reply from a delivered reply whose save failed
   expect(screen.getAllByText(reply.text)).toHaveLength(2)
   expect(screen.queryByText('Saved to your local answer history.')).not.toBeInTheDocument()
 })
+it('shows links to the prior answers used as historical context', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue({ ...reply, memory_answers: ['previous-one'] })
+  renderApp(<StudyTutor context="Groups" />)
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Why compare?' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
+  expect(await screen.findByRole('link', { name: 'Open previous answer' })).toHaveAttribute('href', '/answers/previous-one')
+})

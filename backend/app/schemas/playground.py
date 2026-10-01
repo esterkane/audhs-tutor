@@ -39,4 +39,5 @@ class PlaygroundReply(BaseModel):
     turn_id: str
     answer_id: str | None = None
     save_error: str | None = None
+    memory_answers: list[str] = Field(default_factory=list)
     source_note: str = "General coding guidance; no course sources retrieved."

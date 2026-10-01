@@ -407,6 +407,9 @@ function Conversation({
               label={reviewOnly ? 'Listen to feedback' : 'Listen to tutor response'}
             />
             <p className="text-sm text-muted">{reply.source_note}</p>
+            {reply.memory_answers?.length ? <ul aria-label="Previous answers used">
+              {reply.memory_answers.map((id) => <li key={id}><Link to={`/answers/${id}`}>Open previous answer</Link></li>)}
+            </ul> : null}
             {reply.save_error ? (
               <p role="alert" className="text-sm text-warn">
                 {reply.save_error}
