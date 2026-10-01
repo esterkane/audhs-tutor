@@ -52,6 +52,7 @@ it('sends explicit bounded context, answer and opt-in Socratic intent', async ()
       code: 'B'.repeat(16000),
       output: expect.stringContaining('Learner answer (not execution output):\n' + 'C'.repeat(1950)),
       question: expect.stringContaining('explicitly choose Socratic'),
+      questioning_style: 'socratic',
     }),
     expect.any(AbortSignal),
   )
@@ -205,6 +206,7 @@ it('guides a Socratic answer, preserves earlier messages, and can return to expl
   fireEvent.click(screen.getByRole('button', { name: 'Discuss my answer' }))
   await screen.findByText('Group B loses more. What changes in its representation?')
   const sent = vi.mocked(askTutor).mock.calls[1][0]
+  expect(sent.questioning_style).toBe('socratic')
   expect(sent.question).toContain('Group B loses more rows.')
   expect(sent.question).toContain('Give direct feedback on my answer first')
   expect(sent.history?.at(-1)?.text).toBe('Which group loses more rows?')
@@ -214,6 +216,7 @@ it('guides a Socratic answer, preserves earlier messages, and can return to expl
   await screen.findByText('Here is a direct explanation.')
   expect(screen.getByLabelText('Your tutor message or response')).toBeVisible()
   expect(vi.mocked(askTutor).mock.calls[2][0].question).toContain('Switch back to direct explanation')
+  expect(vi.mocked(askTutor).mock.calls[2][0].questioning_style).toBe('explicit')
 })
 
 it('allows follow-up questions after answer checking and keeps earlier feedback after edits', async () => {

@@ -4008,6 +4008,12 @@ export interface components {
        * @default false
        */
       prefer_saved: boolean
+      /**
+       * Questioning Style
+       * @default explicit
+       * @enum {string}
+       */
+      questioning_style: 'explicit' | 'socratic'
       learning_context?: components['schemas']['PlaygroundContext'] | null
       /** Learner Question */
       learner_question?: string | null

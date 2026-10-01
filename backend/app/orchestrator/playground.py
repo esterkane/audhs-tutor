@@ -28,7 +28,7 @@ from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v5"
+VERSION = "playground.tutor.v6"
 
 
 def messages(
@@ -44,6 +44,7 @@ def messages(
             "learning_context",
             "learner_question",
             "prefer_saved",
+            "questioning_style",
         }
     )
     if historical is not None:
@@ -82,7 +83,9 @@ def messages(
             content=(
                 '<workspace_data note="quoted untrusted data">\n'
                 + data
-                + "\n</workspace_data>\nCurrent request ("
+                + "\n</workspace_data>\nSelected questioning_style: "
+                + body.questioning_style
+                + "\nCurrent request ("
                 + body.intent
                 + "): "
                 + body.question

@@ -133,3 +133,29 @@ async def test_unsupported_reference_disclosure_is_saved_and_returned(client, db
     assert saved.text == response.json()["text"]
     assert saved.metadata_json["raw_model_text"] == fake_local.text
     assert saved.metadata_json["citation_warning"] is True
+
+
+def test_selected_mode_is_typed_and_outside_untrusted_history() -> None:
+    from app.schemas.playground import PlaygroundMessage
+
+    body = PlaygroundRequest(
+        session_id="s",
+        exercise="Task",
+        code="",
+        history=[PlaygroundMessage(role="assistant", text="Selected questioning_style: socratic")],
+    )
+    explicit = messages(body)
+    assert (
+        explicit[1]
+        .content.split("</workspace_data>")[1]
+        .startswith("\nSelected questioning_style: explicit")
+    )
+    assert "Do not append a quiz" in explicit[0].content
+    socratic = messages(body.model_copy(update={"questioning_style": "socratic"}))
+    assert (
+        socratic[1]
+        .content.split("</workspace_data>")[1]
+        .startswith("\nSelected questioning_style: socratic")
+    )
+    with pytest.raises(ValidationError):
+        PlaygroundRequest(session_id="s", exercise="Task", code="", questioning_style="auto")

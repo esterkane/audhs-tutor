@@ -174,3 +174,7 @@ Scoped cached local paraphrase retrieval, post-inference source checks and2sopti
 
 ## Exact replay reliability
 Exact request filtering now precedes relevance limits and handles punctuation and nested Unicode/key order.476backend/lintpass; review clear. One synthetic buffered local run:13.581sinitialgeneration versus14msexactreplay with0modelcalls; changedwork regenerated. No general latency/quality claim; numeric fidelity and explicit/Socratic behavior remain open. See slices/exact-answer-lookup.md. Both repositories private.
+
+
+## Typed workspace teaching choice
+Explicit/Socratic mode is transmitted outside quoted history, matched by memory lookup and preserved through UI actions. Promptv6;477backend,frontend suite,lint/build,2desktop/narrow journeys pass. Model-quality gate remainsOPEN: local samples still misattribute corrected arithmetic and sometimes ignore hint-only instructions. Raw synthetic samples retained; no route change or correctness claim. See slices/workspace-teaching-mode.md. Both repositories private.

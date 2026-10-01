@@ -254,6 +254,10 @@ function Conversation({
         {
           session_id: sessionId,
           prefer_saved: preferSaved,
+          questioning_style:
+            action === 'socratic' || (socratic && (action === 'chat' || action === 'hint'))
+              ? 'socratic'
+              : 'explicit',
           learning_context: {
             course_id: courseId,
             section_id: sectionId,

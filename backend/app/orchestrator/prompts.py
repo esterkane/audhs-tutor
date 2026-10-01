@@ -52,4 +52,4 @@ def voice_task(name: str) -> str:
 
 
 def playground_task() -> str:
-    return _read("playground/tutor.v1.md")
+    return _read("playground/tutor.v2.md")

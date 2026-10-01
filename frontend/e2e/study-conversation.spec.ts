@@ -46,6 +46,7 @@ for (const width of [1280, 390]) {
     let release: (() => void) | undefined
     await page.route('**/api/playground/tutor', async (route) => {
       const body = route.request().postDataJSON()
+      expect(body.questioning_style).toBe(requests < 2 ? 'socratic' : 'explicit')
       expect(body.exercise).toContain('Compare group retention')
       expect(body.learning_context.course_id).toBe('fixture')
       expect(body.learning_context.target_label).toBe('Step — Compare')

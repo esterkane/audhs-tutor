@@ -1,0 +1,25 @@
+{
+  "synthetic": true,
+  "prompt_version": "playground.tutor.v6",
+  "results": [
+    {
+      "case": "socratic_start",
+      "review_criteria": "Give enough context and one focused question, not the complete calculation.",
+      "text": "(chat) What does a rate of 30/50 represent in this context?",
+      "model": "gemma3-12b"
+    },
+    {
+      "case": "socratic_feedback",
+      "review_criteria": "Correct the specific arithmetic before any optional single follow-up; no mastery claim.",
+      "text": "`<learner_answer>30/50 = 0.9, so 90%</learner_answer>`\n\nYour calculation `30/50 = 0.6` is correct, but the interpretation is off. 0.6 represents a fraction, not a percentage. To convert a fraction to a percentage, you multiply by 100. What percentage does 0.6 represent?",
+      "model": "gemma3-12b"
+    },
+    {
+      "case": "socratic_hint",
+      "review_criteria": "Hint about the original count, no replacement question or complete answer.",
+      "text": "The denominator represents the total number of items before any filtering or selection occurs.",
+      "model": "gemma3-12b"
+    }
+  ],
+  "task_prompt_sha256": "fca1e20a1d7ce0386088310522e8ba8d3892444b4cde5ea44172c9e0ece43e1c"
+}

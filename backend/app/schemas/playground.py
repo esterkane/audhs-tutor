@@ -22,6 +22,7 @@ class PlaygroundContext(BaseModel):
 class PlaygroundRequest(BaseModel):
     session_id: str
     prefer_saved: bool = False
+    questioning_style: Literal["explicit", "socratic"] = "explicit"
     learning_context: PlaygroundContext | None = None
     learner_question: str | None = Field(default=None, max_length=2000)
     intent: Literal["chat", "explain", "hint", "big_picture"] = "chat"

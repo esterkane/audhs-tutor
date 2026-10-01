@@ -212,6 +212,7 @@ function Workspace({
         {
           session_id: sessionId,
           prefer_saved: false,
+          questioning_style: 'explicit',
           intent,
           question: text,
           exercise: activity.task,

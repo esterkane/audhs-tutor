@@ -51,6 +51,9 @@ async def test_memory_is_scoped_filtered_bounded_and_untrusted(
     assert [item["answer_id"] for item in found] == ["good"]
     assert len(found[0]["excerpt"]) == 1200
     assert await retrieve(db, "foreign", body) == []
+    assert (
+        await retrieve(db, owner, body.model_copy(update={"questioning_style": "socratic"})) == []
+    )
     assert await retrieve(db, owner, body.model_copy(update={"learning_context": None})) == []
     assert await retrieve(db, owner, body.model_copy(update={"output": "different"})) == []
     assert await retrieve(db, owner, body.model_copy(update={"intent": "hint"})) == []
