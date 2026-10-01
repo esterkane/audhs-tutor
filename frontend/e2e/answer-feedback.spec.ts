@@ -33,7 +33,8 @@ test('checks the selected answer and offers question and feedback audio', async 
   await page.route('**/api/playground/tutor', async (route) => {
     const body = route.request().postDataJSON()
     expect(body.exercise).toContain('Group A retains 90')
-    expect(body.output).toContain('Different proportions remain')
+    expect(body.learner_answer).toBe('Different proportions remain')
+    expect(body.output).toBe('')
     await route.fulfill({
       json: {
         text: 'Your answer identifies unequal retention. Explain how it changes representation.',

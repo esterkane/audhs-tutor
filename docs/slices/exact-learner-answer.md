@@ -24,3 +24,8 @@ Remaining after binding: validate attributed quotations, scoped deterministic ar
 ## Boundaries
 
 The current task answer is complete within the 8,000-character API limit; material/code/output retain separately disclosed bounds. Socratic chat retains its existing 1,700-character UI bound to fit the action wrapper. Starting or hinting does not submit a new answer. Historical follow-up supplies the immediate parent's answer under historical context, not as a new submission; it does not recursively expand the whole conversation. No schema migration, dependency, paid call, live assessment or mastery update.
+
+
+### Full browser-suite follow-up
+
+GitHub CI found one stale assertion in answer-feedback.spec.ts that still expected the learner answer inside output. It now checks exact learner_answer and empty output. All 39 isolated Chromium journeys passed locally after the fix; independent review cleared the contract update. Remote CI is checked separately after publication.
