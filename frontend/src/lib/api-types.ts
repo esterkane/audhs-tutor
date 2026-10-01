@@ -1510,6 +1510,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/voice/requests/{request_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read an existing voice result without inference or playback */
+    get: operations['voice_result_api_voice_requests__request_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/voice/readiness': {
     parameters: {
       query?: never
@@ -4951,6 +4968,26 @@ export interface components {
       /** Due */
       due: string
     }
+    /** VoiceResultOut */
+    VoiceResultOut: {
+      /** Request Id */
+      request_id: string
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'not_found' | 'unresolved' | 'completed' | 'partial'
+      /** Transcript */
+      transcript?: string | null
+      /** Text */
+      text?: string | null
+      turn?: components['schemas']['TurnDone'] | null
+      /**
+       * Interrupted
+       * @default false
+       */
+      interrupted: boolean
+    }
     /** SectionOut */
     app__schemas__curriculum__SectionOut: {
       /** Section */
@@ -7801,6 +7838,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SolutionOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  voice_result_api_voice_requests__request_id__get: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        request_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VoiceResultOut']
         }
       }
       /** @description Validation Error */

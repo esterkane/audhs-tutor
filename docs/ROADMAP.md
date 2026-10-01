@@ -167,3 +167,14 @@ for terminal completion. Connection-wide Stop and legacy behavior remain intact.
 frontend262, lint/types/build and required reviews passed with synthetic tests. See
 voice-control-identities slice. Durable terminal lookup, unresolved recovery and resistant-provider
 teardown remain open. Correlation is not an exactly-once or full-recovery claim.
+
+
+## Durable voice terminal recovery — 2026-10-02
+
+Identified voice requests now claim the existing ledger before LLM/TTS work and persist terminal
+text/receipt before delivery. Matching requests replay text without inference/audio/evidence writes;
+changed payloads conflict and unresolved claims cannot regenerate. Owned GET lookup distinguishes
+missing, unresolved, completed and partial. Backend587/frontend262, generated types, lint/build and
+required reviews passed. Claim-time interruption race fixed and regression-tested. See
+`docs/slices/voice-terminal-recovery.md`. Pending UUID browser recovery and provider-resistant
+teardown remain open; STT precedes this claim and is not deduplicated. Personal voice gate open.

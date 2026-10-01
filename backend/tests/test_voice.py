@@ -570,3 +570,110 @@ async def test_identified_capture_tags_speech_and_discards_frames_after_processi
 
     await asyncio.to_thread(drive)
     assert len(stt.heard) == 1
+
+
+@pytest.mark.parametrize("partial", [False, True])
+async def test_voice_terminal_replay_and_lookup_do_not_repeat_model_or_learning_work(
+    ws_app,
+    partial,
+    spoken_world: dict[str, str],
+    db: AsyncSession,  # type: ignore[no-untyped-def]
+) -> None:
+    from sqlalchemy import func
+
+    tts = FakeTts()
+    ws_app.state.voice_overrides = {"stt": FakeStt("hello"), "tts": tts, "vad": EnergyVad()}
+    if partial:
+        ws_app.state.providers["ollama"].fail_after_words = 1
+    identity = "6981194c-0ca6-4c53-9e3e-6d583aedc018"
+    sid = spoken_world["session_id"]
+
+    def drive(text: str) -> list[dict]:  # type: ignore[type-arg]
+        with TestClient(ws_app) as tc, _connect(tc) as ws:
+            ws.send_text(json.dumps({"type": "start", "session_id": sid}))
+            json.loads(ws.receive_text())
+            ws.send_text(json.dumps({"type": "text", "text": text, "request_id": identity}))
+            messages = _collect(ws, {"done", "error"})
+            ws.send_text(json.dumps({"type": "stop"}))
+            return messages
+
+    first = await asyncio.to_thread(drive, "Explain attention")
+    assert first[-1]["type"] == "done" and first[-1]["turn"]["text"]
+    counts = [
+        await db.scalar(select(func.count()).select_from(table))
+        for table in (models.ModelCall, models.LearningEvent, models.TutorAnswer)
+    ]
+    await db.commit()
+    spoken = list(tts.spoken)
+    calls = len(ws_app.state.providers["ollama"].calls)
+    replay = await asyncio.to_thread(drive, "Explain attention")
+    assert [m["type"] for m in replay] == ["token", "done"]
+    assert replay[-1]["replayed"] is True
+    assert replay[-1]["turn"] == first[-1]["turn"]
+    assert tts.spoken == spoken
+    assert len(ws_app.state.providers["ollama"].calls) == calls
+    assert [
+        await db.scalar(select(func.count()).select_from(table))
+        for table in (models.ModelCall, models.LearningEvent, models.TutorAnswer)
+    ] == counts
+    await db.commit()
+    conflict = await asyncio.to_thread(drive, "Different work")
+    assert conflict[-1]["type"] == "error" and "different work" in conflict[-1]["message"]
+
+    def read() -> None:
+        with TestClient(ws_app) as tc:
+            response = tc.get(f"/api/voice/requests/{identity}", params={"session_id": sid})
+            assert response.status_code == 200
+            result = response.json()
+            assert result["status"] == ("partial" if partial else "completed")
+            assert result["text"] == first[-1]["turn"]["text"]
+            assert result["transcript"] == "Explain attention"
+
+    await asyncio.to_thread(read)
+
+
+async def test_failed_voice_terminal_save_remains_unresolved_without_rerunning(
+    ws_app,
+    spoken_world: dict[str, str],
+    monkeypatch,  # type: ignore[no-untyped-def]
+) -> None:
+    from app.db import workspace_requests
+
+    async def fail(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise RuntimeError("storage unavailable")
+
+    monkeypatch.setattr(workspace_requests, "complete", fail)
+    ws_app.state.voice_overrides = {"stt": FakeStt("hello"), "tts": FakeTts(), "vad": EnergyVad()}
+    identity = "7981194c-0ca6-4c53-9e3e-6d583aedc018"
+    sid = spoken_world["session_id"]
+
+    def drive() -> list[dict]:  # type: ignore[type-arg]
+        with TestClient(ws_app) as tc, _connect(tc) as ws:
+            ws.send_text(json.dumps({"type": "start", "session_id": sid, "text_only": True}))
+            json.loads(ws.receive_text())
+            ws.send_text(
+                json.dumps({"type": "text", "text": "Explain attention", "request_id": identity})
+            )
+            messages = _collect(ws, {"done", "error"})
+            ws.send_text(json.dumps({"type": "stop"}))
+            return messages
+
+    first = await asyncio.to_thread(drive)
+    assert any(m["type"] == "token" for m in first)
+    assert first[-1]["type"] == "error" and "could not be saved" in first[-1]["message"]
+    calls = len(ws_app.state.providers["ollama"].calls)
+    second = await asyncio.to_thread(drive)
+    assert [m["type"] for m in second] == ["error"]
+    assert "still running or was interrupted" in second[0]["message"]
+    assert len(ws_app.state.providers["ollama"].calls) == calls
+
+    def read() -> None:
+        with TestClient(ws_app) as tc:
+            assert (
+                tc.get(f"/api/voice/requests/{identity}", params={"session_id": sid}).json()[
+                    "status"
+                ]
+                == "unresolved"
+            )
+
+    await asyncio.to_thread(read)

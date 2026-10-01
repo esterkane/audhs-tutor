@@ -33,13 +33,17 @@ from uuid import UUID
 from fastapi import WebSocket, WebSocketDisconnect
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
+from app.db import workspace_requests
 from app.db.events import EventWriter, Verb
 from app.db.traces import ModelCallRecord, write_model_call
 from app.kernel import preferences
 from app.kernel import session as ksession
 from app.orchestrator.tutor import TutorTurn
 from app.schemas.common import ActivityType, Domain, ObjectType
-from app.schemas.tutor import TurnRequest
+from app.schemas.tutor import TurnDone, TurnRequest
+from app.schemas.voice import VoiceResultOut
+from app.voice import recovery
 from app.voice.stt import Stt
 from app.voice.tts import Tts
 from app.voice.vad import Vad, pcm16_seconds, wav_bytes
@@ -262,6 +266,7 @@ class VoiceLoop:
                                 self.vad.reset()
                             state.active_request_id = identity
                             # Child response and speaker tasks inherit this immutable context.
+                            self._interrupted.clear()
                             self._turn_task = asyncio.create_task(
                                 self._respond(ws, state, text, stt_ms=0)
                             )
@@ -456,6 +461,7 @@ class VoiceLoop:
             await self._send(ws, {"type": "nothing_heard"})
             return
         await self._send(ws, {"type": "transcript", "text": res.text, "language": res.language})
+        self._interrupted.clear()
         self._turn_task = asyncio.create_task(self._respond(ws, state, res.text, stt_ms=stt_ms))
 
     async def _retain(self, state: VoiceState, pcm: bytes) -> None:
@@ -473,16 +479,134 @@ class VoiceLoop:
 
     # ------------------------------------------------------------------ respond
     async def _respond(self, ws: WebSocket, state: VoiceState, text: str, *, stt_ms: int) -> None:
-        timing = TurnTiming(t_start=time.perf_counter(), stt_ms=stt_ms)
-        self._interrupted.clear()
-        req = TurnRequest(
-            session_id=state.session_id,
-            text=text,
-            skill_id=state.skill_id,
-            conversation_lang=state.lang if state.conversation else None,
-            spoken=not state.text_only,
+        try:
+            req = TurnRequest(
+                session_id=state.session_id,
+                text=text,
+                skill_id=state.skill_id,
+                conversation_lang=state.lang if state.conversation else None,
+                spoken=not state.text_only,
+            )
+        except ValueError:
+            await self._send(
+                ws,
+                {
+                    "type": "error",
+                    "message": "The voice request is invalid. Shorten the text before sending again.",
+                    "fallback": "text",
+                },
+            )
+            return
+        request_id = _request_identity.get()
+        claim_id = None
+        if request_id is not None:
+            try:
+                claim_id, saved = await workspace_requests.claim(
+                    self.db,
+                    self.learner_id,
+                    state.session_id,
+                    recovery.key(request_id),
+                    {
+                        "surface": "voice_turn",
+                        "session_id": state.session_id,
+                        "skill_id": state.skill_id,
+                        "text": text,
+                        "language": state.lang,
+                        "conversation": state.conversation,
+                        "text_only": state.text_only,
+                    },
+                )
+            except AppError as error:
+                await self._send(
+                    ws, {"type": "error", "message": error.message, "fallback": "text"}
+                )
+                return
+            except Exception:
+                await self.db.rollback()
+                await self._send(
+                    ws,
+                    {
+                        "type": "error",
+                        "message": "Voice request recovery could not be prepared. Keep your text and try again later.",
+                        "fallback": "text",
+                    },
+                )
+                return
+            if saved is not None:
+                result = VoiceResultOut.model_validate(saved)
+                await self._send(ws, {"type": "token", "text": result.text or ""})
+                await self._send(
+                    ws,
+                    {
+                        "type": "done",
+                        "turn": result.turn.model_dump(mode="json") if result.turn else None,
+                        "replayed": True,
+                        "recovery_status": result.status,
+                        "latency": {"interrupted": result.interrupted},
+                    },
+                )
+                return
+        if self._interrupted.is_set():
+            result = VoiceResultOut(
+                request_id=request_id or "",
+                status="partial",
+                transcript=text,
+                text="",
+                interrupted=True,
+            )
+            if await self._persist_result(ws, claim_id, result):
+                await self._send(
+                    ws,
+                    {
+                        "type": "done",
+                        "turn": None,
+                        "recovery_status": "partial",
+                        "latency": {"interrupted": True},
+                    },
+                )
+            return
+        await self._run_response(
+            ws, state, text, req=req, stt_ms=stt_ms, claim_id=claim_id, request_id=request_id
         )
+
+    async def _persist_result(
+        self, ws: WebSocket, claim_id: str | None, result: VoiceResultOut
+    ) -> bool:
+        if claim_id is None:
+            return True
+        try:
+            await workspace_requests.complete(
+                self.db, self.learner_id, claim_id, result.model_dump(mode="json")
+            )
+            return True
+        except Exception:
+            await self.db.rollback()
+            await self._send(
+                ws,
+                {
+                    "type": "error",
+                    "message": (
+                        "Voice recovery could not be saved. Keep received text; "
+                        "the request will not run again automatically."
+                    ),
+                },
+            )
+            return False
+
+    async def _run_response(
+        self,
+        ws: WebSocket,
+        state: VoiceState,
+        text: str,
+        *,
+        stt_ms: int,
+        req: TurnRequest,
+        claim_id: str | None,
+        request_id: str | None,
+    ) -> None:
+        timing = TurnTiming(t_start=time.perf_counter(), stt_ms=stt_ms)
         pending = ""
+        received = ""
         done_payload: dict[str, Any] | None = None
         first_token = True
         nothing_spoken_yet = True
@@ -505,6 +629,7 @@ class VoiceLoop:
                         first_token = False
                     tok = str(data.get("text", ""))
                     await self._send(ws, {"type": "token", "text": tok})
+                    received += tok
                     pending += tok
                     ready, pending = speech_chunks(
                         pending, first=nothing_spoken_yet, early=state.early_speech
@@ -529,7 +654,10 @@ class VoiceLoop:
                 ws,
                 {
                     "type": "error",
-                    "message": "The tutor model did not answer. Nothing was changed. Try again.",
+                    "message": (
+                        "The voice response could not finish. Some work may already be saved; "
+                        "keep received text and check saved answers."
+                    ),
                     "detail": type(e).__name__,
                 },
             )
@@ -551,10 +679,25 @@ class VoiceLoop:
             for rec in tts_log:  # written here, after the turn released the session
                 await write_model_call(self.db, rec)
             await self._emit_spoke(state, timing)
-            await self._send(
-                ws,
-                {"type": "done", "turn": done_payload, "latency": timing.dict()},
-            )
+            deliver_terminal = True
+            if claim_id is not None and request_id is not None:
+                complete = done_payload is not None and done_payload.get("outcome") != "partial"
+                result = VoiceResultOut(
+                    request_id=request_id,
+                    status="completed" if complete else "partial",
+                    transcript=text,
+                    text=str(done_payload.get("text", received))
+                    if complete and done_payload
+                    else received,
+                    turn=TurnDone.model_validate(done_payload) if done_payload else None,
+                    interrupted=timing.interrupted,
+                )
+                deliver_terminal = await self._persist_result(ws, claim_id, result)
+            if deliver_terminal:
+                await self._send(
+                    ws,
+                    {"type": "done", "turn": done_payload, "latency": timing.dict()},
+                )
 
     async def _speaker(
         self,

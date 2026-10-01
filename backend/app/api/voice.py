@@ -4,6 +4,7 @@ the WebSocket loop. Nothing here downloads, starts a server or switches routes b
 import base64
 import logging
 from typing import Any
+from uuid import UUID
 
 from fastapi import APIRouter, Request, WebSocket
 from pydantic import BaseModel, Field
@@ -16,11 +17,23 @@ from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.routing import Router
 from app.orchestrator.tutor import TutorTurn
-from app.voice import setup
+from app.schemas.voice import VoiceResultOut
+from app.voice import recovery, setup
 from app.voice.loop import VoiceLoop
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/voice", tags=["voice"])
+
+
+@router.get(
+    "/requests/{request_id}",
+    summary="Read an existing voice result without inference or playback",
+    response_model=VoiceResultOut,
+)
+async def voice_result(
+    request_id: UUID, session_id: str, db: DB, learner: Learner
+) -> VoiceResultOut:
+    return await recovery.lookup(db, learner.id, session_id, str(request_id))
 
 
 class ComponentOut(BaseModel):
