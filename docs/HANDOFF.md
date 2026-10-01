@@ -197,3 +197,8 @@ Workspace feedback now includes bounded deterministic equality checks for suppor
 ## 2026-10-01 — browser contract regression repair
 
 The complete GitHub journey suite exposed one stale assertion after the answer-binding change: answer-feedback.spec.ts still expected the learner's answer in execution output. Updated it to assert the exact learner_answer and empty output, retaining the feedback, audio and changed-work checks. All 39 isolated Chromium journeys now pass locally; independent review found no blockers or majors. This changes a test contract, not application behavior. Remote CI remains pending the new push.
+
+
+## 2026-10-01 — quoted-feedback diagnostic
+
+Experimental exact-answer quotation validation and seven synthetic cases per model completed. Local models still made interpretation errors; hosted comparison improved the sampled judgments but repeated a solved Socratic question. No runtime routing or learning-state change. 547 backend tests and lint/types passed; independent code/pedagogy review clear. Evidence, estimated cost and limitations: docs/slices/quoted-feedback-diagnostic.md. Earlier runtime CI passed both workflows. Both repositories remain private.
