@@ -1,0 +1,5 @@
+# XML project source ingestion
+
+Course project XML such as Maven and application configuration should be available for explanation alongside the surrounding code. Files recognized as timed XML retain transcript parsing; other .xml files must parse safely before becoming fenced source blocks. DTD/entity declarations are refused; schemas are never fetched. Secret-labelled elements and properties are redacted from the extracted representation, while originals remain untouched. Existing size/generated-source limits, provenance, trust, chunking and index paths remain in use. No learner events, model route or UI changes.
+
+Reproduction: real project pom.xml and application config files previously failed with "not a TTML/DFXP transcript". Regression tests verify configuration text/provenance, redaction, malformed/unsafe XML refusal and timed-caption compatibility. 396 backend tests and full lint/types pass. Independent code review found no blockers or majors; child name/value credential redaction was added from a review observation. Redaction remains heuristic, not a guarantee that arbitrary XML contains no sensitive data.

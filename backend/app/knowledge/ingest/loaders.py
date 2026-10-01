@@ -54,6 +54,7 @@ from app.knowledge.ingest.vision import (
     read_image,
 )
 from app.knowledge.ingest.workflows import workflow_blocks
+from app.knowledge.ingest.xmlsource import xml_source_blocks
 
 SUFFIX_TYPES: dict[str, str] = {
     ".vtt": "course_caption",
@@ -76,7 +77,7 @@ SUFFIX_TYPES: dict[str, str] = {
     ".json": "text",  # sniffed: transcript / links / n8n workflow; other JSON is reported as skipped
     ".tsv": "document",
     ".csv": "document",
-    ".xml": "transcript",  # TTML only
+    ".xml": "transcript",  # sniff TTML, otherwise validated XML source
     ".docx": "document",
     ".docm": "document",
     ".odt": "document",
@@ -142,7 +143,7 @@ FORMAT_GROUPS: dict[str, list[str]] = {
             ".vtt",
             ".srt",
             *TRANSCRIPT_SUFFIXES,
-            ".xml (TTML)",
+            ".xml (TTML or source)",
             ".json",
             ".tsv",
             ".csv",
@@ -462,8 +463,10 @@ def load_file(
         return done(caption_blocks(text))
     if suffix in TRANSCRIPT_SUFFIXES or suffix == ".xml":
         cues = transcript_cues(text, suffix)
+        if cues is None and suffix == ".xml":
+            return done(xml_source_blocks(text), source_type=source_type or "code")
         if cues is None:
-            raise ValueError("xml: not a TTML/DFXP transcript")
+            raise ValueError("not a supported transcript")
         return done(transcript_blocks(cues), source_type=source_type or "transcript")
     if st == "notebook":
         return done(notebook_blocks(text))
