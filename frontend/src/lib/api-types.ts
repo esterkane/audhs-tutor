@@ -38,6 +38,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/answers/{answer_id}/followup': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Ask about an owned saved answer */
+    post: operations['followup_api_answers__answer_id__followup_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/health': {
     parameters: {
       query?: never
@@ -2007,6 +2024,13 @@ export interface components {
       metadata: {
         [key: string]: unknown
       }
+    }
+    /** AnswerFollowup */
+    AnswerFollowup: {
+      /** Session Id */
+      session_id: string
+      /** Question */
+      question: string
     }
     /** AnswerPage */
     AnswerPage: {
@@ -4882,6 +4906,41 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AnswerDetail']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  followup_api_answers__answer_id__followup_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnswerFollowup']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PlaygroundReply']
         }
       }
       /** @description Validation Error */

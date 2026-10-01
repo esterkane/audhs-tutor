@@ -118,3 +118,55 @@ async def test_search_literal_words_owner_filters_and_index_lifecycle(
     assert await db.scalar(text("SELECT count(*) FROM tutor_answer_fts WHERE id='11'")) == 0
     assert (await client.get("/api/answers", params={"q": "x" * 201})).status_code == 422
     assert fake_local.calls == []
+
+
+async def test_followup_owns_parent_keeps_context_and_saves_lineage(
+    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider
+) -> None:
+    from app.models_ai.registry import seed_defaults
+
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    other = LearnerProfile(display_name="Other")
+    db.add(other)
+    await db.commit()
+    for id_, learner in [("parent", owner), ("foreign", other.id)]:
+        db.add(
+            TutorAnswer(
+                id=id_,
+                learner_id=learner,
+                turn_id=id_,
+                surface="playground",
+                request_json={"question": "Why compare?", "code": "print(groups)", "output": "old"},
+                text="Historical answer. " * 500,
+                metadata_json={"area_id": "area-a"},
+                fingerprint=id_,
+            )
+        )
+    await db.commit()
+    body = {"session_id": session["id"], "question": "Explain the limitation."}
+    for identifier in ("foreign", "missing"):
+        assert (
+            await client.post(f"/api/answers/{identifier}/followup", json=body)
+        ).status_code == 404
+    assert fake_local.calls == []
+    assert (
+        await client.post("/api/answers/parent/followup", json={**body, "question": "  "})
+    ).status_code == 422
+    response = await client.post("/api/answers/parent/followup", json=body)
+    assert response.status_code == 200, response.text
+    result = await db.get(TutorAnswer, response.json()["answer_id"])
+    assert result is not None
+    assert result.metadata_json["parent_answer_id"] == "parent"
+    assert result.metadata_json["area_id"] == "area-a"
+    assert result.request_json["code"] == "print(groups)"
+    assert result.request_json["output_stale"] is True
+    assert result.request_json["historical_answer"]["truncated_fields"] == ["earlier answer"]
+    assert result.request_json["learner_question"] == body["question"]
+    packet = fake_local.calls[0].messages
+    assert "unverified context" in packet[0].content
+    assert "Historical answer." in packet[1].content
+    await client.post(f"/api/sessions/{session['id']}/end", json={})
+    assert (await client.post("/api/answers/parent/followup", json=body)).status_code == 404
+    assert len(fake_local.calls) == 1

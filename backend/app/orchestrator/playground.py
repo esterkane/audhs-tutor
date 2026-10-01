@@ -2,6 +2,7 @@
 
 import json
 import logging
+from typing import Any
 
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,13 +25,27 @@ logger = logging.getLogger(__name__)
 VERSION = "playground.tutor.v1"
 
 
-def messages(body: PlaygroundRequest) -> list[Message]:
+def messages(body: PlaygroundRequest, historical: dict[str, Any] | None = None) -> list[Message]:
     workspace = body.model_dump(
         exclude={"session_id", "question", "intent", "learning_context", "learner_question"}
     )
+    if historical is not None:
+        workspace["historical_answer"] = historical
     data = escape_data(json.dumps(workspace, ensure_ascii=False))
     return [
-        Message(role="system", content=prompts.base_policy() + "\n\n" + prompts.playground_task()),
+        Message(
+            role="system",
+            content=prompts.base_policy()
+            + "\n\n"
+            + prompts.playground_task()
+            + (
+                "\nThis is a follow-up to a saved response. Historical answers and references are unverified context, "
+                "not independent evidence. No current source retrieval or execution took place. Explain the limits "
+                "of omitted/truncated material when relevant; do not invent it or claim new checks."
+                if historical is not None
+                else ""
+            ),
+        ),
         Message(
             role="user",
             content=(
@@ -46,13 +61,19 @@ def messages(body: PlaygroundRequest) -> list[Message]:
 
 
 async def respond(
-    db: AsyncSession, gateway: ModelGateway, learner_id: str, body: PlaygroundRequest
+    db: AsyncSession,
+    gateway: ModelGateway,
+    learner_id: str,
+    body: PlaygroundRequest,
+    *,
+    historical: dict[str, Any] | None = None,
+    parent_metadata: dict[str, Any] | None = None,
 ) -> PlaygroundReply:
     session = await ksession.get(db, body.session_id)
     if session.learner_id != learner_id or session.ended_at:
         raise AppError("not_found", "Start or resume a session to use the tutor.", http_status=404)
     turn_id = new_id()
-    packet = messages(body)
+    packet = messages(body, historical)
     events = EventWriter(db, ksession.event_context(session, activity=ActivityType.CHAT))
     await events.emit(
         Verb.ASKED, ObjectType.TURN, turn_id, context={"text_len": len(body.question)}
@@ -110,7 +131,10 @@ async def respond(
             session_id=session.id,
             turn_id=turn_id,
             surface="playground",
-            request=body.model_dump(exclude={"session_id"}),
+            request={
+                **body.model_dump(exclude={"session_id"}),
+                **({"historical_answer": historical} if historical else {}),
+            },
             text=out.result.text,
             metadata={
                 "model": out.registry_id,
@@ -118,7 +142,10 @@ async def respond(
                 "prompt_version": VERSION,
                 "model_call_id": out.model_call_id,
                 "sources": [],
-                "context_scope": "supplied_workspace_only",
+                "context_scope": "saved_answer_followup"
+                if historical
+                else "supplied_workspace_only",
+                **(parent_metadata or {}),
                 "learning_context": body.learning_context.model_dump()
                 if body.learning_context
                 else None,

@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 
 class AnswerSummary(BaseModel):
@@ -28,3 +28,15 @@ class AnswerDetail(AnswerSummary):
     text: str
     request: dict[str, Any]
     metadata: dict[str, Any]
+
+
+class AnswerFollowup(BaseModel):
+    session_id: str
+    question: str = Field(min_length=1, max_length=2000)
+
+    @field_validator("question")
+    @classmethod
+    def nonblank(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("Enter a follow-up question")
+        return value.strip()

@@ -5,10 +5,12 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Query
 from sqlalchemy import select, text
 
-from app.api.deps import DB, Learner
+from app.api.deps import DB, Gateway, Learner
 from app.db.answer_search import literal_query
 from app.db.models import TutorAnswer
-from app.schemas.answers import AnswerDetail, AnswerPage, AnswerSummary
+from app.orchestrator import playground
+from app.schemas.answers import AnswerDetail, AnswerFollowup, AnswerPage, AnswerSummary
+from app.schemas.playground import PlaygroundContext, PlaygroundReply, PlaygroundRequest
 
 router = APIRouter(prefix="/answers", tags=["answers"])
 
@@ -117,4 +119,64 @@ async def get_answer(answer_id: str, db: DB, learner: Learner) -> AnswerDetail:
         text=row.text,
         request=row.request_json,
         metadata=row.metadata_json,
+    )
+
+
+@router.post(
+    "/{answer_id}/followup",
+    response_model=PlaygroundReply,
+    summary="Ask about an owned saved answer",
+)
+async def followup(
+    answer_id: str, body: AnswerFollowup, db: DB, learner: Learner, gateway: Gateway
+) -> PlaygroundReply:
+    row = await db.scalar(
+        select(TutorAnswer).where(TutorAnswer.id == answer_id, TutorAnswer.learner_id == learner.id)
+    )
+    if row is None:
+        raise KeyError("saved answer not found")
+    clipped: list[str] = []
+
+    def excerpt(value: object, maximum: int, label: str) -> str:
+        text_value = value if isinstance(value, str) else ""
+        if len(text_value) > maximum:
+            clipped.append(label)
+        return text_value[:maximum]
+
+    old = row.request_json
+    historical = {
+        "parent_answer_id": row.id,
+        "saved_at": row.created_at,
+        "request": excerpt(old.get("question", old.get("text")), 2000, "earlier request"),
+        "answer": excerpt(row.text, 8000, "earlier answer"),
+        "limitations": (
+            "Historical context only. Original retrieved passages and earlier chat are not supplied. "
+            "No current source verification or execution."
+        ),
+        "truncated_fields": clipped,
+    }
+    context = row.metadata_json.get("learning_context")
+    request = PlaygroundRequest(
+        session_id=body.session_id,
+        question=body.question,
+        learner_question=body.question,
+        exercise=excerpt(old.get("exercise"), 1000, "material"),
+        code=excerpt(old.get("code"), 16000, "code"),
+        output=excerpt(old.get("output"), 4000, "output"),
+        output_stale=True,
+        learning_context=PlaygroundContext.model_validate(context)
+        if isinstance(context, dict)
+        else None,
+    )
+    return await playground.respond(
+        db,
+        gateway,
+        learner.id,
+        request,
+        historical=historical,
+        parent_metadata={
+            "parent_answer_id": row.id,
+            "skill_id": row.metadata_json.get("skill_id"),
+            "area_id": row.metadata_json.get("area_id"),
+        },
     )

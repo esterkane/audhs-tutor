@@ -1,3 +1,4 @@
+import { AnswerFollowup } from '../features/programs/AnswerFollowup'
 import { useQuery } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -237,6 +238,30 @@ function Answer({ id }: { id: string }) {
               <Markdown text={data.text} />
               <ReadAloud text={data.text} />
             </Card>
+            {typeof data.metadata.parent_answer_id === 'string' && (
+              <p>
+                This reply continues a{' '}
+                <Link
+                  className="underline"
+                  to={`/answers/${encodeURIComponent(data.metadata.parent_answer_id)}`}
+                >
+                  previous saved answer
+                </Link>
+                .
+              </p>
+            )}
+            {data.request.historical_answer && typeof data.request.historical_answer === 'object' && (
+              <details>
+                <summary>Historical context supplied for this reply</summary>
+                <p className="text-sm text-muted">
+                  Unverified saved context, not freshly retrieved source evidence.
+                </p>
+                <pre className="whitespace-pre-wrap break-words text-sm">
+                  {JSON.stringify(data.request.historical_answer, null, 2)}
+                </pre>
+              </details>
+            )}
+            <AnswerFollowup key={data.id} answerId={data.id} />
             {sources.length > 0 ? (
               <details>
                 <summary>Source references</summary>
