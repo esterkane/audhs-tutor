@@ -8,6 +8,8 @@ import { StudyTutor } from './StudyTutor'
 import { ReadAloud } from '../voice/ReadAloud'
 
 type Props = {
+  courseId?: string
+  sectionId?: string
   cells: NotebookCell[]
   identity: string
   explanations?: Record<string, string>
@@ -21,6 +23,8 @@ export function NotebookWorkspace(props: Props) {
   return <Workspace key={JSON.stringify([props.identity, props.cells])} {...props} />
 }
 function Workspace({
+  courseId,
+  sectionId,
   cells,
   identity,
   explanations,
@@ -368,6 +372,8 @@ function Workspace({
         Choose a step to discuss, or select any notebook cell above. This does not run or change your code.
       </p>
       <NotebookTutor
+        courseId={courseId}
+        sectionId={sectionId}
         cells={cells}
         sources={draft.sources}
         index={tutorTarget ?? draft.selected}
@@ -419,6 +425,8 @@ function Workspace({
 }
 
 function NotebookTutor({
+  courseId,
+  sectionId,
   cells,
   sources,
   index,
@@ -428,6 +436,8 @@ function NotebookTutor({
   answer,
   output,
 }: {
+  courseId?: string
+  sectionId?: string
   cells: NotebookCell[]
   sources: string[]
   index: number
@@ -467,6 +477,8 @@ function NotebookTutor({
       .slice(0, 100) || '(empty cell)'
   return (
     <StudyTutor
+      courseId={courseId}
+      sectionId={sectionId}
       targetLabel={`${sectionFocus ? 'Step' : 'Notebook cell ' + (index + 1)} — ${title}`}
       identity={`${identity}:${index}${sectionFocus ? ':step' : ''}`}
       key={`${identity}:${index}${sectionFocus ? ':step' : ''}`}

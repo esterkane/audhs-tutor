@@ -47,9 +47,13 @@ for (const width of [1280, 390]) {
     await page.route('**/api/playground/tutor', async (route) => {
       const body = route.request().postDataJSON()
       expect(body.exercise).toContain('Compare group retention')
+      expect(body.learning_context.course_id).toBe('fixture')
+      expect(body.learning_context.target_label).toBe('Step — Compare')
+      expect(body.learning_context.target_id).toContain(':2:step')
       if (requests === 1) {
         expect(body.question).toContain('My answer to your last question')
         expect(body.history).toHaveLength(2)
+        expect(body.learner_question).toBe('The groups have different sizes.')
       }
       const text =
         requests++ === 0
@@ -63,6 +67,24 @@ for (const width of [1280, 390]) {
         json: { text, model: 'fixture', route: 'fake', turn_id: 'fixture', source_note: 'Synthetic' },
       })
     })
+    await page.route('**/api/answers?*', async (route) => {
+      const query = new URL(route.request().url()).searchParams
+      expect(query.get('course_id')).toBe('fixture')
+      expect(query.get('target_id')).toContain(':2:step')
+      await route.fulfill({
+        json: {
+          items: [
+            {
+              id: 'prior',
+              learner_question: 'Why compare rates?',
+              preview: 'Group sizes differ.',
+              created_at: '2026-10-01T10:00:00Z',
+            },
+          ],
+          next_cursor: null,
+        },
+      })
+    })
     await page.goto('/programs')
     if (width === 390)
       await page.addStyleTag({
@@ -73,6 +95,11 @@ for (const width of [1280, 390]) {
     await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('2')
     await expect(page.getByRole('combobox', { name: 'Notebook cell', exact: true })).toHaveValue('0')
     await expect(page.getByText('Discussing: Step — Compare')).toBeVisible()
+    await page.getByText('Previously answered here').click()
+    const savedLink = page.getByRole('link', { name: 'Why compare rates?' })
+    await expect(savedLink).toBeVisible()
+    await expect(savedLink).toHaveAttribute('href', /course_id=fixture/)
+    await page.getByText('Previously answered here').click()
     const socratic = page.getByRole('button', { name: 'Ask me a Socratic question', exact: true })
     await socratic.focus()
     await page.keyboard.press('Enter')

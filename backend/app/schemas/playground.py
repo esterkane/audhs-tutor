@@ -10,8 +10,19 @@ class PlaygroundMessage(BaseModel):
     text: str = Field(max_length=4000)
 
 
+class PlaygroundContext(BaseModel):
+    """Client supplied navigation identity, not a verified retrieval/source claim."""
+
+    course_id: str | None = Field(default=None, min_length=1, max_length=200)
+    section_id: str | None = Field(default=None, min_length=1, max_length=200)
+    target_id: str | None = Field(default=None, min_length=1, max_length=1000)
+    target_label: str | None = Field(default=None, max_length=300)
+
+
 class PlaygroundRequest(BaseModel):
     session_id: str
+    learning_context: PlaygroundContext | None = None
+    learner_question: str | None = Field(default=None, max_length=2000)
     intent: Literal["chat", "explain", "hint", "big_picture"] = "chat"
     question: str = Field(default="", max_length=2000)
     exercise: str = Field(max_length=1000)

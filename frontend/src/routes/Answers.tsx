@@ -24,7 +24,16 @@ function History() {
     setSearch(appliedSearch)
   }
   const query = new URLSearchParams()
-  for (const key of ['cursor', 'skill_id', 'area_id', 'surface', 'q']) {
+  for (const key of [
+    'cursor',
+    'skill_id',
+    'area_id',
+    'surface',
+    'q',
+    'course_id',
+    'section_id',
+    'target_id',
+  ]) {
     const value = params.get(key)
     if (value) query.set(key, value)
   }
@@ -98,7 +107,7 @@ function History() {
           <option value="playground">Notebook and coding help</option>
         </select>
       </label>
-      {(params.get('area_id') || params.get('skill_id')) && (
+      {['area_id', 'skill_id', 'course_id', 'section_id', 'target_id'].some((key) => params.get(key)) && (
         <p>
           Filtered to the selected learning context. <Link to="/answers">Show all answers</Link>
         </p>
@@ -213,6 +222,13 @@ function Answer({ id }: { id: string }) {
               Saved {new Date(data.created_at).toLocaleString()}. This is a past response, not a newly checked
               answer.
             </p>
+            {data.learner_question && (
+              <Card>
+                <h2 className="font-semibold">Your question</h2>
+                <p className="whitespace-pre-wrap">{data.learner_question}</p>
+              </Card>
+            )}
+            {data.target_label && <p className="text-sm">Target at the time: {data.target_label}</p>}
             <Card>
               <h2 className="font-semibold">Request at the time</h2>
               <p className="whitespace-pre-wrap">{data.request_text || 'Explanation requested'}</p>

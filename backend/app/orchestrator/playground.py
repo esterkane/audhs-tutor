@@ -25,7 +25,9 @@ VERSION = "playground.tutor.v1"
 
 
 def messages(body: PlaygroundRequest) -> list[Message]:
-    workspace = body.model_dump(exclude={"session_id", "question", "intent"})
+    workspace = body.model_dump(
+        exclude={"session_id", "question", "intent", "learning_context", "learner_question"}
+    )
     data = escape_data(json.dumps(workspace, ensure_ascii=False))
     return [
         Message(role="system", content=prompts.base_policy() + "\n\n" + prompts.playground_task()),
@@ -117,6 +119,9 @@ async def respond(
                 "model_call_id": out.model_call_id,
                 "sources": [],
                 "context_scope": "supplied_workspace_only",
+                "learning_context": body.learning_context.model_dump()
+                if body.learning_context
+                else None,
             },
         )
         answer_id = answer.id

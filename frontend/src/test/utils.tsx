@@ -5,11 +5,13 @@ import { MemoryRouter } from 'react-router-dom'
 
 export function renderApp(ui: ReactNode, { route = '/' } = {}) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
-    <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[route]}>{ui}</MemoryRouter>
-    </QueryClientProvider>,
-  )
+  return render(ui, {
+    wrapper: ({ children }) => (
+      <QueryClientProvider client={qc}>
+        <MemoryRouter initialEntries={[route]}>{children}</MemoryRouter>
+      </QueryClientProvider>
+    ),
+  })
 }
 
 export function jsonResponse(body: unknown, status = 200) {

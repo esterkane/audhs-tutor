@@ -51,6 +51,13 @@ async def test_tutor_logs_without_grading(
             "code": "print(' a '.strip())",
             "intent": "hint",
             "output_stale": True,
+            "learning_context": {
+                "course_id": "sample-course",
+                "section_id": "cleaning",
+                "target_id": "cell-2",
+                "target_label": "Cleaning data",
+            },
+            "learner_question": "Why strip spaces?",
         },
     )
     assert response.status_code == 200, response.text
@@ -61,6 +68,16 @@ async def test_tutor_logs_without_grading(
     assert saved is not None and saved.text == response.json()["text"]
     assert saved.request_json["output_stale"] is True
     assert saved.session_id == session["id"]
+    assert saved.request_json["learner_question"] == "Why strip spaces?"
+    assert saved.metadata_json["learning_context"]["target_id"] == "cell-2"
+    assert "sample-course" not in fake_local.calls[0].messages[1].content
+    matching = await client.get(
+        "/api/answers",
+        params={"course_id": "sample-course", "section_id": "cleaning", "target_id": "cell-2"},
+    )
+    assert [row["id"] for row in matching.json()["items"]] == [saved.id]
+    for field in ("course_id", "section_id", "target_id"):
+        assert (await client.get("/api/answers", params={field: "different"})).json()["items"] == []
     assert response.json()["save_error"] is None
     assert len(fake_local.calls) == 1
     assert '"output_stale": true' in fake_local.calls[0].messages[1].content

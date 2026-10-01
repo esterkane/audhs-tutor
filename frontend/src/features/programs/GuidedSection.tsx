@@ -114,6 +114,8 @@ function Content({ section, course, paused }: { section: Section; course: string
   if (practiceOpen && section.practice)
     return (
       <TaskNotebook
+        courseId={course}
+        sectionId={section.id}
         key={`${course}:${section.id}`}
         practice={section.practice}
         identity={`${course}:${section.id}`}
@@ -227,6 +229,8 @@ function Content({ section, course, paused }: { section: Section; course: string
           </label>
           {!paused && (
             <StudyTutor
+              courseId={course}
+              sectionId={section.id}
               reviewOnly
               targetLabel={`${section.title} — ${question.question}`}
               key={`review:${question.id}`}
@@ -279,6 +283,8 @@ function Content({ section, course, paused }: { section: Section; course: string
       {!paused && tutorOpen && (
         <aside aria-label="Help with this step">
           <StudyTutor
+            courseId={course}
+            sectionId={section.id}
             targetLabel={`${section.title} — ${work.phase}`}
             key={`${work.phase}:${question.id}`}
             identity={`${key}:${work.phase}:${question.id}`}

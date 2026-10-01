@@ -17,6 +17,9 @@ def summary(row: TutorAnswer) -> AnswerSummary:
     # Current request text can be an action instruction. Do not label it a verbatim
     # learner question or synthesize a FAQ title from private code/history.
     request = row.request_json.get("text", row.request_json.get("question", ""))
+    question = row.request_json.get("learner_question")
+    context = row.metadata_json.get("learning_context")
+    label = context.get("target_label") if isinstance(context, dict) else None
     skill = row.metadata_json.get("skill_id")
     area = row.metadata_json.get("area_id")
     return AnswerSummary(
@@ -26,6 +29,8 @@ def summary(row: TutorAnswer) -> AnswerSummary:
         surface=row.surface,
         created_at=row.created_at,
         request_text=request if isinstance(request, str) else "",
+        learner_question=question if isinstance(question, str) else None,
+        target_label=label if isinstance(label, str) else None,
         preview=row.text[:300],
         skill_id=skill if isinstance(skill, str) else None,
         area_id=area if isinstance(area, str) else None,
@@ -42,6 +47,9 @@ async def list_answers(
     cursor: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     skill_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     area_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    course_id: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
+    section_id: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
+    target_id: Annotated[str | None, Query(min_length=1, max_length=1000)] = None,
     q: Annotated[str | None, Query(max_length=200)] = None,
     surface: Literal["tutor", "playground"] | None = None,
 ) -> AnswerPage:
@@ -57,6 +65,15 @@ async def list_answers(
                 .where(text("tutor_answer_fts MATCH :search_expression"))
             )
         ).params(search_expression=expression)
+    for key, value in (
+        ("course_id", course_id),
+        ("section_id", section_id),
+        ("target_id", target_id),
+    ):
+        if value is not None:
+            stmt = stmt.where(
+                TutorAnswer.metadata_json["learning_context"][key].as_string() == value
+            )
     if skill_id is not None:
         stmt = stmt.where(TutorAnswer.metadata_json["skill_id"].as_string() == skill_id)
     if area_id is not None:

@@ -1,6 +1,6 @@
 # Saved tutor answers and suggested questions
 
-Status: queued by owner, 2026-10-01. Implement after current work; coordinate with Q2/Q3 and authoring A01 rather than create duplicate answer stores. QA00 inventory and proposed ADR-0017 prepared; QA01 completed workspace and shared lesson/hint/voice-text persistence is partially implemented (docs/slices/saved-workspace-answers.md and saved-lesson-answers.md). Local full-text search and browser history are implemented; suggested Q&A remains pending. See docs/design/tutor-answer-lifecycle.md.
+Status: queued by owner, 2026-10-01. Implement after current work; coordinate with Q2/Q3 and authoring A01 rather than create duplicate answer stores. QA00 inventory and proposed ADR-0017 prepared; QA01 completed workspace and shared lesson/hint/voice-text persistence is partially implemented (docs/slices/saved-workspace-answers.md and saved-lesson-answers.md). Local full-text search and browser history are implemented; exact-target previous replies are available in guided/notebook tutor panels; broader suggestions remain pending. See docs/design/tutor-answer-lifecycle.md.
 
 ## Requested outcome
 
@@ -28,7 +28,7 @@ StudyTutor restores bounded conversation history from browser localStorage; that
 | QA00 (draft prepared) | Map every answer path and draft storage/lifecycle ADR | Coverage matrix for lesson, notebook/playground, answer feedback, representations and voice; ownership, context IDs and relation to authoring/correction decided. |
 | QA01 (partial) | Durable answer persistence; QA00 | Migration/restore on disposable data, learner isolation, exact text/source snapshot, duplicate request and failed-save recovery tests. Completed vs partial state explicit. |
 | QA02 (local search + browser partial) | Local scoped search and retrieval; QA01 | Course/area/step filters, full text, pagination, deleted/stale states, cross-learner denial; opening a record makes zero model calls. |
-| QA03 | Suggested Q&A on course/area learning pages; QA02 | Relevant previously answered list, useful display labels, full answer/source view and follow-up preserving context; empty/loading/error, keyboard and narrow-screen journeys. |
+| QA03 (target history partial) | Suggested Q&A on course/area learning pages; QA02 | Relevant previously answered list, useful display labels, full answer/source view and follow-up preserving context; empty/loading/error, keyboard and narrow-screen journeys. |
 | QA04 | Corrections and reusable-answer rules; QA03 | Report/hide/replace workflow, source/code freshness, no stale personal feedback suggested as general advice, idempotent votes, no mastery changes. |
 | QA05 | Backfill/portability; QA01–QA04 | Import only real available browser/history records with provenance and consent for scope; no fabricated history; encrypted backup/export round-trip; sanitized public check. |
 

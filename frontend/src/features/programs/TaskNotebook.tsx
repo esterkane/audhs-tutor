@@ -5,12 +5,16 @@ import { NotebookWorkspace } from './NotebookWorkspace'
 import { parseNotebook, type NotebookCell, type Section } from './manifest'
 
 export function TaskNotebook({
+  courseId,
+  sectionId,
   practice,
   identity,
   title,
   paused,
   onBack,
 }: {
+  courseId?: string
+  sectionId?: string
   practice: NonNullable<Section['practice']>
   identity: string
   title: string
@@ -86,6 +90,8 @@ export function TaskNotebook({
       )}
       {cells && !paused && (
         <NotebookWorkspace
+          courseId={courseId}
+          sectionId={sectionId}
           cells={cells}
           checks={checks}
           prelude={prelude}

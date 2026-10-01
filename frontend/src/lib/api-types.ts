@@ -1987,6 +1987,10 @@ export interface components {
       created_at: string
       /** Request Text */
       request_text: string
+      /** Learner Question */
+      learner_question?: string | null
+      /** Target Label */
+      target_label?: string | null
       /** Preview */
       preview: string
       /** Skill Id */
@@ -2025,6 +2029,10 @@ export interface components {
       created_at: string
       /** Request Text */
       request_text: string
+      /** Learner Question */
+      learner_question?: string | null
+      /** Target Label */
+      target_label?: string | null
       /** Preview */
       preview: string
       /** Skill Id */
@@ -3859,6 +3867,20 @@ export interface components {
        */
       policy_version: string
     }
+    /**
+     * PlaygroundContext
+     * @description Client supplied navigation identity, not a verified retrieval/source claim.
+     */
+    PlaygroundContext: {
+      /** Course Id */
+      course_id?: string | null
+      /** Section Id */
+      section_id?: string | null
+      /** Target Id */
+      target_id?: string | null
+      /** Target Label */
+      target_label?: string | null
+    }
     /** PlaygroundMessage */
     PlaygroundMessage: {
       /**
@@ -3893,6 +3915,9 @@ export interface components {
     PlaygroundRequest: {
       /** Session Id */
       session_id: string
+      learning_context?: components['schemas']['PlaygroundContext'] | null
+      /** Learner Question */
+      learner_question?: string | null
       /**
        * Intent
        * @default chat
@@ -4807,6 +4832,9 @@ export interface operations {
         cursor?: string | null
         skill_id?: string | null
         area_id?: string | null
+        course_id?: string | null
+        section_id?: string | null
+        target_id?: string | null
         q?: string | null
         surface?: ('tutor' | 'playground') | null
       }

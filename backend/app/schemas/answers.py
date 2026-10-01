@@ -12,6 +12,8 @@ class AnswerSummary(BaseModel):
     surface: str
     created_at: str
     request_text: str
+    learner_question: str | None = None
+    target_label: str | None = None
     preview: str
     skill_id: str | None
     area_id: str | None

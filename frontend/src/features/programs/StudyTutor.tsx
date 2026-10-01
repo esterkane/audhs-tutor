@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { SavedContextAnswers } from './SavedContextAnswers'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Markdown } from '../../components/Markdown'
@@ -9,6 +11,8 @@ import { DictationButton } from '../voice/DictationButton'
 import { TutorResponseStatus } from '../tutor/TutorResponseStatus'
 
 type Props = {
+  courseId?: string
+  sectionId?: string
   targetLabel?: string
   reviewOnly?: boolean
   context: string
@@ -23,6 +27,14 @@ export function StudyTutor(props: Props) {
   return (
     <section aria-label="Study tutor" className="border border-border rounded-lg p-4 mt-4">
       <h3 className="font-semibold">{props.reviewOnly ? 'Answer feedback' : 'Study tutor'}</h3>
+      {props.identity && (
+        <SavedContextAnswers
+          key={JSON.stringify([props.courseId, props.sectionId, props.identity])}
+          courseId={props.courseId}
+          sectionId={props.sectionId}
+          targetId={props.identity}
+        />
+      )}
       {props.targetLabel && <p className="font-medium mt-2">Discussing: {props.targetLabel}</p>}
       {!props.reviewOnly && <p>Start with an explanation, then try one step. Questions are optional.</p>}
       {session.isPending ? (
@@ -49,6 +61,9 @@ export function StudyTutor(props: Props) {
 }
 function Conversation({
   context,
+  courseId,
+  sectionId,
+  targetLabel,
   reviewOnly = false,
   identity,
   code = '',
@@ -56,6 +71,7 @@ function Conversation({
   output = '',
   sessionId,
 }: Props & { sessionId: string }) {
+  const queryClient = useQueryClient()
   const storageKey = `study-tutor:v1:${sessionId}:${identity ?? context}`
   const snapshot = JSON.stringify([context, code, answer, output])
   const workspaceOutput =
@@ -236,6 +252,13 @@ function Conversation({
       const next = await askTutor(
         {
           session_id: sessionId,
+          learning_context: {
+            course_id: courseId,
+            section_id: sectionId,
+            target_id: identity,
+            target_label: targetLabel?.slice(0, 300),
+          },
+          learner_question: action === 'chat' ? question.trim().slice(0, 2000) : null,
           intent: action === 'hint' ? 'hint' : action === 'explain' ? 'explain' : 'chat',
           question: requests[action].slice(0, 2000),
           exercise: context.slice(0, 1000),
@@ -247,6 +270,7 @@ function Conversation({
         ctl.signal,
       )
       if (operation.current !== ctl || ctl.signal.aborted) return
+      if (next.answer_id) void queryClient.invalidateQueries({ queryKey: ['answers'] })
       setReply(next)
       setReady(true)
       setReplySnapshot(snapshot)
