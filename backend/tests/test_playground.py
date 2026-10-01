@@ -181,3 +181,58 @@ def test_current_answer_is_distinct_complete_bounded_untrusted_data() -> None:
     assert "x" * 2100 in packet[1].content
     with pytest.raises(ValidationError):
         PlaygroundRequest(session_id="s", exercise="Task", code="", learner_answer="x" * 8001)
+
+
+async def test_arithmetic_disclosure_survives_wrong_model_and_replay_without_grading(
+    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider
+) -> None:
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    fake_local.text = "Your calculation 30/50 = 0.9 is correct."
+    body = {
+        "session_id": session["id"],
+        "exercise": "Retention",
+        "code": "",
+        "question": "Check my answer",
+        "learner_answer": "30/50 = 0.9",
+        "learning_context": {"target_id": "retention"},
+    }
+    response = await client.post("/api/playground/tutor", json=body)
+    assert response.status_code == 200, response.text
+    delivered = response.json()["text"]
+    assert delivered.startswith("Local arithmetic check (not a grade):")
+    assert "does not hold exactly" in delivered
+    assert "Left side: 3/5" in delivered
+    assert "does not determine whether you endorsed" in delivered
+    assert delivered.endswith(fake_local.text)
+    row = await db.get(TutorAnswer, response.json()["answer_id"])
+    assert row is not None
+    assert row.text == delivered
+    assert row.metadata_json["raw_model_text"] == fake_local.text
+    assert row.metadata_json["arithmetic_checks"][0]["holds"] is False
+    assert "does not hold exactly" in fake_local.calls[0].messages[0].content
+    reused = await client.post("/api/playground/tutor", json={**body, "prefer_saved": True})
+    assert reused.json()["reused"] is True
+    assert reused.json()["text"] == delivered
+    assert len(fake_local.calls) == 1
+    assert await db.scalar(select(func.count()).select_from(AssessmentAttempt)) == 0
+    assert await db.scalar(select(func.count()).select_from(CompetencyEvidence)) == 0
+
+
+def test_hint_does_not_reveal_arithmetic_and_other_modes_keep_checked_scope() -> None:
+    from app.orchestrator.workspace_checks import checks_for, disclose_arithmetic
+
+    body = PlaygroundRequest(
+        session_id="s", exercise="Retention", code="", learner_answer="30/50=60%"
+    )
+    hint = body.model_copy(update={"intent": "hint"})
+    assert checks_for(hint) == []
+    assert "Local arithmetic check" not in messages(hint)[0].content
+    assert disclose_arithmetic("one hint", checks_for(hint)) == "one hint"
+    for mode in ("explicit", "socratic"):
+        current = body.model_copy(update={"questioning_style": mode})
+        output = disclose_arithmetic("model guidance", checks_for(current))
+        assert "holds exactly" in output
+        assert "whole answer" in output
+    missing = body.model_copy(update={"learner_answer": None})
+    assert checks_for(missing) == []

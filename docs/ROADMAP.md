@@ -26,3 +26,8 @@ Notebook workspace can prepare an explicit private bundle, preserve existing edi
 - 2026-10-01: assessment help/feedback widget identity collision fixed; see docs/slices/assessment-widget-identity.md.
 
 - 2026-10-01: shared tutor waiting/completion and immediate playground Stop verified; see docs/slices/shared-tutor-status.md.
+
+
+### 2026-10-01 — bounded workspace arithmetic feedback
+
+Implemented literal numeric equality checks, separate from model guidance and learning evidence.542 backend tests, 228 frontend tests, lint and independent review pass. Actual local feedback still has tag/interpretation failures; full tutor quality remains open. See docs/slices/workspace-arithmetic-checks.md.

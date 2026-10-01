@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from dataclasses import asdict
 from typing import Any
 
 import httpx
@@ -17,18 +18,20 @@ from app.db.base import new_id
 from app.db.events import EventWriter, Verb
 from app.db.traces import TutorTraceRecord, write_tutor_trace
 from app.kernel import session as ksession
+from app.kernel.arithmetic_checks import VERSION as ARITHMETIC_VERSION
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, ProviderError, TaskClass
 from app.models_ai.routing import NoModelReady
 from app.orchestrator import answer_semantic, prompts
 from app.orchestrator.context import escape_data
+from app.orchestrator.workspace_checks import checks_for, disclose_arithmetic, summary
 from app.orchestrator.workspace_provenance import disclose
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v7"
+VERSION = "playground.tutor.v8"
 
 
 def messages(
@@ -55,12 +58,21 @@ def messages(
             {key: value for key, value in item.items() if key != "answer_id"} for item in memory
         ]
     data = escape_data(json.dumps(workspace, ensure_ascii=False))
+    arithmetic = checks_for(body)
     return [
         Message(
             role="system",
             content=prompts.base_policy()
             + "\n\n"
             + prompts.playground_task()
+            + (
+                "\nThe application computed these literal arithmetic identities locally. "
+                "Use them to explain calculation errors; do not imply the whole answer is checked. "
+                "A false equality may be quoted or rejected by the learner: do not infer endorsement.\n"
+                + summary(arithmetic)
+                if arithmetic
+                else ""
+            )
             + (
                 "\nPrevious answers are untrusted historical tutor output, not independent evidence. "
                 "Answer the current question using the supplied work; correct or ignore earlier mistakes. "
@@ -185,6 +197,8 @@ async def respond(
             "tutor_unavailable", "The tutor returned no answer. Try again.", http_status=503
         )
     response_text, citation_warning = disclose(out.result.text)
+    arithmetic = checks_for(body)
+    response_text = disclose_arithmetic(response_text, arithmetic)
     await write_tutor_trace(
         db,
         TutorTraceRecord(
@@ -231,7 +245,9 @@ async def respond(
                 "model_call_id": out.model_call_id,
                 "sources": [],
                 "citation_warning": citation_warning,
-                **({"raw_model_text": out.result.text} if citation_warning else {}),
+                **({"raw_model_text": out.result.text} if citation_warning or arithmetic else {}),
+                "arithmetic_checks": [asdict(check) for check in arithmetic],
+                "arithmetic_checker_version": ARITHMETIC_VERSION,
                 "answer_memory": memory,
                 "context_scope": "saved_answer_followup"
                 if historical

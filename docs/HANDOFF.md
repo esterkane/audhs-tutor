@@ -187,3 +187,8 @@ Twelve pinned synthetic calls across3installedlocalmodels expose incorrect arith
 ## 2026-10-01 — exact current learner-answer binding
 
 Complete bounded task answers now travel separately from run output and remain inspectable in saved detail/immediate followup. Changed-answer memory/replay excluded; Socratic start/hint sends no unsent answer.479backend/227frontend, final17backend/29frontend focusedchecks, lint/build,2desktop/narrow journeys and independent reviewpassed. Four pinnedlocalGemmatrials still contain wrong arithmetic and spurious critique: noqualitypass or routingchange. See docs/slices/exact-learner-answer.md. Next scoped checks then re-evaluation. Both repositories remainprivate.
+
+
+## 2026-10-01 — local literal arithmetic feedback
+
+Workspace feedback now includes bounded deterministic equality checks for supported submitted arithmetic, with exact fraction/decimal values and an explicit limitation: this is not a grade or validation of the formula's application. The model cannot remove the final disclosure; saved/read-aloud text retains it, and raw model text/check metadata are preserved. Hints are excluded; prompt v8 invalidates earlier replay. Review fixed ambiguous partial parsing. Final verification: 542 backend tests, 228 frontend tests, lint/types and independent re-review passed. Twelve local diagnostic calls are preserved. The final wrong-division sample was corrected, but leaked tags and a false fraction objection keep the quality gate open. No routing or mastery change. See docs/slices/workspace-arithmetic-checks.md; attribution, recovery/correction and wider queues remain.

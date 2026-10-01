@@ -1,0 +1,120 @@
+{
+  "synthetic": true,
+  "pinned_model": "gemma3-12b",
+  "fallback_allowed": false,
+  "prompt_version": "playground.tutor.v8",
+  "task_prompt_sha256": "8774e6d376d004e01540153ef0233cd879fbd04aba5197d7325bc4452835f79c",
+  "results": [
+    {
+      "case": "socratic_start",
+      "review_criteria": "Give enough context and one focused question, not the complete calculation.",
+      "text": "(chat) What does a rate of 50 rows to 30 rows represent in this context?",
+      "delivered_text": "(chat) What does a rate of 50 rows to 30 rows represent in this context?",
+      "messages_sha256": "8c502894dc93c4c61b0903e8235de96065493e71d9ae1c045a39812bd33f3f88",
+      "model": "gemma3-12b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "learner_answer": null,
+        "intent": "chat",
+        "question": "Help me reason about this rate, one question at a time.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": []
+      }
+    },
+    {
+      "case": "socratic_feedback",
+      "review_criteria": "Correct the specific arithmetic before any optional single follow-up; no mastery claim.",
+      "text": "`<learner_answer>30/50 = 0.9, so 90%.</learner_answer>`\n\nYour calculation `30/50 = 0.9` is incorrect. The correct value is 30/50 = 0.6. This means 60% of the original rows remain. What does that tell you about the percentage of rows that were removed?",
+      "delivered_text": "Local arithmetic check (not a grade):\n- `30/50 = 0.9` does not hold exactly. Left side: 3/5 (0.6); right side: 9/10 (0.9).\n\nOnly the listed literal equalities were checked, using exact arithmetic. This does not determine whether you endorsed them, whether the formula fits the task, or whether your whole answer, code or interpretation is correct. It is not a grade.\n\nTutor explanation (model-generated; may contain errors or disagree with the check):\n\n`<learner_answer>30/50 = 0.9, so 90%.</learner_answer>`\n\nYour calculation `30/50 = 0.9` is incorrect. The correct value is 30/50 = 0.6. This means 60% of the original rows remain. What does that tell you about the percentage of rows that were removed?",
+      "messages_sha256": "0bea06f9864bb30f66da7c9cfc0d43012af04af65f4fcd994a0c48183fce6702",
+      "model": "gemma3-12b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "learner_answer": "30/50 = 0.9, so 90%.",
+        "intent": "chat",
+        "question": "My answer is 90%. Give feedback on my reasoning first.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "What fraction of the original 50 rows are the remaining 30?"
+          },
+          {
+            "role": "user",
+            "text": "30/50 = 0.9, so 90%."
+          }
+        ]
+      }
+    },
+    {
+      "case": "socratic_hint",
+      "review_criteria": "Hint about the original count, no replacement question or complete answer.",
+      "text": "The denominator represents the total number of items considered before a selection.",
+      "delivered_text": "The denominator represents the total number of items considered before a selection.",
+      "messages_sha256": "c117ad28a48160448e9ffaccd850d41e05f30bf87f4e571439049ebf50d9db35",
+      "model": "gemma3-12b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "learner_answer": null,
+        "intent": "hint",
+        "question": "Give one small clue for your last question; do not solve it.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "Which count belongs in the denominator?"
+          }
+        ]
+      }
+    },
+    {
+      "case": "socratic_correct_feedback",
+      "review_criteria": "Acknowledge the correct calculation without inventing an error or claiming general mastery.",
+      "text": "Your calculation `30/50 = 0.6` is correct [local arithmetic check: `30/50 = 0.6`]. However, the question asks for the *fraction* of the original dataset that remains. What does that mean in terms of the result of your division?",
+      "delivered_text": "Local arithmetic check (not a grade):\n- `30/50 = 0.6` holds exactly. Left side: 3/5 (0.6); right side: 3/5 (0.6).\n\nOnly the listed literal equalities were checked, using exact arithmetic. This does not determine whether you endorsed them, whether the formula fits the task, or whether your whole answer, code or interpretation is correct. It is not a grade.\n\nTutor explanation (model-generated; may contain errors or disagree with the check):\n\nYour calculation `30/50 = 0.6` is correct [local arithmetic check: `30/50 = 0.6`]. However, the question asks for the *fraction* of the original dataset that remains. What does that mean in terms of the result of your division?",
+      "messages_sha256": "a64c7fad1e02463537a43d9f368fc803cf64741f01a3d9774bcfafdd6e23f922",
+      "model": "gemma3-12b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "learner_answer": "30/50 = 0.6, so 60%.",
+        "intent": "chat",
+        "question": "My answer is 60%. Please check my reasoning.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "What fraction of the original 50 rows are the remaining 30?"
+          },
+          {
+            "role": "user",
+            "text": "30/50 = 0.6, so 60%."
+          }
+        ]
+      }
+    }
+  ]
+}

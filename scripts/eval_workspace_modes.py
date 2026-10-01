@@ -18,6 +18,8 @@ from app.models_ai.benchmark_gateway import BenchmarkRouter
 from app.models_ai.registry import get_row, get_spec, upsert
 from app.models_ai.factory import installed_models
 from app.orchestrator.playground import VERSION, messages
+from app.orchestrator.workspace_checks import checks_for, disclose_arithmetic
+from app.orchestrator.workspace_provenance import disclose
 from app.schemas.playground import PlaygroundMessage, PlaygroundRequest
 
 CASES = [
@@ -128,12 +130,13 @@ async def run(output: Path, model: str = "gemma3-12b") -> None:
                         intent=intent,
                         questioning_style="socratic",
                     )
+                    packet = messages(body)
                     reply = await asyncio.wait_for(
                         gateway.complete(
                             TaskClass.HINT
                             if intent == "hint"
                             else TaskClass.EXPLAIN_SIMPLE,
-                            messages(body),
+                            packet,
                             learner_id=world.learner_id,
                             max_tokens=400,
                             metadata={
@@ -154,6 +157,8 @@ async def run(output: Path, model: str = "gemma3-12b") -> None:
                             "case": name,
                             "review_criteria": review,
                             "text": reply.result.text,
+                            "delivered_text": disclose_arithmetic(disclose(reply.result.text)[0], checks_for(body)),
+                            "messages_sha256": hashlib.sha256(json.dumps([{"role": item.role, "content": item.content} for item in packet], ensure_ascii=False, sort_keys=True).encode()).hexdigest(),
                             "model": reply.registry_id,
                             "request": body.model_dump(exclude={"session_id"}),
                         }

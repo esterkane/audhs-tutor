@@ -6,7 +6,7 @@ import { askTutor } from '../playground/api'
 import { useCurrentSession } from '../session/api'
 vi.mock('../playground/api', () => ({ askTutor: vi.fn() }))
 vi.mock('../session/api', () => ({ useCurrentSession: vi.fn() }))
-vi.mock('../voice/ReadAloud', () => ({ ReadAloud: () => <button>Listen to explanation</button> }))
+vi.mock('../voice/ReadAloud', () => ({ ReadAloud: ({ text }: { text: string }) => <button data-spoken-text={text}>Listen to explanation</button> }))
 vi.mock('../voice/DictationButton', () => ({ DictationButton: () => <button type="button">Dictate</button> }))
 const reply = {
   reused: false,
@@ -427,4 +427,16 @@ it('does not submit an unsent Socratic response when requesting a hint', async (
   await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
   expect(vi.mocked(askTutor).mock.calls[1][0].learner_answer).toBeNull()
   expect(input).toHaveValue('unsent answer')
+})
+
+
+it('reads the same local arithmetic disclosure as the displayed tutor reply', async () => {
+  active()
+  const text = 'Local arithmetic check (not a grade):\n\n30/50 = 0.9 does not hold exactly. Left side: 3/5 (0.6).\n\nTutor explanation (model-generated; may contain errors):\n\nYour calculation is correct.'
+  vi.mocked(askTutor).mockResolvedValue({...reply, text})
+  renderApp(<StudyTutor reviewOnly context="Retention" answer="30/50 = 0.9" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  expect(await screen.findByText('Local arithmetic check (not a grade):')).toBeVisible()
+  expect(screen.getByText(/does not hold exactly/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toHaveAttribute('data-spoken-text', text)
 })
