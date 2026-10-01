@@ -28,7 +28,7 @@ from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v6"
+VERSION = "playground.tutor.v7"
 
 
 def messages(

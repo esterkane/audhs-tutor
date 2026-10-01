@@ -182,3 +182,8 @@ Explicit/Socratic mode is transmitted outside quoted history, matched by memory 
 
 ## Local feedback candidate diagnostic
 Twelve pinned synthetic calls across3installedlocalmodels expose incorrect arithmetic/attribution, omitted correction and hint violations. No supported winner; no live routing change. Exact request/raw output evidence and next binding/checking plan in slices/local-feedback-candidates.md. Local/disposable boundaries reviewed; lint/typespass. Both repositories private.
+
+
+## 2026-10-01 — exact current learner-answer binding
+
+Complete bounded task answers now travel separately from run output and remain inspectable in saved detail/immediate followup. Changed-answer memory/replay excluded; Socratic start/hint sends no unsent answer.479backend/227frontend, final17backend/29frontend focusedchecks, lint/build,2desktop/narrow journeys and independent reviewpassed. Four pinnedlocalGemmatrials still contain wrong arithmetic and spurious critique: noqualitypass or routingchange. See docs/slices/exact-learner-answer.md. Next scoped checks then re-evaluation. Both repositories remainprivate.

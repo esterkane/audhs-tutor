@@ -55,6 +55,7 @@ for (const width of [1280, 390]) {
         expect(body.question).toContain('My answer to your last question')
         expect(body.history).toHaveLength(2)
         expect(body.learner_question).toBe('The groups have different sizes.')
+        expect(body.learner_answer).toBe('The groups have different sizes.')
       }
       const text =
         requests++ === 0

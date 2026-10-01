@@ -25,6 +25,7 @@ class PlaygroundRequest(BaseModel):
     questioning_style: Literal["explicit", "socratic"] = "explicit"
     learning_context: PlaygroundContext | None = None
     learner_question: str | None = Field(default=None, max_length=2000)
+    learner_answer: str | None = Field(default=None, max_length=8000)
     intent: Literal["chat", "explain", "hint", "big_picture"] = "chat"
     question: str = Field(default="", max_length=2000)
     exercise: str = Field(max_length=1000)

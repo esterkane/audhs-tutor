@@ -50,7 +50,8 @@ it('sends explicit bounded context, answer and opt-in Socratic intent', async ()
       session_id: 's',
       exercise: 'A'.repeat(1000),
       code: 'B'.repeat(16000),
-      output: expect.stringContaining('Learner answer (not execution output):\n' + 'C'.repeat(1950)),
+      output: '',
+      learner_answer: null,
       question: expect.stringContaining('explicitly choose Socratic'),
       questioning_style: 'socratic',
     }),
@@ -145,9 +146,7 @@ it('labels actual output separately and reports storage failures without losing 
   expect(screen.getByLabelText('Your tutor message or response')).toHaveValue('Keep me')
   fireEvent.click(screen.getByRole('button', { name: 'Review my answer' }))
   await screen.findByText(reply.text)
-  expect(vi.mocked(askTutor).mock.calls[0][0].output).toContain(
-    'Actual run output (not verified by tutor):\n42',
-  )
+  expect(vi.mocked(askTutor).mock.calls[0][0].output).toBe('42')
   store.mockRestore()
 })
 
@@ -185,7 +184,8 @@ it('checks an answer explicitly against the selected question and offers spoken 
     expect.objectContaining({
       exercise: 'Question: Why? Criteria: Mention selection bias.',
       question: expect.stringContaining('What needs revision'),
-      output: expect.stringContaining('Some groups lose more rows.'),
+      learner_answer: 'Some groups lose more rows.',
+      output: '',
     }),
     expect.any(AbortSignal),
   )
@@ -207,6 +207,7 @@ it('guides a Socratic answer, preserves earlier messages, and can return to expl
   await screen.findByText('Group B loses more. What changes in its representation?')
   const sent = vi.mocked(askTutor).mock.calls[1][0]
   expect(sent.questioning_style).toBe('socratic')
+  expect(sent.learner_answer).toBe('Group B loses more rows.')
   expect(sent.question).toContain('Group B loses more rows.')
   expect(sent.question).toContain('Give direct feedback on my answer first')
   expect(sent.history?.at(-1)?.text).toBe('Which group loses more rows?')
@@ -393,4 +394,37 @@ it('opts into saved reuse explicitly and labels the original dated response', as
   fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Explain again' } })
   fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
   await waitFor(() => expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: false }), expect.any(AbortSignal)))
+})
+
+
+it('sends the full task answer separately from output and refuses silent truncation', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue(reply)
+  const exact = '  ' + 'A'.repeat(7900) + ' end  '
+  const view = renderApp(<StudyTutor reviewOnly context="Check retention" answer={exact} output="run result" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await screen.findByText(reply.text)
+  expect(vi.mocked(askTutor).mock.calls[0][0]).toMatchObject({learner_answer: exact, output: 'run result'})
+  view.rerender(<StudyTutor reviewOnly context="Check retention" answer={'B'.repeat(8001)} output="run result" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  expect(await screen.findByRole('alert')).toHaveTextContent('8,000 characters')
+  expect(askTutor).toHaveBeenCalledTimes(1)
+  view.rerender(<StudyTutor reviewOnly context="Check retention" answer="revised" output="run result" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
+  expect(vi.mocked(askTutor).mock.calls[1][0]).toMatchObject({learner_answer: 'revised', history: []})
+})
+
+it('does not submit an unsent Socratic response when requesting a hint', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue(reply)
+  renderApp(<StudyTutor context="Retention" answer="older task answer" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Ask me a Socratic question' }))
+  await screen.findByText(reply.text)
+  const input = screen.getByLabelText('Your answer to the tutor’s question')
+  fireEvent.change(input, {target: {value: 'unsent answer'}})
+  fireEvent.click(screen.getByRole('button', { name: /hint/i }))
+  await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
+  expect(vi.mocked(askTutor).mock.calls[1][0].learner_answer).toBeNull()
+  expect(input).toHaveValue('unsent answer')
 })

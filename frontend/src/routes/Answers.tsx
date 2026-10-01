@@ -237,6 +237,12 @@ function Answer({ id }: { id: string }) {
                 <p className="whitespace-pre-wrap">{data.learner_question}</p>
               </Card>
             )}
+            {typeof data.request.learner_answer === 'string' && data.request.learner_answer && (
+              <details>
+                <summary>Your submitted answer at the time</summary>
+                <p className="whitespace-pre-wrap break-words">{data.request.learner_answer}</p>
+              </details>
+            )}
             {data.target_label && <p className="text-sm">Target at the time: {data.target_label}</p>}
             <Card>
               <h2 className="font-semibold">Request at the time</h2>

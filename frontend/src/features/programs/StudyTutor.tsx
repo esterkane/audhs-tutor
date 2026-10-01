@@ -74,11 +74,6 @@ function Conversation({
   const queryClient = useQueryClient()
   const storageKey = `study-tutor:v1:${sessionId}:${identity ?? context}`
   const snapshot = JSON.stringify([context, code, answer, output])
-  const workspaceOutput =
-    `Learner answer (not execution output):\n${answer.slice(0, 1950)}\n\nActual run output (not verified by tutor):\n${output.slice(0, 1950)}`.slice(
-      0,
-      4000,
-    )
   const [restored] = useState(() => {
     const fresh = {
       question: '',
@@ -211,6 +206,16 @@ function Conversation({
       setError('Please shorten this reply to 1,700 characters so the tutor receives your complete answer.')
       return
     }
+    const learnerAnswer =
+      action === 'chat' && socratic
+        ? question
+        : action === 'socratic' || (action === 'hint' && socratic)
+          ? null
+          : answer || null
+    if (learnerAnswer && learnerAnswer.length > 8000) {
+      setError('Please shorten your task answer to 8,000 characters so the tutor receives it in full. Your work is retained.')
+      return
+    }
     const requests = {
       shorter:
         'Make your last response shorter while preserving its key reasoning, uncertainty and source limitations. Explicitly retain any missing-data or unverified-output caveat; do not introduce a new judgment of my answer. Stay on this same step; do not introduce a new question or claim new checks.',
@@ -269,7 +274,8 @@ function Conversation({
           question: requests[action].slice(0, 2000),
           exercise: context.slice(0, 1000),
           code: code.slice(0, 16000),
-          output: workspaceOutput,
+          learner_answer: learnerAnswer,
+          output: output.slice(0, 4000),
           output_stale: false,
           history: replySnapshot === snapshot ? history.slice(-6) : [],
         },
@@ -359,10 +365,11 @@ function Conversation({
           onChange={(event) => setPreferSaved(event.target.checked)} />
         Use a saved answer when this request matches (no new model call)
       </label>
-      {(context.length > 1000 || code.length > 16000 || answer.length > 1950 || output.length > 1950) && (
+      {(context.length > 1000 || code.length > 16000 || output.length > 4000) && (
         <p role="status">
-          Only the first 1,000 characters of material, 16,000 of code, 1,950 of your answer and 1,950 of run
-          output fit this tutor request. Focus on one smaller step for complete feedback.
+          Only the first 1,000 characters of material, 16,000 of code and 4,000 of run output fit this
+          tutor request. Task answers are sent in full, up to 8,000 characters. Focus on one smaller
+          step for complete feedback.
         </p>
       )}
       {reply && (

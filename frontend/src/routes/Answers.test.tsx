@@ -32,7 +32,7 @@ it('reopens exact saved work and returns to its filtered history without generat
       return jsonResponse({
         ...summary,
         text: 'The old explanation.',
-        request: { code: 'print(groups)', output: 'old output', output_stale: true },
+        request: { code: 'print(groups)', output: 'old output', output_stale: true, learner_answer: 'I retained 30 of 50 rows.' },
         metadata: {},
         turn_id: 't1',
       })
@@ -44,6 +44,8 @@ it('reopens exact saved work and returns to its filtered history without generat
   open('/answers?surface=playground')
   fireEvent.click(await screen.findByRole('link', { name: 'Why clean this data?' }))
   expect(await screen.findByText('The old explanation.')).toBeVisible()
+  fireEvent.click(screen.getByText('Your submitted answer at the time'))
+  expect(screen.getByText('I retained 30 of 50 rows.')).toBeVisible()
   expect(screen.getByRole('heading', { name: 'Request at the time' })).toBeVisible()
   fireEvent.click(screen.getByText('Material and code supplied at the time'))
   expect(screen.getByText('print(groups)')).toBeVisible()

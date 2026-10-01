@@ -55,6 +55,7 @@ async def test_memory_is_scoped_filtered_bounded_and_untrusted(
         await retrieve(db, owner, body.model_copy(update={"questioning_style": "socratic"})) == []
     )
     assert await retrieve(db, owner, body.model_copy(update={"learning_context": None})) == []
+    assert await retrieve(db, owner, body.model_copy(update={"learner_answer": "new claim"})) == []
     assert await retrieve(db, owner, body.model_copy(update={"output": "different"})) == []
     assert await retrieve(db, owner, body.model_copy(update={"intent": "hint"})) == []
     packet = messages(body, memory=found)
@@ -282,3 +283,33 @@ async def test_exact_reuse_compares_nested_values_not_json_encoding(client, db):
     row.request_json = {**request, "output_stale": 0}
     await db.commit()
     assert await exact_saved(db, owner, body, "test") is None
+
+
+async def test_changed_current_answer_cannot_replay_or_retrieve_old_feedback(
+    client, db, fake_local
+):  # type: ignore[no-untyped-def]
+    from app.models_ai.registry import seed_defaults
+
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    body = {
+        "session_id": session["id"],
+        "exercise": "Retention",
+        "code": "",
+        "question": "Check retention",
+        "learner_answer": "30/50 = 0.9",
+        "learning_context": {"target_id": "retention"},
+    }
+    first = await client.post("/api/playground/tutor", json=body)
+    assert first.status_code == 200
+    same = await client.post("/api/playground/tutor", json={**body, "prefer_saved": True})
+    assert same.json()["reused"] is True
+    assert len(fake_local.calls) == 1
+    changed = await client.post(
+        "/api/playground/tutor",
+        json={**body, "prefer_saved": True, "learner_answer": "30/50 = 0.6"},
+    )
+    assert changed.status_code == 200
+    assert changed.json()["reused"] is False
+    assert changed.json()["memory_answers"] == []
+    assert len(fake_local.calls) == 2

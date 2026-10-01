@@ -4017,6 +4017,8 @@ export interface components {
       learning_context?: components['schemas']['PlaygroundContext'] | null
       /** Learner Question */
       learner_question?: string | null
+      /** Learner Answer */
+      learner_answer?: string | null
       /**
        * Intent
        * @default chat

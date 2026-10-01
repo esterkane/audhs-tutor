@@ -123,6 +123,7 @@ async def run(output: Path, model: str = "gemma3-12b") -> None:
                         exercise="A dataset starts with 50 rows and retains 30.",
                         code="",
                         question=question,
+                        learner_answer=next((item.text for item in reversed(history) if item.role == "user"), None),
                         history=history,
                         intent=intent,
                         questioning_style="socratic",

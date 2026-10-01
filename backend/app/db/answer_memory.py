@@ -32,7 +32,15 @@ def candidates(learner_id: str, body: PlaygroundRequest) -> Select[tuple[TutorAn
         field = TutorAnswer.metadata_json["learning_context"][key].as_string()
         stmt = stmt.where(field == value if value is not None else field.is_(None))
     # Compare supplied work exactly. No claim is made about files not supplied in this request.
-    for key in ("exercise", "code", "output", "output_stale", "intent", "questioning_style"):
+    for key in (
+        "exercise",
+        "code",
+        "output",
+        "output_stale",
+        "intent",
+        "questioning_style",
+        "learner_answer",
+    ):
         field = TutorAnswer.request_json[key]
         stmt = stmt.where(
             (field.as_boolean() if key == "output_stale" else field.as_string())

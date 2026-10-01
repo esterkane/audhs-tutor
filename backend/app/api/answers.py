@@ -168,6 +168,7 @@ async def followup(
         "saved_at": row.created_at,
         "request": excerpt(old.get("question", old.get("text")), 2000, "earlier request"),
         "answer": excerpt(row.text, 8000, "earlier answer"),
+        "learner_answer": excerpt(old.get("learner_answer"), 8000, "earlier learner answer"),
         "limitations": (
             "Historical context only. Original retrieved passages and earlier chat are not supplied. "
             "No current source verification or execution."

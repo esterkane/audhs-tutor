@@ -1,0 +1,112 @@
+{
+  "synthetic": true,
+  "pinned_model": "gemma3-12b",
+  "fallback_allowed": false,
+  "prompt_version": "playground.tutor.v7",
+  "task_prompt_sha256": "8774e6d376d004e01540153ef0233cd879fbd04aba5197d7325bc4452835f79c",
+  "results": [
+    {
+      "case": "socratic_start",
+      "review_criteria": "Give enough context and one focused question, not the complete calculation.",
+      "text": "(chat) What does a dataset starting with 50 rows and retaining 30 rows tell you about the rate of data loss?",
+      "model": "gemma3-12b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "learner_answer": null,
+        "intent": "chat",
+        "question": "Help me reason about this rate, one question at a time.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": []
+      }
+    },
+    {
+      "case": "socratic_feedback",
+      "review_criteria": "Correct the specific arithmetic before any optional single follow-up; no mastery claim.",
+      "text": "Your calculation of 30/50 = 0.9 is correct. However, the question asks about the *fraction* of rows retained, not the percentage. A fraction is a ratio of whole numbers, not a decimal. \n\nWhat would 30/50 simplified be?",
+      "model": "gemma3-12b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "learner_answer": "30/50 = 0.9, so 90%.",
+        "intent": "chat",
+        "question": "My answer is 90%. Give feedback on my reasoning first.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "What fraction of the original 50 rows are the remaining 30?"
+          },
+          {
+            "role": "user",
+            "text": "30/50 = 0.9, so 90%."
+          }
+        ]
+      }
+    },
+    {
+      "case": "socratic_hint",
+      "review_criteria": "Hint about the original count, no replacement question or complete answer.",
+      "text": "The denominator represents the total number of items considered before a selection.",
+      "model": "gemma3-12b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "learner_answer": null,
+        "intent": "hint",
+        "question": "Give one small clue for your last question; do not solve it.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "Which count belongs in the denominator?"
+          }
+        ]
+      }
+    },
+    {
+      "case": "socratic_correct_feedback",
+      "review_criteria": "Acknowledge the correct calculation without inventing an error or claiming general mastery.",
+      "text": "Your calculation, 30/50 = 0.6, is correct [general guidance]. However, the question asks for the *fraction* of rows retained, not the percentage. What does that mean?",
+      "model": "gemma3-12b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "learner_answer": "30/50 = 0.6, so 60%.",
+        "intent": "chat",
+        "question": "My answer is 60%. Please check my reasoning.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "What fraction of the original 50 rows are the remaining 30?"
+          },
+          {
+            "role": "user",
+            "text": "30/50 = 0.6, so 60%."
+          }
+        ]
+      }
+    }
+  ]
+}
