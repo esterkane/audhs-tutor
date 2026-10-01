@@ -178,3 +178,11 @@ missing, unresolved, completed and partial. Backend587/frontend262, generated ty
 required reviews passed. Claim-time interruption race fixed and regression-tested. See
 `docs/slices/voice-terminal-recovery.md`. Pending UUID browser recovery and provider-resistant
 teardown remain open; STT precedes this claim and is not deduplicated. Personal voice gate open.
+
+
+## Area journey initialization — 2026-10-02
+
+CI run 36942008712 failed because the area journey read the catalog before the initialization
+POST completed. The test now waits for that specific response, asserts success, and verifies the
+expected area exists. The isolated fresh-sandbox journey passes; code review found no blockers
+or majors. This changes test synchronization only, not area generation or learner behavior.

@@ -4,9 +4,14 @@ import { API_URL } from '../playwright.config'
 test('areas can be renamed and selected as a goal without activating lessons', async ({ page, request }) => {
   await page.goto('/areas')
   await expect(page.getByRole('heading', { name: 'Learning areas', exact: true })).toBeVisible()
+  const initialized = page.waitForResponse((response) =>
+    new URL(response.url()).pathname === '/api/areas/initialize' && response.request().method() === 'POST',
+  )
   await page.getByRole('button', { name: 'Suggest areas from my material' }).click()
+  expect((await initialized).ok()).toBe(true)
   const catalog = await (await request.get(`${API_URL}/api/areas`)).json()
   const area = catalog.areas.find((a: { slug: string }) => a.slug === 'rag')
+  expect(area, 'Initialized catalog includes the retrieval area').toBeDefined()
   await page.getByLabel('Area to review').selectOption(area.id)
   await page.route('**/api/answers?*', async (route) => {
     const query = new URL(route.request().url()).searchParams
