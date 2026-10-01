@@ -10,6 +10,7 @@ const result = { stdout: 'hello', error: null, truncated: false, results: [], ti
 const runner = (): Runner => ({ load: async () => {}, run: async () => result, dispose: vi.fn() })
 beforeEach(() => {
   localStorage.clear()
+  sessionStorage.clear()
   localStorage.setItem(PLAIN_EDITOR_KEY, '1')
 })
 afterEach(() => {

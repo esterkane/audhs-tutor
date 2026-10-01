@@ -27,6 +27,7 @@ afterEach(() => {
   vi.useRealTimers()
   vi.resetAllMocks()
   localStorage.clear()
+  sessionStorage.clear()
 })
 it('requires an explicit existing session', () => {
   vi.mocked(useCurrentSession).mockReturnValue({ data: null, isPending: false, isError: false } as ReturnType<
@@ -56,6 +57,7 @@ it('sends explicit bounded context, answer and opt-in Socratic intent', async ()
       questioning_style: 'socratic',
     }),
     expect.any(AbortSignal),
+    expect.any(String),
   )
   expect(screen.getByText(/not a verified grade/)).toBeVisible()
   expect(screen.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
@@ -188,6 +190,7 @@ it('checks an answer explicitly against the selected question and offers spoken 
       output: '',
     }),
     expect.any(AbortSignal),
+    expect.any(String),
   )
 })
 
@@ -389,11 +392,11 @@ it('opts into saved reuse explicitly and labels the original dated response', as
   fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Why compare?' } })
   fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
   await screen.findByText(/Saved answer from 2026-10-01/)
-  expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: true }), expect.any(AbortSignal))
+  expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: true }), expect.any(AbortSignal), expect.any(String))
   fireEvent.click(reuse)
   fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Explain again' } })
   fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
-  await waitFor(() => expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: false }), expect.any(AbortSignal)))
+  await waitFor(() => expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: false }), expect.any(AbortSignal), expect.any(String)))
 })
 
 
@@ -470,4 +473,21 @@ it('keeps the full selected question for checks and refuses oversized material w
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await screen.findByText(/no question or criteria are omitted/)
   expect(askTutor).toHaveBeenCalledTimes(1)
+})
+
+it('recovers an exact request after reload without replacing a newly edited answer', async () => {
+  active()
+  vi.mocked(askTutor).mockRejectedValueOnce(new Error('Response lost')).mockResolvedValue(reply)
+  const first = renderApp(<StudyTutor reviewOnly identity="step" context="Original material" answer="Original answer" />)
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await screen.findByText(/Response lost/)
+  const original = vi.mocked(askTutor).mock.calls[0]
+  first.unmount()
+  renderApp(<StudyTutor reviewOnly identity="step" context="Original material" answer="Edited answer" />)
+  expect(screen.getByRole('button', { name: 'Retry previous request' })).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry previous request' }))
+  await screen.findByText(reply.text)
+  expect(vi.mocked(askTutor).mock.calls[1][0]).toEqual(original[0])
+  expect(vi.mocked(askTutor).mock.calls[1][2]).toEqual(original[2])
+  expect(screen.queryByRole('button', { name: 'Retry previous request' })).not.toBeInTheDocument()
 })

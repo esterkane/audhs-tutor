@@ -1,3 +1,5 @@
+import { useRequestRecovery, type PendingTutorRequest } from '../playground/useRequestRecovery'
+import { RequestRecoveryControls } from '../playground/RequestRecoveryControls'
 import { AnswerSaveStatus } from './AnswerSaveStatus'
 import { useQueryClient } from '@tanstack/react-query'
 import { SavedContextAnswers } from './SavedContextAnswers'
@@ -75,6 +77,7 @@ function Conversation({
   const queryClient = useQueryClient()
   const storageKey = `study-tutor:v1:${sessionId}:${identity ?? context}`
   const snapshot = JSON.stringify([context, code, answer, output])
+  const recovery = useRequestRecovery(storageKey)
   const [restored] = useState(() => {
     const fresh = {
       question: '',
@@ -192,7 +195,7 @@ function Conversation({
     operation.current?.abort()
     operation.current = null
     setBusy(false)
-    setError('Stopped. Your message is retained; edit or retry it.')
+    setError('Stopped. Your message is retained. Retry the original request, or discard its retry before sending changed work.')
   }
   async function ask(action: Action) {
     if (
@@ -208,7 +211,9 @@ function Conversation({
       return
     }
     if (action === 'review' && context.length > 8000) {
-      setError('This step has more than 8,000 characters of material. Select a smaller step before checking your answer so no question or criteria are omitted. Your answer is retained.')
+      setError(
+        'This step has more than 8,000 characters of material. Select a smaller step before checking your answer so no question or criteria are omitted. Your answer is retained.',
+      )
       return
     }
     const learnerAnswer =
@@ -218,7 +223,9 @@ function Conversation({
           ? null
           : answer || null
     if (learnerAnswer && learnerAnswer.length > 8000) {
-      setError('Please shorten your task answer to 8,000 characters so the tutor receives it in full. Your work is retained.')
+      setError(
+        'Please shorten your task answer to 8,000 characters so the tutor receives it in full. Your work is retained.',
+      )
       return
     }
     const requests = {
@@ -242,25 +249,8 @@ function Conversation({
         : question.trim(),
     }
     if (!requests[action]) return
-    const ctl = new AbortController()
-    const ownFocusGeneration = ++focusGeneration.current
-    const requestFocus = document.activeElement
-    operation.current = ctl
-    setStartedAt(performance.now())
-    setReady(false)
-    setBusy(true)
-    setError('')
-    const submitted = question
-    const timer = setTimeout(() => {
-      if (operation.current === ctl) {
-        ctl.abort()
-        operation.current = null
-        setBusy(false)
-        setError('The tutor took too long. Your message is retained; try again.')
-      }
-    }, 90000)
     try {
-      const next = await askTutor(
+      const pending = recovery.prepare(
         {
           session_id: sessionId,
           prefer_saved: preferSaved,
@@ -275,7 +265,14 @@ function Conversation({
             target_label: targetLabel?.slice(0, 300),
           },
           learner_question: action === 'chat' ? question.trim().slice(0, 2000) : null,
-          intent: action === 'review' ? 'check_answer' : action === 'hint' ? 'hint' : action === 'explain' ? 'explain' : 'chat',
+          intent:
+            action === 'review'
+              ? 'check_answer'
+              : action === 'hint'
+                ? 'hint'
+                : action === 'explain'
+                  ? 'explain'
+                  : 'chat',
           question: requests[action].slice(0, 2000),
           exercise: action === 'review' ? context : context.slice(0, 1000),
           code: code.slice(0, 16000),
@@ -284,33 +281,64 @@ function Conversation({
           output_stale: false,
           history: replySnapshot === snapshot ? history.slice(-6) : [],
         },
-        ctl.signal,
+        {
+          snapshot,
+          submitted: action === 'chat' ? question : '',
+          display: action === 'chat' ? question : displayMessage(requests[action]),
+          mode:
+            action === 'socratic' || (socratic && (action === 'chat' || action === 'hint'))
+              ? 'socratic'
+              : 'explicit',
+        },
       )
+      await execute(pending)
+    } catch (e) {
+      setError((e as Error).message)
+    }
+  }
+  async function execute(pending: PendingTutorRequest) {
+    if (operation.current) return
+    const ctl = new AbortController()
+    const ownFocusGeneration = ++focusGeneration.current
+    const requestFocus = document.activeElement
+    operation.current = ctl
+    setStartedAt(performance.now())
+    setReady(false)
+    setBusy(true)
+    setError('')
+    const timer = setTimeout(() => {
+      if (operation.current === ctl) {
+        ctl.abort()
+        operation.current = null
+        setBusy(false)
+        setError('The tutor took too long. Your message is retained; try again.')
+      }
+    }, 90000)
+    try {
+      const next = await askTutor(pending.body, ctl.signal, pending.key)
       if (operation.current !== ctl || ctl.signal.aborted) return
       if (next.answer_id) void queryClient.invalidateQueries({ queryKey: ['answers'] })
       setReply(next)
       setReady(true)
-      setReplySnapshot(snapshot)
-      setMode(
-        action === 'socratic' || (socratic && (action === 'chat' || action === 'hint'))
-          ? 'socratic'
-          : 'explain',
-      )
-      setHistory((old) =>
+      setReplySnapshot(pending.view.snapshot)
+      setMode(pending.view.mode === 'socratic' ? 'socratic' : 'explain')
+      setHistory(
         [
-          ...(replySnapshot === snapshot ? old : []),
-          { role: 'user' as const, text: requests[action].slice(0, 4000) },
+          ...(pending.body.history ?? []),
+          { role: 'user' as const, text: (pending.body.question ?? '').slice(0, 4000) },
           { role: 'assistant' as const, text: next.text.slice(0, 4000) },
         ].slice(-6),
       )
       setConversation((old) =>
         [
           ...old,
-          { role: 'user' as const, text: action === 'chat' ? submitted : displayMessage(requests[action]) },
+          { role: 'user' as const, text: pending.view.display },
           { role: 'assistant' as const, text: next.text.slice(0, 4000) },
         ].slice(-40),
       )
-      if (action === 'chat') setQuestion((current) => (current === submitted ? '' : current))
+      if (pending.view.submitted)
+        setQuestion((current) => (current === pending.view.submitted ? '' : current))
+      recovery.accept(pending.key)
       requestAnimationFrame(() => {
         // Disabling the sending button can return focus to body. Never replace another control's focus.
         if (
@@ -362,21 +390,25 @@ function Conversation({
         </div>
       )}
       <p className="text-xs text-muted mt-2">
-        Feedback is guidance, not a verified grade. Checking an answer uses the separate answer-feedback
-        model (OpenAI by default) and sends your submitted answer, supplied material, code, output and recent
-        conversation plus relevant saved replies to that provider. Other tutor actions keep their existing models.{' '}
-        <Link to="/models">Choose models</Link>
+        Feedback is guidance, not a verified grade. Checking an answer uses the separate answer-feedback model
+        (OpenAI by default) and sends your submitted answer, supplied material, code, output and recent
+        conversation plus relevant saved replies to that provider. Other tutor actions keep their existing
+        models. <Link to="/models">Choose models</Link>
       </p>
       <label className="flex gap-2 items-center text-sm my-2">
-        <input type="checkbox" checked={preferSaved} disabled={busy}
-          onChange={(event) => setPreferSaved(event.target.checked)} />
+        <input
+          type="checkbox"
+          checked={preferSaved}
+          disabled={busy}
+          onChange={(event) => setPreferSaved(event.target.checked)}
+        />
         Use a saved answer when this request matches (no new model call)
       </label>
       {(context.length > 1000 || code.length > 16000 || output.length > 4000) && (
         <p role="status">
-          Answer checks include the complete step material up to 8,000 characters; longer steps must be narrowed.
-          Other tutor actions use the first 1,000 characters of material. Code is limited to 16,000 characters
-          and run output to 4,000. Task answers are sent in full, up to 8,000 characters.
+          Answer checks include the complete step material up to 8,000 characters; longer steps must be
+          narrowed. Other tutor actions use the first 1,000 characters of material. Code is limited to 16,000
+          characters and run output to 4,000. Task answers are sent in full, up to 8,000 characters.
         </p>
       )}
       {reply && (
@@ -413,7 +445,12 @@ function Conversation({
                   ? 'Your turn: answer this question below, or choose Explain instead.'
                   : 'You can ask a follow-up below.'}
             </p>
-            {reply.reused && <p role="status">Saved answer from {reply.saved_at}. To generate fresh, turn off saved-answer reuse and ask again.</p>}
+            {reply.reused && (
+              <p role="status">
+                Saved answer from {reply.saved_at}. To generate fresh, turn off saved-answer reuse and ask
+                again.
+              </p>
+            )}
             <Markdown text={reply.text} />
             {!socratic && replySnapshot === snapshot && (
               <div role="group" aria-label="Adapt this explanation" className="flex flex-wrap gap-2 my-3">
@@ -433,13 +470,29 @@ function Conversation({
               label={reviewOnly ? 'Listen to feedback' : 'Listen to tutor response'}
             />
             <p className="text-sm text-muted">{reply.source_note}</p>
-            {reply.memory_answers?.length ? <ul aria-label="Previous answers used">
-              {reply.memory_answers.map((id) => <li key={id}><Link to={`/answers/${id}`}>Open previous answer</Link></li>)}
-            </ul> : null}
-            <AnswerSaveStatus key={reply.turn_id} answerId={reply.answer_id} receipt={reply.save_receipt}
-              error={reply.save_error} text={reply.text}
-              onSaved={(id) => setReply((current) => current?.turn_id === reply.turn_id
-                ? { ...current, answer_id: id, save_error: null, save_receipt: null } : current)} />
+            {reply.memory_answers?.length ? (
+              <ul aria-label="Previous answers used">
+                {reply.memory_answers.map((id) => (
+                  <li key={id}>
+                    <Link to={`/answers/${id}`}>Open previous answer</Link>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            <AnswerSaveStatus
+              key={reply.turn_id}
+              answerId={reply.answer_id}
+              receipt={reply.save_receipt}
+              error={reply.save_error}
+              text={reply.text}
+              onSaved={(id) =>
+                setReply((current) =>
+                  current?.turn_id === reply.turn_id
+                    ? { ...current, answer_id: id, save_error: null, save_receipt: null }
+                    : current,
+                )
+              }
+            />
             <details className="text-xs text-muted">
               <summary>Response details</summary>
               {reply.model} · {reply.route}.
@@ -487,6 +540,13 @@ function Conversation({
         </form>
       )}
       {reviewOnly && !answer.trim() && <p>Write your explanation above, then check it for feedback.</p>}
+      <RequestRecoveryControls
+        recovery={recovery}
+        busy={busy}
+        retry={() => {
+          if (recovery.pending) void execute(recovery.pending)
+        }}
+      />
       {error && <p role="alert">{error}</p>}
       {storageError && <p role="alert">{storageError}</p>}
     </>

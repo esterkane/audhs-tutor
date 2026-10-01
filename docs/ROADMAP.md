@@ -54,3 +54,16 @@ UI does not send keys yet: next implement persistent retry identity, explicit ne
 choice, storage-failure handling and browser journeys. Main lesson/voice request dedup remains
 separate. See docs/slices/workspace-request-recovery.md. Both repositories remain private.
 Previous recovery commits041e7b6/cefa84a now have successful remote CI.
+
+
+## 2026-10-02 — workspace retry controls connected
+
+Study Tutor and Playground now send durable request UUIDs and freeze original payloads in
+tab-scoped session storage. Retry previous request recovers without a second generation;
+replacing unresolved work requires explicit discard. Earlier-feedback labels and typed edits
+are retained. Denied storage offers explicit in-memory continuation with honest reload limits.
+Full frontend241 before final fix, final focused35, lint/build and five isolated browser
+journeys passed. Code review storage-denial major fixed and re-reviewed; pedagogy review clear.
+See docs/slices/workspace-request-recovery.md. Saved-follow-up, lesson-stream and voice request
+identities remain separate; broader content-correction, UX, materials and visual queues remain
+open. Foundation commits31ef40a/89fa9f6 passed both remote CI workflows. Both repos private.

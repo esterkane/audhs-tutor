@@ -1,3 +1,5 @@
+import { useRequestRecovery, type PendingTutorRequest } from '../features/playground/useRequestRecovery'
+import { RequestRecoveryControls } from '../features/playground/RequestRecoveryControls'
 import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
 import { useIsMutating } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
@@ -86,6 +88,7 @@ function Workspace({
   onNext: () => void
 }) {
   const [draft, setDraft] = useState(() => restore(activity))
+  const recovery = useRequestRecovery(`playground:${activity.id}`)
   const [saveError, setSaveError] = useState(false)
   const [plain, setPlain] = useState(readPlainPreference)
   const [running, setRunning] = useState(false)
@@ -189,28 +192,8 @@ function Workspace({
     }
     const text = question.trim() || defaults[intent ?? 'chat']
     if (!text) return
-    const submittedQuestion = question
-    const codeSnapshot = draft.code
-    const ctl = new AbortController()
-    const request = {
-      cancel: () => {
-        clearTimeout(timer)
-        ctl.abort()
-      },
-    }
-    tutorAbort.current = request
-    setTutorStartedAt(performance.now())
-    setTutorStatus('streaming')
-    setTutorError('')
-    const timer = setTimeout(() => {
-      if (tutorAbort.current !== request) return
-      request.cancel()
-      tutorAbort.current = null
-      setTutorStatus('failed')
-      setTutorError('The tutor took too long. Your question is kept; try again.')
-    }, 90000)
     try {
-      const reply = await askTutor(
+      const pending = recovery.prepare(
         {
           session_id: sessionId,
           prefer_saved: false,
@@ -231,23 +214,52 @@ function Workspace({
           output_stale: stale,
           history: draft.chat.slice(-6).map((m) => ({ role: m.role, text: m.text.slice(0, 4000) })),
         },
-        ctl.signal,
+        { snapshot: draft.code, submitted: question, display: text, mode: 'explicit' },
       )
+      await execute(pending)
+    } catch (e) {
+      setTutorError((e as Error).message)
+    }
+  }
+  async function execute(pending: PendingTutorRequest) {
+    if (tutorAbort.current) return
+    const codeSnapshot = pending.view.snapshot
+    const ctl = new AbortController()
+    const request = {
+      cancel: () => {
+        clearTimeout(timer)
+        ctl.abort()
+      },
+    }
+    tutorAbort.current = request
+    setTutorStartedAt(performance.now())
+    setTutorStatus('streaming')
+    setTutorError('')
+    const timer = setTimeout(() => {
+      if (tutorAbort.current !== request) return
+      request.cancel()
+      tutorAbort.current = null
+      setTutorStatus('failed')
+      setTutorError('The tutor took too long. Your question is kept; try again.')
+    }, 90000)
+    try {
+      const reply = await askTutor(pending.body, ctl.signal, pending.key)
       if (tutorAbort.current === request && !ctl.signal.aborted) {
         setTutorStatus('complete')
         setDraft((d) => ({
           ...d,
           chat: [
             ...d.chat,
-            { role: 'user' as const, text, codeSnapshot },
+            { role: 'user' as const, text: pending.view.display, codeSnapshot },
             { role: 'assistant' as const, text: reply.text, codeSnapshot },
           ].slice(-24),
         }))
-        setQuestion((currentQuestion) => (currentQuestion === submittedQuestion ? '' : currentQuestion))
+        setQuestion((currentQuestion) => (currentQuestion === pending.view.submitted ? '' : currentQuestion))
         setModelNote(
           `${reply.model} · ${reply.route}. ${reply.source_note}${reply.answer_id ? ' Saved to your local answer history.' : ''}`,
         )
         setSaveReply(reply)
+        recovery.accept(pending.key)
       }
     } catch (e) {
       if (tutorAbort.current === request && !ctl.signal.aborted) {
@@ -507,9 +519,23 @@ function Workspace({
                   </Button>
                 ))}
               </div>
-              {saveReply && <AnswerSaveStatus key={saveReply.turn_id} answerId={saveReply.answer_id}
-                receipt={saveReply.save_receipt} error={saveReply.save_error} text={saveReply.text} />}
+              {saveReply && (
+                <AnswerSaveStatus
+                  key={saveReply.turn_id}
+                  answerId={saveReply.answer_id}
+                  receipt={saveReply.save_receipt}
+                  error={saveReply.save_error}
+                  text={saveReply.text}
+                />
+              )}
               <TutorResponseStatus status={tutorStatus} startedAt={tutorStartedAt} />
+              <RequestRecoveryControls
+                recovery={recovery}
+                busy={tutorStatus === 'streaming'}
+                retry={() => {
+                  if (recovery.pending) void execute(recovery.pending)
+                }}
+              />
               {tutorError && (
                 <p role="alert" className="text-warn mt-2">
                   {tutorError}
