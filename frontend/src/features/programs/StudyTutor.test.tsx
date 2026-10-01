@@ -326,3 +326,26 @@ it('times out waiting without announcing a late completion or losing the draft',
   expect(screen.getByRole('status', { name: 'Tutor response status' })).toBeEmptyDOMElement()
   expect(screen.getByLabelText('Your tutor message or response')).toHaveValue('My question')
 })
+
+it('does not steal focus when the learner moves to another control before the completion frame', async () => {
+  active()
+  const frames: FrameRequestCallback[] = []
+  const schedule = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    frames.push(callback)
+    return frames.length
+  })
+  try {
+    vi.mocked(askTutor).mockResolvedValue(reply)
+    renderApp(<StudyTutor context="Retention" />)
+    const explain = screen.getByRole('button', { name: 'Explain this step' })
+    explain.focus()
+    fireEvent.click(explain)
+    await screen.findByText(reply.text)
+    const shorter = screen.getByRole('button', { name: 'Shorter' })
+    shorter.focus()
+    act(() => frames.forEach((frame) => frame(0)))
+    expect(shorter).toHaveFocus()
+  } finally {
+    schedule.mockRestore()
+  }
+})

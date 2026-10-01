@@ -48,7 +48,7 @@ test('context, optional confidence, saved labels and stopping without recap', as
   await expect(page.getByRole('group', { name: /How sure are you/ })).not.toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('session-assessment.png'), fullPage: true })
   await page.getByRole('button', { name: 'Ask me again later' }).click()
-  await expect(page.getByRole('status')).toContainText('Ask me later list')
+  await expect(page.getByRole('status').filter({ hasText: 'Ask me later list' })).toBeVisible()
   await page.getByRole('button', { name: 'Change topic' }).click()
   await expect(page.getByRole('combobox', { name: 'Knowledge area' })).toBeVisible()
   expect(await currentSession(request)).toBeNull()

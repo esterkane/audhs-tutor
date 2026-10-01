@@ -6,7 +6,7 @@ import { askTutor, type TutorReply, type TutorRequest } from '../playground/api'
 import { useCurrentSession } from '../session/api'
 import { ReadAloud } from '../voice/ReadAloud'
 import { DictationButton } from '../voice/DictationButton'
-import { WaitingElapsed } from '../tutor/WaitingElapsed'
+import { TutorResponseStatus } from '../tutor/TutorResponseStatus'
 
 type Props = {
   targetLabel?: string
@@ -142,8 +142,10 @@ function Conversation({
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
   const operation = useRef<AbortController | null>(null)
+  const focusGeneration = useRef(0)
   useEffect(
     () => () => {
+      focusGeneration.current++
       operation.current?.abort()
       operation.current = null
     },
@@ -162,6 +164,7 @@ function Conversation({
     }
   }, [storageKey, question, reply, history, conversation, replySnapshot, mode])
   useEffect(() => {
+    focusGeneration.current++
     if (operation.current) {
       operation.current.abort()
       operation.current = null
@@ -172,6 +175,7 @@ function Conversation({
     }
   }, [snapshot])
   function stop() {
+    focusGeneration.current++
     operation.current?.abort()
     operation.current = null
     setBusy(false)
@@ -212,6 +216,8 @@ function Conversation({
     }
     if (!requests[action]) return
     const ctl = new AbortController()
+    const ownFocusGeneration = ++focusGeneration.current
+    const requestFocus = document.activeElement
     operation.current = ctl
     setStartedAt(performance.now())
     setReady(false)
@@ -264,7 +270,14 @@ function Conversation({
         ].slice(-40),
       )
       if (action === 'chat') setQuestion((current) => (current === submitted ? '' : current))
-      requestAnimationFrame(() => messageInput.current?.focus())
+      requestAnimationFrame(() => {
+        // Disabling the sending button can return focus to body. Never replace another control's focus.
+        if (
+          focusGeneration.current === ownFocusGeneration &&
+          (document.activeElement === requestFocus || document.activeElement === document.body)
+        )
+          messageInput.current?.focus()
+      })
     } catch (e) {
       if (operation.current === ctl && !ctl.signal.aborted)
         setError(`${(e as Error).message} Your message is retained.`)
@@ -296,16 +309,12 @@ function Conversation({
           {reviewOnly ? 'Check my answer' : 'Review my answer'}
         </Button>
       </div>
-      <p role="status" aria-label="Tutor response status" aria-atomic="true" className="mt-2">
-        {busy
-          ? 'Tutor is preparing a response…'
-          : ready && replySnapshot === snapshot
-            ? 'Tutor response ready.'
-            : ''}
-      </p>
+      <TutorResponseStatus
+        status={busy ? 'streaming' : ready && replySnapshot === snapshot ? 'complete' : 'idle'}
+        startedAt={startedAt}
+      />
       {busy && (
         <div className="my-2">
-          <WaitingElapsed key={startedAt} startedAt={startedAt} />
           <Button type="button" onClick={stop}>
             {reviewOnly && !reply ? 'Stop answer check' : 'Stop tutor response'}
           </Button>

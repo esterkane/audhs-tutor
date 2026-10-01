@@ -24,3 +24,5 @@ Notebook workspace can prepare an explicit private bundle, preserve existing edi
 - 2026-10-01: notebook native file-input width constrained; all33 local browser journeys pass. See docs/slices/notebook-responsive-input.md.
 
 - 2026-10-01: assessment help/feedback widget identity collision fixed; see docs/slices/assessment-widget-identity.md.
+
+- 2026-10-01: shared tutor waiting/completion and immediate playground Stop verified; see docs/slices/shared-tutor-status.md.

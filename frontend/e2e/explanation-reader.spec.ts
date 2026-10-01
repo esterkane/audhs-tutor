@@ -19,8 +19,12 @@ test('completed explanation sections preserve notes, focus and optional follow-u
     const text =
       '## The idea\nCompare matching components.\n\n## A worked example\nAn illustrative pair gives 2 × 3 = 6.\n\n## Try one step\nPredict what doubling one component changes.'
     let calls = 0
-    await page.route('**/api/tutor/stream', (route) => {
+    let release: (() => void) | undefined
+    await page.route('**/api/tutor/stream', async (route) => {
       calls += 1
+      await new Promise<void>((resolve) => {
+        release = resolve
+      })
       return route.fulfill({
         contentType: 'text/event-stream',
         body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ turn_id: 'reader-fixture', sources: [], outcome: 'complete' })}\n\n`,
@@ -29,6 +33,12 @@ test('completed explanation sections preserve notes, focus and optional follow-u
     await page.goto('/')
     await page.getByRole('button', { name: /^Resume previous session/ }).click()
     await page.getByRole('button', { name: 'Start explanation', exact: true }).click()
+    await expect(page.getByRole('status', { name: 'Tutor response status' })).toContainText('preparing')
+    await expect(page.getByText(/Waiting [1-9]\d* seconds?/)).toBeVisible()
+    release!()
+    await expect(page.getByRole('status', { name: 'Tutor response status' })).toHaveText(
+      'Tutor response ready.',
+    )
     await expect(page.getByRole('heading', { name: 'Section 1 of 3: The idea' })).toBeVisible()
     await page.getByRole('button', { name: 'Next section', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Section 2 of 3: A worked example' })).toBeFocused()

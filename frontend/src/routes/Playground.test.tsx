@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { renderApp, jsonResponse } from '../test/utils'
@@ -12,7 +12,10 @@ beforeEach(() => {
   localStorage.clear()
   localStorage.setItem(PLAIN_EDITOR_KEY, '1')
 })
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => {
+  vi.useRealTimers()
+  vi.unstubAllGlobals()
+})
 
 it('keeps independent drafts, marks stale output and sends explicit bounded tutor context', async () => {
   const requests: Array<Record<string, unknown>> = []
@@ -131,4 +134,63 @@ it('shares a pending session start across workspace switches', async () => {
   started(jsonResponse({ id: 's2', state: {} }))
   expect(await screen.findByText(/Tutor activity uses your current session/)).toBeVisible()
   expect(starts).toBe(1)
+})
+
+it('stops waiting immediately and ignores a late reply after retry', async () => {
+  const pending: ((value: Response) => void)[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/api/sessions/current')) return jsonResponse({ id: 's1' })
+      return new Promise<Response>((resolve) => pending.push(resolve))
+    }),
+  )
+  renderApp(<Playground runnerFactory={runner} />)
+  const input = screen.getByLabelText('Ask about your code')
+  fireEvent.change(input, { target: { value: 'Keep this question' } })
+  const send = screen.getByRole('button', { name: 'Send question' })
+  await waitFor(() => expect(send).toBeEnabled())
+  fireEvent.click(send)
+  fireEvent.click(screen.getByRole('button', { name: 'Stop waiting' }))
+  expect(send).toBeEnabled()
+  expect(input).toHaveValue('Keep this question')
+  fireEvent.click(send)
+  await act(async () =>
+    pending[0](jsonResponse({ text: 'Old response', model: 'fake', route: 'local', source_note: '' })),
+  )
+  expect(screen.queryByText('Old response')).toBeNull()
+  expect(send).toBeDisabled()
+  await act(async () =>
+    pending[1](jsonResponse({ text: 'Current response', model: 'fake', route: 'local', source_note: '' })),
+  )
+  expect(screen.getByText('Current response')).toBeVisible()
+  expect(screen.getByRole('status', { name: 'Tutor response status' })).toHaveTextContent(
+    'Tutor response ready.',
+  )
+})
+
+it('ends timed-out waiting even if transport ignores abort, retaining the question', async () => {
+  let finish!: (value: Response) => void
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/api/sessions/current')) return jsonResponse({ id: 's1' })
+      return new Promise<Response>((resolve) => {
+        finish = resolve
+      })
+    }),
+  )
+  renderApp(<Playground runnerFactory={runner} />)
+  const input = screen.getByLabelText('Ask about your code')
+  fireEvent.change(input, { target: { value: 'Keep my question' } })
+  const send = screen.getByRole('button', { name: 'Send question' })
+  await waitFor(() => expect(send).toBeEnabled())
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'performance'] })
+  fireEvent.click(send)
+  await act(async () => vi.advanceTimersByTime(90000))
+  expect(send).toBeEnabled()
+  expect(screen.getByRole('alert')).toHaveTextContent('took too long')
+  await act(async () => finish(jsonResponse({ text: 'Late timeout response' })))
+  expect(screen.queryByText('Late timeout response')).toBeNull()
+  expect(input).toHaveValue('Keep my question')
 })

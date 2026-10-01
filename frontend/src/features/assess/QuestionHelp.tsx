@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { Button } from '../../components/ui/button'
 import { Markdown } from '../../components/Markdown'
+import { TutorResponseStatus } from '../tutor/TutorResponseStatus'
 import { useTutorStream } from '../tutor/useTutorStream'
 import { ReadAloud } from '../voice/ReadAloud'
 
@@ -55,6 +56,7 @@ export function QuestionHelp({
         </Button>
         {tutor.busy && <Button onClick={tutor.stop}>Stop explanation</Button>}
       </div>
+      <TutorResponseStatus status={tutor.status} startedAt={tutor.startedAt} />
       {tutor.text && (
         <div className="mt-3">
           <Markdown text={tutor.text} />

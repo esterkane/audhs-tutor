@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { ResponseStatus } from './TutorResponseStatus'
 import { streamTurn, type TurnDone, type TurnMeta, type TurnRequest } from '../../lib/api'
 
-type Status = 'idle' | 'streaming' | 'complete' | 'partial' | 'stopped' | 'failed'
+type Status = ResponseStatus
 type Answer = { text: string; meta: TurnMeta | null; done: TurnDone | null; status: Status }
-type State = Answer & { error: string | null; previous: Answer | null }
-const empty: State = { text: '', meta: null, done: null, error: null, status: 'idle', previous: null }
+type State = Answer & { error: string | null; previous: Answer | null; startedAt: number | null }
+const empty: State = {
+  text: '',
+  meta: null,
+  done: null,
+  error: null,
+  status: 'idle',
+  previous: null,
+  startedAt: null,
+}
 
 export function useTutorStream(idleMs = 60_000) {
   const [state, setState] = useState<State>(empty)
@@ -48,7 +57,7 @@ export function useTutorStream(idleMs = 60_000) {
           }
         : old.previous
       lastRequest.current = { ...req }
-      update({ ...empty, previous, status: 'streaming' })
+      update({ ...empty, previous, status: 'streaming', startedAt: performance.now() })
       const fail = (message: string) => {
         if (!current()) return
         terminal = true

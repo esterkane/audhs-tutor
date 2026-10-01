@@ -152,3 +152,27 @@ for (const outcome of ['ok', 'partial']) {
     })
   })
 }
+
+it('keeps the request clock through tokens and resets it on retry', async () => {
+  const clock = vi.spyOn(performance, 'now').mockReturnValue(100)
+  const pending: Array<{ h: StreamHandlers; finish: () => void }> = []
+  vi.mocked(streamTurn).mockImplementation((_req, h) => new Promise((finish) => pending.push({ h, finish })))
+  const { result } = renderHook(() => useTutorStream())
+  act(() => {
+    void result.current.run(request)
+  })
+  expect(result.current.startedAt).toBe(100)
+  clock.mockReturnValue(5000)
+  act(() => pending[0].h.onToken?.('A partial response'))
+  expect(result.current.startedAt).toBe(100)
+  act(() => result.current.stop())
+  act(() => {
+    void result.current.retry()
+  })
+  expect(result.current.startedAt).toBe(5000)
+  await act(async () => {
+    pending[0].finish()
+    pending[1].finish()
+  })
+  clock.mockRestore()
+})

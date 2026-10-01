@@ -37,6 +37,7 @@ import { usePreferences } from '../features/preferences/api'
 import { useExercise } from '../features/code/api'
 import { useReplan } from '../features/plan/api'
 import { useSensory } from '../features/sensory/useSensory'
+import { TutorResponseStatus } from '../features/tutor/TutorResponseStatus'
 import { useTutorStream } from '../features/tutor/useTutorStream'
 import { SourceViewer } from '../features/curriculum/SourceViewer'
 import { useReport } from '../features/curriculum/api'
@@ -414,7 +415,7 @@ function TeachPanel({
   active: boolean
 }) {
   const [input, setInput] = useState('')
-  const { text, meta, done, error, busy, run, stop, retry, status, previous } = useTutorStream()
+  const { text, meta, done, error, busy, run, stop, retry, status, previous, startedAt } = useTutorStream()
   useEffect(() => {
     if (!active) stop()
   }, [active, stop])
@@ -518,6 +519,7 @@ function TeachPanel({
             </Button>
           )}
         </div>
+        <TutorResponseStatus status={status} startedAt={startedAt} />
       </Card>
       {active && voiceOn && talking && (
         <VoicePanel sessionId={sessionId} skillId={skillId} onClose={() => setTalking(false)} />

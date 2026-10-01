@@ -11,6 +11,7 @@ import { readPlainPreference, writePlainPreference } from '../features/code/edit
 import { activities, type Activity } from '../features/playground/exercises'
 import { askTutor, type TutorRequest } from '../features/playground/api'
 import { useCurrentSession, useStartSession } from '../features/session/api'
+import { TutorResponseStatus, type ResponseStatus } from '../features/tutor/TutorResponseStatus'
 import { useMode } from '../stores/mode'
 
 type Chat = { role: 'user' | 'assistant'; text: string; codeSnapshot?: string }
@@ -91,12 +92,14 @@ function Workspace({
   const [runError, setRunError] = useState('')
   const [question, setQuestion] = useState('')
   const [tutorError, setTutorError] = useState('')
-  const [busy, setBusy] = useState(false)
+  const [tutorStatus, setTutorStatus] = useState<ResponseStatus>('idle')
+  const [tutorStartedAt, setTutorStartedAt] = useState<number | null>(null)
+  const busy = tutorStatus === 'streaming'
   const [tutorOpen, setTutorOpen] = useState(true)
   const [modelNote, setModelNote] = useState('')
   const [resetting, setResetting] = useState(false)
   const operation = useRef<{ runner: Runner; abort: AbortController } | null>(null)
-  const tutorAbort = useRef<AbortController | null>(null)
+  const tutorAbort = useRef<{ cancel: () => void } | null>(null)
   const current = useCurrentSession()
   const start = useStartSession()
   const { mode, energy, socratic, setSession } = useMode()
@@ -118,7 +121,8 @@ function Workspace({
     () => () => {
       operation.current?.abort.abort()
       operation.current?.runner.dispose()
-      tutorAbort.current?.abort()
+      tutorAbort.current?.cancel()
+      tutorAbort.current = null
     },
     [],
   )
@@ -166,6 +170,13 @@ function Workspace({
     }
   }
 
+  function stopTutor() {
+    tutorAbort.current?.cancel()
+    tutorAbort.current = null
+    setTutorStatus('stopped')
+    setTutorError('')
+  }
+
   async function ask(intent: TutorRequest['intent']) {
     if (!sessionId || tutorAbort.current) return
     const defaults = {
@@ -179,10 +190,23 @@ function Workspace({
     const submittedQuestion = question
     const codeSnapshot = draft.code
     const ctl = new AbortController()
-    tutorAbort.current = ctl
-    setBusy(true)
+    const request = {
+      cancel: () => {
+        clearTimeout(timer)
+        ctl.abort()
+      },
+    }
+    tutorAbort.current = request
+    setTutorStartedAt(performance.now())
+    setTutorStatus('streaming')
     setTutorError('')
-    const timer = setTimeout(() => ctl.abort(), 90000)
+    const timer = setTimeout(() => {
+      if (tutorAbort.current !== request) return
+      request.cancel()
+      tutorAbort.current = null
+      setTutorStatus('failed')
+      setTutorError('The tutor took too long. Your question is kept; try again.')
+    }, 90000)
     try {
       const reply = await askTutor(
         {
@@ -205,7 +229,8 @@ function Workspace({
         },
         ctl.signal,
       )
-      if (!ctl.signal.aborted) {
+      if (tutorAbort.current === request && !ctl.signal.aborted) {
+        setTutorStatus('complete')
         setDraft((d) => ({
           ...d,
           chat: [
@@ -218,17 +243,13 @@ function Workspace({
         setModelNote(`${reply.model} · ${reply.route}. ${reply.source_note}`)
       }
     } catch (e) {
-      setTutorError(
-        ctl.signal.aborted
-          ? 'Tutor request stopped. Your question is kept; you can retry.'
-          : (e as Error).message,
-      )
+      if (tutorAbort.current === request && !ctl.signal.aborted) {
+        setTutorStatus('failed')
+        setTutorError((e as Error).message)
+      }
     } finally {
       clearTimeout(timer)
-      if (tutorAbort.current === ctl) {
-        tutorAbort.current = null
-        setBusy(false)
-      }
+      if (tutorAbort.current === request) tutorAbort.current = null
     }
   }
 
@@ -465,7 +486,7 @@ function Workspace({
                 >
                   Send question
                 </Button>
-                {busy && <Button onClick={() => tutorAbort.current?.abort()}>Stop waiting</Button>}
+                {busy && <Button onClick={stopTutor}>Stop waiting</Button>}
               </div>
               <div className="flex flex-wrap gap-2 mt-2">
                 {(['hint', 'explain', 'big_picture'] as const).map((intent) => (
@@ -479,11 +500,7 @@ function Workspace({
                   </Button>
                 ))}
               </div>
-              {busy && (
-                <p role="status" className="text-sm mt-2">
-                  The tutor is reading your workspace…
-                </p>
-              )}
+              <TutorResponseStatus status={tutorStatus} startedAt={tutorStartedAt} />
               {tutorError && (
                 <p role="alert" className="text-warn mt-2">
                   {tutorError}
