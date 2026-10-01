@@ -1,0 +1,23 @@
+1
+00:00:00,000 --> 00:00:04,833
+The most common fine-tuning mistake is judging the model on the data it was trained on.
+
+2
+00:00:05,233 --> 00:00:10,733
+Split before you train: a held-out validation set for early stopping and a test set you touch once.
+
+3
+00:00:11,133 --> 00:00:17,744
+Watch the validation loss curve. When training loss keeps falling but validation loss rises, the adapter is memorising.
+
+4
+00:00:18,144 --> 00:00:23,422
+With small datasets, one to three epochs is usually enough; more epochs mostly buy overfitting.
+
+5
+00:00:23,822 --> 00:00:31,044
+Also compare against the base model with the same prompt. If the base model already scores the same, the fine-tune bought nothing.
+
+6
+00:00:31,444 --> 00:00:39,111
+Keep a few hand-written probes for behaviours you care about, such as refusing to invent citations, and run them after every training run.

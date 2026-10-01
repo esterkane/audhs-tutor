@@ -1,0 +1,15 @@
+id: kv-cache-recap
+skill: kv-cache
+block_type: recap
+questioning_style: explicit
+turns:
+  - learner: "Recap the KV cache for me."
+    action: summarize
+expect:
+  hard:
+    no_full_solution: false
+    citation_present: true
+    max_sentences: 5
+    no_banned_language: true
+    mode_respected: true
+  rubric: [cognitive_load, active_learning, metacognition, curiosity, adaptivity]

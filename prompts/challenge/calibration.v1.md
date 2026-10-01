@@ -1,0 +1,2 @@
+# Challenge: calibration (v1)
+Write three short factual questions about the current skill whose answers are one phrase each and unambiguous from the sources. Return: `prompt` = the three questions numbered, followed by "Answer each and give your confidence 1–5 before checking."; `hidden_key` = the three answers, numbered; `criteria` = 3 rubric criteria, one per question ("Q1 answered correctly: <answer>", …).

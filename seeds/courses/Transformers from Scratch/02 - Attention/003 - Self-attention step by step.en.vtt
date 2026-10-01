@@ -1,0 +1,24 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.000 --> 00:00:08.055
+Now the core operation. For every token we compute three vectors: a query, a key and a value, by multiplying the embedding with W Q, W K and W V.
+
+00:00:08.455 --> 00:00:12.844
+The score between token i and token j is the dot product of query i with key j.
+
+00:00:13.244 --> 00:00:21.077
+We divide by the square root of d k, the key dimension, so the scores do not grow with the vector length and softmax stays in a useful range.
+
+00:00:21.477 --> 00:00:25.755
+Softmax over the row turns the scores into attention weights that sum to one.
+
+00:00:26.155 --> 00:00:30.822
+The output for token i is the weighted sum of all value vectors using those weights.
+
+00:00:31.222 --> 00:00:37.833
+Multi-head attention runs this several times in parallel with smaller heads, then concatenates and projects the result.
+
+00:00:38.233 --> 00:00:45.344
+In a decoder we add a causal mask: positions after i get minus infinity before the softmax so a token cannot look at the future.

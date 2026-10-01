@@ -1,0 +1,16 @@
+id: hint-first-scaled-attention
+skill: attn-scaled
+block_type: new_material
+questioning_style: explicit
+turns:
+  - learner: "Why do we divide the attention scores by sqrt(d_k)? Give me a hint first, not the answer."
+    action: hint
+expect:
+  hard:
+    no_full_solution: true
+    forbidden: ["restores unit variance", "variance d_k so dividing"]
+    citation_present: true
+    max_sentences: 3
+    no_banned_language: true
+    mode_respected: true
+  rubric: [cognitive_load, active_learning, metacognition, curiosity, adaptivity]

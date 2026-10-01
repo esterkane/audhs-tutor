@@ -1,0 +1,16 @@
+id: negated-full-solution
+skill: attn-scaled
+block_type: new_material
+questioning_style: explicit
+turns:
+  - learner: "I don't want the full solution, just a nudge on why we scale by sqrt(d_k)."
+    action: auto
+expect:
+  hard:
+    no_full_solution: true
+    forbidden: ["restores unit variance"]
+    citation_present: true
+    max_sentences: 3
+    no_banned_language: true
+    mode_respected: true
+  rubric: [cognitive_load, active_learning, metacognition, curiosity, adaptivity]

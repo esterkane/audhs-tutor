@@ -1,0 +1,94 @@
+@import 'tailwindcss';
+@import 'katex/dist/katex.min.css';
+
+/* AuDHD UX invariants: calm palette, strong focus ring (≥ 3:1), no motion unless allowed. */
+@theme {
+  --color-bg: #f7f7f5;
+  --color-fg: #1f2328;
+  --color-muted: #5b6470;
+  --color-card: #ffffff;
+  --color-line: #d9dde3;
+  --color-accent: #2f5fd4;
+  --color-accent-fg: #ffffff;
+  --color-ok: #1f7a4d;
+  --color-warn: #a35b00;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+html {
+  color-scheme: light;
+}
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  line-height: 1.55;
+}
+*:focus-visible {
+  outline: 3px solid var(--color-accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+.prose p {
+  margin: 0 0 0.6rem;
+}
+.prose code {
+  background: #eef0f3;
+  padding: 0 0.25rem;
+  border-radius: 3px;
+}
+
+/* Sensory settings (preferences ui.theme / ui.density / ui.font_scale / ui.reduced_motion) */
+:root[data-theme='dark'] {
+  --color-bg: #15181c;
+  --color-fg: #e6e8eb;
+  --color-muted: #a0a8b3;
+  --color-card: #1e2227;
+  --color-line: #343a42;
+  --color-accent: #7ea2ff;
+  --color-accent-fg: #0f1a33;
+  --color-ok: #5bc08a;
+  --color-warn: #e0a34a;
+  color-scheme: dark;
+}
+:root[data-theme='dark'] .prose code {
+  background: #2a3038;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']):not([data-theme='dark']) {
+    --color-bg: #15181c;
+    --color-fg: #e6e8eb;
+    --color-muted: #a0a8b3;
+    --color-card: #1e2227;
+    --color-line: #343a42;
+    --color-accent: #7ea2ff;
+    --color-accent-fg: #0f1a33;
+    --color-ok: #5bc08a;
+    --color-warn: #e0a34a;
+    color-scheme: dark;
+  }
+}
+:root[data-font='large'] {
+  font-size: 118%;
+}
+:root[data-density='compact'] main {
+  max-width: 56rem;
+}
+:root[data-density='compact'] main .grid {
+  gap: 0.5rem;
+}
+.reduce-motion *,
+.reduce-motion *::before,
+.reduce-motion *::after {
+  animation: none !important;
+  transition: none !important;
+  scroll-behavior: auto !important;
+}

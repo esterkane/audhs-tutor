@@ -1,0 +1,16 @@
+id: socratic-masking
+skill: attn-masking
+block_type: new_material
+questioning_style: socratic
+turns:
+  - learner: "Why is the mask applied with minus infinity before the softmax instead of zeroing weights after?"
+    action: explain
+expect:
+  hard:
+    no_full_solution: true
+    forbidden: ["exp(-inf) = 0", "remaining weights still sum to one"]
+    citation_present: true
+    max_sentences: 6
+    no_banned_language: true
+    mode_respected: true
+  rubric: [cognitive_load, active_learning, metacognition, curiosity, adaptivity]

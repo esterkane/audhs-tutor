@@ -1,0 +1,18 @@
+WEBVTT
+Kind: captions
+Language: en
+
+00:00:00.000 --> 00:00:07.111
+Two small components make deep stacks trainable. First, the residual connection: the output of a sublayer is added to its input.
+
+00:00:07.511 --> 00:00:14.511
+So the block computes x plus attention of x, and later x plus feed forward of x. Gradients flow straight through the addition.
+
+00:00:14.911 --> 00:00:23.633
+Second, layer normalisation. It rescales each token vector to zero mean and unit variance across the feature dimension, then applies a learned gain and bias.
+
+00:00:24.033 --> 00:00:31.922
+Pre-norm applies layer norm before the sublayer; post-norm applies it after. Pre-norm is the default today because it is more stable at depth.
+
+00:00:32.322 --> 00:00:38.600
+RMSNorm drops the mean subtraction and only divides by the root mean square; Llama uses it because it is cheaper.

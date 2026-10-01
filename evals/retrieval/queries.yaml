@@ -1,0 +1,121 @@
+# Labelled retrieval queries over seeds/courses (Stage 3). A query is answered when any hit in the
+# top k comes from the expected course + lecture (and contains the phrase, when given).
+# Tags: paraphrase = wording differs from the lecture; exact = term match matters; cross = two lectures.
+queries:
+  - id: bpe-tokens
+    query: how does byte-pair encoding split rare words into tokens?
+    expected: [{course: Transformers from Scratch, lecture: Tokenisation and embeddings}]
+    tags: [paraphrase]
+  - id: embedding-matrix-shape
+    query: shape of the token embedding matrix
+    expected: [{course: Transformers from Scratch, lecture: Tokenisation and embeddings, contains: vocabulary size rows}]
+  - id: rope
+    query: what does RoPE do to queries and keys?
+    expected: [{course: Transformers from Scratch, lecture: Positional information}]
+    tags: [exact]
+  - id: permutation-invariance
+    query: why does attention need positional information at all?
+    expected: [{course: Transformers from Scratch, lecture: Positional information, contains: permutation invariant}]
+    tags: [paraphrase]
+  - id: sqrt-dk
+    query: why divide attention scores by the square root of d_k?
+    expected: [{course: Transformers from Scratch, lecture: Self-attention step by step}]
+  - id: causal-mask
+    query: how does a decoder stop a token from attending to future positions?
+    expected: [{course: Transformers from Scratch, lecture: Self-attention step by step, contains: causal mask}]
+    tags: [paraphrase]
+  - id: prenorm-vs-postnorm
+    query: pre-norm vs post-norm which is more stable?
+    expected: [{course: Transformers from Scratch, lecture: Layer norm and residual connections}]
+  - id: rmsnorm
+    query: RMSNorm difference from layer normalisation
+    expected: [{course: Transformers from Scratch, lecture: Layer norm and residual connections}]
+    tags: [exact]
+  - id: lora-rank
+    query: what are the shapes of the LoRA A and B matrices and what is the rank?
+    expected: [{course: Practical Fine-Tuning, lecture: LoRA low-rank adapters}]
+  - id: lora-alpha
+    query: what does alpha do in LoRA
+    expected: [{course: Practical Fine-Tuning, lecture: LoRA low-rank adapters, contains: alpha}]
+    tags: [exact]
+  - id: nf4
+    query: NF4 4-bit NormalFloat data type
+    expected: [{course: Practical Fine-Tuning, lecture: QLoRA and 4-bit quantisation}]
+    tags: [exact]
+  - id: paged-optimizers
+    query: how does QLoRA avoid out-of-memory on long sequences?
+    expected: [{course: Practical Fine-Tuning, lecture: QLoRA and 4-bit quantisation, contains: paged optimisers}]
+    tags: [paraphrase]
+  - id: overfitting-epochs
+    query: training loss falls but validation loss rises after a few epochs
+    expected: [{course: Practical Fine-Tuning, lecture: Held-out evals and overfitting}]
+    tags: [paraphrase]
+  - id: autograd-accumulate
+    query: why call zero_grad before backward in PyTorch?
+    expected: [{course: PyTorch Fundamentals, lecture: Tensors and autograd}]
+  - id: mps-device
+    query: device string for Apple Silicon GPU in torch
+    expected: [{course: PyTorch Fundamentals, lecture: Tensors and autograd, contains: mps}]
+    tags: [exact]
+  - id: training-loop-steps
+    query: the five steps of a PyTorch training step
+    expected: [{course: PyTorch Fundamentals, lecture: nn.Module and the training loop}]
+  - id: state-dict
+    query: how should I save a PyTorch model checkpoint?
+    expected: [{course: PyTorch Fundamentals, lecture: nn.Module and the training loop, contains: state_dict}]
+    tags: [paraphrase]
+  - id: collate-padding
+    query: batching variable-length sequences with padding and an attention mask
+    expected: [{course: PyTorch Fundamentals, lecture: DataLoader and batching}]
+  - id: perplexity-meaning
+    query: what does a perplexity of 20 mean?
+    expected: [{course: LLM Evaluation, lecture: Perplexity}]
+  - id: perplexity-tokenizer
+    query: why can't perplexity be compared across models with different tokenisers?
+    expected: [{course: LLM Evaluation, lecture: Perplexity, contains: tokeniser}]
+    tags: [paraphrase]
+  - id: recall-at-k
+    query: definition of recall@k for RAG
+    expected: [{course: LLM Evaluation, lecture: Retrieval metrics recall and MRR}]
+    tags: [exact]
+  - id: citation-coverage
+    query: metric that catches answers from parametric memory instead of the course
+    expected: [{course: LLM Evaluation, lecture: Retrieval metrics recall and MRR, contains: citation coverage}]
+    tags: [paraphrase]
+  - id: judge-position-bias
+    query: LLM-as-judge position bias and how to cancel it
+    expected: [{course: LLM Evaluation, lecture: Human eval vs LLM-as-judge}]
+  - id: contamination-detect
+    query: how to detect benchmark contamination
+    expected: [{course: LLM Evaluation, lecture: Contamination}]
+  - id: lr-range-test
+    query: how to find the largest learning rate that still works
+    expected: [{course: Optimization Basics, lecture: Gradient descent, contains: range test}]
+    tags: [paraphrase]
+  - id: minibatch
+    query: mini-batch SGD batch sizes
+    expected: [{course: Optimization Basics, lecture: Gradient descent}]
+  - id: adam-moments
+    query: what are beta1 and beta2 in Adam?
+    expected: [{course: Optimization Basics, lecture: Momentum and Adam}]
+    tags: [exact]
+  - id: adamw-decoupled
+    query: how is AdamW different from Adam with L2 regularisation?
+    expected: [{course: Optimization Basics, lecture: Momentum and Adam, contains: decouples weight decay}]
+  - id: warmup-why
+    query: why use learning-rate warmup with Adam?
+    expected: [{course: Optimization Basics, lecture: Learning-rate schedules}]
+  - id: cosine-decay
+    query: cosine decay schedule
+    expected: [{course: Optimization Basics, lecture: Learning-rate schedules, contains: cosine}]
+    tags: [exact]
+  - id: cross-lora-eval
+    query: after LoRA fine-tuning, how do I check the adapter actually improved on the base model?
+    expected:
+      - {course: Practical Fine-Tuning, lecture: Held-out evals and overfitting}
+    tags: [cross, paraphrase]
+  - id: course-filter-optim
+    query: learning rate
+    filters: {course: Optimization Basics}
+    expected: [{course: Optimization Basics, lecture: Gradient descent}]
+    tags: [filter]
