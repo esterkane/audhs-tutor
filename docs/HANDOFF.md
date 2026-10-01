@@ -93,3 +93,7 @@ Guard checks indexed blobs, runtime/private snapshot paths and prohibited source
 ## Answer history API — 2026-10-01
 
 Read-only owner-scoped list/detail routes expose completed saved snapshots with bounded cursors and skill/area/surface filters. Foreign/missing IDs and cursors are indistinguishable; no generation or evidence changes. Independent review clear. Full-text search, UI and suggestions still pending. See docs/slices/answer-history-api.md for verification.
+
+## Saved-answer browser — 2026-10-01
+
+Saved reply links and More tools → Saved answers provide paginated filtered history and exact saved context. Historical conversation and source qualifications retained. Six focused tests, two isolated Chromium desktop/narrow keyboard journeys, lint/types/build and independent code/pedagogy re-review pass. Search/suggestions remain pending. Both repositories must remain private; sanitized release safeguards stay enabled. See docs/slices/answer-history-ui.md.

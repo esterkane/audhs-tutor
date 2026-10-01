@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import { ParkingLotButton } from '../components/ParkingLotButton'
 import { Corpus } from '../routes/Corpus'
+import { Answers } from '../routes/Answers'
 import { Areas } from '../routes/Areas'
 import { Curriculum } from '../routes/Curriculum'
 import { Experiments } from '../routes/Experiments'
@@ -45,6 +46,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <details key={pathname} className="relative">
             <summary className="cursor-pointer">More tools</summary>
             <div className="absolute right-0 z-30 grid gap-3 p-4 mt-2 min-w-44 rounded-lg border border-line bg-card shadow-lg">
+              <Link to="/answers">Saved answers</Link>
               <Link to="/map">Skill map</Link>
               <Link to="/together">Together</Link>
               <Link to="/experiments">Experiments</Link>
@@ -75,6 +77,8 @@ export default function App() {
         <Shell>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/answers" element={<Answers />} />
+            <Route path="/answers/:answerId" element={<Answers />} />
             <Route path="/session" element={<Session />} />
             <Route path="/playground" element={<Playground />} />
             <Route path="/playground/visualizer" element={<Visualizer />} />

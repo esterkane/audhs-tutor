@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useRef, useState } from 'react'
 import type { TurnDone } from '../../lib/api'
 import { SourceViewer } from '../curriculum/SourceViewer'
@@ -20,7 +21,9 @@ function TurnSources({ turn }: { turn: TurnDone }) {
           {turn.save_error}
         </p>
       ) : turn.answer_id ? (
-        <p className="text-muted">Saved to your local answer history.</p>
+        <p className="text-muted">
+          Saved to your local answer history. <Link to={`/answers/${turn.answer_id}`}>Open saved answer</Link>
+        </p>
       ) : null}
       {turn.sources.length > 0 ? (
         <details>

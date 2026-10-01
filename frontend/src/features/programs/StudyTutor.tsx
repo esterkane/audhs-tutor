@@ -388,7 +388,10 @@ function Conversation({
                 {reply.save_error}
               </p>
             ) : reply.answer_id ? (
-              <p className="text-sm text-muted">Saved to your local answer history.</p>
+              <p className="text-sm text-muted">
+                Saved to your local answer history.{' '}
+                <Link to={`/answers/${reply.answer_id}`}>Open saved answer</Link>
+              </p>
             ) : null}
             <details className="text-xs text-muted">
               <summary>Response details</summary>

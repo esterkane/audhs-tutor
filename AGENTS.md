@@ -7,3 +7,6 @@ Owner policy (2026-09-24): use local execution whenever accurate and capable. Op
 Before continuing, read `docs/HANDOFF.md`, `docs/CODEX-CONTINUATION.md`, and `docs/IMPROVEMENT-PLAN.md`. Preserve all inherited uncommitted work. Do not assume untracked files are disposable. Avoid concurrent edits by different coding agents.
 
 For each bounded implementation slice, test it, record exact verification and outstanding work in the shared handoff/slice docs, and distinguish the new delta from inherited changes. Follow existing manual-only commit/ADR conventions. Do not mark a whole stage complete from a partial review.
+
+## Owner visibility policy — 2026-10-01
+This sanitized repository must remain PRIVATE until the owner explicitly requests a visibility change. It is prepared for a possible future public release: preserve all publication guards and exclusions for databases, acquired materials, acquisition scripts, private configuration and credentials. Keep the separate private archive and its history distinct.
