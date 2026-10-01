@@ -105,3 +105,7 @@ SQLite FTS5 searches saved request labels and completed answers, with literal al
 ## Contextual saved replies — 2026-10-01
 
 Guided section/task/saved notebook tutor requests carry optional bounded course/section/target IDs and actual learner questions separately from action prompts. Explicit “Previously answered here” loads exact-target history with source-age/code caveats and scoped browsing links. Navigation metadata is not model evidence. 436 backend/211 frontend tests, lint/build, four isolated desktop/narrow journeys and independent code/pedagogy review pass. Remaining: broader course/area suggestions, linked follow-up, validated manifest scope and freshness/correction. See docs/slices/answer-context.md.
+
+## Course/area saved-answer overviews — 2026-10-01
+
+Selected course and learning-area pages expose explicit scoped saved-answer panels. Missing scope never fetches global history; area history spans surfaces. Full frontend suite, lint/types/build, three isolated browser journeys and independent code/pedagogy review pass. No backend change. Linked follow-up and freshness/correction remain next. See docs/slices/answer-overviews.md.

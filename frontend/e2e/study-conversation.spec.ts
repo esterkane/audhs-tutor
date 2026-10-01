@@ -70,7 +70,7 @@ for (const width of [1280, 390]) {
     await page.route('**/api/answers?*', async (route) => {
       const query = new URL(route.request().url()).searchParams
       expect(query.get('course_id')).toBe('fixture')
-      expect(query.get('target_id')).toContain(':2:step')
+      if (query.has('target_id')) expect(query.get('target_id')).toContain(':2:step')
       await route.fulfill({
         json: {
           items: [
@@ -90,6 +90,12 @@ for (const width of [1280, 390]) {
       await page.addStyleTag({
         content: 'body { font-family: Arial, sans-serif; } input[type=file] { font-size: 20px; }',
       })
+    await page.getByText('Saved answers for this course').click()
+    await expect(page.getByRole('link', { name: 'Browse all answers for this course' })).toHaveAttribute(
+      'href',
+      '/answers?surface=playground&course_id=fixture',
+    )
+    await page.getByText('Saved answers for this course').click()
     await page.getByRole('button', { name: 'Notebook workspace', exact: true }).click()
     await page.getByRole('button', { name: 'Open saved project notebook' }).click()
     await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('2')

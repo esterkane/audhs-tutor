@@ -1,3 +1,4 @@
+import { SavedContextAnswers } from '../features/programs/SavedContextAnswers'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQueryClient } from '@tanstack/react-query'
@@ -127,6 +128,7 @@ export function Areas() {
       {area && (
         <Card>
           <CardTitle>{area.title}</CardTitle>
+          <SavedContextAnswers key={`area:${area.id}`} areaId={area.id} />
           <AreaSettings key={area.id} area={area} disabled={dirty || Boolean(job.data?.running)} />
           <p className="text-sm mt-3">
             {areaDrafts.length

@@ -45,3 +45,32 @@ it('keeps a failed load retryable and distinguishes empty scoped history', async
   fireEvent.click(screen.getByRole('button', { name: 'Retry previous answers' }))
   await waitFor(() => expect(screen.getByText(/No saved replies for this target/)).toBeVisible())
 })
+
+it.each([
+  { props: { courseId: 'course-a' }, label: 'course', expected: 'course_id=course-a' },
+  { props: { areaId: 'area-b' }, label: 'learning area', expected: 'area_id=area-b' },
+])('uses exact $label scope without restricting to a notebook target', async ({ props, label, expected }) => {
+  const fetcher = vi.fn(async (url: string) => {
+    expect(url).toContain(expected)
+    expect(url).not.toContain('target_id=')
+    if (props.areaId) expect(url).not.toContain('surface=playground')
+    return jsonResponse({ items: [], next_cursor: null })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<SavedContextAnswers {...props} />)
+  expect(fetcher).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByText(`Saved answers for this ${label}`))
+  expect(await screen.findByText(new RegExp(`No saved replies for this ${label}`))).toBeVisible()
+  expect(screen.getByRole('link', { name: `Browse all answers for this ${label}` })).toHaveAttribute(
+    'href',
+    expect.stringContaining(expected),
+  )
+})
+
+it('does not turn a missing scope into a global history request', () => {
+  const fetcher = vi.fn()
+  vi.stubGlobal('fetch', fetcher)
+  const { container } = renderApp(<SavedContextAnswers />)
+  expect(container).toBeEmptyDOMElement()
+  expect(fetcher).not.toHaveBeenCalled()
+})

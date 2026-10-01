@@ -8,6 +8,19 @@ test('areas can be renamed and selected as a goal without activating lessons', a
   const catalog = await (await request.get(`${API_URL}/api/areas`)).json()
   const area = catalog.areas.find((a: { slug: string }) => a.slug === 'rag')
   await page.getByLabel('Area to review').selectOption(area.id)
+  await page.route('**/api/answers?*', async (route) => {
+    const query = new URL(route.request().url()).searchParams
+    expect(query.get('area_id')).toBe(area.id)
+    expect(query.has('surface')).toBe(false)
+    await route.fulfill({ json: { items: [], next_cursor: null } })
+  })
+  await page.getByText('Saved answers for this learning area').click()
+  await expect(page.getByText(/No saved replies for this learning area/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Browse all answers for this learning area' })).toHaveAttribute(
+    'href',
+    `/answers?area_id=${area.id}`,
+  )
+  await page.getByText('Saved answers for this learning area').click()
   await page.getByText('Edit area name and matching terms', { exact: true }).click()
   await page.getByLabel('Area name', { exact: true }).fill('My retrieval practice')
   await page.getByRole('button', { name: 'Save area', exact: true }).click()

@@ -8,25 +8,32 @@ export function SavedContextAnswers({
   courseId,
   sectionId,
   targetId,
+  areaId,
 }: {
   courseId?: string
   sectionId?: string
-  targetId: string
+  targetId?: string
+  areaId?: string
 }) {
   const [open, setOpen] = useState(false)
-  const params = new URLSearchParams({ target_id: targetId, surface: 'playground' })
+  const scope = targetId ? 'target' : areaId ? 'learning area' : 'course'
+  const params = new URLSearchParams()
+  if (targetId) params.set('target_id', targetId)
+  if (areaId) params.set('area_id', areaId)
+  else params.set('surface', 'playground')
   if (courseId) params.set('course_id', courseId)
   if (sectionId) params.set('section_id', sectionId)
   const query = useQuery({
     queryKey: ['answers', 'context', params.toString()],
     queryFn: ({ signal }) => apiFetch<Schemas['AnswerPage']>(`/api/answers?${params}&limit=5`, { signal }),
-    enabled: open,
+    enabled: open && Boolean(targetId || courseId || areaId),
   })
+  if (!targetId && !courseId && !areaId) return null
   return (
     <details onToggle={(event) => setOpen(event.currentTarget.open)} className="mt-3 text-sm">
-      <summary>Previously answered here</summary>
+      <summary>{targetId ? 'Previously answered here' : `Saved answers for this ${scope}`}</summary>
       <p className="text-muted my-2">
-        Past replies for this target, newest first. Your code or material may have changed; these are not
+        Past replies for this {scope}, newest first. Your code or material may have changed; these are not
         newly checked answers.
       </p>
       {open &&
@@ -41,8 +48,8 @@ export function SavedContextAnswers({
           <>
             {query.data.items.length === 0 ? (
               <p>
-                No saved replies for this target yet. Earlier answers without a recorded target remain in the
-                general history.
+                No saved replies for this {scope} yet. Earlier answers without this recorded context remain in
+                the general history.
               </p>
             ) : (
               <ul className="grid gap-3">
@@ -63,7 +70,7 @@ export function SavedContextAnswers({
               </ul>
             )}
             <Link className="underline block mt-2" to={`/answers?${params}`}>
-              Browse all answers for this target
+              Browse all answers for this {scope}
             </Link>
           </>
         ))}

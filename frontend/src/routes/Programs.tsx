@@ -1,3 +1,4 @@
+import { SavedContextAnswers } from '../features/programs/SavedContextAnswers'
 import { useEffect, useRef, useState } from 'react'
 import { LocalNotebookLab } from '../features/programs/LocalNotebookLab'
 import { NotebookWorkspace } from '../features/programs/NotebookWorkspace'
@@ -197,6 +198,7 @@ export function Programs() {
             </details>
           </aside>
           <div className="min-w-0 grid gap-4">
+            <SavedContextAnswers key={`course:${course.id}`} courseId={course.id} />
             <div className="flex flex-wrap gap-2 items-center justify-between">
               <p className="text-sm text-muted">
                 {section
