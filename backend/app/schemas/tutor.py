@@ -39,6 +39,7 @@ class TurnMeta(BaseModel):
 
 
 class TurnDone(BaseModel):
+    memory_answers: list[str] = Field(default_factory=list)
     answer_id: str | None = None
     save_error: str | None = None
     turn_id: str

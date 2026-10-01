@@ -60,3 +60,9 @@ it('labels a response without retrieved sources honestly', () => {
   expect(screen.getByText('No course source for this explanation.')).toBeInTheDocument()
   expect(screen.queryByText('Sources for this explanation')).not.toBeInTheDocument()
 })
+
+it('separates earlier answers from source evidence', () => {
+  renderApp(<TutorSources turn={{ ...turn, memory_answers: ['earlier'] }} />)
+  expect(screen.getByText(/they are not verified evidence/)).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Earlier answer 1' })).toHaveAttribute('href', '/answers/earlier')
+})

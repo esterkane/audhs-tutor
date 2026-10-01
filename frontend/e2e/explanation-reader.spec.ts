@@ -27,7 +27,7 @@ test('completed explanation sections preserve notes, focus and optional follow-u
       })
       return route.fulfill({
         contentType: 'text/event-stream',
-        body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ turn_id: 'reader-fixture', sources: [], outcome: 'ok', text })}\n\n`,
+        body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ turn_id: 'reader-fixture', memory_answers: ['prior-fixture'], sources: [], outcome: 'ok', text })}\n\n`,
       })
     })
     await page.goto('/')
@@ -39,6 +39,11 @@ test('completed explanation sections preserve notes, focus and optional follow-u
     await expect(page.getByRole('status', { name: 'Tutor response status' })).toHaveText(
       'Tutor response ready.',
     )
+    await expect(page.getByText(/they are not verified evidence/)).toBeVisible()
+    const history = page.getByRole('link', { name: 'Earlier answer 1' })
+    await expect(history).toHaveAttribute('href', '/answers/prior-fixture')
+    await history.focus()
+    await expect(history).toBeFocused()
     await expect(page.getByRole('heading', { name: 'Section 1 of 3: The idea' })).toBeVisible()
     await page.getByRole('button', { name: 'Next section', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Section 2 of 3: A worked example' })).toBeFocused()

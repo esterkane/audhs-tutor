@@ -4790,6 +4790,8 @@ export interface components {
     }
     /** TurnDone */
     TurnDone: {
+      /** Memory Answers */
+      memory_answers?: string[]
       /** Answer Id */
       answer_id?: string | null
       /** Save Error */

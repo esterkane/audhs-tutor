@@ -20,6 +20,8 @@ from app.core.config import get_settings
 from app.evals.harness import open_world
 from app.models_ai.provider import TaskClass
 from app.orchestrator.playground import VERSION, messages
+from app.orchestrator import prompts
+from app.orchestrator.context import build_packet, render_messages
 from app.schemas.playground import PlaygroundRequest
 
 CASES = [
@@ -47,7 +49,7 @@ CASES = [
 ]
 
 
-async def run(output: Path) -> None:
+async def run(output: Path, surface: str = "workspace") -> None:
     if urlparse(get_settings().ollama_host).hostname not in {
         "localhost",
         "127.0.0.1",
@@ -92,6 +94,16 @@ async def run(output: Path) -> None:
                             else []
                         )
                         packet = messages(body, memory=memory)
+                        if surface == "lesson":
+                            packet = render_messages(build_packet(
+                                policy=prompts.base_policy(),
+                                request=case["question"],
+                                prompt_version=prompts.PROMPT_VERSION,
+                                learning_contract={"exercise": case["exercise"]},
+                                historical=memory,
+                                output_contract={"action": "explain", "max_sentences": 4,
+                                                 "instructions": "Explain directly using supplied numbers; no assessment or completion claim."},
+                            ))
                         start = time.perf_counter()
                         result: dict[str, object] = {
                             "case": case["id"],
@@ -108,7 +120,8 @@ async def run(output: Path) -> None:
                                     max_tokens=500,
                                     metadata={
                                         "task": "answer_memory_eval",
-                                        "prompt_version": VERSION,
+                                        "prompt_version": VERSION if surface == "workspace" else prompts.PROMPT_VERSION,
+                                        "surface": surface,
                                     },
                                 ),
                                 timeout=120,
@@ -129,7 +142,8 @@ async def run(output: Path) -> None:
                         output.write_text(
                             json.dumps(
                                 {
-                                    "prompt_version": VERSION,
+                                    "prompt_version": VERSION if surface == "workspace" else prompts.PROMPT_VERSION,
+                                        "surface": surface,
                                     "synthetic": True,
                                     "scope": "prompt-only; no retrieval/exact-reuse latency measured",
                                     "results": results,
@@ -151,5 +165,6 @@ async def run(output: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--surface", choices=["workspace", "lesson"], default="workspace")
     args = parser.parse_args()
-    asyncio.run(run(args.out))
+    asyncio.run(run(args.out, args.surface))

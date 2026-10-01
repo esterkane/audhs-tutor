@@ -25,6 +25,16 @@ function TurnSources({ turn }: { turn: TurnDone }) {
           Saved to your local answer history. <Link to={`/answers/${turn.answer_id}`}>Open saved answer</Link>
         </p>
       ) : null}
+      {(turn.memory_answers ?? []).length > 0 && (
+        <p className="text-muted">
+          Earlier answers informed this explanation; they are not verified evidence.{' '}
+          {turn.memory_answers?.map((id, index) => (
+            <Link key={id} className="underline mr-2" to={`/answers/${id}`}>
+              Earlier answer {index + 1}
+            </Link>
+          ))}
+        </p>
+      )}
       {turn.sources.length > 0 ? (
         <details>
           <summary className="cursor-pointer font-medium">Sources for this explanation</summary>

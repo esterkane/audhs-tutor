@@ -162,3 +162,7 @@ Added scripts/index_answers.py bounded missing-vector population/rebuild using i
 ## 2026-10-01 — workspace semantic memory connected
 
 Literal-first lookup now fills remaining historical-context slots from scoped cached local semantic matches, with optional2sbudget/fallback. Query-only embedding, ownership/task/work filters before boundedpool, feedback/fingerprint recheck after inference, no semantic exactreplay. Completed workspace replies schedule bounded indexing in a separate session after delivery. 464 backend before reviewfix, focused semantic/memorytests afterward and lint/types pass. Review fixed tiny-vector norm failure. Local disposable smoke found paraphrase missed by literal in33ms singletrial; no generalquality/latencyclaim. Next: integration into mainstreaming tutor and broader end-to-end evaluation. Both repos private.
+
+
+## Lesson historical context
+Bounded literal context requires owner, skill, style and exact effective teaching contract plus unchanged source hashes. History is labeled separately from evidence. 468 backend,225 frontend,lint/build and isolated explanation-reader journey pass. Review fixed hint-level leakage. Local six-trial diagnostic shows arithmetic correction and injection resistance but remaining style/brevity errors; no broad quality or speed claim. Semantic lesson retrieval remains pending. See slices/lesson-answer-memory.md. Both repositories remain private.

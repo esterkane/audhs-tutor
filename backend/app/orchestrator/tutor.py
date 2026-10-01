@@ -6,6 +6,7 @@ aborts the stream mid-way (the explanation is then flagged partial)."""
 
 import dataclasses
 import hashlib
+import json
 import logging
 import re
 import time
@@ -18,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.answers import save_completed
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
+from app.db.lesson_answer_memory import retrieve as lesson_memory
 from app.db.models import ExperimentArm
 from app.db.traces import TutorTraceRecord, write_retrieval_trace, write_tutor_trace
 from app.kernel import experiments, practice, representations, skill_graph
@@ -254,8 +256,36 @@ class TutorTurn:
                 ),
             )
             rtrace_id = rtrace.id
+        teaching_contract = self._contract(
+            req,
+            action,
+            hint_level=hint_level,
+            socratic=socratic,
+            representation=representation,
+            block_type=block_type,
+            mastery=mastery,
+        )
+        contract_key = hashlib.sha256(
+            json.dumps([prompts.PROMPT_VERSION, teaching_contract], sort_keys=True).encode()
+        ).hexdigest()
+        historical = []
+        if not conversation:
+            try:
+                async with db.begin_nested():
+                    historical = await lesson_memory(
+                        db,
+                        learner_id,
+                        node.id,
+                        req.text,
+                        str(action),
+                        "socratic" if socratic else "explicit",
+                        contract_key,
+                    )
+            except SQLAlchemyError as exc:
+                logger.warning("Lesson answer lookup unavailable: %s", type(exc).__name__)
         packet = build_packet(
             policy=prompts.base_policy(),
+            historical=historical,
             request=req.text,
             prompt_version=prompts.PROMPT_VERSION,
             preferences=prefs,
@@ -266,15 +296,7 @@ class TutorTurn:
             evidence=evidence,
             retrieved=hits,
             quarantine_below_trust=self.quarantine_below_trust,
-            output_contract=self._contract(
-                req,
-                action,
-                hint_level=hint_level,
-                socratic=socratic,
-                representation=representation,
-                block_type=block_type,
-                mastery=mastery,
-            ),
+            output_contract=teaching_contract,
         )
         messages = render_messages(packet)
 
@@ -413,6 +435,10 @@ class TutorTurn:
                     text=text,
                     metadata={
                         "skill_id": node.id,
+                        "teaching_action": str(action),
+                        "teaching_contract_key": contract_key,
+                        "memory_context_version": "lesson.v1",
+                        "answer_memory": packet.historical,
                         "area_id": node.area_id,
                         "course_label": node.course,
                         "model": handle.registry_id,
@@ -440,6 +466,7 @@ class TutorTurn:
             TurnDone(
                 turn_id=turn_id,
                 answer_id=answer_id,
+                memory_answers=[item["answer_id"] for item in packet.historical],
                 save_error=save_error,
                 model_call_id=handle.model_call_id,
                 tutor_trace_id=trace.id,
