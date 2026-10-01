@@ -615,7 +615,15 @@ def restore_backup(path: Path, target: Path, password: str | None = None) -> Rep
 
 def _expected_schema_objects() -> tuple[set[str], set[str]]:
     tables = set(Base.metadata.tables) | {"alembic_version"}
-    triggers = set(LEARNING_EVENT_GUARDS)
+    tables.update(
+        {
+            "tutor_answer_fts" + suffix
+            for suffix in ("", "_data", "_idx", "_content", "_docsize", "_config")
+        }
+    )
+    triggers = set(LEARNING_EVENT_GUARDS) | {
+        "tutor_answer_fts_" + action for action in ("insert", "update", "delete")
+    }
     return tables, triggers
 
 
@@ -654,8 +662,11 @@ def _check_snapshot_schema(db_file: Path, revision: str) -> None:
             seen_triggers.add(str(name))
         else:
             raise BackupError(f"snapshot contains an unexpected {kind} {name!r}")
-    if seen_triggers != triggers:
-        raise BackupError("snapshot is missing the append-only guard triggers")
+    required = set(LEARNING_EVENT_GUARDS)
+    if any(kind == "table" and name == "tutor_answer_fts" for kind, name, _ in objects):
+        required |= {"tutor_answer_fts_" + action for action in ("insert", "update", "delete")}
+    if seen_triggers != required:
+        raise BackupError("snapshot is missing or has inconsistent database guard/index triggers")
 
 
 def _check_after_upgrade(db_file: Path) -> None:

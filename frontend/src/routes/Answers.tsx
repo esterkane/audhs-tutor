@@ -16,8 +16,15 @@ export function Answers() {
 
 function History() {
   const [params, setParams] = useSearchParams()
+  const appliedSearch = params.get('q') ?? ''
+  const [search, setSearch] = useState(appliedSearch)
+  const [previousSearch, setPreviousSearch] = useState(appliedSearch)
+  if (previousSearch !== appliedSearch) {
+    setPreviousSearch(appliedSearch)
+    setSearch(appliedSearch)
+  }
   const query = new URLSearchParams()
-  for (const key of ['cursor', 'skill_id', 'area_id', 'surface']) {
+  for (const key of ['cursor', 'skill_id', 'area_id', 'surface', 'q']) {
     const value = params.get(key)
     if (value) query.set(key, value)
   }
@@ -42,7 +49,42 @@ function History() {
       </p>
       <p className="text-sm text-muted">
         Saved answers can be mistaken or outdated. Notebook advice belongs to the code and material supplied
-        at the time. Search and suggested questions are coming next.
+        at the time. Suggested questions are coming next.
+      </p>
+      <form
+        className="flex flex-wrap gap-2 items-end"
+        onSubmit={(event) => {
+          event.preventDefault()
+          update('q', search.trim())
+        }}
+      >
+        <label className="min-w-0">
+          Search saved answers
+          <input
+            type="search"
+            className="block mt-1 w-full"
+            maxLength={200}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            aria-describedby="answer-search-help"
+          />
+        </label>
+        <Button type="submit">Search</Button>
+        {params.get('q') && (
+          <Button
+            type="button"
+            onClick={() => {
+              setSearch('')
+              update('q', '')
+            }}
+          >
+            Clear search
+          </Button>
+        )}
+      </form>
+      <p id="answer-search-help" className="text-sm text-muted">
+        Searches saved requests and answers on this device. All words must match; newest first. Code, output
+        and earlier chat are not searched.
       </p>
       <label>
         Show

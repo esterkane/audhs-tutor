@@ -3,9 +3,10 @@
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.api.deps import DB, Learner
+from app.db.answer_search import literal_query
 from app.db.models import TutorAnswer
 from app.schemas.answers import AnswerDetail, AnswerPage, AnswerSummary
 
@@ -41,9 +42,21 @@ async def list_answers(
     cursor: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     skill_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     area_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
+    q: Annotated[str | None, Query(max_length=200)] = None,
     surface: Literal["tutor", "playground"] | None = None,
 ) -> AnswerPage:
     stmt = select(TutorAnswer).where(TutorAnswer.learner_id == learner.id)
+    if q is not None and q.strip():
+        expression = literal_query(q)
+        if expression is None:
+            return AnswerPage(items=[], next_cursor=None)
+        stmt = stmt.where(
+            TutorAnswer.id.in_(
+                select(text("id"))
+                .select_from(text("tutor_answer_fts"))
+                .where(text("tutor_answer_fts MATCH :search_expression"))
+            )
+        ).params(search_expression=expression)
     if skill_id is not None:
         stmt = stmt.where(TutorAnswer.metadata_json["skill_id"].as_string() == skill_id)
     if area_id is not None:

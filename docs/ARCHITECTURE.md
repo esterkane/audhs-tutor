@@ -127,3 +127,7 @@ There is no model fine-tuning, inferred learning-style category or mastery updat
 `tutor_answer` stores immutable learner-scoped completed workspace replies with supplied bounded request context, model metadata and payload fingerprint; learner/turn uniqueness prevents duplicate snapshot writes. `db/answers.py` owns the short save transaction after existing producer trace/events commit. This is private response history, not corpus truth or competency evidence. Save failures preserve the delivered reply with explicit unsaved status. Request-level inference deduplication, other answer paths, scoped search and suggestion UI remain pending; see `docs/slices/saved-workspace-answers.md`.
 
 Saved history has read-only owner-scoped `/api/answers` list/detail endpoints with bounded keyset pagination and exact skill/area/surface filters. They make no model calls or learning writes. Search and UI remain pending; see `docs/slices/answer-history-api.md`.
+
+### Saved-answer search index
+
+`tutor_answer_fts` is a derived local SQLite FTS5 index of request labels and completed answer text. Migration `58e8952b930d` backfills existing answers; insert/update/delete triggers keep it transactional, including learner wipe. Ownership is enforced by joining matches back to `tutor_answer`; code/output/prior chat are not indexed. Backup validation recognizes the exact FTS objects and triggers. Downgrade removes only the derived index. No model request or learning evidence is produced by search.

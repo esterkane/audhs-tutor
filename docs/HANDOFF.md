@@ -97,3 +97,7 @@ Read-only owner-scoped list/detail routes expose completed saved snapshots with 
 ## Saved-answer browser — 2026-10-01
 
 Saved reply links and More tools → Saved answers provide paginated filtered history and exact saved context. Historical conversation and source qualifications retained. Six focused tests, two isolated Chromium desktop/narrow keyboard journeys, lint/types/build and independent code/pedagogy re-review pass. Search/suggestions remain pending. Both repositories must remain private; sanitized release safeguards stay enabled. See docs/slices/answer-history-ui.md.
+
+## Local saved-answer search — 2026-10-01
+
+SQLite FTS5 searches saved request labels and completed answers, with literal all-word matching, owner isolation and existing filters/cursors. Explicit browser search preserves the query on return. Backfill and transactional triggers cover writes/deletion; restored backups remain searchable. 436 backend/209 frontend tests, lint/types/build, two isolated desktop/narrow journeys and independent code/pedagogy review pass. Remaining: stable course/step metadata, suggested Q&A, follow-up and lifecycle/correction gaps. Both repositories stay private. See docs/slices/answer-search.md.

@@ -110,6 +110,13 @@ def test_round_trip_full_scope_preserves_every_table(
     triggers = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger'")}
     assert {"learning_event_no_update", "learning_event_no_delete"} <= triggers
     assert conn.execute("PRAGMA integrity_check").fetchone()[0] == "ok"
+    saved_id = conn.execute("SELECT id FROM tutor_answer").fetchone()[0]
+    assert conn.execute(
+        "SELECT id FROM tutor_answer_fts WHERE tutor_answer_fts MATCH 'text'"
+    ).fetchall() == [(saved_id,)]
+    conn.execute("DELETE FROM tutor_answer WHERE id=?", (saved_id,))
+    assert conn.execute("SELECT count(*) FROM tutor_answer_fts").fetchone()[0] == 0
+    conn.rollback()
     conn.close()
     assert (
         target / "data" / "transcripts" / ("a" * 64 + ".json")

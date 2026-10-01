@@ -115,7 +115,7 @@ def fill_all_tables(sync_url: str, *, seq: int = 1) -> dict[str, dict[str, Any]]
     """One row per table (parents first). `seq` varies the ids so a DB can be filled twice."""
     engine: Engine = create_engine(sync_url)
     meta = MetaData()
-    meta.reflect(bind=engine)
+    meta.reflect(bind=engine, only=lambda name, _: not name.startswith("tutor_answer_fts"))
     rows: dict[str, dict[str, Any]] = {}
     ids: dict[str, str] = {}
     with engine.begin() as conn:
@@ -156,7 +156,7 @@ def dump_rows(sync_url: str) -> dict[str, list[dict[str, Any]]]:
     """Every table's rows as dicts (JSON columns decoded), sorted by primary key."""
     engine = create_engine(sync_url)
     meta = MetaData()
-    meta.reflect(bind=engine)
+    meta.reflect(bind=engine, only=lambda name, _: not name.startswith("tutor_answer_fts"))
     out: dict[str, list[dict[str, Any]]] = {}
     with engine.connect() as conn:
         for table in meta.sorted_tables:

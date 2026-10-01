@@ -77,3 +77,25 @@ def test_downgrade_one_step_and_back(tmp_path: Path) -> None:
     command.upgrade(alembic_config(url), "head")
     after = dump_tables(url)
     assert len(after["learning_event"]) == 1 and len(after["memory_state"]) == 1
+
+
+def test_saved_answer_search_backfills_and_rebuilds_after_downgrade(tmp_path: Path) -> None:
+    url = f"sqlite:///{tmp_path / 'answers.db'}"
+    command.upgrade(alembic_config(url), "1c27f2b8243b")
+    rows = fill_all_tables(url)
+    answer_id = rows["tutor_answer"]["id"]
+    with sqlite3.connect(tmp_path / "answers.db") as conn:
+        conn.execute(
+            "UPDATE tutor_answer SET text='searchable representation' WHERE id=?", (answer_id,)
+        )
+    for _ in range(2):
+        command.upgrade(alembic_config(url), "head")
+        with sqlite3.connect(tmp_path / "answers.db") as conn:
+            assert conn.execute(
+                "SELECT id FROM tutor_answer_fts WHERE tutor_answer_fts MATCH 'representation'"
+            ).fetchall() == [(answer_id,)]
+        command.downgrade(alembic_config(url), "1c27f2b8243b")
+        with sqlite3.connect(tmp_path / "answers.db") as conn:
+            assert conn.execute(
+                "SELECT text FROM tutor_answer WHERE id=?", (answer_id,)
+            ).fetchone() == ("searchable representation",)

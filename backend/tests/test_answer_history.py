@@ -61,3 +61,60 @@ async def test_history_is_scoped_paginated_and_model_free(
     assert fake_local.calls == []
     for table in (ModelCall, LearningEvent):
         assert await db.scalar(select(func.count()).select_from(table)) == 0
+
+
+async def test_search_literal_words_owner_filters_and_index_lifecycle(
+    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider
+) -> None:
+    from sqlalchemy import delete, text, update
+
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    other = LearnerProfile(display_name="Other")
+    db.add(other)
+    await db.commit()
+    for id_, learner, answer in [
+        ("10", owner, "Über cleaning groups"),
+        ("11", owner, "Cleaning alone"),
+        ("12", other.id, "Über cleaning groups"),
+    ]:
+        db.add(
+            TutorAnswer(
+                id=id_,
+                learner_id=learner,
+                turn_id=id_,
+                surface="playground",
+                request_json={"question": "Compare representation", "code": "secret_code_marker"},
+                text=answer,
+                metadata_json={},
+                fingerprint=id_,
+            )
+        )
+    await db.commit()
+
+    async def results(query: str) -> list[str]:
+        response = await client.get("/api/answers", params={"q": query})
+        assert response.status_code == 200
+        return [row["id"] for row in response.json()["items"]]
+
+    assert await results("ÜBER groups") == ["10"]
+    assert await results("representation") == ["11", "10"]
+    assert await results("secret_code_marker") == []
+    assert await results('" OR *') == []
+    assert await results("***") == []
+    assert (await client.get("/api/answers", params={"q": "cleaning", "surface": "tutor"})).json()[
+        "items"
+    ] == []
+    page = (await client.get("/api/answers", params={"q": "cleaning", "limit": 1})).json()
+    assert page["next_cursor"] == "11"
+    assert (await client.get("/api/answers", params={"q": "cleaning", "cursor": "11"})).json()[
+        "items"
+    ][0]["id"] == "10"
+    await db.execute(update(TutorAnswer).where(TutorAnswer.id == "10").values(text="Replacement"))
+    await db.commit()
+    assert await results("groups") == []
+    await db.execute(delete(TutorAnswer).where(TutorAnswer.id == "11"))
+    await db.commit()
+    assert await results("cleaning") == []
+    assert await db.scalar(text("SELECT count(*) FROM tutor_answer_fts WHERE id='11'")) == 0
+    assert (await client.get("/api/answers", params={"q": "x" * 201})).status_code == 422
+    assert fake_local.calls == []

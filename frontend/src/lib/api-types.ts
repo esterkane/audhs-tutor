@@ -4807,6 +4807,7 @@ export interface operations {
         cursor?: string | null
         skill_id?: string | null
         area_id?: string | null
+        q?: string | null
         surface?: ('tutor' | 'playground') | null
       }
       header?: never

@@ -664,3 +664,10 @@ class ContentReport(IdMixin, LearnerScoped, Base):
     note: Mapped[str] = mapped_column(Text, default="")
     status: Mapped[str] = mapped_column(Text, default="open")  # open | resolved
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+# Keep create_all-based disposable databases equivalent to the migrated schema.
+from app.db.answer_search import ANSWER_SEARCH_DDL  # noqa: E402
+
+for _search_ddl in ANSWER_SEARCH_DDL:
+    event.listen(TutorAnswer.__table__, "after_create", DDL(_search_ddl))  # type: ignore[no-untyped-call]

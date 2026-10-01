@@ -68,6 +68,19 @@ async def test_export_then_wipe_keeps_other_learners(db: AsyncSession, db_path: 
     assert export_learner(conn, b.id)["tutor_answer"][0]["text"] == "Answer for B"
     assert deleted["learning_event"] == 1 and deleted["learner_profile"] == 1
 
+    assert (
+        conn.execute(
+            "SELECT count(*) FROM tutor_answer_fts WHERE answer='Answer for A'"
+        ).fetchone()[0]
+        == 0
+    )
+    assert (
+        conn.execute(
+            "SELECT count(*) FROM tutor_answer_fts WHERE answer='Answer for B'"
+        ).fetchone()[0]
+        == 1
+    )
+
     conn.row_factory = None
     assert conn.execute("SELECT count(*) FROM learning_event").fetchone()[0] == 1
     assert conn.execute("SELECT count(*) FROM learner_profile").fetchone()[0] == 1

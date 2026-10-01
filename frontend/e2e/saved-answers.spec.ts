@@ -32,7 +32,11 @@ for (const width of [1280, 390]) {
       }),
     )
     await page.goto('/answers?surface=playground')
+    await page.getByRole('searchbox', { name: 'Search saved answers' }).fill('groups')
+    await page.getByRole('button', { name: 'Search', exact: true }).click()
+    await expect(page).toHaveURL(/q=groups/)
     const answer = page.getByRole('link', { name: 'Why compare groups?' })
+    await expect(answer).toHaveAttribute('href', /q=groups/)
     await answer.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText('Compare representation before and after cleaning.')).toBeVisible()
@@ -44,6 +48,9 @@ for (const width of [1280, 390]) {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     await page.getByRole('link', { name: 'Back to saved answers' }).click()
     await expect(page.getByRole('combobox', { name: 'Show', exact: true })).toHaveValue('playground')
+    await expect(page.getByRole('searchbox', { name: 'Search saved answers' })).toHaveValue('groups')
+    await page.getByRole('button', { name: 'Clear search' }).click()
+    await expect(page).not.toHaveURL(/q=/)
     expect(requests.filter((url) => /tutor|assess|sessions/.test(url))).toEqual([])
   })
 }

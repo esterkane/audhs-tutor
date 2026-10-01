@@ -122,3 +122,25 @@ it('preserves follow-up context and historical source qualifications', async () 
   expect(screen.getByText(/1 source withheld/)).toBeVisible()
   expect(screen.getByText(/current corpus copy/)).toBeVisible()
 })
+
+it('submits search explicitly and retains it through answer opening and return', async () => {
+  const fetcher = vi.fn(async (url: string) =>
+    url === '/api/answers/a1'
+      ? jsonResponse({ ...summary, text: 'Saved reply', request: {}, metadata: {}, turn_id: 't1' })
+      : jsonResponse({ items: [summary], next_cursor: null }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  open('/answers?surface=playground&cursor=old')
+  await screen.findByRole('link', { name: 'Why clean this data?' })
+  fireEvent.change(screen.getByLabelText('Search saved answers'), { target: { value: 'groups' } })
+  expect(fetcher.mock.calls).toHaveLength(1)
+  fireEvent.click(screen.getByRole('button', { name: 'Search' }))
+  await waitFor(() => expect(fetcher.mock.calls.at(-1)?.[0]).toContain('q=groups'))
+  expect(fetcher.mock.calls.at(-1)?.[0]).not.toContain('cursor=')
+  fireEvent.click(await screen.findByRole('link', { name: 'Why clean this data?' }))
+  await screen.findByText('Saved reply')
+  fireEvent.click(screen.getByRole('link', { name: 'Back to saved answers' }))
+  expect(await screen.findByLabelText('Search saved answers')).toHaveValue('groups')
+  fireEvent.click(screen.getByRole('button', { name: 'Clear search' }))
+  await waitFor(() => expect(fetcher.mock.calls.at(-1)?.[0]).not.toContain('q='))
+})
