@@ -1,6 +1,6 @@
 # Saved tutor answers and suggested questions
 
-Status: queued by owner, 2026-10-01. Implement after current work; coordinate with Q2/Q3 and authoring A01 rather than create duplicate answer stores. Planning only; no database migration or feature activated.
+Status: queued by owner, 2026-10-01. Implement after current work; coordinate with Q2/Q3 and authoring A01 rather than create duplicate answer stores. QA00 inventory and proposed ADR-0017 prepared; no database migration or feature activated. See docs/design/tutor-answer-lifecycle.md.
 
 ## Requested outcome
 
@@ -25,7 +25,7 @@ StudyTutor restores bounded conversation history from browser localStorage; that
 
 | ID | Task / dependency | Acceptance evidence |
 |---|---|---|
-| QA00 | Map every answer path and draft storage/lifecycle ADR | Coverage matrix for lesson, notebook/playground, answer feedback, representations and voice; ownership, context IDs and relation to authoring/correction decided. |
+| QA00 (draft prepared) | Map every answer path and draft storage/lifecycle ADR | Coverage matrix for lesson, notebook/playground, answer feedback, representations and voice; ownership, context IDs and relation to authoring/correction decided. |
 | QA01 | Durable answer persistence; QA00 | Migration/restore on disposable data, learner isolation, exact text/source snapshot, duplicate request and failed-save recovery tests. Completed vs partial state explicit. |
 | QA02 | Local scoped search and retrieval; QA01 | Course/area/step filters, full text, pagination, deleted/stale states, cross-learner denial; opening a record makes zero model calls. |
 | QA03 | Suggested Q&A on course/area learning pages; QA02 | Relevant previously answered list, useful display labels, full answer/source view and follow-up preserving context; empty/loading/error, keyboard and narrow-screen journeys. |
