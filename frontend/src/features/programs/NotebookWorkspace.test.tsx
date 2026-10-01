@@ -180,3 +180,72 @@ it('accepts answers to markdown questions and gives the tutor the current questi
   expect(screen.getByLabelText('Your prediction or explanation')).toHaveValue('To estimate generalization.')
   expect(screen.getByTestId('tutor-context')).toHaveTextContent('Why hold out test data?')
 })
+
+it('requires a clean full run before returning results and invalidates results after edits', async () => {
+  const done = vi.fn()
+  const runner = fake(
+    vi.fn(async () => ({ ...result, results: [{ name: 'check', passed: true, detail: 'passed' }] })),
+  )
+  render(
+    <NotebookWorkspace
+      identity="task"
+      checks={[{ name: 'check', criterion: 'Check x', code: 'assert x == 1' }]}
+      cells={cells}
+      prelude="DATA_CSV = 'fixture'\n"
+      onFinish={done}
+      runnerFactory={() => runner}
+    />,
+  )
+  const finish = screen.getByRole('button', { name: 'Return to task with results' })
+  expect(finish).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Run all and check' }))
+  await waitFor(() => expect(finish).toBeEnabled())
+  expect(runner.run).toHaveBeenCalledWith(
+    expect.stringContaining("DATA_CSV = 'fixture'"),
+    expect.arrayContaining([expect.objectContaining({ name: 'check' })]),
+    expect.any(Object),
+  )
+  expect(runner.run).toHaveBeenCalledWith(
+    expect.stringContaining('print(x + 1)'),
+    expect.arrayContaining([expect.objectContaining({ name: 'check' })]),
+    expect.any(Object),
+  )
+  fireEvent.click(finish)
+  expect(done).toHaveBeenCalledWith(expect.stringContaining('2'))
+  fireEvent.change(screen.getByLabelText('Notebook cell'), { target: { value: '1' } })
+  fireEvent.change(screen.getByLabelText('Starter code — edit your working copy'), {
+    target: { value: 'x = 9' },
+  })
+  expect(finish).toBeDisabled()
+})
+
+it('does not allow failed full runs to be returned as checked results', async () => {
+  const runner = fake(vi.fn(async () => ({ ...result, error: 'AssertionError: fill in bins' })))
+  render(
+    <NotebookWorkspace
+      identity="failed-task"
+      cells={cells}
+      onFinish={vi.fn()}
+      runnerFactory={() => runner}
+    />,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Run all and check' }))
+  await screen.findByText('AssertionError: fill in bins')
+  expect(screen.getByRole('button', { name: 'Return to task with results' })).toBeDisabled()
+})
+
+it('does not confuse successful execution with missing or failed separate checks', async () => {
+  const runner = fake()
+  render(
+    <NotebookWorkspace
+      identity="no-check-result"
+      cells={[{ cell_type: 'code', source: '# assertion cell removed' }]}
+      checks={[{ name: 'required', criterion: 'Real check', code: 'assert False' }]}
+      onFinish={vi.fn()}
+      runnerFactory={() => runner}
+    />,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Run all and check' }))
+  await waitFor(() => expect(runner.dispose).toHaveBeenCalled())
+  expect(screen.getByRole('button', { name: 'Return to task with results' })).toBeDisabled()
+})

@@ -7,6 +7,7 @@ export type Section = {
   hint: string
   criteria: string
   source: string
+  practice?: { notebook: string; dataset?: string }
   example?: string
   challenges?: { id: string; question: string; hint: string; criteria: string }[]
 }
@@ -57,6 +58,16 @@ export function parseProgram(raw: unknown): Program {
         sectionIds.has(s.id)
       )
         throw new Error('Invalid section entry.')
+      if (
+        s.practice !== undefined &&
+        (!s.practice ||
+          typeof s.practice.notebook !== 'string' ||
+          !/^\/local-learning\/[a-zA-Z0-9_-]+\.ipynb$/.test(s.practice.notebook) ||
+          (s.practice.dataset !== undefined &&
+            (typeof s.practice.dataset !== 'string' ||
+              !/^\/local-learning\/[a-zA-Z0-9_-]+\.csv$/.test(s.practice.dataset))))
+      )
+        throw new Error('Invalid local practice files.')
       if (s.example !== undefined && typeof s.example !== 'string') throw new Error('Invalid worked example.')
       if (s.challenges !== undefined) {
         if (!Array.isArray(s.challenges) || s.challenges.length > 8) throw new Error('Invalid challenges.')

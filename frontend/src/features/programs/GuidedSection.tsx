@@ -3,6 +3,7 @@ import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
 import { Markdown } from '../../components/Markdown'
 import { ReadAloud } from '../voice/ReadAloud'
+import { TaskNotebook } from './TaskNotebook'
 import { StudyTutor } from './StudyTutor'
 import type { Section } from './manifest'
 
@@ -60,6 +61,7 @@ function Content({ section, course, paused }: { section: Section; course: string
   })
   const [work, setWork] = useState<Work>(restored.work)
   const [saved, setSaved] = useState(restored.status)
+  const [practiceOpen, setPracticeOpen] = useState(false)
   const [hint, setHint] = useState(false)
   const [check, setCheck] = useState(false)
   const [tutorOpen, setTutorOpen] = useState(false)
@@ -109,6 +111,21 @@ function Content({ section, course, paused }: { section: Section; course: string
     .filter(Boolean)
     .join('\n\n')
   const tutorAnswer = work.phase === 'Try' ? work.note : work.phase === 'Think deeper' ? answer : ''
+  if (practiceOpen && section.practice)
+    return (
+      <TaskNotebook
+        key={`${course}:${section.id}`}
+        practice={section.practice}
+        identity={`${course}:${section.id}`}
+        title={section.title}
+        paused={paused}
+        onBack={(summary) => {
+          if (summary) update({ ...work, note: [work.note, summary].filter(Boolean).join('\n\n') })
+          setPracticeOpen(false)
+          requestAnimationFrame(() => heading.current?.focus())
+        }}
+      />
+    )
   return (
     <Card className="grid gap-4">
       <h2 className="text-lg font-semibold">{section.title}</h2>
@@ -148,7 +165,15 @@ function Content({ section, course, paused }: { section: Section; course: string
       {work.phase === 'Try' && (
         <>
           <Markdown text={section.task} />
+          {section.practice && (
+            <Button variant="primary" onClick={() => setPracticeOpen(true)}>
+              Open task starter notebook
+            </Button>
+          )}
           <p>
+            {section.practice
+              ? 'Open the starter, edit the code, then Run all and check. Return here with results when ready. '
+              : ''}
             Use the notebook workspace for code. Record what you tried here; you can ask for help at any
             point.
           </p>

@@ -1,0 +1,5 @@
+# Task notebook round trip
+
+Learner opens a section-specific starter from Try, edits and runs locally, then returns output to the same project notes. Local manifest links the private notebook and optional CSV; no course content ships publicly. No mastery or official progress events are emitted. Existing mode preferences remain unchanged; no autoplay. Keyboard focus enters the notebook heading and returns to the task heading. Back remains available before checks pass. Run-all results are invalidated by edits; storage failures remain visible.
+
+Verification: 177 frontend tests; full lint/types and production build; isolated Chromium journey with real local Pyodide, narrow viewport, keyboard return and reload; all pass. Code/pedagogy review fixed editable-check bypass by moving checks to separate runner validations; re-review has no blockers/majors. Local full-dataset reference implementation passes; unfinished starter and wrong boundary fail. This is calculation evidence, not an interpretation grade or official completion. The browser journey uses synthetic fixtures; full-data calculation verification uses native local Python. Import worker remains uninterrupted.

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Markdown } from '../../components/Markdown'
 import { Button } from '../../components/ui/button'
 import { CodeEditor } from '../code/CodeEditor'
-import { createPyodideRunner, type Runner, type RunResult } from '../code/runner'
+import { createPyodideRunner, type Runner, type RunResult, type Check } from '../code/runner'
 import type { NotebookCell } from './manifest'
 import { StudyTutor } from './StudyTutor'
 import { ReadAloud } from '../voice/ReadAloud'
@@ -11,20 +11,40 @@ type Props = {
   cells: NotebookCell[]
   identity: string
   explanations?: Record<string, string>
+  checks?: Check[]
+  prelude?: string
+  onFinish?: (summary: string) => void
   runnerFactory?: () => Runner
 }
 type Draft = { sources: string[]; predictions: Record<string, string>; selected: number }
 export function NotebookWorkspace(props: Props) {
   return <Workspace key={JSON.stringify([props.identity, props.cells])} {...props} />
 }
-function Workspace({ cells, identity, explanations, runnerFactory = createPyodideRunner }: Props) {
+function Workspace({
+  cells,
+  identity,
+  explanations,
+  prelude = '',
+  checks = [],
+  onFinish,
+  runnerFactory = createPyodideRunner,
+}: Props) {
   const baseline = JSON.stringify(cells)
   let contentHash = 2166136261
   for (let i = 0; i < baseline.length; i += 1)
     contentHash = Math.imul(contentHash ^ baseline.charCodeAt(i), 16777619)
   const storageKey = `notebook-workspace:v1:${identity}:${(contentHash >>> 0).toString(16)}`
   const [restored] = useState(() => {
-    const fresh: Draft = { sources: cells.map((c) => c.source), predictions: {}, selected: 0 }
+    const fresh: Draft = {
+      sources: cells.map((c) => c.source),
+      predictions: {},
+      selected: onFinish
+        ? Math.max(
+            0,
+            cells.findIndex((c) => c.cell_type === 'markdown'),
+          )
+        : 0,
+    }
     try {
       const raw = localStorage.getItem(storageKey)
       if (!raw) return { draft: fresh, status: 'Edits stay in this browser.' }
@@ -56,6 +76,7 @@ function Workspace({ cells, identity, explanations, runnerFactory = createPyodid
   const [saveStatus, setSaveStatus] = useState(restored.status)
   const [plain, setPlain] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [checked, setChecked] = useState(false)
   const [result, setResult] = useState<RunResult | null>(null)
   const [status, setStatus] = useState(
     'Read the instructions, select a code cell, then predict what it will produce.',
@@ -72,6 +93,7 @@ function Workspace({ cells, identity, explanations, runnerFactory = createPyodid
     [],
   )
   function update(next: Draft) {
+    setChecked(false)
     setDraft(next)
     try {
       localStorage.setItem(storageKey, JSON.stringify({ baseline, draft: next }))
@@ -86,14 +108,16 @@ function Workspace({ cells, identity, explanations, runnerFactory = createPyodid
     runner.current?.dispose()
     runner.current = null
     setBusy(false)
+    setChecked(false)
     setStatus('Run stopped. Your edits are preserved.')
   }
-  async function run() {
+  async function run(all = false) {
     if (busy) return
     const token = ++operation.current
-    const selected = draft.selected
+    const selected = all ? cells.length - 1 : draft.selected
     setBusy(true)
     setResult(null)
+    setChecked(false)
     setStatus(`Running code through cell ${selected + 1} in a fresh Python sandbox…`)
     let current: Runner | null = null
     const timer = setTimeout(() => {
@@ -107,15 +131,29 @@ function Workspace({ cells, identity, explanations, runnerFactory = createPyodid
     try {
       current = runnerFactory()
       runner.current = current
-      const code = cells
-        .slice(0, selected + 1)
-        .flatMap((c, i) =>
-          c.cell_type === 'code' ? [`# Notebook cell ${i + 1}\n${draft.sources[i]}\n`] : [],
-        )
-        .join('\n')
-      const output = await current.run(code, [], { timeoutMs: 30000, maxOutputChars: 20000, packages: [] })
+      const code =
+        prelude +
+        cells
+          .slice(0, selected + 1)
+          .flatMap((c, i) =>
+            c.cell_type === 'code' ? [`# Notebook cell ${i + 1}\n${draft.sources[i]}\n`] : [],
+          )
+          .join('\n')
+      const output = await current.run(code, all ? checks : [], {
+        timeoutMs: 30000,
+        maxOutputChars: 20000,
+        packages: [],
+      })
       if (operation.current !== token) return
       setResult(output)
+      setChecked(
+        all &&
+          !output.error &&
+          !output.timedOut &&
+          checks.length > 0 &&
+          output.results.length === checks.length &&
+          checks.every((c, i) => output.results[i]?.name === c.name && output.results[i]?.passed),
+      )
       setStatus(
         output.error
           ? 'Python reported an error. Compare it with the code and prerequisites.'
@@ -138,13 +176,35 @@ function Workspace({ cells, identity, explanations, runnerFactory = createPyodid
       nbformat: 4,
       nbformat_minor: 5,
       metadata: { kernelspec: { display_name: 'Python 3', language: 'python', name: 'python3' } },
-      cells: cells.map((c, i) => ({
-        cell_type: c.cell_type,
-        id: `cell-${i + 1}`,
-        metadata: {},
-        source: draft.sources[i],
-        ...(c.cell_type === 'code' ? { execution_count: null, outputs: [] } : {}),
-      })),
+      cells: [
+        ...(prelude
+          ? [
+              {
+                cell_type: 'code',
+                id: 'local-data',
+                metadata: {},
+                source: prelude,
+                execution_count: null,
+                outputs: [],
+              },
+            ]
+          : []),
+        ...cells.map((c, i) => ({
+          cell_type: c.cell_type,
+          id: `cell-${i + 1}`,
+          metadata: {},
+          source: draft.sources[i],
+          ...(c.cell_type === 'code' ? { execution_count: null, outputs: [] } : {}),
+        })),
+        ...checks.map((c, i) => ({
+          cell_type: 'code',
+          id: `check-${i}`,
+          metadata: {},
+          source: `# ${c.criterion}\n${c.code}`,
+          execution_count: null,
+          outputs: [],
+        })),
+      ],
     }
     const url = URL.createObjectURL(
       new Blob([JSON.stringify(notebook, null, 2)], { type: 'application/x-ipynb+json' }),
@@ -312,6 +372,41 @@ function Workspace({ cells, identity, explanations, runnerFactory = createPyodid
         }
         answer={draft.predictions[String(draft.selected)] ?? ''}
       />
+      {result?.results.map((c, i) => (
+        <p key={i} role={c.passed ? 'status' : 'alert'}>
+          {c.passed ? 'Passed' : 'Needs work'}: {c.name} — {c.detail}
+        </p>
+      ))}
+      {onFinish && (
+        <div className="grid gap-2">
+          <details>
+            <summary>What the checks verify</summary>
+            {checks.map((c) => (
+              <div key={c.name}>
+                <p>{c.criterion}</p>
+                <pre className="whitespace-pre-wrap break-words">{c.code}</pre>
+              </div>
+            ))}
+          </details>
+          <p>
+            Run every cell and the separate calculation checks before returning results. A clean run verifies
+            those checks only, not your interpretation or course completion.
+          </p>
+          <Button disabled={busy} onClick={() => void run(true)}>
+            Run all and check
+          </Button>
+          <Button
+            disabled={!checked || busy}
+            onClick={() =>
+              onFinish(
+                `Notebook run and checks completed.\n${result?.stdout ?? ''}${result?.truncated ? '\n(Output shortened.)' : ''}`,
+              )
+            }
+          >
+            Return to task with results
+          </Button>
+        </div>
+      )}
       <p>{saveStatus}</p>
       <Button onClick={download}>Export edited notebook</Button>
     </section>
