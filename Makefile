@@ -109,3 +109,7 @@ gen-api:
 
 seed:
 	uv run --project backend python scripts/seed_attention.py
+
+# Optional full local Python/Jupyter environment, separate from the backend.
+notebooks:
+	python3 scripts/notebook_lab.py $(if $(filter 1 yes true,$(install)),--install,)

@@ -244,3 +244,9 @@ This publication starts with a clean history and generic example data. Use a new
 Existing private installations and older backups may contain legacy source-type identifiers;
 their data requires an explicit migration before use with this snapshot. Do not replace an
 existing installation or restore an older full-corpus backup without that migration.
+
+### Full local notebooks
+
+The project-study page supports editable notebook source and small browser Python experiments. For full notebooks with datasets, plots and scientific packages, run `make notebooks install=1` once, then `make notebooks`. This starts authenticated JupyterLab on localhost in a separate environment and opens `data/notebooks`. Upload your notebook and its datasets together, read the instructions, then run cells explicitly with Shift+Enter. Course-specific dependencies may need a separate compatible environment; imported code is never executed automatically. The browser experiment runner does not replace a full Jupyter kernel.
+
+Each page offers **Listen or ask about this page**. Select a passage for focused explanation, opt into a Socratic question, or dictate a message and review it before sending. Audio needs local voice setup under Models. Tutor guidance is distinct from executable test results and does not award mastery.

@@ -44,6 +44,8 @@ it('explains first, preserves notes through pause and remount, and makes checks 
     target: { value: 'Avoid using test labels for selection.' },
   })
   fireEvent.click(screen.getByText('Pause study'))
+  expect(screen.queryByRole('button', { name: 'Listen to explanation' })).toBeNull()
+  expect(screen.queryByRole('region', { name: 'Study tutor' })).toBeNull()
   expect(screen.getByLabelText('Your explanation')).not.toBeVisible()
   fireEvent.click(screen.getByText('Resume this step'))
   expect(screen.getByLabelText('Your explanation')).toHaveValue('Avoid using test labels for selection.')

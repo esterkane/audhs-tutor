@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { NotebookWorkspace } from '../features/programs/NotebookWorkspace'
+import { StudyTutor } from '../features/programs/StudyTutor'
+import { ReadAloud } from '../features/voice/ReadAloud'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import {
@@ -11,7 +13,7 @@ import {
 } from '../features/programs/manifest'
 
 type Work = { answer: string; note: string; label: string }
-function SectionStudy({ section, course }: { section: Section; course: string }) {
+function SectionStudy({ section, course, paused }: { section: Section; course: string; paused: boolean }) {
   const key = `project-study:v1:${course}:${section.id}`
   const [work, setWork] = useState<Work>(() => {
     try {
@@ -38,9 +40,13 @@ function SectionStudy({ section, course }: { section: Section; course: string })
     <Card className="grid gap-4">
       <h2 className="text-lg font-semibold">{section.title}</h2>
       <p className="whitespace-pre-wrap">{section.explanation}</p>
+      {!paused && <ReadAloud text={section.explanation} />}
       <p className="text-sm text-muted">Tutor-authored learning guide. Source: {section.source}</p>
       <h3 className="font-semibold">Build this part of the project</h3>
       <p>{section.task}</p>
+      <p className="text-sm">
+        Read the explanation, try the task, then write your reasoning. Use a hint whenever you need one.
+      </p>
       <h3 className="font-semibold">Think it through</h3>
       <p>{section.question}</p>
       <label>
@@ -83,6 +89,19 @@ function SectionStudy({ section, course }: { section: Section; course: string })
       </label>
       <p className="text-sm">Bookmarks do not mark the official project complete or award mastery.</p>
       <p role="status">{saved}</p>
+      {!paused && (
+        <StudyTutor
+          identity={key}
+          context={[
+            section.title,
+            section.explanation,
+            section.task,
+            section.question,
+            section.criteria,
+          ].join('\n')}
+          answer={work.answer}
+        />
+      )}
     </Card>
   )
 }
@@ -90,12 +109,13 @@ function SectionStudy({ section, course }: { section: Section; course: string })
 function NotebookReader({
   notebook,
   explanations,
+  paused,
 }: {
+  paused: boolean
   notebook?: string
   explanations?: Record<string, string>
 }) {
   const [cells, setCells] = useState<NotebookCell[]>([])
-  const [index, setIndex] = useState(0)
   const [isSavedNotebook, setIsSavedNotebook] = useState(false)
   const [error, setError] = useState('')
   const generation = useRef(0)
@@ -108,7 +128,10 @@ function NotebookReader({
   return (
     <Card className="grid gap-3">
       <h2 className="text-lg font-semibold">Understand a notebook</h2>
-      <p>Open a local .ipynb file. Read one cell at a time; nothing is executed or uploaded.</p>
+      <p>
+        Open a notebook to read instructions, edit its starter code and try a local experiment. Nothing runs
+        until you press Run.
+      </p>
       {notebook?.startsWith('/local-learning/') && (
         <Button
           onClick={async () => {
@@ -120,7 +143,6 @@ function NotebookReader({
               if (request !== generation.current) return
               setIsSavedNotebook(true)
               setCells(next)
-              setIndex(0)
               setError('')
             } catch (err) {
               if (request === generation.current) setError((err as Error).message)
@@ -147,7 +169,6 @@ function NotebookReader({
               if (request !== generation.current) return
               setIsSavedNotebook(false)
               setCells(next)
-              setIndex(0)
               setError('')
             } catch (err) {
               if (request === generation.current) setError((err as Error).message)
@@ -156,35 +177,32 @@ function NotebookReader({
         />
       </label>
       {error && <p role="alert">{error} The previous notebook remains open.</p>}
-      {cells.length > 0 && (
-        <>
-          <p>
-            Cell {index + 1} of {cells.length} · {cells[index].cell_type}
-          </p>
-          <pre className="whitespace-pre-wrap break-words overflow-auto border rounded p-3">
-            {cells[index].source}
-          </pre>
-          {isSavedNotebook && explanations?.[String(index + 1)] && (
-            <p className="border-l-4 pl-3">
-              <strong>Why this step: </strong>
-              {explanations[String(index + 1)]}
-            </p>
-          )}
-          <p>
-            Before moving on: What goes in? What changes? What comes out? Why does the next step need this
-            result?
-          </p>
-          <div className="flex gap-2">
-            <Button disabled={index === 0} onClick={() => setIndex(index - 1)}>
-              Previous cell
-            </Button>
-            <Button disabled={index === cells.length - 1} onClick={() => setIndex(index + 1)}>
-              Next cell
-            </Button>
-          </div>
-          <Link to="/playground">Open the coding playground for a small experiment</Link>
-        </>
+      {!paused && cells.length > 0 && (
+        <NotebookWorkspace
+          key={JSON.stringify(cells)}
+          cells={cells}
+          identity={notebook ?? 'uploaded'}
+          explanations={isSavedNotebook ? explanations : undefined}
+        />
       )}
+      <details id="complete-notebook-guide" open>
+        <summary>Run the complete notebook with datasets and scientific libraries</summary>
+        <p>
+          For full notebooks, use the local Jupyter lab. It opens data/notebooks; upload your notebook and
+          datasets there using its Upload button. Keep the notebook and dataset files in the same folder. Read
+          the first markdown cells, then run cells in order with Shift+Enter. Check outputs and errors before
+          continuing.
+        </p>
+        <pre className="whitespace-pre-wrap">python3 scripts/notebook_lab.py --install</pre>
+        <p>
+          Run once from the project folder in a terminal; on later starts omit --install. The authenticated
+          local lab does not execute cells automatically. Review course-specific dependencies before
+          installing them.
+        </p>
+        <a href="http://127.0.0.1:8890/lab" target="_blank" rel="noreferrer">
+          Open local notebook lab (after starting it)
+        </a>
+      </details>
     </Card>
   )
 }
@@ -264,7 +282,12 @@ export function Programs() {
                 {paused ? 'Resume this step' : 'Pause study'}
               </Button>
               <div hidden={paused}>
-                <SectionStudy key={course.id + ':' + section.id} section={section} course={course.id} />
+                <SectionStudy
+                  key={course.id + ':' + section.id}
+                  section={section}
+                  course={course.id}
+                  paused={paused}
+                />
               </div>
               {paused && (
                 <p role="status">
@@ -279,6 +302,7 @@ export function Programs() {
       )}
       <NotebookReader
         key={course?.id ?? 'empty'}
+        paused={paused}
         notebook={course?.notebook}
         explanations={course?.explanations}
       />

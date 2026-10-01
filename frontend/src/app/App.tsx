@@ -1,3 +1,4 @@
+import { LearningCompanion } from '../features/programs/LearningCompanion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import { ParkingLotButton } from '../components/ParkingLotButton'
@@ -53,6 +54,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <main className={`${wide ? 'max-w-7xl' : 'max-w-3xl'} mx-auto p-4 pb-24`}>{children}</main>
+      <LearningCompanion key={useLocation().pathname} />
       <ParkingLotButton />
     </div>
   )
