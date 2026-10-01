@@ -4554,6 +4554,10 @@ export interface components {
     }
     /** TurnDone */
     TurnDone: {
+      /** Answer Id */
+      answer_id?: string | null
+      /** Save Error */
+      save_error?: string | null
       /** Turn Id */
       turn_id: string
       /** Model Call Id */

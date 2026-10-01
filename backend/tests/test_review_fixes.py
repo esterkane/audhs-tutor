@@ -157,6 +157,7 @@ async def test_client_abort_still_leaves_traces(
                 await gen.aclose()
                 break
     trace = (await seeded.execute(select(models.TutorTrace))).scalar_one()
+    assert (await seeded.execute(select(models.TutorAnswer))).scalars().all() == []
     assert trace.action.endswith(":partial") and trace.model_call_id
     call = (await seeded.execute(select(models.ModelCall))).scalar_one()
     assert call.error == "cancelled by consumer" and not call.ok

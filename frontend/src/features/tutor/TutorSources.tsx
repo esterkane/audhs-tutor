@@ -15,6 +15,13 @@ function TurnSources({ turn }: { turn: TurnDone }) {
   const withheld = withheldCount(turn.dropped)
   return (
     <div className="text-sm mt-3">
+      {turn.save_error ? (
+        <p role="alert" className="text-warn">
+          {turn.save_error}
+        </p>
+      ) : turn.answer_id ? (
+        <p className="text-muted">Saved to your local answer history.</p>
+      ) : null}
       {turn.sources.length > 0 ? (
         <details>
           <summary className="cursor-pointer font-medium">Sources for this explanation</summary>

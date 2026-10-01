@@ -81,3 +81,7 @@ Initial triage of three owner documents completed; originals retained privately.
 ## Saved workspace answers — 2026-10-01
 
 QA01 partial: completed workspace tutor answers persist in learner-scoped SQLite with bounded request/model snapshots. Save errors preserve reply text and display warning; learner/turn save uniqueness rejects conflicts. 428 backend,200 frontend tests,lint/build,5 isolated browser journeys and code/pedagogy review pass. Populated backup/export/wipe and migration on disposable data verified. No runtime data included here. Request-level retries, other response paths, stable course/step IDs and search/suggestions remain pending. See docs/slices/saved-workspace-answers.md.
+
+## Saved lesson answers — 2026-10-01
+
+Completed shared tutor replies now persist final text with source hashes/citations and selected skill/area. Partial/aborted generation excluded. Lesson/hint/voice panels show save status; completed stream and voice text match canonical saved response. 430 backend/202 frontend tests, lint/build and independent review pass. Request-level recovery, workspace scope, other history paths and search remain pending. See docs/slices/saved-lesson-answers.md.

@@ -248,7 +248,15 @@ it('guides explanation to a question with optional controls collapsed and access
       if (url.includes('/api/tutor/stream'))
         return sseResponse([
           ['token', { text: 'A dot product combines matching components.' }],
-          ['done', { turn_id: 't1', sources: [], outcome: 'complete' }],
+          [
+            'done',
+            {
+              turn_id: 't1',
+              sources: [],
+              outcome: 'ok',
+              text: 'A dot product combines matching components.',
+            },
+          ],
         ])
       if (url.includes('/api/assess/next'))
         return jsonResponse({

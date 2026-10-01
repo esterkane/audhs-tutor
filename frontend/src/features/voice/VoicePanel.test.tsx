@@ -70,11 +70,14 @@ describe('VoicePanel', () => {
     act(() =>
       ws.push({
         type: 'done',
-        turn: { turn_id: 't1' },
+        turn: { turn_id: 't1', answer_id: 'saved-1', text: 'Canonical saved explanation.' },
         latency: { total_ms: 812, tts_first_audio_ms: 400, interrupted: true },
       }),
     )
     expect(screen.queryByText(/812 ms/)).not.toBeInTheDocument() // telemetry stays out of the learning screen
+    expect(screen.getByText('Saved to your local answer history.')).toBeInTheDocument()
+    expect(screen.getByText('Canonical saved explanation.')).toBeInTheDocument()
+    expect(screen.queryByText('Attention weighs tokens.')).not.toBeInTheDocument()
     // protocol slips never reach the learner
     act(() => ws.push({ type: 'error', message: 'not JSON', protocol: true }))
     expect(screen.queryByRole('alert')).not.toBeInTheDocument()
@@ -84,6 +87,7 @@ describe('VoicePanel', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     expect(JSON.parse(String(ws.sent[ws.sent.length - 1]))).toEqual({ type: 'text', text: 'and shorter?' })
     expect(screen.getByText(/You said:/).closest('p')).toHaveTextContent('and shorter?')
+    expect(screen.queryByText('Saved to your local answer history.')).not.toBeInTheDocument()
     // stop closes the socket after a stop message
     fireEvent.click(screen.getByRole('button', { name: 'Stop voice' }))
     expect(JSON.parse(String(ws.sent[ws.sent.length - 1]))).toEqual({ type: 'stop' })

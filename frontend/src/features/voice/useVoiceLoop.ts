@@ -22,6 +22,7 @@ export function useVoiceLoop(opts: {
   const [ready, setReady] = useState<VoiceMessage | null>(null)
   const [transcript, setTranscript] = useState('')
   const [answer, setAnswer] = useState('')
+  const [saveNote, setSaveNote] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [latency, setLatency] = useState<Record<string, unknown> | null>(null)
   const [nothingHeard, setNothingHeard] = useState(false)
@@ -171,7 +172,11 @@ export function useVoiceLoop(opts: {
           turnDone.current = false
           setTranscript(String(msg.text))
           setAnswer('')
+          setSaveNote(null)
           setStatus('thinking')
+          break
+        case 'meta':
+          setSaveNote(null)
           break
         case 'token':
           setAnswer((a) => a + String(msg.text))
@@ -185,12 +190,20 @@ export function useVoiceLoop(opts: {
           player.current.stop()
           setStatus('ready')
           break
-        case 'done':
+        case 'done': {
+          const turn = msg.turn as {
+            answer_id?: string | null
+            save_error?: string | null
+            text?: string
+          } | null
+          if (typeof turn?.text === 'string') setAnswer(turn.text)
+          setSaveNote(turn?.save_error ?? (turn?.answer_id ? 'Saved to your local answer history.' : null))
           turnBusy.current = false
           setLatency((msg.latency as Record<string, unknown>) ?? null)
           turnDone.current = true
           setStatus(player.current.pending() > 0 ? 'speaking' : 'ready')
           break
+        }
         case 'error':
           if (msg.protocol) break // a client-side protocol slip, never shown to the learner
           if (msg.fallback === 'text') {
@@ -297,6 +310,7 @@ export function useVoiceLoop(opts: {
       turnDone.current = false
       setTranscript(text)
       setAnswer('')
+      setSaveNote(null)
       setError(null)
       setStatus('thinking')
       return true
@@ -305,6 +319,7 @@ export function useVoiceLoop(opts: {
   )
 
   return {
+    saveNote,
     status,
     canSend: status === 'ready',
     ready,

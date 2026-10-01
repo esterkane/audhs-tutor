@@ -61,6 +61,12 @@ async def test_full_learning_loop_over_http(seeded_client: AsyncClient, db: Asyn
     done = r.json()
     assert done["text"].startswith("(analogy)") and done["sources"] and done["tutor_trace_id"]
 
+    saved = await db.get(models.TutorAnswer, done["answer_id"])
+    assert saved is not None and saved.text == done["text"]
+    assert saved.metadata_json["sources"] == done["sources"]
+    assert saved.metadata_json["source_text_hashes"]
+    assert saved.request_json["text"] == "Explain the dot product as similarity"
+
     # streamed turn
     r = await c.post("/api/tutor/stream", json={"session_id": sid, "text": "hint please"})
     assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
@@ -183,3 +189,42 @@ async def test_unavailable_semantic_grade_is_retryable(
     assert response.json()["error"]["code"] == "grading_unavailable"
     assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 0
     assert await db.scalar(select(func.count()).select_from(models.CompetencyEvidence)) == 0
+
+
+async def test_partial_tutor_reply_is_not_saved(
+    seeded_client: AsyncClient, db: AsyncSession, fake_local: FakeProvider
+) -> None:
+    fake_local.fail_after_words = 2
+    session = (
+        await seeded_client.post("/api/sessions", json={"mode": "steady", "energy": 3})
+    ).json()
+    response = await seeded_client.post(
+        "/api/tutor/turn", json={"session_id": session["id"], "text": "hint", "action": "hint"}
+    )
+    assert response.status_code == 200
+    assert response.json()["outcome"] == "partial"
+    assert response.json()["answer_id"] is None
+    assert (await db.execute(select(models.TutorAnswer))).scalars().all() == []
+
+
+async def test_tutor_save_failure_does_not_discard_reply(
+    seeded_client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from sqlalchemy.exc import OperationalError
+
+    from app.orchestrator import tutor
+
+    async def fail(*args: object, **kwargs: object) -> None:
+        raise OperationalError("save", {}, Exception("disk full"))
+
+    monkeypatch.setattr(tutor, "save_completed", fail)
+    session = (
+        await seeded_client.post("/api/sessions", json={"mode": "steady", "energy": 3})
+    ).json()
+    response = await seeded_client.post(
+        "/api/tutor/turn", json={"session_id": session["id"], "text": "hint", "action": "hint"}
+    )
+    assert response.status_code == 200
+    assert response.json()["text"]
+    assert response.json()["answer_id"] is None
+    assert "could not be saved" in response.json()["save_error"]

@@ -5,13 +5,17 @@ A turn without a trace is a bug: the tutor_trace is written in a `finally`, also
 aborts the stream mid-way (the explanation is then flagged partial)."""
 
 import dataclasses
+import hashlib
+import logging
 import re
 import time
 from collections.abc import AsyncIterator
 from typing import Any
 
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.answers import save_completed
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
 from app.db.models import ExperimentArm
@@ -25,6 +29,8 @@ from app.orchestrator import actions, prompts, tools
 from app.orchestrator.context import QUARANTINE_BELOW_TRUST, build_packet, render_messages
 from app.schemas.common import ActivityType, Actor, Domain, ObjectType
 from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
+
+logger = logging.getLogger(__name__)
 
 MAX_TOKENS_FOR_ACTION = {  # ~25 tokens per sentence; the cap backs up the prompt's sentence limit
     actions.Action.EXPLAIN: 190,
@@ -393,10 +399,48 @@ class TutorTurn:
                     },
                 )
 
+        answer_id = None
+        save_error = None
+        if completed and text.strip():
+            try:
+                answer = await save_completed(
+                    db,
+                    learner_id=learner_id,
+                    session_id=session.id,
+                    turn_id=turn_id,
+                    surface="tutor",
+                    request=req.model_dump(exclude={"session_id"}),
+                    text=text,
+                    metadata={
+                        "skill_id": node.id,
+                        "area_id": node.area_id,
+                        "course_label": node.course,
+                        "model": handle.registry_id,
+                        "route": handle.route,
+                        "prompt_version": prompts.PROMPT_VERSION,
+                        "model_call_id": handle.model_call_id,
+                        "questioning_style": "socratic" if socratic else "explicit",
+                        "sources": [source.model_dump() for source in sources],
+                        "source_text_hashes": {
+                            c.chunk_id: hashlib.sha256(c.text.encode()).hexdigest()
+                            for c in packet.retrieved
+                        },
+                        "dropped": packet.dropped,
+                    },
+                )
+                answer_id = answer.id
+            except SQLAlchemyError as exc:
+                logger.warning("Tutor answer save failed: %s", type(exc).__name__)
+                save_error = (
+                    "This answer could not be saved to the database. Keep a copy before leaving."
+                )
+
         yield (
             "done",
             TurnDone(
                 turn_id=turn_id,
+                answer_id=answer_id,
+                save_error=save_error,
                 model_call_id=handle.model_call_id,
                 tutor_trace_id=trace.id,
                 registry_id=handle.registry_id,

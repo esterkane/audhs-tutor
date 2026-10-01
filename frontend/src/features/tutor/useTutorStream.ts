@@ -93,7 +93,11 @@ export function useTutorStream(idleMs = 60_000) {
               if (!current()) return
               terminal = true
               clearTimeout(timer)
-              update({ done, status: done.outcome === 'partial' ? 'partial' : 'complete' })
+              update({
+                done,
+                text: done.outcome === 'partial' ? snapshot.current.text : done.text,
+                status: done.outcome === 'partial' ? 'partial' : 'complete',
+              })
             },
             onError: (e) => fail(e.message),
           },

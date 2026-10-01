@@ -27,7 +27,7 @@ test('completed explanation sections preserve notes, focus and optional follow-u
       })
       return route.fulfill({
         contentType: 'text/event-stream',
-        body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ turn_id: 'reader-fixture', sources: [], outcome: 'complete' })}\n\n`,
+        body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ turn_id: 'reader-fixture', sources: [], outcome: 'ok', text })}\n\n`,
       })
     })
     await page.goto('/')

@@ -1,6 +1,6 @@
 # Saved tutor answers and suggested questions
 
-Status: queued by owner, 2026-10-01. Implement after current work; coordinate with Q2/Q3 and authoring A01 rather than create duplicate answer stores. QA00 inventory and proposed ADR-0017 prepared; QA01 workspace-answer persistence is partially implemented (docs/slices/saved-workspace-answers.md). Search and suggested Q&A are not active. See docs/design/tutor-answer-lifecycle.md.
+Status: queued by owner, 2026-10-01. Implement after current work; coordinate with Q2/Q3 and authoring A01 rather than create duplicate answer stores. QA00 inventory and proposed ADR-0017 prepared; QA01 completed workspace and shared lesson/hint/voice-text persistence is partially implemented (docs/slices/saved-workspace-answers.md and saved-lesson-answers.md). Search and suggested Q&A are not active. See docs/design/tutor-answer-lifecycle.md.
 
 ## Requested outcome
 

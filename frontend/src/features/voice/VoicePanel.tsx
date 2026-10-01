@@ -113,6 +113,11 @@ export function VoicePanel({
           <Markdown text={v.answer} />
         </div>
       )}
+      {v.saveNote && (
+        <p role="status" className="text-sm mt-2">
+          {v.saveNote}
+        </p>
+      )}
       <div className="mt-3 flex flex-wrap gap-2 items-end">
         <label className="text-sm flex-1 min-w-48">
           Type instead

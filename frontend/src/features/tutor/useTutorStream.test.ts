@@ -176,3 +176,33 @@ it('keeps the request clock through tokens and resets it on retry', async () => 
   })
   clock.mockRestore()
 })
+
+it.each(['ok', 'partial'])(
+  'uses canonical completed text while preserving partial tokens (%s)',
+  async (outcome) => {
+    vi.mocked(streamTurn).mockImplementation(async (_req, h) => {
+      h.onToken?.('Valid sentence. Incomplete tail')
+      h.onDone?.({
+        turn_id: 'canonical',
+        model_call_id: null,
+        tutor_trace_id: 'trace',
+        registry_id: null,
+        route: null,
+        outcome,
+        sentences: 1,
+        representation: null,
+        sources: [],
+        flagged: [],
+        dropped: [],
+        latency_ms: 1,
+        text: 'Valid sentence.',
+      })
+    })
+    const { result } = renderHook(() => useTutorStream())
+    await act(async () => {
+      await result.current.run(request)
+    })
+    expect(result.current.text).toBe(outcome === 'ok' ? 'Valid sentence.' : 'Valid sentence. Incomplete tail')
+    expect(result.current.status).toBe(outcome === 'ok' ? 'complete' : 'partial')
+  },
+)
