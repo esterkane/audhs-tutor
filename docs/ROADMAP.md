@@ -22,3 +22,5 @@ Notebook workspace can prepare an explicit private bundle, preserve existing edi
 - 2026-10-01: StudyTutor elapsed waiting, nearby Stop and completion announcement verified; see docs/slices/tutor-waiting.md.
 
 - 2026-10-01: notebook native file-input width constrained; all33 local browser journeys pass. See docs/slices/notebook-responsive-input.md.
+
+- 2026-10-01: assessment help/feedback widget identity collision fixed; see docs/slices/assessment-widget-identity.md.

@@ -892,14 +892,14 @@ function AssessPanel({
         <p className="text-base mb-3">{item.question}</p>
         {!result && (
           <QuestionHelp
-            key={item.id}
+            key={`help:${item.id}`}
             sessionId={sessionId}
             skillId={skillId}
             question={item.question}
             onHint={() => writeDraft(answerKey, { hints: readDraft(answerKey).hints + 1 })}
           />
         )}
-        <QuestionFeedback key={item.id} target={{ assessment_id: item.id }} />
+        <QuestionFeedback key={`feedback:${item.id}`} target={{ assessment_id: item.id }} />
         {!result && (
           <>
             {item.kind === 'mcq' && item.options ? (

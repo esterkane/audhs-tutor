@@ -12,6 +12,10 @@ test('context, optional confidence, saved labels and stopping without recap', as
   page,
   request,
 }, testInfo) => {
+  const duplicateKeys: string[] = []
+  page.on('console', (message) => {
+    if (message.type() === 'error' && message.text().includes('same key')) duplicateKeys.push(message.text())
+  })
   const res = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
   await expectOk(res)
   const session = await res.json()
@@ -28,10 +32,18 @@ test('context, optional confidence, saved labels and stopping without recap', as
   await expect(page.getByRole('button', { name: 'Give me a hint' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Explain the idea first' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
+  await page.getByText('Rate this question', { exact: true }).click()
+  await page
+    .getByLabel('Your explanation (optional)', { exact: true })
+    .fill('Keep this question feedback draft')
   const choices = page.getByRole('group', { name: 'Your answer' })
   if (await choices.isVisible()) await choices.getByRole('button').first().click()
   else await page.getByLabel('Your answer', { exact: true }).fill('My attempt')
   await expect(page.getByRole('button', { name: 'Check my answer' })).toBeEnabled()
+  await expect(page.getByLabel('Your explanation (optional)', { exact: true })).toHaveValue(
+    'Keep this question feedback draft',
+  )
+  await expect(page.getByRole('button', { name: 'Give me a hint' })).toHaveCount(1)
   await expect(page.getByText('Confidence (optional)')).toBeVisible()
   await expect(page.getByRole('group', { name: /How sure are you/ })).not.toBeVisible()
   await page.screenshot({ path: testInfo.outputPath('session-assessment.png'), fullPage: true })
@@ -44,4 +56,5 @@ test('context, optional confidence, saved labels and stopping without recap', as
   expect(ended.energy_after).toBeNull()
   await page.getByText('Saved material · clear / ask me later', { exact: true }).click()
   await expect(page.getByRole('button', { name: 'Revisit this lesson' })).toBeVisible()
+  expect(duplicateKeys).toEqual([])
 })
