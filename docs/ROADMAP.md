@@ -31,3 +31,8 @@ Notebook workspace can prepare an explicit private bundle, preserve existing edi
 ### 2026-10-01 — bounded workspace arithmetic feedback
 
 Implemented literal numeric equality checks, separate from model guidance and learning evidence.542 backend tests, 228 frontend tests, lint and independent review pass. Actual local feedback still has tag/interpretation failures; full tutor quality remains open. See docs/slices/workspace-arithmetic-checks.md.
+
+
+### 2026-10-01 — bounded formative answer checks
+
+Explicit answer-check integration completed; see docs/slices/explicit-answer-feedback.md. Broader teaching-quality and unrelated gates remain open.

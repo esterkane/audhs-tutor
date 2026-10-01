@@ -7,6 +7,7 @@ from dataclasses import asdict
 from typing import Any
 
 import httpx
+from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -24,14 +25,16 @@ from app.models_ai.provider import Message, ProviderError, TaskClass
 from app.models_ai.routing import NoModelReady
 from app.orchestrator import answer_semantic, prompts
 from app.orchestrator.context import escape_data
+from app.orchestrator.feedback_render import render_feedback
 from app.orchestrator.workspace_checks import checks_for, disclose_arithmetic, summary
 from app.orchestrator.workspace_provenance import disclose
 from app.schemas.common import ActivityType, ObjectType
+from app.schemas.feedback import bound_feedback
 from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v8"
+VERSION = "playground.tutor.v9"
 
 
 def messages(
@@ -59,7 +62,7 @@ def messages(
         ]
     data = escape_data(json.dumps(workspace, ensure_ascii=False))
     arithmetic = checks_for(body)
-    return [
+    packet = [
         Message(
             role="system",
             content=prompts.base_policy()
@@ -104,6 +107,12 @@ def messages(
             ),
         ),
     ]
+
+    if body.intent == "check_answer":
+        packet[0] = packet[0].model_copy(
+            update={"content": packet[0].content + "\n\n" + prompts.answer_feedback_task()}
+        )
+    return packet
 
 
 async def respond(
@@ -177,26 +186,39 @@ async def respond(
     await events.emit(
         Verb.ASKED, ObjectType.TURN, turn_id, context={"text_len": len(body.question)}
     )
+    feedback_schema = (
+        bound_feedback(body.learner_answer or "", socratic=body.questioning_style == "socratic")
+        if body.intent == "check_answer"
+        else None
+    )
+    checked_feedback = None
     try:
         out = await gateway.complete(
-            TaskClass.HINT if body.intent == "hint" else TaskClass.EXPLAIN_SIMPLE,
+            TaskClass.ANSWER_FEEDBACK
+            if feedback_schema
+            else (TaskClass.HINT if body.intent == "hint" else TaskClass.EXPLAIN_SIMPLE),
             packet,
             learner_id=learner_id,
             session_id=session.id,
-            max_tokens=900,
+            max_tokens=650 if feedback_schema else 900,
+            response_model=feedback_schema,
             metadata={"task": "playground", "prompt_version": VERSION, "turn_id": turn_id},
         )
-    except GatewayError as exc:
+        if feedback_schema:
+            checked_feedback = feedback_schema.model_validate_json(out.result.text)
+    except (GatewayError, ValidationError, NoModelReady) as exc:
         raise AppError(
             "tutor_unavailable",
-            "The tutor is unavailable. Your code is unchanged; try again.",
+            "The tutor is unavailable. Your work is retained; check the selected model and budget, then retry.",
             http_status=503,
         ) from exc
     if not out.result.text.strip():
         raise AppError(
             "tutor_unavailable", "The tutor returned no answer. Try again.", http_status=503
         )
-    response_text, citation_warning = disclose(out.result.text)
+    response_text, citation_warning = disclose(
+        render_feedback(checked_feedback) if checked_feedback else out.result.text
+    )
     arithmetic = checks_for(body)
     response_text = disclose_arithmetic(response_text, arithmetic)
     await write_tutor_trace(
@@ -245,7 +267,12 @@ async def respond(
                 "model_call_id": out.model_call_id,
                 "sources": [],
                 "citation_warning": citation_warning,
-                **({"raw_model_text": out.result.text} if citation_warning or arithmetic else {}),
+                **(
+                    {"raw_model_text": out.result.text}
+                    if citation_warning or arithmetic or checked_feedback
+                    else {}
+                ),
+                **({"quoted_feedback": checked_feedback.model_dump()} if checked_feedback else {}),
                 "arithmetic_checks": [asdict(check) for check in arithmetic],
                 "arithmetic_checker_version": ARITHMETIC_VERSION,
                 "answer_memory": memory,
@@ -273,6 +300,8 @@ async def respond(
         source_note=(
             "Used previous tutor replies as unverified context; no course sources or execution checked."
             if memory
+            else "Feedback on supplied work; no course sources or execution checked."
+            if checked_feedback
             else "General coding guidance; no course sources retrieved."
         ),
         memory_answers=[item["answer_id"] for item in memory],

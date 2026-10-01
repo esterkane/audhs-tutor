@@ -206,6 +206,10 @@ function Conversation({
       setError('Please shorten this reply to 1,700 characters so the tutor receives your complete answer.')
       return
     }
+    if (action === 'review' && context.length > 8000) {
+      setError('This step has more than 8,000 characters of material. Select a smaller step before checking your answer so no question or criteria are omitted. Your answer is retained.')
+      return
+    }
     const learnerAnswer =
       action === 'chat' && socratic
         ? question
@@ -270,9 +274,9 @@ function Conversation({
             target_label: targetLabel?.slice(0, 300),
           },
           learner_question: action === 'chat' ? question.trim().slice(0, 2000) : null,
-          intent: action === 'hint' ? 'hint' : action === 'explain' ? 'explain' : 'chat',
+          intent: action === 'review' ? 'check_answer' : action === 'hint' ? 'hint' : action === 'explain' ? 'explain' : 'chat',
           question: requests[action].slice(0, 2000),
-          exercise: context.slice(0, 1000),
+          exercise: action === 'review' ? context : context.slice(0, 1000),
           code: code.slice(0, 16000),
           learner_answer: learnerAnswer,
           output: output.slice(0, 4000),
@@ -357,8 +361,10 @@ function Conversation({
         </div>
       )}
       <p className="text-xs text-muted mt-2">
-        Feedback is guidance, not a verified grade. Uses your configured explanation/hint model; this does not
-        change routing.
+        Feedback is guidance, not a verified grade. Checking an answer uses the separate answer-feedback
+        model (OpenAI by default) and sends your submitted answer, supplied material, code, output and recent
+        conversation plus relevant saved replies to that provider. Other tutor actions keep their existing models.{' '}
+        <Link to="/models">Choose models</Link>
       </p>
       <label className="flex gap-2 items-center text-sm my-2">
         <input type="checkbox" checked={preferSaved} disabled={busy}
@@ -367,9 +373,9 @@ function Conversation({
       </label>
       {(context.length > 1000 || code.length > 16000 || output.length > 4000) && (
         <p role="status">
-          Only the first 1,000 characters of material, 16,000 of code and 4,000 of run output fit this
-          tutor request. Task answers are sent in full, up to 8,000 characters. Focus on one smaller
-          step for complete feedback.
+          Answer checks include the complete step material up to 8,000 characters; longer steps must be narrowed.
+          Other tutor actions use the first 1,000 characters of material. Code is limited to 16,000 characters
+          and run output to 4,000. Task answers are sent in full, up to 8,000 characters.
         </p>
       )}
       {reply && (

@@ -53,3 +53,7 @@ def voice_task(name: str) -> str:
 
 def playground_task() -> str:
     return _read("playground/tutor.v2.md")
+
+
+def answer_feedback_task() -> str:
+    return _read("playground/quoted-feedback.v2.md")

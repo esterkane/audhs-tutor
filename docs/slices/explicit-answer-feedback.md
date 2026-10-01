@@ -1,6 +1,6 @@
 # Explicit answer feedback — next runtime slice
 
-Status: planned; no runtime implementation in this slice yet.
+Status: implemented; bounded acceptance passed. Broader teaching-quality gate remains open.
 
 The learner chooses Check my answer on the current step, receives feedback tied to exact quotations from that submission, and can continue the conversation. The deterministic arithmetic notice remains separate from fallible model interpretation. No competency evidence, official grade or completion is produced. Existing stop, retained draft, target-switch and audio behavior must remain intact.
 
@@ -22,3 +22,22 @@ Frontend: explicit provider disclosure; no background answer submission on hint/
 Real model evidence: original and expanded diagnostics are prerequisites, not a universal quality guarantee. Keep unsupported source/execution claims and semantic judgments open to learner correction. Repeat the final runtime prompt on synthetic cases before release; no private course material needed for this verification.
 
 Review: independent code and pedagogy review, relevant suites, handoff, consistent private snapshot and sanitized publication guard before paired commits/pushes. Both repositories remain private.
+
+
+## Implemented — 2026-10-01
+
+`check_answer` is an explicit intent requiring a nonblank answer. StudyTutor uses it only for Check/Review my answer, not explanation, hint, question-start or continuing chat. The separate `answer_feedback` task defaults to the evaluated OpenAI candidate. Its overrides select exactly one model; unavailable or failed local overrides cannot silently fall back to hosted. Budget accounting remains in the normal gateway. The UI discloses external processing and provides the model-settings link before the action. No other default routing changed.
+
+Full selected material is included up to 8,000 characters; the UI refuses longer answer-check steps while retaining work, rather than omitting the question or criteria. Other actions retain their existing 1,000-character excerpt. Existing code/output bounds and source/execution limitations remain visible. No source retrieval is claimed.
+
+The production feedback schema moved to `schemas/feedback.py`, with compatibility imports for old diagnostics. The renderer escapes learner quotations, labels judgments as fallible model feedback, and supplies the same readable final text to display, storage and audio. Raw structured feedback and exact submitted request are saved as provenance. Arithmetic notices remain independently generated. Prompt version v9 prevents replaying older free-text feedback; exact reuse still occurs before model generation. No database migration or competency evidence.
+
+The final runtime message builder was evaluated with the same 13 synthetic cases using the actual check-answer intent and 650-token limit. All quote contracts were valid and inspected judgments appropriate in this sample; median completion 2.105 seconds, estimated total $0.004377. These are single trials, not a reliability or learning-outcome guarantee. The long-answer and missing/stale-output cases do not establish performance on arbitrary notebooks. Artifact: `evals/results/answer-memory/quoted-feedback-openai-runtime.json`. No personal material was sent in evaluation.
+
+## Verification and review fixes
+
+556 backend tests passed; final boundary change also receives focused route/schema coverage. 230 frontend tests, full lint/types and production build passed. Four isolated Chromium journeys passed (answer checking plus conversation at desktop/narrow sizes), including keyboard submission and visible audio controls. The final text/bound update receives a repeat of the two answer-check journeys. Screenshot inspected at 390px; no overflow or obscured action observed. Browser tests use synthetic replies, and component tests verify read-aloud text parity; no Bluetooth hardware claim.
+
+Code/pedagogy review identified and fixed silent hosted fallback after a local override. Two integrated regressions use a ready hosted fake and verify it receives zero calls on local unavailability/failure. Existing feedback-report/CAS tests were preserved in their original file; new generation tests have a separate module. Review confirmed exact reuse, saved raw/readable output, rendering and final complete-material boundary. No remaining blockers/majors in this slice.
+
+Remaining: validate broader real learning examples, improve follow-up continuity and reliability, and finish saved-answer recovery/correction gaps. A model judgment remains challengeable; quotation validity is not factual correctness. Personal voice, source coverage and other project queues remain open.

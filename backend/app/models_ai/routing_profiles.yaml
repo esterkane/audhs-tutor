@@ -121,6 +121,8 @@ profiles:
     query_expand:  {primary: gemma3-12b, fallbacks: [llama31-8b]}
     gen_items:     {primary: gemma3-12b, fallbacks: [llama31-8b]}
     explain_simple: {primary: gemma3-12b, fallbacks: [llama31-8b, hosted-medium]}
+    # Evaluated narrow formative-feedback task; no silent fallback to failed local candidates.
+    answer_feedback: {primary: openai-luna}
     hint:          {primary: gemma3-12b, fallbacks: [llama31-8b, hosted-medium]}
     code_local:    {primary: qwen3-coder-30b-a3b, fallbacks: [llama31-8b, hosted-strong]}
     grade_simple:  {primary: gemma3-12b, fallbacks: [llama31-8b, hosted-medium]}

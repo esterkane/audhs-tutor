@@ -4024,7 +4024,7 @@ export interface components {
        * @default chat
        * @enum {string}
        */
-      intent: 'chat' | 'explain' | 'hint' | 'big_picture'
+      intent: 'chat' | 'explain' | 'hint' | 'big_picture' | 'check_answer'
       /**
        * Question
        * @default

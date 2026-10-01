@@ -440,3 +440,34 @@ it('reads the same local arithmetic disclosure as the displayed tutor reply', as
   expect(screen.getByText(/does not hold exactly/)).toBeVisible()
   expect(screen.getByRole('button', { name: 'Listen to explanation' })).toHaveAttribute('data-spoken-text', text)
 })
+it('discloses the answer-feedback provider and sends only an explicit check action to it', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue(reply)
+  renderApp(<StudyTutor context="30 of 50 rows remain" answer="30/50 = 0.9" reviewOnly />)
+  expect(screen.getByText(/OpenAI by default/)).toBeVisible()
+  expect(askTutor).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await screen.findByText(reply.text)
+  expect(vi.mocked(askTutor).mock.calls[0][0]).toMatchObject({
+    intent: 'check_answer', learner_answer: '30/50 = 0.9', questioning_style: 'explicit',
+  })
+  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toHaveAttribute('data-spoken-text', reply.text)
+  fireEvent.change(screen.getByLabelText('Ask about this feedback'), { target: { value: 'Explain the denominator' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
+  await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
+  expect(vi.mocked(askTutor).mock.calls[1][0].intent).toBe('chat')
+})
+
+it('keeps the full selected question for checks and refuses oversized material without a call', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue(reply)
+  const context = 'Context '.repeat(180) + 'Important question at the end'
+  const view = renderApp(<StudyTutor context={context} answer="My answer" reviewOnly />)
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await screen.findByText(reply.text)
+  expect(vi.mocked(askTutor).mock.calls[0][0].exercise).toBe(context)
+  view.rerender(<StudyTutor context={'x'.repeat(8001)} answer="My answer" reviewOnly />)
+  fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await screen.findByText(/no question or criteria are omitted/)
+  expect(askTutor).toHaveBeenCalledTimes(1)
+})

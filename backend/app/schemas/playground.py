@@ -1,8 +1,8 @@
 """Bounded workspace context for explicit playground tutoring requests."""
 
-from typing import Literal
+from typing import Literal, Self
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class PlaygroundMessage(BaseModel):
@@ -26,13 +26,19 @@ class PlaygroundRequest(BaseModel):
     learning_context: PlaygroundContext | None = None
     learner_question: str | None = Field(default=None, max_length=2000)
     learner_answer: str | None = Field(default=None, max_length=8000)
-    intent: Literal["chat", "explain", "hint", "big_picture"] = "chat"
+    intent: Literal["chat", "explain", "hint", "big_picture", "check_answer"] = "chat"
     question: str = Field(default="", max_length=2000)
-    exercise: str = Field(max_length=1000)
+    exercise: str = Field(max_length=8000)
     code: str = Field(max_length=16000)
     output: str = Field(default="", max_length=4000)
     output_stale: bool = False
     history: list[PlaygroundMessage] = Field(default_factory=list, max_length=6)
+
+    @model_validator(mode="after")
+    def check_requires_answer(self) -> Self:
+        if self.intent == "check_answer" and not (self.learner_answer or "").strip():
+            raise ValueError("Write an answer before requesting feedback")
+        return self
 
 
 class PlaygroundReply(BaseModel):

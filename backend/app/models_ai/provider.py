@@ -20,6 +20,7 @@ class TaskClass(StrEnum):
     GEN_ITEMS = "gen_items"
     EXPLAIN_SIMPLE = "explain_simple"
     HINT = "hint"
+    ANSWER_FEEDBACK = "answer_feedback"
     CODE_LOCAL = "code_local"
     GRADE_SIMPLE = "grade_simple"
     GRADE_RUBRIC = "grade_rubric"

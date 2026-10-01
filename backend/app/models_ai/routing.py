@@ -50,6 +50,8 @@ class Router:
         if entry is None:
             raise KeyError(f"no routing entry for task {task}")
         chain = [entry["primary"], *entry.get("fallbacks", [])]
+        if override and task == TaskClass.ANSWER_FEEDBACK:
+            return [override]
         if override:
             chain = [override, *[c for c in chain if c != override]]
         return chain

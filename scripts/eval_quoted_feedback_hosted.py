@@ -96,6 +96,7 @@ async def run(output: Path) -> None:
             for name, exercise, answer, mode, criteria in CASES:
                 body = PlaygroundRequest(
                     session_id="eval",
+                    intent="check_answer",
                     exercise=exercise,
                     **{"code": "", **CONTEXT_OVERRIDES.get(name, {})},
                     learner_answer=answer,
@@ -103,9 +104,6 @@ async def run(output: Path) -> None:
                     question="Review my reasoning against the supplied task.",
                 )
                 packet = messages(body)
-                packet[0] = packet[0].model_copy(
-                    update={"content": packet[0].content + "\n\n" + task_prompt}
-                )
                 schema = bound_feedback(answer, socratic=mode == "socratic")
                 result = {
                     "case": name,

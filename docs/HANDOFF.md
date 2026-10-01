@@ -207,3 +207,8 @@ Experimental exact-answer quotation validation and seven synthetic cases per mod
 ## 2026-10-01 — expanded feedback comparison
 
 13 synthetic cases with the version2 prompt completed. Hosted sample supports narrowly scoped explicit answer feedback; local model still makes material interpretation errors despite valid quotations. No runtime integration or routing change. Lint/types, script checks, five contract tests and independent review passed. See quoted-feedback-diagnostic and planned explicit-answer-feedback slice docs for evidence, estimated cost and limits. Both repos remain private.
+
+
+## 2026-10-01 — explicit formative answer checks
+
+Connected Check/Review my answer to a separate evaluated task with exact quotations, provider disclosure, exclusive model overrides, full bounded material, saved replay and shared audio text. Other tutoring defaults unchanged. 556backend/230frontend, lint/build and desktop/narrow keyboard journeys pass, including final focused checks. Code/pedagogy review clear. 13 synthetic runtime cases recorded; model judgments remain fallible. See docs/slices/explicit-answer-feedback.md. Both repos private; no learner content/database in this checkout.

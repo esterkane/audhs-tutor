@@ -177,7 +177,7 @@ function Workspace({
     setTutorError('')
   }
 
-  async function ask(intent: TutorRequest['intent']) {
+  async function ask(intent: Exclude<TutorRequest['intent'], 'check_answer'>) {
     if (!sessionId || tutorAbort.current) return
     const defaults = {
       chat: '',
