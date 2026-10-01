@@ -24,6 +24,12 @@ env:
   CI: "true"
 
 jobs:
+  publication:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 scripts/check_publication.py
+
   backend:
     name: backend · ruff, mypy, pytest
     runs-on: ubuntu-latest

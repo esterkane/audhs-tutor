@@ -32,3 +32,5 @@ local-only/
 *resource-downloader*
 evals/results/
 docs/research/
+
+frontend/public/local-learning/

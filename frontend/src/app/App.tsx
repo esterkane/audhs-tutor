@@ -16,6 +16,7 @@ import { Recap } from '../routes/Recap'
 import { Review } from '../routes/Review'
 import { Session } from '../routes/Session'
 import { Visualizer } from '../routes/Visualizer'
+import { Programs } from '../routes/Programs'
 import { Playground } from '../routes/Playground'
 import { MODE_LABELS, useMode } from '../stores/mode'
 
@@ -42,6 +43,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link to="/vocab">Vocab</Link>
           <Link to="/corpus">Corpus</Link>
           <Link to="/areas">Learning areas</Link>
+          <Link to="/programs">Degree projects</Link>
           <Link to="/models">Models</Link>
           <Link to="/preferences">Preferences</Link>
         </nav>
@@ -72,6 +74,7 @@ export default function App() {
             <Route path="/preferences" element={<Preferences />} />
             <Route path="/corpus" element={<Corpus />} />
             <Route path="/areas" element={<Areas />} />
+            <Route path="/programs" element={<Programs />} />
             <Route path="/curriculum" element={<Curriculum />} />
             <Route path="/models" element={<Models />} />
             <Route path="/experiments" element={<Experiments />} />
