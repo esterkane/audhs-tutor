@@ -14,6 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from app.core.config import get_settings
 from app.evals.harness import open_world
 from app.models_ai.provider import TaskClass
+from app.models_ai.benchmark_gateway import BenchmarkRouter
+from app.models_ai.registry import get_row, get_spec, upsert
+from app.models_ai.factory import installed_models
 from app.orchestrator.playground import VERSION, messages
 from app.schemas.playground import PlaygroundMessage, PlaygroundRequest
 
@@ -51,8 +54,24 @@ CASES = [
     ),
 ]
 
+CASES.append(
+    (
+        "socratic_correct_feedback",
+        "chat",
+        "My answer is 60%. Please check my reasoning.",
+        [
+            PlaygroundMessage(
+                role="assistant",
+                text="What fraction of the original 50 rows are the remaining 30?",
+            ),
+            PlaygroundMessage(role="user", text="30/50 = 0.6, so 60%."),
+        ],
+        "Acknowledge the correct calculation without inventing an error or claiming general mastery.",
+    )
+)
 
-async def run(output: Path) -> None:
+
+async def run(output: Path, model: str = "gemma3-12b") -> None:
     if urlparse(get_settings().ollama_host).hostname not in {
         "localhost",
         "127.0.0.1",
@@ -71,7 +90,33 @@ async def run(output: Path) -> None:
         )
         try:
             async with world.session_factory() as db:
+                if model == "qwen25-3b-eval":
+                    tags = await installed_models(world.settings)
+                    if "qwen2.5:3b" not in tags:
+                        raise ValueError(
+                            "Evaluation candidate is not installed; no download allowed"
+                        )
+                    await upsert(
+                        db,
+                        {
+                            "id": model,
+                            "display_name": "Installed Qwen 2.5 3B evaluation",
+                            "source": "ollama_library",
+                            "repo_id": "qwen2.5",
+                            "file_or_tag": "qwen2.5:3b",
+                            "runtime": "ollama",
+                            "role": "chat",
+                            "status": "ready",
+                        },
+                    )
+                row = await get_row(db, model)
+                spec = await get_spec(db, model)
+                if row.status != "ready" or spec.provider != "ollama" or spec.hosted:
+                    raise ValueError(
+                        "Selected candidate must be installed local Ollama"
+                    )
                 gateway = world.gateway(db)
+                gateway.router = BenchmarkRouter(model)
                 for name, intent, question, history, review in CASES:
                     body = PlaygroundRequest(
                         session_id="eval",
@@ -109,6 +154,7 @@ async def run(output: Path) -> None:
                             "review_criteria": review,
                             "text": reply.result.text,
                             "model": reply.registry_id,
+                            "request": body.model_dump(exclude={"session_id"}),
                         }
                     )
                     output.parent.mkdir(parents=True, exist_ok=True)
@@ -116,6 +162,8 @@ async def run(output: Path) -> None:
                         json.dumps(
                             {
                                 "synthetic": True,
+                                "pinned_model": model,
+                                "fallback_allowed": False,
                                 "prompt_version": VERSION,
                                 "task_prompt_sha256": hashlib.sha256(
                                     (
@@ -137,4 +185,10 @@ async def run(output: Path) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    asyncio.run(run(parser.parse_args().out))
+    parser.add_argument(
+        "--model",
+        choices=["gemma3-12b", "llama31-8b", "qwen25-3b-eval"],
+        default="gemma3-12b",
+    )
+    args = parser.parse_args()
+    asyncio.run(run(args.out, args.model))

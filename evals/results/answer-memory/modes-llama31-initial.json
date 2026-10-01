@@ -1,0 +1,108 @@
+{
+  "synthetic": true,
+  "pinned_model": "llama31-8b",
+  "fallback_allowed": false,
+  "prompt_version": "playground.tutor.v6",
+  "task_prompt_sha256": "61be1903d8a345e73b4724cd941162e638b3979db26bbec1707c07568a403d41",
+  "results": [
+    {
+      "case": "socratic_start",
+      "review_criteria": "Give enough context and one focused question, not the complete calculation.",
+      "text": "What is the purpose of retaining 30 rows in the dataset?",
+      "model": "llama31-8b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "intent": "chat",
+        "question": "Help me reason about this rate, one question at a time.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": []
+      }
+    },
+    {
+      "case": "socratic_feedback",
+      "review_criteria": "Correct the specific arithmetic before any optional single follow-up; no mastery claim.",
+      "text": "Your claim is that 30 out of 50 rows remaining is equivalent to 90% of the original dataset. However, to find the fraction of the original 50 rows that are remaining, we should divide the number of remaining rows (30) by the original number of rows (50).",
+      "model": "llama31-8b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "intent": "chat",
+        "question": "My answer is 90%. Give feedback on my reasoning first.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "What fraction of the original 50 rows are the remaining 30?"
+          },
+          {
+            "role": "user",
+            "text": "30/50 = 0.9, so 90%."
+          }
+        ]
+      }
+    },
+    {
+      "case": "socratic_hint",
+      "review_criteria": "Hint about the original count, no replacement question or complete answer.",
+      "text": "The last question was about which count belongs in the denominator. Here's a hint: think about what happens when you retain 30 rows out of the original 50. What does that imply about the total number of rows you're working with?",
+      "model": "llama31-8b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "intent": "hint",
+        "question": "Give one small clue for your last question; do not solve it.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "Which count belongs in the denominator?"
+          }
+        ]
+      }
+    },
+    {
+      "case": "socratic_correct_feedback",
+      "review_criteria": "Acknowledge the correct calculation without inventing an error or claiming general mastery.",
+      "text": "You said that 30 out of 50 rows remain, which is equivalent to 30/50. This fraction can be simplified by dividing both the numerator and the denominator by their greatest common divisor, which is 10. Simplifying 30/50 gives 3/5.",
+      "model": "llama31-8b",
+      "request": {
+        "prefer_saved": false,
+        "questioning_style": "socratic",
+        "learning_context": null,
+        "learner_question": null,
+        "intent": "chat",
+        "question": "My answer is 60%. Please check my reasoning.",
+        "exercise": "A dataset starts with 50 rows and retains 30.",
+        "code": "",
+        "output": "",
+        "output_stale": false,
+        "history": [
+          {
+            "role": "assistant",
+            "text": "What fraction of the original 50 rows are the remaining 30?"
+          },
+          {
+            "role": "user",
+            "text": "30/50 = 0.6, so 60%."
+          }
+        ]
+      }
+    }
+  ]
+}
