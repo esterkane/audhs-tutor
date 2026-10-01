@@ -110,3 +110,26 @@ async def test_rejects_foreign_and_ended_sessions(
         )
         assert r.status_code == 404, r.text
     assert not fake_local.calls
+
+
+async def test_unsupported_reference_disclosure_is_saved_and_returned(client, db, fake_local):  # type: ignore[no-untyped-def]
+    from app.orchestrator.workspace_provenance import WARNING
+
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    fake_local.text = "The rate is 60% [1]. Code: `values[1]`."
+    response = await client.post(
+        "/api/playground/tutor",
+        json={
+            "session_id": session["id"],
+            "exercise": "Compare",
+            "code": "",
+            "question": "Explain",
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["text"] == WARNING + "\n\n" + fake_local.text
+    saved = await db.get(TutorAnswer, response.json()["answer_id"])
+    assert saved.text == response.json()["text"]
+    assert saved.metadata_json["raw_model_text"] == fake_local.text
+    assert saved.metadata_json["citation_warning"] is True

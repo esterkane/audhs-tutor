@@ -18,12 +18,13 @@ from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.orchestrator import prompts
 from app.orchestrator.context import escape_data
+from app.orchestrator.workspace_provenance import disclose
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v4"
+VERSION = "playground.tutor.v5"
 
 
 def messages(
@@ -150,6 +151,7 @@ async def respond(
         raise AppError(
             "tutor_unavailable", "The tutor returned no answer. Try again.", http_status=503
         )
+    response_text, citation_warning = disclose(out.result.text)
     await write_tutor_trace(
         db,
         TutorTraceRecord(
@@ -188,13 +190,15 @@ async def respond(
                 **body.model_dump(exclude={"session_id"}),
                 **({"historical_answer": historical} if historical else {}),
             },
-            text=out.result.text,
+            text=response_text,
             metadata={
                 "model": out.registry_id,
                 "route": out.route,
                 "prompt_version": VERSION,
                 "model_call_id": out.model_call_id,
                 "sources": [],
+                "citation_warning": citation_warning,
+                **({"raw_model_text": out.result.text} if citation_warning else {}),
                 "answer_memory": memory,
                 "context_scope": "saved_answer_followup"
                 if historical
@@ -211,7 +215,7 @@ async def respond(
         logger.warning("Tutor answer save failed: %s", type(exc).__name__)
         save_error = "This answer could not be saved to the database. Keep a copy before leaving."
     return PlaygroundReply(
-        text=out.result.text,
+        text=response_text,
         model=out.registry_id,
         route=out.route,
         turn_id=turn_id,

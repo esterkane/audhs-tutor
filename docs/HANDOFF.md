@@ -137,3 +137,8 @@ Workspace tutor checkbox can reopen matching saved reply without a model call, e
 ## 2026-10-01 — local answer-memory diagnostic
 
 Added local-only paired prompt evaluation with disposable DB, loopback Ollama and no hosted credentials/budget. Three cases times two conditions times three revisions (18 real local responses) recorded. Prior-ID citation issue persisted despite wording; v4 removes IDs from model input while retaining saved provenance. V4 still invents [1], so citation/teaching quality gate remains failed. Individual wrong-arithmetic and injected-instruction cases succeeded; no general quality or latency win claimed. 444 backend tests and lint/types passed; independent review clear for infrastructure, not quality acceptance. Next: final-response unsupported-citation handling and broader local evaluation before semantic expansion. Both repos remain private.
+
+
+## 2026-10-01 — workspace citation disclosure
+
+Final source-free workspace replies now disclose possible unsupported numeric citations before display/save/read-aloud, preserving raw text in metadata. Common code spans/fences/indexing are exempt. Prompt version v5 invalidates exact reuse of earlier unguarded replies. 453 backend tests, lint/types and independent code/pedagogy review passed; six recorded outputs replayed through finalizer without text loss. Heuristic limitations and underlying model-quality failures remain explicit. Next: broader provenance/quality evaluation alongside semantic candidate search; no new correctness claim or extra generation call. Both repos private.
