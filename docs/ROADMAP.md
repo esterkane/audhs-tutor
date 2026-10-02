@@ -270,3 +270,12 @@ text and signed save-only recovery. UI includes saved link and distinct history 
 then focused5 including concurrent cached delivery; frontend282, lint/types/build, two desktop/narrow
 journeys and required reviews passed. See docs/slices/representation-answer-history.md. Assessment
 feedback linkage is next; fresh-generation request deduplication and broader quality remain open.
+
+
+## Assessment session ownership — 2026-10-02
+
+Both assessment routes now require the current learner to own the supplied session before next-item
+generation or grading. Regression reproduced foreign-session 200 responses, then verified equal
+404 responses and no attempt/evidence/memory/event/model/history changes after rejection. Backend602,
+lint/types, sanitized focused6 and code review passed. See docs/slices/assessment-session-ownership.md.
+Next: saved assessment feedback linkage without regrading or duplicate learning evidence.

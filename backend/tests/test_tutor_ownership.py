@@ -59,3 +59,52 @@ async def test_foreign_session_is_indistinguishable_from_missing(
         models.SessionCheckpoint,
     ):
         assert await db.scalar(select(func.count()).select_from(table)) == 0
+
+
+@pytest.mark.parametrize("surface", ["next", "attempt"])
+async def test_assessment_rejects_foreign_session_before_generation_or_grading(
+    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider, surface: str
+) -> None:
+    await load_seed(db, SEED)
+    await registry.seed_defaults(db, installed_ollama_tags={"llama3.1:8b"})
+    owner_session = (
+        await client.post("/api/sessions", json={"mode": "steady", "energy": 3})
+    ).json()
+    skill_id = owner_session["next_skill"]["id"]
+    item_response = await client.get(
+        "/api/assess/next", params={"session_id": owner_session["id"], "skill_id": skill_id}
+    )
+    assert item_response.status_code == 200
+    item = item_response.json()["item"]
+    other = models.LearnerProfile(display_name="Other learner")
+    db.add(other)
+    await db.commit()
+    foreign = models.Session(learner_id=other.id, mode="steady", energy=3)
+    db.add(foreign)
+    await db.commit()
+    tables = (
+        models.AssessmentAttempt,
+        models.CompetencyEvidence,
+        models.MemoryState,
+        models.LearningEvent,
+        models.ModelCall,
+        models.TutorAnswer,
+    )
+    counts = [await db.scalar(select(func.count()).select_from(table)) for table in tables]
+    calls = len(fake_local.calls)
+    errors = []
+    for session_id in (foreign.id, "missing"):
+        if surface == "next":
+            result = await client.get(
+                "/api/assess/next", params={"session_id": session_id, "skill_id": skill_id}
+            )
+        else:
+            result = await client.post(
+                "/api/assess/attempt",
+                json={"session_id": session_id, "assessment_id": item["id"], "answer": "0"},
+            )
+        assert result.status_code == 404, result.text
+        errors.append(result.json())
+    assert errors[0] == errors[1]
+    assert len(fake_local.calls) == calls
+    assert counts == [await db.scalar(select(func.count()).select_from(table)) for table in tables]

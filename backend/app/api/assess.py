@@ -26,7 +26,7 @@ async def next_item(
     session_id: str = Query(...),
     skill_id: str | None = None,
 ) -> NextItem:
-    s = await ksession.get(db, session_id)
+    s = await ksession.get_owned(db, session_id, learner.id)
     if skill_id is None:
         cp = await ksession.load_checkpoint(db, s.id) or {}
         skill_id = cp.get("skill_id")
@@ -46,5 +46,8 @@ async def next_item(
     summary="Submit an answer with an optional prior confidence rating; graded hierarchically",
     response_model=AttemptResult,
 )
-async def attempt(body: AttemptRequest, db: DB, gateway: Gateway) -> AttemptResult:
+async def attempt(
+    body: AttemptRequest, db: DB, gateway: Gateway, learner: Learner
+) -> AttemptResult:
+    await ksession.get_owned(db, body.session_id, learner.id)
     return await Grader(db, gateway).grade(body)
