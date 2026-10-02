@@ -1,3 +1,4 @@
+import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -335,6 +336,7 @@ function Editor({
           {graded && (
             <div className="mt-3" role="status">
               <p className="text-sm">{graded.feedback}</p>
+              <AssessmentSaveStatus key={graded.attempt_id} result={graded} />
               <ul className="text-sm mt-1" aria-label="Criteria">
                 {graded.criterion_results.map((c) => (
                   <li key={c.criterion}>

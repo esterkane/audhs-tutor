@@ -1,3 +1,4 @@
+import { AssessmentHistoryDetails } from '../features/programs/AssessmentHistoryDetails'
 import { AnswerReplacement } from '../features/programs/AnswerReplacement'
 import { AnswerChildren } from '../features/programs/AnswerChildren'
 import { AnswerSourceStatus } from '../features/programs/AnswerSourceStatus'
@@ -64,7 +65,7 @@ function History() {
       </p>
       <p className="text-sm text-muted">
         Saved answers can be mistaken or outdated. Notebook advice belongs to the code and material supplied
-        at the time. Suggested questions are coming next.
+        at the time. Search or filter to find an earlier explanation.
       </p>
       {params.get('parent_answer_id') && (
         <p>Showing direct follow-ups to <Link className="underline" to={`/answers/${encodeURIComponent(params.get('parent_answer_id')!)}`}>the original saved answer</Link>. These are historical replies, not verified replacements.</p>
@@ -114,6 +115,7 @@ function History() {
           <option value="">All saved answers</option>
           <option value="tutor">Lessons and hints</option>
           <option value="representation">Alternative explanations</option>
+          <option value="assessment">Assessment feedback</option>
           <option value="playground">Notebook and coding help</option>
         </select>
       </label>
@@ -146,7 +148,7 @@ function History() {
                       : 'Explanation requested'}
                   </Link>
                   <p className="text-xs text-muted mt-1">
-                    {answer.surface === 'playground' ? 'Notebook / coding help' : answer.surface === 'representation' ? 'Alternative explanation' : 'Lesson / hint'} ·{' '}
+                    {answer.surface === 'playground' ? 'Notebook / coding help' : answer.surface === 'representation' ? 'Alternative explanation' : answer.surface === 'assessment' ? 'Assessment feedback' : 'Lesson / hint'} ·{' '}
                     {new Date(answer.created_at).toLocaleString()}
                   </p>
                   <p className="mt-2 whitespace-pre-wrap">{answer.preview}</p>
@@ -238,6 +240,7 @@ function Answer({ id }: { id: string }) {
               Saved {new Date(data.created_at).toLocaleString()}. This is a past response, not a newly checked
               answer.
             </p>
+            {data.surface === 'assessment' && <Card><AssessmentHistoryDetails metadata={data.metadata} /></Card>}
             {data.learner_question && (
               <Card>
                 <h2 className="font-semibold">Your question</h2>
@@ -247,7 +250,7 @@ function Answer({ id }: { id: string }) {
             {typeof data.request.learner_answer === 'string' && data.request.learner_answer && (
               <details>
                 <summary>Your submitted answer at the time</summary>
-                <p className="whitespace-pre-wrap break-words">{data.request.learner_answer}</p>
+                <p className="whitespace-pre-wrap break-words">{typeof data.request.learner_answer_display === 'string' ? data.request.learner_answer_display : data.request.learner_answer}</p>
               </details>
             )}
             {data.target_label && <p className="text-sm">Target at the time: {data.target_label}</p>}
@@ -257,7 +260,7 @@ function Answer({ id }: { id: string }) {
             </Card>
             <Card>
               <Markdown text={data.text} />
-              <ReadAloud text={data.text} />
+              <ReadAloud text={data.surface === 'assessment' ? `${data.request_text}\n\n${data.text}` : data.text} />
             </Card>
             {data.metadata.followup_purpose === 'correction' && <p role="status">This is a proposed correction, not a verified replacement. Review its reasoning and sources alongside the original answer.</p>}
             {typeof data.metadata.parent_answer_id === 'string' && (

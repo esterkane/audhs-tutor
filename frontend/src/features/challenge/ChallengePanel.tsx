@@ -1,3 +1,4 @@
+import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -130,6 +131,7 @@ export function ChallengePanel({
               : `${result.confidence_pre}/5: ${result.calibration}`}
           </p>
           <p className="mt-2">{result.feedback}</p>
+              <AssessmentSaveStatus key={result.attempt_id} result={result} />
           <p className="mt-1 text-sm">{result.next_step}</p>
           <ul className="mt-2 text-sm list-disc ml-5">
             {result.criterion_results.map((c) => (

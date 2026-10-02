@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
 from app.api.deps import DB, Gateway, Learner, Repo
@@ -57,6 +57,8 @@ async def start(
     summary="Submit a challenge answer (graded against the hidden key; schedules a delayed item)",
     response_model=AttemptResult,
 )
-async def submit(body: AttemptRequest, db: DB, gateway: Gateway, learner: Learner) -> AttemptResult:
+async def submit(
+    body: AttemptRequest, db: DB, gateway: Gateway, learner: Learner, request: Request
+) -> AttemptResult:
     await ksession.get_owned(db, body.session_id, learner.id)
-    return await Grader(db, gateway).grade(body)
+    return await Grader(db, gateway, recovery=request.app.state.answer_recovery).grade(body)

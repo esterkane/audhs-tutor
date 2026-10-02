@@ -2438,6 +2438,12 @@ export interface components {
     }
     /** AttemptResult */
     AttemptResult: {
+      /** Answer Id */
+      answer_id?: string | null
+      /** Save Error */
+      save_error?: string | null
+      /** Save Receipt */
+      save_receipt?: string | null
       /** Attempt Id */
       attempt_id: string
       /** Assessment Id */
@@ -5118,7 +5124,7 @@ export interface operations {
         q?: string | null
         parent_answer_id?: string | null
         suggestions?: boolean
-        surface?: ('tutor' | 'playground' | 'representation') | null
+        surface?: ('tutor' | 'playground' | 'representation' | 'assessment') | null
       }
       header?: never
       path?: never

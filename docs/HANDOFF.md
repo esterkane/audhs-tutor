@@ -458,3 +458,14 @@ Next: saved assessment feedback linkage without regrading or duplicate learning 
 
 
 Assessment ownership follow-up: challenge start/submit now have the same ownership guard. Two pre-fix regressions reproduced; focused12 and lint/types passed, code review clear. All four grading entry routes identified in this audit are guarded. Saved assessment feedback remains next.
+
+
+## Saved assessment feedback — 2026-10-02
+
+Shared Grader now saves completed feedback and original visible question/answer/result, linked to
+the attempt. All four result surfaces expose saved history/retry. History is searchable with readable
+past grading details; personal feedback is excluded from default suggestions and automatic reuse.
+Recovering a failed save never regrades or adds evidence/reviews. Full backend608/frontend282, focused
+backend5/UI14, lint/types/build, two desktop/narrow journeys and required reviews passed. See
+docs/slices/assessment-feedback-history.md. No old-attempt backfill or grading-request idempotency
+claim; broader quality, material coverage and UX queues remain open.

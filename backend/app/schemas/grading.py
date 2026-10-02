@@ -45,6 +45,9 @@ class AttemptRequest(BaseModel):
 
 
 class AttemptResult(BaseModel):
+    answer_id: str | None = None
+    save_error: str | None = None
+    save_receipt: str | None = None
     attempt_id: str
     assessment_id: str
     skill_id: str

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
 from app.api.deps import DB, Gateway, Learner
@@ -47,7 +47,7 @@ async def next_item(
     response_model=AttemptResult,
 )
 async def attempt(
-    body: AttemptRequest, db: DB, gateway: Gateway, learner: Learner
+    body: AttemptRequest, db: DB, gateway: Gateway, learner: Learner, request: Request
 ) -> AttemptResult:
     await ksession.get_owned(db, body.session_id, learner.id)
-    return await Grader(db, gateway).grade(body)
+    return await Grader(db, gateway, recovery=request.app.state.answer_recovery).grade(body)

@@ -12,6 +12,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.answer_recovery import AnswerRecovery
 from app.core.errors import AppError
 from app.db.events import EventWriter, Verb
 from app.db.models import (
@@ -28,6 +29,7 @@ from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import NoModelReady
 from app.orchestrator import prompts
+from app.orchestrator.assessment_answers import save_feedback
 from app.orchestrator.context import escape_data, learner_answer_block
 from app.schemas.common import ActivityType, Domain, ObjectType
 from app.schemas.grading import (
@@ -198,9 +200,12 @@ def rubric_checks(criteria: list[dict[str, Any]], answer: str) -> GradeResult:
 
 
 class Grader:
-    def __init__(self, db: AsyncSession, gateway: ModelGateway) -> None:
+    def __init__(
+        self, db: AsyncSession, gateway: ModelGateway, recovery: AnswerRecovery | None = None
+    ) -> None:
         self.db = db
         self.gateway = gateway
+        self.recovery = recovery
 
     async def next_item(self, learner_id: str, skill_id: str) -> Assessment | None:
         """Rotate kinds (mcq → cloze → explain_back); prefer items never attempted, then the oldest attempt."""
@@ -306,6 +311,7 @@ class Grader:
         a = await db.get(Assessment, req.assessment_id)
         if a is None:
             raise KeyError("assessment not found")
+        question_snapshot = view(a).model_dump()
         item = a.item_json
         correct: bool | None
         rubric_version = None
@@ -490,7 +496,7 @@ class Grader:
             )
         ).scalar_one()
         calibration = _calibration(req.confidence_pre, score)
-        return AttemptResult(
+        completed = AttemptResult(
             attempt_id=attempt.id,
             assessment_id=a.id,
             skill_id=a.skill_id,
@@ -513,6 +519,16 @@ class Grader:
                 "stability": ms.stability,
             },
             mastery=mastery,
+        )
+        return await save_feedback(
+            db,
+            completed,
+            req,
+            learner_id=learner_id,
+            question=question_snapshot,
+            area_id=node.area_id if node else None,
+            course_label=node.course if node else None,
+            recovery=self.recovery,
         )
 
 

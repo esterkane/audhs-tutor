@@ -1,3 +1,4 @@
+import { AssessmentSaveStatus } from '../features/programs/AssessmentSaveStatus'
 import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
 import { RepresentationSources } from '../features/representations/RepresentationSources'
 import { RequestRecoveryControls } from '../features/playground/RequestRecoveryControls'
@@ -960,6 +961,7 @@ function AssessPanel({
             </p>
           </details>
           <p className="mt-2">{result.feedback}</p>
+              <AssessmentSaveStatus key={result.attempt_id} result={result} />
           <p className="mt-1 text-sm">{result.next_step}</p>
           {result.misconception && (
             <p className="mt-1 text-sm text-warn">Possible misconception: {result.misconception}</p>

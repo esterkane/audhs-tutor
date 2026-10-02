@@ -1,3 +1,4 @@
+import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { AudioControls } from '../audio/AudioControls'
 import { bindMedia } from '../audio/settings'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
@@ -452,6 +453,7 @@ function TaskCard({
             {result.feedback}
           </p>
           <p className="text-sm text-muted mt-1">{result.next_step}</p>
+          <AssessmentSaveStatus key={result.attempt_id} result={result} />
           {result.correct === false && canReplay && (
             // the answer is on screen now: a graded retry would be a copy task, so only replay
             <Button size="sm" variant="ghost" className="mt-2" onClick={onReplay}>
