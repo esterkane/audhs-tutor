@@ -26,6 +26,17 @@ for (const width of [1280, 390]) {
       historyReads++
       await route.fulfill({ json: { items: [{ ...parent, id: 'child', learner_question: 'Show a small example.' }], next_cursor: null } })
     })
+    let preferred: string | null = null
+    let revision = 0
+    await page.route('**/api/answers/parent/replacement', async (route) => {
+      if (route.request().method() === 'PUT') {
+        const body = route.request().postDataJSON()
+        expect(body.revision).toBe(revision)
+        preferred = body.replacement_id
+        revision++
+      }
+      await route.fulfill({ json: { replacement_id: preferred, revision } })
+    })
     let calls = 0
     await page.route('**/api/answers/parent/followup', async (route) => {
       calls++
@@ -70,6 +81,17 @@ for (const width of [1280, 390]) {
       '/answers/parent',
     )
     await expect(page.getByText(/This is a proposed correction, not a verified replacement/)).toBeVisible()
+    await page.getByText('Review this correction as your preferred reply', { exact: true }).click()
+    const prefer = page.getByRole('button', { name: 'Prefer this correction', exact: true })
+    await expect(prefer).toBeDisabled()
+    await page.getByRole('checkbox', { name: 'I reviewed both answers and want to prefer this correction.' }).check()
+    await prefer.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Preferred correction saved. Both answers remain in history.')).toBeVisible()
+    expect(preferred).toBe('child')
+    await page.getByRole('button', { name: 'Undo preferred correction' }).click()
+    await expect(page.getByText('Preference removed. Existing feedback still applies.')).toBeVisible()
+    expect(preferred).toBeNull()
     await page.getByText('Historical context supplied for this reply').click()
     await expect(page.getByText(/Compare group representation/)).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)

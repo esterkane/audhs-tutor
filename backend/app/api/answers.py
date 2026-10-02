@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from app.api.deps import DB, Gateway, Learner
 from app.core.answer_recovery import MAX_RECEIPT
 from app.core.errors import AppError
-from app.db import answer_feedback, answer_sources, workspace_requests
+from app.db import answer_feedback, answer_replacement, answer_sources, workspace_requests
 from app.db.answer_eligibility import excluded_answer_ids
 from app.db.answer_search import literal_query
 from app.db.answers import save_completed
@@ -22,6 +22,7 @@ from app.schemas.answers import (
     AnswerFeedbackState,
     AnswerFollowup,
     AnswerPage,
+    AnswerReplacementState,
     AnswerSummary,
     SavedSourceCheck,
 )
@@ -297,3 +298,23 @@ async def put_feedback(
 )
 async def source_status(answer_id: str, db: DB, learner: Learner) -> SavedSourceCheck:
     return await answer_sources.check(db, learner.id, answer_id)
+
+
+@router.get(
+    "/{answer_id}/replacement",
+    response_model=AnswerReplacementState,
+    summary="Read your preferred correction without changing history",
+)
+async def get_replacement(answer_id: str, db: DB, learner: Learner) -> AnswerReplacementState:
+    return await answer_replacement.read(db, learner.id, answer_id)
+
+
+@router.put(
+    "/{answer_id}/replacement",
+    response_model=AnswerReplacementState,
+    summary="Choose or undo a preferred correction while retaining both answers",
+)
+async def put_replacement(
+    answer_id: str, body: AnswerReplacementState, db: DB, learner: Learner
+) -> AnswerReplacementState:
+    return await answer_replacement.save(db, learner.id, answer_id, body)

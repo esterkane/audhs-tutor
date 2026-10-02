@@ -149,3 +149,6 @@ The claim commits before inference; completed retries return the original respon
 model calls or events. An empty response is unresolved, never a license to retry inference.
 No automatic expiry; generic learner export/wipe and private backups include these records.
 This is transport deduplication, separate from optional saved-answer semantic retrieval.
+
+
+Saved-answer replacement preferences (2026-10-02) live in learner-scoped `tutor_answer_replacement`, separate from immutable answer snapshots and mutable feedback. Original/preferred FKs, revision checks and null undo preserve history. Shared answer eligibility excludes replaced originals from all automatic reuse paths; preference does not certify correctness or relax source/context checks.

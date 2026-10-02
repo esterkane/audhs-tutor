@@ -48,6 +48,7 @@ EXPECTED_TABLES = {
     "tutor_trace",
     "tutor_answer",
     "tutor_answer_feedback",
+    "tutor_answer_replacement",
     "tutor_answer_vector",
     "workspace_request",
     "retrieval_trace",

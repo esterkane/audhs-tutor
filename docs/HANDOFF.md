@@ -413,3 +413,16 @@ lesson memory, vector loading and indexing. Existing owner/hidden/incorrect/outd
 are unchanged; history remains readable. Backend592, lint/types, focused24 in both checkouts and
 code review passed. See `docs/slices/answer-eligibility-policy.md`. This prepares consistent
 replacement exclusion; replacement choice/undo/CAS and learner UI are still outstanding.
+
+
+## Reviewed preferred corrections — 2026-10-02
+
+Explicit reviewed choice and undo now persist in learner-scoped tutor_answer_replacement. Only
+owned direct correction children qualify; CAS/repeat-safe writes preserve originals and feedback.
+Shared eligibility excludes replaced originals across all automatic reuse paths. Browser controls
+have bounded requests and late-response protection; preference is never verification/mastery.
+Migration9c2187eaf014 passed on a disposable snapshot before publication; live auto-migration and
+foreign keys verified. Backend595/frontend279, lint/types/build, two desktop/narrow journeys and
+required reviews passed; sanitized backend45/UI3 passed. See answer-preferred-replacement slice.
+Next: remaining representation/assessment links and broader real-material quality/latency checks;
+material coverage, UX, visual/authoring/resource and personal-voice queues remain open.

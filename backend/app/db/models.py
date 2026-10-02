@@ -678,6 +678,19 @@ class TutorAnswerFeedback(IdMixin, LearnerScoped, Base):
     updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, onupdate=utcnow_iso)
 
 
+class TutorAnswerReplacement(IdMixin, LearnerScoped, Base):
+    """Explicit preference beside immutable answers; null replacement reverses the choice."""
+
+    __tablename__ = "tutor_answer_replacement"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "answer_id", name="uq_answer_replacement_owner_answer"),
+    )
+    answer_id: Mapped[str] = mapped_column(ForeignKey("tutor_answer.id"), index=True)
+    replacement_id: Mapped[str | None] = mapped_column(ForeignKey("tutor_answer.id"))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, onupdate=utcnow_iso)
+
+
 class ContentReport(IdMixin, LearnerScoped, Base):
     """P4: 'this source / explanation is wrong' — kept as a report next to the evidence, never a
     silent rewrite of what the learner saw."""

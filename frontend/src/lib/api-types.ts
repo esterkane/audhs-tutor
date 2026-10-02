@@ -107,6 +107,24 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/answers/{answer_id}/replacement': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read your preferred correction without changing history */
+    get: operations['get_replacement_api_answers__answer_id__replacement_get']
+    /** Choose or undo a preferred correction while retaining both answers */
+    put: operations['put_replacement_api_answers__answer_id__replacement_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/health': {
     parameters: {
       query?: never
@@ -2133,6 +2151,16 @@ export interface components {
       items: components['schemas']['AnswerSummary'][]
       /** Next Cursor */
       next_cursor?: string | null
+    }
+    /** AnswerReplacementState */
+    AnswerReplacementState: {
+      /** Replacement Id */
+      replacement_id?: string | null
+      /**
+       * Revision
+       * @default 0
+       */
+      revision: number
     }
     /** AnswerSaveReceipt */
     AnswerSaveReceipt: {
@@ -5253,6 +5281,72 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SavedSourceCheck']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_replacement_api_answers__answer_id__replacement_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerReplacementState']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  put_replacement_api_answers__answer_id__replacement_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnswerReplacementState']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerReplacementState']
         }
       }
       /** @description Validation Error */

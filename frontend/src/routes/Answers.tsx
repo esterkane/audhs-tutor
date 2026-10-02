@@ -1,3 +1,4 @@
+import { AnswerReplacement } from '../features/programs/AnswerReplacement'
 import { AnswerChildren } from '../features/programs/AnswerChildren'
 import { AnswerSourceStatus } from '../features/programs/AnswerSourceStatus'
 import { AnswerFeedback } from '../features/programs/AnswerFeedback'
@@ -293,6 +294,10 @@ function Answer({ id }: { id: string }) {
             </details>}
             <AnswerSourceStatus key={`sources:${data.id}`} answerId={data.id} />
             <AnswerFeedback key={`feedback:${data.id}`} answerId={data.id} />
+            {data.metadata.followup_purpose === 'correction' && typeof data.metadata.parent_answer_id === 'string' && (
+              <AnswerReplacement key={`prefer-parent:${data.id}`} answerId={data.metadata.parent_answer_id} candidateId={data.id} />
+            )}
+            <AnswerReplacement key={`preference:${data.id}`} answerId={data.id} />
             <AnswerChildren key={`children:${data.id}`} answerId={data.id} />
             <AnswerFollowup key={data.id} answerId={data.id} />
             {sources.length > 0 ? (

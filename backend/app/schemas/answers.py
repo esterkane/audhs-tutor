@@ -59,3 +59,8 @@ class SavedSourceStatus(BaseModel):
 class SavedSourceCheck(BaseModel):
     sources: list[SavedSourceStatus]
     omitted: int = 0
+
+
+class AnswerReplacementState(BaseModel):
+    replacement_id: str | None = Field(default=None, min_length=1, max_length=128)
+    revision: int = Field(default=0, ge=0)
