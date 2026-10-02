@@ -41,7 +41,7 @@ async def modes() -> ModesOut:
 async def start(
     body: ChallengeStart, db: DB, gateway: Gateway, repo: Repo, learner: Learner
 ) -> ChallengeView:
-    s = await ksession.get(db, body.session_id)
+    s = await ksession.get_owned(db, body.session_id, learner.id)
     skill_id = body.skill_id or (await ksession.load_checkpoint(db, s.id) or {}).get("skill_id")
     if not skill_id:
         nxt = await skill_graph.next_skill(db, learner.id)
@@ -57,5 +57,6 @@ async def start(
     summary="Submit a challenge answer (graded against the hidden key; schedules a delayed item)",
     response_model=AttemptResult,
 )
-async def submit(body: AttemptRequest, db: DB, gateway: Gateway) -> AttemptResult:
+async def submit(body: AttemptRequest, db: DB, gateway: Gateway, learner: Learner) -> AttemptResult:
+    await ksession.get_owned(db, body.session_id, learner.id)
     return await Grader(db, gateway).grade(body)

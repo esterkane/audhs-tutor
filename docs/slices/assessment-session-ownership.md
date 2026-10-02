@@ -7,3 +7,8 @@ Regression reproduced on disposable test databases: both routes previously retur
 Independent code review found no blockers or majors. Focused ownership suite: 6 passed; full backend suite and lint/types recorded below after completion. Existing valid-session assessment tests remain the positive-path coverage; no UI change requires a new browser journey. Saved assessment feedback linkage remains next, and this guard does not provide grading-request deduplication.
 
 Final verification: 602 backend tests passed; lint/strict types passed; sanitized focused ownership suite 6 passed. No live learner data was used by regression tests.
+
+
+### Challenge route parity
+
+The sibling challenge start/submit routes used the same unguarded session lookup/grader. Two additional regressions failed before the fix; both now validate ownership before generation/grading. Focused ownership plus stage-2 positive paths: 12 passed. Lint/types passed; independent code review found no blockers or majors. This closes all four public routes identified in this grading entry-point audit. No new grading or saved-feedback functionality is claimed.

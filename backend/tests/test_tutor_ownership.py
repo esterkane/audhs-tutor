@@ -61,7 +61,7 @@ async def test_foreign_session_is_indistinguishable_from_missing(
         assert await db.scalar(select(func.count()).select_from(table)) == 0
 
 
-@pytest.mark.parametrize("surface", ["next", "attempt"])
+@pytest.mark.parametrize("surface", ["next", "attempt", "challenge_start", "challenge_submit"])
 async def test_assessment_rejects_foreign_session_before_generation_or_grading(
     client: AsyncClient, db: AsyncSession, fake_local: FakeProvider, surface: str
 ) -> None:
@@ -98,9 +98,14 @@ async def test_assessment_rejects_foreign_session_before_generation_or_grading(
             result = await client.get(
                 "/api/assess/next", params={"session_id": session_id, "skill_id": skill_id}
             )
+        elif surface == "challenge_start":
+            result = await client.post(
+                "/api/challenge/start",
+                json={"session_id": session_id, "skill_id": skill_id, "mode": "planted_error"},
+            )
         else:
             result = await client.post(
-                "/api/assess/attempt",
+                "/api/challenge/submit" if surface == "challenge_submit" else "/api/assess/attempt",
                 json={"session_id": session_id, "assessment_id": item["id"], "answer": "0"},
             )
         assert result.status_code == 404, result.text

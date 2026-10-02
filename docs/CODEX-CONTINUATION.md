@@ -30,3 +30,6 @@ generation or grading. Regression reproduced foreign-session 200 responses, then
 404 responses and no attempt/evidence/memory/event/model/history changes after rejection. Backend602,
 lint/types, sanitized focused6 and code review passed. See docs/slices/assessment-session-ownership.md.
 Next: saved assessment feedback linkage without regrading or duplicate learning evidence.
+
+
+Assessment ownership follow-up: challenge start/submit now have the same ownership guard. Two pre-fix regressions reproduced; focused12 and lint/types passed, code review clear. All four grading entry routes identified in this audit are guarded. Saved assessment feedback remains next.
