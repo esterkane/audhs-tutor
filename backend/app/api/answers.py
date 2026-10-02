@@ -213,7 +213,8 @@ async def followup(
             {
                 "surface": "answer_followup",
                 "parent_answer_id": answer_id,
-                **body.model_dump(mode="json"),
+                **body.model_dump(mode="json", exclude={"purpose"}),
+                **({"purpose": "correction"} if body.purpose == "correction" else {}),
             },
         )
         if saved is not None:
@@ -229,6 +230,7 @@ async def followup(
     old = row.request_json
     historical = {
         "parent_answer_id": row.id,
+        "purpose": body.purpose,
         "learner_report": (await answer_feedback.read(db, learner.id, row.id)).model_dump(),
         "saved_at": row.created_at,
         "request": excerpt(old.get("question", old.get("text")), 2000, "earlier request"),
@@ -262,6 +264,7 @@ async def followup(
         recovery=request.app.state.answer_recovery,
         parent_metadata={
             "parent_answer_id": row.id,
+            "followup_purpose": body.purpose,
             "skill_id": row.metadata_json.get("skill_id"),
             "area_id": row.metadata_json.get("area_id"),
         },

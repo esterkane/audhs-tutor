@@ -31,6 +31,7 @@ class AnswerDetail(AnswerSummary):
 
 
 class AnswerFollowup(BaseModel):
+    purpose: Literal["followup", "correction"] = "followup"
     session_id: str
     question: str = Field(min_length=1, max_length=2000)
 

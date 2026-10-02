@@ -1,5 +1,6 @@
 """History lookup is scoped, bounded and has no generation/progress side effects."""
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -120,8 +121,9 @@ async def test_search_literal_words_owner_filters_and_index_lifecycle(
     assert fake_local.calls == []
 
 
+@pytest.mark.parametrize("purpose", ["followup", "correction"])
 async def test_followup_owns_parent_keeps_context_and_saves_lineage(
-    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider
+    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider, purpose: str
 ) -> None:
     from app.models_ai.registry import seed_defaults
 
@@ -150,7 +152,7 @@ async def test_followup_owns_parent_keeps_context_and_saves_lineage(
             )
         )
     await db.commit()
-    body = {"session_id": session["id"], "question": "Explain the limitation."}
+    body = {"session_id": session["id"], "question": "Explain the limitation.", "purpose": purpose}
     for identifier in ("foreign", "missing"):
         assert (
             await client.post(f"/api/answers/{identifier}/followup", json=body)
@@ -159,11 +161,31 @@ async def test_followup_owns_parent_keeps_context_and_saves_lineage(
     assert (
         await client.post("/api/answers/parent/followup", json={**body, "question": "  "})
     ).status_code == 422
-    response = await client.post("/api/answers/parent/followup", json=body)
+    await client.put(
+        "/api/answers/parent/feedback",
+        json={"verdict": "incorrect", "note": "Review the arithmetic"},
+    )
+    headers = {"Idempotency-Key": "12345678-1234-1234-1234-123456789abc"}
+    response = await client.post("/api/answers/parent/followup", json=body, headers=headers)
+    replay = await client.post("/api/answers/parent/followup", json=body, headers=headers)
+    assert replay.json() == response.json()
+    conflict = await client.post(
+        "/api/answers/parent/followup",
+        json={**body, "purpose": "correction" if purpose == "followup" else "followup"},
+        headers=headers,
+    )
+    assert conflict.status_code == 409
     assert response.status_code == 200, response.text
     result = await db.get(TutorAnswer, response.json()["answer_id"])
     assert result is not None
     assert result.metadata_json["parent_answer_id"] == "parent"
+    assert result.metadata_json["followup_purpose"] == purpose
+    assert (
+        result.request_json["historical_answer"]["learner_report"]["note"]
+        == "Review the arithmetic"
+    )
+    assert (await client.get("/api/answers/parent")).json()["text"] == "Historical answer. " * 500
+    assert (await client.get("/api/answers/parent/feedback")).json()["verdict"] == "incorrect"
     assert result.metadata_json["area_id"] == "area-a"
     assert result.request_json["code"] == "print(groups)"
     assert result.request_json["output_stale"] is True
@@ -176,6 +198,9 @@ async def test_followup_owns_parent_keeps_context_and_saves_lineage(
     assert result.request_json["learner_question"] == body["question"]
     packet = fake_local.calls[0].messages
     assert "unverified context" in packet[0].content
+    assert ("explicitly requests a proposed correction" in packet[0].content) == (
+        purpose == "correction"
+    )
     assert "Historical answer." in packet[1].content
     assert "30/50 = 0.9." in packet[1].content
     assert "30/50 = 0.9." not in packet[0].content

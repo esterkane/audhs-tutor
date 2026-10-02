@@ -58,24 +58,27 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
         (typeof saved.draft !== 'string' ||
           typeof saved.parentId !== 'string' ||
           !saved.parentId ||
-          saved.parentId.length > 128)
+          saved.parentId.length > 128 ||
+          (saved.purpose !== undefined && !['followup', 'correction'].includes(saved.purpose)))
       )
         throw new Error('Invalid draft')
-      return { draft: (saved?.draft ?? '').slice(0, 2000), parentId: saved?.parentId ?? answerId, error: '' }
+      return { draft: (saved?.draft ?? '').slice(0, 2000), parentId: saved?.parentId ?? answerId, purpose: (saved?.purpose ?? 'followup') as 'followup' | 'correction', error: '' }
     } catch {
       return {
         draft: '',
+        purpose: 'followup' as const,
         parentId: answerId,
         error: 'Draft storage is unavailable. Keep a copy before leaving.',
       }
     }
   })
   const [draft, setDraft] = useState(restored.draft)
+  const [purpose, setPurpose] = useState<'followup' | 'correction'>(restored.purpose)
   const [storageError, setStorageError] = useState(restored.error)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [parentId, setParentId] = useState<string>(restored.parentId)
-  const [replies, setReplies] = useState<Array<{ question: string; reply: Schemas['PlaygroundReply'] }>>([])
+  const [replies, setReplies] = useState<Array<{ question: string; purpose: 'followup' | 'correction'; reply: Schemas['PlaygroundReply'] }>>([])
   const request = useRef<AbortController | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const qc = useQueryClient()
@@ -93,10 +96,11 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     },
     [],
   )
-  function edit(value: string, savedParent = parentId) {
+  function edit(value: string, savedParent = parentId, nextPurpose = purpose) {
+    setPurpose(nextPurpose)
     setDraft(value.slice(0, 2000))
     try {
-      localStorage.setItem(key, JSON.stringify({ draft: value.slice(0, 2000), parentId: savedParent }))
+      localStorage.setItem(key, JSON.stringify({ draft: value.slice(0, 2000), parentId: savedParent, purpose: nextPurpose }))
       setStorageError('')
     } catch {
       setStorageError('Draft could not be saved. Keep a copy before leaving.')
@@ -115,7 +119,7 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     if (request.current || !draft.trim() || !parentFeedback.isSuccess) return
     try {
       const pending = recovery.prepare(
-        { session_id: sessionId, question: draft.trim(), parent_answer_id: parentId },
+        { session_id: sessionId, question: draft.trim(), parent_answer_id: parentId, ...(purpose === 'correction' ? { purpose } : {}) },
         { snapshot: parentId, submitted: draft, display: draft.trim(), mode: 'explicit' },
       )
       await execute(pending)
@@ -138,18 +142,18 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
         `/api/answers/${encodeURIComponent(originalParent)}/followup`,
         {
           method: 'POST',
-          body: JSON.stringify({ session_id: originalSession, question }),
+          body: JSON.stringify({ session_id: originalSession, question, ...(pending.body.purpose === 'correction' ? { purpose: 'correction' } : {}) }),
           signal: ctl.signal,
           headers: { 'Idempotency-Key': pending.key },
         },
       )
       if (request.current !== ctl || ctl.signal.aborted) return
-      setReplies((old) => [...old, { question, reply }])
+      setReplies((old) => [...old, { question, purpose: pending.body.purpose ?? 'followup', reply }])
       if (reply.answer_id) {
         setParentId(reply.answer_id)
         void qc.invalidateQueries({ queryKey: ['answers'] })
       }
-      edit(draft === pending.view.submitted ? '' : draft, reply.answer_id ?? originalParent)
+      edit(draft === pending.view.submitted ? '' : draft, reply.answer_id ?? originalParent, draft === pending.view.submitted ? 'followup' : purpose)
       recovery.accept(pending.key)
       input.current?.focus()
     } catch (e) {
@@ -190,9 +194,9 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
           included with the follow-up.
         </p>
       )}
-      {replies.map(({ question, reply }, index) => (
+      {replies.map(({ question, reply, purpose: replyPurpose }, index) => (
         <div key={index} className="border-t border-line pt-3">
-          <h3 className="font-medium">Your follow-up</h3>
+          <h3 className="font-medium">{replyPurpose === 'correction' ? 'Proposed correction — review before relying on it' : 'Your follow-up'}</h3>
           <p className="whitespace-pre-wrap">{question}</p>
           <Markdown text={reply.text} />
           <ReadAloud text={`Your question: ${question}\n\n${reply.text}`} />
@@ -228,6 +232,20 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
           lose that context.
         </p>
       )}
+      <label>
+        Request type
+        <select className="block" value={purpose} disabled={busy || unsaved}
+          onChange={(event) => edit(draft, parentId, event.target.value as 'followup' | 'correction')}>
+          <option value="followup">Continue the explanation</option>
+          <option value="correction">Request a proposed correction</option>
+        </select>
+      </label>
+      <Button disabled={busy || unsaved || !!draft.trim()} onClick={() => {
+        edit('Please reconsider the previous answer and my saved feedback. Explain what should change and why, or why the earlier reasoning still holds. State what evidence is missing.', parentId, 'correction')
+        input.current?.focus()
+      }}>Prepare correction request</Button>
+      {!!draft.trim() && <p className="text-sm text-muted">To keep your draft, choose Request a proposed correction above. Preparing a template is available when the draft is empty.</p>}
+      {purpose === 'correction' && <p role="status">Sending asks for a proposed correction to the reply you are continuing from. It does not replace the original, verify the result or change your feedback. Only saved feedback is supplied; save any edited report first.</p>}
       <label>
         Your follow-up question
         <textarea

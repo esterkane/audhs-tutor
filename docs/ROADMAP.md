@@ -217,3 +217,14 @@ not verified replacements. No inference or evidence writes. Backend591/frontend2
 production build, two desktop/narrow keyboard journeys and required reviews passed; sanitized
 focused backend4/frontend10 passed. See `docs/slices/answer-lineage-history.md`. Explicit proposed
 correction and preferred-replacement workflow remains next; original answers remain immutable.
+
+
+## Explicit correction requests — 2026-10-02
+
+Saved-answer follow-ups now have an explicit correction purpose, editable template with draft
+protection, reload/retry persistence and purpose-sensitive request identity. Proposals are labeled
+in the conversation and reopened history. Saved reports remain untrusted evidence to examine;
+original answers and feedback are never rewritten. Backend592/frontend276, lint/types/build,
+two desktop/narrow browser journeys and required reviews passed; sanitized backend5/frontend10.
+See `docs/slices/answer-correction-requests.md`. No paid/live model quality claim. Learner-reviewed
+preferred replacement, reversible eligibility and selector parity are next.

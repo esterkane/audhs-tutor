@@ -257,6 +257,7 @@ function Answer({ id }: { id: string }) {
               <Markdown text={data.text} />
               <ReadAloud text={data.text} />
             </Card>
+            {data.metadata.followup_purpose === 'correction' && <p role="status">This is a proposed correction, not a verified replacement. Review its reasoning and sources alongside the original answer.</p>}
             {typeof data.metadata.parent_answer_id === 'string' && (
               <p>
                 This reply continues a{' '}

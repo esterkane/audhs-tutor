@@ -2116,6 +2116,12 @@ export interface components {
     }
     /** AnswerFollowup */
     AnswerFollowup: {
+      /**
+       * Purpose
+       * @default followup
+       * @enum {string}
+       */
+      purpose: 'followup' | 'correction'
       /** Session Id */
       session_id: string
       /** Question */

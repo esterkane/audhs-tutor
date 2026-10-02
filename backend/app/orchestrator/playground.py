@@ -35,7 +35,7 @@ from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v9"
+VERSION = "playground.tutor.v10"
 
 
 def messages(
@@ -91,6 +91,15 @@ def messages(
                 "not independent evidence. No current source retrieval or execution took place. Explain the limits "
                 "of omitted/truncated material when relevant; do not invent it or claim new checks."
                 if historical is not None
+                else ""
+            )
+            + (
+                "\nThe learner explicitly requests a proposed correction. Reconsider the earlier answer "
+                "and the learner report; the report is not proof. State what should change and why, "
+                "or explain why the earlier reasoning still holds. Separate supported reasoning from "
+                "uncertainty and identify evidence still needed. Do not invent fresh source checks or "
+                "execution, call the result verified, or imply the original was replaced."
+                if historical is not None and historical.get("purpose") == "correction"
                 else ""
             ),
         ),

@@ -32,6 +32,7 @@ for (const width of [1280, 390]) {
       expect(route.request().postDataJSON()).toEqual({
         session_id: 'session',
         question: 'Show a small example.',
+        purpose: 'correction',
       })
       await route.fulfill({ json: { text: 'Illustrative: compare 9/10 with 6/10.', answer_id: 'child' } })
     })
@@ -43,7 +44,7 @@ for (const width of [1280, 390]) {
           text: 'Illustrative: compare 9/10 with 6/10.',
           request_text: 'Show a small example.',
           request: { historical_answer: { answer: parent.text, truncated_fields: [] } },
-          metadata: { parent_answer_id: 'parent' },
+          metadata: { parent_answer_id: 'parent', followup_purpose: 'correction' },
         },
       }),
     )
@@ -56,6 +57,9 @@ for (const width of [1280, 390]) {
     const input = page.getByRole('textbox', { name: 'Your follow-up question' })
     await expect(input).toBeVisible()
     expect(calls).toBe(0)
+    await page.getByRole('button', { name: 'Prepare correction request' }).click()
+    await expect(page.getByRole('combobox', { name: 'Request type' })).toHaveValue('correction')
+    expect(calls).toBe(0)
     await input.fill('Show a small example.')
     await page.getByRole('button', { name: 'Send follow-up' }).click()
     await expect(page.getByText('Illustrative: compare 9/10 with 6/10.')).toBeVisible()
@@ -65,6 +69,7 @@ for (const width of [1280, 390]) {
       'href',
       '/answers/parent',
     )
+    await expect(page.getByText(/This is a proposed correction, not a verified replacement/)).toBeVisible()
     await page.getByText('Historical context supplied for this reply').click()
     await expect(page.getByText(/Compare group representation/)).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)

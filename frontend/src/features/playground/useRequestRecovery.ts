@@ -2,7 +2,10 @@ import { useRef, useState } from 'react'
 import type { TutorRequest } from './api'
 import type { Schemas, TurnRequest } from '../../lib/api'
 
-export type FollowupRetryBody = Schemas['AnswerFollowup'] & { parent_answer_id: string }
+export type FollowupRetryBody = Omit<Schemas['AnswerFollowup'], 'purpose'> & {
+  parent_answer_id: string
+  purpose?: Schemas['AnswerFollowup']['purpose']
+}
 export type PendingTutorRequest<T = TutorRequest> = {
   key: string
   body: T
@@ -183,7 +186,8 @@ function followupBody(body: unknown): body is FollowupRetryBody {
     value.parent_answer_id.length <= 128 &&
     typeof value.question === 'string' &&
     !!value.question.trim() &&
-    value.question.length <= 2000
+    value.question.length <= 2000 &&
+    (value.purpose === undefined || ['followup', 'correction'].includes(value.purpose))
   )
 }
 export function useRequestRecovery(scope: string) {
