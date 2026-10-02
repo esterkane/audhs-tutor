@@ -1,3 +1,4 @@
+import { AnswerChildren } from '../features/programs/AnswerChildren'
 import { AnswerSourceStatus } from '../features/programs/AnswerSourceStatus'
 import { AnswerFeedback } from '../features/programs/AnswerFeedback'
 import { AnswerFollowup } from '../features/programs/AnswerFollowup'
@@ -36,6 +37,7 @@ function History() {
     'course_id',
     'section_id',
     'target_id',
+    'parent_answer_id',
   ]) {
     const value = params.get(key)
     if (value) query.set(key, value)
@@ -63,6 +65,9 @@ function History() {
         Saved answers can be mistaken or outdated. Notebook advice belongs to the code and material supplied
         at the time. Suggested questions are coming next.
       </p>
+      {params.get('parent_answer_id') && (
+        <p>Showing direct follow-ups to <Link className="underline" to={`/answers/${encodeURIComponent(params.get('parent_answer_id')!)}`}>the original saved answer</Link>. These are historical replies, not verified replacements.</p>
+      )}
       <form
         className="flex flex-wrap gap-2 items-end"
         onSubmit={(event) => {
@@ -287,6 +292,7 @@ function Answer({ id }: { id: string }) {
             </details>}
             <AnswerSourceStatus key={`sources:${data.id}`} answerId={data.id} />
             <AnswerFeedback key={`feedback:${data.id}`} answerId={data.id} />
+            <AnswerChildren key={`children:${data.id}`} answerId={data.id} />
             <AnswerFollowup key={data.id} answerId={data.id} />
             {sources.length > 0 ? (
               <details>

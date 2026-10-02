@@ -98,10 +98,16 @@ async def list_answers(
     section_id: Annotated[str | None, Query(min_length=1, max_length=200)] = None,
     target_id: Annotated[str | None, Query(min_length=1, max_length=1000)] = None,
     q: Annotated[str | None, Query(max_length=200)] = None,
+    parent_answer_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     suggestions: bool = False,
     surface: Literal["tutor", "playground"] | None = None,
 ) -> AnswerPage:
     stmt = select(TutorAnswer).where(TutorAnswer.learner_id == learner.id)
+    if parent_answer_id is not None:
+        await answer_feedback.owned(db, learner.id, parent_answer_id)
+        stmt = stmt.where(
+            TutorAnswer.metadata_json["parent_answer_id"].as_string() == parent_answer_id
+        )
     if suggestions:
         excluded = select(TutorAnswerFeedback.answer_id).where(
             TutorAnswerFeedback.learner_id == learner.id,

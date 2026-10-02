@@ -19,6 +19,13 @@ for (const width of [1280, 390]) {
       created_at: '2026-10-01T10:00:00Z',
     }
     await page.route('**/api/answers/parent', (route) => route.fulfill({ json: parent }))
+    let historyReads = 0
+    await page.route('**/api/answers?*', async (route) => {
+      const params = new URL(route.request().url()).searchParams
+      expect(params.get('parent_answer_id')).toBe('parent')
+      historyReads++
+      await route.fulfill({ json: { items: [{ ...parent, id: 'child', learner_question: 'Show a small example.' }], next_cursor: null } })
+    })
     let calls = 0
     await page.route('**/api/answers/parent/followup', async (route) => {
       calls++
@@ -66,5 +73,11 @@ for (const width of [1280, 390]) {
       'href',
       '/answers/child',
     )
+    expect(historyReads).toBe(0)
+    await page.getByText('Later replies to this answer', { exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('link', { name: 'Show a small example.', exact: true })).toHaveAttribute('href', '/answers/child')
+    expect(historyReads).toBe(1)
+    expect(calls).toBe(1)
   })
 }

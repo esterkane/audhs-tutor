@@ -183,3 +183,50 @@ async def test_followup_owns_parent_keeps_context_and_saves_lineage(
     await client.post(f"/api/sessions/{session['id']}/end", json={})
     assert (await client.post("/api/answers/parent/followup", json=body)).status_code == 404
     assert len(fake_local.calls) == 1
+
+
+async def test_followup_lineage_is_direct_owned_paginated_and_read_only(client, db, fake_local):
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    other = LearnerProfile(display_name="Other")
+    db.add(other)
+    await db.commit()
+    for id_, learner, parent in [
+        ("p", owner, None),
+        ("c1", owner, "p"),
+        ("c2", owner, "p"),
+        ("g", owner, "c1"),
+        ("foreign", other.id, "p"),
+        ("foreign-parent", other.id, None),
+    ]:
+        db.add(
+            TutorAnswer(
+                id=id_,
+                learner_id=learner,
+                turn_id=id_,
+                surface="playground",
+                request_json={"question": id_},
+                text="Original immutable text",
+                fingerprint=id_,
+                metadata_json={"parent_answer_id": parent} if parent else {},
+            )
+        )
+    await db.commit()
+    feedback = await client.put(
+        "/api/answers/c2/feedback", json={"verdict": "incorrect", "hidden": True}
+    )
+    assert feedback.status_code == 200
+    result = (await client.get("/api/answers", params={"parent_answer_id": "p", "limit": 1})).json()
+    assert [item["id"] for item in result["items"]] == ["c2"]
+    assert result["next_cursor"] == "c2"
+    result = (
+        await client.get("/api/answers", params={"parent_answer_id": "p", "cursor": "c2"})
+    ).json()
+    assert [item["id"] for item in result["items"]] == ["c1"]
+    missing = await client.get("/api/answers", params={"parent_answer_id": "missing"})
+    foreign = await client.get("/api/answers", params={"parent_answer_id": "foreign-parent"})
+    assert missing.status_code == foreign.status_code == 404
+    assert missing.json() == foreign.json()
+    assert (await client.get("/api/answers/p")).json()["text"] == "Original immutable text"
+    assert fake_local.calls == []
+    for table in (ModelCall, LearningEvent):
+        assert await db.scalar(select(func.count()).select_from(table)) == 0

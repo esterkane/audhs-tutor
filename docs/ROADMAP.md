@@ -207,3 +207,13 @@ created after shutdown begins is included. Backend590, lint/types, sanitized voi
 review passed. See `docs/slices/voice-shutdown-ownership.md`. Interactive timeout stays 15 seconds;
 a genuinely stuck provider can delay final shutdown. No forced cancellation inside SQLite and no
 exactly-once guarantee. Personal recordings benchmark and broader learning queues remain open.
+
+
+## Saved-answer follow-up history — 2026-10-02
+
+Saved answers now expose their direct later replies through an owner-scoped parent filter and
+lazy history panel. Search/pagination retain that filter; hidden/reported replies are history,
+not verified replacements. No inference or evidence writes. Backend591/frontend275, lint/types,
+production build, two desktop/narrow keyboard journeys and required reviews passed; sanitized
+focused backend4/frontend10 passed. See `docs/slices/answer-lineage-history.md`. Explicit proposed
+correction and preferred-replacement workflow remains next; original answers remain immutable.

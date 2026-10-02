@@ -5065,6 +5065,7 @@ export interface operations {
         section_id?: string | null
         target_id?: string | null
         q?: string | null
+        parent_answer_id?: string | null
         suggestions?: boolean
         surface?: ('tutor' | 'playground') | null
       }
