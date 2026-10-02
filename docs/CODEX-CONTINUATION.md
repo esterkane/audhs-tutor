@@ -44,3 +44,13 @@ Recovering a failed save never regrades or adds evidence/reviews. Full backend60
 backend5/UI14, lint/types/build, two desktop/narrow journeys and required reviews passed. See
 docs/slices/assessment-feedback-history.md. No old-attempt backfill or grading-request idempotency
 claim; broader quality, material coverage and UX queues remain open.
+
+
+## Assessment request recovery foundation — 2026-10-02
+
+Assessment/challenge accept shared namespaced UUID request claims; equal completed retries replay,
+changed work conflicts, unresolved requests never grade again automatically. Owned/session-scoped
+GET lookup reports not_found/unresolved/completed without evidence writes. Backend613, focused4
+(including fresh connection), lint/types and code review passed. See assessment-request-recovery slice.
+Next: browser UUID/frozen payload persistence and explicit result recovery on all four assessment
+surfaces. Legacy unkeyed clients remain unprotected; atomic whole-grade writes/R3 are still open.

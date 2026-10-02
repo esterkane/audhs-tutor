@@ -1,8 +1,12 @@
-from fastapi import APIRouter, Query, Request
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Header, Query, Request
 from pydantic import BaseModel
 
 from app.api.deps import DB, Gateway, Learner
 from app.kernel import session as ksession
+from app.orchestrator import assessment_requests
 from app.orchestrator.grader import Grader, view
 from app.schemas.grading import AssessmentView, AttemptRequest, AttemptResult
 
@@ -47,7 +51,29 @@ async def next_item(
     response_model=AttemptResult,
 )
 async def attempt(
-    body: AttemptRequest, db: DB, gateway: Gateway, learner: Learner, request: Request
+    body: AttemptRequest,
+    db: DB,
+    gateway: Gateway,
+    learner: Learner,
+    request: Request,
+    idempotency_key: Annotated[UUID | None, Header()] = None,
 ) -> AttemptResult:
-    await ksession.get_owned(db, body.session_id, learner.id)
-    return await Grader(db, gateway, recovery=request.app.state.answer_recovery).grade(body)
+    return await assessment_requests.submit(
+        db,
+        gateway,
+        learner.id,
+        body,
+        request.app.state.answer_recovery,
+        str(idempotency_key) if idempotency_key is not None else None,
+    )
+
+
+@router.get(
+    "/requests/{request_id}",
+    summary="Read a grading request result without grading or changing progress",
+    response_model=assessment_requests.AssessmentRequestState,
+)
+async def request_result(
+    request_id: UUID, session_id: str, db: DB, learner: Learner
+) -> assessment_requests.AssessmentRequestState:
+    return await assessment_requests.lookup(db, learner.id, session_id, str(request_id))

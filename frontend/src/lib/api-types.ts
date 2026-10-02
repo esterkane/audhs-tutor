@@ -670,6 +670,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/assess/requests/{request_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read a grading request result without grading or changing progress */
+    get: operations['request_result_api_assess_requests__request_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/due': {
     parameters: {
       query?: never
@@ -2392,6 +2409,15 @@ export interface components {
       origin?: string | null
     } & {
       [key: string]: unknown
+    }
+    /** AssessmentRequestState */
+    AssessmentRequestState: {
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'not_found' | 'unresolved' | 'completed'
+      result?: components['schemas']['AttemptResult'] | null
     }
     /** AssessmentView */
     AssessmentView: {
@@ -6219,7 +6245,9 @@ export interface operations {
   submit_api_challenge_submit_post: {
     parameters: {
       query?: never
-      header?: never
+      header?: {
+        'idempotency-key'?: string | null
+      }
       path?: never
       cookie?: never
     }
@@ -6354,7 +6382,9 @@ export interface operations {
   attempt_api_assess_attempt_post: {
     parameters: {
       query?: never
-      header?: never
+      header?: {
+        'idempotency-key'?: string | null
+      }
       path?: never
       cookie?: never
     }
@@ -6371,6 +6401,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AttemptResult']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  request_result_api_assess_requests__request_id__get: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        request_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AssessmentRequestState']
         }
       }
       /** @description Validation Error */

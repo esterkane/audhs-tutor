@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Request
+from typing import Annotated
+from uuid import UUID
+
+from fastapi import APIRouter, Header, Request
 from pydantic import BaseModel
 
 from app.api.deps import DB, Gateway, Learner, Repo
 from app.kernel import session as ksession
 from app.kernel import skill_graph
-from app.orchestrator import challenge
-from app.orchestrator.grader import Grader
+from app.orchestrator import assessment_requests, challenge
 from app.schemas.challenge import CHALLENGE_MODES, ChallengeStart, ChallengeView
 from app.schemas.grading import AttemptRequest, AttemptResult
 
@@ -58,7 +60,18 @@ async def start(
     response_model=AttemptResult,
 )
 async def submit(
-    body: AttemptRequest, db: DB, gateway: Gateway, learner: Learner, request: Request
+    body: AttemptRequest,
+    db: DB,
+    gateway: Gateway,
+    learner: Learner,
+    request: Request,
+    idempotency_key: Annotated[UUID | None, Header()] = None,
 ) -> AttemptResult:
-    await ksession.get_owned(db, body.session_id, learner.id)
-    return await Grader(db, gateway, recovery=request.app.state.answer_recovery).grade(body)
+    return await assessment_requests.submit(
+        db,
+        gateway,
+        learner.id,
+        body,
+        request.app.state.answer_recovery,
+        str(idempotency_key) if idempotency_key is not None else None,
+    )

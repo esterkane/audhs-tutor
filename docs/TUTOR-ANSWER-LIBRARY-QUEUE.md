@@ -1,6 +1,6 @@
 # Saved tutor answers and suggested questions
 
-Status: active, 2026-10-01. Durable completed workspace and lesson/hint/voice-text history, scoped search, feedback, contextual lists and follow-up are implemented in bounded slices. Workspace exact replay is opt-in; local literal/semantic historical context is integrated into workspace and lesson tutoring. Failed-save recovery, correction/replacement lineage and full path coverage remain open. QA00 ADR-0017 is still a proposal; no blanket completion is implied. See `docs/design/tutor-answer-lifecycle.md` and latest slice records.
+Status: active, reconciled 2026-10-02. Durable completed workspace and lesson/hint/voice-text history, scoped search, feedback, contextual lists and follow-up are implemented in bounded slices. Workspace exact replay is opt-in; local literal/semantic historical context is integrated into workspace and lesson tutoring. Signed failed-save recovery, correction/replacement lineage, alternative-representation history and newly completed assessment feedback are implemented. Assessment browser request recovery, broader quality evaluation and remaining acceptance gates stay open. QA00 ADR-0017 is still a proposal; no blanket completion is implied. See `docs/design/tutor-answer-lifecycle.md` and latest slice records.
 
 ## Requested outcome
 
@@ -31,7 +31,7 @@ Local semantic indexing runs in separate bounded jobs or the explicit CLI. Origi
 | QA01 (partial) | Durable answer persistence; QA00 | Migration/restore on disposable data, learner isolation, exact text/source snapshot, duplicate request and failed-save recovery tests. Completed vs partial state explicit. |
 | QA02 (local search + browser partial) | Local scoped search and retrieval; QA01 | Course/area/step filters, full text, pagination, deleted/stale states, cross-learner denial; opening a record makes zero model calls. |
 | QA03 (target history partial) | Suggested Q&A on course/area learning pages; QA02 | Relevant previously answered list, useful display labels, full answer/source view and follow-up preserving context; empty/loading/error, keyboard and narrow-screen journeys. |
-| QA04 (reports/visibility partial) | Corrections and reusable-answer rules; QA03 | Report/hide/replace workflow, source/code freshness, no stale personal feedback suggested as general advice, idempotent votes, no mastery changes. |
+| QA04 (reports/replacements implemented; broader gates open) | Corrections and reusable-answer rules; QA03 | Report/hide/replace workflow, source/code freshness, no stale personal feedback suggested as general advice, idempotent votes, no mastery changes. |
 | QA05 | Backfill/portability; QA01–QA04 | Import only real available browser/history records with provenance and consent for scope; no fabricated history; encrypted backup/export round-trip; sanitized public check. |
 
 Use existing `audhs-tutor-evidence`, `audhs-state-reliability`, `audhs-learning-ux` and, where capture/versioning overlaps, `audhs-learner-authoring`. No new skill needed solely for another queue entry.
@@ -52,4 +52,4 @@ Goal: use previous useful explanations without regenerating everything. Implemen
 4. Semantic retrieval: evaluate local embeddings through the existing registry/retrieval boundary, combining semantic and literal search. No new paid route. Keep answer index separate from original corpus evidence, rebuildable and owner-filtered.
 5. Evaluation: compare first-response and complete-response latency, model calls avoided, prompt size, relevant matches and harmful reuse. Include changed notebook code/output, stale sources, negative feedback, same wording across different tasks and prompt injection. Synthetic contracts and actual local-model results must be reported separately.
 
-Source checks, opt-in workspace exact replay and local semantic indexing/retrieval are implemented. Always-on automatic replay is not enabled. Main lesson exact replay, broader latency/quality evaluation and source/code correction lineage remain open; individual diagnostics must not be presented as a general performance or learning gain.
+Source checks, opt-in workspace exact replay and local semantic indexing/retrieval are implemented. Always-on automatic replay is not enabled. Main lesson exact replay, broader latency/quality evaluation and end-to-end source/code correction acceptance remain open; individual diagnostics must not be presented as a general performance or learning gain.
