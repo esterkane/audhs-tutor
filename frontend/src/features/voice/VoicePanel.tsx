@@ -1,6 +1,7 @@
 import { AnswerSaveStatus } from '../programs/AnswerSaveStatus'
 import { AudioControls } from '../audio/AudioControls'
 import { useEffect, useState } from 'react'
+import { useVoiceRequestRecovery } from './useVoiceRequestRecovery'
 import { useVoiceTextRecovery } from './useVoiceTextRecovery'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
@@ -35,6 +36,7 @@ function ScopedVoicePanel({
 }) {
   const scope = JSON.stringify([sessionId, skillId ?? null, lang ?? null, conversation])
   const recovery = useVoiceTextRecovery(scope)
+  const request = useVoiceRequestRecovery(scope, sessionId)
   const v = useVoiceLoop({
     sessionId,
     skillId,
@@ -42,6 +44,8 @@ function ScopedVoicePanel({
     conversation,
     makeSocket,
     initialText: recovery.initial,
+    onRequest: request.begin,
+    onTerminal: request.finish,
   })
   const [typed, setTyped] = useState(recovery.initial.draft)
   const { save } = recovery
@@ -63,6 +67,32 @@ function ScopedVoicePanel({
         <p role="alert" className="text-sm mt-2">
           {recovery.error}
         </p>
+      )}
+      {request.error && <p role="alert" className="text-sm mt-2">{request.error}</p>}
+      {request.error && !request.memoryOnly && (
+        <Button onClick={request.useMemoryOnly}>Continue for this page only</Button>
+      )}
+      {request.memoryOnly && <p role="status">Request recovery is in memory only; reloading may lose it. Previously saved tab data may still exist.</p>}
+      {request.pending && (v.status === 'idle' || v.status === 'error' || v.status === 'ready') && (
+        <section aria-label="Recover voice reply" className="mt-3 space-y-2">
+          <p>A previous voice request may have a saved reply. Check it before starting another question.</p>
+          <Button disabled={request.checking} onClick={() => { v.close(); void request.check().then((result) => { if (result) v.restoreResult(result) }) }}>
+            {request.checking ? 'Checking saved result…' : 'Check saved voice result'}
+          </Button>
+          <Button variant="ghost" onClick={() => { v.close(); request.discard() }}>
+            Dismiss recovery and allow a new question
+          </Button>
+          <p className="text-sm">Dismissing does not cancel server work or delete a saved answer. Sending again creates a new request.</p>
+          {request.result && (
+            <div role="status">
+              {request.result.status === 'not_found' && <p>No recorded result yet. Recording or transcription may have stopped before a response was registered. Check again later; nothing was resent.</p>}
+              {request.result.status === 'unresolved' && <p>The request was registered, but no final result is available. It may still be finishing or may have stopped. Checking again will not regenerate it.</p>}
+              {request.result.status === 'partial' && <p>Recovered partial reply. It may be incomplete; no audio was played.</p>}
+              {request.result.status === 'completed' && <p>Recovered completed reply. No new answer was generated and no audio was played.</p>}
+
+            </div>
+          )}
+        </section>
       )}
       {(v.status === 'idle' || v.status === 'error') && (
         <div className="mt-2">
@@ -97,7 +127,7 @@ function ScopedVoicePanel({
           </p>
           <div className="flex flex-wrap gap-2 mt-2">
             {!textOnly && v.status !== 'listening' && (
-              <Button variant="primary" onClick={() => void v.listen()} disabled={!v.canSend}>
+              <Button variant="primary" onClick={() => void v.listen()} disabled={!v.canSend || !!request.pending}>
                 Talk
               </Button>
             )}
@@ -170,7 +200,7 @@ function ScopedVoicePanel({
         </label>
         <Button
           variant="secondary"
-          disabled={!typed.trim() || !v.canSend}
+          disabled={!typed.trim() || !v.canSend || !!request.pending}
           onClick={() => {
             if (v.sendText(typed)) setTyped('')
           }}
@@ -183,7 +213,7 @@ function ScopedVoicePanel({
           variant="ghost"
           onClick={() => {
             v.close()
-            if (recovery.clear()) {
+            if (request.discard() && recovery.clear()) {
               if (onClose) onClose()
               else onReset()
             }

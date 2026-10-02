@@ -344,3 +344,23 @@ it('sends scoped interruption controls and ignores stale acknowledgements', () =
   message({ type: 'interrupted', request_id: identity })
   expect(result.current.status).toBe('ready')
 })
+
+it('records an identified turn before sending and refuses a turn when recovery storage rejects it', () => {
+  const ws = new Socket()
+  const admitted: string[] = []
+  const onRequest = vi.fn((id: string) => { admitted.push(id); return false })
+  const onTerminal = vi.fn()
+  const hook = renderHook(() => useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket, onRequest, onTerminal }))
+  act(() => { hook.result.current.connect(); ws.open() })
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'ready', request_identity: 'utterance-v1' }) }))
+  act(() => { expect(hook.result.current.sendText('Keep my draft')).toBe(false) })
+  expect(ws.sent.map((x) => JSON.parse(x).type)).toEqual(['start'])
+  onRequest.mockImplementation((id) => { expect(ws.sent).toHaveLength(1); admitted.push(id); return true })
+  act(() => { expect(hook.result.current.sendText('Send once')).toBe(true) })
+  const sent = JSON.parse(ws.sent[1])
+  expect(sent.request_id).toBe(admitted.at(-1))
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', request_id: 'stale', turn: null }) }))
+  expect(onTerminal).not.toHaveBeenCalled()
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', request_id: sent.request_id, turn: null }) }))
+  expect(onTerminal).toHaveBeenCalledExactlyOnceWith(sent.request_id)
+})

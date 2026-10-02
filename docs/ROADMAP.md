@@ -186,3 +186,14 @@ CI run 36942008712 failed because the area journey read the catalog before the i
 POST completed. The test now waits for that specific response, asserts success, and verifies the
 expected area exists. The isolated fresh-sandbox journey passes; code review found no blockers
 or majors. This changes test synchronization only, not area generation or learner behavior.
+
+
+## Browser voice result recovery — 2026-10-02
+
+Pending voice UUIDs persist before identified text/capture admission. Explicit read-only recovery
+returns missing/unresolved/partial/completed states without sending, microphone or playback.
+Recovered terminal text survives dismiss/reload alongside the next draft. Storage denial has an
+explicit page-only choice; stale responses and 15-second lookup deadlines are tested. Frontend273,
+lint/types/build, two isolated desktop/narrow keyboard journeys and required reviews passed. See
+`docs/slices/voice-browser-result-recovery.md`. Previous CI passed in both repos (36943227815,
+36943244831). Provider-resistant teardown and personal voice benchmark remain open.

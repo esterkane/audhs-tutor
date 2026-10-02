@@ -1,4 +1,4 @@
-import type { TurnDone } from '../../lib/api'
+import type { Schemas, TurnDone } from '../../lib/api'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { b64ToPcm16, Player, startMic, type Mic } from './audio'
 
@@ -19,8 +19,12 @@ export function useVoiceLoop(opts: {
   conversation?: boolean
   textOnly?: boolean
   initialText?: { transcript: string; answer: string; interrupted: boolean }
+  onRequest?: (id: string) => boolean
+  onTerminal?: (id: string) => void
   makeSocket?: (url: string) => WebSocket
 }) {
+  const callbacks = useRef(opts)
+  useEffect(() => { callbacks.current = opts })
   const [status, setStatus] = useState<VoiceStatus>('idle')
   const [ready, setReady] = useState<VoiceMessage | null>(null)
   const [transcript, setTranscript] = useState(opts.initialText?.transcript ?? '')
@@ -229,6 +233,7 @@ export function useVoiceLoop(opts: {
           setStatus('listening')
           break
         case 'nothing_heard':
+          if (requestIdentity.current) callbacks.current.onTerminal?.(requestIdentity.current)
           if (interruptedTurn.current) {
             interruptTerminal.current = true
             if (!interruptAck.current) break
@@ -268,6 +273,7 @@ export function useVoiceLoop(opts: {
           setStatus('ready')
           break
         case 'done': {
+          if (requestIdentity.current) callbacks.current.onTerminal?.(requestIdentity.current)
           const turn = msg.turn as {
             turn_id?: string
             outcome?: string
@@ -330,7 +336,9 @@ export function useVoiceLoop(opts: {
       status !== 'ready'
     )
       return
-    requestIdentity.current = identifiedCapture.current ? crypto.randomUUID() : null
+    const identity = identifiedCapture.current ? crypto.randomUUID() : null
+    if (identity && callbacks.current.onRequest?.(identity) === false) return
+    requestIdentity.current = identity
     interruptedTurn.current = false
     setInterrupted(false)
     turnDone.current = false
@@ -429,6 +437,7 @@ export function useVoiceLoop(opts: {
       )
         return false
       const identity = identifiedText.current ? crypto.randomUUID() : null
+      if (identity && callbacks.current.onRequest?.(identity) === false) return false
       try {
         ws.send(JSON.stringify({ type: 'text', text, ...(identity ? { request_id: identity } : {}) }))
       } catch {
@@ -453,7 +462,17 @@ export function useVoiceLoop(opts: {
     [status],
   )
 
+  const restoreResult = useCallback((result: Schemas['VoiceResultOut']) => {
+    if (result.status !== 'completed' && result.status !== 'partial') return
+    setTranscript(result.transcript ?? '')
+    setAnswer(result.text ?? '')
+    setInterrupted(result.status === 'partial' || result.interrupted === true)
+    setSaveTurn(result.status === 'completed' ? result.turn ?? null : null)
+    setSaveNote(null)
+  }, [])
+
   return {
+    restoreResult,
     interrupted,
     saveNote,
     saveTurn,
