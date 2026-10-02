@@ -117,3 +117,121 @@ async def test_stale_interrupt_does_not_touch_new_request_and_acknowledgement_is
     assert [json.loads(call.args[0]) for call in ws.send_text.await_args_list] == [
         {"type": "interrupted", "request_id": current}
     ]
+
+
+async def test_shutdown_retains_owner_until_turn_and_late_speaker_finish():
+    import asyncio
+
+    loop = VoiceLoop(
+        Mock(), Mock(), stt=None, tts=None, vad=Mock(), voice_dir=Mock(), learner_id="owner"
+    )
+    entered, release, speaker_release = asyncio.Event(), asyncio.Event(), asyncio.Event()
+    events = []
+
+    async def speaker():
+        await speaker_release.wait()
+        events.append("speaker_finished")
+
+    async def turn():
+        entered.set()
+        await release.wait()
+        loop._speak_task = asyncio.create_task(speaker())
+        events.append("turn_finished")
+
+    loop._turn_task = asyncio.create_task(turn())
+    await entered.wait()
+
+    async def owner():
+        try:
+            await loop.shutdown()
+        finally:
+            events.append("database_closed")
+
+    task = asyncio.create_task(owner())
+    await asyncio.sleep(0)
+    task.cancel()
+    await asyncio.sleep(0)
+    assert not task.done()
+    assert events == []
+    release.set()
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+    assert "database_closed" not in events
+    speaker_release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert events == ["turn_finished", "speaker_finished", "database_closed"]
+    assert loop._turn_task is None
+    assert loop._speak_task is None
+
+
+async def test_shutdown_observes_failed_task_and_releases_references():
+    import asyncio
+
+    loop = VoiceLoop(
+        Mock(), Mock(), stt=None, tts=None, vad=Mock(), voice_dir=Mock(), learner_id="owner"
+    )
+
+    async def failed():
+        raise RuntimeError("provider failed")
+
+    loop._turn_task = asyncio.create_task(failed())
+    await loop.shutdown()
+    assert loop._turn_task is None
+    assert loop._interrupted.is_set()
+
+
+async def test_websocket_route_closes_transport_before_draining_database_owner(monkeypatch):
+    import asyncio
+    from contextlib import asynccontextmanager
+    from types import SimpleNamespace
+
+    from app.api import voice
+
+    events = []
+    release = asyncio.Event()
+    transport_closed = asyncio.Event()
+    db = Mock()
+
+    @asynccontextmanager
+    async def factory():
+        try:
+            yield db
+        finally:
+            events.append("database_closed")
+
+    async def serve(loop, websocket):
+        async def child():
+            await release.wait()
+            events.append("child_database_cleanup")
+
+        loop._turn_task = asyncio.create_task(child())
+
+    async def close():
+        events.append("transport_closed")
+        transport_closed.set()
+
+    monkeypatch.setattr(
+        voice, "get_or_create_owner", AsyncMock(return_value=SimpleNamespace(id="owner"))
+    )
+    monkeypatch.setattr(voice.setup, "adapters", AsyncMock(return_value=(None, None, Mock())))
+    monkeypatch.setattr(voice, "get_budget", Mock())
+    monkeypatch.setattr(voice, "ModelGateway", Mock())
+    monkeypatch.setattr(voice, "Router", Mock())
+    monkeypatch.setattr(voice, "TutorTurn", Mock())
+    monkeypatch.setattr(VoiceLoop, "serve", serve)
+    websocket = Mock()
+    websocket.headers = {}
+    websocket.accept = AsyncMock()
+    websocket.close = AsyncMock(side_effect=close)
+    websocket.app.state.session_factory = factory
+    owner = asyncio.create_task(voice.ws(websocket))
+    await transport_closed.wait()
+    assert events == ["transport_closed"]
+    owner.cancel()
+    await asyncio.sleep(0)
+    assert not owner.done()
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await owner
+    assert events == ["transport_closed", "child_database_cleanup", "database_closed"]

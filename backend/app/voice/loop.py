@@ -794,6 +794,35 @@ class VoiceLoop:
         self._speak_task = None
         self._turn_task = None
 
+    async def shutdown(self) -> None:
+        """Keep session ownership until every child finishes, even if the socket owner is cancelled.
+
+        The interactive interrupt timeout is not permission to close a session still in use.
+        Provider timeouts normally bound this drain; a wedged in-process provider cannot be
+        safely killed while it owns database cleanup. Never cancel a child inside SQLite work.
+        """
+        self._interrupted.set()
+        cancelled = False
+        # The turn may create its speaker after shutdown starts (e.g. after a ledger claim).
+        # Await the turn first, then read the final speaker reference.
+        for name in ("_turn_task", "_speak_task"):
+            task = getattr(self, name)
+            if task is None or task is asyncio.current_task():
+                continue
+            while not task.done():
+                try:
+                    await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    cancelled = True
+                except Exception:
+                    break
+            if not task.cancelled():
+                task.exception()  # observe failures even when the task finished before shutdown
+            setattr(self, name, None)
+        self._busy_beyond_interrupt = False
+        if cancelled:
+            raise asyncio.CancelledError
+
     async def _emit_spoke(self, state: VoiceState, timing: TurnTiming) -> None:
         session = await ksession.get(self.db, state.session_id)
         events = EventWriter(

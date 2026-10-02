@@ -373,3 +373,13 @@ explicit page-only choice; stale responses and 15-second lookup deadlines are te
 lint/types/build, two isolated desktop/narrow keyboard journeys and required reviews passed. See
 `docs/slices/voice-browser-result-recovery.md`. Previous CI passed in both repos (36943227815,
 36943244831). Provider-resistant teardown and personal voice benchmark remain open.
+
+
+## Voice shutdown ownership — 2026-10-02
+
+WebSocket teardown closes transport then shields response/speaker cleanup before exiting its
+explicit database context. Owner cancellation is propagated only after child cleanup; a speaker
+created after shutdown begins is included. Backend590, lint/types, sanitized voice24 and code
+review passed. See `docs/slices/voice-shutdown-ownership.md`. Interactive timeout stays 15 seconds;
+a genuinely stuck provider can delay final shutdown. No forced cancellation inside SQLite and no
+exactly-once guarantee. Personal recordings benchmark and broader learning queues remain open.

@@ -11,7 +11,6 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Learner, SettingsDep, get_budget
 from app.core.errors import AppError
-from app.db.session import get_db
 from app.kernel.learner import get_or_create_owner
 from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway
@@ -211,7 +210,7 @@ async def ws(websocket: WebSocket) -> None:
         await websocket.close(code=1008)
         return
     await websocket.accept()
-    async for db in get_db(websocket):  # type: ignore[arg-type]
+    async with app.state.session_factory() as db:
         learner = await get_or_create_owner(db)
         overrides = getattr(app.state, "voice_overrides", None)
         stt, tts, vad = await setup.adapters(db, settings, overrides)
@@ -267,7 +266,8 @@ async def ws(websocket: WebSocket) -> None:
                 await websocket.close()
             except RuntimeError:
                 pass
-        break
+            finally:
+                await loop.shutdown()
 
 
 class SpeakIn(BaseModel):
