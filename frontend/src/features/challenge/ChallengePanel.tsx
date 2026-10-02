@@ -1,3 +1,4 @@
+import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useState } from 'react'
@@ -26,7 +27,7 @@ export function ChallengePanel({
 }) {
   const modes = useChallengeModes()
   const start = useChallengeStart()
-  const submit = useChallengeSubmit()
+  const submit = useChallengeSubmit(sessionId)
   const [mode, setMode] = useState<ChallengeMode | null>(null)
   const [item, setItem] = useState<ChallengeView | null>(null)
   const [answer, setAnswer] = useState('')
@@ -51,6 +52,7 @@ export function ChallengePanel({
         session_id: sessionId,
         assessment_id: item.assessment_id,
         answer,
+        questionLabel: item.prompt,
         confidence_pre: confidence,
         latency_ms: Date.now() - startedAt,
         hint_count: 0,
@@ -61,9 +63,20 @@ export function ChallengePanel({
     }
   }
 
+  const recoveryPanel = (
+    <AssessmentRecovery
+      recovery={submit.recovery}
+      onUse={(saved, body) => {
+        if (saved.assessment_id !== item?.assessment_id || body.answer !== answer) return false
+        setResult(saved)
+        return true
+      }}
+    />
+  )
   if (!item) {
     return (
       <Card>
+        {recoveryPanel}
         <CardTitle>Challenge (optional)</CardTitle>
         <Choice<ChallengeMode>
           label="Which kind?"
@@ -91,6 +104,7 @@ export function ChallengePanel({
 
   return (
     <Card>
+      {recoveryPanel}
       <p className="text-xs text-muted">
         {item.mode.replace('_', ' ')}
         {item.cached ? ' · reused item' : ''}
@@ -131,7 +145,7 @@ export function ChallengePanel({
               : `${result.confidence_pre}/5: ${result.calibration}`}
           </p>
           <p className="mt-2">{result.feedback}</p>
-              <AssessmentSaveStatus key={result.attempt_id} result={result} />
+          <AssessmentSaveStatus key={result.attempt_id} result={result} />
           <p className="mt-1 text-sm">{result.next_step}</p>
           <ul className="mt-2 text-sm list-disc ml-5">
             {result.criterion_results.map((c) => (

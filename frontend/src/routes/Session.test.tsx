@@ -203,6 +203,7 @@ it('preserves the assessment answer and confidence after a grading error and all
             question: 'Explain the relationship.',
           },
         })
+      if (url.includes('/api/assess/requests/')) return jsonResponse({ status: 'not_found', result: null })
       if (url.endsWith('/api/assess/attempt')) {
         attempts.push(JSON.parse(String(init?.body)))
         return jsonResponse(
@@ -224,6 +225,9 @@ it('preserves the assessment answer and confidence after a grading error and all
   expect(input).toHaveValue('My explanation of the relationship.')
   expect(screen.queryByText(/Score .*%/)).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+  await waitFor(() => expect(attempts).toHaveLength(1))
+  fireEvent.click(screen.getByRole('button', { name: 'Check saved result' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Send the original answer' }))
   await waitFor(() => expect(attempts).toHaveLength(2))
   expect(attempts[1]).toMatchObject({ answer: attempts[0].answer, confidence_pre: 3, assessment_id: 'a1' })
   vi.unstubAllGlobals()
@@ -319,6 +323,7 @@ it('offers continuing the plan after feedback without requiring another question
       if (url.endsWith('/api/assess/attempt'))
         return jsonResponse({
           score: 1,
+          assessment_id: 'a1', attempt_id: 'attempt',
           feedback: 'The components match.',
           next_step: 'Continue.',
           criterion_results: [],

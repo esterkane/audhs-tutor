@@ -1,3 +1,4 @@
+import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { AudioControls } from '../audio/AudioControls'
 import { bindMedia } from '../audio/settings'
@@ -335,7 +336,7 @@ function TaskCard({
   canReplay: boolean
   hintCount: number
 }) {
-  const attempt = useAttempt()
+  const attempt = useAttempt(sessionId)
   const report = useReport()
   const validate = useValidateTask()
   const [reported, setReported] = useState(false)
@@ -363,6 +364,8 @@ function TaskCard({
         session_id: sessionId,
         assessment_id: item.id,
         answer,
+        questionLabel: item.question,
+        answerLabel: item.options?.[Number(answer)] ?? answer,
         confidence_pre: confidence,
         latency_ms: Date.now() - startedAt,
         hint_count: hintCount,
@@ -376,6 +379,15 @@ function TaskCard({
 
   return (
     <div className="mt-4 border-t border-line pt-3">
+      <AssessmentRecovery
+        recovery={attempt.recovery}
+        onUse={(saved, body) => {
+          if (saved.assessment_id !== item.id || body.answer !== answer) return false
+          setResult(saved)
+          onGraded(saved)
+          return true
+        }}
+      />
       <p className="text-sm font-medium">{item.question}</p>
       <p className="text-xs text-muted mt-1">
         {task.origin === 'model'

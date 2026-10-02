@@ -1,7 +1,9 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { ChallengePanel } from './ChallengePanel'
+
+beforeEach(() => sessionStorage.clear())
 
 const modes = {
   modes: [
@@ -79,6 +81,7 @@ it('shows grading failure, retains the answer and confidence, and retries succes
     vi.fn(async (url: string, init?: RequestInit) => {
       if (url.endsWith('/modes')) return jsonResponse(modes)
       if (url.endsWith('/start')) return jsonResponse(item)
+      if (url.includes('/api/assess/requests/')) return jsonResponse({ status: 'not_found', result: null })
       bodies.push(JSON.parse(String(init?.body)))
       return bodies.length === 1
         ? jsonResponse(
@@ -101,6 +104,10 @@ it('shows grading failure, retains the answer and confidence, and retries succes
   expect(done).not.toHaveBeenCalled()
   expect(screen.queryByRole('status')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+  expect(bodies).toHaveLength(1)
+  fireEvent.click(screen.getByRole('button', { name: 'Check saved result' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Send the original answer' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Use feedback for this answer' }))
   expect(await screen.findByRole('status')).toHaveTextContent('Found it.')
   expect(bodies[1]).toMatchObject({ answer: bodies[0].answer, confidence_pre: 4 })
   vi.unstubAllGlobals()

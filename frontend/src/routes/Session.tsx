@@ -1,3 +1,4 @@
+import { AssessmentRecovery } from '../features/assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../features/programs/AssessmentSaveStatus'
 import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
 import { RepresentationSources } from '../features/representations/RepresentationSources'
@@ -717,7 +718,13 @@ function TeachPanel({
             {alt.kind.replace('_', ' ')} · same learning object{alt.cached ? ' · from cache' : ''}
           </p>
           <Markdown text={alt.content} />
-          <AnswerSaveStatus key={`save-${alt.representation_id}`} answerId={alt.answer_id} error={alt.save_error} receipt={alt.save_receipt} text={alt.content} />
+          <AnswerSaveStatus
+            key={`save-${alt.representation_id}`}
+            answerId={alt.answer_id}
+            error={alt.save_error}
+            receipt={alt.save_receipt}
+            text={alt.content}
+          />
           <RepresentationSources key={`sources-${alt.representation_id}`} value={alt} />
           {active && <ReadAloud key={alt.representation_id} text={alt.content} />}
           {prevAlt && prevAlt.representation_id !== alt.representation_id && (
@@ -828,7 +835,7 @@ function AssessPanel({
 }) {
   const [round, setRound] = useState(0)
   const next = useNextItem(sessionId, skillId, round)
-  const attempt = useAttempt()
+  const attempt = useAttempt(sessionId)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState<AttemptResult | null>(null)
@@ -845,6 +852,8 @@ function AssessPanel({
         session_id: sessionId,
         assessment_id: item.id,
         answer: currentAnswer,
+        questionLabel: item.question,
+        answerLabel: item.options?.[Number(currentAnswer)] ?? currentAnswer,
         confidence_pre: confidence,
         latency_ms: Date.now() - startedAt,
         hint_count: hintCount + readDraft(answerKey).hints,
@@ -865,10 +874,29 @@ function AssessPanel({
     setRound((r) => r + 1)
   }
 
-  if (next.isLoading) return <Card>Loading item…</Card>
+  const recoveryPanel = (
+    <AssessmentRecovery
+      recovery={attempt.recovery}
+      onUse={(saved, body) => {
+        if (saved.assessment_id !== item?.id || body.answer !== currentAnswer) return false
+        setResult(saved)
+        onGraded(saved)
+        clearDraft(answerKey)
+        return true
+      }}
+    />
+  )
+  if (next.isLoading)
+    return (
+      <>
+        {recoveryPanel}
+        <Card>Loading item…</Card>
+      </>
+    )
   if (!item)
     return (
       <Card>
+        {recoveryPanel}
         <p>No assessment items for this skill yet.</p>
         <Button onClick={onBack}>Back to explanation</Button>
       </Card>
@@ -876,6 +904,7 @@ function AssessPanel({
 
   return (
     <>
+      {recoveryPanel}
       <Card>
         <p className="text-sm text-muted mb-2">
           {item.kind === 'mcq'
@@ -961,7 +990,7 @@ function AssessPanel({
             </p>
           </details>
           <p className="mt-2">{result.feedback}</p>
-              <AssessmentSaveStatus key={result.attempt_id} result={result} />
+          <AssessmentSaveStatus key={result.attempt_id} result={result} />
           <p className="mt-1 text-sm">{result.next_step}</p>
           {result.misconception && (
             <p className="mt-1 text-sm text-warn">Possible misconception: {result.misconception}</p>

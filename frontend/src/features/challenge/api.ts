@@ -1,5 +1,6 @@
+import { useAssessmentSubmission } from '../assess/useAssessmentSubmission'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { apiFetch, type AttemptRequest, type AttemptResult, type Schemas } from '../../lib/api'
+import { apiFetch, type Schemas } from '../../lib/api'
 
 export type ChallengeView = Schemas['ChallengeView']
 export type ChallengeMode = Schemas['ChallengeStart']['mode']
@@ -18,9 +19,6 @@ export function useChallengeStart() {
   })
 }
 
-export function useChallengeSubmit() {
-  return useMutation({
-    mutationFn: (body: AttemptRequest) =>
-      apiFetch<AttemptResult>('/api/challenge/submit', { method: 'POST', body: JSON.stringify(body) }),
-  })
+export function useChallengeSubmit(sessionId: string) {
+  return useAssessmentSubmission(sessionId, '/api/challenge/submit')
 }

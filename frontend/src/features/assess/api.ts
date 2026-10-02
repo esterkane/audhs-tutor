@@ -1,4 +1,5 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useAssessmentSubmission } from './useAssessmentSubmission'
+import { useQuery } from '@tanstack/react-query'
 import { api } from '../../lib/api'
 
 export function useNextItem(sessionId: string | null, skillId: string | null, key: number) {
@@ -9,6 +10,6 @@ export function useNextItem(sessionId: string | null, skillId: string | null, ke
   })
 }
 
-export function useAttempt() {
-  return useMutation({ mutationFn: api.attempt })
+export function useAttempt(sessionId: string) {
+  return useAssessmentSubmission(sessionId)
 }

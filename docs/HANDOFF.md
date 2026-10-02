@@ -479,3 +479,15 @@ GET lookup reports not_found/unresolved/completed without evidence writes. Backe
 (including fresh connection), lint/types and code review passed. See assessment-request-recovery slice.
 Next: browser UUID/frozen payload persistence and explicit result recovery on all four assessment
 surfaces. Legacy unkeyed clients remain unprotected; atomic whole-grade writes/R3 are still open.
+
+
+## Browser assessment recovery — 2026-10-02
+
+All four assessment surfaces now persist a UUID and frozen submission before sending, then offer
+read-only result lookup after interruption/reload. Only an explicit not-found retry sends the same
+identity and original body. Historical feedback never silently replaces edited work. Requests are
+bounded and stale completions fenced. Storage denial/damage has an acknowledged page-memory fallback;
+reloading loses memory-only recovery. No automatic grading retry or mastery from browser state.
+Verified: frontend293, desktop/narrow lost-response journeys2, types/build/lint and required code and
+pedagogy reviews. See docs/slices/assessment-browser-recovery.md. Next: atomic whole-grade writes and
+review-rating idempotency; content-version conflict protection and broader quality/UX gates remain open.

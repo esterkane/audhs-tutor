@@ -1,3 +1,4 @@
+import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -76,7 +77,7 @@ function Editor({
   const [graded, setGraded] = useState<AttemptResult | null>(null)
   const hint = useHint()
   const solve = useSolution()
-  const attempt = useAttempt()
+  const attempt = useAttempt(sessionId)
   const startedAt = useRef(0)
   // per-viewer preference: the plain <textarea> instead of CodeMirror (also the mount fallback)
   const [plainEditor, setPlainEditor] = useState<boolean>(() => readPlainPreference())
@@ -131,38 +132,52 @@ function Editor({
     }
   }
 
+  const codeSubmission =
+    last && last.code === code
+      ? JSON.stringify({
+          code,
+          results: last.result.results,
+          truncated: last.result.truncated,
+          error: last.result.error,
+          ms: last.result.ms,
+          runtime: exercise.runtime,
+          solution_shown: solution != null,
+        })
+      : null
+
   async function submit() {
     if (!last || last.code !== code) return
-    const res = await attempt.mutateAsync({
-      session_id: sessionId,
-      assessment_id: exercise.assessment_id,
-      answer: JSON.stringify({
-        code,
-        results: last.result.results,
-        truncated: last.result.truncated,
-        error: last.result.error,
-        ms: last.result.ms,
-        runtime: exercise.runtime,
-        solution_shown: solution != null,
-      }),
-      confidence_pre: confidence,
-      latency_ms: Date.now() - startedAt.current,
-      hint_count: hints.length,
-    })
+    const res = await attempt
+      .mutateAsync({
+        session_id: sessionId,
+        assessment_id: exercise.assessment_id,
+        questionLabel: exercise.prompt,
+        answerLabel: `${code}\n\nCheck results:\n${JSON.stringify(last.result.results, null, 2)}`,
+        answer: codeSubmission!,
+        confidence_pre: confidence,
+        latency_ms: Date.now() - startedAt.current,
+        hint_count: hints.length,
+      })
+      .catch(() => null)
+    if (!res) return
     setGraded(res)
     onGraded?.(res)
   }
 
   async function submitCheck() {
     if (!exercise.check_assessment_id || !checkAnswer.trim()) return
-    const res = await attempt.mutateAsync({
-      session_id: sessionId,
-      assessment_id: exercise.check_assessment_id,
-      answer: checkAnswer,
-      confidence_pre: checkConfidence,
-      latency_ms: 0,
-      hint_count: 0,
-    })
+    const res = await attempt
+      .mutateAsync({
+        session_id: sessionId,
+        assessment_id: exercise.check_assessment_id,
+        questionLabel: exercise.check_question ?? 'Explain your code',
+        answer: checkAnswer,
+        confidence_pre: checkConfidence,
+        latency_ms: 0,
+        hint_count: 0,
+      })
+      .catch(() => null)
+    if (!res) return
     setCheckResult(res)
   }
 
@@ -171,6 +186,21 @@ function Editor({
 
   return (
     <Card>
+      <AssessmentRecovery
+        recovery={attempt.recovery}
+        onUse={(saved, body) => {
+          if (saved.assessment_id === exercise.assessment_id && body.answer === codeSubmission) {
+            setGraded(saved)
+            onGraded?.(saved)
+            return true
+          }
+          if (saved.assessment_id === exercise.check_assessment_id && body.answer === checkAnswer) {
+            setCheckResult(saved)
+            return true
+          }
+          return false
+        }}
+      />
       <CardTitle>Code exercise: {exercise.title}</CardTitle>
       <p className="text-sm mt-1">{exercise.prompt}</p>
       <ul className="text-sm text-muted mt-2 list-disc pl-5" aria-label="Success criteria">
