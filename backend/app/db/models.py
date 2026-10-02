@@ -145,6 +145,7 @@ class LearningObject(IdMixin, Base):
 
 class Representation(IdMixin, Base):
     __tablename__ = "representation"
+    provenance_json: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
     object_id: Mapped[str] = mapped_column(Text, ForeignKey("learning_object.id"), index=True)
     kind: Mapped[str] = mapped_column(Text)
     content: Mapped[str] = mapped_column(Text)

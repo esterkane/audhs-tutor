@@ -1,6 +1,7 @@
 """Lazy rendering of a LearningObject into a Representation (ADR-0007). Cache first; otherwise one
 gateway call with the standard ContextPacket, stored with its model_call id."""
 
+import hashlib
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -13,7 +14,7 @@ from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import TaskClass
 from app.orchestrator import prompts, tools
-from app.orchestrator.actions import count_sentences, trim_incomplete_tail
+from app.orchestrator.actions import cited_indices, count_sentences, trim_incomplete_tail
 from app.orchestrator.context import build_packet, render_messages
 from app.schemas.common import ActivityType, Actor, ObjectType
 
@@ -37,7 +38,13 @@ async def render(
     cached = None if force else await krep.get_cached(db, obj.id, kind)
     if cached is not None:
         return _out(
-            obj, kind, cached.content, cached.id, cached.model_call_id, cached=True, sources=[]
+            obj,
+            kind,
+            cached.content,
+            cached.id,
+            cached.model_call_id,
+            cached=True,
+            provenance=cached.provenance_json,
         )
 
     result = await tools.retrieve(repo, f"{node.title}: {obj.concept}", skill_id=node.id, k=5)
@@ -74,7 +81,24 @@ async def render(
         events=events,
     )
     content = trim_incomplete_tail(out.result.text)
-    row = await krep.store(db, obj.id, kind, content, model_call_id=out.model_call_id)
+    cited = cited_indices(content, len(packet.retrieved))
+    provenance = {
+        "sources": [
+            {**chunk.model_dump(exclude={"text"}), "cited": index in cited}
+            for index, chunk in enumerate(packet.retrieved, 1)
+        ],
+        "source_text_hashes": {
+            chunk.chunk_id: hashlib.sha256(chunk.text.encode()).hexdigest()
+            for chunk in packet.retrieved
+        },
+        "object_version": obj.version,
+        "prompt_version": prompts.PROMPT_VERSION,
+        "model": out.registry_id,
+        "route": out.route,
+    }
+    row = await krep.store(
+        db, obj.id, kind, content, model_call_id=out.model_call_id, provenance=provenance
+    )
     await events.emit(
         Verb.EXPLAINED,
         ObjectType.EXPLANATION,
@@ -82,7 +106,9 @@ async def render(
         actor=Actor.TUTOR,
         result={
             "sentences": count_sentences(content),
-            "cited_sources": [h.chunk.id for h in result.hits[:3]],
+            "cited_sources": [
+                chunk.chunk_id for index, chunk in enumerate(packet.retrieved, 1) if index in cited
+            ],
         },
         context={
             "representation": kind,
@@ -104,7 +130,7 @@ async def render(
         row.id,
         out.model_call_id,
         cached=False,
-        sources=[h.chunk.provenance.citation() for h in result.hits[:3]],
+        provenance=provenance,
     )
 
 
@@ -116,7 +142,7 @@ def _out(
     model_call_id: str | None,
     *,
     cached: bool,
-    sources: list[str],
+    provenance: dict[str, Any],
 ) -> dict[str, Any]:
     return {
         "object_id": obj.id,
@@ -127,7 +153,10 @@ def _out(
         "representation_id": rep_id,
         "model_call_id": model_call_id,
         "cached": cached,
-        "sources": sources,
+        "sources": [source["citation"] for source in provenance.get("sources", [])],
+        "provenance_available": bool(provenance),
+        "source_snapshot": provenance.get("sources", []),
+        "source_text_hashes": provenance.get("source_text_hashes", {}),
     }
 
 

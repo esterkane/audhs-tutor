@@ -131,6 +131,14 @@ async def test_representations_keep_object_identity_and_cache(
         and not a["cached"]
         and not b["cached"]
     )
+    assert a["source_snapshot"][0]["cited"] is True
+    assert all(not source["cited"] for source in a["source_snapshot"][1:])
+    # Changing today's passage must not rewrite the historical cache snapshot.
+    source_id = a["source_snapshot"][0]["chunk_id"]
+    passage = await db.get(models.Chunk, source_id)
+    assert passage is not None
+    passage.text = "Changed after generation."
+    await db.commit()
     again = (
         await client.post(
             f"/api/objects/{skill_id}/representations/derivation", json={"session_id": s["id"]}
@@ -141,6 +149,25 @@ async def test_representations_keep_object_identity_and_cache(
         and again["representation_id"] == a["representation_id"]
         and again["content"] == a["content"]
     )
+    assert a["sources"]
+    assert again["sources"] == a["sources"]
+    assert again["source_snapshot"] == a["source_snapshot"]
+    assert again["source_text_hashes"] == a["source_text_hashes"]
+    assert again["provenance_available"] is True
+    assert a["source_snapshot"] and a["source_text_hashes"]
+    # Legacy cache rows have unknown provenance, not guessed current sources.
+    row = await db.get(models.Representation, a["representation_id"])
+    row.provenance_json = {}
+    await db.commit()
+    legacy = (
+        await client.post(
+            f"/api/objects/{skill_id}/representations/derivation", json={"session_id": s["id"]}
+        )
+    ).json()
+    assert legacy["content"] == a["content"]
+    assert legacy["cached"] and legacy["provenance_available"] is False
+    assert legacy["source_snapshot"] == []
+    assert legacy["sources"] == []
     r = await client.post(
         f"/api/objects/{skill_id}/representations/problem_first", json={"session_id": s["id"]}
     )

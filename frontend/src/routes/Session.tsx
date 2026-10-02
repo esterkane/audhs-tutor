@@ -1,3 +1,4 @@
+import { RepresentationSources } from '../features/representations/RepresentationSources'
 import { RequestRecoveryControls } from '../features/playground/RequestRecoveryControls'
 import { useLessonDraft } from '../features/tutor/useLessonDraft'
 import { LessonReader, SavedLessonNotes } from '../features/tutor/LessonReader'
@@ -714,6 +715,7 @@ function TeachPanel({
             {alt.kind.replace('_', ' ')} · same learning object{alt.cached ? ' · from cache' : ''}
           </p>
           <Markdown text={alt.content} />
+          <RepresentationSources key={`sources-${alt.representation_id}`} value={alt} />
           {active && <ReadAloud key={alt.representation_id} text={alt.content} />}
           {prevAlt && prevAlt.representation_id !== alt.representation_id && (
             <div className="mt-3">

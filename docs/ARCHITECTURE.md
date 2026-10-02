@@ -152,3 +152,6 @@ This is transport deduplication, separate from optional saved-answer semantic re
 
 
 Saved-answer replacement preferences (2026-10-02) live in learner-scoped `tutor_answer_replacement`, separate from immutable answer snapshots and mutable feedback. Original/preferred FKs, revision checks and null undo preserve history. Shared answer eligibility excludes replaced originals from all automatic reuse paths; preference does not certify correctness or relax source/context checks.
+
+
+Representation provenance: representation.provenance_json preserves generation-time supplied-source metadata, citation flags and text hashes across cache hits. Empty legacy provenance means unknown. Current passage views remain distinct from historical text; this cache is not durable answer history. Migration a42e7f90d821.

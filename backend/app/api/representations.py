@@ -1,11 +1,12 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Gateway, Learner, Repo
 from app.kernel import competency, skill_graph
 from app.kernel import representations as krep
 from app.kernel import session as ksession
 from app.orchestrator import representations as orep
+from app.schemas.tutor import SourceRef
 
 router = APIRouter(prefix="/objects", tags=["representations"])
 
@@ -31,6 +32,9 @@ class RenderOut(BaseModel):
     model_call_id: str | None
     cached: bool
     sources: list[str]
+    provenance_available: bool = False
+    source_snapshot: list[SourceRef] = Field(default_factory=list)
+    source_text_hashes: dict[str, str] = Field(default_factory=dict)
 
 
 class PreferIn(BaseModel):

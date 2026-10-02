@@ -250,3 +250,13 @@ foreign keys verified. Backend595/frontend279, lint/types/build, two desktop/nar
 required reviews passed; sanitized backend45/UI3 passed. See answer-preferred-replacement slice.
 Next: remaining representation/assessment links and broader real-material quality/latency checks;
 material coverage, UX, visual/authoring/resource and personal-voice queues remain open.
+
+
+## Representation provenance — 2026-10-02
+
+Cached alternative explanations retain supplied-source metadata, citation flags and text hashes.
+Legacy entries explicitly report unknown provenance; current passage views are not historical
+verification. Backend595/frontend281, focusedAPI4, lint/types/build, two isolated desktop/narrow
+journeys and required reviews passed. Browser review fixed duplicate source/audio sibling keys.
+See docs/slices/representation-provenance.md. Durable representation answer history and assessment
+linkage remain next; this is a prerequisite, not completion of saved-answer path coverage.

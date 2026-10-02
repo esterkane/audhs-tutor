@@ -1,6 +1,8 @@
 """Representation cache (ADR-0007): LearningObject is the source of truth; Representations are lazily
 rendered views keyed by (object_id, kind). "Show it differently" never changes the object."""
 
+from typing import Any
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,12 +36,23 @@ async def cached_kinds(db: AsyncSession, object_id: str) -> set[str]:
 
 
 async def store(
-    db: AsyncSession, object_id: str, kind: str, content: str, *, model_call_id: str | None
+    db: AsyncSession,
+    object_id: str,
+    kind: str,
+    content: str,
+    *,
+    model_call_id: str | None,
+    provenance: dict[str, Any] | None = None,
 ) -> Representation:
     if kind not in KINDS:
         raise ValueError(f"unknown representation kind {kind!r}")
     row = Representation(
-        object_id=object_id, kind=kind, content=content, model_call_id=model_call_id, cached=True
+        object_id=object_id,
+        kind=kind,
+        content=content,
+        model_call_id=model_call_id,
+        cached=True,
+        provenance_json=provenance or {},
     )
     db.add(row)
     await db.commit()

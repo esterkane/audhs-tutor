@@ -4325,6 +4325,17 @@ export interface components {
       cached: boolean
       /** Sources */
       sources: string[]
+      /**
+       * Provenance Available
+       * @default false
+       */
+      provenance_available: boolean
+      /** Source Snapshot */
+      source_snapshot?: components['schemas']['SourceRef'][]
+      /** Source Text Hashes */
+      source_text_hashes?: {
+        [key: string]: string
+      }
     }
     /** ReplanIn */
     ReplanIn: {
