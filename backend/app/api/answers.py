@@ -102,7 +102,7 @@ async def list_answers(
     q: Annotated[str | None, Query(max_length=200)] = None,
     parent_answer_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     suggestions: bool = False,
-    surface: Literal["tutor", "playground"] | None = None,
+    surface: Literal["tutor", "playground", "representation"] | None = None,
 ) -> AnswerPage:
     stmt = select(TutorAnswer).where(TutorAnswer.learner_id == learner.id)
     if parent_answer_id is not None:

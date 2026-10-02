@@ -25,6 +25,7 @@ for (const narrow of [false, true]) {
           json: { kinds: [{ kind: 'analogy', label: 'Analogy', allowed: true, cached: true }] },
         }),
       )
+      await page.route('**/api/answers/recover-save', route => route.fulfill({ json: { answer_id: 'recovered-representation' } }))
       let legacy = false
       await page.route('**/api/objects/*/representations/analogy', (route) =>
         route.fulfill({
@@ -36,6 +37,9 @@ for (const narrow of [false, true]) {
             content: 'A recorded analogy [1].',
             representation_id: legacy ? 'old' : 'recorded',
             cached: true,
+            answer_id: legacy ? null : 'saved-representation',
+            save_error: legacy ? 'Could not save this explanation.' : null,
+            save_receipt: legacy ? 'signed-fixture' : null,
             provenance_available: !legacy,
             sources: legacy ? [] : ['Original label'],
             source_snapshot: legacy
@@ -63,6 +67,7 @@ for (const narrow of [false, true]) {
       await page.getByRole('button', { name: 'Start explanation', exact: true }).click()
       await page.getByText('Need another explanation or a different activity?', { exact: true }).click()
       await page.getByRole('button', { name: 'Analogy', exact: false }).click()
+      await expect(page.getByRole('link', { name: 'Open saved answer', exact: true })).toHaveAttribute('href', '/answers/saved-representation')
       const disclosure = page.getByText('Source context used for this explanation', { exact: true })
       await disclosure.focus()
       await page.keyboard.press('Enter')
@@ -76,6 +81,8 @@ for (const narrow of [false, true]) {
       await page.getByRole('button', { name: 'Analogy', exact: false }).click()
       await expect(page.getByText(/Original source details were not recorded/)).toBeVisible()
       await expect(citation).toHaveCount(0)
+      await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
+      await expect(page.getByRole('link', { name: 'Open saved answer', exact: true })).toHaveAttribute('href', '/answers/recovered-representation')
     } finally {
       await endOpenSession(request)
     }

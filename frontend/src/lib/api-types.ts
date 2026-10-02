@@ -4323,6 +4323,12 @@ export interface components {
       model_call_id: string | null
       /** Cached */
       cached: boolean
+      /** Answer Id */
+      answer_id?: string | null
+      /** Save Error */
+      save_error?: string | null
+      /** Save Receipt */
+      save_receipt?: string | null
       /** Sources */
       sources: string[]
       /**
@@ -5112,7 +5118,7 @@ export interface operations {
         q?: string | null
         parent_answer_id?: string | null
         suggestions?: boolean
-        surface?: ('tutor' | 'playground') | null
+        surface?: ('tutor' | 'playground' | 'representation') | null
       }
       header?: never
       path?: never

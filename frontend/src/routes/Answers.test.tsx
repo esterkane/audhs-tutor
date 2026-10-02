@@ -160,3 +160,17 @@ it('retains the exact historical memory snapshot when reopening a generated repl
   expect(screen.getByText(/not independent evidence/)).toBeVisible()
   expect(screen.getByRole('link', { name: 'Open previous answer' })).toHaveAttribute('href', '/answers/old')
 })
+
+
+it('filters alternative explanations and keeps unknown historical provenance explicit', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/api/answers/a1') return jsonResponse({ ...summary, surface: 'representation', text: 'Old analogy [1].', request: {}, metadata: { provenance_available: false }, turn_id: 'representation:s:r' })
+    expect(url).toContain('surface=representation')
+    return jsonResponse({ items: [{ ...summary, surface: 'representation' }], next_cursor: null })
+  }))
+  open('/answers?surface=representation')
+  expect(await screen.findByLabelText('Show')).toHaveValue('representation')
+  fireEvent.click(await screen.findByRole('link', { name: 'Why clean this data?' }))
+  expect(await screen.findByText(/Original source details were not recorded/)).toBeVisible()
+  expect(screen.getByText('Old analogy [1].')).toBeVisible()
+})

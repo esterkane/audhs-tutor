@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Gateway, Learner, Repo
@@ -31,6 +31,9 @@ class RenderOut(BaseModel):
     representation_id: str
     model_call_id: str | None
     cached: bool
+    answer_id: str | None = None
+    save_error: str | None = None
+    save_receipt: str | None = None
     sources: list[str]
     provenance_available: bool = False
     source_snapshot: list[SourceRef] = Field(default_factory=list)
@@ -86,9 +89,25 @@ async def prefer(skill_id: str, body: PreferIn, db: DB, learner: Learner) -> Non
     response_model=RenderOut,
 )
 async def render(
-    skill_id: str, kind: str, body: RenderIn, db: DB, gateway: Gateway, repo: Repo, learner: Learner
+    skill_id: str,
+    kind: str,
+    body: RenderIn,
+    db: DB,
+    gateway: Gateway,
+    repo: Repo,
+    learner: Learner,
+    request: Request,
 ) -> RenderOut:
     s = await ksession.get_owned(db, body.session_id, learner.id)
     node = await skill_graph.get_node(db, skill_id)
-    out = await orep.render(db, gateway, repo, s, node, kind, force=body.force)
+    out = await orep.render(
+        db,
+        gateway,
+        repo,
+        s,
+        node,
+        kind,
+        force=body.force,
+        recovery=request.app.state.answer_recovery,
+    )
     return RenderOut.model_validate(out)

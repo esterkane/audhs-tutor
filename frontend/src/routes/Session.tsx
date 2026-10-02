@@ -1,3 +1,4 @@
+import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
 import { RepresentationSources } from '../features/representations/RepresentationSources'
 import { RequestRecoveryControls } from '../features/playground/RequestRecoveryControls'
 import { useLessonDraft } from '../features/tutor/useLessonDraft'
@@ -715,6 +716,7 @@ function TeachPanel({
             {alt.kind.replace('_', ' ')} · same learning object{alt.cached ? ' · from cache' : ''}
           </p>
           <Markdown text={alt.content} />
+          <AnswerSaveStatus key={`save-${alt.representation_id}`} answerId={alt.answer_id} error={alt.save_error} receipt={alt.save_receipt} text={alt.content} />
           <RepresentationSources key={`sources-${alt.representation_id}`} value={alt} />
           {active && <ReadAloud key={alt.representation_id} text={alt.content} />}
           {prevAlt && prevAlt.representation_id !== alt.representation_id && (

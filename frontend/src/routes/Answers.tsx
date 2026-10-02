@@ -113,6 +113,7 @@ function History() {
         >
           <option value="">All saved answers</option>
           <option value="tutor">Lessons and hints</option>
+          <option value="representation">Alternative explanations</option>
           <option value="playground">Notebook and coding help</option>
         </select>
       </label>
@@ -145,7 +146,7 @@ function History() {
                       : 'Explanation requested'}
                   </Link>
                   <p className="text-xs text-muted mt-1">
-                    {answer.surface === 'playground' ? 'Notebook / coding help' : 'Lesson / hint'} ·{' '}
+                    {answer.surface === 'playground' ? 'Notebook / coding help' : answer.surface === 'representation' ? 'Alternative explanation' : 'Lesson / hint'} ·{' '}
                     {new Date(answer.created_at).toLocaleString()}
                   </p>
                   <p className="mt-2 whitespace-pre-wrap">{answer.preview}</p>
@@ -341,7 +342,7 @@ function Answer({ id }: { id: string }) {
                 )}
               </details>
             ) : (
-              <p className="text-sm text-muted">No course source references were saved with this answer.</p>
+              <p className="text-sm text-muted">{data.surface === 'representation' && data.metadata.provenance_available === false ? 'Original source details were not recorded for this cached explanation. Its citations cannot be reconstructed reliably.' : 'No course source references were saved with this answer.'}</p>
             )}
             {withheld > 0 && (
               <p className="text-sm text-muted">

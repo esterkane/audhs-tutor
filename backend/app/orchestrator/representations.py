@@ -2,12 +2,17 @@
 gateway call with the standard ContextPacket, stored with its model_call id."""
 
 import hashlib
+import logging
 from typing import Any
 
+from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.answer_recovery import AnswerRecovery
+from app.db.answers import save_completed
 from app.db.events import EventWriter, Verb
-from app.db.models import LearningObject, Representation, Session, SkillNode
+from app.db.models import LearningObject, Representation, Session, SkillNode, TutorAnswer
 from app.kernel import representations as krep
 from app.kernel import session as ksession
 from app.knowledge.repository import RetrievalRepository
@@ -17,6 +22,8 @@ from app.orchestrator import prompts, tools
 from app.orchestrator.actions import cited_indices, count_sentences, trim_incomplete_tail
 from app.orchestrator.context import build_packet, render_messages
 from app.schemas.common import ActivityType, Actor, ObjectType
+
+logger = logging.getLogger(__name__)
 
 
 async def render(
@@ -28,6 +35,7 @@ async def render(
     kind: str,
     *,
     force: bool = False,
+    recovery: AnswerRecovery | None = None,
 ) -> dict[str, Any]:
     obj = await krep.object_for_skill(db, node.id)
     if obj is None:
@@ -37,7 +45,11 @@ async def render(
         raise ValueError(f"representation {kind!r} not allowed yet for this node (mastery gate)")
     cached = None if force else await krep.get_cached(db, obj.id, kind)
     if cached is not None:
-        return _out(
+        return await _finish(
+            db,
+            session,
+            node,
+            recovery,
             obj,
             kind,
             cached.content,
@@ -123,7 +135,11 @@ async def render(
         },
         representation=kind,
     )
-    return _out(
+    return await _finish(
+        db,
+        session,
+        node,
+        recovery,
         obj,
         kind,
         content,
@@ -132,6 +148,75 @@ async def render(
         cached=False,
         provenance=provenance,
     )
+
+
+async def _finish(
+    db: AsyncSession,
+    session: Session,
+    node: SkillNode,
+    recovery: AnswerRecovery | None,
+    obj: LearningObject,
+    kind: str,
+    content: str,
+    rep_id: str,
+    model_call_id: str | None,
+    *,
+    cached: bool,
+    provenance: dict[str, Any],
+) -> dict[str, Any]:
+    result = _out(obj, kind, content, rep_id, model_call_id, cached=cached, provenance=provenance)
+    result.update(answer_id=None, save_error=None, save_receipt=None)
+    if not content.strip():
+        return result
+    # Immutable cache identity, scoped to this learner's session, not a generation claim.
+    turn_id = f"representation:{session.id}:{rep_id}"
+    snapshot: dict[str, Any] = dict(
+        learner_id=session.learner_id,
+        session_id=session.id,
+        turn_id=turn_id,
+        surface="representation",
+        request={"text": f"Show {obj.concept} as {kind}", "skill_id": node.id, "kind": kind},
+        text=content,
+        metadata={
+            "skill_id": node.id,
+            "area_id": node.area_id,
+            "course_label": node.course,
+            "representation_id": rep_id,
+            "object_id": obj.id,
+            "object_version": provenance.get("object_version"),
+            "representation_kind": kind,
+            "model_call_id": model_call_id,
+            "provenance_available": bool(provenance),
+            "sources": provenance.get("sources", []),
+            "source_text_hashes": provenance.get("source_text_hashes", {}),
+            "prompt_version": provenance.get("prompt_version"),
+            "model": provenance.get("model"),
+            "route": provenance.get("route"),
+        },
+    )
+    try:
+        existing = await db.scalar(
+            select(TutorAnswer).where(
+                TutorAnswer.learner_id == session.learner_id,
+                TutorAnswer.turn_id == turn_id,
+            )
+        )
+        if existing is not None:
+            if existing.text != content:
+                raise ValueError("Representation content differs from its saved history")
+            result["answer_id"] = existing.id
+        else:
+            answer = await save_completed(db, **snapshot)
+            result["answer_id"] = answer.id
+    except SQLAlchemyError as exc:
+        await db.rollback()
+        logger.warning("Representation answer save failed: %s", type(exc).__name__)
+        result["save_error"] = (
+            "This explanation could not be saved to answer history. Keep a copy before leaving."
+        )
+        if recovery is not None:
+            result["save_receipt"] = recovery.issue(snapshot)
+    return result
 
 
 def _out(
