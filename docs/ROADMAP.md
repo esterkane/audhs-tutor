@@ -228,3 +228,12 @@ original answers and feedback are never rewritten. Backend592/frontend276, lint/
 two desktop/narrow browser journeys and required reviews passed; sanitized backend5/frontend10.
 See `docs/slices/answer-correction-requests.md`. No paid/live model quality claim. Learner-reviewed
 preferred replacement, reversible eligibility and selector parity are next.
+
+
+## Shared answer eligibility — 2026-10-02
+
+The five exclusion queries now share db/answer_eligibility.py: suggestions, workspace lexical/exact,
+lesson memory, vector loading and indexing. Existing owner/hidden/incorrect/outdated semantics
+are unchanged; history remains readable. Backend592, lint/types, focused24 in both checkouts and
+code review passed. See `docs/slices/answer-eligibility-policy.md`. This prepares consistent
+replacement exclusion; replacement choice/undo/CAS and learner UI are still outstanding.

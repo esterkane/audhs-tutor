@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.db import answer_vectors
-from app.db.models import TutorAnswer, TutorAnswerFeedback, TutorAnswerVector
+from app.db.answer_eligibility import excluded_answer_ids
+from app.db.models import TutorAnswer, TutorAnswerVector
 from app.db.traces import ModelCallRecord, write_model_call
 from app.models_ai import registry
 from app.models_ai.ollama import OllamaProvider
@@ -61,11 +62,7 @@ async def populate(
     if not 1 <= limit <= 1000:
         raise ValueError("Index limit must be 1..1000")
     spec, key = await identity(db, settings, learner_id)
-    excluded = select(TutorAnswerFeedback.answer_id).where(
-        TutorAnswerFeedback.learner_id == learner_id,
-        TutorAnswerFeedback.hidden.is_(True)
-        | TutorAnswerFeedback.verdict.in_(["incorrect", "outdated"]),
-    )
+    excluded = excluded_answer_ids(learner_id)
     cached = (
         select(TutorAnswerVector.answer_id)
         .where(

@@ -6,8 +6,9 @@ from sqlalchemy import Select, func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
+from app.db.answer_eligibility import excluded_answer_ids
 from app.db.answer_search import literal_query
-from app.db.models import TutorAnswer, TutorAnswerFeedback
+from app.db.models import TutorAnswer
 from app.schemas.playground import PlaygroundRequest
 
 
@@ -15,11 +16,7 @@ def candidates(learner_id: str, body: PlaygroundRequest) -> Select[tuple[TutorAn
     context = body.learning_context
     if not context or not context.target_id:
         return None
-    excluded = select(TutorAnswerFeedback.answer_id).where(
-        TutorAnswerFeedback.learner_id == learner_id,
-        TutorAnswerFeedback.hidden.is_(True)
-        | TutorAnswerFeedback.verdict.in_(["incorrect", "outdated"]),
-    )
+    excluded = excluded_answer_ids(learner_id)
     stmt = select(TutorAnswer).where(
         TutorAnswer.learner_id == learner_id,
         TutorAnswer.surface == "playground",

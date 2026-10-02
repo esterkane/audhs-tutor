@@ -12,9 +12,10 @@ from app.api.deps import DB, Gateway, Learner
 from app.core.answer_recovery import MAX_RECEIPT
 from app.core.errors import AppError
 from app.db import answer_feedback, answer_sources, workspace_requests
+from app.db.answer_eligibility import excluded_answer_ids
 from app.db.answer_search import literal_query
 from app.db.answers import save_completed
-from app.db.models import TutorAnswer, TutorAnswerFeedback
+from app.db.models import TutorAnswer
 from app.orchestrator import playground
 from app.schemas.answers import (
     AnswerDetail,
@@ -109,13 +110,7 @@ async def list_answers(
             TutorAnswer.metadata_json["parent_answer_id"].as_string() == parent_answer_id
         )
     if suggestions:
-        excluded = select(TutorAnswerFeedback.answer_id).where(
-            TutorAnswerFeedback.learner_id == learner.id,
-            (
-                TutorAnswerFeedback.hidden.is_(True)
-                | TutorAnswerFeedback.verdict.in_(["incorrect", "outdated"])
-            ),
-        )
+        excluded = excluded_answer_ids(learner.id)
         stmt = stmt.where(TutorAnswer.id.not_in(excluded))
     if q is not None and q.strip():
         expression = literal_query(q)

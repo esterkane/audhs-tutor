@@ -6,8 +6,9 @@ from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.answer_eligibility import excluded_answer_ids
 from app.db.base import new_id, utcnow_iso
-from app.db.models import TutorAnswer, TutorAnswerFeedback, TutorAnswerVector
+from app.db.models import TutorAnswer, TutorAnswerVector
 
 
 def valid(vector: list[float]) -> bool:
@@ -73,11 +74,7 @@ async def load(
     """Only current, visible, owner-scoped candidates; caller scopes targets before ranking."""
     if len(answer_ids) > 256 or not 0 < dims <= 8192:
         raise ValueError("Embedding lookup bounds exceeded")
-    excluded = select(TutorAnswerFeedback.answer_id).where(
-        TutorAnswerFeedback.learner_id == learner_id,
-        TutorAnswerFeedback.hidden.is_(True)
-        | TutorAnswerFeedback.verdict.in_(["incorrect", "outdated"]),
-    )
+    excluded = excluded_answer_ids(learner_id)
     stmt = (
         select(TutorAnswerVector)
         .join(TutorAnswer, TutorAnswer.id == TutorAnswerVector.answer_id)
