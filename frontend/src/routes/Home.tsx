@@ -1,3 +1,4 @@
+import { HomeTopicPreparation } from '../features/areas/HomeTopicPreparation'
 import { SelectedLesson } from '../features/session/SelectedLesson'
 import { useAreas } from '../features/areas/api'
 import { useEffect, useRef, useState } from 'react'
@@ -236,7 +237,9 @@ function HomeOverview() {
                 : ''}
             </Button>
           )}
-          {emptySelection ? (
+          {emptySelection && areaGoal && !blockedSelection ? (
+            <HomeTopicPreparation areaId={areaGoal} secondary={Boolean(resumable)} />
+          ) : emptySelection ? (
             <Button asChild variant={resumable ? 'secondary' : 'primary'} size="lg">
               <Link
                 to={

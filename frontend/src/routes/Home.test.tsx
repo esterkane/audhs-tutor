@@ -1,3 +1,4 @@
+import { HomeTopicPreparation } from '../features/areas/HomeTopicPreparation'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
@@ -417,4 +418,68 @@ it('offers active lesson review rather than activation when the selected area ha
   ).toBeVisible()
   expect(screen.queryByRole('link', { name: 'Review and activate a lesson' })).not.toBeInTheDocument()
   expect(screen.queryByText(/This topic has no activated lessons yet/)).not.toBeInTheDocument()
+})
+
+it('previews only the selected topic prepared draft and links to explicit review', async () => {
+  const fetchMock = vi.fn(async (url: string) => {
+    if (url.endsWith('/api/preferences')) return jsonResponse({ values: { 'goal.area': 'local' } })
+    if (url.endsWith('/api/areas'))
+      return jsonResponse({ areas: [{ id: 'local', title: 'Local models', active_lessons: 0 }] })
+    if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
+    if (url.endsWith('/api/curriculum/drafts'))
+      return jsonResponse({
+        drafts: [
+          {
+            id: 'other',
+            area_id: 'other',
+            status: 'draft',
+            payload: { area_state: 'generated', skills: [{ title: 'Wrong topic' }] },
+          },
+          { id: 'interrupted', area_id: 'local', status: 'draft', payload: { area_state: 'interrupted' } },
+          {
+            id: 'prepared',
+            area_id: 'local',
+            status: 'draft',
+            payload: {
+              area_state: 'generated',
+              skills: [{ slug: 'quantization', title: 'Quantization' }],
+              learning_objects: [{ skill: 'quantization', goal: 'Explain the memory tradeoff' }],
+            },
+          },
+        ],
+      })
+    return jsonResponse(null)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  renderApp(<Home />)
+  expect(await screen.findByText('Quantization')).toBeVisible()
+  expect(screen.getByText('Explain the memory tradeoff')).toBeVisible()
+  expect(screen.queryByText('Wrong topic')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Review lessons to start' })).toHaveAttribute(
+    'href',
+    '/areas?area=local&draft=prepared',
+  )
+  expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/publish'))).toBe(false)
+})
+
+it('keeps preparation loading and failure distinct, with a review fallback', async () => {
+  let finish!: (response: Response) => void
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      () =>
+        new Promise<Response>((resolve) => {
+          finish = resolve
+        }),
+    ),
+  )
+  renderApp(<HomeTopicPreparation areaId="local" secondary={false} />)
+  expect(screen.getByText('Checking prepared lessons for this topic…')).toBeVisible()
+  finish(jsonResponse({ detail: 'Unavailable' }, 503))
+  expect(await screen.findByRole('button', { name: 'Retry prepared lessons' })).toBeVisible()
+  expect(screen.queryByText('Checking prepared lessons for this topic…')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Review and activate a lesson' })).toHaveAttribute(
+    'href',
+    '/areas?area=local',
+  )
 })

@@ -53,3 +53,41 @@ it('takes the selected area directly to its prepared draft without activating it
   expect(await screen.findByText('Reviewing draft prepared')).toBeVisible()
   expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/publish'))).toBe(false)
 })
+
+for (const requested of ['prepared', 'unrelated']) {
+  it(`opens only a matching selected-area draft from URL: ${requested}`, async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.endsWith('/api/areas'))
+          return jsonResponse({
+            areas: [{ id: 'local', title: 'Local', terms: [], courses: [], documents: 1, related: [] }],
+          })
+        if (url.endsWith('/api/curriculum/drafts'))
+          return jsonResponse({
+            drafts: [
+              {
+                id: 'prepared',
+                area_id: 'local',
+                title: 'Local',
+                status: 'draft',
+                payload: { area_state: 'generated' },
+              },
+              {
+                id: 'unrelated',
+                area_id: 'other',
+                title: 'Other',
+                status: 'draft',
+                payload: { area_state: 'generated' },
+              },
+            ],
+          })
+        return jsonResponse(null)
+      }),
+    )
+    renderApp(<Areas />, { route: `/areas?area=local&draft=${requested}` })
+    await screen.findByRole('combobox')
+    if (requested === 'prepared') expect(await screen.findByText('Reviewing draft prepared')).toBeVisible()
+    else expect(screen.queryByText('Reviewing draft unrelated')).not.toBeInTheDocument()
+  })
+}

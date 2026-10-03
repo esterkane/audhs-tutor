@@ -25,7 +25,7 @@ export function Areas() {
   }, [job.data?.running, qc])
   const [search] = useSearchParams()
   const [selected, setSelected] = useState(() => search.get('area') ?? ''),
-    [draftId, setDraftId] = useState(''),
+    [draftId, setDraftId] = useState(() => search.get('draft') ?? ''),
     [dirty, setDirty] = useState(false)
   const area = query.data?.areas.find((a) => a.id === selected)
   const areaDrafts =

@@ -1,0 +1,24 @@
+# Home: prepared topic to first session
+
+A selected area can have imported material and a generated draft but no activated lessons. In that
+state the planner intentionally returns no next lesson. The former Home action led to another area
+selection/review screen, leaving the learner without a clear path to Start.
+
+Home now previews the selected area's generated draft lessons and links directly to that draft in
+Learning areas. Interrupted, rejected and unrelated drafts are excluded from the shortcut. The draft
+editor still requires explicit Activate lessons; return to Home then enables the existing Start session
+flow. No model call, automatic activation, assessment evidence or unrelated-topic fallback is added.
+Draft lookup failure has a retry and retains the area review fallback. Ready topics do not mount the
+preparation query. Area/draft deep links resolve only inside the selected area's drafts.
+
+Validation (2026-10-03): Home/Areas/Curriculum:23 component tests passed in both variants; TypeScript and targeted ESLint passed.
+The integrated original production build passed (existing bundle-size warnings remain).
+Five isolated browser journeys passed: ready→empty→ready selection, long-label reflow at320/390px,
+and explicit draft review→activation→Home→Start at390/1280px. Those activation/session mutations use
+synthetic intercepted API fixtures, not the learner database. Live Home was checked read-only and
+showed its selected topic's prepared lessons. Independent code and pedagogy reviews found no blockers
+or majors. The owner's comprehension check remains open. This does not activate all topic drafts or
+certify their content quality.
+
+Existing limitation: Areas initializes URL selection on mount; same-route query-only navigation is
+not a newly supported workflow. The Home→Areas handoff mounts it with the requested selection.
