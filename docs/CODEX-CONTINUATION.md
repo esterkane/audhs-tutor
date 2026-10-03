@@ -278,3 +278,13 @@ stops capture/queued audio and preserves text; Connect/text-only requests do not
 Shared controls name voice activity and Stop. Full frontend333, browser5, independent code/pedagogy
 reviews passed. See docs/slices/voice-reading-coordination.md. Media/visualizer/ambient/test-tone and
 physical audio/owner gates remain open; no model or backend changes.
+
+
+## Full local index parity — 2026-10-03
+
+Read-only audit matched185232 expected latest canonical chunks with185232 index points, with no
+missing, extra, text, identity, document or ordinal mismatch; final counts stable. Duplicates and
+older versions correctly excluded. Audit tool/report remain private. Environment proxies disabled,
+redirects forbidden; independent review clear after transport fix. No inference/reindex performed.
+Vector quality, all provenance fields and guarantees against concurrent replacement remain outside
+scope. This is storage parity, not retrieval relevance or full course coverage.
