@@ -426,3 +426,12 @@ Every Audio controls panel now exposes current requested-reading status and Paus
 same player. Controls clear on release and stale owners cannot replace them. Frontend324, focused13,
 browser2, lint/build and reviews passed. See docs/slices/shared-reading-controls.md. Coordination with
 voice conversations/other media and physical-output/owner gates remain open.
+
+
+## Local diagnostic provenance — 2026-10-03
+
+Local feedback diagnostic report v2 names runtime message-builder/version/intent, current feedback
+fragment hash via runtime loader, and diagnostic versus production task. It explicitly disclaims
+full respond/routing/semantic-quality coverage. Inference/defaults unchanged; focused11, Ruff/format
+and independent reviews passed. See docs/slices/local-feedback-diagnostic-provenance.md. Next: bounded
+full-runtime local evaluation before considering any hosted-route replacement. No paid calls.

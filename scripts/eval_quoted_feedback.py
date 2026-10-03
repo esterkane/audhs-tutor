@@ -20,7 +20,8 @@ from app.evals.harness import open_world
 from app.models_ai.benchmark_gateway import BenchmarkRouter
 from app.models_ai.provider import TaskClass
 from app.models_ai.registry import get_row, get_spec
-from app.orchestrator.playground import messages
+from app.orchestrator import prompts
+from app.orchestrator.playground import VERSION, messages
 from app.schemas.playground import PlaygroundRequest
 from sqlalchemy import select
 
@@ -138,6 +139,32 @@ CONTEXT_OVERRIDES = {
 }
 
 
+DIAGNOSTIC_TASK = TaskClass.EXPLAIN_SIMPLE
+
+
+def diagnostic_metadata(model: str) -> dict[str, object]:
+    """Describe the direct gateway diagnostic without implying a runtime-path test."""
+    return {
+        "report_version": 2,
+        "synthetic": True,
+        "pinned_model": model,
+        "fallback_allowed": False,
+        "scope": "runtime_message_builder_and_bound_schema_via_pinned_gateway",
+        "message_builder": "app.orchestrator.playground.messages",
+        "runtime_prompt_version": VERSION,
+        "runtime_request_intent": "check_answer",
+        "diagnostic_gateway_task": str(DIAGNOSTIC_TASK),
+        "production_task": str(TaskClass.ANSWER_FEEDBACK),
+        "production_routing_exercised": False,
+        "runtime_respond_exercised": False,
+        "feedback_task_fragment_sha256": hashlib.sha256(
+            prompts.answer_feedback_task().encode()
+        ).hexdigest(),
+        "message_hash_scope": "complete serialized messages actually supplied per case",
+        "quality_claim": "literal validation only; semantic findings require separate review",
+    }
+
+
 async def run(output: Path, model: str) -> None:
     if urlparse(get_settings().ollama_host).hostname not in {
         "localhost",
@@ -145,9 +172,7 @@ async def run(output: Path, model: str) -> None:
         "::1",
     }:
         raise ValueError("Loopback Ollama required")
-    task_prompt = (
-        Path(__file__).resolve().parents[1] / "prompts/playground/quoted-feedback.v2.md"
-    ).read_text()
+    metadata = diagnostic_metadata(model)
     results = []
 
     def persist(status: str) -> None:
@@ -155,14 +180,8 @@ async def run(output: Path, model: str) -> None:
         output.write_text(
             json.dumps(
                 {
-                    "synthetic": True,
+                    **metadata,
                     "status": status,
-                    "pinned_model": model,
-                    "fallback_allowed": False,
-                    "live_integration": False,
-                    "task_prompt_sha256": hashlib.sha256(
-                        task_prompt.encode()
-                    ).hexdigest(),
                     "results": results,
                 },
                 indent=2,
@@ -217,7 +236,7 @@ async def run(output: Path, model: str) -> None:
                     try:
                         reply = await asyncio.wait_for(
                             gateway.complete(
-                                TaskClass.EXPLAIN_SIMPLE,
+                                DIAGNOSTIC_TASK,
                                 packet,
                                 learner_id=world.learner_id,
                                 response_model=schema,
