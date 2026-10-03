@@ -694,3 +694,12 @@ remain historical sources, not assertions of current policy. No curriculum activ
 Both complete workflows succeeded after the nested reflow fix: archive eaafd63/run37117683380 and
 sanitized6adeabc/run37117696816. This includes all65 browser journeys plus backend, frontend and
 migration jobs, with the sanitized publication guard. Owner usability/device checks remain open.
+
+
+## Voice/reading coordination — 2026-10-03
+
+Explicit voiceTalk/voiceSend and requested readings share identity-safe in-tab ownership. Replacement
+stops capture/queued audio and preserves text; Connect/text-only requests do not displace readings.
+Shared controls name voice activity and Stop. Full frontend333, browser5, independent code/pedagogy
+reviews passed. See docs/slices/voice-reading-coordination.md. Media/visualizer/ambient/test-tone and
+physical audio/owner gates remain open; no model or backend changes.

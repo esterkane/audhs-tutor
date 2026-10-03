@@ -1,3 +1,4 @@
+import { claimReading, updateReading } from './readingOwner'
 import type { Schemas, TurnDone } from '../../lib/api'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { b64ToPcm16, Player, startMic, type Mic } from './audio'
@@ -24,7 +25,9 @@ export function useVoiceLoop(opts: {
   makeSocket?: (url: string) => WebSocket
 }) {
   const callbacks = useRef(opts)
-  useEffect(() => { callbacks.current = opts })
+  useEffect(() => {
+    callbacks.current = opts
+  })
   const [status, setStatus] = useState<VoiceStatus>('idle')
   const [ready, setReady] = useState<VoiceMessage | null>(null)
   const [transcript, setTranscript] = useState(opts.initialText?.transcript ?? '')
@@ -41,6 +44,13 @@ export function useVoiceLoop(opts: {
   const socket = useRef<WebSocket | null>(null)
   const mic = useRef<Mic | null>(null)
   const player = useRef(new Player())
+  const audioLease = useRef<(() => void) | null>(null)
+  const negotiatedTextOnly = useRef(Boolean(opts.textOnly))
+  const [audioNotice, setAudioNotice] = useState('')
+  const releaseAudio = useCallback(() => {
+    audioLease.current?.()
+    audioLease.current = null
+  }, [])
   const interruptedTurn = useRef(false)
   const interruptAck = useRef(false)
   const interruptTerminal = useRef(false)
@@ -61,6 +71,7 @@ export function useVoiceLoop(opts: {
   const { sessionId, skillId, lang, conversation, textOnly, makeSocket } = opts
 
   const close = useCallback(() => {
+    releaseAudio()
     clearTimer()
     micGeneration.current++
     mic.current?.stop()
@@ -83,15 +94,42 @@ export function useVoiceLoop(opts: {
     }
     setReady(null)
     setStatus('idle')
-  }, [])
+  }, [releaseAudio])
+
+  const claimAudio = useCallback(() => {
+    releaseAudio()
+    audioLease.current = claimReading((replacement) => {
+      close()
+      setInterrupted(true)
+      setAudioNotice(`Voice activity stopped because ${replacement} started. Received text is kept.`)
+    }, 'voice activity')
+    setAudioNotice('')
+  }, [close, releaseAudio])
+
+  useEffect(() => {
+    if (!audioLease.current) return
+    updateReading(audioLease.current, {
+      kind: 'voice',
+      status,
+      stop: () => {
+        close()
+        setInterrupted(true)
+        setAudioNotice('Voice activity stopped. Received text is kept.')
+      },
+    })
+  }, [status, close])
 
   useEffect(() => {
     const p = player.current
     // playback outlives `done`: stay "speaking" until the last buffer ended
     p.onIdle = () => {
-      if (turnDone.current) setStatus((s) => (s === 'speaking' ? 'ready' : s))
+      if (turnDone.current) {
+        releaseAudio()
+        setStatus((s) => (s === 'speaking' ? 'ready' : s))
+      }
     }
     return () => {
+      releaseAudio()
       clearTimer()
       // Clearing socket ownership below also invalidates pending microphone acquisition.
       mic.current?.stop()
@@ -101,7 +139,7 @@ export function useVoiceLoop(opts: {
       handshake.current = false
       ws?.close()
     }
-  }, [])
+  }, [releaseAudio])
 
   const connect = useCallback(() => {
     if (socket.current) return
@@ -127,6 +165,7 @@ export function useVoiceLoop(opts: {
     const current = () => socket.current === ws
     const fail = (message: string) => {
       if (!current()) return
+      releaseAudio()
       clearTimer()
       socket.current = null
       handshake.current = false
@@ -210,6 +249,7 @@ export function useVoiceLoop(opts: {
       if (interruptedTurn.current && ['transcript', 'meta', 'token', 'audio'].includes(msg.type)) return
       switch (msg.type) {
         case 'ready':
+          negotiatedTextOnly.current = msg.text_only === true || Boolean(textOnly)
           identifiedControls.current = msg.control_identity === true
           identifiedCapture.current = msg.request_identity === 'utterance-v1'
           identifiedText.current = identifiedCapture.current || msg.request_identity === 'typed-v1'
@@ -240,6 +280,7 @@ export function useVoiceLoop(opts: {
           }
           clearTimer()
           turnBusy.current = false
+          releaseAudio()
           setNothingHeard(true)
           setStatus('ready')
           break
@@ -259,6 +300,7 @@ export function useVoiceLoop(opts: {
           setAnswer((a) => a + String(msg.text))
           break
         case 'audio':
+          if (!audioLease.current || negotiatedTextOnly.current) break
           setStatus('speaking')
           player.current.enqueue(b64ToPcm16(String(msg.pcm16_b64)), Number(msg.sample_rate))
           break
@@ -270,6 +312,7 @@ export function useVoiceLoop(opts: {
           }
           turnBusy.current = false
           player.current.stop()
+          releaseAudio()
           setStatus('ready')
           break
         case 'done': {
@@ -300,6 +343,7 @@ export function useVoiceLoop(opts: {
           turnBusy.current = interruptedTurn.current && !interruptAck.current
           setLatency((msg.latency as Record<string, unknown>) ?? null)
           turnDone.current = true
+          if (!turnBusy.current && player.current.pending() === 0) releaseAudio()
           setStatus(turnBusy.current ? 'stopping' : player.current.pending() > 0 ? 'speaking' : 'ready')
           break
         }
@@ -310,6 +354,8 @@ export function useVoiceLoop(opts: {
             mic.current?.stop()
             mic.current = null
             turnBusy.current = false
+            player.current.stop()
+            releaseAudio()
             setError(String(msg.message))
             setStatus('ready')
           } else {
@@ -323,7 +369,7 @@ export function useVoiceLoop(opts: {
       if (!current()) return
       fail('The connection closed. Your draft is kept; reconnect to send it.')
     }
-  }, [sessionId, skillId, lang, conversation, textOnly, makeSocket])
+  }, [sessionId, skillId, lang, conversation, textOnly, makeSocket, releaseAudio])
 
   const listen = useCallback(async () => {
     const ws = socket.current
@@ -338,6 +384,7 @@ export function useVoiceLoop(opts: {
       return
     const identity = identifiedCapture.current ? crypto.randomUUID() : null
     if (identity && callbacks.current.onRequest?.(identity) === false) return
+    claimAudio()
     requestIdentity.current = identity
     interruptedTurn.current = false
     setInterrupted(false)
@@ -368,11 +415,12 @@ export function useVoiceLoop(opts: {
     } catch (e) {
       if (socket.current === ws && micGeneration.current === generation) {
         turnBusy.current = false
+        releaseAudio()
         setError((e as Error).message)
         setStatus('ready')
       }
     }
-  }, [status])
+  }, [status, claimAudio, releaseAudio])
   const sendControl = useCallback((type: string) => {
     const ws = socket.current
     if (ws?.readyState !== 1) return false
@@ -395,10 +443,11 @@ export function useVoiceLoop(opts: {
     mic.current?.stop()
     mic.current = null
     if (!sendControl('end_of_speech')) {
+      releaseAudio()
       setError('Disconnected. Your draft is kept; reconnect to send.')
       setStatus('error')
     } else setStatus('thinking')
-  }, [sendControl])
+  }, [sendControl, releaseAudio])
   const interrupt = useCallback(() => {
     interruptedTurn.current = true
     interruptAck.current = false
@@ -407,6 +456,7 @@ export function useVoiceLoop(opts: {
     player.current.stop()
     // Playback may still be draining after a completed server turn.
     if (turnDone.current) {
+      releaseAudio()
       setStatus('ready')
       return
     }
@@ -423,7 +473,7 @@ export function useVoiceLoop(opts: {
     }
     clearTimer()
     timer.current = setTimeout(failed, 15000)
-  }, [sendControl, close])
+  }, [sendControl, close, releaseAudio])
   const sendText = useCallback(
     (text: string) => {
       const ws = socket.current
@@ -438,9 +488,11 @@ export function useVoiceLoop(opts: {
         return false
       const identity = identifiedText.current ? crypto.randomUUID() : null
       if (identity && callbacks.current.onRequest?.(identity) === false) return false
+      if (!negotiatedTextOnly.current) claimAudio()
       try {
         ws.send(JSON.stringify({ type: 'text', text, ...(identity ? { request_id: identity } : {}) }))
       } catch {
+        releaseAudio()
         setError('Your message was not sent. The draft is kept; reconnect to try again.')
         setStatus('error')
         return false
@@ -459,7 +511,7 @@ export function useVoiceLoop(opts: {
       setStatus('thinking')
       return true
     },
-    [status],
+    [status, claimAudio, releaseAudio],
   )
 
   const restoreResult = useCallback((result: Schemas['VoiceResultOut']) => {
@@ -467,11 +519,12 @@ export function useVoiceLoop(opts: {
     setTranscript(result.transcript ?? '')
     setAnswer(result.text ?? '')
     setInterrupted(result.status === 'partial' || result.interrupted === true)
-    setSaveTurn(result.status === 'completed' ? result.turn ?? null : null)
+    setSaveTurn(result.status === 'completed' ? (result.turn ?? null) : null)
     setSaveNote(null)
   }, [])
 
   return {
+    audioNotice,
     restoreResult,
     interrupted,
     saveNote,

@@ -1,6 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { Player, startMic } from './audio'
+import { claimReading, updateReading, useReadingControls } from './readingOwner'
 import { useVoiceLoop } from './useVoiceLoop'
 vi.mock('./audio', async (original) => ({
   ...(await original<typeof import('./audio')>()),
@@ -348,19 +349,213 @@ it('sends scoped interruption controls and ignores stale acknowledgements', () =
 it('records an identified turn before sending and refuses a turn when recovery storage rejects it', () => {
   const ws = new Socket()
   const admitted: string[] = []
-  const onRequest = vi.fn((id: string) => { admitted.push(id); return false })
+  const onRequest = vi.fn((id: string) => {
+    admitted.push(id)
+    return false
+  })
   const onTerminal = vi.fn()
-  const hook = renderHook(() => useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket, onRequest, onTerminal }))
-  act(() => { hook.result.current.connect(); ws.open() })
+  const hook = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket, onRequest, onTerminal }),
+  )
+  act(() => {
+    hook.result.current.connect()
+    ws.open()
+  })
   act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'ready', request_identity: 'utterance-v1' }) }))
-  act(() => { expect(hook.result.current.sendText('Keep my draft')).toBe(false) })
+  act(() => {
+    expect(hook.result.current.sendText('Keep my draft')).toBe(false)
+  })
   expect(ws.sent.map((x) => JSON.parse(x).type)).toEqual(['start'])
-  onRequest.mockImplementation((id) => { expect(ws.sent).toHaveLength(1); admitted.push(id); return true })
-  act(() => { expect(hook.result.current.sendText('Send once')).toBe(true) })
+  onRequest.mockImplementation((id) => {
+    expect(ws.sent).toHaveLength(1)
+    admitted.push(id)
+    return true
+  })
+  act(() => {
+    expect(hook.result.current.sendText('Send once')).toBe(true)
+  })
   const sent = JSON.parse(ws.sent[1])
   expect(sent.request_id).toBe(admitted.at(-1))
   act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', request_id: 'stale', turn: null }) }))
   expect(onTerminal).not.toHaveBeenCalled()
-  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', request_id: sent.request_id, turn: null }) }))
+  act(() =>
+    ws.onmessage?.({ data: JSON.stringify({ type: 'done', request_id: sent.request_id, turn: null }) }),
+  )
   expect(onTerminal).toHaveBeenCalledExactlyOnceWith(sent.request_id)
+})
+
+it('does not displace a reading on connect, empty send or text-only send', () => {
+  const stop = vi.fn()
+  const release = claimReading(stop)
+  const ws = new Socket()
+  const { result, unmount } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', textOnly: true, makeSocket: () => ws as unknown as WebSocket }),
+  )
+  act(() => {
+    result.current.connect()
+    ws.open()
+    ws.ready()
+  })
+  act(() => {
+    expect(result.current.sendText('')).toBe(false)
+    expect(result.current.sendText('hello')).toBe(true)
+  })
+  expect(stop).not.toHaveBeenCalled()
+  unmount()
+  release()
+})
+
+it('voice Send replaces reading, owns queued audio through done, and releases on drain', () => {
+  const stop = vi.fn()
+  claimReading(stop)
+  const players: Player[] = []
+  let pending = 0
+  const enqueue = vi.spyOn(Player.prototype, 'enqueue').mockImplementation(function (this: Player) {
+    players.push(this)
+    pending++
+  })
+  const count = vi.spyOn(Player.prototype, 'pending').mockImplementation(() => pending)
+  const ws = new Socket()
+  const { result, unmount } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  act(() => {
+    result.current.connect()
+    ws.open()
+    ws.ready()
+  })
+  act(() => {
+    result.current.sendText('hello')
+  })
+  expect(stop).toHaveBeenCalledWith('voice activity')
+  act(() =>
+    ws.onmessage?.({ data: JSON.stringify({ type: 'audio', pcm16_b64: 'AAAA', sample_rate: 24000 }) }),
+  )
+  act(() => ws.onmessage?.({ data: JSON.stringify({ type: 'done', turn: { text: 'Reply' } }) }))
+  expect(useReadingControls.getState().reading).toMatchObject({ kind: 'voice', status: 'speaking' })
+  act(() => {
+    pending = 0
+    players[0].onIdle?.()
+  })
+  expect(useReadingControls.getState().reading).toBeNull()
+  expect(result.current.answer).toBe('Reply')
+  unmount()
+  enqueue.mockRestore()
+  count.mockRestore()
+})
+
+it('a reading displaces pending microphone acquisition and preserves received voice text', async () => {
+  let resolve!: (mic: Awaited<ReturnType<typeof startMic>>) => void
+  vi.mocked(startMic).mockImplementation(
+    () =>
+      new Promise((r) => {
+        resolve = r
+      }),
+  )
+  const ws = new Socket()
+  const { result, unmount } = renderHook(() =>
+    useVoiceLoop({
+      sessionId: 's',
+      initialText: { transcript: 'Earlier question', answer: 'Earlier answer', interrupted: false },
+      makeSocket: () => ws as unknown as WebSocket,
+    }),
+  )
+  act(() => {
+    result.current.connect()
+    ws.open()
+    ws.ready()
+  })
+  let listening!: Promise<void>
+  act(() => {
+    listening = result.current.listen()
+  })
+  let release!: () => void
+  act(() => {
+    release = claimReading(vi.fn())
+    updateReading(release, {
+      status: 'New reading',
+      ready: true,
+      paused: false,
+      changing: false,
+      stop: vi.fn(),
+      togglePause: vi.fn(),
+    })
+  })
+  const stop = vi.fn()
+  await act(async () => {
+    resolve({ stop } as Awaited<ReturnType<typeof startMic>>)
+    await listening
+  })
+  expect(stop).toHaveBeenCalledOnce()
+  expect(ws.readyState).toBe(3)
+  expect(result.current.answer).toBe('Earlier answer')
+  expect(result.current.audioNotice).toMatch(/another reading started/)
+  const enqueue = vi.spyOn(Player.prototype, 'enqueue')
+  act(() =>
+    ws.onmessage?.({ data: JSON.stringify({ type: 'audio', pcm16_b64: 'AAAA', sample_rate: 24000 }) }),
+  )
+  expect(enqueue).not.toHaveBeenCalled()
+  unmount()
+  expect(useReadingControls.getState().reading?.status).toBe('New reading')
+  release()
+  enqueue.mockRestore()
+})
+
+it('shared stop closes microphone and socket without erasing the conversation', async () => {
+  const stop = vi.fn()
+  vi.mocked(startMic).mockResolvedValue({ stop } as Awaited<ReturnType<typeof startMic>>)
+  const ws = new Socket()
+  const { result } = renderHook(() =>
+    useVoiceLoop({
+      sessionId: 's',
+      initialText: { transcript: 'Question', answer: 'Answer', interrupted: false },
+      makeSocket: () => ws as unknown as WebSocket,
+    }),
+  )
+  act(() => {
+    result.current.connect()
+    ws.open()
+    ws.ready()
+  })
+  await act(async () => {
+    await result.current.listen()
+  })
+  expect(useReadingControls.getState().reading).toMatchObject({ kind: 'voice', status: 'listening' })
+  act(() => useReadingControls.getState().reading?.stop())
+  expect(stop).toHaveBeenCalledOnce()
+  expect(ws.readyState).toBe(3)
+  expect(result.current.answer).toBe('Answer')
+  expect(useReadingControls.getState().reading).toBeNull()
+})
+
+it('releases voice controls after a failed send or socket error', () => {
+  const ws = new Socket()
+  const { result } = renderHook(() =>
+    useVoiceLoop({ sessionId: 's', makeSocket: () => ws as unknown as WebSocket }),
+  )
+  act(() => {
+    result.current.connect()
+    ws.open()
+    ws.ready()
+  })
+  const send = vi.spyOn(ws, 'send').mockImplementation(() => {
+    throw new Error('send failed')
+  })
+  act(() => {
+    expect(result.current.sendText('hello')).toBe(false)
+  })
+  expect(useReadingControls.getState().reading).toBeNull()
+  send.mockRestore()
+  act(() => {
+    result.current.close()
+    result.current.connect()
+    ws.open()
+    ws.ready()
+  })
+  act(() => {
+    result.current.sendText('retry')
+  })
+  expect(useReadingControls.getState().reading?.kind).toBe('voice')
+  act(() => ws.onerror?.())
+  expect(useReadingControls.getState().reading).toBeNull()
 })

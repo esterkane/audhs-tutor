@@ -61,6 +61,8 @@ describe('VoicePanel', () => {
     act(() => ws.push({ type: 'ready', stt: 'fake-stt', tts: 'fake-tts', vad: 'energy', text_only: false }))
     expect(await screen.findByText('Ready')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Talk' })).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('Type instead'), { target: { value: 'what is attention' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Send' }))
     act(() => ws.push({ type: 'listening' }))
     act(() => ws.push({ type: 'transcript', text: 'what is attention', language: 'en' }))
     expect(screen.getByText(/You said:/).closest('p')).toHaveTextContent('what is attention')

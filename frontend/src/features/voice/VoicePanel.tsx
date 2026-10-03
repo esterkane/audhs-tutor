@@ -57,6 +57,7 @@ function ScopedVoicePanel({
     <Card>
       <CardTitle>{title}</CardTitle>
       <AudioControls />
+      {v.audioNotice && <p role="status">{v.audioNotice}</p>}
       {recovery.restored && (
         <p role="status" className="text-sm mt-2">
           Restored voice text from this tab; it may be incomplete. No connection, recording or playback has

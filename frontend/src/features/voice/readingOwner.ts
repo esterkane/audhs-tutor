@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 
 type ReadingControls = {
+  kind?: 'reading'
   status: string
   paused: boolean
   changing: boolean
@@ -8,11 +9,14 @@ type ReadingControls = {
   stop: () => void
   togglePause: () => void
 }
-/** Ephemeral controls, scoped to requested readings in this tab. Never persisted. */
-export const useReadingControls = create<{ reading: ReadingControls | null }>(() => ({ reading: null }))
-let active: { stop: () => void; release: () => void } | null = null
+type VoiceControls = { kind: 'voice'; status: string; stop: () => void }
+/** Ephemeral foreground audio activity in this tab. Never persisted. */
+export const useReadingControls = create<{ reading: ReadingControls | VoiceControls | null }>(() => ({
+  reading: null,
+}))
+let active: { stop: (replacement: string) => void; release: () => void } | null = null
 
-export function claimReading(stop: () => void): () => void {
+export function claimReading(stop: (replacement: string) => void, label = 'another reading'): () => void {
   const previous = active
   const owner = {
     stop,
@@ -25,10 +29,10 @@ export function claimReading(stop: () => void): () => void {
   }
   active = owner
   useReadingControls.setState({ reading: null })
-  previous?.stop()
+  previous?.stop(label)
   return owner.release
 }
 
-export function updateReading(release: () => void, controls: ReadingControls) {
+export function updateReading(release: () => void, controls: ReadingControls | VoiceControls) {
   if (active?.release === release) useReadingControls.setState({ reading: controls })
 }

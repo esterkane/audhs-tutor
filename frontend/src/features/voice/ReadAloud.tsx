@@ -78,9 +78,9 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
   })
   async function speak() {
     stop()
-    releaseReading.current = claimReading(() => {
+    releaseReading.current = claimReading((replacement) => {
       stop()
-      setStatus('Audio stopped because another reading started.')
+      setStatus(`Audio stopped because ${replacement} started.`)
     })
     const ctl = new AbortController()
     controller.current = ctl

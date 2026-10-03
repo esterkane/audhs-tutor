@@ -49,15 +49,17 @@ export function AudioControls() {
       </summary>
       {reading && (
         <div className="mt-2 border-b border-line pb-2">
-          <p>Current reading: {reading.status}</p>
+          <p>
+            {reading.kind === 'voice' ? 'Voice activity' : 'Current reading'}: {reading.status}
+          </p>
           <div className="flex flex-wrap gap-2 mt-1">
-            {reading.ready && (
+            {reading.kind !== 'voice' && reading.ready && (
               <Button size="sm" disabled={reading.changing} onClick={reading.togglePause}>
                 {reading.changing ? 'Updating reading…' : reading.paused ? 'Resume reading' : 'Pause reading'}
               </Button>
             )}
             <Button size="sm" onClick={reading.stop}>
-              Stop reading
+              {reading.kind === 'voice' ? 'Stop voice activity' : 'Stop reading'}
             </Button>
           </div>
         </div>
