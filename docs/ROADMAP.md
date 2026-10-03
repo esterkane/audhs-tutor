@@ -469,3 +469,10 @@ Disposable runtime diagnostic now exercises actual respond/persistence with host
 (11ms), revised answer regenerated; semantic review three passes and one partial literal-criterion
 pass (decimal corrected, percentage left for learner). No routing change or broad quality claim.
 See docs/slices/local-runtime-feedback-diagnostic.md; realistic/repeated quality evaluation remains open.
+
+
+## Project-study reflow — 2026-10-03
+
+Explicit single grid column fixes reproduced narrow-screen overflow with 200% text and increased
+letter spacing without clipping or shrinking content. Desktop/narrow integration journeys and
+independent reviews pass. Linux CI confirmation remains pending. See docs/slices/project-study-reflow.md.

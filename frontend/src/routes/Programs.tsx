@@ -188,7 +188,7 @@ export function Programs() {
     focusStep()
   }
   return (
-    <div className="grid gap-4 max-w-4xl mx-auto min-w-0">
+    <div className="grid grid-cols-1 gap-4 max-w-4xl mx-auto min-w-0">
       <header>
         <h1 className="text-2xl font-semibold">Project study</h1>
         <p className="text-sm text-muted mt-1">Learn the ideas, try the task, then discuss your reasoning.</p>

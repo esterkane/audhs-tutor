@@ -72,7 +72,35 @@ for (const width of [1280, 320]) {
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%'
     })
-    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+    const assertReflow = async () => {
+      const overflow = await page.evaluate(() => ({
+        width: innerWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+        elements: [...document.querySelectorAll('body *')].flatMap((node) => {
+          const rect = node.getBoundingClientRect()
+          return rect.width && (rect.right > innerWidth + 1 || rect.left < -1)
+            ? [
+                {
+                  tag: node.tagName,
+                  text: node.textContent?.slice(0, 100),
+                  class: node.className,
+                  left: rect.left,
+                  right: rect.right,
+                  width: rect.width,
+                },
+              ]
+            : []
+        }),
+      }))
+      expect(overflow.scrollWidth, JSON.stringify(overflow, null, 2)).toBeLessThanOrEqual(width + 1)
+    }
+    // Keep the original 200% text check, then exercise wider text metrics independently of
+    // the platform's system font. Neither check clips overflow or reduces text size.
+    await assertReflow()
+    await page.evaluate(() => {
+      document.body.style.letterSpacing = '0.12em'
+    })
+    await assertReflow()
     await page.addScriptTag({ content: axe.source })
     const violations = await page.evaluate(
       async () =>
