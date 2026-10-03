@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { renderApp, jsonResponse } from '../../test/utils'
@@ -111,3 +112,80 @@ it('aborts on unmount and retains the draft after late completion', async () => 
   })
   expect(JSON.parse(localStorage.getItem('answer-feedback-draft:v1:a')!).note).toBe('Keep me')
 })
+it('initial read times out, retries explicitly and ignores the late first response', async () => {
+  let finish!: (response: Response) => void
+  let signal: AbortSignal | undefined
+  const fetcher = vi.fn((_url: string, init?: RequestInit) => {
+    signal = init?.signal as AbortSignal
+    return new Promise<Response>((resolve) => {
+      finish = resolve
+    })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  vi.useFakeTimers()
+  renderApp(<AnswerFeedback answerId="a" />)
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(15001)
+  })
+  expect(signal?.aborted).toBe(true)
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  expect(screen.getByRole('button', { name: 'Retry feedback' })).toBeVisible()
+  fetcher.mockImplementationOnce(async () => jsonResponse(initial))
+  fireEvent.click(screen.getByRole('button', { name: 'Retry feedback' }))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(1)
+  })
+  expect(screen.getByLabelText('Why? (optional)')).toHaveValue('')
+  await act(async () => {
+    finish(jsonResponse({ ...initial, note: 'Late obsolete state' }))
+  })
+  expect(screen.getByLabelText('Why? (optional)')).toHaveValue('')
+})
+it('aborts the initial query when unmounted', async () => {
+  let signal: AbortSignal | undefined
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((_url: string, init?: RequestInit) => {
+      signal = init?.signal as AbortSignal
+      return new Promise<Response>(() => {})
+    }),
+  )
+  const view = renderApp(<AnswerFeedback answerId="a" />)
+  view.unmount()
+  expect(signal?.aborted).toBe(true)
+})
+it('keeps unsaved in-memory edits mounted when cached feedback refresh fails', async () => {
+  const fetcher = vi.fn(async () => jsonResponse(initial))
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(
+    <>
+      <RefreshFeedback />
+      <AnswerFeedback answerId="a" />
+    </>,
+  )
+  const input = await screen.findByLabelText('Why? (optional)')
+  const denied = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('denied')
+  })
+  fireEvent.change(input, { target: { value: 'Only in memory' } })
+  fetcher.mockImplementationOnce(() => new Promise<Response>(() => {}))
+  vi.useFakeTimers()
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh query' }))
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(15001)
+  })
+  expect(screen.getByText(/Could not refresh saved feedback/)).toBeVisible()
+  expect(screen.getByLabelText('Why? (optional)')).toBe(input)
+  expect(input).toHaveValue('Only in memory')
+  expect(input).toBeEnabled()
+  denied.mockRestore()
+})
+
+function RefreshFeedback() {
+  const client = useQueryClient()
+  return (
+    <button onClick={() => void client.invalidateQueries({ queryKey: ['answer-feedback', 'a'] })}>
+      Refresh query
+    </button>
+  )
+}

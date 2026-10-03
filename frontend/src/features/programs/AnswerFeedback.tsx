@@ -4,11 +4,38 @@ import { apiFetch, ApiError, type Schemas } from '../../lib/api'
 import { Button } from '../../components/ui/button'
 type State = Schemas['AnswerFeedbackState']
 
+async function loadFeedback(answerId: string, signal: AbortSignal): Promise<State> {
+  const controller = new AbortController()
+  let rejectAbort!: (reason: Error) => void
+  const aborted = new Promise<never>((_, reject) => {
+    rejectAbort = reject
+  })
+  const cancel = () => {
+    controller.abort()
+    rejectAbort(new DOMException('Cancelled', 'AbortError'))
+  }
+  signal.addEventListener('abort', cancel, { once: true })
+  const timer = setTimeout(() => {
+    rejectAbort(new Error('Loading feedback timed out. Retry when the local app is responding.'))
+    controller.abort()
+  }, 15000)
+  try {
+    if (signal.aborted) cancel()
+    return await Promise.race([
+      aborted,
+      apiFetch<State>(`/api/answers/${encodeURIComponent(answerId)}/feedback`, { signal: controller.signal }),
+    ])
+  } finally {
+    clearTimeout(timer)
+    signal.removeEventListener('abort', cancel)
+  }
+}
+
 export function AnswerFeedback({ answerId }: { answerId: string }) {
   const query = useQuery({
     queryKey: ['answer-feedback', answerId],
-    queryFn: ({ signal }) =>
-      apiFetch<State>(`/api/answers/${encodeURIComponent(answerId)}/feedback`, { signal }),
+    queryFn: ({ signal }) => loadFeedback(answerId, signal),
+    retry: false,
   })
   return (
     <section className="border border-line rounded p-4 grid gap-2" aria-label="Your feedback on this answer">
@@ -17,13 +44,18 @@ export function AnswerFeedback({ answerId }: { answerId: string }) {
         Your report does not verify the answer, train a model or change your learning score. Incorrect,
         outdated and hidden replies are excluded from contextual lists, but kept in history.
       </p>
-      {query.isPending ? (
-        <p role="status">Loading feedback…</p>
-      ) : query.isError ? (
+      {!query.data && query.isPending && <p role="status">Loading feedback…</p>}
+      {query.isError && (
         <p role="alert">
-          Could not load feedback. <Button onClick={() => void query.refetch()}>Retry feedback</Button>
+          {query.data
+            ? 'Could not refresh saved feedback. Your edits remain available.'
+            : 'Could not load feedback.'}{' '}
+          <Button disabled={query.isFetching} onClick={() => void query.refetch()}>
+            Retry feedback
+          </Button>
         </p>
-      ) : (
+      )}
+      {query.data && (
         <>
           {(query.data.verdict === 'incorrect' || query.data.verdict === 'outdated') && (
             <p role="alert">

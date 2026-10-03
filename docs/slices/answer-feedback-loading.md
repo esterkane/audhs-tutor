@@ -1,0 +1,7 @@
+# Recover feedback loading without losing the editor
+
+Initial saved-answer feedback loading previously depended on the browser's network timeout. A stalled request could leave Loading feedback visible indefinitely. A failed background refresh also replaced an already usable editor with the loading error, risking in-memory edits when browser storage was unavailable.
+
+The feedback query now has a bounded deadline, explicit retry and cancellation. Existing feedback data keeps its editor mounted during a failed refresh; an inline notice distinguishes the refresh failure from the last saved data. A fresh load failure does not invent an empty revision or allow an unsafe overwrite. Retry uses the existing query key and server revision; old responses cannot supersede the retry.
+
+Verification: 17 focused feedback/answer component tests pass in both checkouts, including initial timeout/retry/late response, unmount cancellation and a background timeout retaining the identical editor and in-memory draft while storage is denied. Two browser journeys at 1280px and 390px verify timeout, keyboard retry, saved-text visibility and successful subsequent save. The fixture stalls all initial requests to handle development StrictMode cancellation rather than assuming one mount request. ESLint, TypeScript and production build pass (existing bundle warnings); independent review found no blockers or majors. This change concerns feedback availability and draft preservation, not tutor quality, learning scores or source currency.
