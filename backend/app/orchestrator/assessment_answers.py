@@ -13,8 +13,7 @@ from app.schemas.grading import AttemptRequest, AttemptResult
 logger = logging.getLogger(__name__)
 
 
-async def save_feedback(
-    db: AsyncSession,
+def feedback_snapshot(
     result: AttemptResult,
     request: AttemptRequest,
     *,
@@ -22,8 +21,7 @@ async def save_feedback(
     question: dict[str, Any],
     area_id: str | None,
     course_label: str | None,
-    recovery: AnswerRecovery | None,
-) -> AttemptResult:
+) -> dict[str, Any]:
     answer_display = request.answer
     options = question.get("options")
     index = request.answer.strip()
@@ -55,6 +53,28 @@ async def save_feedback(
             "sources": [],
             "provenance_available": False,
         },
+    )
+    return snapshot
+
+
+async def save_feedback(
+    db: AsyncSession,
+    result: AttemptResult,
+    request: AttemptRequest,
+    *,
+    learner_id: str,
+    question: dict[str, Any],
+    area_id: str | None,
+    course_label: str | None,
+    recovery: AnswerRecovery | None,
+) -> AttemptResult:
+    snapshot = feedback_snapshot(
+        result,
+        request,
+        learner_id=learner_id,
+        question=question,
+        area_id=area_id,
+        course_label=course_label,
     )
     if not snapshot["text"].strip():
         return result.model_copy(

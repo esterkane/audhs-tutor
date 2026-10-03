@@ -501,3 +501,14 @@ Failure/cancellation rolls all learning writes back; helper defaults preserve ot
 backend629, final expanded failure boundaries18, lint/types and required code/pedagogy reviews passed.
 See docs/slices/atomic-grading-writes.md. Request completion after learning commit remains a recovery
 gap; review-rating idempotency and content-version guards are still open. No migration/UI change.
+
+
+## Committed assessment outcome recovery — 2026-10-03
+
+R3/F04 post-commit recovery gap is closed for newly keyed grading requests: original result plus
+versioned private history snapshot commit with learning state. Read-only lookup/replay links saved
+history or issues a new save-only receipt after restart; it never grades again. Historical outcome
+labels no longer imply current mastery/review timing. Backend636, UI16, desktop/narrow journeys2,
+lint/types/build and required reviews passed. See docs/slices/atomic-assessment-outcome.md.
+Next: review-rating ownership/idempotency. Pre-commit unresolved requests, legacy unkeyed callers
+and content-version conflicts remain limited; broad quality/material/UX queues remain open.

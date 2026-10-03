@@ -14,6 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.answer_recovery import AnswerRecovery
 from app.core.errors import AppError
+from app.db import workspace_requests
 from app.db.events import EventWriter, Verb
 from app.db.models import (
     Assessment,
@@ -29,7 +30,7 @@ from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import NoModelReady
 from app.orchestrator import prompts
-from app.orchestrator.assessment_answers import save_feedback
+from app.orchestrator.assessment_answers import feedback_snapshot, save_feedback
 from app.orchestrator.context import escape_data, learner_answer_block
 from app.schemas.common import ActivityType, Domain, ObjectType
 from app.schemas.grading import (
@@ -201,11 +202,17 @@ def rubric_checks(criteria: list[dict[str, Any]], answer: str) -> GradeResult:
 
 class Grader:
     def __init__(
-        self, db: AsyncSession, gateway: ModelGateway, recovery: AnswerRecovery | None = None
+        self,
+        db: AsyncSession,
+        gateway: ModelGateway,
+        recovery: AnswerRecovery | None = None,
+        *,
+        request_claim_id: str | None = None,
     ) -> None:
         self.db = db
         self.gateway = gateway
         self.recovery = recovery
+        self.request_claim_id = request_claim_id
 
     async def next_item(self, learner_id: str, skill_id: str) -> Assessment | None:
         """Rotate kinds (mcq → cloze → explain_back); prefer items never attempted, then the oldest attempt."""
@@ -536,6 +543,23 @@ class Grader:
                 },
                 mastery=mastery,
             )
+            if self.request_claim_id is not None:
+                durable_result = completed.model_dump(mode="json")
+                durable_result["_assessment_history_v1"] = feedback_snapshot(
+                    completed,
+                    req,
+                    learner_id=learner_id,
+                    question=question_snapshot,
+                    area_id=node.area_id if node else None,
+                    course_label=node.course if node else None,
+                )
+                await workspace_requests.complete(
+                    db,
+                    learner_id,
+                    self.request_claim_id,
+                    durable_result,
+                    commit=False,
+                )
             await db.commit()
         except BaseException:
             await db.rollback()

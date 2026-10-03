@@ -1,6 +1,6 @@
 """Durable grading claims; unresolved work is never automatically graded again."""
 
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.answer_recovery import AnswerRecovery
 from app.db import workspace_requests
-from app.db.models import WorkspaceRequest
+from app.db.models import TutorAnswer, WorkspaceRequest
 from app.kernel.session import get_owned
 from app.models_ai.gateway import ModelGateway
 from app.orchestrator.grader import Grader
@@ -39,15 +39,16 @@ async def submit(
             db, learner_id, body.session_id, request_key(identity), body.model_dump(mode="json")
         )
         if saved is not None:
-            return AttemptResult.model_validate(saved)
-    result = await Grader(db, gateway, recovery=recovery).grade(body)
-    if claim_id is not None:
-        await workspace_requests.complete(db, learner_id, claim_id, result.model_dump(mode="json"))
-    return result
+            return await recovered_result(db, learner_id, saved, recovery)
+    return await Grader(db, gateway, recovery=recovery, request_claim_id=claim_id).grade(body)
 
 
 async def lookup(
-    db: AsyncSession, learner_id: str, session_id: str, identity: str
+    db: AsyncSession,
+    learner_id: str,
+    session_id: str,
+    identity: str,
+    recovery: AnswerRecovery | None = None,
 ) -> AssessmentRequestState:
     await get_owned(db, session_id, learner_id)
     row = await db.scalar(
@@ -62,5 +63,44 @@ async def lookup(
     if row.response_json is None:
         return AssessmentRequestState(status="unresolved")
     return AssessmentRequestState(
-        status="completed", result=AttemptResult.model_validate(row.response_json)
+        status="completed",
+        result=await recovered_result(db, learner_id, row.response_json, recovery),
+    )
+
+
+async def recovered_result(
+    db: AsyncSession,
+    learner_id: str,
+    saved: dict[str, Any],
+    recovery: AnswerRecovery | None,
+) -> AttemptResult:
+    """Read history status; reissue a save-only receipt from the durable original snapshot."""
+    result = AttemptResult.model_validate(saved)
+    snapshot = saved.get("_assessment_history_v1")
+    if not isinstance(snapshot, dict):
+        return result  # Older completed claims already contain their final result.
+    answer = await db.scalar(
+        select(TutorAnswer).where(
+            TutorAnswer.learner_id == learner_id,
+            TutorAnswer.turn_id == f"assessment:{result.attempt_id}",
+        )
+    )
+    if answer is not None:
+        return result.model_copy(
+            update={"answer_id": answer.id, "save_error": None, "save_receipt": None}
+        )
+    if not str(snapshot.get("text", "")).strip():
+        return result.model_copy(
+            update={
+                "save_error": "Grading finished without feedback text to save. Your grading result remains here."
+            }
+        )
+    return result.model_copy(
+        update={
+            "save_error": (
+                "Grading finished. Saving feedback to answer history is unconfirmed. "
+                "Retry saving, not grading."
+            ),
+            "save_receipt": recovery.issue(snapshot) if recovery else None,
+        }
     )

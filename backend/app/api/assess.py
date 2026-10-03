@@ -74,6 +74,8 @@ async def attempt(
     response_model=assessment_requests.AssessmentRequestState,
 )
 async def request_result(
-    request_id: UUID, session_id: str, db: DB, learner: Learner
+    request_id: UUID, session_id: str, db: DB, learner: Learner, request: Request
 ) -> assessment_requests.AssessmentRequestState:
-    return await assessment_requests.lookup(db, learner.id, session_id, str(request_id))
+    return await assessment_requests.lookup(
+        db, learner.id, session_id, str(request_id), request.app.state.answer_recovery
+    )

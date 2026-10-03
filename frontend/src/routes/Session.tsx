@@ -1004,8 +1004,8 @@ function AssessPanel({
             ))}
           </ul>
           <p className="mt-2 text-sm text-muted">
-            Mastery now {(result.mastery * 100).toFixed(0)}% · next review{' '}
-            {new Date(result.review.due as string).toLocaleString()}
+            Mastery after this attempt {(result.mastery * 100).toFixed(0)}% · review scheduled after this
+            attempt {new Date(result.review.due as string).toLocaleString()}
           </p>
           <div className="flex gap-2 flex-wrap mt-3">
             <Button variant="primary" onClick={onFinishBlock} disabled={transitionPending}>

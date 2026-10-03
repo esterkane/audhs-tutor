@@ -69,7 +69,12 @@ async def claim(
 
 
 async def complete(
-    db: AsyncSession, learner_id: str, identity: str, response: dict[str, Any]
+    db: AsyncSession,
+    learner_id: str,
+    identity: str,
+    response: dict[str, Any],
+    *,
+    commit: bool = True,
 ) -> None:
     """Finalize only the already-owned claim; never recreate deleted requests."""
     result = await db.execute(
@@ -81,4 +86,7 @@ async def complete(
     if result.scalar_one_or_none() is None:
         await db.rollback()
         raise AppError("request_unavailable", "This request was removed before it completed.", 410)
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()

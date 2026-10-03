@@ -95,7 +95,7 @@ async def test_concurrent_request_runs_one_grading_pipeline(client, db, monkeypa
     assert await db.scalar(select(func.count()).select_from(models.CompetencyEvidence)) == 1
 
 
-async def test_interruption_after_grading_never_regrades_uncertain_claim(client, db, monkeypatch):
+async def test_interruption_after_grading_recovers_completed_claim(client, db, monkeypatch):
     body = await prepare(client, db)
     original = Grader.grade
 
@@ -108,11 +108,11 @@ async def test_interruption_after_grading_never_regrades_uncertain_claim(client,
         await client.post("/api/assess/attempt", json=body, headers=HEADERS)
     before = await counts(db)
     retry = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
-    assert retry.status_code == 409
+    assert retry.status_code == 200
     found = await client.get(
         f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
     )
-    assert found.json() == {"status": "unresolved", "result": None}
+    assert found.json() == {"status": "completed", "result": retry.json()}
     assert await counts(db) == before
     assert before[0] == 1
 
@@ -135,3 +135,84 @@ async def test_lookup_is_owned_and_session_scoped(client, db):
     errors = [await client.get(url, params={"session_id": sid}) for sid in (foreign.id, "missing")]
     assert all(r.status_code == 404 for r in errors)
     assert errors[0].json() == errors[1].json()
+
+
+@pytest.mark.parametrize("after_history", [False, True])
+async def test_committed_outcome_survives_history_interruption_and_restart(
+    client,
+    db,
+    monkeypatch,
+    session_factory,
+    after_history,
+):
+    from app.core.answer_recovery import AnswerRecovery
+    from app.orchestrator import grader
+
+    body = await prepare(client, db)
+    original = grader.save_feedback
+
+    async def interrupted(*args, **kwargs):
+        if after_history:
+            await original(*args, **kwargs)
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(grader, "save_feedback", interrupted)
+    with pytest.raises(RuntimeError, match="No response returned"):
+        await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    before = await counts(db)
+    assert before[0:2] == [1, 1]
+    assert await db.scalar(select(func.count()).select_from(models.ReviewLog)) == 1
+    url = f"/api/assess/requests/{KEY}"
+    first = (await client.get(url, params={"session_id": body["session_id"]})).json()
+    assert first["status"] == "completed"
+    assert bool(first["result"]["answer_id"]) == after_history
+    # Process-local receipt signing key changes on restart, but the original snapshot is durable.
+    client._transport.app.state.answer_recovery = AnswerRecovery()
+    found = (await client.get(url, params={"session_id": body["session_id"]})).json()
+    if not after_history:
+        expired = await client.post(
+            "/api/answers/recover-save", json={"receipt": first["result"]["save_receipt"]}
+        )
+        assert expired.status_code == 410
+        # Editing the assessment cannot alter the historical snapshot used by recovery.
+        assessment = await db.get(models.Assessment, body["assessment_id"])
+        assessment.item_json = {**assessment.item_json, "question": "Changed after grading"}
+        await db.commit()
+        saved = await client.post(
+            "/api/answers/recover-save", json={"receipt": found["result"]["save_receipt"]}
+        )
+        assert saved.status_code == 200
+        detail = (await client.get("/api/answers/" + saved.json()["answer_id"])).json()
+        assert detail["request"]["text"] != "Changed after grading"
+    result = (await client.get(url, params={"session_id": body["session_id"]})).json()["result"]
+    assert result["answer_id"] and result["save_error"] is None
+    retry = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert retry.status_code == 200 and retry.json() == result
+    after = await counts(db)
+    assert after[:4] == before[:4]
+    assert after[4] == 1
+    async with session_factory() as reopened:
+        claim = await reopened.scalar(select(models.WorkspaceRequest))
+        assert claim.response_json["attempt_id"] == result["attempt_id"]
+        assert "_assessment_history_v1" not in result
+
+
+async def test_failure_completing_claim_rolls_back_learning_state(client, db, monkeypatch):
+    from app.db import workspace_requests
+
+    body = await prepare(client, db)
+    before = await counts(db)
+    original = workspace_requests.complete
+
+    async def fail(*args, **kwargs):
+        await original(*args, **kwargs)
+        raise RuntimeError("before learning commit")
+
+    monkeypatch.setattr(workspace_requests, "complete", fail)
+    with pytest.raises(RuntimeError, match="before learning commit"):
+        await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert await counts(db) == before
+    found = await client.get(
+        f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
+    )
+    assert found.json() == {"status": "unresolved", "result": None}
