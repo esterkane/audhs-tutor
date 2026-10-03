@@ -188,3 +188,32 @@ it('ignores a pending pause completion after Stop', async () => {
   expect(screen.queryByRole('button', { name: 'Resume audio' })).not.toBeInTheDocument()
   expect(screen.getByText('Audio stopped. Listen again starts from the beginning.')).toBeVisible()
 })
+
+it('starting another reading stops the previous request and ignores its late response', async () => {
+  const responses: ((r: Response) => void)[] = []
+  const signals: AbortSignal[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn((_url: string, init: RequestInit) => {
+      signals.push(init.signal as AbortSignal)
+      return new Promise<Response>((resolve) => responses.push(resolve))
+    }),
+  )
+  renderApp(
+    <>
+      <ReadAloud text="Explanation." label="Read explanation" />
+      <ReadAloud text="Question?" label="Read question" />
+    </>,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Read explanation' }))
+  await waitFor(() => expect(responses).toHaveLength(1))
+  fireEvent.click(screen.getByRole('button', { name: 'Read question' }))
+  await waitFor(() => expect(responses).toHaveLength(2))
+  expect(signals[0].aborted).toBe(true)
+  expect(signals[1].aborted).toBe(false)
+  expect(screen.getByText('Audio stopped because another reading started.')).toBeVisible()
+  await act(async () => responses[0](jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 })))
+  expect(audio.enqueue).not.toHaveBeenCalled()
+  await act(async () => responses[1](jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 })))
+  expect(audio.enqueue).toHaveBeenCalledOnce()
+})

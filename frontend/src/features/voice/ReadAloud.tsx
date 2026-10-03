@@ -5,12 +5,14 @@ import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { apiFetch, type Schemas } from '../../lib/api'
 import { Player, b64ToPcm16 } from './audio'
+import { claimReading } from './readingOwner'
 
 export function ReadAloud(props: { text: string; label?: string }) {
   return <Speech key={props.text} {...props} />
 }
 function Speech({ text, label = 'Listen to explanation' }: { text: string; label?: string }) {
   const playback = useRef<Player | null>(null)
+  const releaseReading = useRef<(() => void) | null>(null)
   const controller = useRef<AbortController | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -22,6 +24,7 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
   const volume = useAudioSettings((s) => s.volume)
   useEffect(
     () => () => {
+      releaseReading.current?.()
       controller.current?.abort()
       if (playback.current) playback.current.onIdle = null
       playback.current?.close()
@@ -30,6 +33,8 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
     [text],
   )
   function stop() {
+    releaseReading.current?.()
+    releaseReading.current = null
     controller.current?.abort()
     if (playback.current) playback.current.onIdle = null
     playback.current?.close()
@@ -58,6 +63,10 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
   }
   async function speak() {
     stop()
+    releaseReading.current = claimReading(() => {
+      stop()
+      setStatus('Audio stopped because another reading started.')
+    })
     const ctl = new AbortController()
     controller.current = ctl
     const player = new Player()
@@ -71,6 +80,8 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
       if (synthesisFinished) {
         setBusy(false)
         setStatus('Audio finished.')
+        releaseReading.current?.()
+        releaseReading.current = null
         player.onIdle = null
         player.close()
         playback.current = null

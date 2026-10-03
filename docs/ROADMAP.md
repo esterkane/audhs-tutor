@@ -410,3 +410,11 @@ UX26-06: requested speech now offers Pause/Resume without regenerating audio. Ar
 remain queued while paused. Stop remains available during pending context operations; old operations
 cannot change replacement playback. Frontend319, focused9, browser2, lint/build and both reviews passed.
 See docs/slices/read-aloud-pause.md. Cross-surface coordination and real-device/owner gates remain open.
+
+
+## Requested-reading coordination — 2026-10-03
+
+Starting another ReadAloud stops the previous reading, including preparation or pause, with a reason.
+Stale releases cannot clear a newer owner. Full frontend322, focused11, browser audio2, lint/build and
+reviews passed. See docs/slices/read-aloud-coordination.md. Scope is one tab's requested readings;
+voice-conversation/media coordination and global transport controls remain outstanding.
