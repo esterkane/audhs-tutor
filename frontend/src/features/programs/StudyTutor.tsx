@@ -1,6 +1,7 @@
 import { useRequestRecovery, type PendingTutorRequest } from '../playground/useRequestRecovery'
 import { RequestRecoveryControls } from '../playground/RequestRecoveryControls'
 import { AnswerSaveStatus } from './AnswerSaveStatus'
+import { GroupCounts } from './GroupCounts'
 import { useQueryClient } from '@tanstack/react-query'
 import { SavedContextAnswers } from './SavedContextAnswers'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -419,6 +420,10 @@ function Conversation({
           </Button>
         </details>
       )}
+      <details className="mt-3">
+        <summary className="cursor-pointer text-sm">Compare group counts locally</summary>
+        <GroupCounts key={storageKey} storageKey={`${storageKey}:group-counts`} />
+      </details>
       <TutorResponseStatus
         status={busy ? 'streaming' : ready && replySnapshot === snapshot ? 'complete' : 'idle'}
         startedAt={startedAt}
