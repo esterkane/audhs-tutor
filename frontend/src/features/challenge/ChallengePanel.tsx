@@ -1,12 +1,12 @@
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
-import { useState } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { Choice } from '../../components/ui/choice'
 import { Textarea } from '../../components/ui/textarea'
-import type { AttemptResult } from '../../lib/api'
+import { apiFetch, type AssessmentView, type AttemptResult } from '../../lib/api'
 import {
   useChallengeModes,
   useChallengeStart,
@@ -30,6 +30,10 @@ export function ChallengePanel({
   const submit = useChallengeSubmit(sessionId)
   const [mode, setMode] = useState<ChallengeMode | null>(null)
   const [item, setItem] = useState<ChallengeView | null>(null)
+  const displayedItem = useRef(item)
+  useLayoutEffect(() => {
+    displayedItem.current = item
+  }, [item])
   const [answer, setAnswer] = useState('')
   const [confidence, setConfidence] = useState<number | null>(null)
   const [result, setResult] = useState<AttemptResult | null>(null)
@@ -51,12 +55,18 @@ export function ChallengePanel({
       const res = await submit.mutateAsync({
         session_id: sessionId,
         assessment_id: item.assessment_id,
+        content_version: item.content_version,
         answer,
         questionLabel: item.prompt,
         confidence_pre: confidence,
         latency_ms: Date.now() - startedAt,
         hint_count: 0,
       })
+      if (
+        displayedItem.current?.assessment_id !== item.assessment_id ||
+        displayedItem.current?.content_version !== item.content_version
+      )
+        return
       setResult(res)
     } catch {
       // The mutation alert offers retry; preserve the answer and confidence.
@@ -66,8 +76,34 @@ export function ChallengePanel({
   const recoveryPanel = (
     <AssessmentRecovery
       recovery={submit.recovery}
+      onRefresh={async (signal) => {
+        if (submit.recovery.pending?.body.assessment_id !== item?.assessment_id)
+          throw new Error(
+            'This saved answer belongs to another question. Return to that activity; the original answer is kept here.',
+          )
+        if (!item) throw new Error('The original challenge is unavailable.')
+        const latest = await apiFetch<AssessmentView>(
+          `/api/assess/items/${encodeURIComponent(item.assessment_id)}?session_id=${encodeURIComponent(sessionId)}`,
+          { signal },
+        )
+        if (signal.aborted) throw new Error('Refresh cancelled.')
+        if (latest.id !== item.assessment_id) throw new Error('The refreshed challenge does not match.')
+        setItem({
+          ...item,
+          prompt: latest.question,
+          criteria: latest.criteria ?? [],
+          content_version: latest.content_version,
+        })
+        setResult(null)
+      }}
       onUse={(saved, body) => {
-        if (saved.assessment_id !== item?.assessment_id || body.answer !== answer) return false
+        if (
+          saved.assessment_id !== item?.assessment_id ||
+          body.answer !== answer ||
+          !body.content_version ||
+          body.content_version !== item?.content_version
+        )
+          return false
         setResult(saved)
         return true
       }}

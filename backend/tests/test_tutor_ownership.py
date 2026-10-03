@@ -106,7 +106,12 @@ async def test_assessment_rejects_foreign_session_before_generation_or_grading(
         else:
             result = await client.post(
                 "/api/challenge/submit" if surface == "challenge_submit" else "/api/assess/attempt",
-                json={"session_id": session_id, "assessment_id": item["id"], "answer": "0"},
+                json={
+                    "content_version": item["content_version"],
+                    "session_id": session_id,
+                    "assessment_id": item["id"],
+                    "answer": "0",
+                },
             )
         assert result.status_code == 404, result.text
         errors.append(result.json())

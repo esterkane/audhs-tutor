@@ -12,7 +12,7 @@ Acquisition, stored source text, search indexing, activated lessons and executab
 
 ## Prioritized next work
 
-1. **R3 content-version and unresolved-request recovery.** Bind assessment/review submissions to the content the learner actually saw. Preserve completed original results; do not silently grade changed content or repeat an unconfirmed model call. Implement and test one path at a time.
+1. **R3 review content-version and unresolved-request recovery.** Assessment/challenge/listening/code submissions now bind to the displayed question and rubric, preserve original completed results and offer explicit refresh without losing prior answers (see `slices/assessment-content-versions.md`). Extend version protection to review ratings next; then address unresolved pre-commit recovery without repeating unconfirmed model work.
 2. **Integrated daily learning acceptance.** Choose topic → explanation → notebook practice → feedback → stop/resume, with source failure, storage denial, keyboard and narrow/zoom variants. Record owner comprehension and physical audio separately from automated tests.
 3. **Material coverage.** Resume account-backed collection after sign-in; use the private ledger for bounded recovery and verify storage/index targets before claiming availability. Never simulate attendance or submit assessments.
 4. **C01a/M00 source metadata.** Reconcile version/rights evidence with current source and backup models, then add the planned registry/check records. Manual explicit update checks precede any scheduling; local hash equality does not establish upstream currency.
@@ -26,7 +26,7 @@ Acquisition, stored source text, search indexing, activated lessons and executab
 | R0/R11 | Partial | Current evidence ledger and integrated release matrix; latest-head CI, security and cross-browser coverage |
 | R1 | Core implemented | Integrated selection, existing-session choice and review recovery record |
 | R2 | Partial | Remaining service/worker/stream/voice failure matrix |
-| R3 | Partial | Content revisions, legacy callers and unresolved pre-commit recovery |
+| R3 | Partial | Assessment content versions implemented; review content revisions and unresolved pre-commit recovery remain |
 | R4 | Partial | Consistent draft/content conflict handling across surfaces |
 | R5 | Largely unstarted | Question suspension/replacement in selectors and review queues; answer replacement is different |
 | R6 | Partial | Structured curriculum editing and conflict preservation |
@@ -47,13 +47,9 @@ Acquisition, stored source text, search indexing, activated lessons and executab
 | Avatar | Assessed, runtime absent | Optional synthetic prototype, playback-envelope adapter, sensory/privacy/licence gates |
 | Native visualizer | Separate, unimplemented | Portable-format decision and native foundation/hardware gates |
 
-## Next execution prompt: R3 content versions
+## Next execution prompt: R3 review versions
 
-Read AGENTS, architecture, data/event rules, `audhs-state-reliability`, and the R3 stage before editing. Inspect `orchestrator/assessment_requests.py`, `kernel/review_requests.py`, `db/workspace_requests.py`, schemas, frontend submission hooks and existing recovery tests. First reproduce a submission after its question or rubric changes while the learner still sees an earlier version.
-
-Define the exact content snapshot/fingerprint and its owner. Completed request replay must return the immutable original outcome without regrading; new submissions with stale or unknown version evidence need explicit compatibility handling. Do not add the current mutable content hash blindly to an idempotency payload, which could reject legitimate completed retries. Preserve unsent answers, source context and recovery state. A claim with no committed outcome is uncertain, not permission to repeat inference automatically.
-
-Implement one bounded assessment path before extending reviews. Test edited prompt, rubric and expected answer; same-key replay after content changes; new stale submissions; concurrent requests; legacy versionless callers; lost response after commit; and unconfirmed work. Use disposable data/fake providers, then independent code/pedagogy review. A schema or migration decision must include backward compatibility and backup recovery. Keep routing, live curriculum and mastery history unchanged outside the explicitly tested submission behavior.
+Read the assessment content-version slice and current review request/recovery path. Reproduce a review card changing between display/reveal and rating, then extend the same snapshot/identity principles to review ratings. Completed legacy requests must replay unchanged; do not add current mutable content to old fingerprints. Preserve original card/answer evidence and make stale refresh explicit. New versionless submissions need a defined fail-closed policy. Tests must cover changed card meaning/key, mid-request changes, lost-response replay, concurrent requests, old browser recovery and storage failure. Keep SQLite evidence atomic and model routing unchanged. Assess unresolved assessment claims separately; absence of a result is not permission to repeat inference.
 
 ## Evidence boundaries
 

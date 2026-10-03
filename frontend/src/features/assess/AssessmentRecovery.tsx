@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { ReadAloud } from '../voice/ReadAloud'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
@@ -9,17 +9,69 @@ type Recovery = ReturnType<typeof useAssessmentSubmission>['recovery']
 export function AssessmentRecovery({
   recovery,
   onUse,
+  onRefresh,
 }: {
   recovery: Recovery
+  onRefresh?: (signal: AbortSignal) => Promise<void>
   onUse?: (result: AttemptResult, body: AttemptRequest) => boolean
 }) {
   const [message, setMessage] = useState('')
   const [understood, setUnderstood] = useState(false)
   const { pending, lookup } = recovery
-  if (!pending && !recovery.error && !recovery.memoryOnly) return null
+  const [refreshing, setRefreshing] = useState(false)
+  const refresh = useRef<AbortController | null>(null)
+  const [identity, setIdentity] = useState(pending?.id)
+  if (identity !== pending?.id) {
+    setIdentity(pending?.id)
+    setMessage('')
+    setRefreshing(false)
+  }
+  useEffect(() => {
+    return () => {
+      refresh.current?.abort()
+      refresh.current = null
+    }
+  }, [pending?.id])
+
+  async function refreshQuestion() {
+    if (!onRefresh || refresh.current) return
+    const controller = new AbortController()
+    refresh.current = controller
+    setRefreshing(true)
+    setMessage('')
+    let timer: ReturnType<typeof setTimeout> | undefined
+    try {
+      await Promise.race([
+        onRefresh(controller.signal),
+        new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            controller.abort()
+            reject(new Error('The question could not be refreshed in time. Your answer is kept; try again.'))
+          }, 15000)
+        }),
+      ])
+      if (controller.signal.aborted || refresh.current !== controller) return
+      recovery.clear()
+    } catch (cause) {
+      if (refresh.current === controller) setMessage((cause as Error).message)
+    } finally {
+      clearTimeout(timer)
+      if (refresh.current === controller) {
+        refresh.current = null
+        setRefreshing(false)
+      }
+    }
+  }
+  if (!pending && !recovery.previousAnswer && !recovery.error && !recovery.memoryOnly) return null
   return (
     <section aria-label="Submission recovery" className="border border-warn rounded p-3 my-3 grid gap-2">
-      <h3 className="font-semibold">Check your earlier submission</h3>
+      <h3 className="font-semibold">
+        {recovery.stale
+          ? 'Review the updated question'
+          : pending
+            ? 'Check your earlier submission'
+            : 'Your previous answer'}
+      </h3>
       {recovery.memoryOnly && (
         <p role="status">
           Recovery is kept in this page’s memory only. Reloading or closing the page loses the request
@@ -50,11 +102,45 @@ export function AssessmentRecovery({
           )}
         </>
       )}
+      {recovery.previousAnswer && (
+        <details>
+          <summary>Previous question and answer — kept after refresh</summary>
+          <p>{recovery.previousAnswer.question}</p>
+          <pre className="whitespace-pre-wrap break-words">
+            {recovery.previousAnswer.answerDisplay ?? recovery.previousAnswer.body.answer}
+          </pre>
+          <p>
+            This is your earlier answer, not a submission to the updated question. You can copy it into your
+            current answer.
+          </p>
+          <Button variant="ghost" onClick={recovery.dismissPrevious}>
+            Dismiss previous answer
+          </Button>
+        </details>
+      )}
       {!pending ? (
-        <Button onClick={recovery.reload}>Retry reading recovery information</Button>
+        recovery.error ? (
+          <Button onClick={recovery.reload}>Retry reading recovery information</Button>
+        ) : null
       ) : (
         <>
-          <p>Your current work is kept separately. Checking retrieves a result; it does not grade again.</p>
+          {recovery.stale ? (
+            <>
+              <p role="status">
+                This question changed or its version could not be verified. This submission was not graded.
+                Your answer is kept below. Review the updated question before submitting again.
+              </p>
+              {onRefresh ? (
+                <Button disabled={refreshing || recovery.checking} onClick={() => void refreshQuestion()}>
+                  {refreshing ? 'Refreshing question…' : 'Review updated question — keep my answer'}
+                </Button>
+              ) : (
+                <p>Reopen this activity to load its current question. Keep a copy of your answer first.</p>
+              )}
+            </>
+          ) : (
+            <p>Your current work is kept separately. Checking retrieves a result; it does not grade again.</p>
+          )}
           <details>
             <summary>Original question and submitted answer</summary>
             <p>{pending.question}</p>
@@ -62,16 +148,18 @@ export function AssessmentRecovery({
               {pending.answerDisplay ?? pending.body.answer}
             </pre>
           </details>
-          <Button disabled={recovery.checking} onClick={() => void recovery.check()}>
-            {recovery.checking ? 'Checking…' : 'Check saved result'}
-          </Button>
+          {!recovery.stale && (
+            <Button disabled={recovery.checking} onClick={() => void recovery.check()}>
+              {recovery.checking ? 'Checking…' : 'Check saved result'}
+            </Button>
+          )}
           {lookup?.status === 'unresolved' && (
             <p role="status">
               This submission is still running or was interrupted. It may already have changed your learning
               record. Keep checking or stop this session; do not submit it again as a new attempt.
             </p>
           )}
-          {lookup?.status === 'not_found' && (
+          {!recovery.stale && lookup?.status === 'not_found' && (
             <>
               <p>
                 No request was found. You can send the original answer using the same recovery identity.

@@ -12,7 +12,7 @@ from app.db.events import EventWriter, Verb
 from app.kernel import listening
 from app.kernel import session as ksession
 from app.orchestrator import listening as gen
-from app.orchestrator.grader import view
+from app.orchestrator.grader import versioned_view
 from app.schemas.common import ActivityType, Domain, ObjectType
 from app.schemas.listening import (
     LessonList,
@@ -143,7 +143,7 @@ async def task(
     )
     meta = (a.item_json or {}).get("listening") or {}
     return TaskOut(
-        item=view(a),
+        item=await versioned_view(db, a),
         origin=str(meta.get("origin") or "deterministic"),
         validated=bool(meta.get("validated")),
         problems=problems,
@@ -161,7 +161,7 @@ async def validate(assessment_id: str, body: ValidateIn, db: DB, learner: Learne
     a = await listening.validate_task(db, assessment_id, validated=body.validated)
     meta = (a.item_json or {}).get("listening") or {}
     return TaskOut(
-        item=view(a),
+        item=await versioned_view(db, a),
         origin=str(meta.get("origin") or "deterministic"),
         validated=bool(meta.get("validated")),
         problems=[],

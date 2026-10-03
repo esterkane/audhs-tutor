@@ -5,9 +5,11 @@ from fastapi import APIRouter, Header, Query, Request
 from pydantic import BaseModel
 
 from app.api.deps import DB, Gateway, Learner
+from app.core.errors import AppError
+from app.db.models import Assessment
 from app.kernel import session as ksession
 from app.orchestrator import assessment_requests
-from app.orchestrator.grader import Grader, view
+from app.orchestrator.grader import Grader, versioned_view
 from app.schemas.grading import AssessmentView, AttemptRequest, AttemptResult
 
 router = APIRouter(prefix="/assess", tags=["assess"])
@@ -42,7 +44,7 @@ async def next_item(
             raise KeyError("no skills")
         skill_id = nxt.id
     a = await Grader(db, gateway).next_item(learner.id, skill_id)
-    return NextItem(item=view(a) if a else None, skill_id=skill_id)
+    return NextItem(item=await versioned_view(db, a) if a else None, skill_id=skill_id)
 
 
 @router.post(
@@ -79,3 +81,14 @@ async def request_result(
     return await assessment_requests.lookup(
         db, learner.id, session_id, str(request_id), request.app.state.answer_recovery
     )
+
+
+@router.get("/items/{assessment_id}", response_model=AssessmentView)
+async def refresh_item(
+    assessment_id: str, session_id: str, db: DB, learner: Learner
+) -> AssessmentView:
+    await ksession.get_owned(db, session_id, learner.id)
+    item = await db.get(Assessment, assessment_id)
+    if item is None:
+        raise AppError("not_found", "This assessment is unavailable.", 404)
+    return await versioned_view(db, item)

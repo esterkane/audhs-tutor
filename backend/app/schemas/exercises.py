@@ -17,6 +17,8 @@ class SourceOut(BaseModel):
 
 
 class ExerciseView(BaseModel):
+    content_version: str | None = None
+    check_content_version: str | None = None
     assessment_id: str
     skill_id: str
     exercise_id: str

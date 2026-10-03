@@ -146,6 +146,7 @@ async def test_exercise_journey(client: AsyncClient, db: AsyncSession) -> None:
     r = await client.post(
         "/api/assess/attempt",
         json={
+            "content_version": ex["content_version"],
             "session_id": session_id,
             "assessment_id": ex["assessment_id"],
             "answer": _answer(names[:2], {names[2]: "output shape must be (n, d_v)"}),
@@ -193,6 +194,7 @@ async def test_exercise_journey(client: AsyncClient, db: AsyncSession) -> None:
     r = await client.post(
         "/api/assess/attempt",
         json={
+            "content_version": ex["content_version"],
             "session_id": session_id,
             "assessment_id": ex["assessment_id"],
             "answer": "x" * 20_001,
@@ -204,6 +206,7 @@ async def test_exercise_journey(client: AsyncClient, db: AsyncSession) -> None:
     r = await client.post(
         "/api/assess/attempt",
         json={
+            "content_version": ex["content_version"],
             "session_id": session_id,
             "assessment_id": ex["assessment_id"],
             "answer": "print('hi')",

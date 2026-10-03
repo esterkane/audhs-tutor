@@ -26,6 +26,7 @@ class GradeResult(BaseModel):
 
 
 class AssessmentView(BaseModel):
+    content_version: str | None = None
     id: str
     skill_id: str
     kind: str
@@ -36,6 +37,7 @@ class AssessmentView(BaseModel):
 
 
 class AttemptRequest(BaseModel):
+    content_version: str | None = Field(default=None, max_length=100)
     session_id: str
     assessment_id: str
     answer: str = Field(max_length=20_000)  # code submissions carry code + check results

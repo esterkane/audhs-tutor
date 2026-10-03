@@ -64,6 +64,7 @@ async def test_optional_confidence_and_stop_without_recap(
     response = await client.post(
         "/api/assess/attempt",
         json={
+            "content_version": item["content_version"],
             "session_id": s["id"],
             "assessment_id": a.id,
             "answer": str(a.item_json["answer"]),

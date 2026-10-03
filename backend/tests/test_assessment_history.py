@@ -26,7 +26,13 @@ async def prepare(client, db):
 async def test_saved_grading_history_is_snapshot_not_new_evidence(client, db, fake_local, endpoint):
     session, item = await prepare(client, db)
     response = await client.post(
-        endpoint, json={"session_id": session["id"], "assessment_id": item["id"], "answer": "0"}
+        endpoint,
+        json={
+            "content_version": item["content_version"],
+            "session_id": session["id"],
+            "assessment_id": item["id"],
+            "answer": "0",
+        },
     )
     assert response.status_code == 200, response.text
     result = response.json()
@@ -72,7 +78,12 @@ async def test_retry_feedback_save_never_regrades(client, db, monkeypatch, commi
     monkeypatch.setattr(assessment_answers, "save_completed", fail)
     response = await client.post(
         "/api/assess/attempt",
-        json={"session_id": session["id"], "assessment_id": item["id"], "answer": "0"},
+        json={
+            "content_version": item["content_version"],
+            "session_id": session["id"],
+            "assessment_id": item["id"],
+            "answer": "0",
+        },
     )
     assert response.status_code == 200, response.text
     result = response.json()
@@ -97,7 +108,12 @@ async def test_empty_feedback_keeps_grading_result_without_history_error(client,
     from app.schemas.grading import AttemptRequest, AttemptResult
 
     session, item = await prepare(client, db)
-    request = AttemptRequest(session_id=session["id"], assessment_id=item["id"], answer="0")
+    request = AttemptRequest(
+        session_id=session["id"],
+        assessment_id=item["id"],
+        content_version=item["content_version"],
+        answer="0",
+    )
     response = await client.post("/api/assess/attempt", json=request.model_dump())
     result = AttemptResult.model_validate(response.json()).model_copy(
         update={"feedback": "", "next_step": "", "answer_id": None}

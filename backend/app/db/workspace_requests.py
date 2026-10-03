@@ -2,6 +2,7 @@
 
 import hashlib
 import json
+from collections.abc import Awaitable, Callable
 from typing import Any
 
 from sqlalchemy import select, update
@@ -15,7 +16,44 @@ from app.kernel.session import get_owned
 
 
 async def claim(
-    db: AsyncSession, learner_id: str, session_id: str, key: str, payload: dict[str, Any]
+    db: AsyncSession,
+    learner_id: str,
+    session_id: str,
+    key: str,
+    payload: dict[str, Any],
+    *,
+    validate_new: Callable[[], Awaitable[None]] | None = None,
+) -> tuple[str, dict[str, Any] | None]:
+    # Only content-validated assessment claims need the extra serialized decision.
+    # Close the caller's read transaction before acquiring SQLite's write lock:
+    # upgrading an older WAL snapshot can fail immediately with SQLITE_BUSY.
+    try:
+        if validate_new is not None:
+            await db.commit()
+            await db.execute(
+                update(WorkspaceRequest)
+                .where(
+                    WorkspaceRequest.learner_id == learner_id,
+                    WorkspaceRequest.request_key == key,
+                )
+                .values(fingerprint=WorkspaceRequest.fingerprint)
+            )
+        return await _claim_locked(
+            db, learner_id, session_id, key, payload, validate_new=validate_new
+        )
+    except BaseException:
+        await db.rollback()
+        raise
+
+
+async def _claim_locked(
+    db: AsyncSession,
+    learner_id: str,
+    session_id: str,
+    key: str,
+    payload: dict[str, Any],
+    *,
+    validate_new: Callable[[], Awaitable[None]] | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
     """Return a new claim id or the original reply; an uncertain claim never runs twice."""
     session = await get_owned(db, session_id, learner_id)
@@ -30,6 +68,8 @@ async def claim(
     if existing is None:
         if session.ended_at:
             raise AppError("not_found", "Start or resume a session to use the tutor.", 404)
+        if validate_new is not None:
+            await validate_new()
         identity = new_id()
         inserted = await db.scalar(
             insert(WorkspaceRequest)

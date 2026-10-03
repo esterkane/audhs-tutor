@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useMutation } from '@tanstack/react-query'
-import { apiFetch, type AttemptRequest, type AttemptResult, type Schemas } from '../../lib/api'
+import { ApiError, apiFetch, type AttemptRequest, type AttemptResult, type Schemas } from '../../lib/api'
 
 export const assessmentRecoveryKey = (session: string) => `assessment-request:v1:${session}`
 type Submission = AttemptRequest & { questionLabel?: string; answerLabel?: string }
@@ -11,6 +11,25 @@ export type PendingAssessment = {
   body: AttemptRequest
   question: string
   answerDisplay?: string
+  rejectedContent?: boolean
+}
+const previousMemory = new Map<string, PendingAssessment | null>()
+const previousKey = (session: string) => `assessment-previous-answer:v1:${session}`
+function loadPrevious(session: string): PendingAssessment | null {
+  if (previousMemory.has(session)) return previousMemory.get(session) ?? null
+  try {
+    const raw = sessionStorage.getItem(previousKey(session))
+    if (!raw) return null
+    const value = JSON.parse(raw) as PendingAssessment
+    return value.version === 1 &&
+      value.body?.session_id === session &&
+      typeof value.question === 'string' &&
+      typeof value.body.answer === 'string'
+      ? value
+      : null
+  } catch {
+    return null
+  }
 }
 const pageMemory = new Map<string, PendingAssessment | null>()
 function write(session: string, value: PendingAssessment) {
@@ -54,6 +73,7 @@ function load(session: string) {
 /** One unresolved grading intent per session/tab. Never regenerate from a lookup or timeout. */
 export function useAssessmentSubmission(sessionId: string, endpoint = '/api/assess/attempt') {
   const key = assessmentRecoveryKey(sessionId)
+  const [previousAnswer, setPreviousAnswer] = useState(() => loadPrevious(sessionId))
   const [scope, setScope] = useState(key)
   const [stored, setStored] = useState(() => load(sessionId))
   const [lookup, setLookup] = useState<Schemas['AssessmentRequestState'] | null>(null)
@@ -63,6 +83,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
   const operation = useRef<AbortController | null>(null)
   if (scope !== key) {
     setScope(key)
+    setPreviousAnswer(loadPrevious(sessionId))
     setStored(load(sessionId))
     setLookup(null)
     setError('')
@@ -102,6 +123,29 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
     }
   }
 
+  // Only these explicit pre-claim errors prove that no grading was started.
+  function recordContentRejection(cause: unknown, pending: PendingAssessment) {
+    if (
+      activeKey.current !== key ||
+      !(cause instanceof ApiError) ||
+      cause.status !== 409 ||
+      !['assessment_content_changed', 'assessment_content_required'].includes(cause.code)
+    )
+      return
+    try {
+      if (read(sessionId)?.id !== pending.id) return
+      const rejected = { ...pending, rejectedContent: true }
+      write(sessionId, rejected)
+      setStored({ pending: rejected, error: '' })
+      setLookup(null)
+    } catch {
+      // Keep the original identity if persistence fails; ordinary lookup stays safe.
+      setError(
+        'The question changed, but its recovery record could not be updated. Keep your answer and check the saved result.',
+      )
+    }
+  }
+
   function clear() {
     if (operation.current) return
     try {
@@ -111,6 +155,13 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
         setLookup(null)
         setError('Recovery information changed in this session. Check the currently saved submission.')
         return
+      }
+      if (current?.rejectedContent) {
+        // Preserve original wording/answer after refresh, including across reloads.
+        // Failure to save the archive leaves the original recovery record intact.
+        if (pageMemory.has(sessionId)) previousMemory.set(sessionId, current)
+        else sessionStorage.setItem(previousKey(sessionId), JSON.stringify(current))
+        setPreviousAnswer(current)
       }
       remove(sessionId)
       setStored({ pending: null, error: '' })
@@ -150,14 +201,20 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
       setStored({ pending, error: '' })
       setLookup(null)
       setError('')
-      const result = await bounded((signal) =>
-        apiFetch<AttemptResult>(endpoint, {
-          method: 'POST',
-          body: JSON.stringify(pending.body),
-          headers: { 'Idempotency-Key': pending.id },
-          signal,
-        }),
-      )
+      let result: AttemptResult
+      try {
+        result = await bounded((signal) =>
+          apiFetch<AttemptResult>(endpoint, {
+            method: 'POST',
+            body: JSON.stringify(pending.body),
+            headers: { 'Idempotency-Key': pending.id },
+            signal,
+          }),
+        )
+      } catch (cause) {
+        recordContentRejection(cause, pending)
+        throw cause
+      }
       if (result.assessment_id !== pending.body.assessment_id)
         throw new Error('The returned feedback belongs to another assessment.')
       // Successful delivery may clear the intent. On storage failure retain it for explicit lookup.
@@ -196,7 +253,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
 
   async function resend() {
     const pending = stored.pending
-    if (!pending || lookup?.status !== 'not_found' || operation.current) return
+    if (!pending || pending.rejectedContent || lookup?.status !== 'not_found' || operation.current) return
     setChecking(true)
     setError('')
     try {
@@ -214,6 +271,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
         throw new Error('Mismatched assessment result.')
       setLookup({ status: 'completed', result })
     } catch (cause) {
+      recordContentRejection(cause, pending)
       if (activeKey.current === key) setError((cause as Error).message)
     } finally {
       if (activeKey.current === key) setChecking(false)
@@ -224,6 +282,17 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
     ...mutation,
     recovery: {
       pending: stored.pending,
+      previousAnswer,
+      dismissPrevious: () => {
+        try {
+          if (pageMemory.has(sessionId)) previousMemory.set(sessionId, null)
+          else sessionStorage.removeItem(previousKey(sessionId))
+          setPreviousAnswer(null)
+        } catch {
+          setError('The previous answer could not be dismissed from storage.')
+        }
+      },
+      stale: stored.pending?.rejectedContent === true,
       error: error || stored.error,
       lookup,
       checking: checking || mutation.isPending,

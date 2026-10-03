@@ -251,6 +251,7 @@ async def test_challenge_round_trip(
         await client.post(
             "/api/challenge/submit",
             json={
+                "content_version": ch["content_version"],
                 "session_id": s["id"],
                 "assessment_id": ch["assessment_id"],
                 "answer": "the error is dividing by d_k; it should be sqrt(d_k)",

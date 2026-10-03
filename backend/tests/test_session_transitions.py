@@ -271,6 +271,7 @@ async def test_review_confidence_is_recorded_per_card(
         r = await client.post(
             "/api/assess/attempt",
             json={
+                "content_version": nxt["item"]["content_version"],
                 "session_id": sid,
                 "assessment_id": nxt["item"]["id"],
                 "answer": "x",
@@ -411,6 +412,7 @@ async def test_new_material_needs_recall_evidence_even_when_called_finished(
     r = await client.post(
         "/api/assess/attempt",
         json={
+            "content_version": nxt["item"]["content_version"],
             "session_id": sid,
             "assessment_id": nxt["item"]["id"],
             "answer": "wrong on purpose",

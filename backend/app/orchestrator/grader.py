@@ -19,7 +19,6 @@ from app.db.events import EventWriter, Verb
 from app.db.models import (
     Assessment,
     AssessmentAttempt,
-    AssessmentRubric,
     MemoryState,
     Session,
     SkillNode,
@@ -29,7 +28,7 @@ from app.kernel import session as ksession
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import NoModelReady
-from app.orchestrator import prompts
+from app.orchestrator import assessment_content, prompts
 from app.orchestrator.assessment_answers import feedback_snapshot, save_feedback
 from app.orchestrator.context import escape_data, learner_answer_block
 from app.schemas.common import ActivityType, Domain, ObjectType
@@ -83,6 +82,12 @@ def view(a: Assessment) -> AssessmentView:
         question=item["prompt"],
         criteria=list(item.get("criteria", [])) if a.kind.startswith("challenge_") else None,
     )
+
+
+async def versioned_view(db: AsyncSession, a: Assessment) -> AssessmentView:
+    content = await assessment_content.snapshot(db, a.id)
+    result = view(assessment_content.assessment(content))
+    return result.model_copy(update={"content_version": assessment_content.token(content)})
 
 
 def _norm(s: str) -> str:
@@ -318,7 +323,20 @@ class Grader:
         a = await db.get(Assessment, req.assessment_id)
         if a is None:
             raise KeyError("assessment not found")
+        content = await assessment_content.snapshot(db, a.id)
+        if req.content_version is not None:
+            if assessment_content.token(content) != req.content_version:
+                raise AppError(
+                    "assessment_content_changed_during_grading",
+                    "Content changed after submission. No learning evidence was saved; "
+                    "this request remains unresolved.",
+                    409,
+                )
+        a = assessment_content.assessment(content)
         question_snapshot = view(a).model_dump()
+        question_snapshot["content_version"] = assessment_content.token(content)
+        # Close all reads before inference; gateway accounting owns its short transactions.
+        await db.commit()
         item = a.item_json
         correct: bool | None
         rubric_version = None
@@ -335,9 +353,8 @@ class Grader:
             result, correct = grade_cloze(item, req.answer)
             level = "deterministic"
         else:
-            rubric_row = await db.get(AssessmentRubric, a.rubric_id) if a.rubric_id else None
-            criteria: list[dict[str, Any]] = rubric_row.criteria_json if rubric_row else []
-            rubric_version = rubric_row.version if rubric_row else None
+            criteria: list[dict[str, Any]] = content["criteria_json"] or []
+            rubric_version = content["version"]
             result = rubric_checks(criteria, req.answer)
             level = "rubric"
             is_challenge = a.kind.startswith("challenge_")
@@ -407,6 +424,7 @@ class Grader:
         # Model/gateway accounting has finished before the first learning write. This
         # short transaction owns attempt, events, evidence, FSRS, checkpoint and mastery.
         try:
+            await assessment_content.guard_write(db, a.id, content)
             db.add(attempt)
             await db.flush()
 

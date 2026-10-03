@@ -1,10 +1,11 @@
+import { apiFetch, type AssessmentView } from '../../lib/api'
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { AudioControls } from '../audio/AudioControls'
 import { claimReading, updateReading } from '../voice/readingOwner'
 import { bindMedia } from '../audio/settings'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { Choice } from '../../components/ui/choice'
@@ -382,6 +383,7 @@ function ClipCard({
       )}
       {task.data && (
         <TaskCard
+          key={task.data.item.id}
           sessionId={sessionId}
           task={task.data}
           onGraded={setGraded}
@@ -438,7 +440,14 @@ function TaskCard({
     setValidated(true)
   }
   const [startedAt] = useState(() => Date.now())
-  const item = task.item
+  const [refreshedItem, setRefreshedItem] = useState<AssessmentView | null>(null)
+  const [initialItem] = useState(task.item)
+  const item = refreshedItem ?? initialItem
+  const [previousChoice, setPreviousChoice] = useState('')
+  const displayedItem = useRef(item)
+  useLayoutEffect(() => {
+    displayedItem.current = item
+  }, [item])
 
   async function submit() {
     if (!answer) return
@@ -446,6 +455,7 @@ function TaskCard({
       const res = await attempt.mutateAsync({
         session_id: sessionId,
         assessment_id: item.id,
+        content_version: item.content_version,
         answer,
         questionLabel: item.question,
         answerLabel: item.options?.[Number(answer)] ?? answer,
@@ -453,6 +463,11 @@ function TaskCard({
         latency_ms: Date.now() - startedAt,
         hint_count: hintCount,
       })
+      if (
+        displayedItem.current.id !== item.id ||
+        displayedItem.current.content_version !== item.content_version
+      )
+        return
       setResult(res)
       onGraded(res)
     } catch {
@@ -464,13 +479,44 @@ function TaskCard({
     <div className="mt-4 border-t border-line pt-3">
       <AssessmentRecovery
         recovery={attempt.recovery}
+        onRefresh={async (signal) => {
+          if (attempt.recovery.pending?.body.assessment_id !== item?.id)
+            throw new Error(
+              'This saved answer belongs to another question. Return to that activity; the original answer is kept here.',
+            )
+          const latest = await apiFetch<AssessmentView>(
+            `/api/assess/items/${encodeURIComponent(item.id)}?session_id=${encodeURIComponent(sessionId)}`,
+            { signal },
+          )
+          if (signal.aborted) throw new Error('Refresh cancelled.')
+          if (latest.id !== item.id) throw new Error('The refreshed question does not match.')
+          if (item.options) {
+            setPreviousChoice(item.options[Number(answer)] ?? answer)
+            setAnswer('')
+          }
+          setRefreshedItem(latest)
+          setResult(null)
+          setValidated(false)
+          setReported(false)
+        }}
         onUse={(saved, body) => {
-          if (saved.assessment_id !== item.id || body.answer !== answer) return false
+          if (
+            saved.assessment_id !== item.id ||
+            body.answer !== answer ||
+            !body.content_version ||
+            body.content_version !== item.content_version
+          )
+            return false
           setResult(saved)
           onGraded(saved)
           return true
         }}
       />
+      {previousChoice && (
+        <p role="status">
+          Previous choice: {previousChoice}. The question changed; choose an option again.
+        </p>
+      )}
       <p className="text-sm font-medium">{item.question}</p>
       <p className="text-xs text-muted mt-1">
         {task.origin === 'model'

@@ -85,6 +85,7 @@ async def test_full_learning_loop_over_http(seeded_client: AsyncClient, db: Asyn
     r = await c.post(
         "/api/assess/attempt",
         json={
+            "content_version": item["content_version"],
             "session_id": sid,
             "assessment_id": item["id"],
             "answer": str(a.item_json["answer"]),
@@ -179,6 +180,9 @@ async def test_unavailable_semantic_grade_is_retryable(
     response = await c.post(
         "/api/assess/attempt",
         json={
+            "content_version": (
+                await c.get("/api/assess/items/" + item.id, params={"session_id": session["id"]})
+            ).json()["content_version"],
             "session_id": session["id"],
             "assessment_id": item.id,
             "answer": "A substantive explanation requiring semantic review.",

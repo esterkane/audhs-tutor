@@ -21,7 +21,12 @@ async def prepare(client, db):
     item = (await client.get("/api/assess/next", params={"session_id": session["id"]})).json()[
         "item"
     ]
-    return {"session_id": session["id"], "assessment_id": item["id"], "answer": "0"}
+    return {
+        "session_id": session["id"],
+        "assessment_id": item["id"],
+        "answer": "0",
+        "content_version": item["content_version"],
+    }
 
 
 async def counts(db):

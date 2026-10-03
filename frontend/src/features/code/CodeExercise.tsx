@@ -1,11 +1,11 @@
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { useAttempt } from '../assess/api'
-import type { AttemptResult } from '../../lib/api'
+import { apiFetch, type AttemptResult } from '../../lib/api'
 import { useExercise, useHint, useSolution, type ExerciseView } from './api'
 import { createPyodideRunner, type RunResult, type Runner } from './runner'
 import { CodeEditor } from './CodeEditor'
@@ -37,7 +37,15 @@ export function CodeExercise({
       </p>
     )
   if (!exercise.data) return null
-  return <Editor sessionId={sessionId} exercise={exercise.data} runner={runner} onGraded={onGraded} />
+  return (
+    <Editor
+      key={exercise.data.assessment_id}
+      sessionId={sessionId}
+      exercise={exercise.data}
+      runner={runner}
+      onGraded={onGraded}
+    />
+  )
 }
 
 function draftKey(id: string) {
@@ -46,7 +54,7 @@ function draftKey(id: string) {
 
 function Editor({
   sessionId,
-  exercise,
+  exercise: originalExercise,
   runner: injected,
   onGraded,
 }: {
@@ -55,6 +63,13 @@ function Editor({
   runner?: Runner
   onGraded?: (r: AttemptResult) => void
 }) {
+  const [refreshedExercise, setRefreshedExercise] = useState<ExerciseView | null>(null)
+  const [initialExercise] = useState(originalExercise)
+  const exercise = refreshedExercise ?? initialExercise
+  const displayedExercise = useRef(exercise)
+  useLayoutEffect(() => {
+    displayedExercise.current = exercise
+  }, [exercise])
   const runner = useMemo(() => injected ?? createPyodideRunner(), [injected])
   // the draft is a per-viewer convenience: read once at mount, saved on every change
   const [initialDraft] = useState<string | null>(() => {
@@ -79,6 +94,7 @@ function Editor({
   const solve = useSolution()
   const attempt = useAttempt(sessionId)
   const startedAt = useRef(0)
+  const runGeneration = useRef(0)
   // per-viewer preference: the plain <textarea> instead of CodeMirror (also the mount fallback)
   const [plainEditor, setPlainEditor] = useState<boolean>(() => readPlainPreference())
   const [editorNote, setEditorNote] = useState<string | null>(null)
@@ -96,6 +112,7 @@ function Editor({
   useEffect(() => () => runner.dispose(), [runner])
 
   async function run() {
+    const generation = ++runGeneration.current
     if (startedAt.current === 0) startedAt.current = Date.now()
     setRunning(true)
     setGraded(null)
@@ -104,6 +121,7 @@ function Editor({
       if (runtime !== 'ready') {
         setRuntime('loading')
         await runner.load(exercise.packages)
+        if (generation !== runGeneration.current) return
         setRuntime('ready')
       }
       const result = await runner.run(code, exercise.checks, {
@@ -111,13 +129,15 @@ function Editor({
         maxOutputChars: exercise.max_output_chars,
         packages: exercise.packages,
       })
+      if (generation !== runGeneration.current) return
       setLast({ code, result })
       if (result.timedOut) setRuntime('idle') // the worker was stopped; the next Run reloads it
     } catch (e) {
+      if (generation !== runGeneration.current) return
       setRuntime('failed')
       setRuntimeError((e as Error).message)
     } finally {
-      setRunning(false)
+      if (generation === runGeneration.current) setRunning(false)
     }
   }
 
@@ -151,6 +171,7 @@ function Editor({
       .mutateAsync({
         session_id: sessionId,
         assessment_id: exercise.assessment_id,
+        content_version: exercise.content_version,
         questionLabel: exercise.prompt,
         answerLabel: `${code}\n\nCheck results:\n${JSON.stringify(last.result.results, null, 2)}`,
         answer: codeSubmission!,
@@ -159,7 +180,7 @@ function Editor({
         hint_count: hints.length,
       })
       .catch(() => null)
-    if (!res) return
+    if (!res || displayedExercise.current.content_version !== exercise.content_version) return
     setGraded(res)
     onGraded?.(res)
   }
@@ -170,6 +191,7 @@ function Editor({
       .mutateAsync({
         session_id: sessionId,
         assessment_id: exercise.check_assessment_id,
+        content_version: exercise.check_content_version,
         questionLabel: exercise.check_question ?? 'Explain your code',
         answer: checkAnswer,
         confidence_pre: checkConfidence,
@@ -177,7 +199,7 @@ function Editor({
         hint_count: 0,
       })
       .catch(() => null)
-    if (!res) return
+    if (!res || displayedExercise.current.check_content_version !== exercise.check_content_version) return
     setCheckResult(res)
   }
 
@@ -188,13 +210,50 @@ function Editor({
     <Card>
       <AssessmentRecovery
         recovery={attempt.recovery}
+        onRefresh={async (signal) => {
+          if (
+            ![exercise.assessment_id, exercise.check_assessment_id].includes(
+              attempt.recovery.pending?.body.assessment_id ?? '',
+            )
+          )
+            throw new Error(
+              'This saved answer belongs to another exercise. Return to that activity; the original answer is kept here.',
+            )
+          const latest = await apiFetch<ExerciseView>(
+            `/api/exercises/for-skill/${encodeURIComponent(exercise.skill_id)}`,
+            { signal },
+          )
+          if (signal.aborted) throw new Error('Refresh cancelled.')
+          if (latest.assessment_id !== exercise.assessment_id)
+            throw new Error('The original exercise is no longer available. Your code is kept.')
+          runGeneration.current++
+          runner.dispose()
+          setRuntime('idle')
+          setRunning(false)
+          setRefreshedExercise(latest)
+          setLast(null)
+          setGraded(null)
+          setCheckResult(null)
+          setHints([])
+          setSolution(null)
+        }}
         onUse={(saved, body) => {
-          if (saved.assessment_id === exercise.assessment_id && body.answer === codeSubmission) {
+          if (
+            saved.assessment_id === exercise.assessment_id &&
+            body.answer === codeSubmission &&
+            body.content_version != null &&
+            body.content_version === exercise.content_version
+          ) {
             setGraded(saved)
             onGraded?.(saved)
             return true
           }
-          if (saved.assessment_id === exercise.check_assessment_id && body.answer === checkAnswer) {
+          if (
+            saved.assessment_id === exercise.check_assessment_id &&
+            body.answer === checkAnswer &&
+            body.content_version != null &&
+            body.content_version === exercise.check_content_version
+          ) {
             setCheckResult(saved)
             return true
           }

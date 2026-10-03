@@ -11,6 +11,7 @@ from app.db import workspace_requests
 from app.db.models import TutorAnswer, WorkspaceRequest
 from app.kernel.session import get_owned
 from app.models_ai.gateway import ModelGateway
+from app.orchestrator import assessment_content
 from app.orchestrator.grader import Grader
 from app.schemas.grading import AttemptRequest, AttemptResult
 
@@ -33,13 +34,22 @@ async def submit(
     identity: str | None,
 ) -> AttemptResult:
     await get_owned(db, body.session_id, learner_id)
+
+    async def validate() -> None:
+        await assessment_content.validate_new(db, body.assessment_id, body.content_version)
+
+    payload = body.model_dump(mode="json")
+    if body.content_version is None:
+        payload.pop("content_version", None)  # Preserve pre-version completed claim fingerprints.
     claim_id = None
     if identity is not None:
         claim_id, saved = await workspace_requests.claim(
-            db, learner_id, body.session_id, request_key(identity), body.model_dump(mode="json")
+            db, learner_id, body.session_id, request_key(identity), payload, validate_new=validate
         )
         if saved is not None:
             return await recovered_result(db, learner_id, saved, recovery)
+    else:
+        await validate()
     return await Grader(db, gateway, recovery=recovery, request_claim_id=claim_id).grade(body)
 
 

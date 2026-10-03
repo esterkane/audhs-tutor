@@ -11,6 +11,7 @@ from app.db.events import EventWriter, Verb
 from app.db.models import Assessment, AssessmentAttempt
 from app.kernel import exercises, skill_graph
 from app.kernel import session as ksession
+from app.orchestrator import assessment_content
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.exercises import (
     CheckOut,
@@ -26,6 +27,13 @@ router = APIRouter(prefix="/exercises", tags=["exercises"])
 
 
 async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
+    content = await assessment_content.snapshot(db, a.id)
+    a = assessment_content.assessment(content)
+    check_content = (
+        await assessment_content.snapshot(db, str(a.item_json["check_assessment_id"]))
+        if a.item_json.get("check_assessment_id")
+        else None
+    )
     item = exercises.public_item(a.item_json)
     node = await skill_graph.get_node(db, a.skill_id)
     node_slug = node.slug
@@ -41,6 +49,8 @@ async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
     )
     return ExerciseView(
         assessment_id=a.id,
+        content_version=assessment_content.token(content),
+        check_content_version=assessment_content.token(check_content) if check_content else None,
         skill_id=a.skill_id,
         exercise_id=str(item["exercise_id"]),
         title=str(item["title"]),
@@ -56,7 +66,9 @@ async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
         hints_available=len(a.item_json.get("hints") or []),
         attempts=attempts,
         check_assessment_id=a.item_json.get("check_assessment_id"),
-        check_question=str(a.item_json.get("check_question") or ""),
+        check_question=str(check_content["item_json"].get("prompt") or "")
+        if check_content
+        else str(a.item_json.get("check_question") or ""),
         policy=exercises.policy_for(ex) if (ex := exercises.for_slug(node_slug)) else {},
     )
 

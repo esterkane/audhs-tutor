@@ -14,7 +14,7 @@ from app.kernel import session as ksession
 from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
-from app.orchestrator import prompts, tools
+from app.orchestrator import assessment_content, prompts, tools
 from app.orchestrator.context import build_packet, data_block, render_messages
 from app.schemas.challenge import CHALLENGE_MODES, ChallengeItem, ChallengeView
 
@@ -68,9 +68,13 @@ async def start(
         raise ValueError(f"unknown challenge mode {mode!r}")
     prior = await existing(db, session.learner_id, node, mode)
     if prior is not None:
-        item = prior.item_json
+        content = await assessment_content.snapshot(db, prior.id)
+        item = content["item_json"]
         return ChallengeView(
             assessment_id=prior.id,
+            content_version=assessment_content.token(
+                await assessment_content.snapshot(db, prior.id)
+            ),
             skill_id=node.id,
             mode=mode,
             prompt=item["prompt"],
@@ -132,12 +136,14 @@ async def start(
     )
     db.add(a)
     await db.commit()
+    content = await assessment_content.snapshot(db, a.id)
     return ChallengeView(
         assessment_id=a.id,
+        content_version=assessment_content.token(content),
         skill_id=node.id,
         mode=mode,
-        prompt=gen.prompt,
-        criteria=gen.criteria,
+        prompt=content["item_json"]["prompt"],
+        criteria=content["item_json"].get("criteria", []),
         cached=False,
         sources=sources,
     )

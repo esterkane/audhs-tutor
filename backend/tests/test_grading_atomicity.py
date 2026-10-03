@@ -65,6 +65,7 @@ async def test_learning_writes_rollback_together(
         first = await client.post(
             "/api/assess/attempt",
             json={
+                "content_version": item["content_version"],
                 "session_id": started["id"],
                 "assessment_id": item["id"],
                 "answer": "0",
@@ -110,6 +111,7 @@ async def test_learning_writes_rollback_together(
         await client.post(
             "/api/assess/attempt",
             json={
+                "content_version": item["content_version"],
                 "session_id": started["id"],
                 "assessment_id": item["id"],
                 "answer": "0",

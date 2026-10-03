@@ -1,12 +1,15 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { CodeExercise } from './CodeExercise'
 import { PLAIN_EDITOR_KEY } from './editorPreference'
+import { assessmentRecoveryKey } from '../assess/useAssessmentSubmission'
 import type { Runner, RunResult } from './runner'
 
 const exercise = {
+  content_version: 'code-version',
+  check_content_version: 'check-version',
   assessment_id: 'a1',
   skill_id: 'k1',
   exercise_id: 'attn-scaled-softmax',
@@ -167,7 +170,12 @@ describe('CodeExercise', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Submit this attempt' }))
     expect(await screen.findByText('All 3 checks passed.')).toBeInTheDocument()
     const attempt = posts.find((p) => p.url.endsWith('/api/assess/attempt'))!.body as Record<string, unknown>
-    expect(attempt).toMatchObject({ assessment_id: 'a1', confidence_pre: 4, hint_count: 0 })
+    expect(attempt).toMatchObject({
+      assessment_id: 'a1',
+      content_version: 'code-version',
+      confidence_pre: 4,
+      hint_count: 0,
+    })
     expect(JSON.parse(attempt.answer as string)).toMatchObject({
       code: 'x = 1',
       results: ok.results,
@@ -181,7 +189,10 @@ describe('CodeExercise', () => {
     fireEvent.click(screen.getAllByRole('button', { name: '3' }).at(-1)!)
     fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
     await waitFor(() => expect(posts.filter((p) => p.url.endsWith('/api/assess/attempt'))).toHaveLength(2))
-    expect((posts[posts.length - 1].body as Record<string, unknown>).assessment_id).toBe('q1')
+    expect(posts[posts.length - 1].body).toMatchObject({
+      assessment_id: 'q1',
+      content_version: 'check-version',
+    })
     // hints: one per click; the full solution only appears after the ladder is used up
     expect(screen.queryByRole('button', { name: 'Show the full solution' })).not.toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Hint 1 of 3' }))
@@ -232,6 +243,62 @@ describe('CodeExercise', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: 'Reset to starter code' }))
     expect((screen.getByLabelText(/Your code/) as HTMLTextAreaElement).value).toBe(exercise.starter_code)
+  })
+
+  it('disposes an old run on refresh and ignores its late result during a new run', async () => {
+    const sessionId = 'refresh-run-session'
+    sessionStorage.setItem(
+      assessmentRecoveryKey(sessionId),
+      JSON.stringify({
+        version: 1,
+        id: '42b914ea-2562-4e73-821e-f25431583c87',
+        endpoint: '/api/assess/attempt',
+        rejectedContent: true,
+        body: { session_id: sessionId, assessment_id: 'a1', content_version: 'old', answer: 'saved work' },
+        question: exercise.prompt,
+      }),
+    )
+    const updated = {
+      ...exercise,
+      content_version: 'updated-version',
+      prompt: 'Updated exercise prompt.',
+      checks: [{ name: 'new_check', criterion: 'new rule', code: 'assert 2' }],
+    }
+    let reads = 0
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse(++reads === 1 ? exercise : updated)),
+    )
+    const resolutions: Array<(result: RunResult) => void> = []
+    const runMock = vi.fn<Runner['run']>(() => new Promise<RunResult>((resolve) => resolutions.push(resolve)))
+    const runner: Runner = { load: vi.fn(async () => {}), run: runMock, dispose: vi.fn() }
+    const { unmount } = renderApp(<CodeExercise sessionId={sessionId} skillId="k1" runner={runner} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Run' }))
+    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole('button', { name: 'Review updated question — keep my answer' }))
+    expect(await screen.findByText(updated.prompt)).toBeInTheDocument()
+    expect(runner.dispose).toHaveBeenCalledTimes(1)
+    expect(screen.getByLabelText(/Your code/)).toHaveValue(exercise.starter_code)
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    await waitFor(() => expect(runMock).toHaveBeenCalledTimes(2))
+    expect(runner.load).toHaveBeenCalledTimes(2)
+    expect(runMock.mock.calls[1]).toEqual([exercise.starter_code, updated.checks, expect.any(Object)])
+    await act(async () => resolutions[0]({ ...ok, stdout: 'OBSOLETE RESULT', timedOut: true }))
+    expect(screen.queryByText('OBSOLETE RESULT')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit this attempt' })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Running/ })).toBeDisabled()
+    await act(async () =>
+      resolutions[1]({
+        ...ok,
+        stdout: 'CURRENT RESULT',
+        results: [{ name: 'new_check', passed: true, detail: 'passed' }],
+      }),
+    )
+    expect(await screen.findByText('CURRENT RESULT')).toBeInTheDocument()
+    expect(screen.queryByText('OBSOLETE RESULT')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit this attempt' })).toBeEnabled()
+    unmount()
+    sessionStorage.removeItem(assessmentRecoveryKey(sessionId))
   })
 
   it('explains a runtime that cannot load, accessibly, and still shows the exercise', async () => {

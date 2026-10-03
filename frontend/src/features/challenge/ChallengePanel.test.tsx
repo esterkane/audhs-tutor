@@ -12,6 +12,7 @@ const modes = {
   ],
 }
 const item = {
+  content_version: 'old-version',
   assessment_id: 'a1',
   skill_id: 'k1',
   mode: 'planted_error',
@@ -68,7 +69,7 @@ describe('ChallengePanel', () => {
     const body = JSON.parse(
       (fetchMock.mock.calls.at(-1) as unknown as [string, RequestInit])[1].body as string,
     )
-    expect(body).toMatchObject({ assessment_id: 'a1', confidence_pre: 4 })
+    expect(body).toMatchObject({ assessment_id: 'a1', confidence_pre: 4, content_version: 'old-version' })
     fireEvent.click(screen.getByRole('button', { name: /continue/i }))
     expect(onDone).toHaveBeenCalled()
   })
@@ -111,4 +112,64 @@ it('shows grading failure, retains the answer and confidence, and retries succes
   expect(await screen.findByRole('status')).toHaveTextContent('Found it.')
   expect(bodies[1]).toMatchObject({ answer: bodies[0].answer, confidence_pre: 4 })
   vi.unstubAllGlobals()
+})
+
+it('refreshes the same stale challenge without regeneration and preserves the written answer', async () => {
+  const writes: Record<string, unknown>[] = []
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/modes')) return jsonResponse(modes)
+    if (url.endsWith('/start')) return jsonResponse(item)
+    if (url.includes('/api/assess/items/a1?'))
+      return jsonResponse({
+        id: 'a1',
+        skill_id: 'k1',
+        kind: 'challenge_planted_error',
+        question: 'Updated challenge',
+        criteria: ['New criterion'],
+        content_version: 'new-version',
+      })
+    if (url.endsWith('/submit')) {
+      writes.push(JSON.parse(String(init?.body)))
+      return writes.length === 1
+        ? jsonResponse({ error: { code: 'assessment_content_changed', message: 'Changed' } }, 409)
+        : jsonResponse(result)
+    }
+    return jsonResponse(null)
+  })
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<ChallengePanel sessionId="s1" skillId="k1" onDone={() => {}} />)
+  fireEvent.click(await screen.findByRole('button', { name: /planted error/i }))
+  fireEvent.change(await screen.findByLabelText(/your answer/i), { target: { value: 'Keep my reasoning' } })
+  fireEvent.click(screen.getByRole('button', { name: /submit/i }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Review updated question — keep my answer' }))
+  expect(await screen.findByText('Updated challenge')).toBeVisible()
+  expect(screen.getByLabelText(/your answer/i)).toHaveValue('Keep my reasoning')
+  expect(fetcher.mock.calls.filter(([url]) => url.endsWith('/start'))).toHaveLength(1)
+  fireEvent.click(screen.getByRole('button', { name: /submit/i }))
+  await waitFor(() => expect(writes).toHaveLength(2))
+  expect(writes[1]).toMatchObject({ answer: 'Keep my reasoning', content_version: 'new-version' })
+})
+
+it('cannot clear a rejected answer from another activity by refreshing the current challenge', async () => {
+  const pending = {
+    version: 1,
+    id: crypto.randomUUID(),
+    endpoint: '/api/assess/attempt',
+    body: { session_id: 's1', assessment_id: 'different-item', answer: 'Keep original', hint_count: 0 },
+    question: 'Earlier question',
+    rejectedContent: true,
+  }
+  sessionStorage.setItem('assessment-request:v1:s1', JSON.stringify(pending))
+  const fetcher = vi.fn(async (url: string) =>
+    url.endsWith('/modes') ? jsonResponse(modes) : jsonResponse(item),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<ChallengePanel sessionId="s1" skillId="k1" onDone={vi.fn()} />)
+  fireEvent.click(await screen.findByRole('button', { name: /planted error/i }))
+  await screen.findByText(/Spot the error/)
+  fireEvent.click(screen.getByRole('button', { name: 'Review updated question — keep my answer' }))
+  expect(await screen.findByText(/This saved answer belongs to another question/)).toBeInTheDocument()
+  expect(JSON.parse(sessionStorage.getItem('assessment-request:v1:s1')!).id).toBe(pending.id)
+  expect(screen.getByText('Keep original')).toBeInTheDocument()
+  expect(fetcher.mock.calls.some(([url]) => url.includes('/api/assess/items/'))).toBe(false)
 })

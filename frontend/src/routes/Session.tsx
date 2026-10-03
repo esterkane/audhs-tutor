@@ -12,7 +12,7 @@ import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { OptionalConfidence } from '../components/OptionalConfidence'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
-import { useEffect, useState } from 'react'
+import { useLayoutEffect, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
@@ -48,7 +48,7 @@ import { useTutorStream } from '../features/tutor/useTutorStream'
 import { TutorSources } from '../features/tutor/TutorSources'
 import { withheldCount } from '../features/tutor/sourceFlags'
 import { useReport } from '../features/curriculum/api'
-import type { AttemptResult, SessionOut } from '../lib/api'
+import { apiFetch, type AssessmentView, type AttemptResult, type SessionOut } from '../lib/api'
 import { SOFT_TIMER_MIN, useMode } from '../stores/mode'
 
 type Phase = 'teach' | 'assess' | 'challenge' | 'practice'
@@ -855,7 +855,15 @@ function AssessPanel({
   const [answer, setAnswer] = useState('')
   const [result, setResult] = useState<AttemptResult | null>(null)
   const [startedAt, setStartedAt] = useState(() => Date.now())
-  const item = next.data?.item
+  const [refreshedItem, setRefreshedItem] = useState<AssessmentView | null>(null)
+  const [frozenItem, setFrozenItem] = useState<{ round: number; item: AssessmentView } | null>(null)
+  if (next.data?.item && frozenItem?.round !== round) setFrozenItem({ round, item: next.data.item })
+  const item = refreshedItem ?? (frozenItem?.round === round ? frozenItem.item : next.data?.item)
+  const [previousChoice, setPreviousChoice] = useState('')
+  const displayedItem = useRef(item)
+  useLayoutEffect(() => {
+    displayedItem.current = item
+  }, [item])
   const answerKey = `audhs-answer:${sessionId}:${item?.id ?? ''}`
   const savedAnswer = item ? readDraft(answerKey).answer : ''
   const currentAnswer = answer || savedAnswer
@@ -866,6 +874,7 @@ function AssessPanel({
       const res = await attempt.mutateAsync({
         session_id: sessionId,
         assessment_id: item.id,
+        content_version: item.content_version,
         answer: currentAnswer,
         questionLabel: item.question,
         answerLabel: item.options?.[Number(currentAnswer)] ?? currentAnswer,
@@ -873,6 +882,11 @@ function AssessPanel({
         latency_ms: Date.now() - startedAt,
         hint_count: hintCount + readDraft(answerKey).hints,
       })
+      if (
+        displayedItem.current?.id !== item.id ||
+        displayedItem.current?.content_version !== item.content_version
+      )
+        return
       clearDraft(answerKey)
       setResult(res)
       onGraded(res)
@@ -882,6 +896,8 @@ function AssessPanel({
   }
 
   function nextItem() {
+    setRefreshedItem(null)
+    setPreviousChoice('')
     setStartedAt(Date.now())
     setResult(null)
     setAnswer('')
@@ -892,8 +908,34 @@ function AssessPanel({
   const recoveryPanel = (
     <AssessmentRecovery
       recovery={attempt.recovery}
+      onRefresh={async (signal) => {
+        if (attempt.recovery.pending?.body.assessment_id !== item?.id)
+          throw new Error(
+            'This saved answer belongs to another question. Return to that activity; the original answer is kept here.',
+          )
+        if (!item) throw new Error('The original question is unavailable.')
+        const latest = await apiFetch<AssessmentView>(
+          `/api/assess/items/${encodeURIComponent(item.id)}?session_id=${encodeURIComponent(sessionId)}`,
+          { signal },
+        )
+        if (signal.aborted) throw new Error('Refresh cancelled.')
+        if (latest.id !== item.id) throw new Error('The refreshed question does not match.')
+        if (item.options) {
+          setPreviousChoice(item.options[Number(currentAnswer)] ?? currentAnswer)
+          setAnswer('')
+          clearDraft(answerKey)
+        }
+        setRefreshedItem(latest)
+        setResult(null)
+      }}
       onUse={(saved, body) => {
-        if (saved.assessment_id !== item?.id || body.answer !== currentAnswer) return false
+        if (
+          saved.assessment_id !== item?.id ||
+          body.answer !== currentAnswer ||
+          !body.content_version ||
+          body.content_version !== item?.content_version
+        )
+          return false
         setResult(saved)
         onGraded(saved)
         clearDraft(answerKey)
@@ -939,6 +981,11 @@ function AssessPanel({
             question={item.question}
             onHint={() => writeDraft(answerKey, { hints: readDraft(answerKey).hints + 1 })}
           />
+        )}
+        {previousChoice && (
+          <p role="status">
+            Previous choice: {previousChoice}. The question changed; choose an option again.
+          </p>
         )}
         <QuestionFeedback key={`feedback:${item.id}`} target={{ assessment_id: item.id }} />
         {!result && (

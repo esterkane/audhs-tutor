@@ -157,6 +157,7 @@ async def test_lesson_sections_fallback_and_resume(
     r = await client.post(
         "/api/assess/attempt",
         json={
+            "content_version": task["item"]["content_version"],
             "session_id": session_id,
             "assessment_id": task["item"]["id"],
             "answer": "wrong",
@@ -167,6 +168,7 @@ async def test_lesson_sections_fallback_and_resume(
     r = await client.post(
         "/api/assess/attempt",
         json={
+            "content_version": task["item"]["content_version"],
             "session_id": session_id,
             "assessment_id": task["item"]["id"],
             "answer": answer,
@@ -381,6 +383,7 @@ async def test_mcq_round_trip_validation_and_report(
     r = await client.post(
         "/api/assess/attempt",
         json={
+            "content_version": task["item"]["content_version"],
             "session_id": session_id,
             "assessment_id": task["item"]["id"],
             "answer": "0",

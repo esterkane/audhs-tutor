@@ -21,6 +21,7 @@ class ChallengeStart(BaseModel):
 
 
 class ChallengeView(BaseModel):
+    content_version: str | None = None
     assessment_id: str
     skill_id: str
     mode: ChallengeMode

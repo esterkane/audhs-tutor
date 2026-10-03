@@ -245,3 +245,66 @@ it('does not deliver an old result after switching sessions', async () => {
   expect(hook.result.current.recovery.pending).toBeNull()
   expect(sessionStorage.getItem(assessmentRecoveryKey('session'))).not.toBeNull()
 })
+
+for (const code of ['assessment_content_changed', 'assessment_content_required']) {
+  it(`preserves a definite ${code} rejection across remount and never resends it`, async () => {
+    const fetcher = vi.fn(async () => jsonResponse({ error: { code, message: 'Review the question' } }, 409))
+    vi.stubGlobal('fetch', fetcher)
+    const hook = setup()
+    await act(async () => {
+      await expect(
+        hook.result.current.mutateAsync({ ...body, questionLabel: 'Old question' }),
+      ).rejects.toThrow('Review the question')
+    })
+    expect(hook.result.current.recovery.stale).toBe(true)
+    hook.unmount()
+    const resumed = setup()
+    expect(resumed.result.current.recovery.stale).toBe(true)
+    expect(resumed.result.current.recovery.pending?.body).toEqual(body)
+    expect(resumed.result.current.recovery.pending?.question).toBe('Old question')
+    await act(async () => {
+      await resumed.result.current.recovery.resend()
+    })
+    expect(fetcher).toHaveBeenCalledTimes(1)
+    act(() => resumed.result.current.recovery.clear())
+    expect(resumed.result.current.recovery.pending).toBeNull()
+    resumed.unmount()
+    const refreshed = setup()
+    expect(refreshed.result.current.recovery.previousAnswer?.body).toEqual(body)
+    expect(refreshed.result.current.recovery.previousAnswer?.question).toBe('Old question')
+  })
+}
+
+for (const code of ['request_conflict', 'assessment_content_changed_during_grading']) {
+  it(`does not mistake ${code} for safe pre-claim rejection`, async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () => jsonResponse({ error: { code, message: 'Unconfirmed' } }, 409)),
+    )
+    const hook = setup()
+    await act(async () => {
+      await expect(hook.result.current.mutateAsync(body)).rejects.toThrow()
+    })
+    expect(hook.result.current.recovery.stale).toBe(false)
+    expect(hook.result.current.recovery.pending?.body).toEqual(body)
+  })
+}
+
+it('does not discard rejected work if archiving after refresh fails', () => {
+  const pending = {
+    version: 1,
+    id: crypto.randomUUID(),
+    endpoint: '/api/assess/attempt',
+    body,
+    question: 'Old question',
+    rejectedContent: true,
+  }
+  sessionStorage.setItem(assessmentRecoveryKey('session'), JSON.stringify(pending))
+  const hook = setup()
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('Full')
+  })
+  act(() => hook.result.current.recovery.clear())
+  expect(hook.result.current.recovery.pending?.id).toBe(pending.id)
+  expect(JSON.parse(sessionStorage.getItem(assessmentRecoveryKey('session'))!).body).toEqual(body)
+})
