@@ -397,129 +397,150 @@ class Grader:
             latency_ms=req.latency_ms,
             hint_count=req.hint_count,
         )
-        db.add(attempt)
-        await db.commit()
+        # Model/gateway accounting has finished before the first learning write. This
+        # short transaction owns attempt, events, evidence, FSRS, checkpoint and mastery.
+        try:
+            db.add(attempt)
+            await db.flush()
 
-        node = await db.get(SkillNode, a.skill_id)
-        domain = (
-            Domain(node.domain)
-            if node is not None and node.domain in {d.value for d in Domain}
-            else Domain.AI_ML
-        )
-        events = EventWriter(
-            db, ksession.event_context(session, domain=domain, activity=ActivityType.RETRIEVAL)
-        )
-        await events.emit(
-            Verb.ATTEMPTED,
-            ObjectType.ITEM,
-            a.id,
-            result={
-                "correct": correct,
-                "confidence_pre": req.confidence_pre,
-                "latency_ms": req.latency_ms,
-                "hint_count": req.hint_count,
-                "answer_len": len(req.answer),
-            },
-            context={"item_type": a.kind, "node_id": a.skill_id},
-        )
-        await events.emit(
-            Verb.GRADED,
-            ObjectType.ITEM,
-            a.id,
-            result={
-                "criterion_results": [
-                    {"criterion": c.criterion, "passed": c.passed} for c in result.criterion_results
-                ],
-                "score": score,
-                "misconception": result.misconception,
-                "confidence": result.confidence,
-                "feedback_len": len(result.feedback),
-            },
-            context={
-                "grader_level": route_label,
-                "prompt_version": prompts.GRADER_VERSION if level in ("local", "hosted") else None,
-                "rubric_version": rubric_version,
-            },
-        )
-        dimension = DIMENSION_FOR_KIND.get(a.kind, "recall")
-        await competency.record_evidence(
-            db,
-            learner_id,
-            a.skill_id,
-            dimension,
-            score,
-            grader_level=level,
-            confidence=result.confidence,
-            attempt_id=attempt.id,
-            events=events,
-        )
-        review_item, _ = await memory.ensure_item(
-            db, learner_id, a.skill_id, a.kind, {"ref": a.id, "assessment_id": a.id}, now=now
-        )
-        rating = memory.rating_from_score(score, hint_count=req.hint_count)
-        if (
-            level == "rubric"
-            or (listening_meta is not None and listening_meta.get("validated") is False)
-            or (a.kind == "code" and result.confidence < 1.0)
-        ):  # keyword overlap / unchecked item / code after the solution: never the longest interval
-            rating = min(rating, memory.Rating.Good)
-        await memory.review(
-            db,
-            learner_id,
-            review_item.id,
-            int(rating),
-            now=now,
-            latency_ms=req.latency_ms,
-            events=events,
-        )
-        if a.kind.startswith("challenge_") or a.kind == "code":
-            # every challenge / code exercise ends with a delayed item (ADR-0003): ≥ +2 days
-            from datetime import timedelta
+            node = await db.get(SkillNode, a.skill_id)
+            domain = (
+                Domain(node.domain)
+                if node is not None and node.domain in {d.value for d in Domain}
+                else Domain.AI_ML
+            )
+            events = EventWriter(
+                db, ksession.event_context(session, domain=domain, activity=ActivityType.RETRIEVAL)
+            )
+            await events.emit(
+                Verb.ATTEMPTED,
+                ObjectType.ITEM,
+                a.id,
+                result={
+                    "correct": correct,
+                    "confidence_pre": req.confidence_pre,
+                    "latency_ms": req.latency_ms,
+                    "hint_count": req.hint_count,
+                    "answer_len": len(req.answer),
+                },
+                context={"item_type": a.kind, "node_id": a.skill_id},
+                commit=False,
+            )
+            await events.emit(
+                Verb.GRADED,
+                ObjectType.ITEM,
+                a.id,
+                result={
+                    "criterion_results": [
+                        {"criterion": c.criterion, "passed": c.passed}
+                        for c in result.criterion_results
+                    ],
+                    "score": score,
+                    "misconception": result.misconception,
+                    "confidence": result.confidence,
+                    "feedback_len": len(result.feedback),
+                },
+                context={
+                    "grader_level": route_label,
+                    "prompt_version": prompts.GRADER_VERSION
+                    if level in ("local", "hosted")
+                    else None,
+                    "rubric_version": rubric_version,
+                },
+                commit=False,
+            )
+            dimension = DIMENSION_FOR_KIND.get(a.kind, "recall")
+            await competency.record_evidence(
+                db,
+                learner_id,
+                a.skill_id,
+                dimension,
+                score,
+                grader_level=level,
+                confidence=result.confidence,
+                attempt_id=attempt.id,
+                events=events,
+                commit=False,
+            )
+            review_item, _ = await memory.ensure_item(
+                db,
+                learner_id,
+                a.skill_id,
+                a.kind,
+                {"ref": a.id, "assessment_id": a.id},
+                now=now,
+                commit=False,
+            )
+            rating = memory.rating_from_score(score, hint_count=req.hint_count)
+            if (
+                level == "rubric"
+                or (listening_meta is not None and listening_meta.get("validated") is False)
+                or (a.kind == "code" and result.confidence < 1.0)
+            ):  # keyword overlap / unchecked item / code after the solution: never the longest interval
+                rating = min(rating, memory.Rating.Good)
+            await memory.review(
+                db,
+                learner_id,
+                review_item.id,
+                int(rating),
+                now=now,
+                latency_ms=req.latency_ms,
+                events=events,
+                commit=False,
+            )
+            if a.kind.startswith("challenge_") or a.kind == "code":
+                # every challenge / code exercise ends with a delayed item (ADR-0003): ≥ +2 days
+                from datetime import timedelta
 
-            ms_row = (
+                ms_row = (
+                    await db.execute(
+                        select(MemoryState).where(MemoryState.review_item_id == review_item.id)
+                    )
+                ).scalar_one()
+                delayed = (now + timedelta(days=2)).isoformat(timespec="milliseconds")
+                if ms_row.due < delayed:
+                    ms_row.due = delayed
+                    await db.flush()
+            cp = await ksession.load_checkpoint(db, session.id) or {}
+            if cp.get("skill_id") == a.skill_id and cp.get("hint_level"):
+                await ksession.save_checkpoint(db, session, {**cp, "hint_level": 0}, commit=False)
+            await competency.refresh(db, learner_id, a.skill_id, now=now, commit=False)
+            mastery = await competency.mastery(db, learner_id, a.skill_id)
+            ms = (
                 await db.execute(
                     select(MemoryState).where(MemoryState.review_item_id == review_item.id)
                 )
             ).scalar_one()
-            delayed = (now + timedelta(days=2)).isoformat(timespec="milliseconds")
-            if ms_row.due < delayed:
-                ms_row.due = delayed
-                await db.commit()
-        cp = await ksession.load_checkpoint(db, session.id) or {}
-        if cp.get("skill_id") == a.skill_id and cp.get("hint_level"):
-            await ksession.save_checkpoint(db, session, {**cp, "hint_level": 0})
-        await competency.refresh(db, learner_id, a.skill_id, now=now)
-        mastery = await competency.mastery(db, learner_id, a.skill_id)
-        ms = (
-            await db.execute(
-                select(MemoryState).where(MemoryState.review_item_id == review_item.id)
+            calibration = _calibration(req.confidence_pre, score)
+            completed = AttemptResult(
+                attempt_id=attempt.id,
+                assessment_id=a.id,
+                skill_id=a.skill_id,
+                kind=a.kind,
+                dimension=dimension,
+                correct=correct,
+                score=score,
+                criterion_results=result.criterion_results,
+                misconception=result.misconception,
+                confidence=result.confidence,
+                grader_level=route_label,
+                feedback=result.feedback,
+                next_step=result.next_step,
+                confidence_pre=req.confidence_pre,
+                calibration=calibration,
+                review={
+                    "item_id": review_item.id,
+                    "due": ms.due,
+                    "state": ms.state,
+                    "stability": ms.stability,
+                },
+                mastery=mastery,
             )
-        ).scalar_one()
-        calibration = _calibration(req.confidence_pre, score)
-        completed = AttemptResult(
-            attempt_id=attempt.id,
-            assessment_id=a.id,
-            skill_id=a.skill_id,
-            kind=a.kind,
-            dimension=dimension,
-            correct=correct,
-            score=score,
-            criterion_results=result.criterion_results,
-            misconception=result.misconception,
-            confidence=result.confidence,
-            grader_level=route_label,
-            feedback=result.feedback,
-            next_step=result.next_step,
-            confidence_pre=req.confidence_pre,
-            calibration=calibration,
-            review={
-                "item_id": review_item.id,
-                "due": ms.due,
-                "state": ms.state,
-                "stability": ms.stability,
-            },
-            mastery=mastery,
-        )
+            await db.commit()
+        except BaseException:
+            await db.rollback()
+            raise
+        # Searchable feedback is recoverable independently after learning state is durable.
         return await save_feedback(
             db,
             completed,

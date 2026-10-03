@@ -66,3 +66,13 @@ reloading loses memory-only recovery. No automatic grading retry or mastery from
 Verified: frontend293, desktop/narrow lost-response journeys2, types/build/lint and required code and
 pedagogy reviews. See docs/slices/assessment-browser-recovery.md. Next: atomic whole-grade writes and
 review-rating idempotency; content-version conflict protection and broader quality/UX gates remain open.
+
+
+## Atomic grading writes — 2026-10-03
+
+R3/F04 partial-save defect reproduced before the fix. Shared Grader now owns one learning transaction
+for attempts, events, evidence, FSRS, competency and hint checkpoint reset, after model accounting.
+Failure/cancellation rolls all learning writes back; helper defaults preserve other callers. Full
+backend629, final expanded failure boundaries18, lint/types and required code/pedagogy reviews passed.
+See docs/slices/atomic-grading-writes.md. Request completion after learning commit remains a recovery
+gap; review-rating idempotency and content-version guards are still open. No migration/UI change.

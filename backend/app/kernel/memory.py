@@ -156,6 +156,7 @@ async def review(
     events: EventWriter | None = None,
     confidence_pre: int | None = None,
     hint_count: int = 0,
+    commit: bool = True,
 ) -> ReviewLog:
     now = now or datetime.now(UTC)
     ms = (
@@ -194,7 +195,10 @@ async def review(
         fsrs_log_json=fsrs_log.to_dict(),
     )
     db.add(log)
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     if events is not None:
         await events.emit(
             Verb.REVIEWED,
@@ -211,6 +215,7 @@ async def review(
                 "hint_count": hint_count,
             },
             context={"item_type": item.item_type, "node_id": item.skill_id},
+            commit=commit,
         )
     return log
 

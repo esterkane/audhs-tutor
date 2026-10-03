@@ -56,7 +56,7 @@ Implement R2 from docs/AUDIT-IMPLEMENTATION-PLAN.md in /Users/learner/projects/a
 ```
 
 ### R3 — Persist learning evidence atomically and idempotently
-Depends on: R1. Audit coverage: F04. Status: **partial — assessment/challenge request claims and browser recovery implemented; atomic grading writes and review-rating idempotency remain open**.
+Depends on: R1. Audit coverage: F04. Status: **partial — assessment/challenge request claims, browser recovery and atomic learning writes implemented; post-commit request recovery and review-rating idempotency remain open**.
 
 **Work:** Define client submission IDs and learner-scoped uniqueness for attempts and review ratings. Bind IDs to an immutable payload digest; conflicting reuse returns a conflict. Grade outside long database transactions, then persist attempt/evidence/FSRS/competency changes atomically under one transaction owner. Handle concurrent duplicate requests; separate model-call accounting and crash recovery from learning-state commits.
 

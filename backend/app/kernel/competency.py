@@ -42,6 +42,7 @@ async def record_evidence(
     confidence: float = 1.0,
     attempt_id: str | None = None,
     events: EventWriter | None = None,
+    commit: bool = True,
 ) -> CompetencyEvidence:
     if dimension not in DIMENSIONS:
         raise ValueError(f"unknown dimension {dimension}")
@@ -57,7 +58,10 @@ async def record_evidence(
         source_attempt_id=attempt_id,
     )
     db.add(row)
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     if events is not None:
         await events.emit(
             Verb.EVIDENCED,
@@ -65,6 +69,7 @@ async def record_evidence(
             skill_id,
             result={"skill_id": skill_id, "dimension": dimension, "score": score, "weight": weight},
             context={"attempt_id": attempt_id},
+            commit=commit,
         )
     return row
 
@@ -87,7 +92,12 @@ def _aggregate(rows: list[CompetencyEvidence], now: datetime) -> tuple[float, in
 
 
 async def refresh(
-    db: AsyncSession, learner_id: str, skill_id: str, *, now: datetime | None = None
+    db: AsyncSession,
+    learner_id: str,
+    skill_id: str,
+    *,
+    now: datetime | None = None,
+    commit: bool = True,
 ) -> dict[str, CompetencyState]:
     now = now or datetime.now(UTC)
     stmt = select(CompetencyEvidence).where(
@@ -142,7 +152,10 @@ async def refresh(
             state.last_evidence_ts = last_ts
             state.refreshed_at = utcnow_iso()
         out[dim] = state
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     return out
 
 

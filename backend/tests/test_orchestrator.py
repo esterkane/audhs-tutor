@@ -583,3 +583,55 @@ async def test_area_reference_reaches_grader_but_not_public_question(world: dict
     assert "Source excerpt: Variance grows" in prompt
     assert "<system>" not in prompt
     assert "The reference explains variance" not in view(item).model_dump_json()
+
+
+@pytest.mark.parametrize("cancelled", [False, True])
+async def test_learning_rollback_preserves_model_accounting(
+    world, monkeypatch, session_factory, cancelled
+):
+    import asyncio
+
+    from app.kernel import competency
+
+    item, criteria = await _explanation(world)
+    world["local"].structured = {
+        "criterion_results": [
+            {"criterion": c["criterion"], "passed": True, "evidence": "Explains the relationship."}
+            for c in criteria
+        ],
+        "confidence": 0.9,
+        "feedback": "Specific feedback.",
+        "next_step": "Try another example.",
+    }
+    original = competency.refresh
+
+    async def interrupted(*args, **kwargs):
+        await original(*args, **kwargs)
+        if cancelled:
+            raise asyncio.CancelledError()
+        raise RuntimeError("after refresh")
+
+    monkeypatch.setattr(competency, "refresh", interrupted)
+    failure = asyncio.CancelledError if cancelled else RuntimeError
+    with pytest.raises(failure):
+        await Grader(world["db"], world["gw"]).grade(
+            AttemptRequest(
+                session_id=world["session"].id,
+                assessment_id=item.id,
+                answer="My causal explanation.",
+            )
+        )
+    async with session_factory() as reopened:
+        for table in [
+            models.AssessmentAttempt,
+            models.CompetencyEvidence,
+            models.CompetencyState,
+            models.ReviewItem,
+            models.ReviewLog,
+            models.MemoryState,
+        ]:
+            assert list((await reopened.execute(select(table))).scalars()) == []
+        calls = list((await reopened.execute(select(models.ModelCall))).scalars())
+        assert len(calls) == 1
+        assert calls[0].task == "grade_simple"
+    assert len(world["local"].calls) == 1
