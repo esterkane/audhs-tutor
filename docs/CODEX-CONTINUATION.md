@@ -122,3 +122,14 @@ pedagogy reviews passed. See docs/slices/project-study-orientation.md. No backen
 Next UX26-04: clarify tutor conversation choices without hiding provider disclosure or changing
 Socratic defaults; then UX26-05/06/08 shell/audio/shared controls. Owner comprehension remains OPEN.
 Both repositories remain PRIVATE. Broader material, visual, authoring and voice benchmark queues remain.
+
+
+## Tutor choices — 2026-10-03
+
+UX26-04 delivered: explanation/hint lead, irrelevant empty-answer review removed, guided questioning
+is an explicit optional disclosure with active approach visible and Explain instead directly available.
+Saved reuse is secondary with on/off shown. Provider/data disclosure, prompt/routing, follow-up and
+recovery remain unchanged. Undefined tutor border/surface classes now use existing tokens.
+Frontend310, focused26, nine desktop/narrow browser journeys, lint/build and both reviews cleared.
+See docs/slices/study-tutor-choices.md. Next UX26-05 shell/status, then audio and shared controls.
+Owner comprehension and broad queue remain open; both publication repositories remain PRIVATE.

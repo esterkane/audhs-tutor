@@ -28,7 +28,7 @@ type Action = 'explain' | 'hint' | 'socratic' | 'review' | 'chat' | 'shorter' | 
 export function StudyTutor(props: Props) {
   const session = useCurrentSession()
   return (
-    <section aria-label="Study tutor" className="border border-border rounded-lg p-4 mt-4">
+    <section aria-label="Study tutor" className="border border-line rounded-lg p-4 mt-4">
       <h3 className="font-semibold">{props.reviewOnly ? 'Answer feedback' : 'Study tutor'}</h3>
       {props.identity && (
         <SavedContextAnswers
@@ -195,7 +195,9 @@ function Conversation({
     operation.current?.abort()
     operation.current = null
     setBusy(false)
-    setError('Stopped. Your message is retained. Retry the original request, or discard its retry before sending changed work.')
+    setError(
+      'Stopped. Your message is retained. Retry the original request, or discard its retry before sending changed work.',
+    )
   }
   async function ask(action: Action) {
     if (
@@ -360,23 +362,37 @@ function Conversation({
   }
   return (
     <>
+      {!reviewOnly && (
+        <p className="text-sm mt-2">
+          {socratic
+            ? 'Guided questions: reply below, or switch back to an explanation.'
+            : 'Explanation mode: ask about this step or describe where you are stuck.'}
+        </p>
+      )}
       <div className="flex flex-wrap gap-2 mt-3">
         {!reviewOnly && (
           <>
-            <Button disabled={busy} onClick={() => void ask('explain')}>
+            <Button
+              variant={socratic ? 'outline' : 'primary'}
+              disabled={busy}
+              onClick={() => void ask('explain')}
+            >
               {socratic ? 'Explain instead' : 'Explain this step'}
             </Button>
             <Button disabled={busy} onClick={() => void ask('hint')}>
               Tutor: one hint
             </Button>
-            <Button disabled={busy || socratic} onClick={() => void ask('socratic')}>
-              Ask me a Socratic question
-            </Button>
           </>
         )}
-        <Button disabled={busy || !answer.trim()} onClick={() => void ask('review')}>
-          {reviewOnly ? 'Check my answer' : 'Review my answer'}
-        </Button>
+        {(reviewOnly || answer.trim()) && (
+          <Button
+            variant={reviewOnly ? 'primary' : 'secondary'}
+            disabled={busy || !answer.trim()}
+            onClick={() => void ask('review')}
+          >
+            {reviewOnly ? 'Check my answer' : 'Review my answer'}
+          </Button>
+        )}
       </div>
       <TutorResponseStatus
         status={busy ? 'streaming' : ready && replySnapshot === snapshot ? 'complete' : 'idle'}
@@ -395,15 +411,6 @@ function Conversation({
         conversation plus relevant saved replies to that provider. Other tutor actions keep their existing
         models. <Link to="/models">Choose models</Link>
       </p>
-      <label className="flex gap-2 items-center text-sm my-2">
-        <input
-          type="checkbox"
-          checked={preferSaved}
-          disabled={busy}
-          onChange={(event) => setPreferSaved(event.target.checked)}
-        />
-        Use a saved answer when this request matches (no new model call)
-      </label>
       {(context.length > 1000 || code.length > 16000 || output.length > 4000) && (
         <p role="status">
           Answer checks include the complete step material up to 8,000 characters; longer steps must be
@@ -418,7 +425,7 @@ function Conversation({
               <summary>Earlier messages ({conversation.length - 2})</summary>
               <ol className="grid gap-3 mt-2">
                 {conversation.slice(0, -2).map((message, index) => (
-                  <li key={index} className="border-l-2 border-border pl-3">
+                  <li key={index} className="border-l-2 border-line pl-3">
                     <p className="font-semibold">{message.role === 'user' ? 'You' : 'Tutor'}</p>
                     <Markdown text={displayMessage(message.text)} />
                   </li>
@@ -528,7 +535,7 @@ function Conversation({
             maxLength={socratic ? 1700 : 2000}
             onChange={(event) => setQuestion(event.target.value)}
             rows={3}
-            className="block w-full border rounded p-2 bg-surface"
+            className="block w-full border rounded p-2 bg-card"
           />
           <DictationButton
             disabled={busy}
@@ -540,6 +547,32 @@ function Conversation({
         </form>
       )}
       {reviewOnly && !answer.trim() && <p>Write your explanation above, then check it for feedback.</p>}
+      {!reviewOnly && !socratic && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm">Practice with a guided question (optional)</summary>
+          <p className="text-sm my-2">
+            The tutor asks one question about this step. Reply in the same chat to discuss your reasoning. You
+            can choose Explain instead at any time.
+          </p>
+          <Button disabled={busy} onClick={() => void ask('socratic')}>
+            Ask me a Socratic question
+          </Button>
+        </details>
+      )}
+      <details className="mt-3">
+        <summary className="cursor-pointer text-sm">
+          Saved-answer reuse options{preferSaved ? ' · on' : ' · off'}
+        </summary>
+        <label className="flex gap-2 items-center text-sm my-2">
+          <input
+            type="checkbox"
+            checked={preferSaved}
+            disabled={busy}
+            onChange={(event) => setPreferSaved(event.target.checked)}
+          />
+          Use a saved answer when this request matches (no new model call)
+        </label>
+      </details>
       <RequestRecoveryControls
         recovery={recovery}
         busy={busy}

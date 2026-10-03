@@ -6,7 +6,9 @@ import { askTutor } from '../playground/api'
 import { useCurrentSession } from '../session/api'
 vi.mock('../playground/api', () => ({ askTutor: vi.fn() }))
 vi.mock('../session/api', () => ({ useCurrentSession: vi.fn() }))
-vi.mock('../voice/ReadAloud', () => ({ ReadAloud: ({ text }: { text: string }) => <button data-spoken-text={text}>Listen to explanation</button> }))
+vi.mock('../voice/ReadAloud', () => ({
+  ReadAloud: ({ text }: { text: string }) => <button data-spoken-text={text}>Listen to explanation</button>,
+}))
 vi.mock('../voice/DictationButton', () => ({ DictationButton: () => <button type="button">Dictate</button> }))
 const reply = {
   reused: false,
@@ -378,44 +380,71 @@ it('shows links to the prior answers used as historical context', async () => {
   active()
   vi.mocked(askTutor).mockResolvedValue({ ...reply, memory_answers: ['previous-one'] })
   renderApp(<StudyTutor context="Groups" />)
-  fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Why compare?' } })
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), {
+    target: { value: 'Why compare?' },
+  })
   fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
-  expect(await screen.findByRole('link', { name: 'Open previous answer' })).toHaveAttribute('href', '/answers/previous-one')
+  expect(await screen.findByRole('link', { name: 'Open previous answer' })).toHaveAttribute(
+    'href',
+    '/answers/previous-one',
+  )
 })
 it('opts into saved reuse explicitly and labels the original dated response', async () => {
   active()
-  vi.mocked(askTutor).mockResolvedValue({ ...reply, reused: true, saved_at: '2026-10-01T09:00:00Z', answer_id: 'old' })
+  vi.mocked(askTutor).mockResolvedValue({
+    ...reply,
+    reused: true,
+    saved_at: '2026-10-01T09:00:00Z',
+    answer_id: 'old',
+  })
   renderApp(<StudyTutor context="Groups" />)
   const reuse = screen.getByRole('checkbox', { name: /Use a saved answer/ })
   expect(reuse).not.toBeChecked()
   fireEvent.click(reuse)
-  fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Why compare?' } })
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), {
+    target: { value: 'Why compare?' },
+  })
   fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
   await screen.findByText(/Saved answer from 2026-10-01/)
-  expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: true }), expect.any(AbortSignal), expect.any(String))
+  expect(askTutor).toHaveBeenLastCalledWith(
+    expect.objectContaining({ prefer_saved: true }),
+    expect.any(AbortSignal),
+    expect.any(String),
+  )
   fireEvent.click(reuse)
-  fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Explain again' } })
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), {
+    target: { value: 'Explain again' },
+  })
   fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
-  await waitFor(() => expect(askTutor).toHaveBeenLastCalledWith(expect.objectContaining({ prefer_saved: false }), expect.any(AbortSignal), expect.any(String)))
+  await waitFor(() =>
+    expect(askTutor).toHaveBeenLastCalledWith(
+      expect.objectContaining({ prefer_saved: false }),
+      expect.any(AbortSignal),
+      expect.any(String),
+    ),
+  )
 })
-
 
 it('sends the full task answer separately from output and refuses silent truncation', async () => {
   active()
   vi.mocked(askTutor).mockResolvedValue(reply)
   const exact = '  ' + 'A'.repeat(7900) + ' end  '
-  const view = renderApp(<StudyTutor reviewOnly context="Check retention" answer={exact} output="run result" />)
+  const view = renderApp(
+    <StudyTutor reviewOnly context="Check retention" answer={exact} output="run result" />,
+  )
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await screen.findByText(reply.text)
-  expect(vi.mocked(askTutor).mock.calls[0][0]).toMatchObject({learner_answer: exact, output: 'run result'})
-  view.rerender(<StudyTutor reviewOnly context="Check retention" answer={'B'.repeat(8001)} output="run result" />)
+  expect(vi.mocked(askTutor).mock.calls[0][0]).toMatchObject({ learner_answer: exact, output: 'run result' })
+  view.rerender(
+    <StudyTutor reviewOnly context="Check retention" answer={'B'.repeat(8001)} output="run result" />,
+  )
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   expect(await screen.findByRole('alert')).toHaveTextContent('8,000 characters')
   expect(askTutor).toHaveBeenCalledTimes(1)
   view.rerender(<StudyTutor reviewOnly context="Check retention" answer="revised" output="run result" />)
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
-  expect(vi.mocked(askTutor).mock.calls[1][0]).toMatchObject({learner_answer: 'revised', history: []})
+  expect(vi.mocked(askTutor).mock.calls[1][0]).toMatchObject({ learner_answer: 'revised', history: [] })
 })
 
 it('does not submit an unsent Socratic response when requesting a hint', async () => {
@@ -425,23 +454,26 @@ it('does not submit an unsent Socratic response when requesting a hint', async (
   fireEvent.click(screen.getByRole('button', { name: 'Ask me a Socratic question' }))
   await screen.findByText(reply.text)
   const input = screen.getByLabelText('Your answer to the tutor’s question')
-  fireEvent.change(input, {target: {value: 'unsent answer'}})
+  fireEvent.change(input, { target: { value: 'unsent answer' } })
   fireEvent.click(screen.getByRole('button', { name: /hint/i }))
   await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
   expect(vi.mocked(askTutor).mock.calls[1][0].learner_answer).toBeNull()
   expect(input).toHaveValue('unsent answer')
 })
 
-
 it('reads the same local arithmetic disclosure as the displayed tutor reply', async () => {
   active()
-  const text = 'Local arithmetic check (not a grade):\n\n30/50 = 0.9 does not hold exactly. Left side: 3/5 (0.6).\n\nTutor explanation (model-generated; may contain errors):\n\nYour calculation is correct.'
-  vi.mocked(askTutor).mockResolvedValue({...reply, text})
+  const text =
+    'Local arithmetic check (not a grade):\n\n30/50 = 0.9 does not hold exactly. Left side: 3/5 (0.6).\n\nTutor explanation (model-generated; may contain errors):\n\nYour calculation is correct.'
+  vi.mocked(askTutor).mockResolvedValue({ ...reply, text })
   renderApp(<StudyTutor reviewOnly context="Retention" answer="30/50 = 0.9" />)
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   expect(await screen.findByText('Local arithmetic check (not a grade):')).toBeVisible()
   expect(screen.getByText(/does not hold exactly/)).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toHaveAttribute('data-spoken-text', text)
+  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toHaveAttribute(
+    'data-spoken-text',
+    text,
+  )
 })
 it('discloses the answer-feedback provider and sends only an explicit check action to it', async () => {
   active()
@@ -452,10 +484,17 @@ it('discloses the answer-feedback provider and sends only an explicit check acti
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await screen.findByText(reply.text)
   expect(vi.mocked(askTutor).mock.calls[0][0]).toMatchObject({
-    intent: 'check_answer', learner_answer: '30/50 = 0.9', questioning_style: 'explicit',
+    intent: 'check_answer',
+    learner_answer: '30/50 = 0.9',
+    questioning_style: 'explicit',
   })
-  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toHaveAttribute('data-spoken-text', reply.text)
-  fireEvent.change(screen.getByLabelText('Ask about this feedback'), { target: { value: 'Explain the denominator' } })
+  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toHaveAttribute(
+    'data-spoken-text',
+    reply.text,
+  )
+  fireEvent.change(screen.getByLabelText('Ask about this feedback'), {
+    target: { value: 'Explain the denominator' },
+  })
   fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
   await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
   expect(vi.mocked(askTutor).mock.calls[1][0].intent).toBe('chat')
@@ -478,7 +517,9 @@ it('keeps the full selected question for checks and refuses oversized material w
 it('recovers an exact request after reload without replacing a newly edited answer', async () => {
   active()
   vi.mocked(askTutor).mockRejectedValueOnce(new Error('Response lost')).mockResolvedValue(reply)
-  const first = renderApp(<StudyTutor reviewOnly identity="step" context="Original material" answer="Original answer" />)
+  const first = renderApp(
+    <StudyTutor reviewOnly identity="step" context="Original material" answer="Original answer" />,
+  )
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await screen.findByText(/Response lost/)
   const original = vi.mocked(askTutor).mock.calls[0]
@@ -490,4 +531,17 @@ it('recovers an exact request after reload without replacing a newly edited answ
   expect(vi.mocked(askTutor).mock.calls[1][0]).toEqual(original[0])
   expect(vi.mocked(askTutor).mock.calls[1][2]).toEqual(original[2])
   expect(screen.queryByRole('button', { name: 'Retry previous request' })).not.toBeInTheDocument()
+})
+
+it('keeps guided questions optional and avoids offering review without an answer', () => {
+  active()
+  renderApp(<StudyTutor context="Data split" />)
+  expect(screen.getByRole('button', { name: 'Explain this step' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Tutor: one hint' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Review my answer' })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Ask me a Socratic question' })).not.toBeVisible()
+  expect(askTutor).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByText('Practice with a guided question (optional)'))
+  expect(screen.getByRole('button', { name: 'Ask me a Socratic question' })).toBeVisible()
+  expect(askTutor).not.toHaveBeenCalled()
 })

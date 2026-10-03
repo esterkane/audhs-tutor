@@ -98,3 +98,7 @@ Each slice records a concrete before/after journey and actual checks rather than
 UX26-01–03 implemented and tested in `docs/slices/project-study-orientation.md`: 309 frontend tests,
 eight browser journeys, scoped main-content axe, 320px/200% text, lint/build and reviews.
 This is an implementation gate, not owner comprehension approval. UX26-04–08 remain open.
+
+UX26-04 interface slice implemented in `docs/slices/study-tutor-choices.md`: explicit optional guided
+questioning, visible approach, direct explanation return and preserved follow-up/recovery. Frontend310,
+browser9, lint/build/reviews passed. Owner comprehension remains open; UX26-05/06/08 next.

@@ -66,7 +66,16 @@ for (const width of [1280, 390]) {
           release = resolve
         })
       await route.fulfill({
-        json: { text, model: 'fixture', route: 'fake', turn_id: 'fixture', source_note: 'Synthetic historical context', memory_answers: ['prior'], reused: body.prefer_saved, saved_at: '2026-10-01T09:00:00Z' },
+        json: {
+          text,
+          model: 'fixture',
+          route: 'fake',
+          turn_id: 'fixture',
+          source_note: 'Synthetic historical context',
+          memory_answers: ['prior'],
+          reused: body.prefer_saved,
+          saved_at: '2026-10-01T09:00:00Z',
+        },
       })
     })
     await page.route('**/api/answers?*', async (route) => {
@@ -98,7 +107,9 @@ for (const width of [1280, 390]) {
       '/answers?surface=playground&course_id=fixture',
     )
     await page.getByText('Saved answers for this course').click()
-    await page.getByRole('button', { name: 'Notebook workspace', exact: true }).click()
+    await page.getByText('Full course notebook and files', { exact: true }).click()
+    await page.getByRole('button', { name: 'Open full course notebook tools', exact: true }).click()
+    await page.getByText('Read or edit a notebook in this page', { exact: true }).click()
     await page.getByRole('button', { name: 'Open saved project notebook' }).click()
     await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('2')
     await expect(page.getByRole('combobox', { name: 'Notebook cell', exact: true })).toHaveValue('0')
@@ -108,7 +119,9 @@ for (const width of [1280, 390]) {
     await expect(savedLink).toBeVisible()
     await expect(savedLink).toHaveAttribute('href', /course_id=fixture/)
     await page.getByText('Previously answered here').click()
+    await page.getByText('Saved-answer reuse options · off', { exact: true }).click()
     await page.getByRole('checkbox', { name: /Use a saved answer/ }).check()
+    await page.getByText('Practice with a guided question (optional)', { exact: true }).click()
     const socratic = page.getByRole('button', { name: 'Ask me a Socratic question', exact: true })
     await socratic.focus()
     await page.keyboard.press('Enter')
@@ -122,7 +135,10 @@ for (const width of [1280, 390]) {
     ).toBeVisible()
     await page.getByText('Earlier messages (2)', { exact: true }).click()
     await expect(page.getByText('Why compare proportions rather than counts?', { exact: true })).toBeVisible()
-    await expect(page.getByRole('link', { name: 'Open previous answer', exact: true })).toHaveAttribute('href', '/answers/prior')
+    await expect(page.getByRole('link', { name: 'Open previous answer', exact: true })).toHaveAttribute(
+      'href',
+      '/answers/prior',
+    )
     await answer.fill('Keep this draft')
     await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('0')
     await expect(page.getByText('Discussing: Step — Inspect')).toBeVisible()
