@@ -1,3 +1,5 @@
+import { execFileSync } from 'node:child_process'
+import { fileURLToPath } from 'node:url'
 import { expect, type APIRequestContext, type Page } from '@playwright/test'
 import { API_URL } from '../playwright.config'
 
@@ -85,4 +87,42 @@ export async function finishReview(page: Page) {
     }
   }
   await expect(done).toBeVisible()
+}
+
+/** Isolated deterministic content in this checkout's disposable sandbox only.
+ * Never clear attempts: recovery journeys must exercise real persisted learning writes.
+ * Untaught fixture skills cannot change another journey's automatic next-skill selection.
+ */
+export function freshDeterministicSkill(): string {
+  const root = fileURLToPath(new URL('../../', import.meta.url))
+  return execFileSync('python3', ['-c', `
+import json, pathlib, sqlite3, uuid
+root = pathlib.Path.cwd().resolve()
+expected = root / 'data' / 'sandbox.db'
+assert expected.is_file() and not expected.is_symlink(), 'Seeded sandbox DB required'
+assert expected.resolve() == expected, 'Sandbox path must not redirect outside checkout'
+import os
+assert pathlib.Path(os.environ.get('SANDBOX_DB', './data/sandbox.db')) == pathlib.Path('data/sandbox.db'), 'Custom sandbox DB unsupported by fixture'
+db = sqlite3.connect(expected.as_uri() + '?mode=rw', uri=True)
+db.row_factory = sqlite3.Row
+db.execute('PRAGMA foreign_keys=ON')
+skill = dict(db.execute("SELECT * FROM skill_node WHERE slug='dot-product'").fetchone() or {})
+if not skill:
+    skill = dict(db.execute("SELECT s.* FROM skill_node s JOIN assessment a ON a.skill_id=s.id WHERE a.kind='mcq' ORDER BY s.created_at,s.id LIMIT 1").fetchone())
+original = skill['id']
+skill_id = 'e2e-' + str(uuid.uuid4())
+def insert(table, row):
+    columns = ','.join('"'+k+'"' for k in row)
+    db.execute('INSERT INTO '+table+' ('+columns+') VALUES ('+','.join('?' for _ in row)+')', list(row.values()))
+skill.update(id=skill_id, slug=skill_id, title='Isolated deterministic practice', course=None, area_id=None, assessment_requirements_json=json.dumps({'teachable':False}))
+with db:
+    insert('skill_node', skill)
+    learning = dict(db.execute('SELECT * FROM learning_object WHERE skill_id=? ORDER BY version DESC LIMIT 1',(original,)).fetchone())
+    learning.update(id='e2e-'+str(uuid.uuid4()), skill_id=skill_id)
+    insert('learning_object', learning)
+    assessment = dict(db.execute("SELECT * FROM assessment WHERE skill_id=? AND kind='mcq' ORDER BY id LIMIT 1",(original,)).fetchone())
+    assessment.update(id='e2e-'+str(uuid.uuid4()), skill_id=skill_id)
+    insert('assessment', assessment)
+print(skill_id)
+`], { cwd: root, encoding: 'utf8' }).trim()
 }

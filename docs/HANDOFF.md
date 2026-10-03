@@ -628,3 +628,11 @@ Catalogue matching now groups metadata and compiles expressions once, off the ev
 immutable snapshots. Exact membership parity confirmed on the local corpus; aggregation ~20s to
 0.64s. Live endpoint after restart 0.926s with concurrent health/skills responsive. Independent code
 and pedagogy reviews clear. See docs/slices/area-catalogue-performance.md for limits and checks.
+
+
+## Browser assessment isolation — 2026-10-03
+
+Fresh sandbox-only deterministic assessment fixtures remove shared-attempt ordering failures.
+All 65 integrated browser journeys passed locally; code review clear. Linux CI still requires
+verification, including a separately investigated narrow-text overflow. No production behavior
+change. See docs/slices/browser-assessment-isolation.md.

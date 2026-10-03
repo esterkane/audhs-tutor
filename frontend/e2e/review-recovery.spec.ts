@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, endOpenSession, expectOk } from './helpers'
+import { API, endOpenSession, expectOk, freshDeterministicSkill } from './helpers'
 
 for (const narrow of [false, true]) {
   test(`review lost-response recovery ${narrow ? 'narrow' : 'desktop'}`, async ({ page, request }) => {
@@ -10,7 +10,7 @@ for (const narrow of [false, true]) {
       const started = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
       await expectOk(started)
       const session = await started.json()
-      const next = await request.get(`${API}/api/assess/next?session_id=${session.id}`)
+      const next = await request.get(`${API}/api/assess/next?session_id=${session.id}&skill_id=${freshDeterministicSkill()}`)
       await expectOk(next)
       const { item } = await next.json()
       expect(['mcq', 'cloze']).toContain(item.kind)

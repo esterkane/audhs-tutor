@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, endOpenSession, expectOk } from './helpers'
+import { API, endOpenSession, expectOk, freshDeterministicSkill } from './helpers'
 
 for (const narrow of [false, true]) {
   test(`interrupted assessment recovery ${narrow ? 'narrow' : 'desktop'}`, async ({ page, request }) => {
@@ -15,7 +15,7 @@ for (const narrow of [false, true]) {
         await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index } }),
       )
       await expectOk(
-        await request.post(`${API}/api/sessions/${session.id}/checkpoint`, { data: { phase: 'assess' } }),
+        await request.post(`${API}/api/sessions/${session.id}/checkpoint`, { data: { phase: 'assess', skill_id: freshDeterministicSkill() } }),
       )
       if (narrow) await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/')
@@ -28,7 +28,7 @@ for (const narrow of [false, true]) {
       await page.route('**/api/assess/attempt', async (route) => {
         submissions++
         const committed = await route.fetch()
-        expect(committed.ok()).toBeTruthy()
+        await expectOk(committed)
         await route.abort('failed')
       })
       await page.getByRole('button', { name: 'Check my answer', exact: true }).click()

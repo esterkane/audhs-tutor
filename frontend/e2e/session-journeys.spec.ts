@@ -6,6 +6,7 @@ import {
   expectOk,
   expectServerBlock,
   finishReview,
+  freshDeterministicSkill,
   startFromHome,
 } from './helpers'
 
@@ -18,25 +19,16 @@ import {
  * zero budget, and every journey below stays on deterministic screens.
  */
 
-/**
- * Make one review card due *now* using only public routes: answer an assessment of the skill at
- * `skillIndex` (an item is created on the first attempt), then re-rate it with the API's
- * dev/benchmark `as_of` time travel three days in the past so its next due date lies behind us.
- * Each journey uses its own skill: `next_item` rotates mcq → cloze → explain_back per skill, and
- * the third kind is graded by a local model the CI runner does not have — the assertion below
- * fails loudly instead of waiting on a model timeout.
- */
-async function makeOneCardDue(request: APIRequestContext, skillIndex: number) {
+/** Make a fresh deterministic card due without depending on other journeys' attempts. */
+async function makeOneCardDue(request: APIRequestContext) {
   const started = await request.post(`${API}/api/sessions`, {
     data: { mode: 'steady', energy: 3, socratic: false },
   })
   await expectOk(started)
   const session = (await started.json()) as { id: string }
-  const { skills } = (await (await request.get(`${API}/api/skills`)).json()) as {
-    skills: Array<{ id: string }>
-  }
+  const skillId = freshDeterministicSkill()
   const next = await request.get(
-    `${API}/api/assess/next?session_id=${session.id}&skill_id=${skills[skillIndex].id}`,
+    `${API}/api/assess/next?session_id=${session.id}&skill_id=${skillId}`,
   )
   await expectOk(next)
   const { item } = (await next.json()) as { item: { id: string; kind: string } | null }
@@ -50,7 +42,7 @@ async function makeOneCardDue(request: APIRequestContext, skillIndex: number) {
   const due = (await (
     await request.get(`${API}/api/review/due?session_id=${session.id}&as_of=${far}&all=true`)
   ).json()) as { items: Array<{ item_id: string; skill_id: string }> }
-  const mine = due.items.find((d) => d.skill_id === skills[skillIndex].id)
+  const mine = due.items.find((d) => d.skill_id === skillId)
   expect(mine, 'the attempt created a review card for this skill').toBeTruthy()
   const past = new Date(Date.now() - 3 * 86_400_000).toISOString()
   const rated = await request.post(`${API}/api/review/${mine!.item_id}?as_of=${past}`, {
@@ -96,7 +88,7 @@ test('review offers optional confidence before revealing, then the plan continue
   page,
   request,
 }) => {
-  await makeOneCardDue(request, 0)
+  await makeOneCardDue(request)
   await startFromHome(page)
   await page.getByRole('button', { name: /^Review \(/ }).click()
 
@@ -124,7 +116,7 @@ test('stop here keeps the session resumable from Home at the next block', async 
   browser,
   baseURL,
 }) => {
-  await makeOneCardDue(request, 1)
+  await makeOneCardDue(request)
   await startFromHome(page)
   await page.getByRole('button', { name: /^Review \(/ }).click()
   await expect(page.getByRole('button', { name: 'Show answer' })).toBeVisible()
