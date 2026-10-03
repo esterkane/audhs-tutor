@@ -493,3 +493,12 @@ Linux CI confirmed64/65 journeys passing: original200% reflow passed but spacing
 a nested lesson-grid minimum. Inner column now shrinks, phase labels wrap/grow, and bookmark
 selector fits. Existing actions/semantics remain. Independent reviews clear; Linux rerun pending.
 See docs/slices/project-study-reflow.md.
+
+
+## Private external-resource reconciliation — 2026-10-03
+
+A private read-only ledger now joins source provenance, latest acquisition statuses, historical
+files and SQLite evidence. Conservative URL normalization preserves meaningful query/fragment data;
+credential review is required before storing future outputs. Current artifact reviewed without
+credential evidence. Three historical rate-limited downloads recovered; their ingestion is separate.
+No index/completeness claim. Source identifiers, script and detailed report remain private only.
