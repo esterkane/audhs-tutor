@@ -205,7 +205,9 @@ describe('ListeningPanel', () => {
     stub([])
     const { container } = renderApp(<ListeningPanel sessionId="s1" documentId="d1" onDone={() => {}} />)
     fireEvent.click(await screen.findByRole('button', { name: 'Play clip' }))
+    // Playing status is published before the play promise's finally clears pending.
     await screen.findByText('Playing clip.')
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Replay from start' })).toBeEnabled())
     const audio = container.querySelector('audio')!
     audio.currentTime = 4
     const controls = useReadingControls.getState().reading

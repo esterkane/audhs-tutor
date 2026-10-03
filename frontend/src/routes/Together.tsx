@@ -1,3 +1,4 @@
+import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
 import { bindOutput } from '../features/audio/settings'
 import { useEffect, useRef, useState } from 'react'
@@ -7,6 +8,13 @@ import { Card, CardTitle } from '../components/ui/card'
 import { useSensory } from '../features/sensory/useSensory'
 import { routeForPhase, useCurrentSession } from '../features/session/api'
 import { useMode } from '../stores/mode'
+
+type AmbientAudio = {
+  ctx: AudioContext
+  node?: AudioBufferSourceNode
+  releaseOutput?: () => void
+  releaseOwner: () => void
+}
 
 function nowMs() {
   return Date.now()
@@ -21,7 +29,8 @@ export function Together() {
   const [startedAt] = useState(() => nowMs())
   const [minutes, setMinutes] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const audio = useRef<{ ctx: AudioContext; node: AudioBufferSourceNode; release: () => void } | null>(null)
+  const [notice, setNotice] = useState('')
+  const audio = useRef<AmbientAudio | null>(null)
 
   useEffect(() => {
     const id = setInterval(() => setMinutes(Math.floor((nowMs() - startedAt) / 60_000)), 15_000)
@@ -34,33 +43,75 @@ export function Together() {
   }, [ambient])
 
   function startSound() {
-    if (typeof AudioContext === 'undefined') return
-    const ctx = new AudioContext()
-    const seconds = 4
-    const buffer = ctx.createBuffer(1, ctx.sampleRate * seconds, ctx.sampleRate)
-    const data = buffer.getChannelData(0)
-    let last = 0
-    for (let i = 0; i < data.length; i++) {
-      const white = Math.random() * 2 - 1
-      last = (last + 0.02 * white) / 1.02 // brown noise: integrated white noise
-      data[i] = last * 3.5
+    if (audio.current) return
+    if (typeof AudioContext === 'undefined') {
+      setNotice('Ambient sound is unavailable in this browser.')
+      return
     }
-    const node = ctx.createBufferSource()
-    node.buffer = buffer
-    node.loop = true
-    const gain = ctx.createGain()
-    const release = bindOutput(gain, 0.3)
-    node.connect(gain).connect(ctx.destination)
-    node.start()
-    audio.current = { ctx, node, release }
-    void ctx.resume().catch(() => stopSound())
-    setPlaying(true)
+    setNotice('')
+    let instance: AmbientAudio | null = null
+    try {
+      const ctx = new AudioContext()
+      instance = { ctx, releaseOwner: () => {} }
+      audio.current = instance
+      const current = instance
+      current.releaseOwner = claimReading((replacement) => {
+        stopSound(current)
+        setNotice(`Brown noise stopped for ${replacement}. Choose Play brown noise to start again.`)
+      }, 'brown noise')
+      updateReading(current.releaseOwner, {
+        kind: 'ambient',
+        status: 'Starting brown noise',
+        stop: () => stopSound(current),
+      })
+      const buffer = ctx.createBuffer(1, ctx.sampleRate * 4, ctx.sampleRate)
+      const data = buffer.getChannelData(0)
+      let last = 0
+      for (let i = 0; i < data.length; i++) {
+        const white = Math.random() * 2 - 1
+        last = (last + 0.02 * white) / 1.02 // brown noise: integrated white noise
+        data[i] = last * 3.5
+      }
+      const node = ctx.createBufferSource()
+      current.node = node
+      node.buffer = buffer
+      node.loop = true
+      const gain = ctx.createGain()
+      current.releaseOutput = bindOutput(gain, 0.3)
+      node.connect(gain).connect(ctx.destination)
+      node.start()
+      setPlaying(true)
+      void ctx
+        .resume()
+        .then(() => {
+          if (audio.current !== current) return
+          updateReading(current.releaseOwner, {
+            kind: 'ambient',
+            status: 'Playing brown noise',
+            stop: () => stopSound(current),
+          })
+        })
+        .catch(() => {
+          if (audio.current !== current) return
+          stopSound(current)
+          setNotice('Brown noise could not start. Choose Play brown noise to try again.')
+        })
+    } catch {
+      if (instance) stopSound(instance)
+      setNotice('Brown noise could not start. Choose Play brown noise to try again.')
+    }
   }
-  function stopSound() {
-    audio.current?.release()
-    audio.current?.node.stop()
-    void audio.current?.ctx.close()
+  function stopSound(expected = audio.current) {
+    if (!expected || audio.current !== expected) return
     audio.current = null
+    expected.releaseOwner()
+    expected.releaseOutput?.()
+    try {
+      expected.node?.stop()
+    } catch {
+      /* A source may fail before starting. */
+    }
+    void expected.ctx.close().catch(() => {})
     setPlaying(false)
   }
 
@@ -90,11 +141,16 @@ export function Together() {
           )}
           {ambient !== 'off' &&
             (playing ? (
-              <Button onClick={stopSound}>Stop brown noise</Button>
+              <Button onClick={() => stopSound()}>Stop brown noise</Button>
             ) : (
               <Button onClick={startSound}>Play brown noise</Button>
             ))}
         </div>
+        {notice && (
+          <p role="status" className="mt-2">
+            {notice}
+          </p>
+        )}
         <p className="text-sm text-muted mt-3">
           This is a quiet focus screen, not a live human companion. Nothing is scored here.
           {ambient === 'off' ? ' Ambient sound can be enabled under Preferences.' : ''}

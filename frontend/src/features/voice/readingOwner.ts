@@ -9,9 +9,13 @@ type ReadingControls = {
   stop: () => void
   togglePause: () => void
 }
-type VoiceControls = { kind: 'voice'; status: string; stop: () => void }
+type StopOnlyControls = {
+  kind: 'voice' | 'ambient' | 'test' | 'visualizer'
+  status: string
+  stop: () => void
+}
 /** Ephemeral foreground audio activity in this tab. Never persisted. */
-export const useReadingControls = create<{ reading: ReadingControls | VoiceControls | null }>(() => ({
+export const useReadingControls = create<{ reading: ReadingControls | StopOnlyControls | null }>(() => ({
   reading: null,
 }))
 let active: { stop: (replacement: string) => void; release: () => void } | null = null
@@ -33,6 +37,6 @@ export function claimReading(stop: (replacement: string) => void, label = 'anoth
   return owner.release
 }
 
-export function updateReading(release: () => void, controls: ReadingControls | VoiceControls) {
+export function updateReading(release: () => void, controls: ReadingControls | StopOnlyControls) {
   if (active?.release === release) useReadingControls.setState({ reading: controls })
 }
