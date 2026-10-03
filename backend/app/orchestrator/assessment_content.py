@@ -1,19 +1,15 @@
 """Opaque process-bound content tokens; no hidden answers are exposed in public digests."""
 
 import copy
-import hashlib
 import hmac
-import json
-import secrets
 from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.content_versions import token as token
 from app.core.errors import AppError
 from app.db.models import Assessment, AssessmentRubric
-
-_KEY = secrets.token_bytes(32)  # Restart invalidates displayed content, never completed replay.
 
 
 async def snapshot(db: AsyncSession, assessment_id: str) -> dict[str, Any]:
@@ -39,13 +35,6 @@ async def snapshot(db: AsyncSession, assessment_id: str) -> dict[str, Any]:
     if row is None:
         raise AppError("not_found", "This assessment is unavailable.", 404)
     return copy.deepcopy(dict(row))
-
-
-def token(content: dict[str, Any]) -> str:
-    payload = json.dumps(
-        content, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
-    )
-    return "ac1." + hmac.new(_KEY, payload.encode(), hashlib.sha256).hexdigest()
 
 
 async def validate_new(db: AsyncSession, assessment_id: str, supplied: str | None) -> None:

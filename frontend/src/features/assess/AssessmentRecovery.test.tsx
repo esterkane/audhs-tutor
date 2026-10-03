@@ -15,6 +15,7 @@ function recovery(): Recovery {
       rejectedContent: true,
     },
     previousAnswer: null,
+    previousAnswers: [],
     dismissPrevious: vi.fn(),
     stale: true,
     error: '',

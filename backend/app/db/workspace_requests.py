@@ -24,7 +24,7 @@ async def claim(
     *,
     validate_new: Callable[[], Awaitable[None]] | None = None,
 ) -> tuple[str, dict[str, Any] | None]:
-    # Only content-validated assessment claims need the extra serialized decision.
+    # Only content-validated assessment/review claims need the extra serialized decision.
     # Close the caller's read transaction before acquiring SQLite's write lock:
     # upgrading an older WAL snapshot can fail immediately with SQLITE_BUSY.
     try:

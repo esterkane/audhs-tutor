@@ -180,3 +180,168 @@ it('bounds an unresponsive request and preserves its identity without automatic 
   expect(fetcher).toHaveBeenCalledTimes(1)
   expect(hook.result.current.recovery.storageError).toBe('')
 })
+
+it('archives a definitely rejected original rating across reload and never automatically resends it', async () => {
+  const fetcher = vi.fn(
+    async () =>
+      new Response(
+        JSON.stringify({ error: { code: 'review_content_changed', message: 'Card changed', details: {} } }),
+        { status: 409, headers: { 'Content-Type': 'application/json' } },
+      ),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const hook = setup('version-review')
+  await act(async () => {
+    await hook.result.current
+      .mutateAsync({
+        itemId: 'card',
+        body: { ...body, session_id: 'version-review', content_version: 'old' },
+        questionLabel: 'Original wording',
+      })
+      .catch(() => null)
+  })
+  expect(hook.result.current.recovery.stale).toBe(true)
+  act(() => hook.result.current.recovery.clear())
+  expect(hook.result.current.recovery.pending).toBeNull()
+  hook.unmount()
+  const restored = setup('version-review')
+  expect(restored.result.current.recovery.previousRating?.question).toBe('Original wording')
+  expect(restored.result.current.recovery.previousRating?.body.content_version).toBe('old')
+  act(() => restored.result.current.recovery.dismissPrevious())
+  expect(restored.result.current.recovery.previousRating).toBeNull()
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})
+
+it('keeps rejected pending identity if archiving fails', () => {
+  const session = 'archive-failure'
+  sessionStorage.setItem(
+    reviewRecoveryKey(session),
+    JSON.stringify({
+      version: 1,
+      id: crypto.randomUUID(),
+      itemId: 'card',
+      question: 'Original',
+      body: { ...body, session_id: session },
+      rejectedContent: true,
+    }),
+  )
+  const hook = setup(session)
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('full')
+  })
+  act(() => hook.result.current.recovery.clear())
+  expect(hook.result.current.recovery.pending?.question).toBe('Original')
+  expect(hook.result.current.recovery.error).toContain('could not be cleared')
+})
+
+it('does not treat unknown conflicts as a definite content rejection', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      async () =>
+        new Response(JSON.stringify({ error: { code: 'request_in_progress', message: 'Unknown state' } }), {
+          status: 409,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+    ),
+  )
+  const hook = setup('unknown-conflict')
+  await act(async () => {
+    await hook.result.current
+      .mutateAsync({ itemId: 'card', body: { ...body, session_id: 'unknown-conflict' } })
+      .catch(() => null)
+  })
+  expect(hook.result.current.recovery.stale).toBe(false)
+  expect(hook.result.current.recovery.pending).not.toBeNull()
+})
+
+it('retains two rejected snapshots until each is explicitly dismissed', () => {
+  const session = 'archive-two'
+  const first = {
+    version: 1,
+    id: crypto.randomUUID(),
+    itemId: 'one',
+    question: 'First',
+    body: { ...body, session_id: session },
+    rejectedContent: true,
+  }
+  sessionStorage.setItem(reviewRecoveryKey(session), JSON.stringify(first))
+  const hook = setup(session)
+  act(() => hook.result.current.recovery.clear())
+  const second = { ...first, id: crypto.randomUUID(), question: 'Second' }
+  sessionStorage.setItem(reviewRecoveryKey(session), JSON.stringify(second))
+  act(() => hook.result.current.recovery.reload())
+  act(() => hook.result.current.recovery.clear())
+  hook.unmount()
+  const restored = setup(session)
+  expect(restored.result.current.recovery.archivedRatings.map((x) => x.question)).toEqual(['First', 'Second'])
+  act(() => restored.result.current.recovery.dismissPrevious(first.id))
+  expect(restored.result.current.recovery.archivedRatings.map((x) => x.question)).toEqual(['Second'])
+})
+
+it('archives in explicit page memory when browser storage is denied', () => {
+  const session = 'archive-memory'
+  sessionStorage.setItem(
+    reviewRecoveryKey(session),
+    JSON.stringify({
+      version: 1,
+      id: crypto.randomUUID(),
+      itemId: 'one',
+      question: 'Original',
+      body: { ...body, session_id: session },
+      rejectedContent: true,
+    }),
+  )
+  const hook = setup(session)
+  act(() => hook.result.current.recovery.continueInMemory())
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('denied')
+  })
+  act(() => hook.result.current.recovery.clear())
+  expect(hook.result.current.recovery.pending).toBeNull()
+  expect(hook.result.current.recovery.archivedRatings[0].question).toBe('Original')
+})
+
+it('refuses to overwrite a damaged archive and retains pending', () => {
+  const session = 'damaged-archive'
+  sessionStorage.setItem('review-previous-rating:v1:' + session, '{broken')
+  sessionStorage.setItem(
+    reviewRecoveryKey(session),
+    JSON.stringify({
+      version: 1,
+      id: crypto.randomUUID(),
+      itemId: 'one',
+      question: 'New',
+      body: { ...body, session_id: session },
+      rejectedContent: true,
+    }),
+  )
+  const hook = setup(session)
+  act(() => hook.result.current.recovery.clear())
+  expect(hook.result.current.recovery.pending?.question).toBe('New')
+  expect(sessionStorage.getItem('review-previous-rating:v1:' + session)).toBe('{broken')
+})
+
+it('preserves visible earlier archives when explicitly switching to page memory', () => {
+  const session = 'fallback-preserves-archive'
+  const first = {
+    version: 1,
+    id: crypto.randomUUID(),
+    itemId: 'one',
+    question: 'Earlier',
+    body: { ...body, session_id: session },
+    rejectedContent: true,
+  }
+  sessionStorage.setItem('review-previous-rating:v1:' + session, JSON.stringify([first]))
+  sessionStorage.setItem(
+    reviewRecoveryKey(session),
+    JSON.stringify({ ...first, id: crypto.randomUUID(), question: 'New' }),
+  )
+  const hook = setup(session)
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+    throw new Error('denied')
+  })
+  act(() => hook.result.current.recovery.continueInMemory())
+  act(() => hook.result.current.recovery.clear())
+  expect(hook.result.current.recovery.archivedRatings.map((x) => x.question)).toEqual(['Earlier', 'New'])
+})

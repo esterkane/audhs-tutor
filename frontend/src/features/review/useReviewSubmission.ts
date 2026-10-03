@@ -1,17 +1,47 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { api, apiFetch, type Schemas } from '../../lib/api'
+import { ApiError, api, apiFetch, type Schemas } from '../../lib/api'
 type ReviewRating = Schemas['ReviewRating']
 type ReviewOut = Schemas['ReviewOut']
 
 export const reviewRecoveryKey = (session: string) => `review-request:v1:${session}`
-type Submission = { itemId: string; body: ReviewRating; questionLabel?: string }
+type Submission = {
+  itemId: string
+  body: ReviewRating
+  questionLabel?: string
+  revealLabel?: string
+  optionsLabels?: string[] | null
+}
 export type PendingReview = {
   version: 1
   id: string
   itemId: string
   body: ReviewRating
   question: string
+  reveal?: string
+  options?: string[] | null
+  rejectedContent?: boolean
+}
+const previousKey = (session: string) => `review-previous-rating:v1:${session}`
+const previousMemory = new Map<string, PendingReview[]>()
+function loadPrevious(session: string, strict = false): PendingReview[] {
+  if (previousMemory.has(session)) return previousMemory.get(session)!
+  try {
+    const value = JSON.parse(sessionStorage.getItem(previousKey(session)) ?? 'null')
+    const entries = Array.isArray(value) ? value : value ? [value] : []
+    const valid = entries.filter(
+      (value) =>
+        value?.version === 1 &&
+        value.body?.session_id === session &&
+        typeof value.question === 'string' &&
+        [1, 2, 3, 4].includes(value.body.rating),
+    )
+    if (strict && valid.length !== entries.length) throw new Error('Archive is damaged')
+    return valid
+  } catch (cause) {
+    if (strict) throw cause
+    return []
+  }
 }
 const pageMemory = new Map<string, PendingReview | null>()
 function write(session: string, value: PendingReview) {
@@ -56,6 +86,7 @@ function load(session: string) {
 export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
   const qc = useQueryClient()
   const key = reviewRecoveryKey(sessionId)
+  const [archivedRatings, setArchivedRatings] = useState(() => loadPrevious(sessionId))
   const [scope, setScope] = useState(key)
   const [stored, setStored] = useState(() => load(sessionId))
   const [lookup, setLookup] = useState<Schemas['ReviewRequestState'] | null>(null)
@@ -65,6 +96,7 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
   const operation = useRef<AbortController | null>(null)
   if (scope !== key) {
     setScope(key)
+    setArchivedRatings(loadPrevious(sessionId))
     setStored(load(sessionId))
     setLookup(null)
     setError('')
@@ -104,6 +136,27 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
     }
   }
 
+  function recordContentRejection(cause: unknown, pending: PendingReview) {
+    if (
+      activeKey.current !== key ||
+      !(cause instanceof ApiError) ||
+      cause.status !== 409 ||
+      !['review_content_changed', 'review_content_required'].includes(cause.code)
+    )
+      return
+    try {
+      if (read(sessionId)?.id !== pending.id) return
+      const rejected = { ...pending, rejectedContent: true }
+      write(sessionId, rejected)
+      setStored({ pending: rejected, error: '' })
+      setLookup(null)
+    } catch {
+      setError(
+        'The card changed, but recovery could not be updated. Keep your rating and check its saved result.',
+      )
+    }
+  }
+
   function clear(expectedId?: string) {
     if (operation.current) return
     try {
@@ -113,6 +166,12 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
         setLookup(null)
         setError('Recovery information changed in this session. Check the currently saved submission.')
         return
+      }
+      if (current?.rejectedContent) {
+        const archive = [...loadPrevious(sessionId, true).filter((entry) => entry.id !== current.id), current]
+        if (pageMemory.has(sessionId)) previousMemory.set(sessionId, archive)
+        else sessionStorage.setItem(previousKey(sessionId), JSON.stringify(archive))
+        setArchivedRatings(archive)
       }
       remove(sessionId)
       setStored({ pending: null, error: '' })
@@ -135,7 +194,7 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
       if (previous.error) throw new Error(previous.error)
       if (previous.pending)
         throw new Error('An earlier submission needs checking. Your current rating has not been sent.')
-      const { questionLabel, itemId, body } = submission
+      const { questionLabel, revealLabel, optionsLabels, itemId, body } = submission
       if (body.session_id !== sessionId) throw new Error('This rating belongs to another session.')
       const pending: PendingReview = {
         version: 1,
@@ -143,6 +202,8 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
         itemId,
         body: { ...body },
         question: questionLabel ?? 'Review card',
+        reveal: revealLabel,
+        options: optionsLabels,
       }
       try {
         write(sessionId, pending)
@@ -162,7 +223,10 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
           headers: { 'Idempotency-Key': pending.id },
           signal,
         }),
-      )
+      ).catch((cause) => {
+        recordContentRejection(cause, pending)
+        throw cause
+      })
       if (result.item_id !== pending.itemId)
         throw new Error('The returned feedback belongs to another review card.')
       // Keep the identity until the caller durably checkpoints the advanced queue.
@@ -211,7 +275,7 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
 
   async function resend() {
     const pending = stored.pending
-    if (!pending || lookup?.status !== 'not_found' || operation.current) return
+    if (!pending || pending.rejectedContent || lookup?.status !== 'not_found' || operation.current) return
     setChecking(true)
     setError('')
     try {
@@ -228,6 +292,7 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
       if (result.item_id !== pending.itemId) throw new Error('Mismatched review result.')
       setLookup({ status: 'completed', result })
     } catch (cause) {
+      recordContentRejection(cause, pending)
       if (activeKey.current === key) setError((cause as Error).message)
     } finally {
       if (activeKey.current === key) setChecking(false)
@@ -237,6 +302,21 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
   return {
     ...mutation,
     recovery: {
+      archivedRatings,
+      previousRating: archivedRatings.at(-1) ?? null,
+      dismissPrevious: (id?: string) => {
+        try {
+          const remaining = loadPrevious(sessionId, true).filter(
+            (entry) => entry.id !== (id ?? archivedRatings.at(-1)?.id),
+          )
+          if (pageMemory.has(sessionId)) previousMemory.set(sessionId, remaining)
+          else sessionStorage.setItem(previousKey(sessionId), JSON.stringify(remaining))
+          setArchivedRatings(remaining)
+        } catch {
+          setError('The previous rating could not be dismissed. It is still kept.')
+        }
+      },
+      stale: !!stored.pending?.rejectedContent,
       pending: stored.pending,
       error: error || stored.error,
       storageError: stored.error,
@@ -256,6 +336,7 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
         } catch {
           /* Preserve the last readable identity. */
         }
+        previousMemory.set(sessionId, archivedRatings)
         pageMemory.set(sessionId, pending)
         setStored({ pending, error: '' })
         setError('')

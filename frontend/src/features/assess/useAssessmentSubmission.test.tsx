@@ -308,3 +308,63 @@ it('does not discard rejected work if archiving after refresh fails', () => {
   expect(hook.result.current.recovery.pending?.id).toBe(pending.id)
   expect(JSON.parse(sessionStorage.getItem(assessmentRecoveryKey('session'))!).body).toEqual(body)
 })
+
+it('keeps multiple refreshed answers until each is explicitly dismissed, including a legacy archive', async () => {
+  const legacy = {
+    version: 1,
+    id: crypto.randomUUID(),
+    endpoint: '/api/assess/attempt',
+    body,
+    question: 'Legacy original',
+    rejectedContent: true,
+  }
+  sessionStorage.setItem('assessment-previous-answer:v1:session', JSON.stringify(legacy))
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () =>
+      jsonResponse({ error: { code: 'assessment_content_changed', message: 'Changed' } }, 409),
+    ),
+  )
+  const hook = setup()
+  for (const questionLabel of ['First original', 'Second original']) {
+    await act(async () => {
+      await expect(hook.result.current.mutateAsync({ ...body, questionLabel })).rejects.toThrow('Changed')
+    })
+    act(() => hook.result.current.recovery.clear())
+  }
+  hook.unmount()
+  const resumed = setup()
+  expect(resumed.result.current.recovery.previousAnswers.map((value) => value.question)).toEqual([
+    'Legacy original',
+    'First original',
+    'Second original',
+  ])
+  act(() => resumed.result.current.recovery.dismissPrevious(legacy.id))
+  expect(resumed.result.current.recovery.previousAnswers.map((value) => value.question)).toEqual([
+    'First original',
+    'Second original',
+  ])
+})
+
+it('can archive a rejected answer in explicit page-memory mode when storage is blocked', async () => {
+  const session = 'stale-memory-archive'
+  const pending = {
+    version: 1,
+    id: crypto.randomUUID(),
+    endpoint: '/api/assess/attempt',
+    body: { ...body, session_id: session },
+    question: 'Keep in memory',
+    rejectedContent: true,
+  }
+  sessionStorage.setItem(assessmentRecoveryKey(session), JSON.stringify(pending))
+  const hook = setup(session)
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+    throw new Error('Blocked')
+  })
+  act(() => hook.result.current.recovery.continueInMemory())
+  act(() => hook.result.current.recovery.clear())
+  expect(hook.result.current.recovery.pending).toBeNull()
+  hook.unmount()
+  const resumed = setup(session)
+  expect(resumed.result.current.recovery.previousAnswers[0].question).toBe('Keep in memory')
+})

@@ -1,5 +1,5 @@
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Header, Query
@@ -7,10 +7,8 @@ from pydantic import BaseModel
 
 from app.api.deps import DB, Learner
 from app.db.events import EventWriter, Verb
-from app.db.models import Assessment, SkillNode
-from app.kernel import memory, review_requests
+from app.kernel import memory, review_content, review_requests
 from app.kernel import session as ksession
-from app.orchestrator.grader import view
 from app.schemas.common import ActivityType, Actor, ObjectType
 from app.schemas.review import ReviewOut, ReviewRating, ReviewRequestState
 
@@ -18,6 +16,7 @@ router = APIRouter(prefix="/review", tags=["review"])
 
 
 class ReviewItemOut(BaseModel):
+    content_version: str
     item_id: str
     skill_id: str
     skill_title: str
@@ -46,36 +45,28 @@ def _as_of(value: str | None) -> datetime:
     return dt
 
 
-async def _reveal(db: DB, prompt: dict[str, Any]) -> tuple[str, list[str] | None, str]:
-    if prompt.get("type") == "vocab":
-        example = f" — e.g. {prompt['example']}" if prompt.get("example") else ""
-        return str(prompt.get("q", "")), None, f"{prompt.get('a', '')}{example}"
-    a = await db.get(Assessment, str(prompt.get("assessment_id") or prompt.get("ref")))
-    if a is None:
-        return str(prompt.get("q", "")), None, ""
-    v = view(a)
-    item = a.item_json
-    if a.kind == "mcq":
-        reveal = f"{item['options'][int(item['answer'])]} — {item.get('explanation', '')}".strip(
-            " —"
-        )
-    elif a.kind == "cloze":
-        reveal = str(item["answers"][0])
-    elif a.kind == "code":
-        reveal = "A complete answer covers: " + "; ".join(item.get("success_criteria") or [])
-    else:
-        rubric = (
-            await db.get(
-                __import__("app.db.models", fromlist=["AssessmentRubric"]).AssessmentRubric,
-                a.rubric_id,
-            )
-            if a.rubric_id
-            else None
-        )
-        reveal = "A complete answer covers: " + "; ".join(
-            c["criterion"] for c in (rubric.criteria_json if rubric else [])
-        )
-    return v.question, v.options, reveal
+async def item_view(db: DB, learner_id: str, item_id: str) -> ReviewItemOut:
+    content = await review_content.snapshot(db, learner_id, item_id)
+    if not content["active"]:
+        from app.core.errors import AppError
+
+        raise AppError("not_found", "Review item not found.", 404)
+    return ReviewItemOut(
+        item_id=content["id"],
+        skill_id=content["skill_id"],
+        skill_title=content["skill_title"] or "",
+        item_type=content["item_type"],
+        **content["display"],
+        due=content["due"] or "",
+        state=content["state"] or "new",
+        content_version=review_content.content_token(content),
+    )
+
+
+@router.get("/items/{item_id}", response_model=ReviewItemOut)
+async def refresh_item(item_id: str, session_id: str, db: DB, learner: Learner) -> ReviewItemOut:
+    await ksession.get_owned(db, session_id, learner.id)
+    return await item_view(db, learner.id, item_id)
 
 
 @router.get(
@@ -122,22 +113,8 @@ async def due(
             },
         )
     items = []
-    for item, ms in all_due[:cap]:
-        node = await db.get(SkillNode, item.skill_id)
-        question, options, reveal = await _reveal(db, item.prompt_json)
-        items.append(
-            ReviewItemOut(
-                item_id=item.id,
-                skill_id=item.skill_id,
-                skill_title=node.title if node else "",
-                item_type=item.item_type,
-                question=question,
-                options=options,
-                reveal=reveal,
-                due=ms.due,
-                state=ms.state,
-            )
-        )
+    for item, _ in all_due[:cap]:
+        items.append(await item_view(db, learner.id, item.id))
     return DueList(items=items, cap=cap, total_due=len(all_due), as_of=now.isoformat())
 
 

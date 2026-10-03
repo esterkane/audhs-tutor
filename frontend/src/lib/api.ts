@@ -105,6 +105,7 @@ export const api = {
     body: {
       session_id: string
       rating: number
+      content_version?: string | null
       latency_ms?: number
       confidence_pre?: number
       hint_count?: number

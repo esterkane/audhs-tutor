@@ -9,6 +9,7 @@ import { Review } from './Review'
 const due = {
   items: [
     {
+      content_version: 'v1',
       item_id: 'i1',
       skill_id: 'k1',
       skill_title: 'Softmax',
@@ -20,6 +21,7 @@ const due = {
       state: 'review',
     },
     {
+      content_version: 'v1',
       item_id: 'i2',
       skill_id: 'k1',
       skill_title: 'Softmax',
@@ -334,4 +336,33 @@ describe('Review', () => {
     expect(secondBody?.confidence_pre).toBeUndefined()
     expect(secondBody?.latency_ms).toBe(500)
   })
+})
+
+it('does not restore a revealed answer against a changed content version', async () => {
+  useMode.setState({ sessionId: 'version-reload' })
+  sessionStorage.setItem(
+    'audhs-review-queue:v1:version-reload',
+    JSON.stringify({
+      version: 1,
+      admitted: ['i1'],
+      reviewed: [],
+      current: 'i1',
+      revealed: 'i1',
+      revealedVersion: 'old',
+      all: false,
+    }),
+  )
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.startsWith('/api/review/due')) return jsonResponse({ ...due, items: [due.items[0]] })
+      if (url.includes('/api/sessions/')) return jsonResponse(reviewSession)
+      return jsonResponse({ skills: [] })
+    }),
+  )
+  renderApp(<Review />)
+  expect(await screen.findByRole('button', { name: 'Show answer' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^Good/ })).not.toBeInTheDocument()
+  sessionStorage.clear()
+  vi.unstubAllGlobals()
 })

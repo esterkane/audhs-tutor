@@ -292,7 +292,12 @@ async def test_review_confidence_is_recorded_per_card(
     r = await client.post(
         f"/api/review/{item}",
         params={"as_of": later},
-        json={"session_id": sid, "rating": 3, "confidence_pre": 4},
+        json={
+            "session_id": sid,
+            "rating": 3,
+            "confidence_pre": 4,
+            "content_version": due["items"][0]["content_version"],
+        },
     )
     assert r.status_code == 200, r.text
     reviewed = await _events(db, sid, "reviewed")

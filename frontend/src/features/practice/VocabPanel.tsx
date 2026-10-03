@@ -1,3 +1,4 @@
+import { apiFetch, type Schemas } from '../../lib/api'
 import { ReviewRecovery } from '../review/ReviewRecovery'
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -45,7 +46,12 @@ function VocabSession({ sessionId, onDone }: { sessionId: string; onDone: () => 
   const rate = useRate(sessionId)
   const [revealed, setRevealed] = useState<string | null>(null)
   const items = due.data?.items ?? []
-  const item = items.find((card) => !reviewed.includes(card.item_id))
+  const [frozen, setFrozen] = useState<Schemas['ReviewItemOut'] | null>(null)
+  const item =
+    frozen && !reviewed.includes(frozen.item_id)
+      ? frozen
+      : items.find((card) => !reviewed.includes(card.item_id))
+  if (item && item !== frozen) setFrozen(item)
 
   async function rateIt(rating: number) {
     if (!item) return
@@ -53,7 +59,9 @@ function VocabSession({ sessionId, onDone }: { sessionId: string; onDone: () => 
       const completed = await rate.mutateAsync({
         itemId: item.item_id,
         questionLabel: item.question,
-        body: { session_id: sessionId, rating, hint_count: 0 },
+        revealLabel: item.reveal,
+        optionsLabels: item.options,
+        body: { session_id: sessionId, rating, hint_count: 0, content_version: item.content_version },
       })
       markReviewed(item.item_id)
       rate.recovery.clear(completed.requestId)
@@ -67,6 +75,20 @@ function VocabSession({ sessionId, onDone }: { sessionId: string; onDone: () => 
       <CardTitle>Vocabulary</CardTitle>
       <ReviewRecovery
         recovery={rate.recovery}
+        onRefresh={async (signal) => {
+          const pending = rate.recovery.pending
+          if (!pending || pending.itemId !== item?.item_id)
+            throw new Error('Reopen the original vocabulary card to refresh it.')
+          const fresh = await apiFetch<Schemas['ReviewItemOut']>(
+            `/api/review/items/${encodeURIComponent(pending.itemId)}?session_id=${encodeURIComponent(sessionId)}`,
+            { signal },
+          )
+          if (signal.aborted) return
+          if (fresh.item_id !== pending.itemId)
+            throw new Error('The returned card does not match the original rating.')
+          setFrozen(fresh)
+          setRevealed(null)
+        }}
         onConfirmed={async (id) => {
           const fresh = await due.refetch()
           if (fresh.error)

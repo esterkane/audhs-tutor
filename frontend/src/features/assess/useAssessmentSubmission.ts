@@ -13,22 +13,32 @@ export type PendingAssessment = {
   answerDisplay?: string
   rejectedContent?: boolean
 }
-const previousMemory = new Map<string, PendingAssessment | null>()
+const previousMemory = new Map<string, PendingAssessment[]>()
 const previousKey = (session: string) => `assessment-previous-answer:v1:${session}`
-function loadPrevious(session: string): PendingAssessment | null {
-  if (previousMemory.has(session)) return previousMemory.get(session) ?? null
+function readPrevious(session: string): PendingAssessment[] {
+  if (previousMemory.has(session)) return previousMemory.get(session) ?? []
+  const raw = sessionStorage.getItem(previousKey(session))
+  if (!raw) return []
+  const parsed: unknown = JSON.parse(raw)
+  const values = (Array.isArray(parsed) ? parsed : [parsed]) as PendingAssessment[]
+  if (
+    !values.every(
+      (value) =>
+        value?.version === 1 &&
+        typeof value.id === 'string' &&
+        value.body?.session_id === session &&
+        typeof value.question === 'string' &&
+        typeof value.body.answer === 'string',
+    )
+  )
+    throw new Error('Previous answers could not be read.')
+  return values
+}
+function loadPrevious(session: string): PendingAssessment[] {
   try {
-    const raw = sessionStorage.getItem(previousKey(session))
-    if (!raw) return null
-    const value = JSON.parse(raw) as PendingAssessment
-    return value.version === 1 &&
-      value.body?.session_id === session &&
-      typeof value.question === 'string' &&
-      typeof value.body.answer === 'string'
-      ? value
-      : null
+    return readPrevious(session)
   } catch {
-    return null
+    return []
   }
 }
 const pageMemory = new Map<string, PendingAssessment | null>()
@@ -73,7 +83,7 @@ function load(session: string) {
 /** One unresolved grading intent per session/tab. Never regenerate from a lookup or timeout. */
 export function useAssessmentSubmission(sessionId: string, endpoint = '/api/assess/attempt') {
   const key = assessmentRecoveryKey(sessionId)
-  const [previousAnswer, setPreviousAnswer] = useState(() => loadPrevious(sessionId))
+  const [previousAnswers, setPreviousAnswers] = useState(() => loadPrevious(sessionId))
   const [scope, setScope] = useState(key)
   const [stored, setStored] = useState(() => load(sessionId))
   const [lookup, setLookup] = useState<Schemas['AssessmentRequestState'] | null>(null)
@@ -83,7 +93,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
   const operation = useRef<AbortController | null>(null)
   if (scope !== key) {
     setScope(key)
-    setPreviousAnswer(loadPrevious(sessionId))
+    setPreviousAnswers(loadPrevious(sessionId))
     setStored(load(sessionId))
     setLookup(null)
     setError('')
@@ -159,9 +169,10 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
       if (current?.rejectedContent) {
         // Preserve original wording/answer after refresh, including across reloads.
         // Failure to save the archive leaves the original recovery record intact.
-        if (pageMemory.has(sessionId)) previousMemory.set(sessionId, current)
-        else sessionStorage.setItem(previousKey(sessionId), JSON.stringify(current))
-        setPreviousAnswer(current)
+        const archived = [...readPrevious(sessionId).filter((value) => value.id !== current.id), current]
+        if (pageMemory.has(sessionId)) previousMemory.set(sessionId, archived)
+        else sessionStorage.setItem(previousKey(sessionId), JSON.stringify(archived))
+        setPreviousAnswers(archived)
       }
       remove(sessionId)
       setStored({ pending: null, error: '' })
@@ -282,12 +293,14 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
     ...mutation,
     recovery: {
       pending: stored.pending,
-      previousAnswer,
-      dismissPrevious: () => {
+      previousAnswers,
+      previousAnswer: previousAnswers.at(-1) ?? null,
+      dismissPrevious: (id: string) => {
         try {
-          if (pageMemory.has(sessionId)) previousMemory.set(sessionId, null)
-          else sessionStorage.removeItem(previousKey(sessionId))
-          setPreviousAnswer(null)
+          const remaining = readPrevious(sessionId).filter((value) => value.id !== id)
+          if (pageMemory.has(sessionId)) previousMemory.set(sessionId, remaining)
+          else sessionStorage.setItem(previousKey(sessionId), JSON.stringify(remaining))
+          setPreviousAnswers(remaining)
         } catch {
           setError('The previous answer could not be dismissed from storage.')
         }
@@ -309,6 +322,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
         } catch {
           /* Preserve the last readable identity. */
         }
+        previousMemory.set(sessionId, previousAnswers)
         pageMemory.set(sessionId, pending)
         setStored({ pending, error: '' })
         setError('')

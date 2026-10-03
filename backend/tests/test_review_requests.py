@@ -20,7 +20,15 @@ async def prepare(client, db):
     owner = await db.get(models.Session, session["id"])
     node = await db.scalar(select(models.SkillNode))
     item, _ = await memory.ensure_item(db, owner.learner_id, node.id, "mcq", {"ref": "review-test"})
-    return item.id, {"session_id": session["id"], "rating": 4, "hint_count": 1}
+    shown = (
+        await client.get(f"/api/review/items/{item.id}", params={"session_id": session["id"]})
+    ).json()
+    return item.id, {
+        "session_id": session["id"],
+        "rating": 4,
+        "hint_count": 1,
+        "content_version": shown["content_version"],
+    }
 
 
 async def test_review_lost_response_replays_one_schedule(client, db):
@@ -106,15 +114,49 @@ async def test_concurrent_equal_rating_is_not_applied_twice(client, db, monkeypa
         return await original(*args, **kwargs)
 
     monkeypatch.setattr(memory, "review", delayed)
+    from app.db import workspace_requests
+
+    duplicate_entered = asyncio.Event()
+    original_claim = workspace_requests.claim
+    claim_calls = 0
+
+    async def observed_claim(*args, **kwargs):
+        nonlocal claim_calls
+        claim_calls += 1
+        if claim_calls == 2:
+            duplicate_entered.set()
+        return await original_claim(*args, **kwargs)
+
+    monkeypatch.setattr(workspace_requests, "claim", observed_claim)
     first = asyncio.create_task(client.post(f"/api/review/{item}", json=body, headers=HEADERS))
-    await asyncio.wait_for(entered.wait(), 5)
+    duplicate = None
     try:
-        duplicate = await client.post(f"/api/review/{item}", json=body, headers=HEADERS)
-        assert duplicate.status_code == 409
+        await asyncio.wait_for(entered.wait(), 5)
+        duplicate = asyncio.create_task(
+            client.post(f"/api/review/{item}", json=body, headers=HEADERS)
+        )
+        await asyncio.wait_for(duplicate_entered.wait(), 5)
     finally:
         release.set()
-    assert (await first).status_code == 200
+        tasks = [first] if duplicate is None else [first, duplicate]
+        responses = await asyncio.gather(*tasks)
+    assert duplicate is not None
+    first_response, duplicate_response = responses
+    assert first_response.status_code == 200
+    if duplicate_response.status_code == 200:
+        assert duplicate_response.json() == first_response.json()
+    else:
+        assert duplicate_response.status_code == 409
+        assert duplicate_response.json()["error"]["code"] == "request_unresolved"
     assert await db.scalar(select(func.count()).select_from(models.ReviewLog)) == 1
+    assert (
+        await db.scalar(
+            select(func.count())
+            .select_from(models.LearningEvent)
+            .where(models.LearningEvent.verb == "reviewed")
+        )
+        == 1
+    )
 
 
 @pytest.mark.parametrize("stage", ["review", "complete"])

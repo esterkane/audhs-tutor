@@ -2,20 +2,19 @@ import { expect, test } from '@playwright/test'
 import { API, endOpenSession, expectOk, freshDeterministicSkill } from './helpers'
 
 for (const narrow of [false, true]) {
-  test(`review lost-response recovery ${narrow ? 'narrow' : 'desktop'}`, async ({ page, request }) => {
+  test(`review stale content refresh ${narrow ? 'narrow' : 'desktop'}`, async ({ page, request }) => {
     await endOpenSession(request)
     try {
       await request.put(`${API}/api/preferences`, { data: { key: 'goal.area', value: '' } })
       await request.put(`${API}/api/preferences`, { data: { key: 'goal.course', value: '' } })
-      const started = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
-      await expectOk(started)
-      const session = await started.json()
+      const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
+      await expectOk(response)
+      const session = await response.json()
       const next = await request.get(
         `${API}/api/assess/next?session_id=${session.id}&skill_id=${freshDeterministicSkill()}`,
       )
       await expectOk(next)
       const { item } = await next.json()
-      expect(['mcq', 'cloze']).toContain(item.kind)
       const grade = await request.post(`${API}/api/assess/attempt`, {
         data: {
           session_id: session.id,
@@ -35,29 +34,36 @@ for (const narrow of [false, true]) {
           data: { session_id: session.id, rating: 1, content_version: reviewItem.content_version },
         }),
       )
+      await page.route('**/api/review/due?*', async (route) => {
+        const result = await route.fetch()
+        const body = await result.json()
+        body.items = body.items.filter((entry: { item_id: string }) => entry.item_id === itemId)
+        body.items.forEach((entry: { content_version: string }) => {
+          entry.content_version = 'ac1.old-process'
+        })
+        await route.fulfill({ response: result, json: body })
+      })
       if (narrow) await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/')
       await page.getByRole('button', { name: /^Resume previous session/ }).click()
       await page.goto('/review')
       await page.getByRole('button', { name: 'Show answer', exact: true }).click()
-      let posts = 0
-      await page.route(`**/api/review/${itemId}`, async (route) => {
-        posts++
-        const saved = await route.fetch()
-        expect(saved.ok()).toBeTruthy()
-        await route.abort('failed')
-      })
+      const reject = page.waitForResponse(
+        (res) => res.url().endsWith(`/api/review/${itemId}`) && res.status() === 409,
+      )
       await page.getByRole('button', { name: /^Good/ }).click()
-      await expect(page.getByRole('button', { name: 'Check saved rating' })).toBeEnabled()
-      await page.reload()
-      const lookup = page.getByRole('button', { name: 'Check saved rating' })
-      await expect(lookup).toBeVisible()
-      await lookup.focus()
+      await reject
+      const refresh = page.getByRole('button', { name: 'Review updated card', exact: true })
+      await refresh.focus()
       await page.keyboard.press('Enter')
-      await expect(page.getByText(/The original rating was saved/)).toBeVisible()
-      await page.getByRole('button', { name: 'Update review queue' }).click()
-      await expect(page.getByRole('region', { name: 'Review submission recovery' })).toHaveCount(0)
-      expect(posts).toBe(1)
+      await expect(refresh).toHaveCount(0)
+      await expect(page.getByRole('button', { name: /^Good/ })).toHaveCount(0)
+      await page.getByRole('button', { name: 'Show answer', exact: true }).click()
+      const accept = page.waitForResponse(
+        (res) => res.url().endsWith(`/api/review/${itemId}`) && res.status() === 200,
+      )
+      await page.getByRole('button', { name: /^Good/ }).click()
+      await accept
     } finally {
       await endOpenSession(request)
     }

@@ -102,22 +102,22 @@ export function AssessmentRecovery({
           )}
         </>
       )}
-      {recovery.previousAnswer && (
-        <details>
+      {recovery.previousAnswers.map((previous) => (
+        <details key={previous.id}>
           <summary>Previous question and answer — kept after refresh</summary>
-          <p>{recovery.previousAnswer.question}</p>
+          <p>{previous.question}</p>
           <pre className="whitespace-pre-wrap break-words">
-            {recovery.previousAnswer.answerDisplay ?? recovery.previousAnswer.body.answer}
+            {previous.answerDisplay ?? previous.body.answer}
           </pre>
           <p>
             This is your earlier answer, not a submission to the updated question. You can copy it into your
             current answer.
           </p>
-          <Button variant="ghost" onClick={recovery.dismissPrevious}>
+          <Button variant="ghost" onClick={() => recovery.dismissPrevious(previous.id)}>
             Dismiss previous answer
           </Button>
         </details>
-      )}
+      ))}
       {!pending ? (
         recovery.error ? (
           <Button onClick={recovery.reload}>Retry reading recovery information</Button>

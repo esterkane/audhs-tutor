@@ -141,7 +141,12 @@ async def test_routes_vocab_review_practice_and_skipped_movement(
     )
     rated = await client.post(
         f"/api/review/{lang['items'][0]['item_id']}",
-        json={"session_id": s["id"], "rating": 3, "confidence_pre": 3},
+        json={
+            "session_id": s["id"],
+            "rating": 3,
+            "confidence_pre": 3,
+            "content_version": lang["items"][0]["content_version"],
+        },
     )
     assert rated.status_code == 200
     assert (await client.get("/api/vocab")).json()["due_total"] == 0

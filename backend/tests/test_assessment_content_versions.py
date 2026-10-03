@@ -144,7 +144,9 @@ async def test_completed_versioned_replay_survives_restart_and_hidden_key_edit(
     a = await db.get(models.Assessment, body["assessment_id"])
     a.item_json = {**a.item_json, "answer": 1}
     await db.commit()
-    monkeypatch.setattr(assessment_content, "_KEY", b"different-process-key")
+    from app.core import content_versions
+
+    monkeypatch.setattr(content_versions, "_KEY", b"different-process-key")
     replay = await client.post("/api/assess/attempt", json=body, headers=headers)
     assert replay.status_code == 200
     assert replay.json() == first.json()

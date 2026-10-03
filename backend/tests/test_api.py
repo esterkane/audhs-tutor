@@ -115,7 +115,12 @@ async def test_full_learning_loop_over_http(seeded_client: AsyncClient, db: Asyn
     r = await c.post(
         f"/api/review/{rid}",
         params={"as_of": later},
-        json={"session_id": sid, "rating": 3, "latency_ms": 2500},
+        json={
+            "session_id": sid,
+            "rating": 3,
+            "latency_ms": 2500,
+            "content_version": due_later["items"][0]["content_version"],
+        },
     )
     assert (
         r.status_code == 200

@@ -9,7 +9,7 @@ from app.core.errors import AppError
 from app.db import workspace_requests
 from app.db.events import EventWriter
 from app.db.models import MemoryState, ReviewItem, WorkspaceRequest
-from app.kernel import memory
+from app.kernel import memory, review_content
 from app.kernel import session as ksession
 from app.schemas.common import ActivityType
 from app.schemas.review import ReviewOut, ReviewRating, ReviewRequestState
@@ -34,6 +34,14 @@ async def submit(
     )
     if item is None:
         raise AppError("not_found", "Review item not found.", 404)
+
+    async def validate_new() -> None:
+        content = await review_content.snapshot(db, learner_id, item_id)
+        review_content.validate(content, body.content_version)
+
+    payload = body.model_dump(mode="json")
+    if body.content_version is None:
+        payload.pop("content_version", None)
     claim_id = None
     if identity is not None:
         claim_id, saved = await workspace_requests.claim(
@@ -41,10 +49,14 @@ async def submit(
             learner_id,
             session.id,
             f"review:{identity}",
-            {"item_id": item_id, "body": body.model_dump(mode="json"), "as_of": as_of},
+            {"item_id": item_id, "body": payload, "as_of": as_of},
+            validate_new=validate_new,
         )
         if saved is not None:
             return ReviewOut.model_validate(saved)
+    else:
+        await validate_new()
+        await db.commit()
     try:
         # Acquire SQLite's write lock before reading the mutable card: distinct concurrent
         # requests must not both calculate their next state from the same earlier snapshot.
@@ -58,6 +70,8 @@ async def submit(
             )
             .values(due=MemoryState.due)
         )
+        current_content = await review_content.snapshot(db, learner_id, item_id)
+        review_content.validate(current_content, body.content_version, during_write=True)
         events = EventWriter(db, ksession.event_context(session, activity=ActivityType.RETRIEVAL))
         log = await memory.review(
             db,

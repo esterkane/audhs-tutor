@@ -134,7 +134,15 @@ async def test_assisted_review_is_not_logged_as_unaided_easy(
     item, _ = await memory.ensure_item(db, me["id"], skill.id, "recall", {"q": "Recall"})
     s = (await client.post("/api/sessions", json={})).json()
     response = await client.post(
-        f"/api/review/{item.id}", json={"session_id": s["id"], "rating": 4, "hint_count": 1}
+        f"/api/review/{item.id}",
+        json={
+            "session_id": s["id"],
+            "rating": 4,
+            "hint_count": 1,
+            "content_version": (
+                await client.get(f"/api/review/items/{item.id}", params={"session_id": s["id"]})
+            ).json()["content_version"],
+        },
     )
     assert response.status_code == 200
     event = (

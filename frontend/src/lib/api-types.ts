@@ -704,6 +704,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/review/items/{item_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Refresh Item */
+    get: operations['refresh_item_api_review_items__item_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/due': {
     parameters: {
       query?: never
@@ -4544,6 +4561,8 @@ export interface components {
     }
     /** ReviewItemOut */
     ReviewItemOut: {
+      /** Content Version */
+      content_version: string
       /** Item Id */
       item_id: string
       /** Skill Id */
@@ -4578,6 +4597,8 @@ export interface components {
     }
     /** ReviewRating */
     ReviewRating: {
+      /** Content Version */
+      content_version?: string | null
       /** Session Id */
       session_id: string
       /** Rating */
@@ -6522,6 +6543,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AssessmentView']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  refresh_item_api_review_items__item_id__get: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        item_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReviewItemOut']
         }
       }
       /** @description Validation Error */

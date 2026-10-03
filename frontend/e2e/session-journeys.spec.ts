@@ -27,26 +27,32 @@ async function makeOneCardDue(request: APIRequestContext) {
   await expectOk(started)
   const session = (await started.json()) as { id: string }
   const skillId = freshDeterministicSkill()
-  const next = await request.get(
-    `${API}/api/assess/next?session_id=${session.id}&skill_id=${skillId}`,
-  )
+  const next = await request.get(`${API}/api/assess/next?session_id=${session.id}&skill_id=${skillId}`)
   await expectOk(next)
-  const { item } = (await next.json()) as { item: { id: string; kind: string } | null }
+  const { item } = (await next.json()) as {
+    item: { id: string; kind: string; content_version: string } | null
+  }
   expect(item).not.toBeNull()
   expect(['mcq', 'cloze'], 'deterministically graded kinds only (no local model in CI)').toContain(item!.kind)
   const attempt = await request.post(`${API}/api/assess/attempt`, {
-    data: { session_id: session.id, assessment_id: item!.id, answer: 'no idea', confidence_pre: 1 },
+    data: {
+      session_id: session.id,
+      assessment_id: item!.id,
+      content_version: item!.content_version,
+      answer: 'no idea',
+      confidence_pre: 1,
+    },
   })
   await expectOk(attempt)
   const far = new Date(Date.now() + 30 * 86_400_000).toISOString()
   const due = (await (
     await request.get(`${API}/api/review/due?session_id=${session.id}&as_of=${far}&all=true`)
-  ).json()) as { items: Array<{ item_id: string; skill_id: string }> }
+  ).json()) as { items: Array<{ item_id: string; skill_id: string; content_version: string }> }
   const mine = due.items.find((d) => d.skill_id === skillId)
   expect(mine, 'the attempt created a review card for this skill').toBeTruthy()
   const past = new Date(Date.now() - 3 * 86_400_000).toISOString()
   const rated = await request.post(`${API}/api/review/${mine!.item_id}?as_of=${past}`, {
-    data: { session_id: session.id, rating: 1 },
+    data: { session_id: session.id, rating: 1, content_version: mine!.content_version },
   })
   await expectOk(rated)
   await endOpenSession(request)

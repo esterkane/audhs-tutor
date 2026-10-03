@@ -1,3 +1,4 @@
+import { apiFetch, type Schemas } from '../lib/api'
 import { ReviewRecovery } from '../features/review/ReviewRecovery'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { ReadAloud } from '../features/voice/ReadAloud'
@@ -26,6 +27,7 @@ type ReviewCheckpoint = {
   admitted: string[] | null
   reviewed: string[]
   current: string | null
+  revealedVersion?: string | null
   revealed: string | null
   all: boolean
 }
@@ -80,6 +82,15 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   const nav = useNavigate()
 
   const [shownAt, setShownAt] = useState(nowMs)
+  const [frozen, setFrozen] = useState<Schemas['ReviewItemOut'] | null>(null)
+  const candidates = (due.data?.items ?? []).filter(
+    (i) =>
+      !queue.reviewed.includes(i.item_id) &&
+      (showAll || queue.admitted === null || queue.admitted.includes(i.item_id)),
+  )
+  const candidate = candidates.find((i) => i.item_id === queue.current) ?? candidates[0]
+  const item = frozen && !queue.reviewed.includes(frozen.item_id) ? frozen : candidate
+  if (item && item !== frozen) setFrozen(item)
 
   function markReviewed(itemId: string) {
     const saved = restoreQueue(queueKey)
@@ -109,6 +120,22 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   const recoveryPanel = (
     <ReviewRecovery
       recovery={rate.recovery}
+      onRefresh={async (signal) => {
+        const pending = rate.recovery.pending
+        if (!pending || pending.itemId !== item?.item_id)
+          throw new Error('Reopen the original review card to refresh it.')
+        const fresh = await apiFetch<Schemas['ReviewItemOut']>(
+          `/api/review/items/${encodeURIComponent(pending.itemId)}?session_id=${encodeURIComponent(sessionId!)}`,
+          { signal },
+        )
+        if (signal.aborted) return
+        if (fresh.item_id !== pending.itemId)
+          throw new Error('The returned card does not match the original rating.')
+        setFrozen(fresh)
+        setQueue((q) => ({ ...q, current: fresh.item_id, revealed: null, revealedVersion: null }))
+        setConfidence(null)
+        setShownAt(nowMs())
+      }}
       onConfirmed={async (itemId) => {
         const fresh = await due.refetch()
         if (fresh.error)
@@ -149,15 +176,20 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   const remaining = items.filter(
     (i) => !queue.reviewed.includes(i.item_id) && (showAll || admitted.includes(i.item_id)),
   )
-  const item = remaining.find((i) => i.item_id === queue.current) ?? remaining[0]
   const currentId = item?.item_id ?? null
   if (currentId !== queue.current) {
     setQueue((q) => ({ ...q, current: currentId, revealed: null }))
     setConfidence(null)
     setShownAt(nowMs())
   }
-  const revealed = currentId !== null && queue.revealed === currentId
-  const setRevealed = (value: boolean) => setQueue((q) => ({ ...q, revealed: value ? currentId : null }))
+  const revealed =
+    currentId !== null && queue.revealed === currentId && queue.revealedVersion === item?.content_version
+  const setRevealed = (value: boolean) =>
+    setQueue((q) => ({
+      ...q,
+      revealed: value ? currentId : null,
+      revealedVersion: value ? item?.content_version : null,
+    }))
   const idx = queue.reviewed.length
   const helpKey = `audhs-review:${sessionId}:${item?.item_id ?? ''}`
   const hintCount = readDraft(helpKey).hints
@@ -230,9 +262,12 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       const completed = await rate.mutateAsync({
         itemId: item.item_id,
         questionLabel: item.question,
+        revealLabel: item.reveal,
+        optionsLabels: item.options,
         body: {
           session_id: sessionId!,
           rating,
+          content_version: item.content_version,
           latency_ms: nowMs() - shownAt,
           confidence_pre: confidence ?? undefined,
           hint_count: hintCount,
