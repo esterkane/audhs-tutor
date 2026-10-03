@@ -227,3 +227,12 @@ See docs/slices/local-runtime-feedback-diagnostic.md; realistic/repeated quality
 Explicit single grid column fixes reproduced narrow-screen overflow with 200% text and increased
 letter spacing without clipping or shrinking content. Desktop/narrow integration journeys and
 independent reviews pass. Linux CI confirmation remains pending. See docs/slices/project-study-reflow.md.
+
+
+## Bounded material import verification — 2026-10-03
+
+Privately captured two additional lesson texts/transcripts and one external PDF, with source
+provenance retained only in the private archive. All three imports succeeded; all60 new nonduplicate
+chunks matched search-index text. One external article remains unresolved after an HTTP error.
+Acquisition/ingestion is not complete-course coverage or learner completion; curriculum activation
+was not changed. The earlier exercise capture is also preserved in the private archive.
