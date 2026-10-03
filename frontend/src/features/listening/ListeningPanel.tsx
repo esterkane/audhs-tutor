@@ -1,9 +1,10 @@
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { AudioControls } from '../audio/AudioControls'
+import { claimReading, updateReading } from '../voice/readingOwner'
 import { bindMedia } from '../audio/settings'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { Choice } from '../../components/ui/choice'
@@ -107,6 +108,13 @@ function ClipCard({
   const section = lesson.sections[index]
   const audio = useRef<HTMLAudioElement | null>(null)
   const [playing, setPlaying] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [playbackNotice, setPlaybackNotice] = useState('')
+  const lease = useRef<(() => void) | null>(null)
+  const operation = useRef(0)
+  const activePlayback = useRef(false)
+  const pendingPlay = useRef(false)
+  const mounted = useRef(true)
   const [plays, setPlays] = useState(0)
   const [replays, setReplays] = useState(0)
   const playedSeconds = useRef(0)
@@ -120,6 +128,24 @@ function ClipCard({
   const [graded, setGraded] = useState<AttemptResult | null>(null)
   const textOnly = lesson.media_url == null || playbackError != null
 
+  const releaseLease = useCallback(() => {
+    lease.current?.()
+    lease.current = null
+  }, [])
+  const halt = useCallback(
+    (release = false) => {
+      operation.current++
+      pendingPlay.current = false
+      activePlayback.current = false
+      lastTick.current = null
+      audio.current?.pause()
+      if (release) releaseLease()
+      setStarting(false)
+      setPlaying(false)
+    },
+    [releaseLease],
+  )
+
   useEffect(() => {
     titleRef.current?.focus()
   }, [])
@@ -129,70 +155,122 @@ function ClipCard({
     if (!el) return
     const releaseAudio = bindMedia(el)
     const onTime = () => {
-      if (lastTick.current != null && el.currentTime > lastTick.current) {
+      if (activePlayback.current && lastTick.current != null && el.currentTime > lastTick.current) {
         playedSeconds.current += Math.min(el.currentTime - lastTick.current, 2)
       }
-      lastTick.current = el.currentTime
+      lastTick.current = activePlayback.current ? el.currentTime : null
       if (el.currentTime >= section.t_end) {
-        el.pause()
+        halt(true)
         el.currentTime = section.t_start
-        lastTick.current = null
-        setPlaying(false)
+        setPlaybackNotice('Clip finished. Play starts from the beginning.')
       }
     }
     const onPause = () => {
+      if (!el.paused) return // A queued pause event must not undo a newer play.
+      activePlayback.current = false
       lastTick.current = null
       setPlaying(false)
     }
+    const onEnded = () => {
+      halt(true)
+      setPlaybackNotice('Clip finished. Play starts from the beginning.')
+    }
     const onError = () => {
+      halt(true)
       setPlaybackError('The audio could not be played here. The transcript below is the clip.')
       setShowTranscript(true)
       setPlaying(false)
     }
     el.addEventListener('timeupdate', onTime)
     el.addEventListener('pause', onPause)
-    el.addEventListener('ended', onPause)
+    el.addEventListener('ended', onEnded)
     el.addEventListener('error', onError)
+    mounted.current = true
     return () => {
+      mounted.current = false
+      halt(true)
+      pendingPlay.current = false
+      activePlayback.current = false
+      lastTick.current = null
+      releaseLease()
       releaseAudio()
       el.pause()
       el.removeEventListener('timeupdate', onTime)
       el.removeEventListener('pause', onPause)
-      el.removeEventListener('ended', onPause)
+      el.removeEventListener('ended', onEnded)
       el.removeEventListener('error', onError)
     }
-  }, [section.t_end, section.t_start])
+  }, [section.t_end, section.t_start, halt, releaseLease])
 
   async function play(fromStart: boolean) {
     const el = audio.current
-    if (!el) return
+    if (!el || pendingPlay.current) return
+    halt(true)
+    lease.current = claimReading((replacement) => {
+      halt(true)
+      setPlaybackNotice(`Clip paused because ${replacement} started. Resume clip keeps your position.`)
+    }, 'a listening clip')
+    const attempt = ++operation.current
+    pendingPlay.current = true
+    setStarting(true)
+    setPlaybackNotice('Preparing clip…')
     try {
       if (fromStart || el.currentTime < section.t_start || el.currentTime >= section.t_end) {
         el.currentTime = section.t_start
       }
-      lastTick.current = el.currentTime
       await el.play()
-      if (!el.isConnected) {
-        el.pause()
+      if (!mounted.current || attempt !== operation.current) {
+        // A newer play owns the same element; an old promise must not pause it.
+        if (!activePlayback.current && !pendingPlay.current) el.pause()
         return
       }
+      activePlayback.current = true
+      lastTick.current = el.currentTime
       setPlaying(true)
+      setPlaybackNotice('Playing clip.')
       setPlays((n) => n + 1)
       if (fromStart && plays > 0) setReplays((n) => n + 1)
     } catch {
+      if (!mounted.current || attempt !== operation.current) return
+      halt(true)
       setPlaybackError('The audio could not be played here. The transcript below is the clip.')
       setShowTranscript(true)
+    } finally {
+      if (mounted.current && attempt === operation.current) {
+        pendingPlay.current = false
+        setStarting(false)
+      }
     }
   }
 
   function pause() {
-    audio.current?.pause()
+    halt()
+    setPlaybackNotice('Clip paused. Resume clip keeps your position.')
   }
 
   function stop() {
-    audio.current?.pause()
+    halt(true)
     onStop()
   }
+
+  useEffect(() => {
+    if (!lease.current) return
+    updateReading(lease.current, {
+      kind: 'clip',
+      status: playbackNotice,
+      ready: true,
+      paused: !playing,
+      changing: starting,
+      togglePause: () => {
+        if (playing) pause()
+        else void play(false)
+      },
+      stop: () => {
+        halt(true)
+        setPlaybackNotice('Clip stopped. Resume clip keeps your position.')
+      },
+    })
+  })
 
   function startTask() {
     if (task.data || task.isPending) return
@@ -226,6 +304,7 @@ function ClipCard({
       </p>
       {lesson.media_url && <audio ref={audio} src={lesson.media_url} preload="none" aria-hidden="true" />}
       {!textOnly && <AudioControls />}
+      {playbackNotice && !textOnly && <p role="status">{playbackNotice}</p>}
       {textOnly ? (
         <p className="text-sm mt-2" role="status">
           {playbackError ?? lesson.media_note ?? 'No audio for this clip'} — reading version.
@@ -233,13 +312,17 @@ function ClipCard({
       ) : (
         <div className="flex flex-wrap gap-2 mt-3" role="group" aria-label="Playback">
           {!playing ? (
-            <Button variant="primary" onClick={() => void play(false)}>
-              {replays === 0 ? 'Play clip' : 'Play'}
+            <Button variant="primary" disabled={starting} onClick={() => void play(false)}>
+              {starting
+                ? 'Starting clip…'
+                : playbackNotice.startsWith('Clip paused') || playbackNotice.startsWith('Clip stopped')
+                  ? 'Resume clip'
+                  : 'Play clip'}
             </Button>
           ) : (
             <Button onClick={pause}>Pause</Button>
           )}
-          <Button variant="secondary" onClick={() => void play(true)}>
+          <Button variant="secondary" disabled={starting} onClick={() => void play(true)}>
             Replay from start
           </Button>
           <Button variant="ghost" onClick={() => setShowTranscript((v) => !v)} aria-pressed={showTranscript}>

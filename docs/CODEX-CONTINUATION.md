@@ -303,3 +303,15 @@ delta, isolated browser1 for ready→empty→ready and correct-topic start, Type
 Live backend restarted and Home/read-only draft shortcut checked. No learner preference, activation
 or session changed in live data. Source/pedagogy review findings resolved. See
 docs/slices/home-area-activation-counts.md. Other queued work remains separate and unfinished.
+
+
+## Listening clip coordination — 2026-10-03
+
+Listening clips join reading and voice in the shared in-tab audio owner. Starting another activity
+pauses the clip, explains why and retains position; resuming is explicit. Global clip controls now
+pause/resume/stop; volume/rate keep existing preferences. Late play promises cannot revive replaced
+audio or interrupt a newer play, and paused seeks do not inflate exposure. Integrated frontend338,
+two isolated coexistence browser journeys, TypeScript/lint/build passed; sanitized focused20 plus
+TypeScript passed. Independent code/pedagogy reviews clear. No real audio/model/microphone or live
+learning-state changes in tests. Physical Bluetooth audibility and visualizer/ambient/test-tone
+coordination remain open. See docs/slices/listening-audio-coordination.md.

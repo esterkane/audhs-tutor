@@ -50,16 +50,35 @@ export function AudioControls() {
       {reading && (
         <div className="mt-2 border-b border-line pb-2">
           <p>
-            {reading.kind === 'voice' ? 'Voice activity' : 'Current reading'}: {reading.status}
+            {reading.kind === 'voice'
+              ? 'Voice activity'
+              : reading.kind === 'clip'
+                ? 'Listening clip'
+                : 'Current reading'}
+            : {reading.status}
           </p>
           <div className="flex flex-wrap gap-2 mt-1">
             {reading.kind !== 'voice' && reading.ready && (
               <Button size="sm" disabled={reading.changing} onClick={reading.togglePause}>
-                {reading.changing ? 'Updating reading…' : reading.paused ? 'Resume reading' : 'Pause reading'}
+                {reading.kind === 'clip'
+                  ? reading.changing
+                    ? 'Starting clip…'
+                    : reading.paused
+                      ? 'Resume clip'
+                      : 'Pause clip'
+                  : reading.changing
+                    ? 'Updating reading…'
+                    : reading.paused
+                      ? 'Resume reading'
+                      : 'Pause reading'}
               </Button>
             )}
             <Button size="sm" onClick={reading.stop}>
-              {reading.kind === 'voice' ? 'Stop voice activity' : 'Stop reading'}
+              {reading.kind === 'voice'
+                ? 'Stop voice activity'
+                : reading.kind === 'clip'
+                  ? 'Stop clip'
+                  : 'Stop reading'}
             </Button>
           </div>
         </div>

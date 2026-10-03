@@ -1,8 +1,9 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { useMode } from '../../stores/mode'
+import { claimReading, updateReading, useReadingControls } from '../voice/readingOwner'
 import { ListeningPanel } from './ListeningPanel'
 
 const lesson = {
@@ -112,6 +113,116 @@ describe('ListeningPanel', () => {
       }),
     )
   }
+
+  it('pauses on replacement, preserves position, and counts no exposure while displaced', async () => {
+    const posts: { url: string; body: unknown }[] = []
+    stub(posts)
+    const { container, unmount } = renderApp(
+      <ListeningPanel sessionId="s1" documentId="d1" onDone={() => {}} />,
+    )
+    await screen.findByRole('button', { name: 'Play clip' })
+    const audio = container.querySelector('audio')!
+    fireEvent.click(screen.getByRole('button', { name: 'Play clip' }))
+    await screen.findByText('Playing clip.')
+    audio.currentTime = 1
+    fireEvent.timeUpdate(audio)
+    let reading!: () => void
+    act(() => {
+      reading = claimReading(vi.fn())
+      updateReading(reading, {
+        status: 'Reading',
+        ready: true,
+        paused: false,
+        changing: false,
+        stop: vi.fn(),
+        togglePause: vi.fn(),
+      })
+    })
+    expect(audio.currentTime).toBe(1)
+    expect(screen.getByText(/Clip paused because another reading started/)).toBeVisible()
+    audio.currentTime = 10
+    fireEvent.timeUpdate(audio)
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Playback' })).getByRole('button', { name: 'Resume clip' }),
+    )
+    await screen.findByText('Playing clip.')
+    audio.currentTime = 11
+    fireEvent.timeUpdate(audio)
+    fireEvent.click(screen.getByRole('button', { name: 'Go to the question' }))
+    await waitFor(() =>
+      expect(posts.find((p) => p.url.endsWith('/listened'))?.body).toMatchObject({ seconds: 2, replays: 0 }),
+    )
+    unmount()
+    expect(useReadingControls.getState().reading).toBeNull()
+  })
+
+  it('fences delayed play resolution and rejection after a replacement and newer resume', async () => {
+    stub([])
+    let resolveFirst!: () => void
+    let rejectSecond!: (error: Error) => void
+    vi.mocked(window.HTMLMediaElement.prototype.play)
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveFirst = resolve
+          }),
+      )
+      .mockImplementationOnce(
+        () =>
+          new Promise<void>((_, reject) => {
+            rejectSecond = reject
+          }),
+      )
+      .mockResolvedValue(undefined)
+    const { unmount } = renderApp(<ListeningPanel sessionId="s1" documentId="d1" onDone={() => {}} />)
+    await screen.findByRole('button', { name: 'Play clip' })
+    fireEvent.click(screen.getByRole('button', { name: 'Play clip' }))
+    act(() => {
+      claimReading(vi.fn())()
+    })
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Playback' })).getByRole('button', { name: 'Resume clip' }),
+    )
+    act(() => {
+      claimReading(vi.fn())()
+    })
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Playback' })).getByRole('button', { name: 'Resume clip' }),
+    )
+    await screen.findByText('Playing clip.')
+    vi.mocked(window.HTMLMediaElement.prototype.pause).mockClear()
+    await act(async () => {
+      resolveFirst()
+      rejectSecond(new Error('old failure'))
+    })
+    expect(window.HTMLMediaElement.prototype.pause).not.toHaveBeenCalled()
+    expect(screen.queryByText(/could not be played here/)).not.toBeInTheDocument()
+    expect(useReadingControls.getState().reading).toMatchObject({ kind: 'clip', paused: false })
+    unmount()
+  })
+
+  it('shared clip controls pause without resetting position and completion releases ownership', async () => {
+    stub([])
+    const { container } = renderApp(<ListeningPanel sessionId="s1" documentId="d1" onDone={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Play clip' }))
+    await screen.findByText('Playing clip.')
+    const audio = container.querySelector('audio')!
+    audio.currentTime = 4
+    const controls = useReadingControls.getState().reading
+    act(() => {
+      if (controls?.kind === 'clip') controls.togglePause()
+    })
+    expect(audio.currentTime).toBe(4)
+    expect(useReadingControls.getState().reading).toMatchObject({ kind: 'clip', paused: true })
+    fireEvent.click(
+      within(screen.getByRole('group', { name: 'Playback' })).getByRole('button', { name: 'Resume clip' }),
+    )
+    await screen.findByText('Playing clip.')
+    audio.currentTime = 12.5
+    fireEvent.timeUpdate(audio)
+    expect(useReadingControls.getState().reading).toBeNull()
+    expect(screen.getByText(/Clip finished/)).toBeVisible()
+  })
 
   it('plays only on click, reveals the transcript on request, asks confidence before feedback, then offers next or stop', async () => {
     const posts: { url: string; body: unknown }[] = []

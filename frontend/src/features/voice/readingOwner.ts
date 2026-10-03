@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 
 type ReadingControls = {
-  kind?: 'reading'
+  kind?: 'reading' | 'clip'
   status: string
   paused: boolean
   changing: boolean
