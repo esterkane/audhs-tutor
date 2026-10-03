@@ -444,3 +444,11 @@ offers Review and activate a lesson for confirmed empty topics. Existing session
 separate; no unrelated lesson fallback or automatic activation. Home9/full frontend328, browser4,
 lint/build and independent code/pedagogy reviews passed. See docs/slices/home-topic-start.md.
 Catalogue performance and owner usability confirmation remain separate open work.
+
+
+## Area catalogue performance — 2026-10-03
+
+Catalogue matching now groups metadata and compiles expressions once, off the event loop with plain
+immutable snapshots. Exact membership parity confirmed on the local corpus; aggregation ~20s to
+0.64s. Live endpoint after restart 0.926s with concurrent health/skills responsive. Independent code
+and pedagogy reviews clear. See docs/slices/area-catalogue-performance.md for limits and checks.

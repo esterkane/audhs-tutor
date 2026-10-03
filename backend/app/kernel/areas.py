@@ -1,7 +1,9 @@
 """Deterministic cross-course source organization; metadata matches are proposals, not truth."""
 
+import asyncio
 import re
 from collections import defaultdict
+from collections.abc import Iterator
 from typing import Any
 
 from sqlalchemy import func, select
@@ -133,8 +135,7 @@ async def get(db: AsyncSession, area_id: str) -> KnowledgeArea:
 _LEGACY_STEMS = {"statisti", "evaluat", "fine-tun", "finetun", "deploy"}
 
 
-def _has_term(text: str, terms: list[Any]) -> bool:
-    low = text.casefold()
+def _term_expressions(terms: list[Any] | tuple[str, ...]) -> Iterator[str]:
     for term in terms:
         value = str(term).strip().casefold()
         if not value:
@@ -160,9 +161,12 @@ def _has_term(text: str, terms: list[Any]) -> bool:
             "prototype",
         }:
             tail = r"s?(?!\w)"
-        if re.search(r"(?<!\w)" + re.escape(value) + tail, low):
-            return True
-    return False
+        yield r"(?<!\w)" + re.escape(value) + tail
+
+
+def _has_term(text: str, terms: list[Any]) -> bool:
+    low = text.casefold()
+    return any(re.search(expression, low) for expression in _term_expressions(terms))
 
 
 def teachable_passage(text: str, terms: list[Any]) -> bool:
@@ -253,10 +257,72 @@ async def source_rows(db: AsyncSession, area: KnowledgeArea) -> list[dict[str, A
     return out
 
 
+def _catalogue_counts(
+    area_terms: tuple[tuple[str, tuple[str, ...]], ...],
+    documents: tuple[tuple[str, str | None, str | None, str | None], ...],
+) -> tuple[dict[str, int], dict[str, list[str]], dict[str, set[str]], int]:
+    """Worker-only aggregation over immutable metadata; never receives ORM/session objects."""
+    patterns = {
+        identifier: (
+            tuple(str(term).strip().casefold() for term in terms if str(term).strip()),
+            re.compile("|".join(expressions)) if expressions else None,
+        )
+        for identifier, terms in area_terms
+        for expressions in [list(_term_expressions(terms))]
+    }
+    counts = dict.fromkeys(patterns, 0)
+    courses: dict[str, set[str]] = {identifier: set() for identifier in patterns}
+    related: dict[str, set[str]] = {identifier: set() for identifier in patterns}
+    grouped: dict[tuple[str, str | None], int] = defaultdict(int)
+    for title, section, lecture, course in documents:
+        grouped[(" ".join([title, section or "", lecture or ""]).casefold(), course)] += 1
+    course_matches: dict[str | None, set[str]] = {}
+    assigned = 0
+    for (text, course), multiplicity in grouped.items():
+        if course not in course_matches:
+            low = (course or "").casefold()
+            course_matches[course] = {
+                identifier
+                for identifier, (values, pattern) in patterns.items()
+                if pattern is not None
+                and any(value in low for value in values)
+                and pattern.search(low)
+            }
+        members = course_matches[course] | {
+            identifier
+            for identifier, (values, pattern) in patterns.items()
+            if identifier not in course_matches[course]
+            and pattern is not None
+            and any(value in text for value in values)
+            and pattern.search(text)
+        }
+        if members:
+            assigned += multiplicity
+        for identifier in members:
+            counts[identifier] += multiplicity
+            if course:
+                courses[identifier].add(course)
+            related[identifier].update(members - {identifier})
+    return (
+        counts,
+        {identifier: sorted(values) for identifier, values in courses.items()},
+        related,
+        assigned,
+    )
+
+
 async def catalogue(db: AsyncSession, learner_id: str) -> dict[str, Any]:
     areas = list((await db.execute(select(KnowledgeArea).order_by(KnowledgeArea.title))).scalars())
-    docs = list((await db.execute(select(Document))).scalars())
-    memberships = {a.id: {d.id for d in docs if match(d, a.terms_json)} for a in areas}
+    document_rows = (
+        await db.execute(
+            select(Document.title, Document.section, Document.lecture, Document.course)
+        )
+    ).all()
+    documents = tuple((row.title, row.section, row.lecture, row.course) for row in document_rows)
+    area_terms = tuple((area.id, tuple(str(term) for term in area.terms_json)) for area in areas)
+    counts, courses, related, assigned = await asyncio.to_thread(
+        _catalogue_counts, area_terms, documents
+    )
     drafts: dict[str, list[str]] = defaultdict(list)
     for d in (
         await db.execute(
@@ -270,7 +336,6 @@ async def catalogue(db: AsyncSession, learner_id: str) -> dict[str, Any]:
         drafts[str(d.area_id)].append(d.id)
     out = []
     for a in areas:
-        members = memberships[a.id]
         out.append(
             {
                 "id": a.id,
@@ -278,17 +343,16 @@ async def catalogue(db: AsyncSession, learner_id: str) -> dict[str, Any]:
                 "title": a.title,
                 "terms": a.terms_json,
                 "description": a.description,
-                "documents": len(members),
-                "courses": sorted({str(d.course) for d in docs if d.id in members and d.course}),
+                "documents": counts[a.id],
+                "courses": courses[a.id],
                 "draft_ids": drafts[a.id],
-                "related": [b.title for b in areas if b.id != a.id and memberships[b.id] & members],
+                "related": [b.title for b in areas if b.id in related[a.id]],
             }
         )
-    assigned = set().union(*memberships.values()) if memberships else set()
     return {
         "areas": out,
-        "unassigned_documents": len(docs) - len(assigned),
-        "total_documents": len(docs),
+        "unassigned_documents": len(documents) - assigned,
+        "total_documents": len(documents),
     }
 
 
