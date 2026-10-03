@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { claimReading, useReadingControls } from '../features/voice/readingOwner'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { renderApp, jsonResponse } from '../test/utils'
@@ -255,4 +256,223 @@ it('clears measured data when stopping or changing source', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
   expect(screen.queryByLabelText('Current measured values')).toBeNull()
   expect(screen.queryByRole('img', { name: /Waveform:/ })).toBeNull()
+})
+
+function allowSound() {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => jsonResponse({ values: { 'ui.sound': true, 'ui.reduced_motion': true } })),
+  )
+}
+function fileInput(overrides = {}) {
+  return {
+    read: () => ({ bass: 0, mid: 0, treble: 0, rms: 0 }),
+    stop: vi.fn(),
+    setAudible: vi.fn(),
+    pause: vi.fn(),
+    resume: vi.fn(async () => {}),
+    position: () => ({ seconds: 7, duration: 30 }),
+    ...overrides,
+  }
+}
+function chooseFile() {
+  fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+  fireEvent.change(screen.getByLabelText('Input'), { target: { value: 'file' } })
+  fireEvent.change(screen.getByLabelText('Audio file'), { target: { files: [new File(['x'], 'test.wav')] } })
+}
+it('silent file analysis keeps another owner; explicit sound replaces it without changing position', async () => {
+  allowSound()
+  const media = fileInput()
+  vi.mocked(openAudio).mockResolvedValue(media)
+  const readingStop = vi.fn()
+  const release = claimReading(readingStop)
+  const view = renderApp(<Visualizer />)
+  chooseFile()
+  fireEvent.click(screen.getByRole('button', { name: 'Play file silently' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled())
+  expect(readingStop).not.toHaveBeenCalled()
+  const hear = screen.getByRole('checkbox', { name: 'Hear audio at half volume' })
+  await waitFor(() => expect(hear).toBeEnabled())
+  fireEvent.click(hear)
+  expect(readingStop).toHaveBeenCalledOnce()
+  expect(media.setAudible).toHaveBeenLastCalledWith(true)
+  expect(media.pause).not.toHaveBeenCalled()
+  expect(media.position().seconds).toBe(7)
+  act(() => useReadingControls.getState().reading?.stop())
+  expect(hear).not.toBeChecked()
+  expect(media.setAudible).toHaveBeenLastCalledWith(false)
+  expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled()
+  expect(media.pause).not.toHaveBeenCalled()
+  expect(media.stop).not.toHaveBeenCalled()
+  release()
+  view.unmount()
+})
+it('replacement during pending audible start leaves the completed input silent', async () => {
+  allowSound()
+  let finish!: (value: Awaited<ReturnType<typeof openAudio>>) => void
+  vi.mocked(openAudio).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  const view = renderApp(<Visualizer />)
+  chooseFile()
+  const hear = screen.getByRole('checkbox', { name: 'Hear audio at half volume' })
+  await waitFor(() => expect(hear).toBeEnabled())
+  fireEvent.click(hear)
+  fireEvent.click(screen.getByRole('button', { name: 'Play file with sound' }))
+  let release!: () => void
+  act(() => {
+    release = claimReading(vi.fn())
+  })
+  expect(hear).not.toBeChecked()
+  const media = fileInput()
+  await act(async () => finish(media))
+  expect(media.setAudible).toHaveBeenLastCalledWith(false)
+  expect(media.setAudible).not.toHaveBeenCalledWith(true)
+  expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled()
+  release()
+  view.unmount()
+})
+it('replacement while resume is pending keeps resumed analysis silent', async () => {
+  allowSound()
+  let finish!: () => void
+  const media = fileInput({
+    resume: vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    ),
+  })
+  vi.mocked(openAudio).mockResolvedValue(media)
+  const view = renderApp(<Visualizer />)
+  chooseFile()
+  fireEvent.click(screen.getByRole('button', { name: 'Play file silently' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled())
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Hear audio at half volume' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Pause file' }))
+  expect(useReadingControls.getState().reading).toBeNull()
+  fireEvent.click(screen.getByRole('button', { name: 'Resume file' }))
+  let release!: () => void
+  act(() => {
+    release = claimReading(vi.fn())
+  })
+  await act(async () => finish())
+  expect(screen.getByRole('checkbox', { name: 'Hear audio at half volume' })).not.toBeChecked()
+  expect(media.setAudible).toHaveBeenLastCalledWith(false)
+  expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled()
+  expect(media.position().seconds).toBe(7)
+  release()
+  view.unmount()
+})
+it('test signal and restored file stay silent until explicitly enabled', async () => {
+  allowSound()
+  const media = fileInput()
+  const tone = fileInput()
+  vi.mocked(openAudio).mockResolvedValue(media)
+  vi.mocked(openTone).mockResolvedValue(tone)
+  const view = renderApp(<Visualizer />)
+  chooseFile()
+  fireEvent.click(screen.getByRole('button', { name: 'Play file silently' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled())
+  fireEvent.click(screen.getByRole('checkbox', { name: 'Hear audio at half volume' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Learn' }))
+  fireEvent.change(screen.getByLabelText('Learning step'), { target: { value: '1' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Start test signal' }))
+  await waitFor(() => expect(screen.getByRole('checkbox', { name: /Hear test signal/ })).toBeEnabled())
+  expect(tone.setAudible).not.toHaveBeenCalledWith(true)
+  expect(useReadingControls.getState().reading).toBeNull()
+  const readingStop = vi.fn()
+  let release!: () => void
+  act(() => {
+    release = claimReading(readingStop)
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Return to previous audio' }))
+  expect(screen.getByRole('checkbox', { name: 'Hear audio at half volume', hidden: true })).not.toBeChecked()
+  fireEvent.click(screen.getByRole('button', { name: 'Resume file' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled())
+  expect(readingStop).not.toHaveBeenCalled()
+  expect(media.setAudible).toHaveBeenLastCalledWith(false)
+  expect(media.position().seconds).toBe(7)
+  release()
+  view.unmount()
+})
+it('backgrounding during resume cannot restore running state when the tab returns', async () => {
+  let finish!: () => void
+  const media = fileInput({
+    resume: vi.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve
+        }),
+    ),
+  })
+  vi.mocked(openAudio).mockResolvedValue(media)
+  renderApp(<Visualizer />)
+  chooseFile()
+  fireEvent.click(screen.getByRole('button', { name: 'Play file silently' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled())
+  fireEvent.click(screen.getByRole('button', { name: 'Pause file' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Resume file' }))
+  const hidden = vi.spyOn(document, 'hidden', 'get').mockReturnValue(true)
+  fireEvent(document, new Event('visibilitychange'))
+  hidden.mockReturnValue(false)
+  fireEvent(document, new Event('visibilitychange'))
+  await act(async () => finish())
+  expect(screen.getByRole('button', { name: 'Resume file' })).toBeEnabled()
+  expect(screen.getByRole('button', { name: 'Pause file' })).toBeDisabled()
+})
+it('unmount releases audible ownership and late input completion is disposed silently', async () => {
+  allowSound()
+  let finish!: (value: Awaited<ReturnType<typeof openAudio>>) => void
+  vi.mocked(openAudio).mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        finish = resolve
+      }),
+  )
+  const view = renderApp(<Visualizer />)
+  chooseFile()
+  const hear = screen.getByRole('checkbox', { name: 'Hear audio at half volume' })
+  await waitFor(() => expect(hear).toBeEnabled())
+  fireEvent.click(hear)
+  fireEvent.click(screen.getByRole('button', { name: 'Play file with sound' }))
+  expect(useReadingControls.getState().reading?.kind).toBe('visualizer')
+  view.unmount()
+  expect(useReadingControls.getState().reading).toBeNull()
+  const media = fileInput()
+  await act(async () => finish(media))
+  expect(media.stop).toHaveBeenCalledOnce()
+  expect(media.setAudible).not.toHaveBeenCalledWith(true)
+})
+
+it('arming sound while paused preserves the reading until explicit resume', async () => {
+  allowSound()
+  const media = fileInput()
+  vi.mocked(openAudio).mockResolvedValue(media)
+  const view = renderApp(<Visualizer />)
+  chooseFile()
+  fireEvent.click(screen.getByRole('button', { name: 'Play file silently' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled())
+  fireEvent.click(screen.getByRole('button', { name: 'Pause file' }))
+  const readingStop = vi.fn()
+  let release!: () => void
+  act(() => {
+    release = claimReading(readingStop)
+  })
+  const hear = screen.getByRole('checkbox', { name: 'Hear audio at half volume' })
+  fireEvent.click(hear)
+  expect(hear).toBeChecked()
+  expect(readingStop).not.toHaveBeenCalled()
+  expect(media.setAudible).not.toHaveBeenCalledWith(true)
+  expect(media.resume).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Resume file' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Pause file' })).toBeEnabled())
+  expect(readingStop).toHaveBeenCalledOnce()
+  expect(media.setAudible).toHaveBeenLastCalledWith(true)
+  expect(media.position().seconds).toBe(7)
+  release()
+  view.unmount()
 })

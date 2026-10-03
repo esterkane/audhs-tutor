@@ -1,3 +1,4 @@
+import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -104,9 +105,50 @@ export function Visualizer() {
   }
 
   const effectiveSound = useRef(false)
+  const playbackGeneration = useRef(0)
+  const audioLease = useRef<(() => void) | null>(null)
+  const releaseSound = useCallback(() => {
+    audioLease.current?.()
+    audioLease.current = null
+    effectiveSound.current = false
+    input.current?.setAudible(false)
+  }, [])
+  const silenceMonitoring = useCallback(
+    (message: string) => {
+      releaseSound()
+      setAudible(false)
+      setNotice(message)
+    },
+    [releaseSound],
+  )
+  function claimSound() {
+    releaseSound()
+    const release = claimReading((replacement) => {
+      silenceMonitoring(`Visualizer sound stopped because ${replacement} started. Silent analysis continues.`)
+    }, 'visualizer sound')
+    audioLease.current = release
+    effectiveSound.current = true
+    updateReading(release, {
+      kind: 'visualizer',
+      status: 'Sound enabled. Stopping sound keeps silent analysis and your position.',
+      stop: () =>
+        silenceMonitoring('Visualizer sound stopped. Silent analysis continues; your position is kept.'),
+    })
+    input.current?.setAudible(true)
+  }
+  function chooseSound(value: boolean) {
+    if (!value || !sound) {
+      silenceMonitoring('Visualizer sound is off. Analysis can continue silently.')
+      return
+    }
+    setAudible(true)
+    if (input.current && source !== 'demo' && running) claimSound()
+  }
   const time = useRef(0)
   const memory = useRef(new Map<string, number>())
   const stop = useCallback(() => {
+    playbackGeneration.current++
+    releaseSound()
     abort.current?.abort()
     abort.current = null
     input.current?.stop()
@@ -118,7 +160,7 @@ export function Visualizer() {
     setStarting(false)
     setMeasurement(null)
     setSnapshotMeasurement(null)
-  }, [])
+  }, [releaseSound])
   const paint = useCallback(
     (f: Frame, t: number, dt: number, render = true) => {
       const out = evaluate(preset, f, t, dt, memory.current)
@@ -152,12 +194,19 @@ export function Visualizer() {
     }
   }, [paint])
   useEffect(() => {
-    effectiveSound.current = audible && sound
-    input.current?.setAudible(effectiveSound.current)
-  }, [audible, sound])
+    if (!sound) {
+      releaseSound()
+      // External sound permission revocation must also clear the visible opt-in.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setAudible(false)
+    }
+  }, [sound, releaseSound])
   useEffect(() => {
     const onHidden = () => {
       if (document.hidden) {
+        playbackGeneration.current++
+        if (input.current) setStarting(false)
+        releaseSound()
         input.current?.pause?.()
         setRunning((wasRunning) => {
           if (wasRunning) setPaused(true)
@@ -168,12 +217,13 @@ export function Visualizer() {
     document.addEventListener('visibilitychange', onHidden)
     return () => {
       document.removeEventListener('visibilitychange', onHidden)
+      releaseSound()
       abort.current?.abort()
       input.current?.stop()
       previousAudio.current?.abort?.abort()
       previousAudio.current?.input?.stop()
     }
-  }, [stop])
+  }, [stop, releaseSound])
   useEffect(() => {
     if (!running) return
     let raf = 0
@@ -208,6 +258,8 @@ export function Visualizer() {
   }, [running, source])
 
   function pausePlayback() {
+    playbackGeneration.current++
+    setStarting(false)
     const active = input.current
     if (source === 'demo') {
       setRunning(false)
@@ -215,6 +267,7 @@ export function Visualizer() {
       return
     }
     if (!active?.pause) return
+    releaseSound()
     active.pause()
     const current = active.position?.()
     if (current) setPosition(current)
@@ -229,19 +282,27 @@ export function Visualizer() {
       return
     }
     if (!active?.resume || starting) return
+    if (audible && sound) claimSound()
+    const generation = ++playbackGeneration.current
     setStarting(true)
     setError('')
     try {
       await active.resume()
-      if (input.current === active) {
-        if (document.hidden) active.pause?.()
+      if (input.current === active && generation === playbackGeneration.current) {
+        if (document.hidden) {
+          releaseSound()
+          active.pause?.()
+        }
         setPaused(document.hidden)
         setRunning(!document.hidden)
       }
     } catch (e) {
-      if (input.current === active) setError(e instanceof Error ? e.message : 'Could not resume playback.')
+      if (input.current === active && generation === playbackGeneration.current) {
+        releaseSound()
+        setError(e instanceof Error ? e.message : 'Could not resume playback.')
+      }
     } finally {
-      if (input.current === active) setStarting(false)
+      if (input.current === active && generation === playbackGeneration.current) setStarting(false)
     }
   }
   function changeRepeat(range: { start: number; end: number } | null) {
@@ -319,6 +380,8 @@ export function Visualizer() {
     }
     const ctl = new AbortController()
     abort.current = ctl
+    const generation = ++playbackGeneration.current
+    if (audible && sound) claimSound()
     setStarting(true)
     try {
       const opened = await openAudio(file, false, ctl.signal, () => {
@@ -337,12 +400,19 @@ export function Visualizer() {
       setVisualInput(opened)
       const loadedPosition = opened.position?.()
       if (loadedPosition) setPosition(loadedPosition)
-      if (document.hidden) opened.pause?.()
+      const interrupted = document.hidden || generation !== playbackGeneration.current
+      if (interrupted) {
+        releaseSound()
+        opened.pause?.()
+      }
       opened.setAudible(effectiveSound.current)
-      setPaused(document.hidden)
-      setRunning(!document.hidden)
+      setPaused(interrupted)
+      setRunning(!interrupted)
     } catch (e) {
-      if (!ctl.signal.aborted) setError((e as Error).message || 'This audio file could not be played.')
+      if (abort.current === ctl && !ctl.signal.aborted) {
+        releaseSound()
+        setError((e as Error).message || 'This audio file could not be played.')
+      }
     } finally {
       if (abort.current === ctl) {
         setStarting(false)
@@ -377,6 +447,8 @@ export function Visualizer() {
   }
   async function startLesson(settings: ToneSettings) {
     if (starting) return
+    const generation = ++playbackGeneration.current
+    releaseSound()
     if (source !== 'lesson') {
       input.current?.pause?.()
       previousAudio.current = {
@@ -413,9 +485,10 @@ export function Visualizer() {
       input.current = opened
       setVisualInput(opened)
       opened.setAudible(effectiveSound.current)
-      if (document.hidden) opened.pause?.()
-      setPaused(document.hidden)
-      setRunning(!document.hidden)
+      const interrupted = document.hidden || generation !== playbackGeneration.current
+      if (interrupted) opened.pause?.()
+      setPaused(interrupted)
+      setRunning(!interrupted)
     } catch (e) {
       if (!ctl.signal.aborted) setError((e as Error).message)
     } finally {
@@ -432,7 +505,8 @@ export function Visualizer() {
     setVisualInput(previous.input)
     setSource(previous.source)
     time.current = previous.time
-    setAudible(previous.audible)
+    setAudible(false)
+    previous.input?.setAudible(false)
     setRepeat(previous.repeat)
     setPosition(previous.input?.position?.() ?? { seconds: 0, duration: 0 })
     setPaused(!!previous.input || previous.source === 'demo')
@@ -440,7 +514,9 @@ export function Visualizer() {
     memory.current.clear()
     setMeasurement(null)
     setSnapshotMeasurement(null)
-    setNotice('Previous audio restored, paused at its saved position. Press Resume when ready.')
+    setNotice(
+      'Previous audio restored silently, paused at its saved position. Press Resume when ready; enable sound explicitly if wanted.',
+    )
   }
   function apply() {
     try {
@@ -521,6 +597,11 @@ export function Visualizer() {
           optional.
         </p>
       )}
+      {notice && (
+        <p role="status" className="text-sm">
+          {notice}
+        </p>
+      )}
       <div className="grid gap-4">
         <div className="grid gap-4 self-start min-w-0">
           <Card className="grid gap-3">
@@ -589,8 +670,15 @@ export function Visualizer() {
               </div>
               <AudioControls />
               <p className="text-sm">
-                Sound: {source === 'demo' ? 'silent synthetic demo' : audible && sound ? 'on' : 'off'} ·
-                Motion:{' '}
+                Sound:{' '}
+                {source === 'demo'
+                  ? 'silent synthetic demo'
+                  : audible && sound
+                    ? running
+                      ? 'on'
+                      : 'enabled for playback'
+                    : 'off'}{' '}
+                · Motion:{' '}
                 {reduced
                   ? source === 'demo'
                     ? 'still image; use Next sample to update the picture'
@@ -820,7 +908,7 @@ export function Visualizer() {
                     type="checkbox"
                     checked={audible}
                     disabled={!sound || starting}
-                    onChange={(e) => setAudible(e.target.checked)}
+                    onChange={(e) => chooseSound(e.target.checked)}
                   />
                   Hear audio at half volume
                 </label>
@@ -1121,11 +1209,6 @@ export function Visualizer() {
                   onChange={(e) => setText(e.target.value)}
                 />
               </details>
-              {notice && (
-                <p role="status" className="text-sm">
-                  {notice}
-                </p>
-              )}
             </Card>
           </div>
           <aside tabIndex={-1} id="visualizer-explanation" hidden={view !== 'Learn'}>
@@ -1147,7 +1230,7 @@ export function Visualizer() {
                     type="checkbox"
                     checked={audible}
                     disabled={!sound || starting}
-                    onChange={(e) => setAudible(e.target.checked)}
+                    onChange={(e) => chooseSound(e.target.checked)}
                   />
                   Hear test signal at half volume {sound ? '' : '(sound is off in Preferences)'}
                 </label>
