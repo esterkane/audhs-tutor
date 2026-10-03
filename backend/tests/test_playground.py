@@ -15,7 +15,7 @@ from app.db.models import (
 from app.models_ai.fake import FakeProvider
 from app.models_ai.registry import seed_defaults
 from app.orchestrator.playground import messages
-from app.schemas.playground import PlaygroundRequest
+from app.schemas.playground import PlaygroundContext, PlaygroundRequest
 
 
 def test_workspace_cannot_forge_system_or_data_boundaries() -> None:
@@ -51,6 +51,7 @@ async def test_tutor_logs_without_grading(
             "code": "print(' a '.strip())",
             "intent": "hint",
             "output_stale": True,
+            "output": "Historical output",
             "learning_context": {
                 "course_id": "sample-course",
                 "section_id": "cleaning",
@@ -62,12 +63,15 @@ async def test_tutor_logs_without_grading(
         },
     )
     assert response.status_code == 200, response.text
-    assert response.json()["text"] == fake_local.text
+    assert response.json()["text"].endswith(fake_local.text)
     assert "no course" in response.json()["source_note"].lower()
     assert response.json()["answer_id"]
     saved = await db.get(TutorAnswer, response.json()["answer_id"])
     assert saved is not None and saved.text == response.json()["text"]
+    assert saved.request_json["output"] == "Historical output"
     assert saved.request_json["output_stale"] is True
+    assert saved.metadata_json["execution_evidence_state"] == "stale_client_output"
+    assert response.json()["text"].startswith("Output context:")
     assert saved.session_id == session["id"]
     assert saved.request_json["learner_question"] == "Why strip spaces?"
     assert saved.request_json["learner_answer"] == "  It keeps internal spaces.  "
@@ -236,3 +240,63 @@ def test_hint_does_not_reveal_arithmetic_and_other_modes_keep_checked_scope() ->
         assert "whole answer" in output
     missing = body.model_copy(update={"learner_answer": None})
     assert checks_for(missing) == []
+
+
+def test_stale_output_is_historical_not_current_execution_evidence():
+    import json
+
+    body = PlaygroundRequest(
+        session_id="s",
+        exercise="Explain this code",
+        code="print(2)",
+        output="old-result",
+        output_stale=True,
+    )
+    packet = messages(body)
+    data = json.loads(packet[1].content.split(">\n", 1)[1].split("\n</workspace_data>")[0])
+    assert data["output"] == ""
+    assert data["historical_execution_output"] == "old-result"
+    assert body.output == "old-result"
+    assert "No current execution output" in packet[0].content
+    assert "Explain static code behavior" in packet[0].content
+    current = messages(body.model_copy(update={"output_stale": False}))
+    assert "not independently verified" in current[0].content
+    assert '"output": "old-result"' in current[1].content
+
+
+async def test_previous_prompt_version_cannot_replay_stale_answer(client, db):
+    from app.db.answer_memory import exact_saved
+    from app.orchestrator.playground import VERSION
+
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    body = PlaygroundRequest(
+        session_id="unused",
+        exercise="Explain code",
+        code="print(2)",
+        output="1",
+        output_stale=True,
+        learning_context=PlaygroundContext(target_id="stale-test"),
+    )
+    row = TutorAnswer(
+        id="old-stale",
+        learner_id=owner,
+        turn_id="old-stale",
+        surface="playground",
+        request_json=body.model_dump(exclude={"session_id"}),
+        text="Old answer",
+        fingerprint="old-stale",
+        metadata_json={
+            "prompt_version": "playground.tutor.v10",
+            "learning_context": body.learning_context.model_dump(),
+        },
+    )
+    db.add(row)
+    await db.commit()
+    assert await exact_saved(db, owner, body, "playground.tutor.v10") is not None
+    assert await exact_saved(db, owner, body, VERSION) is None
+
+
+def test_missing_output_does_not_claim_execution():
+    packet = messages(PlaygroundRequest(session_id="s", exercise="Explain code", code="x = 2"))
+    assert "no execution output is supplied" in packet[0].content
+    assert "does not establish whether the code ran" in packet[0].content

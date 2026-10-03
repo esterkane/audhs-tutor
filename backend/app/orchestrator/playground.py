@@ -35,7 +35,7 @@ from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v10"
+VERSION = "playground.tutor.v11"
 
 
 def messages(
@@ -54,6 +54,9 @@ def messages(
             "questioning_style",
         }
     )
+    if body.output_stale:
+        workspace["output"] = ""
+        workspace["historical_execution_output"] = body.output
     if historical is not None:
         workspace["historical_answer"] = historical
     if memory:
@@ -69,6 +72,22 @@ def messages(
             content=prompts.base_policy()
             + "\n\n"
             + prompts.playground_task()
+            + (
+                "\nApplication evidence state: the workspace client marks output stale. No current execution output "
+                "is supplied. historical_execution_output belongs to an earlier code state and "
+                "cannot establish results, counts or success of the current code. Explain static "
+                "code behavior and answer conceptual questions normally; if current execution "
+                "results matter, ask the learner to rerun the current cell. Do not treat stale "
+                "output as proof merely because it agrees with the learner's claim."
+                if body.output_stale
+                else (
+                    "\nApplication evidence state: output is client-supplied and not marked stale; "
+                    "the app has not independently verified its execution or correspondence to this code."
+                    if body.output
+                    else "\nApplication evidence state: no execution output is supplied. "
+                    "This does not establish whether the code ran; explain static behavior without claiming execution."
+                )
+            )
             + (
                 "\nThe application computed these literal arithmetic identities locally. "
                 "Use them to explain calculation errors; do not imply the whole answer is checked. "
@@ -232,6 +251,12 @@ async def respond(
     )
     arithmetic = checks_for(body)
     response_text = disclose_arithmetic(response_text, arithmetic)
+    if body.output_stale:
+        response_text = (
+            "Output context: the supplied output is marked outdated and does not verify "
+            "the current code. To check current execution results, rerun the current cell.\n\n"
+            + response_text
+        )
     await write_tutor_trace(
         db,
         TutorTraceRecord(
@@ -286,6 +311,9 @@ async def respond(
             "arithmetic_checks": [asdict(check) for check in arithmetic],
             "arithmetic_checker_version": ARITHMETIC_VERSION,
             "answer_memory": memory,
+            "execution_evidence_state": "stale_client_output"
+            if body.output_stale
+            else ("unverified_client_output" if body.output else "no_output"),
             "context_scope": "saved_answer_followup" if historical else "supplied_workspace_only",
             **(parent_metadata or {}),
             "learning_context": body.learning_context.model_dump()
