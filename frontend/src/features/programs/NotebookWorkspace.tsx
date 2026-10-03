@@ -488,6 +488,7 @@ function NotebookTutor({
         .join(
           '\n\n',
         )} ${explanations?.[String(index + 1)] ?? ''} ${cell.cell_type === 'code' && previous ? sources[previous.i] : ''}`}
+      checkCode={focusedCode}
       code={
         focusedCode
           ? focusedCode +

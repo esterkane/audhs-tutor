@@ -545,3 +545,50 @@ it('keeps guided questions optional and avoids offering review without an answer
   expect(screen.getByRole('button', { name: 'Ask me a Socratic question' })).toBeVisible()
   expect(askTutor).not.toHaveBeenCalled()
 })
+
+it('runs an explicit local boundary check without an answer or automatic submission', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue({ ...reply, route: 'deterministic', model: 'none' })
+  renderApp(
+    <StudyTutor
+      context="Compare representation"
+      code="pd.cut(x, [0,18,65])\n# earlier context\npd.cut(old, [0,5,10])"
+      checkCode="pd.cut(x, [0,18,65])"
+    />,
+  )
+  expect(askTutor).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByText('Local code checks'))
+  fireEvent.click(screen.getByRole('button', { name: 'Check bin boundaries' }))
+  await screen.findByText(reply.text)
+  expect(vi.mocked(askTutor).mock.calls[0][0]).toMatchObject({
+    intent: 'check_bins',
+    code: 'pd.cut(x, [0,18,65])',
+    learner_answer: null,
+  })
+  expect(screen.getByText(/without a model or code execution/)).toBeVisible()
+})
+
+it('does not truncate code for a local boundary check', () => {
+  active()
+  renderApp(<StudyTutor context="Code" code={'x'.repeat(16001)} />)
+  fireEvent.click(screen.getByText('Local code checks'))
+  fireEvent.click(screen.getByRole('button', { name: 'Check bin boundaries' }))
+  expect(screen.getByRole('alert')).toHaveTextContent('at most 16,000 characters')
+  expect(askTutor).not.toHaveBeenCalled()
+})
+
+it('marks a boundary result outdated when only the selected check code changes', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue({ ...reply, route: 'deterministic', model: 'none' })
+  const view = renderApp(
+    <StudyTutor context="Code" identity="bins" code="whole notebook" checkCode="pd.cut(x, [0,1,2])" />,
+  )
+  fireEvent.click(screen.getByText('Local code checks'))
+  fireEvent.click(screen.getByRole('button', { name: 'Check bin boundaries' }))
+  await screen.findByText(reply.text)
+  view.rerender(
+    <StudyTutor context="Code" identity="bins" code="whole notebook" checkCode="pd.cut(x, [0,2,4])" />,
+  )
+  expect(screen.getByText(/Earlier feedback:/)).toBeVisible()
+  expect(askTutor).toHaveBeenCalledTimes(1)
+})

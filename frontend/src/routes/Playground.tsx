@@ -182,7 +182,7 @@ function Workspace({
     setTutorError('')
   }
 
-  async function ask(intent: Exclude<TutorRequest['intent'], 'check_answer'>) {
+  async function ask(intent: Exclude<TutorRequest['intent'], 'check_answer' | 'check_bins'>) {
     if (!sessionId || tutorAbort.current) return
     const defaults = {
       chat: '',

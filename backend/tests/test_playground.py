@@ -363,7 +363,7 @@ async def test_bin_answer_check_uses_only_deterministic_result_without_model(
         "session_id": session["id"],
         "exercise": "Explain ages 18 and 65.",
         "code": "pd.cut(ages, [0,18,65,120], labels=['young','adult','older'])",
-        "intent": "check_answer",
+        "intent": "check_bins",
         "learner_answer": "18 is adult; 65 is older.",
         "learning_context": {"target_id": "bin-answer"},
     }
@@ -405,7 +405,7 @@ async def test_bin_check_preserves_text_on_save_failure_and_escapes_supplied_lab
             "session_id": session["id"],
             "exercise": "Inspect code.",
             "code": "pd.cut(x, [0,1,2], labels=['<script>x</script>', '[bad](https://example.test)'])",
-            "intent": "check_answer",
+            "intent": "check_bins",
             "learner_answer": "The boundary is in the first bin.",
             "output": "Earlier success",
             "output_stale": True,
@@ -421,3 +421,67 @@ async def test_bin_check_preserves_text_on_save_failure_and_escapes_supplied_lab
     assert out["save_error"] and out["save_receipt"]
     assert not fake_local.calls
     assert await db.scalar(select(func.count()).select_from(ModelCall)) == 0
+
+
+async def test_explicit_bin_check_needs_no_answer_and_never_falls_back_to_model(
+    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider
+) -> None:
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    body = {
+        "session_id": session["id"],
+        "exercise": "Inspect boundaries",
+        "code": "pd.cut(x, [0,10,20])",
+        "intent": "check_bins",
+    }
+    out = await client.post("/api/playground/tutor", json=body)
+    assert out.status_code == 200, out.text
+    assert out.json()["route"] == "deterministic"
+    unsupported = await client.post(
+        "/api/playground/tutor", json={**body, "code": "pd.cut(x, edges)"}
+    )
+    assert unsupported.status_code == 422
+    assert unsupported.json()["error"]["code"] == "unsupported_bin_check"
+    assert not fake_local.calls
+    assert await db.scalar(select(func.count()).select_from(TutorAnswer)) == 1
+    # Code presence is not authorization to replace a reasoning review with a static check.
+    await seed_defaults(db, installed_ollama_tags={"gemma3:12b"})
+    from app.db.models import LearnerPreference
+    from app.schemas.feedback_selection import build_passages
+
+    owner = await db.get(Session, session["id"])
+    assert owner is not None
+    db.add(
+        LearnerPreference(
+            learner_id=owner.learner_id,
+            key="routing.answer_feedback",
+            origin="explicit",
+            value_json="gemma3-12b",
+        )
+    )
+    await db.commit()
+    answer = "Removing rows can affect representation."
+    fake_local.structured = {
+        "points": [
+            {
+                "passage_id": build_passages(answer)[0]["id"],
+                "finding": "supported",
+                "explanation": "Synthetic feedback on reasoning, not the unrelated bins.",
+            }
+        ],
+        "next_step": "Compare group counts.",
+        "followup_question": None,
+    }
+    reviewed = await client.post(
+        "/api/playground/tutor",
+        json={
+            **body,
+            "intent": "check_answer",
+            "learner_answer": answer,
+            "prefer_saved": True,
+        },
+    )
+    assert reviewed.status_code == 200, reviewed.text
+    assert reviewed.json()["route"] != "deterministic"
+    assert reviewed.json()["reused"] is False
+    assert len(fake_local.calls) == 1
+    assert "Synthetic feedback on reasoning" in reviewed.json()["text"]

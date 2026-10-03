@@ -258,11 +258,85 @@ def notebook_cases(session_id):
     ]
 
 
+def reasoning_cases(session_id):
+    """Synthetic reasoning checks independent of code execution and model grading."""
+    original = next(
+        case for case in notebook_cases(session_id) if case[0] == "cleaning_representation"
+    )
+
+    def request(target, exercise, answer, **kwargs):
+        return PlaygroundRequest(
+            session_id=session_id,
+            intent="check_answer",
+            prefer_saved=False,
+            questioning_style="explicit",
+            question="Review my reasoning against the supplied task and evidence.",
+            exercise=exercise,
+            learner_answer=answer,
+            code="",
+            output="",
+            learning_context=PlaygroundContext(target_id="synthetic-reasoning-" + target),
+            **kwargs,
+        )
+
+    task = "A dataset starts with 50 rows and retains 30. What proportion remains?"
+    return [
+        original,
+        (
+            "cleaning_counts_vs_rates",
+            request(
+                "counts-vs-rates",
+                "Before cleaning: A=200 rows, B=40. After cleaning: A=160, B=20. Compare proportional impact.",
+                "A lost 40 and B lost 20, so A was proportionally more affected.",
+            ),
+            "Accept removed counts 40 and 20; reject proportional conclusion. Removal A=20%, B=50%; "
+            "retention A=80%, B=50%. Distinguish counts from rates without inventing fairness evidence.",
+        ),
+        (
+            "cleaning_equal_retention",
+            request(
+                "equal-retention",
+                "Before cleaning: A=120 rows, B=40. After cleaning: A=90, B=30. Is retention enough to conclude "
+                "fairness?",
+                "Both retained 75%, so cleaning was definitely fair.",
+            ),
+            "Accept 75% retention for both and unchanged representation A=75%, B=25%. Reject definite "
+            "fairness; group-level errors and missingness mechanisms still need evidence.",
+        ),
+        (
+            "quoted_mistake_runtime",
+            request(
+                "quoted-mistake",
+                task,
+                "The claim '30/50 = 0.9' is wrong. The correct proportion is 60%.",
+            ),
+            "Accept the learner's rejection of the quoted error and correct 60%; do not attribute the quoted "
+            "0.9 claim as their endorsed answer.",
+        ),
+        (
+            "revised_answer_runtime",
+            request(
+                "revised-answer",
+                task,
+                "I revised my earlier answer: 30/50 = 0.6, or 60%.",
+                history=[
+                    {"role": "user", "text": "30/50 = 0.9, so 90%."},
+                    {"role": "assistant", "text": "That is correct; 90% remain."},
+                ],
+            ),
+            "Accept current revised 60% answer. Identify earlier tutor endorsement of 90% as incorrect if "
+            "discussed; do not grade the old answer as current or repeat the prior tutor error.",
+        ),
+    ]
+
+
 def cases(session_id, suite="basic"):
     if suite == "basic":
         return basic_cases(session_id)
     if suite == "notebook":
         return notebook_cases(session_id)
+    if suite == "reasoning":
+        return reasoning_cases(session_id)
     raise ValueError("Unknown diagnostic suite")
 
 
@@ -423,7 +497,7 @@ async def run(output, model, suite="basic"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--suite", choices=["basic", "notebook"], default="basic")
+    parser.add_argument("--suite", choices=["basic", "notebook", "reasoning"], default="basic")
     parser.add_argument(
         "--model", choices=["llama31-8b", "gemma3-12b", "gemma3-27b"], default="llama31-8b"
     )

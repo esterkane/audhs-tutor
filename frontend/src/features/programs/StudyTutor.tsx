@@ -21,10 +21,11 @@ type Props = {
   context: string
   identity?: string
   code?: string
+  checkCode?: string
   answer?: string
   output?: string
 }
-type Action = 'explain' | 'hint' | 'socratic' | 'review' | 'chat' | 'shorter' | 'steps' | 'example'
+type Action = 'explain' | 'hint' | 'socratic' | 'review' | 'chat' | 'shorter' | 'steps' | 'example' | 'bins'
 export function StudyTutor(props: Props) {
   const session = useCurrentSession()
   return (
@@ -70,13 +71,14 @@ function Conversation({
   reviewOnly = false,
   identity,
   code = '',
+  checkCode = code,
   answer = '',
   output = '',
   sessionId,
 }: Props & { sessionId: string }) {
   const queryClient = useQueryClient()
   const storageKey = `study-tutor:v1:${sessionId}:${identity ?? context}`
-  const snapshot = JSON.stringify([context, code, answer, output])
+  const snapshot = JSON.stringify([context, code, answer, output, checkCode])
   const recovery = useRequestRecovery(storageKey)
   const [restored] = useState(() => {
     const fresh = {
@@ -218,12 +220,20 @@ function Conversation({
       )
       return
     }
+    if (action === 'bins' && checkCode.length > 16000) {
+      setError(
+        'Select a code cell of at most 16,000 characters for a complete local boundary check. Your work is retained.',
+      )
+      return
+    }
     const learnerAnswer =
-      action === 'chat' && socratic
-        ? question
-        : action === 'socratic' || (action === 'hint' && socratic)
-          ? null
-          : answer || null
+      action === 'bins'
+        ? null
+        : action === 'chat' && socratic
+          ? question
+          : action === 'socratic' || (action === 'hint' && socratic)
+            ? null
+            : answer || null
     if (learnerAnswer && learnerAnswer.length > 8000) {
       setError(
         'Please shorten your task answer to 8,000 characters so the tutor receives it in full. Your work is retained.',
@@ -231,6 +241,7 @@ function Conversation({
       return
     }
     const requests = {
+      bins: 'Check bin boundaries in the supplied code locally, without executing it or grading my written answer.',
       shorter:
         'Make your last response shorter while preserving its key reasoning, uncertainty and source limitations. Explicitly retain any missing-data or unverified-output caveat; do not introduce a new judgment of my answer. Stay on this same step; do not introduce a new question or claim new checks.',
       steps:
@@ -268,16 +279,18 @@ function Conversation({
           },
           learner_question: action === 'chat' ? question.trim().slice(0, 2000) : null,
           intent:
-            action === 'review'
-              ? 'check_answer'
-              : action === 'hint'
-                ? 'hint'
-                : action === 'explain'
-                  ? 'explain'
-                  : 'chat',
+            action === 'bins'
+              ? 'check_bins'
+              : action === 'review'
+                ? 'check_answer'
+                : action === 'hint'
+                  ? 'hint'
+                  : action === 'explain'
+                    ? 'explain'
+                    : 'chat',
           question: requests[action].slice(0, 2000),
           exercise: action === 'review' ? context : context.slice(0, 1000),
-          code: code.slice(0, 16000),
+          code: action === 'bins' ? checkCode : code.slice(0, 16000),
           learner_answer: learnerAnswer,
           output: output.slice(0, 4000),
           output_stale: false,
@@ -394,6 +407,18 @@ function Conversation({
           </Button>
         )}
       </div>
+      {checkCode.trim() && (
+        <details className="mt-3">
+          <summary className="cursor-pointer text-sm">Local code checks</summary>
+          <p className="text-sm my-2">
+            Check literal pandas.cut bin edges without a model or code execution. This does not grade your
+            written answer or test your dataset. Unsupported code stays unchanged.
+          </p>
+          <Button disabled={busy} onClick={() => void ask('bins')}>
+            Check bin boundaries
+          </Button>
+        </details>
+      )}
       <TutorResponseStatus
         status={busy ? 'streaming' : ready && replySnapshot === snapshot ? 'complete' : 'idle'}
         startedAt={startedAt}
@@ -408,8 +433,9 @@ function Conversation({
       <p className="text-xs text-muted mt-2">
         Feedback is guidance, not a verified grade. Checking an answer uses the separate answer-feedback model
         (OpenAI by default) and sends your submitted answer, supplied material, code, output and recent
-        conversation plus relevant saved replies to that provider. Other tutor actions keep their existing
-        models. <Link to="/models">Choose models</Link>
+        conversation plus relevant saved replies to that provider. The separate Check bin boundaries action
+        runs locally without a model. Other tutor actions keep their existing models.{' '}
+        <Link to="/models">Choose models</Link>
       </p>
       {(context.length > 1000 || code.length > 16000 || output.length > 4000) && (
         <p role="status">
@@ -587,6 +613,7 @@ function Conversation({
 }
 
 function displayMessage(text: string): string {
+  if (text.startsWith('Check bin boundaries in the supplied code')) return 'Check bin boundaries locally.'
   if (text.startsWith('Make your last response shorter')) return 'Make this explanation shorter.'
   if (text.startsWith('Break your last response')) return 'Explain this in smaller steps.'
   if (text.startsWith('Show one small worked example')) return 'Show me a worked example.'

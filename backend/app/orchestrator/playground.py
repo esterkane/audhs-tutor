@@ -44,7 +44,7 @@ from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v13"
+VERSION = "playground.tutor.v14"
 
 
 def messages(
@@ -203,10 +203,17 @@ async def respond(
                 )
         except SQLAlchemyError as exc:
             logger.warning("Saved answer reuse unavailable: %s", type(exc).__name__)
-    if body.intent == "check_answer" and historical is None:
+    if body.intent == "check_bins":
         bins = bin_checks_for(body)
         if bins:
             return await respond_bins(db, learner_id, body, bins, VERSION, recovery=recovery)
+        raise AppError(
+            "unsupported_bin_check",
+            "No supported literal pd.cut or pandas.cut call was found. Use a top-level call "
+            "with literal numeric bin edges and literal options, or ask the tutor to explain "
+            "the code. No model was called and no code was executed.",
+            http_status=422,
+        )
     turn_id = new_id()
     memory: list[dict[str, str]] = []
     if historical is None:

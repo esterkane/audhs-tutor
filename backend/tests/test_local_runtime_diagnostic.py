@@ -315,6 +315,7 @@ async def test_diagnostic_identifies_deterministic_check_not_model_validation(db
     fake = FakeProvider()
     gateway = ModelGateway(db, Router(), {"ollama": fake}, Budget(0))
     name, body, criteria = diagnostic.cases(session.id, "notebook")[2]
+    body = body.model_copy(update={"intent": "check_bins"})
     report = await diagnostic.evaluate_case(db, gateway, owner.id, name, body, criteria, settings)
     assert report["status"] == "completed", report
     assert report["reply"]["route"] == "deterministic"
@@ -322,3 +323,65 @@ async def test_diagnostic_identifies_deterministic_check_not_model_validation(db
     assert report["attempts"] == []
     assert report["gateway_requests"] == []
     assert fake.calls == []
+
+
+def test_reasoning_suite_preserves_anchor_and_has_distinct_manifest(monkeypatch):
+    diagnostic = module()
+    cases = diagnostic.cases("s", "reasoning")
+    assert len(cases) == 5
+    assert cases[0] == next(
+        case for case in diagnostic.cases("s", "notebook") if case[0] == "cleaning_representation"
+    )
+    assert len({body.learning_context.target_id for _, body, _ in cases}) == 5
+    assert all(
+        body.intent == "check_answer"
+        and not body.prefer_saved
+        and body.questioning_style == "explicit"
+        and not body.code
+        and not body.output
+        for _, body, _ in cases
+    )
+    assert cases[-1][1].history[1].text == "That is correct; 90% remain."
+    manifest = diagnostic.suite_manifest("reasoning")
+    assert manifest["case_count"] == 5
+    assert manifest["fixture_sha256"] != diagnostic.suite_manifest("notebook")["fixture_sha256"]
+    monkeypatch.setattr(diagnostic, "reasoning_cases", lambda session_id: cases[:-1])
+    assert diagnostic.suite_manifest("reasoning")["fixture_sha256"] != manifest["fixture_sha256"]
+
+
+async def test_reasoning_runtime_uses_local_fake_passage_feedback(db, settings):
+    diagnostic = module()
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b"})
+    owner = await get_or_create_owner(db, display_name="test")
+    session = await sessions.start(db, owner.id, mode=Mode.STEADY, energy=3)
+    fake = FakeProvider()
+    world = SimpleNamespace(settings=settings)
+    world.gateway = lambda database: ModelGateway(database, Router(), {"ollama": fake}, Budget(0))
+    gateway = await diagnostic.pinned_gateway(world, db, "llama31-8b")
+    assert set(gateway.providers) == {"ollama"}
+    for name, body, criteria in diagnostic.cases(session.id, "reasoning"):
+        fake.structured = {
+            "points": [
+                {
+                    "passage_id": build_passages(body.learner_answer)[0]["id"],
+                    "finding": "needs_more_information",
+                    "explanation": "Synthetic transport check only.",
+                }
+            ],
+            "next_step": "Compare the supplied quantities.",
+            "followup_question": None,
+        }
+        result = await diagnostic.evaluate_case(
+            db, gateway, owner.id, name, body, criteria, world.settings
+        )
+        assert result["status"] == "completed", result
+        assert not result["reply"]["reused"]
+        assert result["semantic_review"] == "not_reviewed"
+        assert result["literal_schema_validated_this_run"] is True
+        saved = await db.get(TutorAnswer, result["reply"]["answer_id"])
+        assert saved.request_json["learner_answer"] == body.learner_answer
+        assert (
+            saved.metadata_json["quoted_feedback"]["points"][0]["learner_quote"]
+            == build_passages(body.learner_answer)[0]["text"]
+        )
+    assert len(fake.calls) == 5
