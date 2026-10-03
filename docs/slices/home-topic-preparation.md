@@ -22,3 +22,9 @@ certify their content quality.
 
 Existing limitation: Areas initializes URL selection on mount; same-route query-only navigation is
 not a newly supported workflow. The Home→Areas handoff mounts it with the requested selection.
+
+CI follow-up (2026-10-03): full remote browser run had72 passes and two Home fixture failures after
+the preview gained learning-goal text. Exact whole-element title matching no longer matched the list
+item's title-plus-goal. The regression now locates the lesson list item by title and additionally asserts
+the specific goal. Explicit activation, no automatic start and correct-topic session checks remain.
+The five targeted Home journeys pass against the final preview markup.
