@@ -153,3 +153,11 @@ are visible; muted/zero-volume notices are outside collapsed settings. Completio
 Frontend316, focused6, two isolated audio browser journeys, lint/build and both reviews passed.
 See docs/slices/read-aloud-status.md. Pause/resume, cross-surface coordination, device audibility
 and owner comprehension remain open. Both publication repositories remain private.
+
+
+## Read-aloud pause — 2026-10-03
+
+UX26-06: requested speech now offers Pause/Resume without regenerating audio. Arriving passages
+remain queued while paused. Stop remains available during pending context operations; old operations
+cannot change replacement playback. Frontend319, focused9, browser2, lint/build and both reviews passed.
+See docs/slices/read-aloud-pause.md. Cross-surface coordination and real-device/owner gates remain open.

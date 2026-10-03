@@ -15,6 +15,9 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
+  const [paused, setPaused] = useState(false)
+  const [ready, setReady] = useState(false)
+  const [changingPlayback, setChangingPlayback] = useState(false)
   const muted = useAudioSettings((s) => s.muted)
   const volume = useAudioSettings((s) => s.volume)
   useEffect(
@@ -22,6 +25,7 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
       controller.current?.abort()
       if (playback.current) playback.current.onIdle = null
       playback.current?.close()
+      playback.current = null
     },
     [text],
   )
@@ -31,6 +35,26 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
     playback.current?.close()
     playback.current = null
     setBusy(false)
+    setPaused(false)
+    setReady(false)
+    setChangingPlayback(false)
+  }
+  async function togglePause() {
+    const player = playback.current
+    if (!player || changingPlayback) return
+    setChangingPlayback(true)
+    try {
+      if (paused) await player.resume()
+      else await player.pause()
+      if (playback.current === player) {
+        setPaused(!paused)
+        setError('')
+      }
+    } catch (e) {
+      if (playback.current === player) setError(`Playback control failed: ${(e as Error).message}`)
+    } finally {
+      if (playback.current === player) setChangingPlayback(false)
+    }
   }
   async function speak() {
     stop()
@@ -56,6 +80,8 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
     }
     try {
       await player.unlock()
+      if (ctl.signal.aborted) return
+      setReady(true)
       // Each bounded passage is spoken completely; longer explanations are not silently truncated.
       const plain = text.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1').replace(/[*#`]/g, '')
       const passages = plain.match(/[\s\S]{1,1000}(?:\s|$)|[\s\S]{1,1000}/g) ?? []
@@ -94,8 +120,19 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
       >
         {busy ? 'Stop audio' : label}
       </Button>
+      {busy && ready && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="ml-2"
+          disabled={changingPlayback}
+          onClick={() => void togglePause()}
+        >
+          {changingPlayback ? (paused ? 'Resuming…' : 'Pausing…') : paused ? 'Resume audio' : 'Pause audio'}
+        </Button>
+      )}
       <p role="status" className="text-sm mt-1">
-        {status}
+        {busy && paused ? 'Audio paused. Resume continues from the same position.' : status}
       </p>
       {(muted || volume === 0) && (
         <p className="text-sm mt-1">

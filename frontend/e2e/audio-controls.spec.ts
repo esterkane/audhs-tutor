@@ -62,13 +62,22 @@ test('requested reading shows preparation, silence settings and completion', asy
   })
   await page.route('**/api/voice/speak', async (route) => {
     await held
-    await route.fulfill({ json: { pcm16_b64: Buffer.alloc(4800).toString('base64'), sample_rate: 24000 } })
+    await route.fulfill({ json: { pcm16_b64: Buffer.alloc(48000).toString('base64'), sample_rate: 24000 } })
   })
   await page.goto('/programs')
   const listen = page.getByRole('button', { name: 'Listen to explanation', exact: true })
   await listen.click()
   await expect(page.getByText('Preparing audio…', { exact: true })).toBeVisible()
   await expect(page.getByText(/Audio is muted/).first()).toBeVisible()
+  await page.getByRole('button', { name: 'Pause audio', exact: true }).click()
+  await expect(page.getByText('Audio paused. Resume continues from the same position.')).toBeVisible()
+  release()
+  await expect(page.getByRole('button', { name: 'Resume audio', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Resume audio', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Audio finished.', { exact: true })).toBeVisible()
+  await listen.click()
+
   await page.getByRole('button', { name: 'Stop audio', exact: true }).focus()
   await page.keyboard.press('Enter')
   await expect(page.getByText('Audio stopped. Listen again starts from the beginning.')).toBeVisible()

@@ -5,6 +5,8 @@ import { ReadAloud } from './ReadAloud'
 import { useAudioSettings } from '../audio/settings'
 
 const audio = vi.hoisted(() => ({
+  pause: vi.fn(async () => {}),
+  resume: vi.fn(async () => {}),
   enqueue: vi.fn(),
   close: vi.fn(),
   unlock: vi.fn(async () => {}),
@@ -18,6 +20,8 @@ vi.mock('./audio', () => ({
     get onIdle() {
       return audio.idle
     }
+    pause = audio.pause
+    resume = audio.resume
     enqueue = audio.enqueue
     close = audio.close
     unlock = audio.unlock
@@ -141,4 +145,46 @@ it('shows synthesis failure and allows retry without claiming playback', async (
   await screen.findByText('Audio could not finish.')
   expect(screen.getByRole('alert')).toHaveTextContent('Voice service unavailable')
   expect(screen.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
+})
+
+it('keeps arriving speech paused and resumes without another synthesis request', async () => {
+  let resolve!: (r: Response) => void
+  const fetcher = vi.fn(
+    () =>
+      new Promise<Response>((done) => {
+        resolve = done
+      }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<ReadAloud text="Pause this explanation." />)
+  fireEvent.click(screen.getByRole('button', { name: 'Listen to explanation' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Pause audio' }))
+  await screen.findByRole('button', { name: 'Resume audio' })
+  await act(async () => resolve(jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 })))
+  expect(screen.getByText('Audio paused. Resume continues from the same position.')).toBeVisible()
+  expect(audio.pause).toHaveBeenCalledOnce()
+  fireEvent.click(screen.getByRole('button', { name: 'Resume audio' }))
+  await screen.findByRole('button', { name: 'Pause audio' })
+  expect(audio.resume).toHaveBeenCalledOnce()
+  expect(fetcher).toHaveBeenCalledOnce()
+})
+it('ignores a pending pause completion after Stop', async () => {
+  let finish!: () => void
+  audio.pause.mockImplementationOnce(
+    () =>
+      new Promise<void>((resolve) => {
+        finish = resolve
+      }),
+  )
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 })),
+  )
+  renderApp(<ReadAloud text="Stop while pausing." />)
+  fireEvent.click(screen.getByRole('button', { name: 'Listen to explanation' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Pause audio' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Stop audio' }))
+  await act(async () => finish())
+  expect(screen.queryByRole('button', { name: 'Resume audio' })).not.toBeInTheDocument()
+  expect(screen.getByText('Audio stopped. Listen again starts from the beginning.')).toBeVisible()
 })

@@ -76,6 +76,7 @@ export class Player {
   private output: GainNode | null = null
   private releaseOutput: (() => void) | null = null
   private rate: number | null = null
+  private paused = false
   private nextAt = 0
   private sources: AudioBufferSourceNode[] = []
 
@@ -91,10 +92,29 @@ export class Player {
     if (this.ctx.state === 'suspended') await this.ctx.resume()
   }
 
+  async pause() {
+    const ctx = this.ctx
+    if (!ctx) return
+    this.paused = true
+    try {
+      await ctx.suspend()
+    } catch (error) {
+      if (this.ctx === ctx) this.paused = false
+      throw error
+    }
+  }
+
+  async resume() {
+    const ctx = this.ctx
+    if (!ctx) return
+    await ctx.resume()
+    if (this.ctx === ctx) this.paused = false
+  }
+
   enqueue(pcm16: Int16Array, sampleRate: number) {
     if (typeof AudioContext === 'undefined') return
     this.ctx = this.ctx ?? new AudioContext()
-    if (this.ctx.state === 'suspended') void this.ctx.resume() // Safari keeps fresh contexts suspended
+    if (!this.paused && this.ctx.state === 'suspended') void this.ctx.resume() // Safari keeps fresh contexts suspended
     const buffer = this.ctx.createBuffer(1, pcm16.length, sampleRate)
     const data = buffer.getChannelData(0)
     for (let i = 0; i < pcm16.length; i++) data[i] = pcm16[i] / 32768
@@ -132,6 +152,7 @@ export class Player {
   }
 
   close() {
+    this.paused = false
     this.stop()
     this.releaseOutput?.()
     this.releaseOutput = null
