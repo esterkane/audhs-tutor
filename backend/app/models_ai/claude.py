@@ -21,6 +21,7 @@ from app.models_ai.provider import (
     StreamEvent,
     StreamUsage,
     StructuredOutputError,
+    structured_reason,
     usage_of,
 )
 
@@ -171,4 +172,5 @@ def _structured_error(e: InstructorRetryException) -> StructuredOutputError:
         tokens_out=tout,
         cached_tokens=cached,
         last_text=text,
+        reason_code=structured_reason(e),
     )

@@ -3,6 +3,7 @@
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic_core import PydanticCustomError
 
 
 class FeedbackPoint(BaseModel):
@@ -35,13 +36,19 @@ def bound_feedback(answer: str, *, socratic: bool) -> type[QuotedFeedback]:
         def exact_attribution(self) -> Self:
             for point in self.points:
                 if not point.learner_quote.strip() or point.learner_quote not in answer:
-                    raise ValueError(
-                        "Each learner_quote must be a verbatim substring of learner_answer"
+                    raise PydanticCustomError(
+                        "quote_not_literal",
+                        "Each learner_quote must be a verbatim substring of learner_answer",
                     )
             if len({point.learner_quote for point in self.points}) != len(self.points):
-                raise ValueError("Do not repeat the same quoted passage")
+                raise PydanticCustomError(
+                    "quote_duplicate", "Do not repeat the same quoted passage"
+                )
             if not socratic and self.followup_question is not None:
-                raise ValueError("Explicit feedback must not add a followup_question")
+                raise PydanticCustomError(
+                    "explicit_followup_forbidden",
+                    "Explicit feedback must not add a followup_question",
+                )
             return self
 
     return BoundFeedback

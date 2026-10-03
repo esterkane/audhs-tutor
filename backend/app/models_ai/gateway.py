@@ -295,7 +295,7 @@ class ModelGateway:
                         ),
                         learner_id,
                         session_id,
-                        {**meta, "repair": repairs},
+                        {**meta, "repair": repairs, "structured_reason_code": e.reason_code},
                         request_id=request_id,
                         attempt=attempt,
                         outcome="invalid_output",

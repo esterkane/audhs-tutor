@@ -18,6 +18,7 @@ from app.db.models import ModelCall, TutorAnswer
 from app.evals.harness import open_world
 from app.kernel import session as sessions
 from app.models_ai.benchmark_gateway import BenchmarkRouter
+from app.models_ai.provider import safe_structured_reason
 from app.models_ai.registry import get_row, get_spec
 from app.orchestrator import playground
 from app.schemas.common import Mode
@@ -308,6 +309,10 @@ def attempt_diagnostic(call):
             "cost_usd",
         )
     }
+    metadata = getattr(call, "metadata_json", None)
+    result["structured_reason_code"] = safe_structured_reason(
+        metadata.get("structured_reason_code") if isinstance(metadata, dict) else None
+    )
     known = isinstance(call.latency_ms, (int, float)) and call.latency_ms > 0
     result["latency_ms"] = call.latency_ms if known else None
     result["latency_source"] = "gateway_record" if known else "unavailable"

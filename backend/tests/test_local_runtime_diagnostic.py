@@ -261,6 +261,7 @@ def test_attempt_diagnostic_allowlist_and_unknown_timing(latency, expected):
     assert result == {
         **fields,
         "latency_ms": expected,
+        "structured_reason_code": "unknown",
         "latency_source": "unavailable" if expected is None else "gateway_record",
     }
     assert "PRIVATE_" not in json.dumps(result)

@@ -6,9 +6,11 @@ writes a `model_call` row. Providers are thin adapters; they never decide routin
 
 from collections.abc import AsyncIterator
 from enum import StrEnum
+from json import JSONDecodeError
 from typing import Any, Literal, Protocol, TypeVar
 
-from pydantic import BaseModel, Field
+from instructor.core.exceptions import InstructorRetryException
+from pydantic import BaseModel, Field, ValidationError
 
 
 class TaskClass(StrEnum):
@@ -96,6 +98,51 @@ class ProviderError(Exception):
     """Transport/model failure. The gateway logs it and moves down the fallback chain."""
 
 
+STRUCTURED_REASON_CODES = frozenset(
+    {
+        "unknown",
+        "quote_not_literal",
+        "quote_duplicate",
+        "explicit_followup_forbidden",
+        "invalid_json",
+        "schema_validation",
+    }
+)
+
+
+def safe_structured_reason(value: object) -> str:
+    return value if isinstance(value, str) and value in STRUCTURED_REASON_CODES else "unknown"
+
+
+def structured_reason(error: BaseException) -> str:
+    """Classify typed errors only; never inspect messages, input, completion or metadata."""
+    seen: set[int] = set()
+    current: BaseException | None = error
+    for _ in range(16):
+        if current is None or id(current) in seen:
+            break
+        seen.add(id(current))
+        if isinstance(current, ValidationError):
+            types = {
+                item["type"]
+                for item in current.errors(
+                    include_url=False, include_context=False, include_input=False
+                )
+            }
+            for code in ("quote_not_literal", "quote_duplicate", "explicit_followup_forbidden"):
+                if code in types:
+                    return code
+            return "invalid_json" if "json_invalid" in types else "schema_validation"
+        if isinstance(current, JSONDecodeError):
+            return "invalid_json"
+        if isinstance(current, InstructorRetryException) and current.failed_attempts:
+            candidate = current.failed_attempts[-1].exception
+            current = candidate if isinstance(candidate, BaseException) else None
+        else:
+            current = current.__cause__ or current.__context__
+    return "unknown"
+
+
 class StructuredOutputError(ProviderError):
     """The reply did not validate against the schema. Carries the attempt's usage (the provider
     billed it) and the invalid text so the gateway can log the attempt and ask for a repair."""
@@ -109,6 +156,7 @@ class StructuredOutputError(ProviderError):
         tokens_out: int = 0,
         cached_tokens: int = 0,
         last_text: str | None = None,
+        reason_code: str = "unknown",
     ) -> None:
         super().__init__(message)
         self.attempts = attempts
@@ -116,6 +164,7 @@ class StructuredOutputError(ProviderError):
         self.tokens_out = tokens_out
         self.cached_tokens = cached_tokens
         self.last_text = last_text
+        self.reason_code = safe_structured_reason(reason_code)
 
 
 T = TypeVar("T", bound=BaseModel)
