@@ -1,16 +1,18 @@
 from datetime import UTC, datetime
-from typing import Any
+from typing import Annotated, Any
+from uuid import UUID
 
-from fastapi import APIRouter, Query
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Header, Query
+from pydantic import BaseModel
 
 from app.api.deps import DB, Learner
 from app.db.events import EventWriter, Verb
 from app.db.models import Assessment, SkillNode
-from app.kernel import memory
+from app.kernel import memory, review_requests
 from app.kernel import session as ksession
 from app.orchestrator.grader import view
 from app.schemas.common import ActivityType, Actor, ObjectType
+from app.schemas.review import ReviewOut, ReviewRating, ReviewRequestState
 
 router = APIRouter(prefix="/review", tags=["review"])
 
@@ -32,22 +34,6 @@ class DueList(BaseModel):
     cap: int
     total_due: int
     as_of: str
-
-
-class ReviewRating(BaseModel):
-    session_id: str
-    rating: int = Field(ge=1, le=4)
-    confidence_pre: int | None = Field(default=None, ge=1, le=5)
-    hint_count: int = Field(default=0, ge=0, le=1000)
-    latency_ms: int | None = None
-
-
-class ReviewOut(BaseModel):
-    item_id: str
-    due: str
-    state: str
-    stability: float | None
-    predicted_retrievability: float | None
 
 
 def _as_of(value: str | None) -> datetime:
@@ -107,7 +93,7 @@ async def due(
         None, description="only this domain (e.g. language); default: all but language"
     ),
 ) -> DueList:
-    s = await ksession.get(db, session_id)
+    s = await ksession.get_owned(db, session_id, learner.id)
     now = _as_of(as_of)
     cap = memory.review_cap(s.mode, s.energy)
     cp = await ksession.load_checkpoint(db, s.id) or {}
@@ -155,37 +141,32 @@ async def due(
     return DueList(items=items, cap=cap, total_due=len(all_due), as_of=now.isoformat())
 
 
+@router.get(
+    "/requests/{request_id}",
+    summary="Read a review rating result without changing its schedule",
+    response_model=ReviewRequestState,
+)
+async def request_result(
+    request_id: UUID, session_id: str, db: DB, learner: Learner
+) -> ReviewRequestState:
+    return await review_requests.lookup(db, learner.id, session_id, str(request_id))
+
+
 @router.post("/{item_id}", summary="Rate a recalled item 1-4 (FSRS)", response_model=ReviewOut)
 async def rate(
-    item_id: str, body: ReviewRating, db: DB, learner: Learner, as_of: str | None = Query(None)
+    item_id: str,
+    body: ReviewRating,
+    db: DB,
+    learner: Learner,
+    as_of: str | None = Query(None),
+    idempotency_key: Annotated[UUID | None, Header()] = None,
 ) -> ReviewOut:
-    s = await ksession.get(db, body.session_id)
-    from app.db.events import EventWriter
-    from app.schemas.common import ActivityType
-
-    events = EventWriter(db, ksession.event_context(s, activity=ActivityType.RETRIEVAL))
-    log = await memory.review(
+    return await review_requests.submit(
         db,
         learner.id,
         item_id,
-        min(body.rating, 2) if body.hint_count else body.rating,
+        body,
         now=_as_of(as_of),
-        latency_ms=body.latency_ms,
-        events=events,
-        confidence_pre=body.confidence_pre,
-        hint_count=body.hint_count,
-    )
-    from sqlalchemy import select
-
-    from app.db.models import MemoryState
-
-    ms = (
-        await db.execute(select(MemoryState).where(MemoryState.review_item_id == item_id))
-    ).scalar_one()
-    return ReviewOut(
-        item_id=item_id,
-        due=ms.due,
-        state=ms.state,
-        stability=ms.stability,
-        predicted_retrievability=log.predicted_retrievability,
+        as_of=as_of,
+        identity=str(idempotency_key) if idempotency_key is not None else None,
     )

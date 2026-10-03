@@ -704,6 +704,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/review/requests/{request_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read a review rating result without changing its schedule */
+    get: operations['request_result_api_review_requests__request_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/{item_id}': {
     parameters: {
       query?: never
@@ -4546,6 +4563,15 @@ export interface components {
       /** Latency Ms */
       latency_ms?: number | null
     }
+    /** ReviewRequestState */
+    ReviewRequestState: {
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'not_found' | 'unresolved' | 'completed'
+      result?: components['schemas']['ReviewOut'] | null
+    }
     /** RouteRow */
     RouteRow: {
       /** Task */
@@ -6484,12 +6510,47 @@ export interface operations {
       }
     }
   }
+  request_result_api_review_requests__request_id__get: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        request_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReviewRequestState']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   rate_api_review__item_id__post: {
     parameters: {
       query?: {
         as_of?: string | null
       }
-      header?: never
+      header?: {
+        'idempotency-key'?: string | null
+      }
       path: {
         item_id: string
       }

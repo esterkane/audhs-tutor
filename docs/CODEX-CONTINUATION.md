@@ -87,3 +87,13 @@ labels no longer imply current mastery/review timing. Backend636, UI16, desktop/
 lint/types/build and required reviews passed. See docs/slices/atomic-assessment-outcome.md.
 Next: review-rating ownership/idempotency. Pre-commit unresolved requests, legacy unkeyed callers
 and content-version conflicts remain limited; broad quality/material/UX queues remain open.
+
+
+## Review request recovery foundation — 2026-10-03
+
+Review due/rating now check session ownership; keyed ratings bind the frozen payload to a durable claim.
+FSRS card/log, reviewed event and completed result commit atomically after acquiring a short write lock.
+Lookup is read-only. Full backend643, final request tests8, generated API types, lint/types and required
+reviews passed. See docs/slices/review-request-recovery.md. Next: browser review identity persistence,
+explicit lookup/retry and current-queue reconciliation. Until then unkeyed browser retries are not
+protected; R3 stays partial. No live learner mutation or paid model call during verification.
