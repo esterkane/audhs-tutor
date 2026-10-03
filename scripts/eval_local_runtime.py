@@ -13,17 +13,19 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
+from sqlalchemy import select
+
 from app.core.config import get_settings
 from app.db.models import ModelCall, TutorAnswer
 from app.evals.harness import open_world
 from app.kernel import session as sessions
 from app.models_ai.benchmark_gateway import BenchmarkRouter
+from app.models_ai.gateway import REPAIR_POLICY_VERSION
 from app.models_ai.provider import safe_structured_reason
 from app.models_ai.registry import get_row, get_spec
 from app.orchestrator import playground
 from app.schemas.common import Mode
 from app.schemas.playground import PlaygroundContext, PlaygroundRequest
-from sqlalchemy import select
 
 
 def local_settings(settings):
@@ -74,9 +76,7 @@ class RecordedGateway:
             raise
         finally:
             record["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
-            record["timing_scope"] = (
-                "gateway wall time including retries; not per-attempt latency"
-            )
+            record["timing_scope"] = "gateway wall time including retries; not per-attempt latency"
 
 
 def basic_cases(session_id):
@@ -135,9 +135,7 @@ def notebook_cases(session_id):
             learner_answer=answer,
             code=code,
             output=output,
-            learning_context=PlaygroundContext(
-                target_id="synthetic-notebook-" + target
-            ),
+            learning_context=PlaygroundContext(target_id="synthetic-notebook-" + target),
             **kwargs,
         )
 
@@ -319,9 +317,7 @@ def attempt_diagnostic(call):
     return result
 
 
-async def evaluate_case(
-    db, gateway, learner_id, name, body, criteria, settings, on_respond=None
-):
+async def evaluate_case(db, gateway, learner_id, name, body, criteria, settings, on_respond=None):
     before = set(await db.scalars(select(ModelCall.id)))
     recorder = RecordedGateway(gateway)
     result = {
@@ -370,6 +366,7 @@ async def run(output, model, suite="basic"):
         "production_routing_exercised": False,
         "fallback_allowed": False,
         "runtime_prompt_version": playground.VERSION,
+        "structured_repair_policy_version": REPAIR_POLICY_VERSION,
         "scope": "ordered synthetic runtime cases, not a quality or latency benchmark",
         "timing_scope": "run wall time up to report serialization; completed status precedes final world cleanup",
         "results": [],
@@ -397,9 +394,7 @@ async def run(output, model, suite="basic"):
             try:
                 async with world.session_factory() as db:
                     gateway = await pinned_gateway(world, db, model)
-                    session = await sessions.start(
-                        db, world.learner_id, mode=Mode.STEADY, energy=3
-                    )
+                    session = await sessions.start(db, world.learner_id, mode=Mode.STEADY, energy=3)
                     for name, body, criteria in cases(session.id, suite):
                         report["results"].append(
                             await evaluate_case(
@@ -428,8 +423,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--suite", choices=["basic", "notebook"], default="basic")
-    parser.add_argument(
-        "--model", choices=["llama31-8b", "gemma3-12b"], default="llama31-8b"
-    )
+    parser.add_argument("--model", choices=["llama31-8b", "gemma3-12b"], default="llama31-8b")
     args = parser.parse_args()
     asyncio.run(run(args.out, args.model, args.suite))

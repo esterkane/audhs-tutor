@@ -117,6 +117,11 @@ async def test_gateway_persists_reason_and_diagnostic_export_allowlists_it(db):
         [Message(role="user", content="answer")],
         response_model=bound_feedback("answer", socratic=False),
     )
+    repair_message = provider.calls[0].messages[-1]
+    assert repair_message.role == "user"
+    assert "current learner_answer" in repair_message.content
+    assert "Do not correct the learner" in repair_message.content
+    assert "PRIVATE_FAILURE" not in repair_message.content
     calls = list(await db.scalars(select(ModelCall).order_by(ModelCall.attempt)))
     assert len(calls) == 2
     assert calls[0].outcome == "invalid_output"

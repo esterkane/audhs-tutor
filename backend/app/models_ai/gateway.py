@@ -43,6 +43,7 @@ from app.models_ai.provider import (
 from app.models_ai.routing import NoModelReady, Router
 from app.schemas.common import Actor, ObjectType
 
+REPAIR_POLICY_VERSION = "structured-repair.v2"
 MAX_REPAIRS = 2  # structured output: 1 attempt + up to 2 repairs per model, then escalate
 REPAIR_INSTRUCTION = (
     "Your previous reply did not match the required JSON schema: {errors}\n"
@@ -55,6 +56,33 @@ def repair_errors(text: str) -> str:
     """Validation messages only: the model's own reply text (`input_value=…`) never comes back in
     a user-role turn (ADR-0008: model output has no user authority)."""
     return _INPUT_VALUE.sub("input_value=<omitted>", text)[:1500]
+
+
+_TYPED_REPAIR_GUIDANCE = {
+    "quote_not_literal": (
+        "Each learner_quote must copy a nonempty contiguous passage from the current "
+        "learner_answer with exactly the same characters. Do not quote the task, history, "
+        "or your own paraphrase. Do not correct the learner's words inside the quote; "
+        "put corrections in explanation. Do not add Markdown escaping or backslashes to "
+        "the quote text; use only the JSON encoding required to represent its original characters."
+    ),
+    "quote_duplicate": (
+        "Use distinct passages for learner_quote in each point. Remove duplicate points "
+        "rather than repeating the same passage; retain at least one point."
+    ),
+    "explicit_followup_forbidden": (
+        "Set followup_question to null in explicit mode. Explain directly; do not move "
+        "a follow-up question into explanation or next_step."
+    ),
+}
+
+
+def repair_instruction(error: StructuredOutputError) -> str:
+    """Known feedback failures get fixed guidance, never wrapper text as instructions."""
+    guidance = _TYPED_REPAIR_GUIDANCE.get(error.reason_code)
+    return REPAIR_INSTRUCTION.format(
+        errors=guidance if guidance is not None else repair_errors(str(error))
+    )
 
 
 class GatewayResult(BaseModel):
@@ -317,7 +345,7 @@ class ModelGateway:
                             ),
                             Message(
                                 role="user",
-                                content=REPAIR_INSTRUCTION.format(errors=repair_errors(str(e))),
+                                content=repair_instruction(e),
                             ),
                         ]
                         continue
