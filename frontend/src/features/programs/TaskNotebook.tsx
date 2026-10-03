@@ -4,15 +4,7 @@ import type { Check } from '../code/runner'
 import { NotebookWorkspace } from './NotebookWorkspace'
 import { parseNotebook, type NotebookCell, type Section } from './manifest'
 
-export function TaskNotebook({
-  courseId,
-  sectionId,
-  practice,
-  identity,
-  title,
-  paused,
-  onBack,
-}: {
+type Props = {
   courseId?: string
   sectionId?: string
   practice: NonNullable<Section['practice']>
@@ -20,10 +12,25 @@ export function TaskNotebook({
   title: string
   paused: boolean
   onBack: (summary?: string) => void
-}) {
-  const [cells, setCells] = useState<NotebookCell[] | null>(null)
-  const [checks, setChecks] = useState<Check[]>([])
-  const [prelude, setPrelude] = useState('')
+}
+export function TaskNotebook(props: Props) {
+  return (
+    <TaskNotebookLoad
+      key={JSON.stringify([
+        props.identity,
+        props.courseId,
+        props.sectionId,
+        props.practice.notebook,
+        props.practice.dataset,
+      ])}
+      {...props}
+    />
+  )
+}
+function TaskNotebookLoad({ courseId, sectionId, practice, identity, title, paused, onBack }: Props) {
+  const [loaded, setLoaded] = useState<{ cells: NotebookCell[]; checks: Check[]; prelude: string } | null>(
+    null,
+  )
   const [error, setError] = useState('')
   const [attempt, setAttempt] = useState(0)
   const heading = useRef<HTMLHeadingElement>(null)
@@ -34,6 +41,7 @@ export function TaskNotebook({
       const response = await fetch(practice.notebook, { signal: ctl.signal })
       if (!response.ok) throw new Error('The task starter is unavailable.')
       const notebook = await response.json()
+      if (ctl.signal.aborted) throw new DOMException('Cancelled', 'AbortError')
       const next = parseNotebook(notebook)
       const validations = notebook.metadata?.practice_checks
       if (
@@ -46,22 +54,42 @@ export function TaskNotebook({
         )
       )
         throw new Error('Task starter is missing valid calculation checks.')
-      if (!ctl.signal.aborted) setChecks(validations)
+      let prelude = ''
       if (practice.dataset) {
         const data = await fetch(practice.dataset, { signal: ctl.signal })
         if (!data.ok) throw new Error('The task dataset is unavailable.')
         const csv = await data.text()
         if (csv.length > 25 * 1024 * 1024) throw new Error('Dataset exceeds the browser practice limit.')
         // A Python string literal, never executable dataset content. The export is self-contained.
-        if (!ctl.signal.aborted)
-          setPrelude(`import json\nDATA_CSV = json.loads(${JSON.stringify(JSON.stringify(csv))})\n`)
+        prelude = `import json\nDATA_CSV = json.loads(${JSON.stringify(JSON.stringify(csv))})\n`
       }
-      if (!ctl.signal.aborted) setCells(next)
+      return { cells: next, checks: validations as Check[], prelude }
     }
-    void load().catch((err: unknown) => {
-      if (!ctl.signal.aborted) setError(err instanceof Error ? err.message : String(err))
+    let timer: ReturnType<typeof setTimeout>
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => {
+        reject(
+          new Error(
+            'Loading timed out. Existing project notes and saved notebook edits are not changed. Retry loading or return to the task.',
+          ),
+        )
+      }, 15000)
     })
-    return () => ctl.abort()
+    void Promise.race([load(), deadline])
+      .then((next) => {
+        if (!ctl.signal.aborted) setLoaded(next)
+      })
+      .catch((err: unknown) => {
+        if (!ctl.signal.aborted) {
+          setError(err instanceof Error ? err.message : String(err))
+          ctl.abort()
+        }
+      })
+      .finally(() => clearTimeout(timer))
+    return () => {
+      clearTimeout(timer)
+      ctl.abort()
+    }
   }, [practice.notebook, practice.dataset, attempt])
   return (
     <section className="grid gap-4" aria-label="Task notebook">
@@ -86,15 +114,15 @@ export function TaskNotebook({
           </Button>
         </div>
       ) : (
-        !cells && <p role="status">Loading starter and local dataset…</p>
+        !loaded && <p role="status">Loading starter and local dataset…</p>
       )}
-      {cells && !paused && (
+      {loaded && !paused && (
         <NotebookWorkspace
           courseId={courseId}
           sectionId={sectionId}
-          cells={cells}
-          checks={checks}
-          prelude={prelude}
+          cells={loaded.cells}
+          checks={loaded.checks}
+          prelude={loaded.prelude}
           identity={`task:${identity}`}
           onFinish={onBack}
         />
