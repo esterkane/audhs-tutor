@@ -321,9 +321,13 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
         </CardTitle>
         {skill && (phase === 'teach' || phase === 'assess') && (
           <div className="mt-2 text-sm">
-            <h3 className="font-medium">What you are learning</h3>
+            <h3 className="font-medium">Learning goal</h3>
             <p className="mt-1">{skill.description || skill.title}</p>
-            <ReadAloud key={skill.id} text={skill.description || skill.title} />
+            <ReadAloud
+              key={skill.id}
+              text={skill.description || skill.title}
+              label="Listen to learning goal"
+            />
           </div>
         )}
         {blockNote && (
@@ -475,21 +479,17 @@ function TeachPanel({
   return (
     <>
       <Card>
-        <label htmlFor="ask" className="text-sm font-medium">
-          Ask about this lesson (optional)
-        </label>
-        <Textarea
-          id="ask"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Leave empty to start with an explanation."
-          aria-describedby={input.length > 4000 ? 'lesson-question-limit' : undefined}
-        />
-        {input.length > 4000 && (
-          <p id="lesson-question-limit" role="alert">
-            Your draft is preserved. Shorten it to 4,000 characters before sending ({input.length} currently).
+        <CardTitle>Your explanation</CardTitle>
+        {!text && !busy && !error && status !== 'stopped' && (
+          <p className="mt-2">
+            No explanation has been prepared yet. Start explanation to get the idea and a worked example
+            before trying a question. The learning goal above is only a summary of what you will learn.
           </p>
         )}
+        <p className="text-sm text-muted mt-2">
+          Read the explanation below when it is ready, or use its Listen control. Audio starts only when you
+          choose it. You can also type a specific lesson question below.
+        </p>
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
             variant={done || alt ? 'secondary' : 'primary'}
@@ -542,6 +542,21 @@ function TeachPanel({
             </Button>
           )}
         </div>
+        <label htmlFor="ask" className="text-sm font-medium">
+          Ask about this lesson (optional)
+        </label>
+        <Textarea
+          id="ask"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Leave empty to start with an explanation."
+          aria-describedby={input.length > 4000 ? 'lesson-question-limit' : undefined}
+        />
+        {input.length > 4000 && (
+          <p id="lesson-question-limit" role="alert">
+            Your draft is preserved. Shorten it to 4,000 characters before sending ({input.length} currently).
+          </p>
+        )}
         <TutorResponseStatus status={status} startedAt={startedAt} />
         {active && (
           <RequestRecoveryControls

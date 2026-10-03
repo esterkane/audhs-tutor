@@ -1,5 +1,5 @@
 import { clearDraft } from '../features/assess/draft'
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Route, Routes } from 'react-router-dom'
 import { useMode } from '../stores/mode'
@@ -278,8 +278,21 @@ it('guides explanation to a question with optional controls collapsed and access
   ).toBeVisible()
   expect(screen.getByText('More ways to learn').closest('details')).not.toHaveAttribute('open')
   expect(screen.getByRole('button', { name: 'Stop session' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Listen to explanation' })).not.toBeInTheDocument()
+  expect(screen.getByText(/No explanation has been prepared yet/)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Try a question' })).not.toBeInTheDocument()
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/tutor/stream'))).toBe(false)
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/voice/speak'))).toBe(false)
   fireEvent.click(screen.getByRole('button', { name: 'Start explanation' }))
   await screen.findByText('A dot product combines matching components.')
+  const explanation = screen.getByRole('region', { name: 'Explanation reader' })
+  expect(
+    within(explanation).getByRole('button', { name: 'Listen to explanation' }),
+  ).toBeVisible()
+  expect(within(explanation).getByText('A dot product combines matching components.')).toBeVisible()
+  expect(screen.queryByText(/No explanation has been prepared yet/)).not.toBeInTheDocument()
+  expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/voice/speak'))).toBe(false)
   fireEvent.click(screen.getByText('Think deeper about this explanation'))
   fireEvent.change(screen.getByLabelText('Ask about this lesson (optional)'), {
     target: { value: 'Keep my own reasoning.' },
@@ -323,7 +336,8 @@ it('offers continuing the plan after feedback without requiring another question
       if (url.endsWith('/api/assess/attempt'))
         return jsonResponse({
           score: 1,
-          assessment_id: 'a1', attempt_id: 'attempt',
+          assessment_id: 'a1',
+          attempt_id: 'attempt',
           feedback: 'The components match.',
           next_step: 'Continue.',
           criterion_results: [],

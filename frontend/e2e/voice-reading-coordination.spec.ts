@@ -53,7 +53,7 @@ test('reading and voice coordinate without losing received text', async ({ page,
   })
   await page.goto('/')
   await page.getByRole('button', { name: /^Resume previous session/ }).click()
-  const listen = page.getByRole('button', { name: 'Listen to explanation', exact: true }).first()
+  const listen = page.getByRole('button', { name: 'Listen to learning goal', exact: true }).first()
   await listen.click()
   await page.getByRole('button', { name: 'Talk instead' }).click()
   await page.getByRole('button', { name: 'Connect', exact: true }).click()

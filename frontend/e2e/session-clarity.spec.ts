@@ -28,10 +28,10 @@ test('context, optional confidence, saved labels and stopping without recap', as
   )
   await page.goto('/')
   await page.getByRole('button', { name: /^Resume previous session/ }).click()
-  await expect(page.getByRole('heading', { name: 'What you are learning' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Learning goal' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Give me a hint' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Explain the idea first' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
   await page.getByText('Rate this question', { exact: true }).click()
   await page
     .getByLabel('Your explanation (optional)', { exact: true })
