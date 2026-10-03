@@ -253,3 +253,19 @@ files and SQLite evidence. Conservative URL normalization preserves meaningful q
 credential review is required before storing future outputs. Current artifact reviewed without
 credential evidence. Three historical rate-limited downloads recovered; their ingestion is separate.
 No index/completeness claim. Source identifiers, script and detailed report remain private only.
+
+
+## Reference recovery and index checks — 2026-10-03
+
+A recovered notebook resolves to nine existing canonical chunks, all verified in local search;
+no notebook execution or dependency installation. Another lesson/transcript and two repaired
+external PDF references imported with197/197 indexed texts verified. Original failed URLs and
+replacement provenance remain private; one additional reference timed out. Historical documents
+remain historical sources, not assertions of current policy. No curriculum activation changed.
+
+
+## Linux CI verification — 2026-10-03
+
+Both complete workflows succeeded after the nested reflow fix: archive eaafd63/run37117683380 and
+sanitized6adeabc/run37117696816. This includes all65 browser journeys plus backend, frontend and
+migration jobs, with the sanitized publication guard. Owner usability/device checks remain open.
