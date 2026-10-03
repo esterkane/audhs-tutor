@@ -393,3 +393,12 @@ links Home for the existing server check. Full frontend313/81 files, focused3, d
 journeys2 plus project orientation2, scoped header axe/200% text/reflow, lint/build and reviews passed.
 See docs/slices/shell-orientation.md. Next UX26-06 audio status/controls and UX26-08 shared controls.
 Owner comprehension and manual full accessibility gates remain open. No learner lifecycle/model change.
+
+
+## Read-aloud status — 2026-10-03
+
+UX26-06 first slice: preparation, inter-passage waiting, playback, completion and explicit stop
+are visible; muted/zero-volume notices are outside collapsed settings. Completion releases playback.
+Frontend316, focused6, two isolated audio browser journeys, lint/build and both reviews passed.
+See docs/slices/read-aloud-status.md. Pause/resume, cross-surface coordination, device audibility
+and owner comprehension remain open. Both publication repositories remain private.

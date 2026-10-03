@@ -106,3 +106,12 @@ browser9, lint/build/reviews passed. Owner comprehension remains open; UX26-05/0
 UX26-05 shell slice implemented: titles/current navigation, skip/main focus, honest session action
 label and unknown-page recovery. Full frontend313, focused3, shell journeys2 + project journeys2,
 scoped header axe/reflow, lint/build/reviews passed. Manual/owner gates remain open.
+
+
+## Read-aloud status — 2026-10-03
+
+UX26-06 first slice: preparation, inter-passage waiting, playback, completion and explicit stop
+are visible; muted/zero-volume notices are outside collapsed settings. Completion releases playback.
+Frontend316, focused6, two isolated audio browser journeys, lint/build and both reviews passed.
+See docs/slices/read-aloud-status.md. Pause/resume, cross-surface coordination, device audibility
+and owner comprehension remain open. Both publication repositories remain private.

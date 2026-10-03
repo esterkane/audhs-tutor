@@ -2,11 +2,22 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { ReadAloud } from './ReadAloud'
+import { useAudioSettings } from '../audio/settings'
 
-const audio = vi.hoisted(() => ({ enqueue: vi.fn(), close: vi.fn(), unlock: vi.fn(async () => {}) }))
+const audio = vi.hoisted(() => ({
+  enqueue: vi.fn(),
+  close: vi.fn(),
+  unlock: vi.fn(async () => {}),
+  idle: null as (() => void) | null,
+}))
 vi.mock('./audio', () => ({
   Player: class {
-    onIdle = null
+    set onIdle(value: (() => void) | null) {
+      audio.idle = value
+    }
+    get onIdle() {
+      return audio.idle
+    }
     enqueue = audio.enqueue
     close = audio.close
     unlock = audio.unlock
@@ -19,6 +30,7 @@ vi.mock('./audio', () => ({
 afterEach(() => {
   vi.unstubAllGlobals()
   vi.clearAllMocks()
+  useAudioSettings.setState({ muted: false, volume: 0.5 })
 })
 it('never autoplays and ignores a synthesis response after Stop audio', async () => {
   let resolve!: (r: Response) => void
@@ -71,4 +83,62 @@ it('speaks the question and resets playback when selected content changes', asyn
   expect(audio.close).toHaveBeenCalled()
   expect(screen.getByRole('button', { name: 'Listen to question' })).toBeVisible()
   expect(fetcher).toHaveBeenCalledOnce()
+})
+
+it('shows preparation separately from queued playback and explains silent output', async () => {
+  let resolve!: (r: Response) => void
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      () =>
+        new Promise<Response>((done) => {
+          resolve = done
+        }),
+    ),
+  )
+  useAudioSettings.setState({ muted: true, volume: 0.5 })
+  renderApp(<ReadAloud text="Explain the example." />)
+  fireEvent.click(screen.getByRole('button', { name: 'Listen to explanation' }))
+  expect(screen.getByText('Preparing audio…')).toBeVisible()
+  expect(screen.getByText(/Audio is muted/)).toBeVisible()
+  await waitFor(() => expect(resolve).toBeDefined())
+  await act(async () => resolve(jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 })))
+  expect(screen.getByText('Audio playback in progress.')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Stop audio' }))
+  expect(screen.getByText('Audio stopped. Listen again starts from the beginning.')).toBeVisible()
+  useAudioSettings.setState({ muted: false })
+})
+
+it('distinguishes a gap between passages from completion and releases finished playback', async () => {
+  let second!: (r: Response) => void
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 }))
+    .mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          second = resolve
+        }),
+    )
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<ReadAloud text={'word '.repeat(250)} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Listen to explanation' }))
+  await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2))
+  act(() => audio.idle?.())
+  expect(screen.getByText('Preparing the next passage…')).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Stop audio' })).toBeVisible()
+  await act(async () => second(jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 })))
+  expect(screen.getByText('Audio playback in progress.')).toBeVisible()
+  act(() => audio.idle?.())
+  expect(screen.getByText('Audio finished.')).toBeVisible()
+  expect(audio.close).toHaveBeenCalled()
+  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
+})
+it('shows synthesis failure and allows retry without claiming playback', async () => {
+  vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Voice service unavailable')))
+  renderApp(<ReadAloud text="Try listening." />)
+  fireEvent.click(screen.getByRole('button', { name: 'Listen to explanation' }))
+  await screen.findByText('Audio could not finish.')
+  expect(screen.getByRole('alert')).toHaveTextContent('Voice service unavailable')
+  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
 })
