@@ -325,3 +325,13 @@ verified all52 distinct canonical targets, text, identity, ordinal, latest versi
 This establishes storage/index availability for this batch, not complete course coverage, retrieval
 quality or notebook execution. Raw captures, archives, acquisition reports and detailed verification
 remain in the private archive only. No activation or assessment/attendance actions were performed.
+
+
+## Realistic local notebook feedback evidence — 2026-10-03
+
+The opt-in notebook diagnostic adds8 synthetic exact-work cases, fixture fingerprints and separate
+semantic criteria; existing basic cases remain unchanged. Tests23 passed in both variants. Two real
+local candidates evaluated: Llama8B2pass/1partial/5semanticfailures; Gemma12B3pass/2partial/1semantic
+failure/2runtimefailures. Literal output validation did not guarantee mathematical correctness.
+No production routing change; neither candidate establishes the broad notebook feedback quality
+gate. Raw evaluation evidence stays private. See docs/slices/local-notebook-feedback-fixtures.md.

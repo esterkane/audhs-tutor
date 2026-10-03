@@ -67,7 +67,7 @@ class RecordedGateway:
         return result
 
 
-def cases(session_id):
+def basic_cases(session_id):
     base = PlaygroundRequest(
         session_id=session_id,
         intent="check_answer",
@@ -109,6 +109,171 @@ def cases(session_id):
             "Accept indexing explanation without claiming code execution.",
         ),
     ]
+
+
+def notebook_cases(session_id):
+    """Frozen synthetic notebook tasks; supplied outputs are fixtures, never executed evidence."""
+
+    def request(target, exercise, answer, code="", output="", **kwargs):
+        return PlaygroundRequest(
+            session_id=session_id,
+            intent="check_answer",
+            question="Review my reasoning against the supplied notebook task and evidence.",
+            exercise=exercise,
+            learner_answer=answer,
+            code=code,
+            output=output,
+            learning_context=PlaygroundContext(
+                target_id="synthetic-notebook-" + target
+            ),
+            **kwargs,
+        )
+
+    missing = request(
+        "missingness",
+        "One row is one participant. Group A has 80 participants, 20 missing income; "
+        "B has 20 participants, 10 missing income. Compare within-group income missingness rates.",
+        "A has 20% missing income and B has 10%, using all 100 participants as denominator.",
+        "missing = df.groupby('group')['income'].apply(lambda values: values.isna().sum())",
+        "Supplied synthetic output: missing income counts\nA 20\nB 10",
+    )
+    return [
+        (
+            "group_denominators",
+            missing,
+            (
+                "Reject pooled denominators for within-group rates: A=20/80=25%, B=10/20=50%. "
+                "Counts alone do not mean A has a higher missingness rate."
+            ),
+        ),
+        (
+            "corrected_denominators",
+            missing.model_copy(
+                update={
+                    "prefer_saved": True,
+                    "learner_answer": "I corrected my denominator: A is 20/80 = 25%, B is 10/20 = 50%. "
+                    "B has the higher within-group missingness rate despite fewer missing rows.",
+                }
+            ),
+            (
+                "Accept the corrected reasoning; do not reuse criticism of the earlier answer. "
+                "Do not infer the code calculated rates: its supplied output contains counts only."
+            ),
+        ),
+        (
+            "bin_boundary",
+            request(
+                "bins",
+                "Required bins: [0,18), [18,65), [65,120). Evaluate the code for ages 18 and 65.",
+                "This pd.cut call places 18 in the adult bin and 65 in the older bin.",
+                "pd.cut(ages, bins=[0,18,65,120], labels=['young','adult','older'], right=True, include_lowest=True)",
+            ),
+            (
+                "Reject claim for right=True: 18 falls in first bin and 65 in second. "
+                "Explain right=False matches required left-closed/right-open bins; do not claim execution."
+            ),
+        ),
+        (
+            "cleaning_representation",
+            request(
+                "cleaning",
+                "Before complete-case cleaning: A=80 rows, B=20. After: A=72, B=8. "
+                "Overall held-out accuracy increases from 0.80 to 0.85. Is this enough to conclude fairness?",
+                "Accuracy improved and we used the same rule, so cleaning was fair to both groups.",
+            ),
+            (
+                "Challenge equal-rule/overall-accuracy inference: retention A=90%, B=40%; "
+                "B representation changes from20% to10%. Ask for group-level errors/missingness evidence "
+                "as a next step, without claiming the model is definitively unfair or creating an explicit-mode quiz."
+            ),
+        ),
+        (
+            "unrun_pandas",
+            request(
+                "unrun",
+                "Remove rows missing income only; retain rows whose optional nickname is missing. "
+                "No execution output was supplied.",
+                "df.dropna() removes only missing income, so it satisfies the task.",
+                "cleaned = df.dropna()",
+            ),
+            (
+                "Explain dropna() without subset considers all columns; suggest subset=['income']. "
+                "Do not assert dataset results or successful execution."
+            ),
+        ),
+        (
+            "contradictory_output",
+            request(
+                "output",
+                "Check the claim against supplied output for this notebook cell. "
+                "The output is learner-supplied, not independently verified.",
+                "The cell ran successfully and created a cleaned DataFrame.",
+                "cleaned = df.dropna(subset=['income'])",
+                "Traceback (most recent call last):\nKeyError: ['income']",
+            ),
+            (
+                "Reject success claim because supplied output is KeyError, not a DataFrame; "
+                "suggest inspecting actual column names. Do not invent a corrected column or execution."
+            ),
+        ),
+        (
+            "stale_output",
+            request(
+                "stale",
+                "The code was edited after the supplied output. Assess whether current code works.",
+                "The earlier output proves the edited cleaning code works.",
+                "cleaned = df.dropna(subset=['income'])\nprint(len(cleaned))",
+                "80",
+                output_stale=True,
+            ),
+            (
+                "State stale output cannot verify current code or retained count. "
+                "Recommend rerunning current cell; never claim a fresh successful run."
+            ),
+        ),
+        (
+            "data_dictionary",
+            request(
+                "dictionary",
+                "Create a data dictionary for rows representing participants. "
+                "Columns: participant_id (identifier), age_years (integer years), income (optional currency amount), "
+                "group (categorical label). Income missingness is unknown, not documented as zero income.",
+                "participant_id is a continuous measurement; missing income always means zero income.",
+            ),
+            (
+                "Correct identifier-versus-measurement distinction and reject equating unknown income with zero. "
+                "Describe units, types and missing-value meaning without inventing dataset statistics."
+            ),
+        ),
+    ]
+
+
+def cases(session_id, suite="basic"):
+    if suite == "basic":
+        return basic_cases(session_id)
+    if suite == "notebook":
+        return notebook_cases(session_id)
+    raise ValueError("Unknown diagnostic suite")
+
+
+def suite_manifest(suite):
+    fixtures = [
+        {
+            "case": name,
+            "request": body.model_dump(exclude={"session_id"}),
+            "criteria": criteria,
+        }
+        for name, body, criteria in cases("manifest", suite)
+    ]
+    return {
+        "suite": suite,
+        "suite_version": 1,
+        "case_count": len(fixtures),
+        "fixture_sha256": hashlib.sha256(
+            json.dumps(fixtures, sort_keys=True, ensure_ascii=False).encode()
+        ).hexdigest(),
+        "evidence_provenance": "synthetic supplied text/code/output; diagnostic executes no notebook code",
+    }
 
 
 async def evaluate_case(
@@ -166,10 +331,11 @@ async def evaluate_case(
     return result
 
 
-async def run(output, model):
+async def run(output, model, suite="basic"):
     local_settings(get_settings())  # reject remote host before harness discovery
     report = {
-        "report_version": 1,
+        "report_version": 2,
+        **suite_manifest(suite),
         "synthetic": True,
         "pinned_feedback_generation_model": model,
         "ancillary_models": "local embedding lookup may use a different local model",
@@ -177,7 +343,7 @@ async def run(output, model):
         "production_routing_exercised": False,
         "fallback_allowed": False,
         "runtime_prompt_version": playground.VERSION,
-        "scope": "four ordered synthetic runtime cases, not a quality or latency benchmark",
+        "scope": "ordered synthetic runtime cases, not a quality or latency benchmark",
         "results": [],
     }
 
@@ -205,7 +371,7 @@ async def run(output, model):
                     session = await sessions.start(
                         db, world.learner_id, mode=Mode.STEADY, energy=3
                     )
-                    for name, body, criteria in cases(session.id):
+                    for name, body, criteria in cases(session.id, suite):
                         report["results"].append(
                             await evaluate_case(
                                 db,
@@ -232,8 +398,9 @@ async def run(output, model):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
+    parser.add_argument("--suite", choices=["basic", "notebook"], default="basic")
     parser.add_argument(
         "--model", choices=["llama31-8b", "gemma3-12b"], default="llama31-8b"
     )
     args = parser.parse_args()
-    asyncio.run(run(args.out, args.model))
+    asyncio.run(run(args.out, args.model, args.suite))

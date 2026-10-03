@@ -146,3 +146,82 @@ async def test_setup_failure_does_not_claim_runtime_invocation(tmp_path, monkeyp
     assert report["status"] == "interrupted_or_failed"
     assert report["results"] == []
     assert report["pinned_feedback_generation_model"] == "llama31-8b"
+
+
+def test_notebook_suite_is_explicit_and_manifest_tracks_fixture_evidence(monkeypatch):
+    diagnostic = module()
+    assert [case[0] for case in diagnostic.cases("s")] == [
+        "wrong_answer",
+        "exact_reuse",
+        "changed_answer",
+        "unrun_python",
+    ]
+    notebook = diagnostic.cases("s", "notebook")
+    assert len(notebook) == 8
+    assert len({name for name, _, _ in notebook}) == 8
+    by_name = {name: body for name, body, _ in notebook}
+    assert by_name["unrun_pandas"].output == ""
+    assert by_name["stale_output"].output_stale is True
+    assert by_name["contradictory_output"].output.endswith("KeyError: ['income']")
+    assert by_name["corrected_denominators"].prefer_saved is True
+    assert (
+        by_name["corrected_denominators"].learning_context
+        == by_name["group_denominators"].learning_context
+    )
+    assert (
+        by_name["corrected_denominators"].learner_answer
+        != by_name["group_denominators"].learner_answer
+    )
+    original = diagnostic.suite_manifest("notebook")
+    assert original["case_count"] == 8
+    modified = [
+        (name, body.model_copy(update={"output": "changed evidence"}), criteria)
+        for name, body, criteria in notebook
+    ]
+    monkeypatch.setattr(diagnostic, "notebook_cases", lambda session_id: modified)
+    assert diagnostic.suite_manifest("notebook")["fixture_sha256"] != original["fixture_sha256"]
+    with pytest.raises(ValueError, match="Unknown diagnostic suite"):
+        diagnostic.cases("s", "unknown")
+
+
+async def test_notebook_supplied_work_survives_runtime_and_corrected_answer_is_not_replayed(
+    db, settings
+):
+    diagnostic = module()
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b"})
+    owner = await get_or_create_owner(db, display_name="test")
+    session = await sessions.start(db, owner.id, mode=Mode.STEADY, energy=3)
+    fake = FakeProvider()
+    world = SimpleNamespace(settings=settings)
+    world.gateway = lambda database: ModelGateway(database, Router(), {"ollama": fake}, Budget(0))
+    gateway = await diagnostic.pinned_gateway(world, db, "llama31-8b")
+    selected = diagnostic.cases(session.id, "notebook")
+    for index in (0, 1, 5, 6):
+        name, body, criteria = selected[index]
+        fake.structured = {
+            "points": [
+                {
+                    "learner_quote": body.learner_answer[:40],
+                    "finding": "needs_revision",
+                    "explanation": "Synthetic feedback used only to test transport.",
+                }
+            ],
+            "next_step": "Review the supplied evidence.",
+            "followup_question": None,
+        }
+        report = await diagnostic.evaluate_case(
+            db, gateway, owner.id, name, body, criteria, world.settings
+        )
+        assert report["status"] == "completed", report
+        assert report["reply"]["reused"] is False
+        assert report["request"] == body.model_dump(exclude={"session_id"})
+        assert report["manual_review_criteria"] == criteria
+        assert report["semantic_review"] == "not_reviewed"
+        saved = await db.get(TutorAnswer, report["reply"]["answer_id"])
+        for field in ("learner_answer", "code", "output", "output_stale", "learning_context"):
+            assert saved.request_json[field] == report["request"][field]
+        messages = report["gateway_requests"][0]["messages"]
+        assert messages == [
+            message.model_dump() for message in diagnostic.playground.messages(body)
+        ]
+    assert len(fake.calls) == 4
