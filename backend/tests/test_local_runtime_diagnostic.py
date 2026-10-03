@@ -306,3 +306,19 @@ async def test_gateway_elapsed_is_measured_even_on_failure(monkeypatch, fails):
     assert "PRIVATE_ERROR_SENTINEL" not in json.dumps(row)
     if fails:
         assert "raw_final_model_text" not in row
+
+
+async def test_diagnostic_identifies_deterministic_check_not_model_validation(db, settings):
+    diagnostic = module()
+    owner = await get_or_create_owner(db, display_name="test")
+    session = await sessions.start(db, owner.id, mode=Mode.STEADY, energy=3)
+    fake = FakeProvider()
+    gateway = ModelGateway(db, Router(), {"ollama": fake}, Budget(0))
+    name, body, criteria = diagnostic.cases(session.id, "notebook")[2]
+    report = await diagnostic.evaluate_case(db, gateway, owner.id, name, body, criteria, settings)
+    assert report["status"] == "completed", report
+    assert report["reply"]["route"] == "deterministic"
+    assert report["literal_schema_validated_this_run"] is False
+    assert report["attempts"] == []
+    assert report["gateway_requests"] == []
+    assert fake.calls == []

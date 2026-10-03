@@ -48,6 +48,7 @@ async def test_seed_marks_installed_ready(seeded: AsyncSession) -> None:
     assert rows["nomic-embed-text"] == "ready"
     assert rows["hosted-strong"] == "ready"
     assert rows["gemma3-12b"] == "available"
+    assert rows["gemma3-27b"] == "available"
 
 
 async def test_router_skips_unready_primary(seeded: AsyncSession) -> None:
@@ -176,3 +177,15 @@ def test_spec_cost_math() -> None:
     )
     assert spec.cost(1_000_000, 200_000) == pytest.approx(2.0)
     assert spec.hosted
+
+
+async def test_larger_local_candidate_requires_installation_and_is_not_a_default(db):
+    await registry.seed_defaults(db, installed_ollama_tags={"gemma3:27b"})
+    candidate = await registry.get_row(db, "gemma3-27b")
+    assert candidate.status == "ready"
+    spec = await registry.get_spec(db, candidate.id)
+    assert spec.provider == "ollama" and not spec.hosted
+    assert spec.model == "gemma3:27b"
+    router = Router("default")
+    for task in TaskClass:
+        assert candidate.id not in router.chain_for(task)

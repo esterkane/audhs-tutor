@@ -36,6 +36,16 @@ registry_defaults:
     quant: Q4_K_M
     context_len: 131072
     licence: Gemma Terms of Use
+  - id: gemma3-27b
+    display_name: Gemma 3 27B (Q4_K_M)
+    source: ollama_library
+    repo_id: gemma3
+    file_or_tag: gemma3:27b
+    runtime: ollama
+    role: chat
+    quant: Q4_K_M
+    context_len: 131072
+    licence: Gemma Terms of Use
   - id: qwen3-coder-30b-a3b
     display_name: Qwen3-Coder 30B-A3B
     source: ollama_library

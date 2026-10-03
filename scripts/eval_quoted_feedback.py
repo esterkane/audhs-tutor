@@ -291,6 +291,8 @@ async def run(output: Path, model: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--model", choices=["gemma3-12b", "llama31-8b"], default="gemma3-12b")
+    parser.add_argument(
+        "--model", choices=["gemma3-12b", "gemma3-27b", "llama31-8b"], default="gemma3-12b"
+    )
     args = parser.parse_args()
     asyncio.run(run(args.out, args.model))

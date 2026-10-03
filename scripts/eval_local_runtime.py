@@ -341,7 +341,7 @@ async def evaluate_case(db, gateway, learner_id, name, body, criteria, settings,
         saved = await db.get(TutorAnswer, reply.answer_id) if reply.answer_id else None
         result["saved_metadata"] = saved.metadata_json if saved else None
         result["literal_schema_validated_this_run"] = (
-            body.intent == "check_answer" and not reply.reused
+            body.intent == "check_answer" and not reply.reused and reply.route != "deterministic"
         )
     except Exception as exc:  # noqa: BLE001 — retain each failure without hiding later cases
         await db.rollback()
@@ -424,6 +424,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--suite", choices=["basic", "notebook"], default="basic")
-    parser.add_argument("--model", choices=["llama31-8b", "gemma3-12b"], default="llama31-8b")
+    parser.add_argument(
+        "--model", choices=["llama31-8b", "gemma3-12b", "gemma3-27b"], default="llama31-8b"
+    )
     args = parser.parse_args()
     asyncio.run(run(args.out, args.model, args.suite))

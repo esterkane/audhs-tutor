@@ -21,13 +21,22 @@ from app.db.events import EventWriter, Verb
 from app.db.traces import TutorTraceRecord, write_tutor_trace
 from app.kernel import session as ksession
 from app.kernel.arithmetic_checks import VERSION as ARITHMETIC_VERSION
+from app.kernel.bin_checks import VERSION as BIN_VERSION
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, ProviderError, TaskClass
 from app.models_ai.routing import NoModelReady
 from app.orchestrator import answer_semantic, prompts
+from app.orchestrator.bin_feedback import respond_bins
 from app.orchestrator.context import escape_data
 from app.orchestrator.feedback_render import render_feedback
-from app.orchestrator.workspace_checks import checks_for, disclose_arithmetic, summary
+from app.orchestrator.workspace_checks import (
+    bin_checks_for,
+    bin_summary,
+    checks_for,
+    disclose_arithmetic,
+    disclose_bins,
+    summary,
+)
 from app.orchestrator.workspace_provenance import disclose
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.feedback_selection import bound_selection, build_passages, to_quoted
@@ -35,7 +44,7 @@ from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v12"
+VERSION = "playground.tutor.v13"
 
 
 def messages(
@@ -66,8 +75,12 @@ def messages(
         workspace["previous_answers"] = [
             {key: value for key, value in item.items() if key != "answer_id"} for item in memory
         ]
-    data = escape_data(json.dumps(workspace, ensure_ascii=False))
     arithmetic = checks_for(body)
+    bins = bin_checks_for(body)
+    if bins:
+        # Labels remain untrusted workspace data, never trusted system instructions.
+        workspace["conditional_bin_checks"] = [asdict(check) for check in bins]
+    data = escape_data(json.dumps(workspace, ensure_ascii=False))
     packet = [
         Message(
             role="system",
@@ -96,6 +109,16 @@ def messages(
                 "A false equality may be quoted or rejected by the learner: do not infer endorsement.\n"
                 + summary(arithmetic)
                 if arithmetic
+                else ""
+            )
+            + (
+                "\nThe application derived the following conditional bin-boundary facts from literal "
+                "arguments. Use these facts within their stated assumptions; never claim execution. "
+                "If the learner's boundary claim contradicts these facts, mark it needs_revision, "
+                "not supported. Bin 1 means the first label (index 0), bin 2 the second (index 1). "
+                "Do not confuse the exercise's desired intervals with the intervals of the current code.\n"
+                + bin_summary(bins)
+                if bins
                 else ""
             )
             + (
@@ -180,6 +203,10 @@ async def respond(
                 )
         except SQLAlchemyError as exc:
             logger.warning("Saved answer reuse unavailable: %s", type(exc).__name__)
+    if body.intent == "check_answer" and historical is None:
+        bins = bin_checks_for(body)
+        if bins:
+            return await respond_bins(db, learner_id, body, bins, VERSION, recovery=recovery)
     turn_id = new_id()
     memory: list[dict[str, str]] = []
     if historical is None:
@@ -259,6 +286,8 @@ async def respond(
     )
     arithmetic = checks_for(body)
     response_text = disclose_arithmetic(response_text, arithmetic)
+    bins = bin_checks_for(body)
+    response_text = disclose_bins(response_text, bins)
     if body.output_stale:
         response_text = (
             "Output context: the supplied output is marked outdated and does not verify "
@@ -312,7 +341,7 @@ async def respond(
             "citation_warning": citation_warning,
             **(
                 {"raw_model_text": out.result.text}
-                if citation_warning or arithmetic or checked_feedback
+                if citation_warning or arithmetic or bins or checked_feedback
                 else {}
             ),
             **({"quoted_feedback": checked_feedback.model_dump()} if checked_feedback else {}),
@@ -326,6 +355,8 @@ async def respond(
             ),
             "arithmetic_checks": [asdict(check) for check in arithmetic],
             "arithmetic_checker_version": ARITHMETIC_VERSION,
+            "bin_checks": [asdict(check) for check in bins],
+            "bin_checker_version": BIN_VERSION,
             "answer_memory": memory,
             "execution_evidence_state": "stale_client_output"
             if body.output_stale
