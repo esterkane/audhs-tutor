@@ -1,0 +1,148 @@
+"""Offline tests exercise the real response path with fake inference."""
+
+import importlib.util
+import json
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+from sqlalchemy import select
+
+from app.core.config import Settings
+from app.db.models import TutorAnswer
+from app.kernel import session as sessions
+from app.kernel.learner import get_or_create_owner
+from app.models_ai.budget import Budget
+from app.models_ai.fake import FakeProvider
+from app.models_ai.gateway import ModelGateway
+from app.models_ai.provider import TaskClass
+from app.models_ai.registry import seed_defaults
+from app.models_ai.routing import Router
+from app.schemas.common import Mode
+
+
+def module():
+    path = Path(__file__).resolve().parents[2] / "scripts/eval_local_runtime.py"
+    spec = importlib.util.spec_from_file_location("runtime_diagnostic", path)
+    assert spec and spec.loader
+    loaded = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loaded)
+    return loaded
+
+
+def test_local_settings_reject_remote_and_remove_hosted_credentials():
+    diagnostic = module()
+    original = Settings(openai_api_key="test-only", anthropic_api_key="test-only")
+    safe = diagnostic.local_settings(original)
+    assert safe.openai_api_key == safe.anthropic_api_key == ""
+    assert safe.daily_budget_usd == 0
+    assert original.openai_api_key == "test-only"
+    with pytest.raises(ValueError, match="Loopback"):
+        diagnostic.local_settings(
+            original.model_copy(update={"ollama_host": "https://remote.test"})
+        )
+
+
+async def test_actual_runtime_saves_reuses_and_rejects_changed_work(db, settings):
+    diagnostic = module()
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b"})
+    owner = await get_or_create_owner(db, display_name="test")
+    session = await sessions.start(db, owner.id, mode=Mode.STEADY, energy=3)
+    fake = FakeProvider(
+        structured={
+            "points": [
+                {
+                    "learner_quote": "30/50 = 0.9",
+                    "finding": "needs_revision",
+                    "explanation": "30 divided by 50 is 0.6.",
+                }
+            ],
+            "next_step": "Use 60%.",
+            "followup_question": None,
+        }
+    )
+    world = SimpleNamespace(settings=settings.model_copy(update={"openai_api_key": "test-only"}))
+
+    def gateway_factory(database):
+        assert world.settings.openai_api_key == world.settings.anthropic_api_key == ""
+        assert world.settings.daily_budget_usd == 0
+        return ModelGateway(database, Router(), {"ollama": fake}, Budget(0))
+
+    world.gateway = gateway_factory
+    gateway = await diagnostic.pinned_gateway(world, db, "llama31-8b")
+    assert gateway.router.chain_for(TaskClass.ANSWER_FEEDBACK, "openai-luna") == ["llama31-8b"]
+    cases = diagnostic.cases(session.id)
+    invoked = []
+    first = await diagnostic.evaluate_case(
+        db,
+        gateway,
+        owner.id,
+        *cases[0],
+        world.settings,
+        on_respond=lambda: invoked.append(True),
+    )
+    assert invoked == [True]
+    assert first["status"] == "completed", first
+    assert first["literal_schema_validated_this_run"] is True
+    assert first["gateway_requests"][0]["task"] == "answer_feedback"
+    assert first["attempts"][0]["registry_id"] == "llama31-8b"
+    assert len(list(await db.scalars(select(TutorAnswer)))) == 1
+    repeat = await diagnostic.evaluate_case(db, gateway, owner.id, *cases[1], world.settings)
+    assert repeat["reply"]["reused"] is True
+    assert repeat["gateway_requests"] == repeat["attempts"] == []
+    assert repeat["literal_schema_validated_this_run"] is False
+    fake.structured["points"][0]["learner_quote"] = "30/50 = 0.6"
+    changed = await diagnostic.evaluate_case(db, gateway, owner.id, *cases[2], world.settings)
+    assert changed["reply"]["reused"] is False
+    assert len(fake.calls) == 2
+    assert changed["semantic_review"] == "not_reviewed"
+    assert (
+        first["gateway_requests"][0]["messages_sha256"]
+        != changed["gateway_requests"][0]["messages_sha256"]
+    )
+    with pytest.raises(ValueError, match="Installed local"):
+        await diagnostic.pinned_gateway(world, db, "openai-luna")
+
+    fake.fail_times = 10
+    failed = await diagnostic.evaluate_case(db, gateway, owner.id, *cases[3], world.settings)
+    assert failed["status"] == "failed"
+    assert failed["error_type"] == "AppError"
+    assert failed["attempts"]
+    assert all(attempt["registry_id"] == "llama31-8b" for attempt in failed["attempts"])
+    assert failed["literal_schema_validated_this_run"] is None
+    assert failed["semantic_review"] == "not_reviewed"
+    assert "reply" not in failed
+
+
+async def test_existing_output_is_not_changed_and_setup_is_not_called(tmp_path, monkeypatch):
+    diagnostic = module()
+    output = tmp_path / "existing.json"
+    original = b"prior evidence\n"
+    output.write_bytes(original)
+    monkeypatch.setattr(diagnostic, "get_settings", lambda: Settings())
+
+    async def forbidden(*args, **kwargs):
+        pytest.fail("Setup must not run when output already exists")
+
+    monkeypatch.setattr(diagnostic, "open_world", forbidden)
+    with pytest.raises(FileExistsError):
+        await diagnostic.run(output, "llama31-8b")
+    assert output.read_bytes() == original
+
+
+async def test_setup_failure_does_not_claim_runtime_invocation(tmp_path, monkeypatch):
+    diagnostic = module()
+    output = tmp_path / "failed.json"
+    monkeypatch.setattr(diagnostic, "get_settings", lambda: Settings())
+
+    async def unavailable(*args, **kwargs):
+        raise RuntimeError("synthetic setup failure")
+
+    monkeypatch.setattr(diagnostic, "open_world", unavailable)
+    with pytest.raises(RuntimeError, match="synthetic setup"):
+        await diagnostic.run(output, "llama31-8b")
+    report = json.loads(output.read_text())
+    assert report["runtime_respond_exercised"] is False
+    assert report["status"] == "interrupted_or_failed"
+    assert report["results"] == []
+    assert report["pinned_feedback_generation_model"] == "llama31-8b"

@@ -460,3 +460,12 @@ Fresh sandbox-only deterministic assessment fixtures remove shared-attempt order
 All 65 integrated browser journeys passed locally; code review clear. Linux CI still requires
 verification, including a separately investigated narrow-text overflow. No production behavior
 change. See docs/slices/browser-assessment-isolation.md.
+
+
+## Actual local tutor diagnostic — 2026-10-03
+
+Disposable runtime diagnostic now exercises actual respond/persistence with hosted providers disabled.
+21 focused tests cover mechanics. First local four-case run: three generations, exact reuse zero calls
+(11ms), revised answer regenerated; semantic review three passes and one partial literal-criterion
+pass (decimal corrected, percentage left for learner). No routing change or broad quality claim.
+See docs/slices/local-runtime-feedback-diagnostic.md; realistic/repeated quality evaluation remains open.
