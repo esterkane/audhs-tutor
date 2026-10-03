@@ -221,6 +221,7 @@ function Workspace({
     const revoke = URL.revokeObjectURL.bind(URL)
     setTimeout(() => revoke(url), 1000)
   }
+  const answerIndex = tutorTarget ?? draft.selected
   const cell = cells[draft.selected]
   if (!cell) return <p>This notebook has no readable cells.</p>
   const context = cells
@@ -319,35 +320,6 @@ function Workspace({
         <pre className="whitespace-pre-wrap">{draft.sources[draft.selected]}</pre>
       )}
       <label className="block">
-        Your prediction or explanation
-        <textarea
-          className="block w-full border border-line rounded p-2"
-          value={draft.predictions[String(draft.selected)] ?? ''}
-          onChange={(e) =>
-            update({
-              ...draft,
-              predictions: { ...draft.predictions, [String(draft.selected)]: e.target.value },
-            })
-          }
-          placeholder="Answer the selected question, predict the result, or explain what is unclear."
-        />
-      </label>
-      <p role="status">{status}</p>
-      {result && (
-        <div>
-          <h4>Python output</h4>
-          <pre className="whitespace-pre-wrap break-words">
-            {result.stdout || '(No printed output. Add print(...) to inspect a value.)'}
-          </pre>
-          {result.error && (
-            <pre role="alert" className="whitespace-pre-wrap">
-              {result.error}
-            </pre>
-          )}
-          {result.truncated && <p>Output was shortened.</p>}
-        </div>
-      )}
-      <label className="block">
         Tutor focus
         <select
           className="block w-full border rounded p-2 bg-surface"
@@ -371,6 +343,44 @@ function Workspace({
       <p className="text-sm text-muted">
         Choose a step to discuss, or select any notebook cell above. This does not run or change your code.
       </p>
+      <p className="text-sm" id="notebook-answer-target">
+        Answering {tutorTarget === null ? 'notebook cell' : 'step at cell'} {answerIndex + 1}:{' '}
+        {draft.sources[answerIndex]
+          .split('\n')
+          .find((line) => line.trim())
+          ?.replace(/^#+\s*/, '')
+          .slice(0, 100) || '(empty cell)'}
+      </p>
+      <label className="block">
+        Your prediction or explanation
+        <textarea
+          className="block w-full border border-line rounded p-2"
+          aria-describedby="notebook-answer-target"
+          value={draft.predictions[String(answerIndex)] ?? ''}
+          onChange={(e) =>
+            update({
+              ...draft,
+              predictions: { ...draft.predictions, [String(answerIndex)]: e.target.value },
+            })
+          }
+          placeholder="Answer the selected question, predict the result, or explain what is unclear."
+        />
+      </label>
+      <p role="status">{status}</p>
+      {result && (
+        <div>
+          <h4>Python output</h4>
+          <pre className="whitespace-pre-wrap break-words">
+            {result.stdout || '(No printed output. Add print(...) to inspect a value.)'}
+          </pre>
+          {result.error && (
+            <pre role="alert" className="whitespace-pre-wrap">
+              {result.error}
+            </pre>
+          )}
+          {result.truncated && <p>Output was shortened.</p>}
+        </div>
+      )}
       <NotebookTutor
         courseId={courseId}
         sectionId={sectionId}

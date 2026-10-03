@@ -61,11 +61,14 @@ function Editor({ answerId, saved }: { answerId: string; saved: State }) {
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const [busy, setBusy] = useState(false)
+  const operation = useRef<AbortController | null>(null)
   const alive = useRef(true)
   useEffect(() => {
     alive.current = true
     return () => {
       alive.current = false
+      operation.current?.abort()
+      operation.current = null
     }
   }, [alive])
   const qc = useQueryClient()
@@ -79,8 +82,36 @@ function Editor({ answerId, saved }: { answerId: string; saved: State }) {
       setStorageError('Draft could not be saved locally. Keep a copy before leaving.')
     }
   }
+  function begin(kind: 'save' | 'load') {
+    if (operation.current) return null
+    const controller = new AbortController()
+    operation.current = controller
+    setBusy(true)
+    setError('')
+    const timer = setTimeout(() => {
+      if (operation.current !== controller) return
+      operation.current = null
+      controller.abort()
+      setBusy(false)
+      setError(
+        kind === 'save'
+          ? 'Saving timed out. Your draft is kept. The save may have completed; review the latest saved feedback before retrying.'
+          : 'Loading the latest feedback timed out. Your draft is kept; try again.',
+      )
+    }, 15000)
+    controller.signal.addEventListener('abort', () => clearTimeout(timer), { once: true })
+    return { controller, timer }
+  }
+  function finish(request: { controller: AbortController; timer: ReturnType<typeof setTimeout> }) {
+    clearTimeout(request.timer)
+    if (operation.current === request.controller) {
+      operation.current = null
+      setBusy(false)
+    }
+  }
   async function save() {
-    if (busy) return
+    const request = begin('save')
+    if (!request) return
     setBusy(true)
     setError('')
     setStatus('')
@@ -88,8 +119,9 @@ function Editor({ answerId, saved }: { answerId: string; saved: State }) {
       const result = await apiFetch<State>(`/api/answers/${encodeURIComponent(answerId)}/feedback`, {
         method: 'PUT',
         body: JSON.stringify(draft),
+        signal: request.controller.signal,
       })
-      if (!alive.current) return
+      if (!alive.current || operation.current !== request.controller) return
       setDraft(result)
       try {
         localStorage.removeItem(key)
@@ -100,14 +132,14 @@ function Editor({ answerId, saved }: { answerId: string; saved: State }) {
       void qc.invalidateQueries({ queryKey: ['answers'] })
       setStatus('Feedback saved.')
     } catch (cause) {
-      if (alive.current)
+      if (alive.current && operation.current === request.controller)
         setError(
           cause instanceof ApiError && cause.status === 409
             ? 'Feedback changed in another tab. Your draft is kept. Review the latest saved version before trying again.'
             : 'Could not save feedback. Your draft is kept; retry when ready.',
         )
     } finally {
-      if (alive.current) setBusy(false)
+      finish(request)
     }
   }
   return (
@@ -154,10 +186,13 @@ function Editor({ answerId, saved }: { answerId: string; saved: State }) {
         <Button
           disabled={busy}
           onClick={async () => {
-            setBusy(true)
+            const request = begin('load')
+            if (!request) return
             try {
-              const latest = await apiFetch<State>(`/api/answers/${encodeURIComponent(answerId)}/feedback`)
-              if (alive.current) {
+              const latest = await apiFetch<State>(`/api/answers/${encodeURIComponent(answerId)}/feedback`, {
+                signal: request.controller.signal,
+              })
+              if (alive.current && operation.current === request.controller) {
                 qc.setQueryData(['answer-feedback', answerId], latest)
                 edit({ ...draft, revision: latest.revision })
                 setStatus(
@@ -165,9 +200,10 @@ function Editor({ answerId, saved }: { answerId: string; saved: State }) {
                 )
               }
             } catch {
-              if (alive.current) setError('Could not load the latest feedback.')
+              if (alive.current && operation.current === request.controller)
+                setError('Could not load the latest feedback.')
             } finally {
-              if (alive.current) setBusy(false)
+              finish(request)
             }
           }}
         >

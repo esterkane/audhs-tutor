@@ -9,9 +9,17 @@ vi.mock('../code/CodeEditor', () => ({
   ),
 }))
 vi.mock('./StudyTutor', () => ({
-  StudyTutor: ({ code, output, context }: { code?: string; output?: string; context?: string }) => (
-    <div data-testid="tutor-context">{JSON.stringify({ code, output, context })}</div>
-  ),
+  StudyTutor: ({
+    code,
+    output,
+    context,
+    answer,
+  }: {
+    code?: string
+    output?: string
+    context?: string
+    answer?: string
+  }) => <div data-testid="tutor-context">{JSON.stringify({ code, output, context, answer })}</div>,
 }))
 vi.mock('../voice/ReadAloud', () => ({ ReadAloud: () => <button>Listen</button> }))
 afterEach(() => {
@@ -274,4 +282,29 @@ it('does not confuse successful execution with missing or failed separate checks
   fireEvent.click(screen.getByRole('button', { name: 'Run all and check' }))
   await waitFor(() => expect(runner.dispose).toHaveBeenCalled())
   expect(screen.getByRole('button', { name: 'Return to task with results' })).toBeDisabled()
+})
+
+it('edits and restores the answer for the tutor focus without moving or running code', () => {
+  const runner = fake()
+  const view = render(
+    <NotebookWorkspace identity="focused-answer" cells={cells} runnerFactory={() => runner} />,
+  )
+  fireEvent.change(screen.getByLabelText('Notebook cell'), { target: { value: '1' } })
+  const answer = screen.getByLabelText('Your prediction or explanation')
+  fireEvent.change(answer, { target: { value: 'Cell prediction.' } })
+  fireEvent.change(screen.getByLabelText('Tutor focus'), { target: { value: '0' } })
+  expect(answer).toHaveValue('')
+  expect(screen.getByText(/Answering step at cell 1/)).toBeVisible()
+  fireEvent.change(answer, { target: { value: 'Step explanation.' } })
+  expect(JSON.parse(screen.getByTestId('tutor-context').textContent!).answer).toBe('Step explanation.')
+  expect(screen.getByLabelText('Notebook cell')).toHaveValue('1')
+  expect(screen.getByLabelText('Starter code — edit your working copy')).toHaveValue('x = 1')
+  fireEvent.change(screen.getByLabelText('Tutor focus'), { target: { value: 'current' } })
+  expect(answer).toHaveValue('Cell prediction.')
+  expect(JSON.parse(screen.getByTestId('tutor-context').textContent!).answer).toBe('Cell prediction.')
+  view.unmount()
+  render(<NotebookWorkspace identity="focused-answer" cells={cells} runnerFactory={() => runner} />)
+  fireEvent.change(screen.getByLabelText('Tutor focus'), { target: { value: '0' } })
+  expect(screen.getByLabelText('Your prediction or explanation')).toHaveValue('Step explanation.')
+  expect(runner.run).not.toHaveBeenCalled()
 })
