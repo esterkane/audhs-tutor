@@ -611,3 +611,12 @@ fragment hash via runtime loader, and diagnostic versus production task. It expl
 full respond/routing/semantic-quality coverage. Inference/defaults unchanged; focused11, Ruff/format
 and independent reviews passed. See docs/slices/local-feedback-diagnostic-provenance.md. Next: bounded
 full-runtime local evaluation before considering any hosted-route replacement. No paid calls.
+
+
+## Home topic readiness — 2026-10-03
+
+Home identifies the selected new-session topic, waits for selection saves and lesson lookup, and
+offers Review and activate a lesson for confirmed empty topics. Existing session resume remains
+separate; no unrelated lesson fallback or automatic activation. Home9/full frontend328, browser4,
+lint/build and independent code/pedagogy reviews passed. See docs/slices/home-topic-start.md.
+Catalogue performance and owner usability confirmation remain separate open work.

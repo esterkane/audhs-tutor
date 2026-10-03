@@ -131,7 +131,12 @@ function HomeOverview() {
   // "Next up" is always a skill title: from the running session, else the map's next node.
   // A block *reason* ("worked example first") is scaffolding, never shown as a title.
   const mapNext = skills.data?.skills.find((n) => n.id === skills.data?.next_skill_id) ?? null
-  const nextSkill = mapNext
+  const selectionPending = prefs.isPending || setPref.isPending || skills.isFetching
+  const selectionFailed = prefs.isError || skills.isError
+  const nextSkill = selectionPending || selectionFailed ? null : mapNext
+  const selectedArea = areas.data?.areas.find((area) => area.id === areaGoal)
+  const topicLabel = areaGoal ? (selectedArea?.title ?? 'Your selected area') : goal || 'Whole skill map'
+  const emptySelection = !selectionPending && !selectionFailed && Boolean(areaGoal || goal) && !nextSkill
   const scaffold = preview.data?.blocks.find((b) => b.type === 'new_material')?.reason
   return (
     <div className="grid gap-4">
@@ -165,13 +170,30 @@ function HomeOverview() {
           </>
         ) : (
           <>
-            <p className="font-medium mt-2">{nextSkill?.title ?? 'Choose an available lesson'}</p>
+            <p className="font-medium mt-2">
+              {selectionPending
+                ? 'Checking your lesson selection…'
+                : selectionFailed
+                  ? 'Lesson selection unavailable'
+                  : (nextSkill?.title ?? 'Choose an available lesson')}
+            </p>
             <p className="text-sm text-muted">
-              {nextSkill
-                ? 'Start with the current settings; you can stop at any time.'
-                : 'Review your learning areas to find or activate a lesson. Your selected topic will not be replaced.'}
+              {selectionPending
+                ? 'Start becomes available after your topic is saved and its lessons are checked.'
+                : selectionFailed
+                  ? 'Retry the lesson check below. Your selected topic is unchanged.'
+                  : nextSkill
+                    ? 'Start with the current settings; you can stop at any time.'
+                    : 'Review your learning areas to find or activate a lesson. Your selected topic will not be replaced.'}
             </p>
           </>
+        )}
+        <p className="text-sm mt-2">New session topic: {topicLabel}</p>
+        {emptySelection && (
+          <p role="status" className="mt-2">
+            No available lesson in this selection. Review its drafts and activate a lesson before starting.
+            Your topic will not be replaced by another one.
+          </p>
         )}
         {(skills.isError || prefs.isError) && (
           <p role="alert">
@@ -207,24 +229,32 @@ function HomeOverview() {
                 : ''}
             </Button>
           )}
-          <Button
-            variant={resumable ? 'secondary' : 'primary'}
-            size="lg"
-            onClick={() => void begin()}
-            disabled={
-              current.isPending ||
-              current.isError ||
-              prefs.isPending ||
-              prefs.isError ||
-              skills.isError ||
-              start.isPending ||
-              setPref.isPending ||
-              skills.isFetching ||
-              Boolean((areaGoal || goal) && !nextSkill)
-            }
-          >
-            {start.isPending ? 'Starting…' : 'Start session'}
-          </Button>
+          {emptySelection ? (
+            <Button asChild variant={resumable ? 'secondary' : 'primary'} size="lg">
+              <Link to={areaGoal ? `/areas?area=${encodeURIComponent(areaGoal)}` : '/curriculum'}>
+                Review and activate a lesson
+              </Link>
+            </Button>
+          ) : (
+            <Button
+              variant={resumable ? 'secondary' : 'primary'}
+              size="lg"
+              onClick={() => void begin()}
+              disabled={
+                current.isPending ||
+                current.isError ||
+                prefs.isPending ||
+                prefs.isError ||
+                skills.isError ||
+                start.isPending ||
+                setPref.isPending ||
+                selectionPending ||
+                Boolean((areaGoal || goal) && !nextSkill)
+              }
+            >
+              {start.isPending ? 'Starting…' : 'Start session'}
+            </Button>
+          )}
         </div>
         {start.isError && (
           <p role="alert" className="text-warn">
@@ -262,9 +292,13 @@ function HomeOverview() {
           <select
             className="block border border-line rounded-md px-2 py-1 mt-1"
             value={areaGoal}
+            disabled={setPref.isPending || skills.isFetching || areas.isPending || prefs.isPending}
             onChange={(e) => setPref.mutate({ key: 'goal.area', value: e.target.value })}
           >
             <option value="">Whole map or course goal below</option>
+            {areaGoal && !selectedArea && (
+              <option value={areaGoal}>Your selected area (details unavailable)</option>
+            )}
             {(areas.data?.areas ?? []).map((a) => (
               <option key={a.id} value={a.id}>
                 {a.title}
@@ -272,6 +306,12 @@ function HomeOverview() {
             ))}
           </select>
         </label>
+        {areas.isError && (
+          <p role="alert">
+            Could not load topic names. Your saved selection is unchanged.{' '}
+            <Button onClick={() => void areas.refetch()}>Retry topics</Button>
+          </p>
+        )}
         <p className="text-sm text-muted my-2">
           An area goal takes precedence over the course goal below and uses activated lessons across sources.
           If it has no active lessons yet, review and activate a draft before starting.{' '}
@@ -284,7 +324,7 @@ function HomeOverview() {
               <select
                 className="block border border-line rounded-md px-2 py-1 mt-1"
                 value={goal}
-                disabled={Boolean(areaGoal)}
+                disabled={Boolean(areaGoal) || setPref.isPending || skills.isFetching || prefs.isPending}
                 onChange={(e) => setPref.mutate({ key: 'goal.course', value: e.target.value })}
               >
                 <option value="">Whole skill map</option>
@@ -303,15 +343,6 @@ function HomeOverview() {
                   : 'The next skill is the first unlocked, unmastered node on the whole map.'}
             </span>
           </div>
-        )}
-        {(areaGoal || goal) && !nextSkill && !skills.isFetching && (
-          <p role="status" className="mt-2">
-            No available lesson in this selection.{' '}
-            <Link to={areaGoal ? `/areas?area=${encodeURIComponent(areaGoal)}` : '/curriculum'}>
-              Review and activate a lesson
-            </Link>{' '}
-            to begin. Your topic will not be replaced by another one.
-          </p>
         )}
         {setPref.isError && (
           <p role="alert" className="text-sm text-warn mt-2">

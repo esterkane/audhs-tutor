@@ -254,3 +254,117 @@ it('does not offer a stale local session as a verified resume after a server fai
   expect(screen.queryByRole('button', { name: /Resume previous session/ })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
 })
+
+it('offers activation in the start card for an empty selected area without replacing the topic', async () => {
+  useMode.setState({ sessionId: null, mode: 'steady', energy: 3, socratic: false })
+  const fetchMock = vi.fn(async (url: string) => {
+    if (url.endsWith('/api/preferences')) return jsonResponse({ values: { 'goal.area': 'empty-area' } })
+    if (url.endsWith('/api/areas'))
+      return jsonResponse({ areas: [{ id: 'empty-area', title: 'Local models' }] })
+    if (url.endsWith('/api/skills'))
+      return jsonResponse({ skills: [session.next_skill], next_skill_id: null })
+    return jsonResponse(null)
+  })
+  vi.stubGlobal('fetch', fetchMock)
+  renderApp(<Home />)
+  const activate = await screen.findByRole('link', { name: 'Review and activate a lesson' })
+  expect(activate).toHaveAttribute('href', '/areas?area=empty-area')
+  expect(activate.closest('[aria-label="Start or resume learning"]')).not.toBeNull()
+  expect(screen.getByText('New session topic: Local models')).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Start session' })).not.toBeInTheDocument()
+  expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/api/sessions'))).toBe(false)
+})
+
+it('waits for the switched topic lookup and then starts its session', async () => {
+  useMode.setState({ sessionId: null, mode: 'steady', energy: 3, socratic: false })
+  let selected = ''
+  let finishLookup!: (response: Response) => void
+  const posts: unknown[] = []
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/preferences')) {
+        if (init?.method === 'PUT') selected = JSON.parse(String(init.body)).value
+        return jsonResponse({ values: { 'goal.area': selected } })
+      }
+      if (url.endsWith('/api/areas')) return jsonResponse({ areas: [{ id: 'python', title: 'Python' }] })
+      if (url.endsWith('/api/skills')) {
+        if (selected)
+          return new Promise<Response>((resolve) => {
+            finishLookup = resolve
+          })
+        return jsonResponse({ skills: [session.next_skill], next_skill_id: 'k1' })
+      }
+      if (url.endsWith('/api/sessions') && init?.method === 'POST') {
+        posts.push(JSON.parse(String(init.body)))
+        return jsonResponse({
+          ...session,
+          due_reviews: 0,
+          state: { ...session.state, skill_id: 'python-lesson' },
+          next_skill: { ...session.next_skill, id: 'python-lesson' },
+        })
+      }
+      return jsonResponse(null)
+    }),
+  )
+  renderApp(
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/session" element={<p>NEW SESSION</p>} />
+    </Routes>,
+  )
+  await waitFor(() => expect(screen.getByLabelText('Knowledge area')).toBeEnabled())
+  fireEvent.change(screen.getByLabelText('Knowledge area'), { target: { value: 'python' } })
+  await screen.findByText('Checking your lesson selection…')
+  expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+  expect(screen.queryByText(/No available lesson in this selection/)).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Knowledge area')).toBeDisabled()
+  await waitFor(() => expect(finishLookup).toBeDefined())
+  finishLookup(
+    jsonResponse({
+      skills: [{ ...session.next_skill, id: 'python-lesson', title: 'Python variables' }],
+      next_skill_id: 'python-lesson',
+    }),
+  )
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Start session' })).toBeEnabled())
+  expect(screen.getByText('New session topic: Python')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Start session' }))
+  await screen.findByText('NEW SESSION')
+  expect(posts).toHaveLength(1)
+  expect(useMode.getState().skillId).toBe('python-lesson')
+})
+
+it('preserves the saved area when its names fail to load and offers a retry', async () => {
+  useMode.setState({ sessionId: null, mode: 'steady', energy: 3, socratic: false })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/api/preferences')) return jsonResponse({ values: { 'goal.area': 'saved-area' } })
+      if (url.endsWith('/api/areas')) return jsonResponse({ detail: 'Unavailable' }, 503)
+      if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
+      return jsonResponse(null)
+    }),
+  )
+  renderApp(<Home />)
+  await screen.findByRole('button', { name: 'Retry topics' })
+  expect(screen.getByLabelText('Knowledge area')).toHaveValue('saved-area')
+  expect(screen.getByRole('option', { name: 'Your selected area (details unavailable)' })).toBeInTheDocument()
+})
+
+it('does not call a failed lesson lookup empty or offer activation as its remedy', async () => {
+  useMode.setState({ sessionId: null, mode: 'steady', energy: 3, socratic: false })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/api/preferences')) return jsonResponse({ values: { 'goal.area': 'saved-area' } })
+      if (url.endsWith('/api/areas')) return jsonResponse({ areas: [{ id: 'saved-area', title: 'Python' }] })
+      if (url.endsWith('/api/skills')) return jsonResponse({ detail: 'Unavailable' }, 503)
+      return jsonResponse(null)
+    }),
+  )
+  renderApp(<Home />)
+  await screen.findByRole('button', { name: 'Retry lesson selection' })
+  expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
+  expect(screen.queryByRole('link', { name: 'Review and activate a lesson' })).not.toBeInTheDocument()
+  expect(screen.queryByText(/No available lesson in this selection/)).not.toBeInTheDocument()
+})
