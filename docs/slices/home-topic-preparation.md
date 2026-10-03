@@ -28,3 +28,9 @@ the preview gained learning-goal text. Exact whole-element title matching no lon
 item's title-plus-goal. The regression now locates the lesson list item by title and additionally asserts
 the specific goal. Explicit activation, no automatic start and correct-topic session checks remain.
 The five targeted Home journeys pass against the final preview markup.
+
+## 2026-10-03 — bounded lesson readiness requests
+
+Skills reads now propagate query cancellation and abort after 15 seconds, with automatic retries disabled. A stalled read reaches the existing lesson-selection error and explicit Retry action rather than leaving Start disabled indefinitely. Errors remain distinct from empty topics; stale results cannot enable Start. No lesson activation or model routing changes.
+
+Validation: 14 focused skills/Home tests, five isolated Home browser journeys (topic switching, activation-to-start, narrow widths), production build and targeted ESLint passed. Independent code and pedagogy reviews found no blockers. A live stale Home client recovered after reload; switching to an active topic enabled Start. The exact original loading cause was not established.
