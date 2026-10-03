@@ -17,6 +17,7 @@ class AreaOut(AreaEdit):
     documents: int
     courses: list[str]
     draft_ids: list[str]
+    active_lessons: int = Field(ge=0)
     related: list[str]
 
 

@@ -136,6 +136,7 @@ function HomeOverview() {
   const nextSkill = selectionPending || selectionFailed ? null : mapNext
   const selectedArea = areas.data?.areas.find((area) => area.id === areaGoal)
   const topicLabel = areaGoal ? (selectedArea?.title ?? 'Your selected area') : goal || 'Whole skill map'
+  const blockedSelection = Boolean(selectedArea && selectedArea.active_lessons > 0)
   const emptySelection = !selectionPending && !selectionFailed && Boolean(areaGoal || goal) && !nextSkill
   const scaffold = preview.data?.blocks.find((b) => b.type === 'new_material')?.reason
   return (
@@ -184,14 +185,20 @@ function HomeOverview() {
                   ? 'Retry the lesson check below. Your selected topic is unchanged.'
                   : nextSkill
                     ? 'Start with the current settings; you can stop at any time.'
-                    : 'Review your learning areas to find or activate a lesson. Your selected topic will not be replaced.'}
+                    : blockedSelection
+                      ? 'Review active lessons and prerequisites on the skill map. Your selected topic will not be replaced.'
+                      : 'Review your learning areas to find or activate a lesson. Your selected topic will not be replaced.'}
             </p>
           </>
         )}
         <p className="text-sm mt-2">New session topic: {topicLabel}</p>
         {emptySelection && (
           <p role="status" className="mt-2">
-            No available lesson in this selection. Review its drafts and activate a lesson before starting.
+            {blockedSelection
+              ? 'No lesson is available to start. Review active lessons and prerequisites.'
+              : selectedArea?.active_lessons === 0
+                ? 'This topic has no activated lessons yet. Imported sources and drafts are preparation material; review a draft and activate its lessons to start a session.'
+                : 'No lesson is available in this selection. Review its lessons and drafts to choose the next step.'}{' '}
             Your topic will not be replaced by another one.
           </p>
         )}
@@ -231,8 +238,16 @@ function HomeOverview() {
           )}
           {emptySelection ? (
             <Button asChild variant={resumable ? 'secondary' : 'primary'} size="lg">
-              <Link to={areaGoal ? `/areas?area=${encodeURIComponent(areaGoal)}` : '/curriculum'}>
-                Review and activate a lesson
+              <Link
+                to={
+                  blockedSelection
+                    ? '/map'
+                    : areaGoal
+                      ? `/areas?area=${encodeURIComponent(areaGoal)}`
+                      : '/curriculum'
+                }
+              >
+                {blockedSelection ? 'Review active lessons' : 'Review and activate a lesson'}
               </Link>
             </Button>
           ) : (
@@ -302,6 +317,11 @@ function HomeOverview() {
             {(areas.data?.areas ?? []).map((a) => (
               <option key={a.id} value={a.id}>
                 {a.title}
+                {a.active_lessons > 0
+                  ? ` · ${a.active_lessons} activated lessons`
+                  : a.active_lessons === 0
+                    ? ' · needs preparation (no activated lessons)'
+                    : ' · lesson count unavailable'}
               </option>
             ))}
           </select>

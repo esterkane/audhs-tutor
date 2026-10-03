@@ -31,6 +31,7 @@ export function Areas() {
   const areaDrafts =
     drafts.data?.drafts.filter((d) => d.area_id === selected && d.status !== 'rejected') ?? []
   const draft = areaDrafts.find((d) => d.id === draftId)
+  const preparedDraft = areaDrafts.find((d) => d.status === 'draft' && d.payload.area_state === 'generated')
   const coverage = draft?.payload.area_coverage as Record<string, unknown> | undefined
   const error =
     query.error ||
@@ -130,6 +131,22 @@ export function Areas() {
           <CardTitle>{area.title}</CardTitle>
           <SavedContextAnswers key={`area:${area.id}`} areaId={area.id} />
           <AreaSettings key={area.id} area={area} disabled={dirty || Boolean(job.data?.running)} />
+          {preparedDraft && !draft && (
+            <div className="mt-3">
+              <p>
+                A prepared draft is waiting for review. Check its explanations, questions and sources, then
+                choose Activate lessons to make it available for sessions.
+              </p>
+              <Button
+                className="mt-2"
+                variant="primary"
+                disabled={dirty}
+                onClick={() => setDraftId(preparedDraft.id)}
+              >
+                Review prepared draft
+              </Button>
+            </div>
+          )}
           <p className="text-sm mt-3">
             {areaDrafts.length
               ? 'Review a draft below. Nothing becomes active until you choose Activate lessons.'

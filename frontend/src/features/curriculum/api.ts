@@ -39,6 +39,7 @@ export function useDraftActions() {
   const qc = useQueryClient()
   const invalidate = () => {
     void qc.invalidateQueries({ queryKey: ['curriculum'] })
+    void qc.invalidateQueries({ queryKey: ['areas'] })
     void qc.invalidateQueries({ queryKey: ['skills'] })
     void qc.invalidateQueries({ queryKey: ['session-current'] })
   }

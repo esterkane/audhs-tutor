@@ -713,3 +713,18 @@ older versions correctly excluded. Audit tool/report remain private. Environment
 redirects forbidden; independent review clear after transport fix. No inference/reindex performed.
 Vector quality, all provenance fields and guarantees against concurrent replacement remain outside
 scope. This is storage parity, not retrieval relevance or full course coverage.
+
+
+## Home topic activation clarity — 2026-10-03
+
+Topic choices now show activated lesson counts, distinguishing imported sources/drafts from lessons
+that can be considered by the planner. Empty selections keep the topic and lead to draft review;
+activated-but-unavailable selections lead to the skill map. Learning areas offer a direct Review
+prepared draft shortcut, skipping interrupted drafts, with activation still explicit. Draft mutations
+refresh the area catalogue. The catalogue adds one node query, no per-area mastery lookups.
+
+Verified: backend3, integrated frontend19 in both variants, earlier full frontend334 for the Areas
+delta, isolated browser1 for ready→empty→ready and correct-topic start, TypeScript/lint/build passed.
+Live backend restarted and Home/read-only draft shortcut checked. No learner preference, activation
+or session changed in live data. Source/pedagogy review findings resolved. See
+docs/slices/home-area-activation-counts.md. Other queued work remains separate and unfinished.

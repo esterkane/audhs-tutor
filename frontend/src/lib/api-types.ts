@@ -2336,6 +2336,8 @@ export interface components {
       courses: string[]
       /** Draft Ids */
       draft_ids: string[]
+      /** Active Lessons */
+      active_lessons: number
       /** Related */
       related: string[]
     }

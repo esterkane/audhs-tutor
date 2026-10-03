@@ -287,8 +287,19 @@ it('waits for the switched topic lookup and then starts its session', async () =
         if (init?.method === 'PUT') selected = JSON.parse(String(init.body)).value
         return jsonResponse({ values: { 'goal.area': selected } })
       }
-      if (url.endsWith('/api/areas')) return jsonResponse({ areas: [{ id: 'python', title: 'Python' }] })
+      if (url.endsWith('/api/areas'))
+        return jsonResponse({
+          areas: [
+            { id: 'python', title: 'Python', active_lessons: 1 },
+            {
+              id: 'empty',
+              title: 'Creative',
+              active_lessons: 0,
+            },
+          ],
+        })
       if (url.endsWith('/api/skills')) {
+        if (selected === 'empty') return jsonResponse({ skills: [], next_skill_id: null })
         if (selected)
           return new Promise<Response>((resolve) => {
             finishLookup = resolve
@@ -328,6 +339,24 @@ it('waits for the switched topic lookup and then starts its session', async () =
   )
   await waitFor(() => expect(screen.getByRole('button', { name: 'Start session' })).toBeEnabled())
   expect(screen.getByText('New session topic: Python')).toBeVisible()
+  expect(
+    screen.getByRole('option', { name: 'Creative · needs preparation (no activated lessons)' }),
+  ).toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Knowledge area'), { target: { value: 'empty' } })
+  await screen.findByRole('link', { name: 'Review and activate a lesson' })
+  expect(screen.queryByRole('button', { name: 'Start session' })).not.toBeInTheDocument()
+  const previousLookup = finishLookup
+  fireEvent.change(screen.getByLabelText('Knowledge area'), { target: { value: 'python' } })
+  await screen.findByText('Checking your lesson selection…')
+  await waitFor(() => expect(finishLookup).not.toBe(previousLookup))
+  await waitFor(() => expect(screen.getByText('New session topic: Python')).toBeVisible())
+  finishLookup(
+    jsonResponse({
+      skills: [{ ...session.next_skill, id: 'python-lesson', title: 'Python variables' }],
+      next_skill_id: 'python-lesson',
+    }),
+  )
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Start session' })).toBeEnabled())
   fireEvent.click(screen.getByRole('button', { name: 'Start session' }))
   await screen.findByText('NEW SESSION')
   expect(posts).toHaveLength(1)
@@ -367,4 +396,25 @@ it('does not call a failed lesson lookup empty or offer activation as its remedy
   expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
   expect(screen.queryByRole('link', { name: 'Review and activate a lesson' })).not.toBeInTheDocument()
   expect(screen.queryByText(/No available lesson in this selection/)).not.toBeInTheDocument()
+})
+
+it('offers active lesson review rather than activation when the selected area has lessons but none available', async () => {
+  useMode.setState({ sessionId: null, mode: 'steady', energy: 3, socratic: false })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/api/preferences')) return jsonResponse({ values: { 'goal.area': 'blocked' } })
+      if (url.endsWith('/api/areas'))
+        return jsonResponse({ areas: [{ id: 'blocked', title: 'Advanced topic', active_lessons: 2 }] })
+      if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
+      return jsonResponse(null)
+    }),
+  )
+  renderApp(<Home />)
+  expect(await screen.findByRole('link', { name: 'Review active lessons' })).toHaveAttribute('href', '/map')
+  expect(
+    screen.getByText(/No lesson is available to start. Review active lessons and prerequisites/),
+  ).toBeVisible()
+  expect(screen.queryByRole('link', { name: 'Review and activate a lesson' })).not.toBeInTheDocument()
+  expect(screen.queryByText(/This topic has no activated lessons yet/)).not.toBeInTheDocument()
 })

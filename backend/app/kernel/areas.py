@@ -17,7 +17,7 @@ from app.db.models import (
     DocumentVersion,
     KnowledgeArea,
 )
-from app.kernel import curriculum
+from app.kernel import curriculum, skill_graph
 from app.kernel.assessment_quality import course_metadata, orientation_title
 
 DEFAULTS = [
@@ -334,8 +334,10 @@ async def catalogue(db: AsyncSession, learner_id: str) -> dict[str, Any]:
         )
     ).scalars():
         drafts[str(d.area_id)].append(d.id)
+    nodes = [node for node in await skill_graph.all_nodes(db) if skill_graph.teachable(node)]
     out = []
     for a in areas:
+        active = [node for node in nodes if node.area_id == a.id]
         out.append(
             {
                 "id": a.id,
@@ -344,6 +346,7 @@ async def catalogue(db: AsyncSession, learner_id: str) -> dict[str, Any]:
                 "terms": a.terms_json,
                 "description": a.description,
                 "documents": counts[a.id],
+                "active_lessons": len(active),
                 "courses": courses[a.id],
                 "draft_ids": drafts[a.id],
                 "related": [b.title for b in areas if b.id in related[a.id]],
