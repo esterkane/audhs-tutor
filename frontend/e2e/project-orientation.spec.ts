@@ -101,6 +101,16 @@ for (const width of [1280, 320]) {
       document.body.style.letterSpacing = '0.12em'
     })
     await assertReflow()
+    for (const control of await page
+      .getByRole('navigation', { name: 'Learning steps' })
+      .getByRole('button')
+      .all()) {
+      expect(await control.evaluate((node) => node.scrollHeight <= node.clientHeight + 1)).toBe(true)
+      expect(await control.evaluate((node) => node.scrollWidth <= node.clientWidth + 1)).toBe(true)
+    }
+    await page.getByText('Bookmark and saved work', { exact: true }).click()
+    await expect(page.getByRole('combobox', { name: 'My bookmark' })).toBeVisible()
+    await assertReflow()
     await page.addScriptTag({ content: axe.source })
     const violations = await page.evaluate(
       async () =>

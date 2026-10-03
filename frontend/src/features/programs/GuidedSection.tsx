@@ -130,7 +130,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
       />
     )
   return (
-    <Card className="grid gap-4">
+    <Card className="grid grid-cols-1 min-w-0 gap-4 [overflow-wrap:anywhere]">
       <p className="text-sm text-muted">
         {work.phase === 'Understand'
           ? 'Start here: read the idea and example. Then try one task.'
@@ -142,6 +142,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
         {phases.map((phase) => (
           <Button
             key={phase}
+            className="min-w-0 max-w-full h-auto min-h-10 py-2 [overflow-wrap:anywhere]"
             variant={work.phase === phase ? 'primary' : 'outline'}
             aria-current={work.phase === phase ? 'step' : undefined}
             onClick={() => choosePhase(phase)}
@@ -317,7 +318,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
         <label>
           My bookmark
           <select
-            className="block border rounded p-2 bg-card"
+            className="block w-full min-w-0 max-w-full border rounded p-2 bg-card"
             value={work.label}
             onChange={(e) => update({ ...work, label: e.target.value })}
           >

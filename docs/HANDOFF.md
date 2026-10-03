@@ -661,3 +661,11 @@ provenance retained only in the private archive. All three imports succeeded; al
 chunks matched search-index text. One external article remains unresolved after an HTTP error.
 Acquisition/ingestion is not complete-course coverage or learner completion; curriculum activation
 was not changed. The earlier exercise capture is also preserved in the private archive.
+
+
+## Nested lesson reflow — 2026-10-03
+
+Linux CI confirmed64/65 journeys passing: original200% reflow passed but spacing stress exposed
+a nested lesson-grid minimum. Inner column now shrinks, phase labels wrap/grow, and bookmark
+selector fits. Existing actions/semantics remain. Independent reviews clear; Linux rerun pending.
+See docs/slices/project-study-reflow.md.
