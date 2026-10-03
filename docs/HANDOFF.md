@@ -740,3 +740,13 @@ two isolated coexistence browser journeys, TypeScript/lint/build passed; sanitiz
 TypeScript passed. Independent code/pedagogy reviews clear. No real audio/model/microphone or live
 learning-state changes in tests. Physical Bluetooth audibility and visualizer/ambient/test-tone
 coordination remain open. See docs/slices/listening-audio-coordination.md.
+
+
+## Additional material imports — 2026-10-03
+
+Two transcript archives and two captured lesson pages are ingested:24 documents,51 new indexed
+chunks and one stored duplicate resolving to an existing canonical chunk. A bounded read-only audit
+verified all52 distinct canonical targets, text, identity, ordinal, latest version and provenance.
+This establishes storage/index availability for this batch, not complete course coverage, retrieval
+quality or notebook execution. Raw captures, archives, acquisition reports and detailed verification
+remain in the private archive only. No activation or assessment/attendance actions were performed.
