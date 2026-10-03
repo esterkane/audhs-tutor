@@ -366,6 +366,7 @@ async def run(output, model, suite="basic"):
         "production_routing_exercised": False,
         "fallback_allowed": False,
         "runtime_prompt_version": playground.VERSION,
+        "feedback_wire_contract": "passage_selection.v1",
         "structured_repair_policy_version": REPAIR_POLICY_VERSION,
         "scope": "ordered synthetic runtime cases, not a quality or latency benchmark",
         "timing_scope": "run wall time up to report serialization; completed status precedes final world cleanup",

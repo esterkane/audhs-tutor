@@ -43,7 +43,7 @@ from app.models_ai.provider import (
 from app.models_ai.routing import NoModelReady, Router
 from app.schemas.common import Actor, ObjectType
 
-REPAIR_POLICY_VERSION = "structured-repair.v2"
+REPAIR_POLICY_VERSION = "structured-repair.v3"
 MAX_REPAIRS = 2  # structured output: 1 attempt + up to 2 repairs per model, then escalate
 REPAIR_INSTRUCTION = (
     "Your previous reply did not match the required JSON schema: {errors}\n"
@@ -59,6 +59,11 @@ def repair_errors(text: str) -> str:
 
 
 _TYPED_REPAIR_GUIDANCE = {
+    "selection_unknown": (
+        "Choose passage_id only from answer_passages in the current request. "
+        "Copy its ID exactly. Do not invent an ID or copy one from history. "
+        "Do not emit learner_quote; the application supplies the exact passage text."
+    ),
     "quote_not_literal": (
         "Each learner_quote must copy a nonempty contiguous passage from the current "
         "learner_answer with exactly the same characters. Do not quote the task, history, "

@@ -101,6 +101,7 @@ class ProviderError(Exception):
 STRUCTURED_REASON_CODES = frozenset(
     {
         "unknown",
+        "selection_unknown",
         "quote_not_literal",
         "quote_duplicate",
         "explicit_followup_forbidden",
@@ -129,7 +130,12 @@ def structured_reason(error: BaseException) -> str:
                     include_url=False, include_context=False, include_input=False
                 )
             }
-            for code in ("quote_not_literal", "quote_duplicate", "explicit_followup_forbidden"):
+            for code in (
+                "selection_unknown",
+                "quote_not_literal",
+                "quote_duplicate",
+                "explicit_followup_forbidden",
+            ):
                 if code in types:
                     return code
             return "invalid_json" if "json_invalid" in types else "schema_validation"

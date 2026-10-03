@@ -19,6 +19,7 @@ from app.models_ai.provider import TaskClass
 from app.models_ai.registry import seed_defaults
 from app.models_ai.routing import Router
 from app.schemas.common import Mode
+from app.schemas.feedback_selection import build_passages
 
 
 def module():
@@ -52,7 +53,9 @@ async def test_actual_runtime_saves_reuses_and_rejects_changed_work(db, settings
         structured={
             "points": [
                 {
-                    "learner_quote": "30/50 = 0.9",
+                    "passage_id": build_passages(diagnostic.cases(session.id)[0][1].learner_answer)[
+                        0
+                    ]["id"],
                     "finding": "needs_revision",
                     "explanation": "30 divided by 50 is 0.6.",
                 }
@@ -91,7 +94,7 @@ async def test_actual_runtime_saves_reuses_and_rejects_changed_work(db, settings
     assert repeat["reply"]["reused"] is True
     assert repeat["gateway_requests"] == repeat["attempts"] == []
     assert repeat["literal_schema_validated_this_run"] is False
-    fake.structured["points"][0]["learner_quote"] = "30/50 = 0.6"
+    fake.structured["points"][0]["passage_id"] = build_passages(cases[2][1].learner_answer)[0]["id"]
     changed = await diagnostic.evaluate_case(db, gateway, owner.id, *cases[2], world.settings)
     assert changed["reply"]["reused"] is False
     assert len(fake.calls) == 2
@@ -206,7 +209,7 @@ async def test_notebook_supplied_work_survives_runtime_and_corrected_answer_is_n
         fake.structured = {
             "points": [
                 {
-                    "learner_quote": body.learner_answer[:40],
+                    "passage_id": build_passages(body.learner_answer)[0]["id"],
                     "finding": "needs_revision",
                     "explanation": "Synthetic feedback used only to test transport.",
                 }
@@ -225,6 +228,10 @@ async def test_notebook_supplied_work_survives_runtime_and_corrected_answer_is_n
         saved = await db.get(TutorAnswer, report["reply"]["answer_id"])
         for field in ("learner_answer", "code", "output", "output_stale", "learning_context"):
             assert saved.request_json[field] == report["request"][field]
+        assert (
+            saved.metadata_json["quoted_feedback"]["points"][0]["learner_quote"]
+            == build_passages(body.learner_answer)[0]["text"]
+        )
         messages = report["gateway_requests"][0]["messages"]
         assert messages == [
             message.model_dump() for message in diagnostic.playground.messages(body)

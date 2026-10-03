@@ -13,17 +13,18 @@ from urllib.parse import urlparse
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
+from sqlalchemy import select
+
 from app.core.config import get_settings
 from app.db.models import ModelCall
-from app.evals.grounded_feedback import bound_feedback
 from app.evals.harness import open_world
 from app.models_ai.benchmark_gateway import BenchmarkRouter
 from app.models_ai.provider import TaskClass
 from app.models_ai.registry import get_row, get_spec
 from app.orchestrator import prompts
 from app.orchestrator.playground import VERSION, messages
+from app.schemas.feedback_selection import bound_selection, to_quoted
 from app.schemas.playground import PlaygroundRequest
-from sqlalchemy import select
 
 TASK = "A dataset starts with 50 rows and retains 30. What proportion remains?"
 CASES = [
@@ -112,8 +113,7 @@ CASES += [
         "long_answer",
         TASK,
         "Context: "
-        + "I am documenting my cleaning workflow before checking the retained proportion. "
-        * 70
+        + "I am documenting my cleaning workflow before checking the retained proportion. " * 70
         + "My final answer is 30/50 = 0.6, which is 60%.",
         "explicit",
         "Use the final answer after the long context; no truncation or invented format objection.",
@@ -145,7 +145,8 @@ DIAGNOSTIC_TASK = TaskClass.EXPLAIN_SIMPLE
 def diagnostic_metadata(model: str) -> dict[str, object]:
     """Describe the direct gateway diagnostic without implying a runtime-path test."""
     return {
-        "report_version": 2,
+        "report_version": 3,
+        "feedback_wire_contract": "passage_selection.v1",
         "synthetic": True,
         "pinned_model": model,
         "fallback_allowed": False,
@@ -217,7 +218,7 @@ async def run(output: Path, model: str) -> None:
                         question="Review my reasoning against the supplied task.",
                     )
                     packet = messages(body)
-                    schema = bound_feedback(answer, socratic=mode == "socratic")
+                    schema = bound_selection(answer, socratic=mode == "socratic")
                     started = time.perf_counter()
                     before = set(await db.scalars(select(ModelCall.id)))
                     await db.rollback()
@@ -245,7 +246,8 @@ async def run(output: Path, model: str) -> None:
                             ),
                             timeout=120,
                         )
-                        checked = schema.model_validate_json(reply.result.text)
+                        selection = schema.model_validate_json(reply.result.text)
+                        checked = to_quoted(answer, selection, socratic=mode == "socratic")
                         result.update(
                             {
                                 "literal_contract_valid": True,
@@ -263,9 +265,7 @@ async def run(output: Path, model: str) -> None:
                             }
                         )
                     calls = list(
-                        await db.scalars(
-                            select(ModelCall).where(ModelCall.id.not_in(before))
-                        )
+                        await db.scalars(select(ModelCall).where(ModelCall.id.not_in(before)))
                     )
                     result["attempts"] = [
                         {
@@ -291,8 +291,6 @@ async def run(output: Path, model: str) -> None:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument(
-        "--model", choices=["gemma3-12b", "llama31-8b"], default="gemma3-12b"
-    )
+    parser.add_argument("--model", choices=["gemma3-12b", "llama31-8b"], default="gemma3-12b")
     args = parser.parse_args()
     asyncio.run(run(args.out, args.model))

@@ -30,12 +30,12 @@ from app.orchestrator.feedback_render import render_feedback
 from app.orchestrator.workspace_checks import checks_for, disclose_arithmetic, summary
 from app.orchestrator.workspace_provenance import disclose
 from app.schemas.common import ActivityType, ObjectType
-from app.schemas.feedback import bound_feedback
+from app.schemas.feedback_selection import bound_selection, build_passages, to_quoted
 from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v11"
+VERSION = "playground.tutor.v12"
 
 
 def messages(
@@ -54,6 +54,8 @@ def messages(
             "questioning_style",
         }
     )
+    if body.intent == "check_answer":
+        workspace["answer_passages"] = build_passages(body.learner_answer or "")
     if body.output_stale:
         workspace["output"] = ""
         workspace["historical_execution_output"] = body.output
@@ -217,11 +219,12 @@ async def respond(
         Verb.ASKED, ObjectType.TURN, turn_id, context={"text_len": len(body.question)}
     )
     feedback_schema = (
-        bound_feedback(body.learner_answer or "", socratic=body.questioning_style == "socratic")
+        bound_selection(body.learner_answer or "", socratic=body.questioning_style == "socratic")
         if body.intent == "check_answer"
         else None
     )
     checked_feedback = None
+    selected_feedback = None
     try:
         out = await gateway.complete(
             TaskClass.ANSWER_FEEDBACK
@@ -235,7 +238,12 @@ async def respond(
             metadata={"task": "playground", "prompt_version": VERSION, "turn_id": turn_id},
         )
         if feedback_schema:
-            checked_feedback = feedback_schema.model_validate_json(out.result.text)
+            selected_feedback = feedback_schema.model_validate_json(out.result.text)
+            checked_feedback = to_quoted(
+                body.learner_answer or "",
+                selected_feedback,
+                socratic=body.questioning_style == "socratic",
+            )
     except (GatewayError, ValidationError, NoModelReady) as exc:
         raise AppError(
             "tutor_unavailable",
@@ -308,6 +316,14 @@ async def respond(
                 else {}
             ),
             **({"quoted_feedback": checked_feedback.model_dump()} if checked_feedback else {}),
+            **(
+                {
+                    "feedback_selection": selected_feedback.model_dump(),
+                    "answer_passages": build_passages(body.learner_answer or ""),
+                }
+                if selected_feedback
+                else {}
+            ),
             "arithmetic_checks": [asdict(check) for check in arithmetic],
             "arithmetic_checker_version": ARITHMETIC_VERSION,
             "answer_memory": memory,

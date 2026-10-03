@@ -56,4 +56,4 @@ def playground_task() -> str:
 
 
 def answer_feedback_task() -> str:
-    return _read("playground/quoted-feedback.v2.md")
+    return _read("playground/quoted-feedback.v3.md")

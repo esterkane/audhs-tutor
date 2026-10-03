@@ -14,6 +14,7 @@ from app.models_ai.registry import seed_defaults
 from app.models_ai.routing import Router
 from app.orchestrator.feedback_render import render_feedback
 from app.schemas.feedback import bound_feedback
+from app.schemas.feedback_selection import build_passages
 from app.schemas.playground import PlaygroundRequest
 
 
@@ -29,6 +30,14 @@ def feedback(quote="30/50 = 0.9"):
         "next_step": "Use the starting row count as the denominator.",
         "followup_question": None,
     }
+
+
+def selection(answer="30/50 = 0.9"):
+    result = feedback()
+    point = result["points"][0]
+    del point["learner_quote"]
+    point["passage_id"] = build_passages(answer)[0]["id"]
+    return result
 
 
 async def prepare(client, db):
@@ -98,19 +107,19 @@ def test_quotes_cannot_create_active_markdown_and_labels_are_fallible():
 
 async def test_feedback_persists_exact_work_and_reuses_without_generation(client, db, fake_local):
     body = await prepare(client, db)
-    fake_local.structured = feedback()
+    fake_local.structured = selection(body["learner_answer"])
     result = await client.post("/api/playground/tutor", json=body)
     assert result.status_code == 200, result.text
     data = result.json()
     assert "You wrote:" in data["text"] and "Local arithmetic" in data["text"]
     row = await db.get(TutorAnswer, data["answer_id"])
     assert row.text == data["text"]
-    assert row.metadata_json["quoted_feedback"] == fake_local.structured
+    assert row.metadata_json["quoted_feedback"] == feedback(body["learner_answer"])
     assert row.request_json["learner_answer"] == body["learner_answer"]
     again = await client.post("/api/playground/tutor", json={**body, "prefer_saved": True})
     assert again.status_code == 200 and again.json()["reused"]
     assert len(fake_local.calls) == 1
-    fake_local.structured = feedback("30/50 = 0.6")
+    fake_local.structured = selection("30/50 = 0.6")
     changed = await client.post(
         "/api/playground/tutor",
         json={**body, "prefer_saved": True, "learner_answer": "30/50 = 0.6"},
@@ -124,7 +133,9 @@ async def test_feedback_persists_exact_work_and_reuses_without_generation(client
 @pytest.mark.parametrize("bad", ["quote", "question", "transport"])
 async def test_failed_feedback_never_saves_completed_reply(client, db, fake_local, bad):
     body = await prepare(client, db)
-    fake_local.structured = feedback("not the learner answer" if bad == "quote" else "30/50 = 0.9")
+    fake_local.structured = selection(body["learner_answer"])
+    if bad == "quote":
+        fake_local.structured["points"][0]["passage_id"] = "not-a-current-passage"
     if bad == "question":
         fake_local.structured["followup_question"] = "Another question?"
     if bad == "transport":
@@ -159,7 +170,7 @@ async def test_local_override_never_escalates_to_hosted(client, db, fake_local, 
     from app.models_ai.fake import FakeProvider
 
     body = await prepare(client, db)
-    hosted = FakeProvider(structured=feedback())
+    hosted = FakeProvider(structured=selection(body["learner_answer"]))
     client._transport.app.state.providers["openai"] = hosted
     row = await db.get(ModelRegistry, "openai-luna")
     row.status = "ready"
