@@ -62,9 +62,20 @@ class RecordedGateway:
             "structured_schema_requested": kwargs.get("response_model") is not None,
         }
         self.requests.append(record)
-        result = await self.gateway.complete(task, messages, **kwargs)
-        record["raw_final_model_text"] = result.result.text
-        return result
+        started = time.perf_counter()
+        try:
+            result = await self.gateway.complete(task, messages, **kwargs)
+            record["raw_final_model_text"] = result.result.text
+            record["outcome"] = "completed"
+            return result
+        except BaseException:
+            record["outcome"] = "failed_or_cancelled"
+            raise
+        finally:
+            record["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
+            record["timing_scope"] = (
+                "gateway wall time including retries; not per-attempt latency"
+            )
 
 
 def basic_cases(session_id):
@@ -276,6 +287,33 @@ def suite_manifest(suite):
     }
 
 
+def attempt_diagnostic(call):
+    """Allowlist accounting fields; never export raw errors or arbitrary metadata.
+
+    Gateway failures may log a default zero without measuring provider latency.
+    Zero cannot distinguish missing measurement from a sub-millisecond result.
+    """
+    result = {
+        key: getattr(call, key)
+        for key in (
+            "registry_id",
+            "model",
+            "provider",
+            "task",
+            "request_id",
+            "attempt",
+            "outcome",
+            "tokens_in",
+            "tokens_out",
+            "cost_usd",
+        )
+    }
+    known = isinstance(call.latency_ms, (int, float)) and call.latency_ms > 0
+    result["latency_ms"] = call.latency_ms if known else None
+    result["latency_source"] = "gateway_record" if known else "unavailable"
+    return result
+
+
 async def evaluate_case(
     db, gateway, learner_id, name, body, criteria, settings, on_respond=None
 ):
@@ -286,6 +324,7 @@ async def evaluate_case(
         "request": body.model_dump(exclude={"session_id"}),
         "manual_review_criteria": criteria,
         "semantic_review": "not_reviewed",
+        "timing_scope": "respond and result lookup or failure rollback; excludes attempt accounting query",
         "gateway_requests": recorder.requests,
     }
     started = time.perf_counter()
@@ -309,32 +348,15 @@ async def evaluate_case(
         result["literal_schema_validated_this_run"] = None
     result["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
     calls = list(await db.scalars(select(ModelCall).where(ModelCall.id.not_in(before))))
-    result["attempts"] = [
-        {
-            key: getattr(call, key)
-            for key in (
-                "registry_id",
-                "model",
-                "provider",
-                "task",
-                "request_id",
-                "attempt",
-                "outcome",
-                "latency_ms",
-                "tokens_in",
-                "tokens_out",
-                "cost_usd",
-            )
-        }
-        for call in calls
-    ]
+    result["attempts"] = [attempt_diagnostic(call) for call in calls]
     return result
 
 
 async def run(output, model, suite="basic"):
+    started = time.perf_counter()
     local_settings(get_settings())  # reject remote host before harness discovery
     report = {
-        "report_version": 2,
+        "report_version": 3,
         **suite_manifest(suite),
         "synthetic": True,
         "pinned_feedback_generation_model": model,
@@ -344,6 +366,7 @@ async def run(output, model, suite="basic"):
         "fallback_allowed": False,
         "runtime_prompt_version": playground.VERSION,
         "scope": "ordered synthetic runtime cases, not a quality or latency benchmark",
+        "timing_scope": "run wall time up to report serialization; completed status precedes final world cleanup",
         "results": [],
     }
 
@@ -353,6 +376,7 @@ async def run(output, model, suite="basic"):
 
     def persist(status):
         report["status"] = status
+        report["elapsed_ms"] = round((time.perf_counter() - started) * 1000)
         artifact.seek(0)
         artifact.write(json.dumps(report, indent=2) + "\n")
         artifact.truncate()

@@ -108,6 +108,9 @@ async def test_actual_runtime_saves_reuses_and_rejects_changed_work(db, settings
     assert failed["status"] == "failed"
     assert failed["error_type"] == "AppError"
     assert failed["attempts"]
+    assert failed["elapsed_ms"] >= 0
+    assert failed["gateway_requests"][0]["elapsed_ms"] >= 0
+    assert all(attempt["latency_ms"] is None for attempt in failed["attempts"])
     assert all(attempt["registry_id"] == "llama31-8b" for attempt in failed["attempts"])
     assert failed["literal_schema_validated_this_run"] is None
     assert failed["semantic_review"] == "not_reviewed"
@@ -145,6 +148,8 @@ async def test_setup_failure_does_not_claim_runtime_invocation(tmp_path, monkeyp
     assert report["runtime_respond_exercised"] is False
     assert report["status"] == "interrupted_or_failed"
     assert report["results"] == []
+    assert report["elapsed_ms"] >= 0
+    assert "world cleanup" in report["timing_scope"]
     assert report["pinned_feedback_generation_model"] == "llama31-8b"
 
 
@@ -225,3 +230,71 @@ async def test_notebook_supplied_work_survives_runtime_and_corrected_answer_is_n
             message.model_dump() for message in diagnostic.playground.messages(body)
         ]
     assert len(fake.calls) == 4
+
+
+@pytest.mark.parametrize("latency, expected", [(0, None), (-1, None), (None, None), (37, 37)])
+def test_attempt_diagnostic_allowlist_and_unknown_timing(latency, expected):
+    diagnostic = module()
+    fields = dict(
+        registry_id="llama31-8b",
+        model="llama3.1:8b",
+        provider="ollama",
+        task="answer_feedback",
+        request_id="synthetic",
+        attempt=2,
+        outcome="invalid_output",
+        tokens_in=3,
+        tokens_out=4,
+        cost_usd=0,
+    )
+    call = SimpleNamespace(
+        **fields,
+        latency_ms=latency,
+        error="PRIVATE_ERROR_SENTINEL",
+        metadata_json={
+            "prompt": "PRIVATE_PROMPT_SENTINEL",
+            "reply": "PRIVATE_REPLY_SENTINEL",
+            "learner_answer": "PRIVATE_LEARNER_SENTINEL",
+        },
+    )
+    result = diagnostic.attempt_diagnostic(call)
+    assert result == {
+        **fields,
+        "latency_ms": expected,
+        "latency_source": "unavailable" if expected is None else "gateway_record",
+    }
+    assert "PRIVATE_" not in json.dumps(result)
+
+
+@pytest.mark.parametrize("fails", [False, True, "timeout"])
+async def test_gateway_elapsed_is_measured_even_on_failure(monkeypatch, fails):
+    diagnostic = module()
+    from app.models_ai.provider import Message
+
+    class Gateway:
+        async def complete(self, *args, **kwargs):
+            if fails == "timeout":
+                raise TimeoutError("PRIVATE_ERROR_SENTINEL")
+            if fails:
+                raise RuntimeError("PRIVATE_ERROR_SENTINEL")
+            return SimpleNamespace(result=SimpleNamespace(text="synthetic response"))
+
+    ticks = iter([10.0, 12.5])
+    monkeypatch.setattr(diagnostic.time, "perf_counter", lambda: next(ticks))
+    recorded = diagnostic.RecordedGateway(Gateway())
+    if fails:
+        with pytest.raises((RuntimeError, TimeoutError)):
+            await recorded.complete(
+                TaskClass.ANSWER_FEEDBACK, [Message(role="user", content="synthetic")]
+            )
+    else:
+        await recorded.complete(
+            TaskClass.ANSWER_FEEDBACK, [Message(role="user", content="synthetic")]
+        )
+    row = recorded.requests[0]
+    assert row["elapsed_ms"] == 2500
+    assert row["outcome"] == ("failed_or_cancelled" if fails else "completed")
+    assert "per-attempt" in row["timing_scope"]
+    assert "PRIVATE_ERROR_SENTINEL" not in json.dumps(row)
+    if fails:
+        assert "raw_final_model_text" not in row
