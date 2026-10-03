@@ -133,3 +133,14 @@ recovery remain unchanged. Undefined tutor border/surface classes now use existi
 Frontend310, focused26, nine desktop/narrow browser journeys, lint/build and both reviews cleared.
 See docs/slices/study-tutor-choices.md. Next UX26-05 shell/status, then audio and shared controls.
 Owner comprehension and broad queue remain open; both publication repositories remain PRIVATE.
+
+
+## Shell orientation — 2026-10-03
+
+UX26-05 implemented: route-specific document titles, exact current-page navigation, explicit Home,
+keyboard skip/main focus, in-flow tools including Materials/Lesson drafts, consistent Project study
+name and unknown-page return. Browser-only session ID no longer asserts running; Resume/manage
+links Home for the existing server check. Full frontend313/81 files, focused3, desktop/narrow shell
+journeys2 plus project orientation2, scoped header axe/200% text/reflow, lint/build and reviews passed.
+See docs/slices/shell-orientation.md. Next UX26-06 audio status/controls and UX26-08 shared controls.
+Owner comprehension and manual full accessibility gates remain open. No learner lifecycle/model change.

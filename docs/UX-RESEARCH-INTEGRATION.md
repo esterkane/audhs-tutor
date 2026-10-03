@@ -102,3 +102,7 @@ This is an implementation gate, not owner comprehension approval. UX26-04–08 r
 UX26-04 interface slice implemented in `docs/slices/study-tutor-choices.md`: explicit optional guided
 questioning, visible approach, direct explanation return and preserved follow-up/recovery. Frontend310,
 browser9, lint/build/reviews passed. Owner comprehension remains open; UX26-05/06/08 next.
+
+UX26-05 shell slice implemented: titles/current navigation, skip/main focus, honest session action
+label and unknown-page recovery. Full frontend313, focused3, shell journeys2 + project journeys2,
+scoped header axe/reflow, lint/build/reviews passed. Manual/owner gates remain open.

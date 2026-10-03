@@ -1,0 +1,52 @@
+import { expect, test } from '@playwright/test'
+import axe from 'axe-core'
+
+for (const width of [1280, 320]) {
+  test(`shell orientation, keyboard skip and tools at ${width}px`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.route('**/local-learning/program.json', (route) =>
+      route.fulfill({ json: { title: 'Fixture', courses: [] } }),
+    )
+    await page.goto('/programs')
+    await expect(page).toHaveTitle('Project study · AuDHS Tutor')
+    await expect(page.getByRole('link', { name: 'Project study', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('link', { name: 'Skip to learning content' })).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('main')).toBeFocused()
+    await page.getByRole('link', { name: 'Learning areas', exact: true }).click()
+    await expect(page).toHaveTitle('Learning areas · AuDHS Tutor')
+    await expect(page.getByRole('main')).toBeFocused()
+    await page.getByText('More tools', { exact: true }).click()
+    await page.getByRole('link', { name: 'Lesson drafts', exact: true }).click()
+    await expect(page).toHaveTitle('Lesson drafts · AuDHS Tutor')
+    await expect(page.getByText('More tools · Lesson drafts', { exact: true })).toBeVisible()
+    await page.getByText('More tools · Lesson drafts', { exact: true }).click()
+    await expect(page.getByRole('link', { name: 'Lesson drafts', exact: true })).toHaveAttribute(
+      'aria-current',
+      'page',
+    )
+    await page.evaluate(() => {
+      document.documentElement.style.fontSize = '200%'
+    })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+    await page.addScriptTag({ content: axe.source })
+    const violations = await page.evaluate(
+      async () =>
+        (
+          await (window as unknown as { axe: typeof axe }).axe.run('header', {
+            runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] },
+          })
+        ).violations,
+    )
+    expect(violations.map((v) => v.id)).toEqual([])
+    await page.screenshot({ path: info.outputPath('navigation.png'), fullPage: true })
+    await page.goto('/missing-learning-page')
+    await expect(page.getByRole('heading', { name: 'Page not found' })).toBeVisible()
+    await expect(page).toHaveTitle('Page not found · AuDHS Tutor')
+    await expect(page.getByRole('link', { name: 'Return Home' })).toHaveAttribute('href', '/')
+  })
+}
