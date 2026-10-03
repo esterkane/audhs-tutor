@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { apiFetch, type Schemas } from '../../lib/api'
 import { Player, b64ToPcm16 } from './audio'
-import { claimReading } from './readingOwner'
+import { claimReading, updateReading } from './readingOwner'
 
 export function ReadAloud(props: { text: string; label?: string }) {
   return <Speech key={props.text} {...props} />
@@ -61,6 +61,21 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
       if (playback.current === player) setChangingPlayback(false)
     }
   }
+  useEffect(() => {
+    const release = releaseReading.current
+    if (!busy || !release) return
+    updateReading(release, {
+      status: error || (paused ? 'Paused — resume from the same position.' : status),
+      paused,
+      changing: changingPlayback,
+      ready,
+      stop: () => {
+        stop()
+        setStatus('Audio stopped. Listen again starts from the beginning.')
+      },
+      togglePause: () => void togglePause(),
+    })
+  })
   async function speak() {
     stop()
     releaseReading.current = claimReading(() => {

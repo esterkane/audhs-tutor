@@ -169,3 +169,11 @@ Starting another ReadAloud stops the previous reading, including preparation or 
 Stale releases cannot clear a newer owner. Full frontend322, focused11, browser audio2, lint/build and
 reviews passed. See docs/slices/read-aloud-coordination.md. Scope is one tab's requested readings;
 voice-conversation/media coordination and global transport controls remain outstanding.
+
+
+## Shared requested-reading transport — 2026-10-03
+
+Every Audio controls panel now exposes current requested-reading status and Pause/Resume/Stop for the
+same player. Controls clear on release and stale owners cannot replace them. Frontend324, focused13,
+browser2, lint/build and reviews passed. See docs/slices/shared-reading-controls.md. Coordination with
+voice conversations/other media and physical-output/owner gates remain open.

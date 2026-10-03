@@ -1,8 +1,10 @@
+import { useReadingControls } from '../voice/readingOwner'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { bindOutput, useAudioSettings } from './settings'
 
 export function AudioControls() {
+  const reading = useReadingControls((s) => s.reading)
   const { volume, muted, rate, saved, update } = useAudioSettings()
   const cleanup = useRef<(() => void) | null>(null)
   const [status, setStatus] = useState('')
@@ -45,6 +47,21 @@ export function AudioControls() {
       <summary className="cursor-pointer">
         Audio controls · {muted || volume === 0 ? 'muted' : `${Math.round(volume * 100)}%`} · {rate}×
       </summary>
+      {reading && (
+        <div className="mt-2 border-b border-line pb-2">
+          <p>Current reading: {reading.status}</p>
+          <div className="flex flex-wrap gap-2 mt-1">
+            {reading.ready && (
+              <Button size="sm" disabled={reading.changing} onClick={reading.togglePause}>
+                {reading.changing ? 'Updating reading…' : reading.paused ? 'Resume reading' : 'Pause reading'}
+              </Button>
+            )}
+            <Button size="sm" onClick={reading.stop}>
+              Stop reading
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-3 mt-2">
         <label>
           Volume {Math.round(volume * 100)}%{' '}

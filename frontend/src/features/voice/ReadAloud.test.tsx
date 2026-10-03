@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { jsonResponse, renderApp } from '../../test/utils'
+import { AudioControls } from '../audio/AudioControls'
 import { ReadAloud } from './ReadAloud'
 import { useAudioSettings } from '../audio/settings'
 
@@ -216,4 +217,31 @@ it('starting another reading stops the previous request and ignores its late res
   expect(audio.enqueue).not.toHaveBeenCalled()
   await act(async () => responses[1](jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 })))
   expect(audio.enqueue).toHaveBeenCalledOnce()
+})
+
+it('shared controls pause, resume and stop the same reading without regenerating', async () => {
+  const fetcher = vi.fn(async () => jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 }))
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(
+    <>
+      <AudioControls />
+      <ReadAloud text="Read once." />
+    </>,
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Listen to explanation' }))
+  await waitFor(() => expect(audio.enqueue).toHaveBeenCalledOnce())
+  fireEvent.click(screen.getAllByRole('button', { name: 'Pause reading', hidden: true })[0])
+  await waitFor(() =>
+    expect(screen.getAllByRole('button', { name: 'Resume reading', hidden: true })).toHaveLength(2),
+  )
+  fireEvent.click(screen.getAllByRole('button', { name: 'Resume reading', hidden: true })[0])
+  await waitFor(() =>
+    expect(screen.getAllByRole('button', { name: 'Pause reading', hidden: true })).toHaveLength(2),
+  )
+  fireEvent.click(screen.getAllByRole('button', { name: 'Stop reading', hidden: true })[0])
+  expect(screen.queryByRole('button', { name: 'Stop reading', hidden: true })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
+  expect(audio.pause).toHaveBeenCalledOnce()
+  expect(audio.resume).toHaveBeenCalledOnce()
+  expect(fetcher).toHaveBeenCalledOnce()
 })

@@ -1,5 +1,5 @@
 import { expect, it, vi } from 'vitest'
-import { claimReading } from './readingOwner'
+import { claimReading, updateReading, useReadingControls } from './readingOwner'
 
 it('stale releases cannot discard the current reading', () => {
   const first = vi.fn()
@@ -18,4 +18,24 @@ it('releasing a finished reading prevents later stop callbacks', () => {
   claimReading(stop)()
   claimReading(vi.fn())()
   expect(stop).not.toHaveBeenCalled()
+})
+
+it('only the current lease can publish shared controls', () => {
+  const old = claimReading(vi.fn())
+  const current = claimReading(vi.fn())
+  const controls = {
+    status: 'Preparing',
+    paused: false,
+    changing: false,
+    ready: true,
+    stop: vi.fn(),
+    togglePause: vi.fn(),
+  }
+  updateReading(current, controls)
+  updateReading(old, { ...controls, status: 'Stale' })
+  expect(useReadingControls.getState().reading?.status).toBe('Preparing')
+  old()
+  expect(useReadingControls.getState().reading).not.toBeNull()
+  current()
+  expect(useReadingControls.getState().reading).toBeNull()
 })
