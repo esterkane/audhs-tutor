@@ -5,7 +5,11 @@ import { PracticePanel } from './PracticePanel'
 import { VocabPanel } from './VocabPanel'
 
 describe('practice blocks', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    sessionStorage.clear()
+  })
 
   it('movement block: three concrete options, rating, log then continue; skip is one click', async () => {
     const posts: Array<{ url: string; body: Record<string, unknown> }> = []
@@ -54,7 +58,7 @@ describe('practice blocks', () => {
       vi.fn(async (url: string, init?: RequestInit) => {
         if (init?.method === 'POST' && url.includes('/api/review/')) {
           rated.push(url)
-          return jsonResponse({})
+          return jsonResponse({ item_id: 'v1' })
         }
         if (url.includes('/api/review/due'))
           return jsonResponse({
@@ -89,5 +93,53 @@ describe('practice blocks', () => {
     expect(await screen.findByText('1 cards reviewed.')).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: 'Continue' }))
     expect(done).toHaveBeenCalled()
+  })
+  it('retains a vocabulary rating through checkpoint failure and recovers by stable card ID', async () => {
+    let blocked = false
+    let posts = 0
+    const originalSet = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (blocked && key === 'vocab-reviewed:v1:v-recovery') throw new Error('quota')
+      originalSet.call(this, key, value)
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.includes('/api/review/due'))
+          return jsonResponse({
+            items: ['v1', 'v2'].map((id) => ({
+              item_id: id,
+              question: `Question ${id}`,
+              reveal: `Answer ${id}`,
+            })),
+            total_due: 2,
+            cap: 10,
+          })
+        if (url.includes('/api/review/requests/'))
+          return jsonResponse({ status: 'completed', result: { item_id: 'v1' } })
+        if (init?.method === 'POST') {
+          posts++
+          blocked = true
+          return jsonResponse({ item_id: 'v1' })
+        }
+        return jsonResponse({})
+      }),
+    )
+    const first = renderApp(<VocabPanel sessionId="v-recovery" onDone={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Show translation' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Again' }))
+    await screen.findByText(/vocabulary queue could not be stored/)
+    expect(sessionStorage.getItem('review-request:v1:v-recovery')).not.toBeNull()
+    first.unmount()
+    blocked = false
+    renderApp(<VocabPanel sessionId="v-recovery" onDone={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Check saved rating' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Update review queue' }))
+    await screen.findByText('Question v2')
+    expect(screen.queryByText('Question v1')).not.toBeInTheDocument()
+    expect(screen.queryByText('Answer v2')).not.toBeInTheDocument()
+    expect(JSON.parse(sessionStorage.getItem('vocab-reviewed:v1:v-recovery')!)).toEqual(['v1'])
+    expect(sessionStorage.getItem('review-request:v1:v-recovery')).toBeNull()
+    expect(posts).toBe(1)
   })
 })

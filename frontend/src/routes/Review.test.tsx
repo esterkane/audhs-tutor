@@ -73,6 +73,7 @@ const reviewSession = {
 
 describe('Review', () => {
   afterEach(() => {
+    vi.restoreAllMocks()
     vi.unstubAllGlobals()
     sessionStorage.clear()
   })
@@ -88,7 +89,7 @@ describe('Review', () => {
       if (url.endsWith('/api/plan/blocks/next'))
         return jsonResponse({ ...reviewSession.state, block_index: 1, phase: 'teach', block_id: 's1:1' })
       return jsonResponse({
-        item_id: 'i1',
+        item_id: url.split('/').at(-1),
         due: 'later',
         state: 'review',
         stability: 3,
@@ -148,7 +149,7 @@ describe('Review', () => {
           return jsonResponse(rated ? { ...due, items: [due.items[1]] } : due)
         if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
         if (init?.method === 'POST') rated = true
-        return jsonResponse({})
+        return jsonResponse({ item_id: url.split('/').at(-1) })
       }),
     )
     const view = renderApp(<Review />)
@@ -187,7 +188,7 @@ describe('Review', () => {
             items: [due.items[1], { ...due.items[0], item_id: 'i3', question: 'New card C' }],
           })
         if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
-        return jsonResponse({ skills: [] })
+        return jsonResponse({ skills: [], item_id: url.split('/').at(-1) })
       }),
     )
     renderApp(<Review />)
@@ -200,13 +201,15 @@ describe('Review', () => {
     expect(await screen.findByText('New card C')).toBeInTheDocument()
   })
 
-  it('records a rating that finishes after unmount and removes it from the shared query cache', async () => {
+  it('recovers a rating explicitly after unmount without adopting a late response', async () => {
     useMode.setState({ sessionId: 's1' })
     let finish!: (r: Response) => void
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
         if (url.startsWith('/api/review/due')) return jsonResponse(due)
+        if (url.startsWith('/api/review/requests/'))
+          return jsonResponse({ status: 'completed', result: { item_id: 'i1' } })
         if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
         if (url === '/api/review/i1' && init?.method === 'POST')
           return new Promise<Response>((resolve) => {
@@ -233,12 +236,102 @@ describe('Review', () => {
     expect(await screen.findByRole('button', { name: /^good/i })).toBeDisabled()
     pendingView.unmount()
     await act(async () => {
-      finish(jsonResponse({}))
+      finish(jsonResponse({ item_id: 'i1' }))
       await new Promise((resolve) => setTimeout(resolve, 0))
     })
     mount()
+    fireEvent.click(await screen.findByRole('button', { name: 'Check saved rating' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Update review queue' }))
     expect(await screen.findByText(due.items[1].question)).toBeInTheDocument()
     expect(screen.queryByText(due.items[0].question)).not.toBeInTheDocument()
     expect(screen.queryByText(due.items[0].reveal)).not.toBeInTheDocument()
+  })
+  it('keeps a completed identity across checkpoint failure and reload, then advances without rating again', async () => {
+    useMode.setState({ sessionId: 's1' })
+    let posts = 0
+    let denyCheckpoint = false
+    const originalSet = Storage.prototype.setItem
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (denyCheckpoint && key === 'audhs-review-queue:v1:s1') throw new Error('quota')
+      originalSet.call(this, key, value)
+    })
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.startsWith('/api/review/due')) return jsonResponse(due)
+        if (url.startsWith('/api/review/requests/'))
+          return jsonResponse({ status: 'completed', result: { item_id: 'i1' } })
+        if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
+        if (url === '/api/review/i1' && init?.method === 'POST') {
+          posts++
+          denyCheckpoint = true
+          return jsonResponse({ item_id: 'i1' })
+        }
+        return jsonResponse({ skills: [] })
+      }),
+    )
+    const view = renderApp(<Review />)
+    fireEvent.click(await screen.findByRole('button', { name: /show answer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^again/i }))
+    await screen.findByText(/review queue could not be stored/)
+    const intent = sessionStorage.getItem('review-request:v1:s1')
+    expect(intent).not.toBeNull()
+    view.unmount()
+    renderApp(<Review />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Check saved rating' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Update review queue' }))
+    await waitFor(() =>
+      expect(screen.getAllByText(/review queue could not be stored/).length).toBeGreaterThan(0),
+    )
+    expect(sessionStorage.getItem('review-request:v1:s1')).toBe(intent)
+    denyCheckpoint = false
+    fireEvent.click(screen.getByRole('button', { name: 'Update review queue' }))
+    await waitFor(() =>
+      expect(screen.queryByRole('region', { name: 'Review submission recovery' })).not.toBeInTheDocument(),
+    )
+    expect(screen.getByText(due.items[1].question)).toBeInTheDocument()
+    expect(JSON.parse(sessionStorage.getItem('audhs-review-queue:v1:s1')!).reviewed).toContain('i1')
+    expect(sessionStorage.getItem('review-request:v1:s1')).toBeNull()
+    expect(posts).toBe(1)
+  })
+
+  it('resets confidence and timing after recovering the previous card', async () => {
+    useMode.setState({ sessionId: 's1' })
+    const clock = vi.spyOn(Date, 'now').mockReturnValue(1000)
+    let secondBody: Record<string, unknown> | undefined
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (url.startsWith('/api/review/due')) return jsonResponse(due)
+        if (url.startsWith('/api/review/requests/'))
+          return jsonResponse({ status: 'completed', result: { item_id: 'i1' } })
+        if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
+        if (url === '/api/review/i1' && init?.method === 'POST') throw new Error('Lost response')
+        if (url === '/api/review/i2' && init?.method === 'POST') {
+          secondBody = JSON.parse(String(init.body))
+          return jsonResponse({ item_id: 'i2' })
+        }
+        return jsonResponse({ skills: [] })
+      }),
+    )
+    renderApp(<Review />)
+    await screen.findByRole('button', { name: /show answer/i })
+    fireEvent.click(screen.getByText('Confidence (optional)'))
+    fireEvent.click(screen.getByRole('button', { name: '4' }))
+    fireEvent.click(screen.getByRole('button', { name: /show answer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^good/i }))
+    await screen.findByText(/Lost response/)
+    fireEvent.click(screen.getByRole('button', { name: 'Check saved rating' }))
+    await screen.findByRole('button', { name: 'Update review queue' })
+    clock.mockReturnValue(10000)
+    fireEvent.click(screen.getByRole('button', { name: 'Update review queue' }))
+    await screen.findByText(due.items[1].question)
+    expect(screen.queryByRole('button', { name: 'Skip confidence' })).not.toBeInTheDocument()
+    clock.mockReturnValue(10500)
+    fireEvent.click(screen.getByRole('button', { name: /show answer/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^good/i }))
+    await waitFor(() => expect(secondBody).toBeDefined())
+    expect(secondBody?.confidence_pre).toBeUndefined()
+    expect(secondBody?.latency_ms).toBe(500)
   })
 })

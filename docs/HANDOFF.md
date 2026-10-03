@@ -522,3 +522,15 @@ Lookup is read-only. Full backend643, final request tests8, generated API types,
 reviews passed. See docs/slices/review-request-recovery.md. Next: browser review identity persistence,
 explicit lookup/retry and current-queue reconciliation. Until then unkeyed browser retries are not
 protected; R3 stays partial. No live learner mutation or paid model call during verification.
+
+
+## Browser review recovery — 2026-10-03
+
+Review and vocabulary ratings now persist a frozen UUID/body before sending, recover by explicit
+read-only lookup, and only resend a confirmed missing request with the original identity. Completed
+intent remains until the queue checkpoint is stored; storage failures expose an acknowledged page-memory
+fallback. Stable vocabulary IDs replace positional progress. Confirmed recovery clears only that
+card's help and resets confidence/timing. Full frontend305, desktop/narrow journeys2, lint and production
+build passed; code and pedagogy reviews cleared. See docs/slices/browser-review-recovery.md.
+R3 remains partial: content-version guards, legacy callers and pre-commit unresolved recovery remain open.
+Next priority per owner: reconcile the new UX research and simplify the Programs learning journey.

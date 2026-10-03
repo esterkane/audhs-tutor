@@ -1,3 +1,4 @@
+import { ReviewRecovery } from '../features/review/ReviewRecovery'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { ReadAloud } from '../features/voice/ReadAloud'
 import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
@@ -72,13 +73,50 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   // confidence is per card: it is sent with the rating and cleared for the next card
   const [confidence, setConfidence] = useState<number | null>(null)
   const due = useDue(sessionId, showAll)
-  const rate = useRate(true)
+  const rate = useRate(sessionId ?? '', true)
   const ratingPending = useRatingPending()
   const session = useSession(sessionId)
   const transition = useBlockTransition(sessionId)
   const nav = useNavigate()
 
   const [shownAt, setShownAt] = useState(nowMs)
+
+  function markReviewed(itemId: string) {
+    const saved = restoreQueue(queueKey)
+    const next: ReviewCheckpoint = {
+      ...queue,
+      ...saved,
+      admitted: saved.admitted ?? queue.admitted,
+      reviewed: [...new Set([...queue.reviewed, ...saved.reviewed, itemId])],
+      current: null,
+      revealed: null,
+    }
+    try {
+      sessionStorage.setItem(queueKey, JSON.stringify(next))
+    } catch {
+      if (!rate.recovery.memoryOnly) {
+        const message =
+          'Rating saved, but the review queue could not be stored. Restore storage or explicitly continue in page memory.'
+        rate.recovery.reportStorageError(message)
+        throw new Error(message)
+      }
+    }
+    setQueue(next)
+    clearDraft(`audhs-review:${sessionId}:${itemId}`)
+    setConfidence(null)
+    setShownAt(nowMs())
+  }
+  const recoveryPanel = (
+    <ReviewRecovery
+      recovery={rate.recovery}
+      onConfirmed={async (itemId) => {
+        const fresh = await due.refetch()
+        if (fresh.error)
+          throw new Error('Rating is saved, but the current queue could not load. Retry updating it.')
+        markReviewed(itemId)
+      }}
+    />
+  )
 
   if (!sessionId)
     return (
@@ -92,12 +130,19 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   if (due.isError)
     return (
       <Card>
+        {recoveryPanel}
         <p role="alert">Could not load review cards. Your saved ratings are retained.</p>
         <Button onClick={() => void due.refetch()}>Retry</Button>
         <SessionControls sessionId={sessionId} />
       </Card>
     )
-  if (due.isLoading || !due.data) return <Card>Loading review…</Card>
+  if (due.isLoading || !due.data)
+    return (
+      <>
+        {recoveryPanel}
+        <Card>Loading review…</Card>
+      </>
+    )
   const items = due.data.items
   const admitted = queue.admitted ?? items.map((i) => i.item_id)
   if (queue.admitted === null) setQueue((q) => ({ ...q, admitted }))
@@ -146,6 +191,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
     return (
       <Card>
         <SessionControls sessionId={sessionId} />
+        {recoveryPanel}
         <CardTitle>Review done</CardTitle>
         <p>
           {due.data.total_due === 0
@@ -181,8 +227,9 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
     if (saving.current || ratingPending) return
     saving.current = true
     try {
-      await rate.mutateAsync({
+      const completed = await rate.mutateAsync({
         itemId: item.item_id,
+        questionLabel: item.question,
         body: {
           session_id: sessionId!,
           rating,
@@ -191,26 +238,8 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
           hint_count: hintCount,
         },
       })
-      setRevealed(false)
-      clearDraft(helpKey)
-      setConfidence(null)
-      setShownAt(nowMs())
-      // Persist in the successful request continuation even if this view has unmounted.
-      const saved = restoreQueue(queueKey)
-      const next: ReviewCheckpoint = {
-        ...queue,
-        ...saved,
-        admitted: saved.admitted ?? queue.admitted,
-        reviewed: [...new Set([...queue.reviewed, ...saved.reviewed, item.item_id])],
-        current: null,
-        revealed: null,
-      }
-      try {
-        sessionStorage.setItem(queueKey, JSON.stringify(next))
-      } catch {
-        /* server rating remains saved */
-      }
-      setQueue(next)
+      markReviewed(item.item_id)
+      rate.recovery.clear(completed.requestId)
     } catch {
       /* mutation error is displayed; retain the card for retry */
     } finally {
@@ -220,6 +249,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
 
   return (
     <div className="grid gap-4">
+      {recoveryPanel}
       <SessionControls sessionId={sessionId} skillId={item.skill_id} />
       {state && !inReviewBlock && (
         <p className="text-sm text-muted" role="status">
@@ -286,7 +316,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
                 <Button
                   key={r.value}
                   onClick={() => void rateIt(r.value)}
-                  disabled={ratingPending}
+                  disabled={ratingPending || !!rate.recovery.pending || !!rate.recovery.error}
                   className="flex-col h-auto py-2"
                 >
                   <span>{r.label}</span>
@@ -296,7 +326,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
             </div>
             {rate.isError && (
               <p role="alert" className="text-warn mt-2">
-                {(rate.error as Error).message} — the rating was not saved; try again.
+                {(rate.error as Error).message} — check the earlier submission before trying again.
               </p>
             )}
           </div>
