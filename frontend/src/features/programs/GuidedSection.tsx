@@ -17,10 +17,11 @@ type Work = {
   questionId: string
 }
 const phases: Phase[] = ['Understand', 'Try', 'Think deeper']
-export function GuidedSection(props: { section: Section; course: string; paused: boolean }) {
+type Props = { section: Section; course: string; paused: boolean; onOpenNotebook?: () => void }
+export function GuidedSection(props: Props) {
   return <Content key={`${props.course}:${props.section.id}`} {...props} />
 }
-function Content({ section, course, paused }: { section: Section; course: string; paused: boolean }) {
+function Content({ section, course, paused, onOpenNotebook }: Props) {
   const key = `project-study:v1:${course}:${section.id}`
   const [restored] = useState(() => {
     const fresh: Work = {
@@ -130,8 +131,13 @@ function Content({ section, course, paused }: { section: Section; course: string
     )
   return (
     <Card className="grid gap-4">
-      <h2 className="text-lg font-semibold">{section.title}</h2>
-      <p>Understand the idea, try one task, then explore your reasoning. Move freely between these steps.</p>
+      <p className="text-sm text-muted">
+        {work.phase === 'Understand'
+          ? 'Start here: read the idea and example. Then try one task.'
+          : work.phase === 'Try'
+            ? 'Try the task below. Ask for help whenever you need it.'
+            : 'Explain your reasoning, then choose Check my answer for tutor feedback.'}
+      </p>
       <nav aria-label="Learning steps" className="flex flex-wrap gap-2">
         {phases.map((phase) => (
           <Button
@@ -161,7 +167,9 @@ function Content({ section, course, paused }: { section: Section; course: string
             </div>
           )}
           <p className="text-sm text-muted">Tutor-authored learning guide. Source: {section.source}</p>
-          <Button onClick={() => choosePhase('Try')}>Try this idea</Button>
+          <Button variant="primary" onClick={() => choosePhase('Try')}>
+            Try this idea
+          </Button>
         </>
       )}
       {work.phase === 'Try' && (
@@ -172,12 +180,23 @@ function Content({ section, course, paused }: { section: Section; course: string
               Open task starter notebook
             </Button>
           )}
-          <p>
-            {section.practice
-              ? 'Open the starter, edit the code, then Run all and check. Return here with results when ready. '
-              : ''}
-            Use the notebook workspace for code. Record what you tried here; you can ask for help at any
-            point.
+          {section.practice ? (
+            <p className="text-sm">
+              This is a small practice notebook for this step. Edit the starter code, choose Run all and
+              check, then return here with results. It runs locally in this page.
+            </p>
+          ) : onOpenNotebook ? (
+            <div className="grid gap-2">
+              <p className="text-sm">
+                For code or datasets, open the full course notebook tools. Return to this lesson to record
+                your observations.
+              </p>
+              <Button onClick={onOpenNotebook}>Open full course notebook tools</Button>
+            </div>
+          ) : null}
+          <p className="text-sm">
+            Record what you tried below. These are browser-local notes, not a submitted project. Save status
+            appears below.
           </p>
           <label>
             Project notes

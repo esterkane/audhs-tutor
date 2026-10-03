@@ -534,3 +534,16 @@ card's help and resets confidence/timing. Full frontend305, desktop/narrow journ
 build passed; code and pedagogy reviews cleared. See docs/slices/browser-review-recovery.md.
 R3 remains partial: content-version guards, legacy callers and pre-commit unresolved recovery remain open.
 Next priority per owner: reconcile the new UX research and simplify the Programs learning journey.
+
+
+## Project-study orientation and UX research — 2026-10-03
+
+Owner reported continued UI confusion and supplied two research reports. Merged useful methods into
+docs/UX-RESEARCH-INTEGRATION.md and docs/UI-INVENTORY.md; updated shared UX skill guidance.
+Programs now leads with current step/explanation, collapses course switching, remembers selected
+course/step, and distinguishes task starter from full-course notebook with explicit return.
+Frontend309, eight isolated browser journeys, main-content axe/320px/200%text, lint/build and code/
+pedagogy reviews passed. See docs/slices/project-study-orientation.md. No backend/model change.
+Next UX26-04: clarify tutor conversation choices without hiding provider disclosure or changing
+Socratic defaults; then UX26-05/06/08 shell/audio/shared controls. Owner comprehension remains OPEN.
+Both repositories remain PRIVATE. Broader material, visual, authoring and voice benchmark queues remain.

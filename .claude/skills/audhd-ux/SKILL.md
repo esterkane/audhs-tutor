@@ -21,3 +21,13 @@ Grounding (from `docs/research/audhd-learner-report.md`): autonomy support over 
 - [ ] **Body-doubling / co-working** mode is a presence screen, optional ambient audio, no tracking.
 - [ ] **Keyboard-first**, WCAG 2.2 AA, focus ring ≥ 3:1 contrast, axe test passes.
 - [ ] **Behavioural signals** (latency, drop-off) are shown to the learner as hypotheses in the experiment dashboard, never as hidden scores.
+
+
+## Evidence-led journey refinement
+For broad UX confusion, reconcile `docs/UX-RESEARCH-INTEGRATION.md` with the existing R/Q queue.
+Inspect the rendered journey before redesigning: current topic, next action, where work is saved,
+how to get contextual help and how to leave/return. Rank blocked tasks and lost orientation before
+cosmetics. Separate reproduced behavior from source patterns and hypotheses; simulated personas
+are not user feedback. Use existing Playwright/axe, test task behavior and failure states, and keep
+owner comprehension as an explicit open gate. Avoid adding analytics or another UI framework to
+solve clarity. Record before/after evidence and the next unresolved journey in the slice handoff.

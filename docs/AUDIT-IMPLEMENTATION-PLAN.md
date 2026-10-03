@@ -254,3 +254,11 @@ Run R0, then R1. R2 can follow as a separate bounded reliability slice. R3 is re
 
 ## Skills and continuity
 Four focused skills accompany this plan: `audhs-audit-slice`, `audhs-state-reliability`, `audhs-content-correction`, and `audhs-learning-ux`. They supplement existing project skills, not replace them. Codex discovery copies live in ~/.codex/skills; Claude copies live in .claude/skills. Keep matching copies synchronized when revising them. The repository plan is authoritative; output copy is the delivery snapshot.
+
+
+## Owner UX priority — 2026-10-03
+
+The new research is reconciled in [UX-RESEARCH-INTEGRATION.md](UX-RESEARCH-INTEGRATION.md).
+UX26-01–07 extend existing R/Q work with observed journey issues and concrete prompts, not a second
+architecture. After the reviewed R3 browser recovery slice, project-study orientation is next.
+Owner comprehension remains open; automated tests and simulated personas cannot close it.
