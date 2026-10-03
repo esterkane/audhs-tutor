@@ -53,3 +53,20 @@ Required AV gates: no audio/motion on load; one playback authority; Stop/unmount
 ## Order and current status
 
 Current tutor persistence work retains priority. D00 next reconciles this queue with existing authoring/resource plans. M/C tasks are app work; AV may proceed as a separate prototype once evidence and its interface are ready. This document is a queue and handoff, not a claim that these features or factual checks are complete.
+
+## Evidence reconciliation — 2026-10-03
+
+All three originals have now had their body/table text and hyperlink inventories inspected. Private
+assessments distinguish verified capabilities, uncertain rights/access/dates, and corrected assumptions.
+D00 remains partial for missing evidence; these reviews do not certify every linked asset or licence.
+
+Adopt metadata and provenance before scheduled discovery. C01/C02 are expanded into executable
+prompts and gates in [Source currency plan](slices/source-currency-implementation-plan.md), followed
+by opt-in C03 and optional C04. Reuse existing document publication dates and local source-hash checks;
+external currency requires separate evidence. Rights/routing/export inventory M00 precedes enforcement.
+
+Avatar AV00 supports an authored SVG prototype with a supplied playback-envelope adapter; current
+speech playback does not yet expose that signal. AV01 still needs implementation and explicit sensory
+controls. No second speech engine, avatar SDK or expressive model is added by this reconciliation.
+Existing resource-curation, state-reliability, learning-UX and tutor-evidence skills cover these slices;
+use the existing skill-specific gates rather than installing another general-purpose workflow.
