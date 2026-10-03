@@ -140,7 +140,7 @@ function HomeOverview() {
   const emptySelection = !selectionPending && !selectionFailed && Boolean(areaGoal || goal) && !nextSkill
   const scaffold = preview.data?.blocks.find((b) => b.type === 'new_material')?.reason
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 min-w-0 gap-4">
       <h1 className="text-2xl font-semibold">Your next step</h1>
       <Card aria-label="Start or resume learning">
         <CardTitle>{resumable ? 'Continue where you left off' : 'Start with one useful step'}</CardTitle>
@@ -302,10 +302,10 @@ function HomeOverview() {
       </details>
       <Card>
         <CardTitle>Learn toward</CardTitle>
-        <label className="block text-sm font-medium mt-2">
+        <label className="block min-w-0 text-sm font-medium mt-2">
           Knowledge area
           <select
-            className="block border border-line rounded-md px-2 py-1 mt-1"
+            className="block w-full min-w-0 max-w-full border border-line rounded-md px-2 py-1 mt-1"
             value={areaGoal}
             disabled={setPref.isPending || skills.isFetching || areas.isPending || prefs.isPending}
             onChange={(e) => setPref.mutate({ key: 'goal.area', value: e.target.value })}
@@ -339,10 +339,10 @@ function HomeOverview() {
         </p>
         {!areaGoal && (
           <div className="flex flex-wrap gap-2 items-end">
-            <label className="text-sm font-medium">
+            <label className="min-w-0 max-w-full text-sm font-medium">
               Goal
               <select
-                className="block border border-line rounded-md px-2 py-1 mt-1"
+                className="block w-full min-w-0 max-w-full border border-line rounded-md px-2 py-1 mt-1"
                 value={goal}
                 disabled={Boolean(areaGoal) || setPref.isPending || skills.isFetching || prefs.isPending}
                 onChange={(e) => setPref.mutate({ key: 'goal.course', value: e.target.value })}

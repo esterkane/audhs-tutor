@@ -68,3 +68,47 @@ test('Home switches ready to unprepared and back before starting the selected to
   await expect(page).toHaveURL(/\/session$/)
   expect(started).toBe('python')
 })
+
+for (const width of [320, 390]) {
+  test(`Home long topic options fit at ${width}px`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.route('**/api/**', (route) => route.fulfill({ json: null }))
+    await page.route('**/api/preferences', (route) =>
+      route.fulfill({ json: { values: { 'goal.area': '' }, specs: [] } }),
+    )
+    await page.route('**/api/skills', (route) => route.fulfill({ json: { skills: [], next_skill_id: null } }))
+    await page.route('**/api/areas', (route) =>
+      route.fulfill({
+        json: {
+          areas: [
+            {
+              id: 'long',
+              title: 'Understanding local inference and responsible machine learning applications',
+              active_lessons: 0,
+            },
+          ],
+        },
+      }),
+    )
+    await page.goto('/')
+    const area = page.getByRole('combobox', { name: 'Knowledge area' })
+    await expect(area.getByRole('option', { name: /Understanding local inference/ })).toHaveCount(1)
+    await expect(area).toBeEnabled()
+    const geometry = await page.evaluate(() => ({
+      viewport: innerWidth,
+      document: document.documentElement.scrollWidth,
+      selects: [...document.querySelectorAll('select')].map((select) => {
+        const rect = select.getBoundingClientRect()
+        return { left: rect.left, right: rect.right, width: rect.width }
+      }),
+    }))
+    expect(geometry.document, JSON.stringify(geometry)).toBeLessThanOrEqual(width)
+    for (const select of geometry.selects) {
+      expect(select.left).toBeGreaterThanOrEqual(0)
+      expect(select.right).toBeLessThanOrEqual(width)
+    }
+    expect((await area.boundingBox())!.width).toBeGreaterThan(100)
+    await area.focus()
+    await expect(area).toBeFocused()
+  })
+}

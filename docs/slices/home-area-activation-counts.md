@@ -27,3 +27,16 @@ checks selection ignores an interrupted and unrelated draft and sends no publica
 19 integrated frontend tests passed in each variant, backend3, TypeScript/lint/production build.
 Earlier full frontend334 passed with the Areas delta; later Home delta covered by10 focused tests.
 Live API restarted and new counts/read-only navigation confirmed; owner comprehension remains open.
+
+
+## Home narrow-screen regression — 2026-10-03
+
+CI on the previous Home counts change caught selector intrinsic-width overflow at390px; all other66
+journeys passed. Home now uses a zero-minimum grid track and bounded native selectors/shrinkable
+labels. No overflow hiding. Seven targeted browser journeys pass, including loaded long-label
+regressions at320/390 and saved-session journeys at390/800/1280. Home10 unit tests and TypeScript
+pass; this corrects the reported CI failure, with next full remote workflow still to run.
+
+Next audio slices remain visualizer audible monitoring (silent analysis stays independent), output
+test-tone ownership and ambient sound ownership. Preserve explicit start/resume, identity-safe late
+promises and honest Stop sound semantics. Physical headphone audibility remains an owner check.
