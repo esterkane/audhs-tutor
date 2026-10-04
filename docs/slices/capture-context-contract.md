@@ -1,0 +1,49 @@
+# C6 original context and C7 recent destination contract
+
+## Evidence before implementation
+
+Saved thoughts currently retain session_id/node_id but show no source label or return action. Promotion can replace node_id. Consequently node_id cannot serve as immutable original context. The companion separately stores a raw path and page title; this does not validate resource identity or restore an old session. A generic href field would reproduce that gap in durable storage.
+
+Inspected implementations: ParkingLotButton, parking API/ORM, LearningCompanion, Programs, Playground, Areas and ProjectAudioContext. Programs resolves course/step/view from URL and checks stale locations against its local manifest. Playground resolves workspace or a lesson session/skill pair; linked lesson context is checked against current server activity. Areas supports area/draft identity. Project audio context validates the current manifest relationship. None of these establishes portable media position or several independently resumable sessions.
+
+## Shared typed representation
+
+Use a versioned, bounded original-context value, not arbitrary URLs or copied page text. Its kind owns its identity fields. Derive navigation from those fields using an allowlisted resolver. Store a short display label as a historical label, never proof that the target still exists. Do not include credentials, external links, file-system paths, DOM text or model output.
+
+| Kind | Identity | Return semantics |
+| --- | --- | --- |
+| lesson | session ID, skill ID, block identity when present | Check authoritative current session. Resume only a matching checkpoint. Otherwise show original lesson selection with explicit Keep/End-and-start choices; never resurrect a historical session. |
+| area | area ID | Browse the exact area, without changing active learning target. Missing area offers Browse areas. |
+| project step | course ID, section ID, view=guide/notebook | Resolve against the local manifest; open exact step/view. Existing notebook content-hash recovery still governs source edits. Never claim temporary execution outputs restored. |
+| coding workspace | known activity ID, optional lesson context | Reuse existing workspace query/deep-link validation and saved-code boundary. Unknown activity gets explicit recovery, not silent Scratch substitution presented as success. |
+| audio lab | known lesson/preset identity where available, optional validated project relationship | Open relevant lab context; no autoplay or promise of local file/position restoration. Unsupported identity offers Open audio lab with that limitation. |
+| saved explanation | answer ID | Open exact existing detail, preserving provenance; missing/deleted answer exposes library recovery. |
+| source | stable chunk/document identity | Use source viewer/read-only source detail after identity validation. Do not manufacture a public URL or open private paths from stored text. |
+
+Pages without a reliable item identity can capture a thought without a return target. Explicitly say that no exact place was attached. Do not infer the current lesson from the browser's stale persisted session ID while the learner is in another workspace.
+
+## Execution sequence
+
+1. Add a small shared frontend context classifier/resolver and tests for supported routes/identities. Read current resolved screen state where URL is insufficient. Capture context on first nonempty draft edit, alongside original session/skill. It must remain unchanged while browsing or retrying.
+2. Add optional bounded context schema to POST/GET parking and a nullable original_context_json column. Include immutable context in the request fingerprint. Legacy rows stay contextless: never backfill a guessed original place from mutable promoted node_id. Regenerate API types with sanitized deltas only.
+3. Render historical context label and an explicit Open original material action in saved thought lists. Resolve before navigating. Close capture dialog and restore meaningful destination focus. Loading/error/stale states need their own feedback and retry; navigation performs no learning mutation.
+4. Reuse the same typed identity for C7 recent destinations. A visit is not mastery or completion. Keep browsing history separate from active-session checkpoints. Inventory real search stores before a command palette claims global search.
+
+Do not make the tutor context silently follow navigation. Integrating its raw path checkpoint with this typed representation is a separately verified compatibility change; existing captured text and conversations must survive.
+
+## Acceptance matrix
+
+- Save from a guide/notebook, switch topics, reload, reopen exact original material; preserve saved code and notes.
+- Save during an active lesson, then end/start another: return must explain the mismatch and never silently resume or replace the new session.
+- Capture draft in one context, navigate before submission, then retry: original identity and request payload remain identical.
+- Promote to another node: original context remains unchanged.
+- Deleted area/source/answer, changed manifest or notebook hash: explicit recovery and no fabricated restoration.
+- Unsupported/malformed context and external-path injection rejected; existing legacy thoughts remain readable.
+- Keyboard link activation/dialog close, desktop/narrow layouts and focus restoration; no hidden mutation or autoplay.
+- Storage failures and migration preserve active drafts and old records. Test exact source identity, not just destination pathname.
+
+## Boundary
+
+This is the required architecture contract before schema/UI expansion, not a claim that source return is implemented. C6 reversible action semantics remain separate. C7 typed recents/search remain incomplete. No new dependency, paid service or learning-kernel policy is proposed.
+
+Baseline evidence: 12 isolated browser journeys passed for area history, coding-workspace history/reload, lesson/code return, authored audio context (including missing/changed relationships) and notebook-start timeout recovery at narrow/desktop sizes. These validate existing route building blocks, not the unimplemented durable capture links. No runtime change in this contract slice.

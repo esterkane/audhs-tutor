@@ -1050,3 +1050,7 @@ Added optional learner-scoped save identity with immutable payload fingerprint, 
 
 ## C6 frontend capture retries — 2026-10-04
 Unchanged thought saves now retain a durable identity across retries/reload; edits and older unconfirmed drafts explicitly use Save as new thought. Replayed dropped/promoted outcomes are reported honestly. No auto-submit on restoration. Verification: 5 draft tests, 14 sanitized browser journeys, lint/types, original build, visual/keyboard checks and read-only review. See docs/slices/capture-retry-ui.md. Next: typed original-context return and reversible saved-thought actions, then C7 contexts/search.
+
+
+## C6 original-context contract — 2026-10-04
+Inspected existing identities and ran 12 passing context/deep-link browser journeys. docs/slices/capture-context-contract.md defines typed original identity, immutable promotion provenance, stale-target recovery and implementation sequence shared with C7. No runtime change yet. Next implement typed capture context and durable storage; never use a plain historical /session link as proof of old-session recovery.

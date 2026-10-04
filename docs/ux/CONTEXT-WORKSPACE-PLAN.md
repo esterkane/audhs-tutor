@@ -81,3 +81,5 @@ C6 capture transaction prerequisite: ../slices/capture-atomicity.md. Event failu
 C6 durable capture retry backend is recorded in ../slices/capture-retry.md. Frontend adoption is next; existing UI saves are still unkeyed.
 
 C6 frontend save identity adoption is implemented in ../slices/capture-retry-ui.md. Durable source return and action undo remain open; retry work alone does not complete context preservation.
+
+Next C6 source-return implementation follows ../slices/capture-context-contract.md; the 12 passing baseline journeys cover existing routes only, not durable saved-thought return.
