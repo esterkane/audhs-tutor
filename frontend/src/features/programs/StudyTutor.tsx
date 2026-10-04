@@ -435,20 +435,23 @@ function Conversation({
           </Button>
         </div>
       )}
-      <p className="text-xs text-muted mt-2">
-        Feedback is guidance, not a verified grade. Checking an answer uses the separate answer-feedback model
-        (OpenAI by default) and sends your submitted answer, supplied material, code, output and recent
-        conversation plus relevant saved replies to that provider. The separate Check bin boundaries action
-        runs locally without a model. Other tutor actions keep their existing models.{' '}
-        <Link to="/models">Choose models</Link>
+      <p className="text-sm text-muted mt-2">
+        Tutor feedback is guidance, not a verified grade. Answer checks send your work and study context to
+        the selected feedback model (OpenAI by default). <Link to="/models">Choose models</Link>
       </p>
-      {(context.length > 1000 || code.length > 16000 || output.length > 4000) && (
-        <p role="status">
+      <details className="text-sm text-muted mt-2">
+        <summary>What is sent to the tutor?</summary>
+        <p>
+          Answer checks include your submitted answer, supplied material, code, output, recent conversation
+          and relevant saved replies. Other tutor actions keep their existing models. Check bin boundaries
+          runs locally without a model.
+        </p>
+        <p>
           Answer checks include the complete step material up to 8,000 characters; longer steps must be
           narrowed. Other tutor actions use the first 1,000 characters of material. Code is limited to 16,000
           characters and run output to 4,000. Task answers are sent in full, up to 8,000 characters.
         </p>
-      )}
+      </details>
       {reply && (
         <div className="mt-3 grid gap-3" aria-label="Tutor conversation">
           {conversation.length > 2 && (
