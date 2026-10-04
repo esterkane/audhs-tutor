@@ -1021,3 +1021,8 @@ Save for later replaces Park; failed/timed-out save retains text with uncertaint
 ## C6 thought draft recovery — 2026-10-04
 
 Versioned tab checkpoint retains text, original session/skill and unconfirmed-save state; reload never submits. API text bound and storage errors explicit. docs/slices/capture-recovery-contract.md records tests and larger backend gaps. Next: saved-thought action feedback/recovery; C6/C7 remain open.
+
+
+## C6 saved-thought actions — 2026-10-04
+
+Show on Home and deliberate Remove replace misleading Promote/Drop/Done labels; pending/error/deadline/focus feedback added. See docs/slices/saved-thought-actions.md. Backend undo/idempotency are not implemented. Next: remaining Home composition/data reconciliation, then C7.
