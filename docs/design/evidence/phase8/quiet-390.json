@@ -1,0 +1,21 @@
+{
+  "direction": "quiet",
+  "viewportWidth": 390,
+  "viewportHeight": 900,
+  "documentHeight": 1825,
+  "lesson": {
+    "top": 634,
+    "width": 358,
+    "height": 837
+  },
+  "primaryAction": {
+    "top": 1181,
+    "width": 159,
+    "height": 44
+  },
+  "help": {
+    "top": 1495,
+    "width": 358,
+    "height": 262
+  }
+}

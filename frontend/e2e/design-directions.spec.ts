@@ -25,6 +25,16 @@ for (const direction of ['quiet', 'structured', 'canvas']) {
       await writeFile(info.outputPath('accessibility.json'), JSON.stringify(violations, null, 2))
       expect(violations).toEqual([])
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      const layout = await page.evaluate(() => {
+        const rect = (selector: string) => {
+          const box = document.querySelector(selector)!.getBoundingClientRect()
+          return { top: Math.round(box.top), width: Math.round(box.width), height: Math.round(box.height) }
+        }
+        return { viewportWidth: innerWidth, viewportHeight: innerHeight,
+          documentHeight: document.documentElement.scrollHeight,
+          lesson: rect('.lesson'), primaryAction: rect('#try'), help: rect('.support') }
+      })
+      await writeFile(info.outputPath('layout.json'), JSON.stringify({ direction, ...layout }, null, 2))
       await page.screenshot({ path: info.outputPath('initial.png'), fullPage: true })
       await page.getByRole('button', { name: 'Try a comparison' }).focus()
       await page.keyboard.press('Enter')

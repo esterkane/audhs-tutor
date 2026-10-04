@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 7 (2026-10-04)
+## Current owner scope — UX phase 8 (2026-10-04)
 
-Phase 7 [isolated prototypes](../design-experiments/ux-directions/README.md) provide Quiet Workspace, Structured Learning and Adaptive Canvas with identical fixture content and actions. Nine standalone browser checks across320/390/1280px, initial axe scans, focused lint and inline-script syntax passed; desktop/narrow images inspected. Help focus and preview navigation state corrected within prototypes. Production routes, learning logic and services unchanged. Next: Phase8 comparison matrix and recommendation; no winner or human usability pass claimed yet.
+Phase 8 [design recommendation](design/DESIGN-DECISION.md) compares three directions against eight criteria and recorded layout measurements. Recommend Quiet Workspace for reading/session content, with explicit help-reachability and real-state acceptance gates; preserve wider existing task workspaces. Scores are reviewer judgments, not human outcomes. Nine standalone probes and focused lint passed. No production behavior changed. Next: Phase 9 bounded implementation plan with file/risk/test scopes.
 
 ## Prioritized next work
 

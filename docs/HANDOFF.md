@@ -805,3 +805,7 @@ Added docs/design/DESIGN-SYSTEM.md and token-contrast.json. Inspected existing C
 ## 2026-10-04 — Phase 7 isolated visual directions
 
 Added design-experiments/ux-directions HTML and rationale, standalone design Playwright config/probes and screenshots. Three directions share one fixture, script and IA; no database/network/model calls or production replacements. Initial6 checks and final9 checks passed, focused ESLint and script syntax pass; desktop/320px images reviewed. Explicit help now focuses the updated heading and navigation preview reflects current state. Narrow layouts remain long. Dark mode, real audio/streaming/persistence and human comprehension remain outside prototype verification. Next is Phase8 scoring/recommendation.
+
+## 2026-10-04 — Phase 8 direction comparison
+
+Added docs/design/DESIGN-DECISION.md and nine initial-layout measurements; extended existing design probes without changing prototypes or production. Nine tests and focused ESLint passed. Weighted matrix arithmetic checked: A3.75/B3.50/C3.35; recommendation is sensitive to judgment changes, not measured learning efficacy. Quiet Workspace recommended for reading while retaining wide task surfaces. Below-fold help, human comprehension, themes/zoom and real state integration remain acceptance gates. Next: Phase 9 implementation plan.

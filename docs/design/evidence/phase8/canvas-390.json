@@ -1,0 +1,21 @@
+{
+  "direction": "canvas",
+  "viewportWidth": 390,
+  "viewportHeight": 900,
+  "documentHeight": 1978,
+  "lesson": {
+    "top": 660,
+    "width": 358,
+    "height": 927
+  },
+  "primaryAction": {
+    "top": 1280,
+    "width": 159,
+    "height": 44
+  },
+  "help": {
+    "top": 1611,
+    "width": 358,
+    "height": 299
+  }
+}

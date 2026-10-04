@@ -1,0 +1,21 @@
+{
+  "direction": "structured",
+  "viewportWidth": 320,
+  "viewportHeight": 900,
+  "documentHeight": 2164,
+  "lesson": {
+    "top": 724,
+    "width": 288,
+    "height": 1049
+  },
+  "primaryAction": {
+    "top": 1466,
+    "width": 159,
+    "height": 44
+  },
+  "help": {
+    "top": 1797,
+    "width": 288,
+    "height": 299
+  }
+}
