@@ -60,6 +60,16 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   const queueKey = `audhs-review-queue:v1:${sessionId}`
   const [queue, setQueue] = useState(() => restoreQueue(queueKey))
   const saving = useRef(false)
+  const stopping = useRef(false)
+  const active = useRef(false)
+  useEffect(() => {
+    active.current = true
+    return () => {
+      active.current = false
+    }
+  }, [])
+  const [stopPending, setStopPending] = useState(false)
+  const [stopError, setStopError] = useState<string | null>(null)
   useEffect(() => {
     if (!sessionId) return
     try {
@@ -222,14 +232,39 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   }
 
   async function stopHere() {
-    if (transition.pending) return
+    if (transition.pending || stopping.current) return
+    stopping.current = true
+    setStopPending(true)
+    setStopError(null)
     try {
-      if (inReviewBlock && state && state.block_index != null) {
-        await transition.end({ index: state.block_index, reason: 'save_and_stop', switched_early: true })
+      // Cards can finish loading before the session. Missing state is not proof that
+      // no block needs saving; resolve the authoritative state before leaving.
+      const fresh = await session.refetch()
+      if (!active.current) return
+      if (fresh.error) throw fresh.error
+      const current = fresh.data?.state
+      if (!current) throw new Error('Session state is unavailable. Retry saving your progress.')
+      if (
+        current.block_status === 'running' &&
+        REVIEW_BLOCK_TYPES.includes(current.block?.type ?? '') &&
+        current.block_index != null
+      ) {
+        const saved = await transition.end({
+          index: current.block_index,
+          reason: 'save_and_stop',
+          switched_early: true,
+        })
+        if (!active.current) return
+        if (saved.block_status !== 'ended')
+          throw new Error('The session changed before progress was saved. Retry or return to the session.')
       }
       nav('/recap')
-    } catch {
-      /* transition.error is rendered; stay here */
+    } catch (error) {
+      if (!active.current) return
+      setStopError(error instanceof Error ? error.message : 'Could not save progress. Please retry.')
+    } finally {
+      stopping.current = false
+      if (active.current) setStopPending(false)
     }
   }
 
@@ -258,10 +293,11 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
               Back to the session
             </Button>
           )}
-          <Button onClick={() => void stopHere()} disabled={transition.pending}>
+          <Button onClick={() => void stopHere()} disabled={transition.pending || stopPending}>
             Finish session
           </Button>
         </div>
+        {stopError && <p role="alert">{stopError}</p>}
         {transition.error && (
           <p role="alert" className="text-warn mt-2">
             {transition.error.message}
@@ -383,8 +419,9 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
           </div>
         )}
       </Card>
+      {stopError && <p role="alert">{stopError}</p>}
       <div className="flex gap-2 flex-wrap">
-        <Button variant="ghost" onClick={() => void stopHere()} disabled={transition.pending}>
+        <Button variant="ghost" onClick={() => void stopHere()} disabled={transition.pending || stopPending}>
           Stop here (save progress)
         </Button>
         {due.data.total_due > items.length && !showAll && (

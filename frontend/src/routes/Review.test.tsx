@@ -1,7 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { useMode } from '../stores/mode'
 import { jsonResponse, renderApp } from '../test/utils'
 import { Review } from './Review'
@@ -78,6 +78,127 @@ describe('Review', () => {
     vi.restoreAllMocks()
     vi.unstubAllGlobals()
     sessionStorage.clear()
+  })
+
+  it('waits for delayed session state before saving Stop and opening recap', async () => {
+    useMode.setState({ sessionId: 's1' })
+    let release!: (response: Response) => void
+    const sessionRead = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    const ended = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
+        if (url.startsWith('/api/review/due')) return jsonResponse(due)
+        if (url.endsWith('/api/sessions/s1')) return sessionRead
+        if (url.endsWith('/api/plan/blocks/end')) {
+          ended()
+          return jsonResponse({ ...reviewSession.state, block_status: 'ended' })
+        }
+        return jsonResponse(null)
+      }),
+    )
+    renderApp(
+      <Routes>
+        <Route path="/" element={<Review />} />
+        <Route path="/recap" element={<p>RECAP SCREEN</p>} />
+      </Routes>,
+    )
+    await screen.findByRole('button', { name: 'Show answer' })
+    fireEvent.click(screen.getByRole('button', { name: 'Stop here (save progress)' }))
+    expect(screen.queryByText('RECAP SCREEN')).not.toBeInTheDocument()
+    expect(ended).not.toHaveBeenCalled()
+    await act(async () => {
+      release(jsonResponse(reviewSession))
+    })
+    await screen.findByText('RECAP SCREEN')
+    expect(ended).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the review visible when Stop cannot read session state and permits retry', async () => {
+    useMode.setState({ sessionId: 's1' })
+    let fail = true
+    const ended = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
+        if (url.startsWith('/api/review/due')) return jsonResponse(due)
+        if (url.endsWith('/api/sessions/s1')) {
+          if (fail) throw new Error('Session unavailable')
+          return jsonResponse(reviewSession)
+        }
+        if (url.endsWith('/api/plan/blocks/end')) {
+          ended()
+          return jsonResponse({ ...reviewSession.state, block_status: 'ended' })
+        }
+        return jsonResponse(null)
+      }),
+    )
+    renderApp(
+      <Routes>
+        <Route path="/" element={<Review />} />
+        <Route path="/recap" element={<p>RECAP SCREEN</p>} />
+      </Routes>,
+    )
+    await screen.findByRole('button', { name: 'Show answer' })
+    fireEvent.click(screen.getByRole('button', { name: 'Stop here (save progress)' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Session unavailable')
+    expect(ended).not.toHaveBeenCalled()
+    expect(screen.queryByText('RECAP SCREEN')).not.toBeInTheDocument()
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Stop here (save progress)' }))
+    await screen.findByText('RECAP SCREEN')
+    expect(ended).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not navigate back to recap after leaving while Stop saves', async () => {
+    useMode.setState({ sessionId: 's1' })
+    let release!: (response: Response) => void
+    const save = new Promise<Response>((resolve) => {
+      release = resolve
+    })
+    const ending = vi.fn()
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
+        if (url.startsWith('/api/review/due')) return jsonResponse(due)
+        if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
+        if (url.endsWith('/api/plan/blocks/end')) {
+          ending()
+          return save
+        }
+        return jsonResponse(null)
+      }),
+    )
+    renderApp(
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <>
+              <Link to="/home">Leave review</Link>
+              <Review />
+            </>
+          }
+        />
+        <Route path="/home" element={<p>HOME SCREEN</p>} />
+        <Route path="/recap" element={<p>RECAP SCREEN</p>} />
+      </Routes>,
+    )
+    await screen.findByRole('button', { name: 'Show answer' })
+    fireEvent.click(screen.getByRole('button', { name: 'Stop here (save progress)' }))
+    await waitFor(() => expect(ending).toHaveBeenCalledTimes(1))
+    fireEvent.click(screen.getByRole('link', { name: 'Leave review' }))
+    await screen.findByText('HOME SCREEN')
+    await act(async () => {
+      release(jsonResponse({ ...reviewSession.state, block_status: 'ended' }))
+    })
+    expect(screen.getByText('HOME SCREEN')).toBeInTheDocument()
+    expect(screen.queryByText('RECAP SCREEN')).not.toBeInTheDocument()
   })
 
   it('reveals before rating, sends confidence per card, resets it, and advances the plan when done', async () => {
