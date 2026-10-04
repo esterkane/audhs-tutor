@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { lessonIds, type LessonCheckpoint } from './lessonCheckpoint'
 import { Button } from '../../components/ui/button'
-import { defaultTone, type ToneSettings } from './tone'
+import { type ToneSettings } from './tone'
 import { GuidedExperiments } from './GuidedExperiments'
 const lessons = [
   {
@@ -47,6 +47,8 @@ const lessons = [
   },
 ]
 export function AudioLessons({
+  state,
+  onChange,
   active,
   starting,
   onStart,
@@ -54,6 +56,8 @@ export function AudioLessons({
   onReturn,
   onCreate,
 }: {
+  state: LessonCheckpoint
+  onChange: (state: LessonCheckpoint) => void
   active: boolean
   starting: boolean
   onStart: (s: ToneSettings) => void
@@ -61,11 +65,10 @@ export function AudioLessons({
   onReturn: () => void
   onCreate: () => void
 }) {
-  const [step, setStep] = useState(0)
-  const [settings, setSettings] = useState(defaultTone)
-  const [hint, setHint] = useState(false)
+  const step = lessonIds.indexOf(state.step)
+  const { settings, hint } = state
   function update(next: ToneSettings) {
-    setSettings(next)
+    onChange({ ...state, settings: next })
     if (active) onUpdate(next)
   }
   const lesson = lessons[step]
@@ -78,9 +81,10 @@ export function AudioLessons({
           className="block border rounded bg-card p-2"
           value={step}
           onChange={(e) => {
-            setStep(Number(e.target.value))
-            if (Number(e.target.value) !== 2) update({ ...settings, waveform: 'sine' })
-            setHint(false)
+            const next = Number(e.target.value)
+            const nextSettings: ToneSettings = next === 2 ? settings : { ...settings, waveform: 'sine' }
+            onChange({ step: lessonIds[next], settings: nextSettings, hint: false })
+            if (active) onUpdate(nextSettings)
           }}
         >
           {lessons.map((l, i) => (
@@ -166,7 +170,7 @@ export function AudioLessons({
       {step === 4 && <GuidedExperiments />}
       {step === 5 && <Button onClick={onCreate}>Open Create</Button>}
       <div className="flex gap-2">
-        <Button variant="outline" onClick={() => setHint(!hint)}>
+        <Button variant="outline" onClick={() => onChange({ ...state, hint: !hint })}>
           {hint ? 'Hide hint' : 'One hint'}
         </Button>
         {active && (

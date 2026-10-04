@@ -1,3 +1,4 @@
+import { initialLesson } from '../features/visualizer/lessonCheckpoint'
 import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -42,6 +43,7 @@ export function Visualizer() {
 
   const [recoveredMedia] = useState(() => mediaCheckpoint.read())
   const [recovered] = useState(() => workspaceCheckpoint.read())
+  const [lessonState, setLessonState] = useState(recovered?.lesson ?? initialLesson)
   const [draftSaved, setDraftSaved] = useState(true)
   const [savedId, setSavedId] = useState<string | null>(() => {
     if (recovered) return recovered.savedId
@@ -60,11 +62,11 @@ export function Visualizer() {
   const history = useDraftHistory(JSON.stringify(preset, null, 2), recovered?.history)
   const { text, change: setText } = history
   useEffect(() => {
-    const saved = workspaceCheckpoint.write({ version: 1, preset, history: history.snapshot, view, renderer, savedId })
+    const saved = workspaceCheckpoint.write({ version: 1, preset, history: history.snapshot, view, renderer, savedId, lesson: lessonState })
     // Reflect external storage success without changing the editable draft.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setDraftSaved(saved)
-  }, [preset, history.snapshot, view, renderer, savedId])
+  }, [preset, history.snapshot, view, renderer, savedId, lessonState])
   const [importDraft, setImportDraft] = useState<Preset | null>(null)
   const [importError, setImportError] = useState('')
   const importGeneration = useRef(0)
@@ -631,7 +633,7 @@ export function Visualizer() {
       </div>
       <p className="text-sm text-muted" role="status">
         {draftSaved ? 'Editing draft kept automatically in this browser. Save a preset to add it to your collection.' : 'Browser recovery is unavailable. Edits remain in this tab until reload; export your draft to keep it. Existing stored data was not replaced.'}
-        {' '}Files and positions stay only in this tab until reload. Lesson controls are not recovered yet.
+        {' '}Files and positions stay only in this tab until reload. The lesson step, tone settings and hint are kept; test signals require Start.
       </p>
       {recoveredMedia && <p className="text-sm text-muted">Your local file is retained in this tab. Playback is stopped until you press Play or Resume; enable sound explicitly if wanted.</p>}
       <nav aria-label="Visualizer views" className="flex flex-wrap gap-2">
@@ -1281,6 +1283,8 @@ export function Visualizer() {
           <aside tabIndex={-1} id="visualizer-explanation" hidden={view !== 'Learn'}>
             <Card className="grid gap-3">
               <AudioLessons
+                state={lessonState}
+                onChange={setLessonState}
                 active={source === 'lesson'}
                 starting={starting}
                 onStart={(settings) => void startLesson(settings)}

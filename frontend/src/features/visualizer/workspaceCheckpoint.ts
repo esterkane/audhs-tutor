@@ -1,3 +1,4 @@
+import { parseLesson, type LessonCheckpoint } from './lessonCheckpoint'
 import { parsePreset, type Preset } from './engine'
 import type { DraftHistoryState } from './useDraftHistory'
 
@@ -8,6 +9,7 @@ export type WorkspaceCheckpoint = {
   history: DraftHistoryState
   view: 'Watch' | 'Learn' | 'Create'
   renderer: 'graph' | 'milkdrop'
+  lesson?: LessonCheckpoint
   savedId: string | null
 }
 function parse(raw: string): WorkspaceCheckpoint {
@@ -18,6 +20,7 @@ function parse(raw: string): WorkspaceCheckpoint {
       !(value.savedId === null || (typeof value.savedId === 'string' && value.savedId.length <= 100)) ||
       !value.history || typeof value.history.text !== 'string' || value.history.text.length > 16000)
     throw new Error('Unsupported workspace')
+  if (value.lesson !== undefined) value.lesson = parseLesson(value.lesson)
   for (const list of [value.history.past, value.history.future]) {
     if (!Array.isArray(list) || list.length > 50) throw new Error('Invalid history')
     for (const text of list) {

@@ -901,3 +901,7 @@ Raw drafts, applied graph, history and selected view now recover across route ex
 ## Paused visualizer file recovery — 2026-10-04
 
 File/position now survive route exit in tab memory, with disposed audio resources and explicit silent Resume. See slices/visualizer-media-recovery.md for verification, tone-detour correction and remaining reload/lesson boundaries.
+
+## Audio lesson controls — 2026-10-04
+
+Lesson step, tone settings and hint recover across route exit/reload without autoplay. See slices/visualizer-lesson-recovery.md. Next recover comparison predictions and close source/reselection gaps; full C3 remains open.
