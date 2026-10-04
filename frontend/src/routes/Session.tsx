@@ -1,4 +1,4 @@
-import { Together } from './Together'
+import { AlongsideMode } from '../features/session/AlongsideMode'
 import { AssessmentRecovery } from '../features/assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../features/programs/AssessmentSaveStatus'
 import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
@@ -55,7 +55,6 @@ import { SOFT_TIMER_MIN, useMode } from '../stores/mode'
 type Phase = 'teach' | 'assess' | 'challenge' | 'practice'
 
 export function Session() {
-  const [alongside, setAlongside] = useState(false)
   const { sessionId } = useMode()
   const nav = useNavigate()
   const session = useSession(sessionId)
@@ -98,11 +97,7 @@ export function Session() {
         </Card>
       )}
       <SessionControls sessionId={sessionId} skillId={st.skill_id} />
-      <details onToggle={event => setAlongside(event.currentTarget.open)}>
-        <summary className="cursor-pointer text-sm font-medium">Work alongside</summary>
-        <p className="text-sm text-muted my-2">Keep this lesson open with a quiet work panel. Closing it keeps your answer here.</p>
-        {alongside && <Together embedded />}
-      </details>
+      <AlongsideMode sessionId={sessionId} />
       {st.skill_id && <details>
         <summary className="cursor-pointer text-sm font-medium">Try a coding experiment</summary>
         <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson. Code and chat stay separate from your assessed answers; no code runs automatically.</p>

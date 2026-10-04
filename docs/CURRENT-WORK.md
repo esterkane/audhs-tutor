@@ -78,3 +78,8 @@ Lesson-linked coding experiments now retain isolated drafts and validate the cur
 ## C3 next implementation: server-verified lesson origin
 
 Tool recovery slices are recorded in visualizer-*-recovery and related slice docs. The next substantive gap is lesson-grounded coding help: read slices/lesson-playground-evidence-plan.md. Begin with optional typed origin/server validation, preserving existing standalone/program callers and completed replays. Source snapshots/reuse require their own bounded follow-up. Full C3/C4/C5 remain open.
+
+
+## C3 work-alongside recovery — 2026-10-04
+
+The embedded quiet-panel choice survives matching-session/tab detours and reload without audio autoplay. See slices/alongside-recovery.md for verification and limits. Source retrieval/starter scaffolding shipped separately; older TODOs are historical. Remaining project/review/audio entry contracts and C5 stay open.

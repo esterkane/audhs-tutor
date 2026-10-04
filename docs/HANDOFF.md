@@ -961,3 +961,8 @@ Prompt v2 plus versioned reuse improves the bounded local sample but does not pa
 ## Validated starter contract — 2026-10-04
 
 Starter help now separates model-proposed data/result from app-owned unfinished Python scaffolding. Keyboard insertion, Undo and lesson return remain explicit; narrow conversation overflow fixed. See slices/starter-contract-progress.md for verification and remaining semantic quality limits. Full C3/design plan remains open.
+
+
+## C3 work-alongside recovery — 2026-10-04
+
+The embedded quiet-panel choice survives matching-session/tab detours and reload without audio autoplay. See slices/alongside-recovery.md for verification and limits. Source retrieval/starter scaffolding shipped separately; older TODOs are historical. Remaining project/review/audio entry contracts and C5 stay open.
