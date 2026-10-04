@@ -89,7 +89,7 @@ export function ParkingLotButton() {
               skillId: text ? draft.skillId : skillId,
               unconfirmed: Boolean(e.target.value) && draft.unconfirmed,
               requestKey: e.target.value === text ? draft.requestKey : undefined,
-              originalContext: text ? draft.originalContext : captureThoughtContext(location.pathname, document.querySelector('[data-capture-query]')?.getAttribute('data-capture-query') ?? location.search, document.querySelector('main h1')?.textContent ?? 'Original material'),
+              originalContext: text ? draft.originalContext : captureThoughtContext(location.pathname, Array.from(document.querySelectorAll('[data-capture-query]')).at(-1)?.getAttribute('data-capture-query') ?? location.search, document.querySelector('main h1')?.textContent ?? 'Original material'),
             }) }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {

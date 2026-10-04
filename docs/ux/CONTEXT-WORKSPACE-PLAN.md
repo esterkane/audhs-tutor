@@ -85,3 +85,5 @@ C6 frontend save identity adoption is implemented in ../slices/capture-retry-ui.
 Next C6 source-return implementation follows ../slices/capture-context-contract.md; the 12 passing baseline journeys cover existing routes only, not durable saved-thought return.
 
 C6 durable context first slice is implemented for areas/projects/answers/standalone code workspaces; see capture-context-contract.md for unresolved lesson/audio/source identities and remaining acceptance. C7 remains pending.
+
+Task-starter saved-thought round-trip acceptance now passes, with a distinct task view; see capture-context-contract.md. This does not close remaining session/audio/source return requirements.

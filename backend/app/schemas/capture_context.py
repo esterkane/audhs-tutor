@@ -22,7 +22,7 @@ class ProjectCapture(ContextBase):
     kind: Literal["project"]
     course_id: Identity
     section_id: Identity
-    view: Literal["guide", "notebook"]
+    view: Literal["guide", "notebook", "task"]
 
 
 class AnswerCapture(ContextBase):

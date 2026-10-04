@@ -1058,3 +1058,7 @@ Inspected existing identities and ran 12 passing context/deep-link browser journ
 
 ## C6 typed original material links — 2026-10-04
 First durable capture context slice implemented; see docs/slices/capture-context-contract.md for exact supported types, migration, evidence and remaining limits. Uses displayed route identity, preserving source context through promotion and reload. 14 backend/8 unit checks plus browser regressions and sanitized final 6 context journeys pass. Next complete lesson/source/audio identity handling and project-notebook saved-thought acceptance before declaring source-return complete.
+
+
+## C6 task starter return — 2026-10-04
+Fixed reproduced saved-thought task-notebook link opening only the guide after the notebook was closed. Distinct task view now restores the starter with saved code/notes; no automatic execution. Final sanitized5browser,9unit,5backend checks passed with lint/types/build. See capture-context-contract.md for review and limits. Next: session/audio/source identities and undo; broader C7 remains pending.

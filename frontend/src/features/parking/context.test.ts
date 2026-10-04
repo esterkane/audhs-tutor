@@ -15,3 +15,8 @@ it('builds only known internal destination kinds', () => {
   expect(thoughtContextPath(captureThoughtContext('/answers/id-1', '', 'Explanation')!)).toBe('/answers/id-1')
   expect(captureThoughtContext('/models', '', 'Models')).toBeUndefined()
 })
+
+it('distinguishes task starter from full course notebook and guide', () => {
+  const context = captureThoughtContext('/programs', '?course=c&step=s&view=task', 'Starter')!
+  expect(thoughtContextPath(context)).toBe('/programs?course=c&step=s&view=task')
+})

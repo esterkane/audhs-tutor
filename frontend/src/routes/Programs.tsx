@@ -329,12 +329,16 @@ export function Programs() {
             </div>
           )}
           <div role="region" aria-label="Guided lesson" hidden={paused || notebookView}>
+            {params.get('view') === 'task' && section && !section.practice && <p role="alert">This task notebook is no longer available. Your guide and saved notes remain available below.</p>}
             {section ? (
               <GuidedSection
                 key={course.id + ':' + section.id}
                 section={section}
                 course={course.id}
                 paused={paused || notebookView}
+                captureContext={!staleLocation}
+                requestedTask={params.get('view') === 'task'}
+                onCloseTask={() => setParams(previous => { const next = new URLSearchParams(previous); next.delete('view'); return next })}
                 onOpenNotebook={() => showNotebook(true)}
               />
             ) : (

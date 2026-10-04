@@ -4444,7 +4444,7 @@ export interface components {
        * View
        * @enum {string}
        */
-      view: 'guide' | 'notebook'
+      view: 'guide' | 'notebook' | 'task'
     }
     /** PromoteIn */
     PromoteIn: {

@@ -8,14 +8,14 @@ export function validThoughtContext(value: unknown): value is ThoughtContext {
   if (c.kind === 'area') return id(c.area_id)
   if (c.kind === 'answer') return id(c.answer_id)
   if (c.kind === 'workspace') return id(c.workspace_id)
-  return c.kind === 'project' && id(c.course_id) && id(c.section_id) && ['guide', 'notebook'].includes(String(c.view))
+  return c.kind === 'project' && id(c.course_id) && id(c.section_id) && ['guide', 'notebook', 'task'].includes(String(c.view))
 }
 export function captureThoughtContext(path: string, search: string, label: string): ThoughtContext | undefined {
   const p = new URLSearchParams(search)
   const base = { version: 1 as const, label: label.slice(0, 200) || 'Original material' }
   let context: unknown
   if (path === '/areas') context = { ...base, kind: 'area', area_id: p.get('area') }
-  else if (path === '/programs') context = { ...base, kind: 'project', course_id: p.get('course'), section_id: p.get('step'), view: p.get('view') === 'notebook' ? 'notebook' : 'guide' }
+  else if (path === '/programs') context = { ...base, kind: 'project', course_id: p.get('course'), section_id: p.get('step'), view: ['notebook', 'task'].includes(p.get('view') ?? '') ? p.get('view') : 'guide' }
   else if (/^\/answers\/[^/]+$/.test(path)) context = { ...base, kind: 'answer', answer_id: path.split('/')[2] }
   else if (path === '/playground' && !p.has('lesson_session') && !p.has('lesson_skill')) context = { ...base, kind: 'workspace', workspace_id: p.get('workspace') }
   return validThoughtContext(context) ? context : undefined
@@ -26,5 +26,5 @@ export function thoughtContextPath(context: ThoughtContext): string | undefined 
   if (c.kind === 'area') return `/areas?area=${encodeURIComponent(c.area_id)}`
   if (c.kind === 'answer') return `/answers/${encodeURIComponent(c.answer_id)}`
   if (c.kind === 'workspace') return `/playground?workspace=${encodeURIComponent(c.workspace_id)}`
-  return `/programs?${new URLSearchParams({ course: c.course_id, step: c.section_id, ...(c.view === 'notebook' ? { view: 'notebook' } : {}) })}`
+  return `/programs?${new URLSearchParams({ course: c.course_id, step: c.section_id, ...(c.view !== 'guide' ? { view: c.view } : {}) })}`
 }

@@ -19,11 +19,11 @@ type Work = {
   practiceOrigin: string | null
 }
 const phases: Phase[] = ['Understand', 'Try', 'Think deeper']
-type Props = { section: Section; course: string; paused: boolean; onOpenNotebook?: () => void }
+type Props = { section: Section; course: string; paused: boolean; onOpenNotebook?: () => void; captureContext?: boolean; requestedTask?: boolean; onCloseTask?: () => void }
 export function GuidedSection(props: Props) {
   return <Content key={`${props.course}:${props.section.id}`} {...props} />
 }
-function Content({ section, course, paused, onOpenNotebook }: Props) {
+function Content({ section, course, paused, onOpenNotebook, requestedTask, onCloseTask, captureContext = true }: Props) {
   const key = `project-study:v1:${course}:${section.id}`
   const practiceOrigin = section.practice
     ? JSON.stringify([section.practice.notebook, section.practice.dataset ?? null])
@@ -72,7 +72,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
   })
   const [work, setWork] = useState<Work>(restored.work)
   const [saved, setSaved] = useState(restored.status)
-  const practiceOpen = practiceOrigin !== null && work.practiceOrigin === practiceOrigin
+  const practiceOpen = practiceOrigin !== null && (requestedTask || work.practiceOrigin === practiceOrigin)
   const [hint, setHint] = useState(false)
   const [check, setCheck] = useState(false)
   const [tutorOpen, setTutorOpen] = useState(false)
@@ -124,7 +124,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
   const tutorAnswer = work.phase === 'Try' ? work.note : work.phase === 'Think deeper' ? answer : ''
   if (practiceOpen && section.practice)
     return (
-      <div className="grid gap-3">
+      <div className="grid gap-3" data-capture-query={!paused && captureContext ? new URLSearchParams({ course, step: section.id, view: "task" }).toString() : undefined}>
         <p role="status">
           {saved === 'Saved work restored.'
             ? 'Your notebook view and saved project notes were restored.'
@@ -140,6 +140,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
           title={section.title}
           paused={paused}
           onBack={(summary) => {
+            onCloseTask?.()
             update({
               ...work,
               practiceOrigin: null,
