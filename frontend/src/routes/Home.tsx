@@ -1,5 +1,4 @@
 import { RecentContexts } from '../features/recent/RecentContexts'
-import { RecentAreas } from '../features/areas/RecentAreas'
 import { HomeTopicPreparation } from '../features/areas/HomeTopicPreparation'
 import { SelectedLesson } from '../features/session/SelectedLesson'
 import { useAreas } from '../features/areas/api'
@@ -301,7 +300,6 @@ function HomeOverview() {
         <p className="text-sm text-muted my-2">Review the selected lesson before deciding whether to end your current session. Opening this does not change your saved work.</p>
         {newSessionCard}
       </details> : newSessionCard}
-      <RecentAreas />
       <RecentContexts />
       <AdaptationCards />
       <PromotedReminders />

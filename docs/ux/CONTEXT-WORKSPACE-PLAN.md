@@ -112,3 +112,6 @@ C7 first recent-material UI now records loaded sources and known standalone codi
 
 
 Recent project views and guarded lesson checkpoints are implemented; tests and limitations in docs/slices/recent-contexts.md. Next: reconcile area history and complete search-store inventory; preserve authoritative Resume.
+
+
+C7 area history now shares the Home disclosure while retaining its validated area-picker store. Additional skill/project/notebook/thought search inventory and the next two-provider search slice are recorded in docs/slices/recent-contexts.md. No global-search completeness claim.
