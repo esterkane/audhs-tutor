@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 9 (2026-10-04)
+## Current owner scope — UX phase 10, Stage 1a (2026-10-04)
 
-Phase 9 [bounded implementation plan](ux/IMPLEMENTATION-PLAN.md) defines files, components, risks, expected gains and acceptance for tokens/primitives, truthful states, shell, learning, progress, settings, reflow and accessibility. All proposed production slices remain unimplemented. Next is original Phase 10, Stage 1a: inspect and verify existing Textarea/inline-code styling, then adopt necessary semantic tokens with theme/keyboard/narrow checks. Mastery semantics require separate investigation; no silent kernel change. Other queues remain parked.
+Implemented [shared Textarea boundaries and inline-code tokens](slices/design-control-code-tokens.md), fixing system-dark inline code contrast from1.08 to10.84 and raising shared field borders above4.8. Nineteen browser checks and ten units pass; lint/types/build pass with existing warnings. No learning logic changed. Next bounded work is Stage1b: reproduce primitive label/heading issues; other native controls, broader layout and remaining acceptance gates stay open.
 
 ## Prioritized next work
 

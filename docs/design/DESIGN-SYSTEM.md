@@ -101,3 +101,7 @@ Phase7 prototypes reuse this foundation and the same IA; they may explore hierar
 Before accepting a component: light/dark/system; standard/large text; comfortable/compact; keyboard; narrow 320/390px and desktop; zoom; reduced motion; loading/error/empty/saved combinations; visual review and assistive semantics. Verify actual interaction, not only compilation. Keep the known opaque-metric, model-content and delayed-return issues separate; styling cannot close those gates.
 
 This phase inspected CSS and Button/Card/Choice/Textarea implementation, computed 20 token-pair ratios, and documented gaps. It does not claim a new browser run or complete WCAG audit. Existing Phase4 screenshots remain baseline evidence. Production styles are intentionally unchanged until prototype comparison and bounded implementation stages.
+
+## Adoption update — 2026-10-04
+
+Phase10 Stage1a now implements `control` (light#697380/dark#8993a0) for shared Textarea and `code` (light#eef0f3/dark#2a3038) for inline-code surfaces, including system dark mode. The opening specification describes the pre-adoption baseline. See [measured slice](../slices/design-control-code-tokens.md); error-role adoption, other native controls and broader primitive/layout work remain open.

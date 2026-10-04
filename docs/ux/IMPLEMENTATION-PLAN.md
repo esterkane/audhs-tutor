@@ -63,3 +63,7 @@ Each completed slice records problem, files, exact tests/visual/keyboard/respons
 After bounded implementation: add stable visual baselines for Home, lesson, question, feedback, progress, settings and mobile lesson; compare unexpected changes manually. Repeat the original personas and record measured steps/re-entry/errors, separately from subjective preferences, in `docs/ux/UX-BEFORE-AFTER.md`. Measure production bundle/route load, layout shifts and unnecessary renders before cleanup. Remove only proven dead code/experiments after validation; retain design rationale. Existing bundle warnings are not resolved by this plan.
 
 Phase 9 checked current paths and existing tests against this sequence; no application code or learning logic changed. Human acceptance, real audio, metric design and full material coverage remain open. Acquisition and unrelated runtime-extension queues stay parked while the owner-directed UX phase work continues.
+
+## Execution ledger — 2026-10-04
+
+Stage1a implemented and verified: [control/code token slice](../slices/design-control-code-tokens.md). All other proposed production slices remain unimplemented. Next is Stage1b after reproducing a concrete primitive issue; do not infer the entire Phase10 design system is complete.

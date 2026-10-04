@@ -1,0 +1,98 @@
+[
+  {
+    "case": "design-tokens-lesson-input-and-code-tokens-dark-1280-chromium",
+    "border": "rgb(52, 58, 66)",
+    "surface": "rgb(30, 34, 39)",
+    "boundaryContrast": 1.3933516678691789,
+    "focusContrast": 6.47162232855052,
+    "outlineWidth": "3px",
+    "inlineBackground": "rgb(42, 48, 56)",
+    "inlineContrast": 10.838566114565802,
+    "blockCodeBackground": "rgb(42, 48, 56)",
+    "overflow": false
+  },
+  {
+    "case": "design-tokens-lesson-input-and-code-tokens-dark-390-chromium",
+    "border": "rgb(52, 58, 66)",
+    "surface": "rgb(30, 34, 39)",
+    "boundaryContrast": 1.3933516678691789,
+    "focusContrast": 6.47162232855052,
+    "outlineWidth": "3px",
+    "inlineBackground": "rgb(42, 48, 56)",
+    "inlineContrast": 10.838566114565802,
+    "blockCodeBackground": "rgb(42, 48, 56)",
+    "overflow": false
+  },
+  {
+    "case": "design-tokens-lesson-input-and-code-tokens-light-1280-chromium",
+    "border": "rgb(217, 221, 227)",
+    "surface": "rgb(255, 255, 255)",
+    "boundaryContrast": 1.3634474686369764,
+    "focusContrast": 5.662751832229494,
+    "outlineWidth": "3px",
+    "inlineBackground": "rgb(238, 240, 243)",
+    "inlineContrast": 13.836966940274747,
+    "blockCodeBackground": "rgba(0, 0, 0, 0)",
+    "overflow": false
+  },
+  {
+    "case": "design-tokens-lesson-input-and-code-tokens-light-390-chromium",
+    "border": "rgb(217, 221, 227)",
+    "surface": "rgb(255, 255, 255)",
+    "boundaryContrast": 1.3634474686369764,
+    "focusContrast": 5.662751832229494,
+    "outlineWidth": "3px",
+    "inlineBackground": "rgb(238, 240, 243)",
+    "inlineContrast": 13.836966940274747,
+    "blockCodeBackground": "rgba(0, 0, 0, 0)",
+    "overflow": false
+  },
+  {
+    "case": "design-tokens-lesson-input-and-code-tokens-system-dark-1280-chromium",
+    "border": "rgb(52, 58, 66)",
+    "surface": "rgb(30, 34, 39)",
+    "boundaryContrast": 1.3933516678691789,
+    "focusContrast": 6.47162232855052,
+    "outlineWidth": "3px",
+    "inlineBackground": "rgb(238, 240, 243)",
+    "inlineContrast": 1.0752212840149251,
+    "blockCodeBackground": "rgba(0, 0, 0, 0)",
+    "overflow": false
+  },
+  {
+    "case": "design-tokens-lesson-input-and-code-tokens-system-dark-390-chromium",
+    "border": "rgb(52, 58, 66)",
+    "surface": "rgb(30, 34, 39)",
+    "boundaryContrast": 1.3933516678691789,
+    "focusContrast": 6.47162232855052,
+    "outlineWidth": "3px",
+    "inlineBackground": "rgb(238, 240, 243)",
+    "inlineContrast": 1.0752212840149251,
+    "blockCodeBackground": "rgba(0, 0, 0, 0)",
+    "overflow": false
+  },
+  {
+    "case": "design-tokens-lesson-input-and-code-tokens-system-light-1280-chromium",
+    "border": "rgb(217, 221, 227)",
+    "surface": "rgb(255, 255, 255)",
+    "boundaryContrast": 1.3634474686369764,
+    "focusContrast": 5.662751832229494,
+    "outlineWidth": "3px",
+    "inlineBackground": "rgb(238, 240, 243)",
+    "inlineContrast": 13.836966940274747,
+    "blockCodeBackground": "rgba(0, 0, 0, 0)",
+    "overflow": false
+  },
+  {
+    "case": "design-tokens-lesson-input-and-code-tokens-system-light-390-chromium",
+    "border": "rgb(217, 221, 227)",
+    "surface": "rgb(255, 255, 255)",
+    "boundaryContrast": 1.3634474686369764,
+    "focusContrast": 5.662751832229494,
+    "outlineWidth": "3px",
+    "inlineBackground": "rgb(238, 240, 243)",
+    "inlineContrast": 13.836966940274747,
+    "blockCodeBackground": "rgba(0, 0, 0, 0)",
+    "overflow": false
+  }
+]

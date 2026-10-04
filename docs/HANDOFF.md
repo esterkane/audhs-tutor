@@ -813,3 +813,7 @@ Added docs/design/DESIGN-DECISION.md and nine initial-layout measurements; exten
 ## 2026-10-04 — Phase 9 implementation plan
 
 Added docs/ux/IMPLEMENTATION-PLAN.md with bounded stage/slice file scopes, risks, tests, integrated acceptance matrix and original-phase mapping. Rechecked current component/test paths and document links. No production code, learning logic or new runtime test result. Next concrete slice: Phase 10/Stage 1a control-boundary and inline-code tokens, using existing CSS/Textarea with measured rendering. Navigation, mastery and recovery changes remain separate; full redesign acceptance stays open.
+
+## 2026-10-04 — Phase10 Stage1a production tokens
+
+Reproduced faint shared Textarea boundaries and unreadable system-dark inline code before editing. Added control/code semantic tokens to existing CSS and changed shared Textarea border only. Removed dark code selector specificity conflict, retaining transparent pre/code background.19 browser and10 unit tests passed; lint/types/build pass, existing bundle/spectrogram/canvas-environment warnings remain. Before/after contrast JSON and inspected screenshots in docs/design/evidence/phase10a. Values/callbacks/learning logic unchanged; other native fields and Park overlap remain. See docs/slices/design-control-code-tokens.md.
