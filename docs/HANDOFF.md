@@ -829,3 +829,7 @@ Reproduced503 reads masking failure as loading. Added initial/stale-data recover
 ## Map recovery and revised navigation priority — 2026-10-04
 
 Map now has bounded reads, Retry/Home and retained cached map on refresh errors. Two unit/two browser checks, lint/types/build and read-only review pass. Park overlap remains. See docs/slices/map-read-recovery.md. New owner workspace proposal is reconciled in docs/ux/CONTEXT-WORKSPACE-PLAN.md: inventory context contracts before C1 shell changes; preserve all capabilities and learning state.
+
+## C0 context inventory — 2026-10-04
+
+Mapped every current route to the proposed navigation; inspected server/session, browser work and tutor target boundaries.23 browser and7 unit baseline checks pass. No application changes. Areas URL selection, Playground activity return, unsaved recap/editor state and persistent companion target remain explicit gaps. Next C1 is shell-only; see docs/ux/CONTEXT-INVENTORY.md.
