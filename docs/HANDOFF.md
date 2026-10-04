@@ -853,3 +853,7 @@ Header Browse area uses independent tab-local history and existing URLs, with ex
 ## 2026-10-04 — Uploaded design palette
 
 Adopted canonical existing color roles and 2px focus styling. Eight theme/width browser cases, lint/types/build passed in original checkout. Visual inspection of desktop light and narrow dark completed; learning logic unchanged. See docs/slices/design-palette-adoption.md. Additional owner navigation document is authoritative alongside visual/component package. Sanitized checkout also passed all eight browser cases. Paired commits/pushes follow; both variants remain private.
+
+## 2026-10-04 — Shared button design
+
+See docs/slices/design-buttons.md. Stronger control boundaries, explicit disabled/hover palette and wrapping-safe minimum heights; eight browser cases and lint/types/build pass. No learning behavior changed. Full shell and typography remain outstanding.

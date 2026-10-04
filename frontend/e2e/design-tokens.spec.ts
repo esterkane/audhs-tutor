@@ -26,10 +26,27 @@ for (const theme of ['light', 'dark', 'system-light', 'system-dark']) {
         await page.goto('/')
         await page.getByRole('button', { name: /^Resume previous session/ }).click()
         const input = page.getByLabel('Ask about this lesson (optional)')
+        await input.fill('x'.repeat(4001))
+        const send = page.getByRole('button', { name: 'Send lesson question' })
+        await expect(send).toBeDisabled()
+        const disabledStyle = await send.evaluate(el => {
+          const style = getComputedStyle(el)
+          return { opacity: style.opacity, background: style.backgroundColor }
+        })
+        expect(disabledStyle.opacity).toBe('1')
+        expect(disabledStyle.background).toBe(theme.endsWith('dark') ? 'rgb(22, 23, 28)' : 'rgb(238, 241, 247)')
         await input.fill('Show a code example.')
         await page.getByRole('button', { name: 'Send lesson question' }).click()
         await expect(page.locator('.prose p code').first()).toBeVisible()
         await input.fill('Keep this next question.')
+        await send.focus()
+        await expect(send).toBeFocused()
+        const buttonBoundary = await send.evaluate(el => {
+          const s = getComputedStyle(el)
+          const root = getComputedStyle(document.documentElement)
+          return { border: s.borderTopColor, control: root.getPropertyValue('--color-control').trim() }
+        })
+        expect(buttonBoundary.border).toBe(theme.endsWith('dark') ? 'rgb(127, 135, 151)' : 'rgb(125, 139, 163)')
         await input.focus()
         await page.keyboard.type(' More detail.')
         await expect(input).toHaveValue('Keep this next question. More detail.')
@@ -50,7 +67,7 @@ for (const theme of ['light', 'dark', 'system-light', 'system-dark']) {
             blockCodeBackground: block.backgroundColor, overflow: document.documentElement.scrollWidth > innerWidth }
         })
         const canonical = JSON.parse(await readFile(new URL('../../docs/design/source/tokens.json', import.meta.url), 'utf8'))
-        const applied = await page.evaluate(() => Object.fromEntries(['bg', 'fg', 'muted', 'card', 'line', 'control', 'code', 'accent', 'accent-fg', 'ok', 'warn', 'focus-ring'].map(name => [name, getComputedStyle(document.documentElement).getPropertyValue(`--color-${name}`).trim()])))
+        const applied = await page.evaluate(() => Object.fromEntries(['bg', 'fg', 'muted', 'card', 'line', 'control', 'code', 'accent', 'accent-fg', 'ok', 'warn', 'focus-ring', 'sunken', 'faint', 'accent-hover'].map(name => [name, getComputedStyle(document.documentElement).getPropertyValue(`--color-${name}`).trim()])))
         for (const [name, value] of Object.entries(applied)) {
           expect(value).toBe(canonical.color.tokens.find((token: { name: string }) => token.name === name).value[theme.endsWith('dark') ? 'dark' : 'light'])
         }

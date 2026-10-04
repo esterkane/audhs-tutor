@@ -4,6 +4,9 @@
 /* AuDHD UX invariants: calm palette, strong focus ring (≥ 3:1), no motion unless allowed. */
 @theme {
   --color-bg: #f7f8fc;
+  --color-sunken: #eef1f7;
+  --color-faint: #7f899a;
+  --color-accent-hover: #0a56bf;
   --color-fg: #343741;
   --color-muted: #5e6673;
   --color-card: #ffffff;
@@ -52,6 +55,9 @@ body {
 /* Sensory settings (preferences ui.theme / ui.density / ui.font_scale / ui.reduced_motion) */
 :root[data-theme='dark'] {
   --color-bg: #1d1e24;
+  --color-sunken: #16171c;
+  --color-faint: #767e8e;
+  --color-accent-hover: #79b7f3;
   --color-fg: #dfe5ef;
   --color-muted: #a1a8b5;
   --color-card: #25262e;
@@ -68,6 +74,9 @@ body {
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
     --color-bg: #1d1e24;
+    --color-sunken: #16171c;
+    --color-faint: #767e8e;
+    --color-accent-hover: #79b7f3;
     --color-fg: #dfe5ef;
     --color-muted: #a1a8b5;
     --color-card: #25262e;
