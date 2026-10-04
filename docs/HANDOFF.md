@@ -1038,3 +1038,7 @@ Read-only recent browsing links and honest capped current-session review count a
 Separated the saved-session Continue card from optional new-session preparation. Starting another lesson with an active session now uses the existing explicit Keep current / End and start flow, preventing a second session from silently hiding saved work. Details and verification: docs/slices/home-resume-intent.md. Learning kernel unchanged. Human comprehension, durable capture return/undo and C7 recent contexts/search remain open.
 
 Final sanitized checkout verification: 16 component tests, frontend lint, TypeScript and production build passed. Existing large-chunk and spectrogram worker externalization warnings remain. Final original browser rerun: 8 passed. No live learner data used in browser tests.
+
+
+## C6 capture transaction recovery — 2026-10-04
+Thought creation and promotion now commit their audit event atomically with the item change. See docs/slices/capture-atomicity.md. Verified 22 backend tests in both variants, 11 browser regressions, targeted Ruff/mypy, read-only review. No UI/schema/learning logic change. Next: durable retry intent and source-return contracts; do not claim exactly-once network saves yet.

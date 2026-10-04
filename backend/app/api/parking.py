@@ -57,7 +57,7 @@ async def park(body: ParkIn, db: DB, learner: Learner) -> ParkOut:
         learner_id=learner.id, session_id=None, text=body.text, node_id=body.node_id
     )
     db.add(item)
-    await db.commit()
+    await db.flush()
     ctx = EventContext(learner_id=learner.id, session_id=None, mode=Mode.STEADY, energy=3)
     await EventWriter(db, ctx).emit(
         Verb.PARKED, ObjectType.NOTE, item.id, context={"node_id": body.node_id}
@@ -104,7 +104,7 @@ async def promote(item_id: str, body: PromoteIn, db: DB, learner: Learner) -> Pa
             raise KeyError(body.promoted_to)
         item.node_id = node.id
     item.status, item.promoted_to = "promoted", body.promoted_to
-    await db.commit()
+    await db.flush()
     ctx = EventContext(learner_id=learner.id, session_id=None, mode=Mode.STEADY, energy=3)
     await EventWriter(db, ctx).emit(
         Verb.PROMOTED,

@@ -129,6 +129,6 @@ async def park_tangent(
         learner_id=session.learner_id, session_id=session.id, text=text, node_id=node_id
     )
     db.add(item)
-    await db.commit()
+    await db.flush()
     await events.emit(Verb.PARKED, ObjectType.NOTE, item.id, context={"node_id": node_id})
     return item
