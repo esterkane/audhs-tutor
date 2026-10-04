@@ -873,3 +873,7 @@ Menu starts closed on narrow screens, names current page, closes on route change
 ## 2026-10-04 — Header audio controls
 
 Idle header audio is shorter; active status and Stop/pause are visible with settings closed. Stop restores focus. Seven unit tests, audio/parking browser checks and lint/types/build pass. See docs/slices/compact-header-audio.md. Local speech routing unchanged; physical output and broader header composition remain open.
+
+## 2026-10-04 — Inline Work alongside
+
+Session now offers optional quiet work panel without unmounting the lesson or losing the current question draft. Existing standalone route preserved; no automatic sound or learning writes. Three browser cases, twelve unit tests and lint/types/build pass; see docs/slices/inline-alongside.md. Broader C3 and persistent tutor remain open.

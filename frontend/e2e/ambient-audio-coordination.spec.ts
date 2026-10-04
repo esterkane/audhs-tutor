@@ -49,18 +49,18 @@ test('ambient sound and output tests replace each other through shared controls'
   const shared = page.locator('header details').filter({ hasText: 'Audio controls' })
   await shared.locator('summary').click()
   await page.getByRole('button', { name: 'Play brown noise', exact: true }).click()
-  await expect(shared.getByRole('button', { name: 'Stop ambient sound' })).toBeVisible()
+  await expect(page.locator('header').getByRole('button', { name: 'Stop ambient sound' })).toBeVisible()
   await shared.getByRole('button', { name: 'Test sound', exact: true }).click()
   await expect(
     page.getByText('Brown noise stopped for a sound test. Choose Play brown noise to start again.'),
   ).toBeVisible()
-  await expect(shared.getByRole('button', { name: 'Stop ambient sound' })).toHaveCount(0)
-  await expect(shared.getByRole('button', { name: 'Stop sound test' })).toBeVisible()
+  await expect(page.locator('header').getByRole('button', { name: 'Stop ambient sound' })).toHaveCount(0)
+  await expect(page.locator('header').getByRole('button', { name: 'Stop sound test' })).toBeVisible()
   await page.getByRole('button', { name: 'Play brown noise', exact: true }).click()
   await expect(
     shared.getByText('Sound test stopped because brown noise started.', { exact: true }),
   ).toBeVisible()
-  await shared.getByRole('button', { name: 'Stop ambient sound' }).click()
+  await page.locator('header').getByRole('button', { name: 'Stop ambient sound' }).click()
   await expect(page.getByRole('button', { name: 'Play brown noise', exact: true })).toBeVisible()
-  await expect(shared.getByRole('button', { name: 'Stop ambient sound' })).toHaveCount(0)
+  await expect(page.locator('header').getByRole('button', { name: 'Stop ambient sound' })).toHaveCount(0)
 })

@@ -22,7 +22,7 @@ function nowMs() {
 
 /** Body-doubling: a presence screen. It shows the one thing you are doing and stays quiet.
  *  Optional ambient sound is opt-in (preference) and starts only on a click. No tracking. */
-export function Together() {
+export function Together({ embedded = false }: { embedded?: boolean }) {
   const session = useCurrentSession()
   const { mode } = useMode()
   const { ambient } = useSensory()
@@ -119,9 +119,9 @@ export function Together() {
   return (
     <div className="grid gap-4">
       <Card>
-        <AudioControls />
+        {!embedded && <AudioControls />}
         <CardTitle>Working alongside</CardTitle>
-        <p className="text-2xl mt-2">
+        <p className={embedded ? "text-sm mt-2" : "text-2xl mt-2"}>
           {task ? `Now: ${task}` : session.data ? 'Current session' : 'No session running.'}
         </p>
         <p className="text-sm text-muted mt-1">
@@ -130,7 +130,7 @@ export function Together() {
             : 'Start a session from Home when ready.'}
         </p>
         <div className="flex flex-wrap gap-2 mt-4">
-          {session.data ? (
+          {!embedded && (session.data ? (
             <Button variant="primary" asChild>
               <Link to={routeForPhase(session.data?.state)}>Back to the session</Link>
             </Button>
@@ -138,7 +138,7 @@ export function Together() {
             <Button variant="primary" asChild>
               <Link to="/">Home</Link>
             </Button>
-          )}
+          ))}
           {ambient !== 'off' &&
             (playing ? (
               <Button onClick={() => stopSound()}>Stop brown noise</Button>
@@ -152,7 +152,7 @@ export function Together() {
           </p>
         )}
         <p className="text-sm text-muted mt-3">
-          This is a quiet focus screen, not a live human companion. Nothing is scored here.
+          This is a quiet work mode, not a live human companion. Nothing is scored here.
           {ambient === 'off' ? ' Ambient sound can be enabled under Preferences.' : ''}
         </p>
       </Card>
