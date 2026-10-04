@@ -909,3 +909,7 @@ Lesson step, tone settings and hint recover across route exit/reload without aut
 ## Comparison recovery — 2026-10-04
 
 Selected experiment, optional prediction, hint and reveal survive lesson/route changes and reload. Explicit Restart/Stop behavior retained. See slices/visualizer-comparison-recovery.md for verification and remaining context gaps.
+
+## File reselection — 2026-10-04
+
+Reload now explains the missing local file and asks for reselection; replacement starts at zero. Empty chooser does not invent a lost file. See slices/visualizer-file-reselection.md for evidence and remaining presentation/context work.

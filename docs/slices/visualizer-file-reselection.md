@@ -1,0 +1,7 @@
+# File reselection after reload
+
+2026-10-04. Previously a lost in-memory audio file silently returned to demo input on reload. A validated optional boolean now preserves file-input intent without persisting a filename, path or bytes. Reload shows a reselection explanation and disabled Play. Choosing a replacement starts at zero, clears the warning and never infers that it is the same recording. Merely opening a chooser without selecting a file does not create a lost-file claim; choosing the demo clears recovery intent.
+
+Verified: full 76 visualizer unit tests passed before the final intent refinement; 22 affected route tests, lint/types/build passed after it. Three final sanitized real-browser checks cover desktop/narrow reload, replacement selection and empty chooser; keyboard Resume remains in the same flow. Narrow reselection screenshot inspected. Independent read-only review found no major findings in the initial delta; final intent refinement adds the empty-chooser regression. No learning writes or libraries changed. Existing canvas/worker/chunk warnings remain.
+
+Remaining: audio bytes and positions intentionally do not survive reload; user selection is required. The growing introductory/status text pushes the canvas down on narrow screens and should be consolidated in the next focused presentation pass, preserving recovery feedback. Full C3 still includes active-tone context, MilkDrop selection/discard and contextual-source integration; owner comprehension is not established by browser tests.

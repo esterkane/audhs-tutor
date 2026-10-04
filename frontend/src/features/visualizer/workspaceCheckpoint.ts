@@ -9,6 +9,7 @@ export type WorkspaceCheckpoint = {
   history: DraftHistoryState
   view: 'Watch' | 'Learn' | 'Create'
   renderer: 'graph' | 'milkdrop'
+  fileExpected?: boolean
   lesson?: LessonCheckpoint
   savedId: string | null
 }
@@ -20,6 +21,7 @@ function parse(raw: string): WorkspaceCheckpoint {
       !(value.savedId === null || (typeof value.savedId === 'string' && value.savedId.length <= 100)) ||
       !value.history || typeof value.history.text !== 'string' || value.history.text.length > 16000)
     throw new Error('Unsupported workspace')
+  if (value.fileExpected !== undefined && typeof value.fileExpected !== 'boolean') throw new Error('Invalid source checkpoint')
   if (value.lesson !== undefined) value.lesson = parseLesson(value.lesson)
   for (const list of [value.history.past, value.history.future]) {
     if (!Array.isArray(list) || list.length > 50) throw new Error('Invalid history')

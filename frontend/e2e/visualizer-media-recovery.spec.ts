@@ -39,7 +39,22 @@ for (const width of [390, 1280]) {
     await page.keyboard.press('Enter')
     await expect.poll(async () => Number(await timeline.inputValue())).toBeGreaterThan(4)
     await page.reload()
-    await expect(page.getByRole('button', { name: 'Start demo', exact: true })).toBeEnabled()
+    await expect(page.getByRole('status').filter({ hasText: 'Your audio file is no longer available after reload' })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Play file silently', exact: true })).toBeDisabled()
+    await page.getByRole('heading', { name: 'Audio visualizer lab', exact: true }).scrollIntoViewIfNeeded()
+    await page.screenshot({ path: info.outputPath('reselect-file.png') })
     await expect(page.getByText('Selected: test.wav', { exact: true })).toHaveCount(0)
+    await page.getByLabel('Audio file', { exact: true }).setInputFiles({ name: 'new.wav', mimeType: 'audio/wav', buffer: wav })
+    await expect(timeline).toHaveValue('0')
+    await expect(page.getByRole('button', { name: 'Play file silently', exact: true })).toBeEnabled()
+    await expect(page.getByRole('status').filter({ hasText: 'Your audio file is no longer available after reload' })).toHaveCount(0)
   })
 }
+
+test('opening the chooser without selecting a file does not invent a lost file', async ({ page }) => {
+  await page.goto('/playground/visualizer')
+  await page.getByRole('button', { name: 'Open audio', exact: true }).click()
+  await page.reload()
+  await expect(page.getByRole('status').filter({ hasText: 'Your audio file is no longer available after reload' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Start demo', exact: true })).toBeEnabled()
+})

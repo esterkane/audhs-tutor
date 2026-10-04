@@ -43,6 +43,7 @@ export function Visualizer() {
 
   const [recoveredMedia] = useState(() => mediaCheckpoint.read())
   const [recovered] = useState(() => workspaceCheckpoint.read())
+  const [needsFile, setNeedsFile] = useState(!!recovered?.fileExpected && !recoveredMedia)
   const [lessonState, setLessonState] = useState(recovered?.lesson ?? initialLesson)
   const [draftSaved, setDraftSaved] = useState(true)
   const [savedId, setSavedId] = useState<string | null>(() => {
@@ -61,19 +62,13 @@ export function Visualizer() {
   const [preset, setPreset] = useState(() => recovered?.preset ?? restoredPreset())
   const history = useDraftHistory(JSON.stringify(preset, null, 2), recovered?.history)
   const { text, change: setText } = history
-  useEffect(() => {
-    const saved = workspaceCheckpoint.write({ version: 1, preset, history: history.snapshot, view, renderer, savedId, lesson: lessonState })
-    // Reflect external storage success without changing the editable draft.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDraftSaved(saved)
-  }, [preset, history.snapshot, view, renderer, savedId, lessonState])
   const [importDraft, setImportDraft] = useState<Preset | null>(null)
   const [importError, setImportError] = useState('')
   const importGeneration = useRef(0)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
   const [file, setFile] = useState<File | null>(recoveredMedia?.file ?? null)
-  const [source, setSource] = useState<'demo' | 'file' | 'lesson'>(recoveredMedia ? 'file' : 'demo')
+  const [source, setSource] = useState<'demo' | 'file' | 'lesson'>(recoveredMedia || recovered?.fileExpected ? 'file' : 'demo')
   const [running, setRunning] = useState(false)
   const [position, setPosition] = useState(recoveredMedia?.position ?? { seconds: 0, duration: 0 })
   const [repeat, setRepeat] = useState<{ start: number; end: number } | null>(recoveredMedia?.repeat ?? null)
@@ -120,6 +115,11 @@ export function Visualizer() {
     audible: boolean
     repeat: { start: number; end: number } | null
   } | null>(null)
+  useEffect(() => {
+    const saved = workspaceCheckpoint.write({ version: 1, preset, history: history.snapshot, view, renderer, savedId, lesson: lessonState, fileExpected: (source === 'file' || (source === 'lesson' && previousAudio.current?.source === 'file')) && (!!file || needsFile) })
+    // Reflect external storage success without changing the editable draft.
+    setDraftSaved(saved)
+  }, [preset, history.snapshot, view, renderer, savedId, lessonState, source, file, needsFile])
   const releasePrevious = () => {
     previousAudio.current?.abort?.abort()
     previousAudio.current?.input?.stop()
@@ -485,6 +485,7 @@ export function Visualizer() {
     setSampleNumber((n) => n + 1)
   }
   function resetDemo() {
+    setNeedsFile(false)
     releasePrevious()
     stop()
     setMeasurement(null)
@@ -636,6 +637,7 @@ export function Visualizer() {
         {' '}Files and positions stay only in this tab until reload. The lesson step, tone settings and hint are kept; test signals require Start.
       </p>
       {recoveredMedia && <p className="text-sm text-muted">Your local file is retained in this tab. Playback is stopped until you press Play or Resume; enable sound explicitly if wanted.</p>}
+      {source === 'file' && !file && needsFile && <p role="status" className="text-sm">Your audio file is no longer available after reload. Use Open audio to select a file again. Your visual and lesson work are kept; a newly selected file starts from the beginning.</p>}
       <nav aria-label="Visualizer views" className="flex flex-wrap gap-2">
         {(['Watch', 'Learn', 'Create'] as const).map((name) => (
           <Button
@@ -935,6 +937,7 @@ export function Visualizer() {
                   stop()
                   setSource('file')
                   setFile(selected)
+                  setNeedsFile(false)
                   setPosition({ seconds: 0, duration: 0 })
                   setFinished(false)
                   setFrame(EMPTY)
