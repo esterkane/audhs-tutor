@@ -1,3 +1,4 @@
+import { lessonIds, type LessonCheckpoint } from '../visualizer/lessonCheckpoint'
 export type Section = {
   id: string
   title: string
@@ -8,6 +9,7 @@ export type Section = {
   criteria: string
   source: string
   practice?: { notebook: string; dataset?: string }
+  audioLab?: { lesson: LessonCheckpoint['step']; purpose: string }
   example?: string
   challenges?: { id: string; question: string; hint: string; criteria: string }[]
 }
@@ -68,6 +70,15 @@ export function parseProgram(raw: unknown): Program {
               !/^\/local-learning\/[a-zA-Z0-9_-]+\.csv$/.test(s.practice.dataset))))
       )
         throw new Error('Invalid local practice files.')
+      if (
+        s.audioLab !== undefined &&
+        (!s.audioLab ||
+          !lessonIds.includes(s.audioLab.lesson) ||
+          typeof s.audioLab.purpose !== 'string' ||
+          !s.audioLab.purpose.trim() ||
+          s.audioLab.purpose.length > 600)
+      )
+        throw new Error('Invalid audio lab relation.')
       if (s.example !== undefined && typeof s.example !== 'string') throw new Error('Invalid worked example.')
       if (s.challenges !== undefined) {
         if (!Array.isArray(s.challenges) || s.challenges.length > 8) throw new Error('Invalid challenges.')

@@ -976,3 +976,8 @@ Task notebook view restores for matching course/section and starter/dataset path
 ## C3 project location links — 2026-10-04
 
 Project course/step/notebook view have URL identity and browser-history recovery; existing notes remain scoped. See slices/project-location-links.md. Relevant authored lab links remain next; full C3/C5 is open.
+
+
+## C3 authored audio-lab links — 2026-10-04
+
+Optional project-to-audio lesson relations now have validation, explicit explanation selection and named return. See slices/project-audio-lab-contract.md for synthetic browser/review evidence. No real material mapped yet; relevance requires source inspection. Full C3/C5 remains open.

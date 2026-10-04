@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -124,7 +125,12 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
   if (practiceOpen && section.practice)
     return (
       <div className="grid gap-3">
-        <p role="status">{saved === 'Saved work restored.' ? 'Your notebook view and saved project notes were restored.' : saved} Execution results are temporary; no code runs automatically.</p>
+        <p role="status">
+          {saved === 'Saved work restored.'
+            ? 'Your notebook view and saved project notes were restored.'
+            : saved}{' '}
+          Execution results are temporary; no code runs automatically.
+        </p>
         <TaskNotebook
           courseId={course}
           sectionId={section.id}
@@ -153,6 +159,21 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
             ? 'Try the task below. Ask for help whenever you need it.'
             : 'Explain your reasoning, then choose Check my answer for tutor feedback.'}
       </p>
+      {section.audioLab && (
+        <details>
+          <summary>Related audio experiment</summary>
+          <p className="text-sm my-2">{section.audioLab.purpose}</p>
+          <Link
+            className="underline"
+            to={`/playground/visualizer?project_course=${encodeURIComponent(course)}&project_step=${encodeURIComponent(section.id)}&project_lesson=${encodeURIComponent(section.audioLab.lesson)}`}
+          >
+            Open linked audio lesson
+          </Link>
+          <p className="text-sm text-muted">
+            Your work stays with this step. Opening the lab does not start sound or mark anything complete.
+          </p>
+        </details>
+      )}
       <nav aria-label="Learning steps" className="flex flex-wrap gap-2">
         {phases.map((phase) => (
           <Button

@@ -1,3 +1,4 @@
+import { ProjectAudioContext } from '../features/visualizer/ProjectAudioContext'
 import { initialLesson } from '../features/visualizer/lessonCheckpoint'
 import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
@@ -37,6 +38,7 @@ const Milkdrop = lazy(() => import('../features/visualizer/Milkdrop'))
 const EMPTY: Frame = { bass: 0, mid: 0, treble: 0, rms: 0 }
 export function Visualizer() {
   const [params] = useSearchParams()
+  const projectLinked = params.has('project_course') || params.has('project_step')
   const requestedWorkspace = params.get('workspace')
   const originWorkspace = activities.find(activity => activity.id === requestedWorkspace)
   const returnTo = originWorkspace ? `/playground?workspace=${encodeURIComponent(originWorkspace.id)}` : '/playground'
@@ -624,13 +626,17 @@ export function Visualizer() {
   return (
     <div className="grid gap-4">
       <div>
-        <Link to={returnTo}>{originWorkspace ? `← Return to coding workspace: ${originWorkspace.title}` : '← Coding playground'}</Link>
-        {requestedWorkspace && !originWorkspace && <p role="status" className="text-sm text-muted">The linked coding workspace is unavailable. You can choose another in the playground; saved drafts are unchanged.</p>}
+        {!projectLinked && <Link to={returnTo}>{originWorkspace ? `← Return to coding workspace: ${originWorkspace.title}` : '← Coding playground'}</Link>}
+        {!projectLinked && requestedWorkspace && !originWorkspace && <p role="status" className="text-sm text-muted">The linked coding workspace is unavailable. You can choose another in the playground; saved drafts are unchanged.</p>}
         <h1 className="text-xl font-semibold mt-2">Audio visualizer lab</h1>
         <p className="text-sm text-muted">
           Explore how sound changes a picture. Start with a silent demo or open your own audio.
         </p>
       </div>
+      {projectLinked && <ProjectAudioContext
+        courseId={params.get('project_course')} sectionId={params.get('project_step')} expectedLesson={params.get('project_lesson')} disabled={starting}
+        onOpen={step => { setLessonState(previous => ({ ...previous, step, hint: false })); void revealView('Learn') }}
+      />}
       {!draftSaved && <p className="text-sm" role="status">Browser recovery is unavailable. Edits remain in this tab until reload; export your draft to keep it. Existing stored data was not replaced.</p>}
       {source === 'file' && !file && needsFile && <p role="status" className="text-sm">Your audio file is no longer available after reload. Use Open audio to select a file again.</p>}
       <nav aria-label="Visualizer views" className="flex flex-wrap gap-2">
