@@ -30,7 +30,9 @@ it('updates titles and focus after navigation and marks only the exact current r
       <h1>Content</h1>
     </Shell>,
   )
+  fireEvent.click(screen.getByText('Tools', { exact: true }))
   fireEvent.click(screen.getByRole('link', { name: 'Audio visualizer' }))
+  fireEvent.click(screen.getByText('Tools · Audio visualizer', { exact: true }))
   expect(document.title).toBe('Audio visualizer · AuDHS Tutor')
   expect(screen.getByRole('link', { name: 'Audio visualizer' })).toHaveAttribute('aria-current', 'page')
   expect(screen.getByRole('link', { name: 'Playground' })).not.toHaveAttribute('aria-current')
@@ -45,4 +47,24 @@ it('recognizes a valid trailing-slash route title', () => {
     { route: '/review/' },
   )
   expect(document.title).toBe('Review · AuDHS Tutor')
+})
+
+it('keeps every existing destination available within named groups without changing learning state', () => {
+  useMode.setState({ sessionId: 'kept', skillId: 'kept-skill' })
+  renderApp(<Shell><h1>Content</h1></Shell>)
+  for (const name of ['Learn', 'Explore', 'Library', 'Tools', 'Manage']) {
+    fireEvent.click(screen.getByText(name, { exact: true }))
+  }
+  const destinations = {
+    'Start or resume': '/', Review: '/review', Vocabulary: '/vocab', 'Work alongside': '/together',
+    'Learning areas': '/areas', 'Skill map': '/map', Projects: '/programs',
+    'Saved answers': '/answers', Playground: '/playground', 'Audio visualizer': '/playground/visualizer',
+    Materials: '/corpus', 'Lesson drafts': '/curriculum', Models: '/models',
+    Experiments: '/experiments', Preferences: '/preferences',
+  }
+  for (const [name, href] of Object.entries(destinations)) {
+    expect(screen.getByRole('link', { name })).toHaveAttribute('href', href)
+  }
+  expect(useMode.getState().sessionId).toBe('kept')
+  expect(useMode.getState().skillId).toBe('kept-skill')
 })

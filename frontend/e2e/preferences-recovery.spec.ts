@@ -30,7 +30,7 @@ for (const width of [390, 1280]) {
     expect(writes).toEqual([])
     await page.getByRole('link', { name: 'Home', exact: true }).click()
     failing = true
-    await page.getByText('More tools', { exact: true }).click()
+    await page.getByText('Manage', { exact: true }).click()
     await page.getByRole('link', { name: 'Preferences', exact: true }).click()
     await expect(page.getByText('Could not refresh preferences. Showing the last loaded settings.', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'normal', exact: true })).toHaveAttribute('aria-pressed', 'true')

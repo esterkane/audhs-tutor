@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import axe from 'axe-core'
 
-for (const width of [1280, 320]) {
+for (const width of [1280, 390, 320]) {
   test(`shell orientation, keyboard skip and tools at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     await page.route('**/local-learning/program.json', (route) =>
@@ -9,7 +9,7 @@ for (const width of [1280, 320]) {
     )
     await page.goto('/programs')
     await expect(page).toHaveTitle('Project study · AuDHS Tutor')
-    await expect(page.getByRole('link', { name: 'Project study', exact: true })).toHaveAttribute(
+    await expect(page.getByRole('link', { name: 'Projects', exact: true })).toHaveAttribute(
       'aria-current',
       'page',
     )
@@ -17,18 +17,27 @@ for (const width of [1280, 320]) {
     await expect(page.getByRole('link', { name: 'Skip to learning content' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('main')).toBeFocused()
+    await page.getByText('Explore', { exact: true }).focus()
+    await page.keyboard.press('Enter')
     await page.getByRole('link', { name: 'Learning areas', exact: true }).click()
     await expect(page).toHaveTitle('Learning areas · AuDHS Tutor')
     await expect(page.getByRole('main')).toBeFocused()
-    await page.getByText('More tools', { exact: true }).click()
+    await page.getByText('Manage', { exact: true }).click()
     await page.getByRole('link', { name: 'Lesson drafts', exact: true }).click()
     await expect(page).toHaveTitle('Lesson drafts · AuDHS Tutor')
-    await expect(page.getByText('More tools · Lesson drafts', { exact: true })).toBeVisible()
-    await page.getByText('More tools · Lesson drafts', { exact: true }).click()
+    await expect(page.getByText('Manage · Lesson drafts', { exact: true })).toBeVisible()
+    await page.getByText('Manage · Lesson drafts', { exact: true }).click()
     await expect(page.getByRole('link', { name: 'Lesson drafts', exact: true })).toHaveAttribute(
       'aria-current',
       'page',
     )
+    await page.screenshot({ path: info.outputPath('navigation-normal.png'), fullPage: true })
+    await page.goBack()
+    await expect(page).toHaveTitle('Learning areas · AuDHS Tutor')
+    await expect(page.getByText('Explore · Learning areas', { exact: true })).toBeVisible()
+    await page.goForward()
+    await expect(page).toHaveTitle('Lesson drafts · AuDHS Tutor')
+    await page.getByText('Manage · Lesson drafts', { exact: true }).click()
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%'
     })

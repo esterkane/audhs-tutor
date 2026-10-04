@@ -8,6 +8,7 @@ test('audio controls persist across routes and remain usable on narrow screens',
   await controls.getByLabel('Playback speed').selectOption('1.5')
   await controls.getByRole('button', { name: 'Mute', exact: true }).click()
   await expect(controls.getByRole('button', { name: 'Test sound' })).toBeDisabled()
+  await page.getByText('Tools', { exact: true }).click()
   await page.getByRole('link', { name: 'Audio visualizer', exact: true }).click()
   await expect(controls.getByLabel('Audio volume')).toHaveValue('0.25')
   await expect(controls.getByLabel('Playback speed')).toHaveValue('1.5')

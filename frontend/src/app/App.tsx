@@ -30,22 +30,16 @@ const queryClient = new QueryClient({
 
 const primaryPages = [
   ['/', 'Home'],
-  ['/areas', 'Learning areas'],
   ['/programs', 'Project study'],
-  ['/playground', 'Playground'],
-  ['/playground/visualizer', 'Audio visualizer'],
 ] as const
-const toolPages = [
-  ['/answers', 'Saved answers'],
-  ['/map', 'Skill map'],
-  ['/together', 'Together'],
-  ['/experiments', 'Experiments'],
-  ['/vocab', 'Vocabulary'],
-  ['/corpus', 'Materials'],
-  ['/curriculum', 'Lesson drafts'],
-  ['/models', 'Models'],
-  ['/preferences', 'Preferences'],
+const navigationGroups: ReadonlyArray<{ label: string; pages: ReadonlyArray<readonly [string, string]> }> = [
+  { label: 'Learn', pages: [['/', 'Start or resume'], ['/review', 'Review'], ['/vocab', 'Vocabulary'], ['/together', 'Work alongside']] },
+  { label: 'Explore', pages: [['/areas', 'Learning areas'], ['/map', 'Skill map']] },
+  { label: 'Library', pages: [['/answers', 'Saved answers']] },
+  { label: 'Tools', pages: [['/playground', 'Playground'], ['/playground/visualizer', 'Audio visualizer']] },
+  { label: 'Manage', pages: [['/corpus', 'Materials'], ['/curriculum', 'Lesson drafts'], ['/models', 'Models'], ['/experiments', 'Experiments'], ['/preferences', 'Preferences']] },
 ] as const
+const toolPages = navigationGroups.flatMap(group => group.pages).filter(([path]) => path !== '/')
 const pageTitles: Record<string, string> = {
   ...Object.fromEntries([...primaryPages, ...toolPages]),
   '/programs': 'Project study',
@@ -70,9 +64,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, title])
   const wide = ['/playground', '/programs'].some((path) => pathname.startsWith(path))
-  const selectedTool = toolPages.find(
-    ([path]) => routePath === path || (path === '/answers' && routePath.startsWith('/answers/')),
-  )
   const navClass = ({ isActive }: { isActive: boolean }) =>
     `rounded px-2 py-1 ${isActive ? 'bg-accent text-accent-fg font-semibold' : 'underline-offset-4 hover:underline'}`
   return (
@@ -88,23 +79,29 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <AudioControls />
         </div>
         <nav aria-label="Main navigation" className="flex flex-wrap gap-2 text-sm items-start">
-          {primaryPages.map(([path, label]) => (
-            <NavLink key={path} to={path} end className={navClass}>
-              {label}
-            </NavLink>
-          ))}
-          <details key={pathname} className="min-w-0">
-            <summary className="cursor-pointer px-2 py-1">
-              More tools{selectedTool ? ` · ${selectedTool[1]}` : ''}
-            </summary>
-            <div className="grid gap-2 p-3 mt-2 rounded-lg border border-line bg-card">
-              {toolPages.map(([path, label]) => (
-                <NavLink key={path} to={path} end={path !== '/answers'} className={navClass}>
-                  {label}
-                </NavLink>
-              ))}
-            </div>
-          </details>
+          <NavLink to="/" end className={navClass}>Home</NavLink>
+          {navigationGroups.map((group, index) => {
+            const selected = group.pages.find(([path]) => path !== '/' &&
+              (routePath === path || (path === '/answers' && routePath.startsWith('/answers/'))))
+            const currentLabel = selected?.[1] ?? (group.label === 'Learn' && ['/session', '/recap'].includes(routePath) ? title : null)
+            return (
+              <div key={group.label} className="contents">
+                {index === 2 && <NavLink to="/programs" end className={navClass}>Projects</NavLink>}
+                <details key={`${pathname}:${group.label}`} className="min-w-0 max-w-full">
+                  <summary className={`cursor-pointer rounded px-2 py-1 ${currentLabel ? 'bg-accent text-accent-fg font-semibold' : ''}`}>
+                    {group.label}{currentLabel ? ` · ${currentLabel}` : ''}
+                  </summary>
+                  <div className="grid gap-2 p-3 mt-2 rounded-lg border border-line bg-card">
+                    {group.pages.map(([path, label]) => (
+                      <NavLink key={path} to={path} end={path !== '/answers'} className={navClass}>
+                        {label}
+                      </NavLink>
+                    ))}
+                  </div>
+                </details>
+              </div>
+            )
+          })}
         </nav>
         <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
           <span>

@@ -833,3 +833,7 @@ Map now has bounded reads, Retry/Home and retained cached map on refresh errors.
 ## C0 context inventory — 2026-10-04
 
 Mapped every current route to the proposed navigation; inspected server/session, browser work and tutor target boundaries.23 browser and7 unit baseline checks pass. No application changes. Areas URL selection, Playground activity return, unsaved recap/editor state and persistent companion target remain explicit gaps. Next C1 is shell-only; see docs/ux/CONTEXT-INVENTORY.md.
+
+## C1 grouped navigation — 2026-10-04
+
+Home/Projects plus named Learn/Explore/Library/Tools/Manage groups preserve destinations and state.25 browser/four unit checks, lint/types/build and read-only review pass. See docs/slices/grouped-navigation.md. Park still obstructs expanded navigation at narrow200% text; correct that before C2. No learning logic or model changes.
