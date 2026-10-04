@@ -94,10 +94,12 @@ async def test_final_guard_rejects_edit_after_claim_without_review_evidence(
 
     async def edited(*args, **kwargs):
         result = await original(*args, **kwargs)
-        async with session_factory() as writer:
-            row = await writer.get(models.ReviewItem, item.id)
-            row.prompt_json = {**row.prompt_json, "a": "new meaning"}
-            await writer.commit()
+        # Simulate an accidental same-transaction edit. External writers are now
+        # serialized outside the entire claim/rating transaction.
+        writer = args[0]
+        row = await writer.get(models.ReviewItem, item.id)
+        row.prompt_json = {**row.prompt_json, "a": "new meaning"}
+        await writer.flush()
         return result
 
     monkeypatch.setattr(workspace_requests, "claim", edited)
@@ -107,8 +109,7 @@ async def test_final_guard_rejects_edit_after_claim_without_review_evidence(
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "review_content_changed_during_rating"
     assert await count(db, models.ReviewLog) == 0
-    claim = await db.scalar(select(models.WorkspaceRequest))
-    assert claim.response_json is None
+    assert await db.scalar(select(models.WorkspaceRequest)) is None
 
 
 async def test_schedule_change_does_not_change_content_token(client, db):

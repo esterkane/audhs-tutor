@@ -51,6 +51,7 @@ async def submit(
             f"review:{identity}",
             {"item_id": item_id, "body": payload, "as_of": as_of},
             validate_new=validate_new,
+            commit_new=False,
         )
         if saved is not None:
             return ReviewOut.model_validate(saved)

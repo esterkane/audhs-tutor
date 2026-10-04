@@ -23,7 +23,16 @@ async def claim(
     payload: dict[str, Any],
     *,
     validate_new: Callable[[], Awaitable[None]] | None = None,
+    commit_new: bool = True,
 ) -> tuple[str, dict[str, Any] | None]:
+    """Claim one intent; callers must have no pending writes on entry.
+
+    Only model-free review ratings use commit_new=False: caller owns the short
+    transaction through atomic evidence/outcome commit or rollback. Existing
+    durable unresolved claims are never taken over.
+    """
+    if not commit_new and validate_new is None:
+        raise ValueError("Atomic claims require validation under the write lock")
     # Only content-validated assessment/review claims need the extra serialized decision.
     # Close the caller's read transaction before acquiring SQLite's write lock:
     # upgrading an older WAL snapshot can fail immediately with SQLITE_BUSY.
@@ -39,7 +48,13 @@ async def claim(
                 .values(fingerprint=WorkspaceRequest.fingerprint)
             )
         return await _claim_locked(
-            db, learner_id, session_id, key, payload, validate_new=validate_new
+            db,
+            learner_id,
+            session_id,
+            key,
+            payload,
+            validate_new=validate_new,
+            commit_new=commit_new,
         )
     except BaseException:
         await db.rollback()
@@ -54,9 +69,14 @@ async def _claim_locked(
     payload: dict[str, Any],
     *,
     validate_new: Callable[[], Awaitable[None]] | None = None,
+    commit_new: bool = True,
 ) -> tuple[str, dict[str, Any] | None]:
     """Return a new claim id or the original reply; an uncertain claim never runs twice."""
     session = await get_owned(db, session_id, learner_id)
+    if not commit_new:
+        # The caller may have loaded this ORM object before another request ended
+        # the session. Re-read it under the write lock, not from the identity map.
+        await db.refresh(session)
     fingerprint = hashlib.sha256(
         json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
     ).hexdigest()
@@ -84,9 +104,14 @@ async def _claim_locked(
             .on_conflict_do_nothing(index_elements=["learner_id", "request_key"])
             .returning(WorkspaceRequest.id)
         )
-        await db.commit()
         if inserted:
+            # Deterministic review ratings may keep their new claim in the same
+            # short transaction as FSRS and the result. Model callers must commit
+            # first and never hold this transaction while awaiting inference.
+            if commit_new:
+                await db.commit()
             return identity, None
+        await db.commit()
         existing = await db.scalar(
             select(WorkspaceRequest).where(
                 WorkspaceRequest.learner_id == learner_id, WorkspaceRequest.request_key == key

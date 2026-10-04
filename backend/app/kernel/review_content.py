@@ -118,6 +118,6 @@ def validate(content: dict[str, Any], supplied: str | None, *, during_write: boo
             code,
             "Review content changed. No review was recorded. Refresh and review the item again."
             if not during_write
-            else "Review content changed after submission. No review was recorded; this request remains unresolved.",
+            else "Review content changed after submission. Check the saved rating before trying again.",
             409,
         )

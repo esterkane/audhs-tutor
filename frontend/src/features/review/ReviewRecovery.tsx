@@ -142,7 +142,10 @@ export function ReviewRecovery({
           )}
           {!recovery.stale && lookup?.status === 'not_found' && (
             <>
-              <p>No request was found. You can send the original rating with the same identity.</p>
+              <p>
+                No saved rating is visible yet. It may still be saving. Sending the original rating with the
+                same identity will wait for or recover that result without applying it twice.
+              </p>
               <Button disabled={recovery.checking || applying} onClick={() => void recovery.resend()}>
                 Send original rating
               </Button>

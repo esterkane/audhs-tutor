@@ -132,6 +132,10 @@ async def test_concurrent_equal_rating_is_not_applied_twice(client, db, monkeypa
     duplicate = None
     try:
         await asyncio.wait_for(entered.wait(), 5)
+        visible = await client.get(
+            f"/api/review/requests/{KEY}", params={"session_id": body["session_id"]}
+        )
+        assert visible.json() == {"status": "not_found", "result": None}
         duplicate = asyncio.create_task(
             client.post(f"/api/review/{item}", json=body, headers=HEADERS)
         )
@@ -160,8 +164,9 @@ async def test_concurrent_equal_rating_is_not_applied_twice(client, db, monkeypa
 
 
 @pytest.mark.parametrize("stage", ["review", "complete"])
+@pytest.mark.parametrize("cancelled", [False, True])
 async def test_failed_rating_rolls_back_card_log_event_and_outcome(
-    client, db, session_factory, monkeypatch, stage
+    client, db, session_factory, monkeypatch, stage, cancelled
 ):
     from app.db import workspace_requests
 
@@ -171,13 +176,37 @@ async def test_failed_rating_rolls_back_card_log_event_and_outcome(
     module, name = (memory, "review") if stage == "review" else (workspace_requests, "complete")
     original = getattr(module, name)
 
+    import asyncio
+
+    failure_type = asyncio.CancelledError if cancelled else RuntimeError
+
     async def fail(*args, **kwargs):
         await original(*args, **kwargs)
-        raise RuntimeError("injected review interruption")
+        raise failure_type("injected review interruption")
 
     monkeypatch.setattr(module, name, fail)
-    with pytest.raises(RuntimeError, match="injected review interruption"):
-        await client.post(f"/api/review/{item}", json=body, headers=HEADERS)
+    with pytest.raises(failure_type, match="injected review interruption"):
+        if cancelled:
+            # Exercise cancellation at the service boundary: Starlette translates
+            # a cancelled ASGI response into its own "No response returned" error.
+            from datetime import UTC, datetime
+
+            from app.kernel import review_requests
+            from app.schemas.review import ReviewRating
+
+            async with session_factory() as request_db:
+                session = await request_db.get(models.Session, body["session_id"])
+                await review_requests.submit(
+                    request_db,
+                    session.learner_id,
+                    item,
+                    ReviewRating(**body),
+                    now=datetime.now(UTC),
+                    as_of=None,
+                    identity=KEY,
+                )
+        else:
+            await client.post(f"/api/review/{item}", json=body, headers=HEADERS)
     async with session_factory() as connection:
         assert (
             list((await connection.execute(select(models.MemoryState.__table__))).mappings())
@@ -195,7 +224,12 @@ async def test_failed_rating_rolls_back_card_log_event_and_outcome(
     found = await client.get(
         f"/api/review/requests/{KEY}", params={"session_id": body["session_id"]}
     )
-    assert found.json() == {"status": "unresolved", "result": None}
+    assert found.json() == {"status": "not_found", "result": None}
+    # The exact same intent can now be explicitly retried after a proven rollback.
+    monkeypatch.setattr(module, name, original)
+    retried = await client.post(f"/api/review/{item}", json=body, headers=HEADERS)
+    assert retried.status_code == 200
+    assert await db.scalar(select(func.count()).select_from(models.ReviewLog)) == 1
 
 
 async def test_distinct_concurrent_ratings_use_successive_card_states(client, db, monkeypatch):
@@ -210,12 +244,11 @@ async def test_distinct_concurrent_ratings_use_successive_card_states(client, db
 
     async def barrier(*args, **kwargs):
         nonlocal claims
-        result = await original(*args, **kwargs)
         claims += 1
         if claims == 2:
             both_claimed.set()
         await asyncio.wait_for(both_claimed.wait(), 5)
-        return result
+        return await original(*args, **kwargs)
 
     monkeypatch.setattr(workspace_requests, "claim", barrier)
     replies = await asyncio.gather(
@@ -242,3 +275,80 @@ async def test_distinct_concurrent_ratings_use_successive_card_states(client, db
     assert len(events) == 2
     assert events[0].result_json["stability_before"] is None
     assert events[1].result_json["stability_before"] == events[0].result_json["stability_after"]
+
+
+async def test_commit_acknowledgement_loss_recovers_original_rating(client, db, monkeypatch):
+    from app.db import workspace_requests
+
+    item, body = await prepare(client, db)
+    original = workspace_requests.complete
+
+    async def committed_then_lost(db, *args, **kwargs):
+        await original(db, *args, **kwargs)
+        await db.commit()
+        raise RuntimeError("commit acknowledgement lost")
+
+    monkeypatch.setattr(workspace_requests, "complete", committed_then_lost)
+    with pytest.raises(RuntimeError, match="acknowledgement lost"):
+        await client.post(f"/api/review/{item}", json=body, headers=HEADERS)
+    found = await client.get(
+        f"/api/review/requests/{KEY}", params={"session_id": body["session_id"]}
+    )
+    assert found.json()["status"] == "completed"
+    replay = await client.post(f"/api/review/{item}", json=body, headers=HEADERS)
+    assert replay.status_code == 200
+    assert replay.json() == found.json()["result"]
+    assert await db.scalar(select(func.count()).select_from(models.ReviewLog)) == 1
+
+
+async def test_legacy_committed_unresolved_claim_is_never_reclaimed(client, db):
+    from app.db import workspace_requests
+    from app.schemas.review import ReviewRating
+
+    item, body = await prepare(client, db)
+    session = await db.get(models.Session, body["session_id"])
+    await workspace_requests.claim(
+        db,
+        session.learner_id,
+        session.id,
+        f"review:{KEY}",
+        {"item_id": item, "body": ReviewRating(**body).model_dump(mode="json"), "as_of": None},
+    )
+    response = await client.post(f"/api/review/{item}", json=body, headers=HEADERS)
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "request_unresolved"
+    assert await db.scalar(select(func.count()).select_from(models.ReviewLog)) == 0
+    assert await db.scalar(select(func.count()).select_from(models.WorkspaceRequest)) == 1
+
+
+async def test_preloaded_session_ended_before_claim_is_refreshed_under_lock(
+    client, db, session_factory
+):
+    from app.core.errors import AppError
+    from app.db import workspace_requests
+
+    _, body = await prepare(client, db)
+    session = await db.get(models.Session, body["session_id"])
+    learner_id = session.learner_id
+    await db.commit()
+    async with session_factory() as writer:
+        ended = await writer.get(models.Session, session.id)
+        ended.ended_at = "2026-10-04T00:00:00Z"
+        await writer.commit()
+    assert session.ended_at is None  # intentionally stale identity-map object
+
+    async def valid():
+        pass
+
+    with pytest.raises(AppError) as failure:
+        await workspace_requests.claim(
+            db,
+            learner_id,
+            session.id,
+            f"review:{KEY}",
+            body,
+            validate_new=valid,
+            commit_new=False,
+        )
+    assert failure.value.http_status == 404
+    assert await db.scalar(select(func.count()).select_from(models.WorkspaceRequest)) == 0
