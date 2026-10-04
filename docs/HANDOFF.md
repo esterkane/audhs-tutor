@@ -817,3 +817,7 @@ Added docs/ux/IMPLEMENTATION-PLAN.md with bounded stage/slice file scopes, risks
 ## 2026-10-04 — Phase10 Stage1a production tokens
 
 Reproduced faint shared Textarea boundaries and unreadable system-dark inline code before editing. Added control/code semantic tokens to existing CSS and changed shared Textarea border only. Removed dark code selector specificity conflict, retaining transparent pre/code background.19 browser and10 unit tests passed; lint/types/build pass, existing bundle/spectrogram/canvas-environment warnings remain. Before/after contrast JSON and inspected screenshots in docs/design/evidence/phase10a. Values/callbacks/learning logic unchanged; other native fields and Park overlap remain. See docs/slices/design-control-code-tokens.md.
+
+## 2026-10-04 — Phase10 Stage1b heading adoption
+
+Corrected reproduced Preferences page heading through optional CardTitle heading level, preserving h2 default and appearance. Added loading-state heading without changing its existing error behavior. Two baseline checks failed for missing h1; final five browser and fourteen unit checks pass; lint/types/build pass with known warnings. Narrow before/after screenshot hashes identical; desktop/narrow visually inspected. No learning or preference mutation changes. Next: separate Preferences failed-read recovery slice (Stage2a).

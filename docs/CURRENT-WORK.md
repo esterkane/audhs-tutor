@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 10, Stage 1a (2026-10-04)
+## Current owner scope — UX foundations and recovery (2026-10-04)
 
-Implemented [shared Textarea boundaries and inline-code tokens](slices/design-control-code-tokens.md), fixing system-dark inline code contrast from1.08 to10.84 and raising shared field borders above4.8. Nineteen browser checks and ten units pass; lint/types/build pass with existing warnings. No learning logic changed. Next bounded work is Stage1b: reproduce primitive label/heading issues; other native controls, broader layout and remaining acceptance gates stay open.
+Implemented [Preferences heading correction](slices/preferences-page-heading.md) after reproducing missing h1. Existing CardTitle retains default h2; only Preferences opts into h1 for loading/ready states. Five browser and fourteen unit checks pass; lint/types/build pass. Narrow visual output unchanged. Next bounded work: Stage2a truthful Preferences read errors with retry and retained cached content. Other headings, button sizing, full design adoption and human acceptance remain open.
 
 ## Prioritized next work
 

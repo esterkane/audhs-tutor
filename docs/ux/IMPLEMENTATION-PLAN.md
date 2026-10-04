@@ -67,3 +67,5 @@ Phase 9 checked current paths and existing tests against this sequence; no appli
 ## Execution ledger — 2026-10-04
 
 Stage1a implemented and verified: [control/code token slice](../slices/design-control-code-tokens.md). All other proposed production slices remain unimplemented. Next is Stage1b after reproducing a concrete primitive issue; do not infer the entire Phase10 design system is complete.
+
+Stage1b bounded adoption: [Preferences page heading](../slices/preferences-page-heading.md). CardTitle supports contextual heading level while default callers stay h2. Other heading migrations and any future button issue remain scoped to reproduced evidence. Next: Stage2a Preferences failed-read recovery.

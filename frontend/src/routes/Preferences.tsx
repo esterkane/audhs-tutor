@@ -17,13 +17,18 @@ type Spec = {
 export function Preferences() {
   const prefs = usePreferences()
   const set = useSetPreference()
-  if (prefs.isLoading || !prefs.data) return <Card>Loading preferences…</Card>
+  if (prefs.isLoading || !prefs.data) return (
+    <Card>
+      <CardTitle as="h1">Preferences</CardTitle>
+      <p>Loading preferences…</p>
+    </Card>
+  )
   const values = prefs.data.values as Record<string, unknown>
   const specs = prefs.data.specs as Spec[]
   return (
     <div className="grid gap-4">
       <Card>
-        <CardTitle>Preferences</CardTitle>
+        <CardTitle as="h1">Preferences</CardTitle>
         <p className="text-sm text-muted mb-3">
           Everything here is explicit and reversible. The system never changes these silently.
         </p>
