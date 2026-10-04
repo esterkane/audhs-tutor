@@ -67,11 +67,34 @@ export function Session() {
       </Card>
     )
   }
-  if (session.isLoading || !session.data) return <Card>Loading session…</Card>
+  if (!session.data)
+    return (
+      <Card>
+        {session.isError ? (
+          <>
+            <p role="alert">Could not load this session. {session.error.message}</p>
+            <Button disabled={session.isFetching} onClick={() => void session.refetch()}>
+              {session.isFetching ? 'Retrying…' : 'Retry loading session'}
+            </Button>
+          </>
+        ) : (
+          <p role="status">Loading session…</p>
+        )}
+        <Button onClick={() => nav('/')}>Go to Home</Button>
+      </Card>
+    )
   // keyed by the server's block id: a new block (or a resumed session) starts with fresh UI state
   const st = session.data.state
   return (
     <div className="grid gap-4">
+      {session.isError && (
+        <Card>
+          <p role="status">Could not refresh this session. Your current work stays on this page.</p>
+          <Button disabled={session.isFetching} onClick={() => void session.refetch()}>
+            {session.isFetching ? 'Retrying…' : 'Retry loading session'}
+          </Button>
+        </Card>
+      )}
       <SessionControls sessionId={sessionId} skillId={st.skill_id} />
       <SessionBody
         key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen

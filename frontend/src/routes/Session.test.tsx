@@ -1,7 +1,8 @@
 import { clearDraft } from '../features/assess/draft'
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { act, render, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMode } from '../stores/mode'
 import { jsonResponse, renderApp, sseResponse } from '../test/utils'
 import { Session } from './Session'
@@ -287,9 +288,7 @@ it('guides explanation to a question with optional controls collapsed and access
   fireEvent.click(screen.getByRole('button', { name: 'Start explanation' }))
   await screen.findByText('A dot product combines matching components.')
   const explanation = screen.getByRole('region', { name: 'Explanation reader' })
-  expect(
-    within(explanation).getByRole('button', { name: 'Listen to explanation' }),
-  ).toBeVisible()
+  expect(within(explanation).getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
   expect(within(explanation).getByText('A dot product combines matching components.')).toBeVisible()
   expect(screen.queryByText(/No explanation has been prepared yet/)).not.toBeInTheDocument()
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/voice/speak'))).toBe(false)
@@ -444,4 +443,76 @@ it('does not apply recovered hint metadata to the current assessment and keeps t
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await waitFor(() => expect(submitted).toMatchObject({ hint_count: 2 }))
   vi.unstubAllGlobals()
+})
+
+it('offers retry and Home when loading the session fails', async () => {
+  useMode.setState({ sessionId: 's1', skillId: null, mode: 'steady' })
+  let failed = true
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/api/sessions/s1'))
+        return failed
+          ? jsonResponse({ error: { code: 'unavailable', message: 'Backend unavailable' } }, 503)
+          : jsonResponse(session({}))
+      return jsonResponse({})
+    }),
+  )
+  try {
+    renderApp(<Session />)
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load this session')
+    expect(screen.getByRole('button', { name: 'Go to Home' })).toBeEnabled()
+    failed = false
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading session' }))
+    expect(await screen.findByRole('heading', { name: 'Choose where to begin' })).toBeInTheDocument()
+  } finally {
+    vi.unstubAllGlobals()
+  }
+})
+
+it('keeps an unsaved answer mounted when background session refresh fails', async () => {
+  useMode.setState({ sessionId: 's1', skillId: 'k1', mode: 'steady' })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  let fail = false
+  const data = session({ ...running0, block: plan[2], block_index: 2, phase: 'assess', skill_id: 'k1' })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.endsWith('/api/sessions/s1'))
+        return fail
+          ? jsonResponse({ error: { code: 'offline', message: 'Offline' } }, 503)
+          : jsonResponse(data)
+      if (url.includes('/api/assess/next'))
+        return jsonResponse({ item: { id: 'a1', kind: 'explain_back', question: 'Explain.' } })
+      if (url.includes('/api/exercises/')) return jsonResponse({}, 404)
+      return jsonResponse({})
+    }),
+  )
+  const mounted = render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>
+        <Session />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+  try {
+    const input = await screen.findByLabelText('Your answer')
+    fireEvent.change(input, { target: { value: 'Keep my unfinished reasoning' } })
+    fail = true
+    await act(async () => {
+      await qc.invalidateQueries({ queryKey: ['session', 's1'] })
+    })
+    expect(await screen.findByText(/Could not refresh this session/)).toBeInTheDocument()
+    expect(screen.getByLabelText('Your answer')).toBe(input)
+    expect(input).toHaveValue('Keep my unfinished reasoning')
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading session' }))
+    await waitFor(() => expect(screen.queryByText(/Could not refresh this session/)).not.toBeInTheDocument())
+    expect(screen.getByLabelText('Your answer')).toBe(input)
+    expect(input).toHaveValue('Keep my unfinished reasoning')
+  } finally {
+    mounted.unmount()
+    qc.clear()
+    vi.unstubAllGlobals()
+  }
 })

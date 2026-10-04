@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useRef } from 'react'
+import { loadSession } from './loadSession'
 import { api, apiFetch, type Schemas, type SessionOut } from '../../lib/api'
 
 export type BlockState = Schemas['BlockState']
@@ -21,7 +22,8 @@ export function routeForPhase(
 export function useSession(sessionId: string | null) {
   return useQuery({
     queryKey: ['session', sessionId],
-    queryFn: () => api.session(sessionId!),
+    queryFn: ({ signal }) => loadSession(sessionId!, signal),
+    retry: false,
     enabled: !!sessionId,
   })
 }
