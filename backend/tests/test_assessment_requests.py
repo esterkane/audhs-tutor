@@ -59,7 +59,7 @@ async def test_lost_response_replays_across_entrypoints_and_ended_session(
     second = await client.post("/api/challenge/submit", json=body, headers=HEADERS)
     assert second.status_code == 200 and second.json() == first.json()
     found = await client.get(lookup, params={"session_id": body["session_id"]})
-    assert found.json() == {"status": "completed", "result": first.json()}
+    assert found.json() == {"status": "completed", "result": first.json(), "saved_grade": None}
     from app.orchestrator.assessment_requests import lookup
 
     async with session_factory() as reopened:
@@ -117,7 +117,7 @@ async def test_interruption_after_grading_recovers_completed_claim(client, db, m
     found = await client.get(
         f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
     )
-    assert found.json() == {"status": "completed", "result": retry.json()}
+    assert found.json() == {"status": "completed", "result": retry.json(), "saved_grade": None}
     assert await counts(db) == before
     assert before[0] == 1
 
@@ -220,7 +220,9 @@ async def test_failure_completing_claim_rolls_back_learning_state(client, db, mo
     found = await client.get(
         f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
     )
-    assert found.json() == {"status": "grade_ready", "result": None}
+    assert found.json()["status"] == "grade_ready"
+    assert found.json()["result"] is None
+    assert found.json()["saved_grade"]["feedback"]
     monkeypatch.setattr(workspace_requests, "complete", original)
 
     async def no_regrading(*args, **kwargs):

@@ -159,6 +159,16 @@ export function AssessmentRecovery({
                 Your grade is saved. Finish saving to apply it to your learning progress. This uses the
                 existing grade and does not ask the tutor to grade again.
               </p>
+              {lookup.saved_grade && (
+                <div>
+                  <h4 className="font-semibold">Saved feedback — progress not yet confirmed</h4>
+                  <p>{lookup.saved_grade.feedback}</p>
+                  <p>{lookup.saved_grade.next_step}</p>
+                  <ReadAloud
+                    text={`${pending.question}\n\n${lookup.saved_grade.feedback}\n\n${lookup.saved_grade.next_step}`}
+                  />
+                </div>
+              )}
               <Button disabled={recovery.checking} onClick={() => void recovery.finish()}>
                 {recovery.checking ? 'Saving…' : 'Finish saving this result'}
               </Button>

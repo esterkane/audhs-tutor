@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 class AssessmentRequestState(BaseModel):
     status: Literal["not_found", "unresolved", "grade_ready", "completed"]
     result: AttemptResult | None = None
+    saved_grade: GradeResult | None = None
 
 
 def request_key(identity: str) -> str:
@@ -94,9 +95,10 @@ async def lookup(
         return AssessmentRequestState(status="not_found")
     if row.response_json is None:
         execution = await assessment_executions.get_owned(db, learner_id, row.id)
-        return AssessmentRequestState(
-            status="grade_ready" if execution and execution.phase == "grade_ready" else "unresolved"
-        )
+        if execution and execution.phase == "grade_ready" and execution.schema_version == 1:
+            staged = StagedGrade.model_validate(execution.grade_json)
+            return AssessmentRequestState(status="grade_ready", saved_grade=staged.result)
+        return AssessmentRequestState(status="unresolved")
     return AssessmentRequestState(
         status="completed",
         result=await recovered_result(db, learner_id, row.response_json, recovery),

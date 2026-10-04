@@ -2488,6 +2488,7 @@ export interface components {
        */
       status: 'not_found' | 'unresolved' | 'grade_ready' | 'completed'
       result?: components['schemas']['AttemptResult'] | null
+      saved_grade?: components['schemas']['GradeResult'] | null
     }
     /** AssessmentView */
     AssessmentView: {
@@ -3380,6 +3381,22 @@ export interface components {
       document_id: string
       /** Chunks Removed */
       chunks_removed: number
+    }
+    /**
+     * GradeResult
+     * @description Structured grader output (ADR-0009). Never a bare score.
+     */
+    GradeResult: {
+      /** Criterion Results */
+      criterion_results: components['schemas']['CriterionResult'][]
+      /** Misconception */
+      misconception?: string | null
+      /** Confidence */
+      confidence: number
+      /** Feedback */
+      feedback: string
+      /** Next Step */
+      next_step: string
     }
     /** HTTPValidationError */
     HTTPValidationError: {

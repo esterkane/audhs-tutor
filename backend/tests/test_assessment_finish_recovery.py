@@ -81,6 +81,14 @@ async def test_changed_or_deleted_content_keeps_staged_grade_without_evidence(
     assert staged.phase == "grade_ready" and staged.grade_json
     claim = await db.get(models.WorkspaceRequest, staged.claim_id)
     assert claim.response_json is None
+    preview = await client.get(
+        f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
+    )
+    assert preview.status_code == 200
+    assert preview.json()["status"] == "grade_ready"
+    assert preview.json()["saved_grade"] == staged.grade_json["result"]
+    assert preview.json()["result"] is None
+    assert await counts(db) == before
 
 
 async def test_finish_rejects_wrong_session_and_owner(client, db, monkeypatch):

@@ -88,9 +88,20 @@ it('aborts refresh on unmount and cannot clear its saved identity from a late re
 it('offers explicit saving of a staged grade without a new submission', () => {
   const state = recovery()
   state.stale = false
-  state.lookup = { status: 'grade_ready', result: null }
+  state.lookup = {
+    status: 'grade_ready',
+    result: null,
+    saved_grade: {
+      criterion_results: [],
+      confidence: 0.8,
+      feedback: 'Preserved explanation',
+      next_step: 'Try another example',
+    },
+  }
   render(<AssessmentRecovery recovery={state} />)
   expect(screen.getByText(/does not ask the tutor to grade again/)).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Saved feedback — progress not yet confirmed' })).toBeVisible()
+  expect(screen.getByText('Preserved explanation')).toBeVisible()
   expect(state.finish).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'Finish saving this result' }))
   expect(state.finish).toHaveBeenCalledOnce()
