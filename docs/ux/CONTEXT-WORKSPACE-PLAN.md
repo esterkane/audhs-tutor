@@ -40,3 +40,8 @@ The uploaded package and companion information now govern visual/component decis
 ## Additional owner authority confirmation — 2026-10-04
 
 The re-supplied 30-section workspace/navigation document is an authoritative design source, not optional inspiration. See ../design/source/README.md for provenance and precedence. C0–C7 remain the bounded execution sequence; do not redesign unrelated screens ahead of the shell/context work. Palette adoption alone does not fulfill this architecture. Desktop rail, responsive shell, contextual tools, persistent tutor, Library, area-scoped map, resume composition and recent-context/search work remain outstanding. Real user-flow, visual, keyboard and responsive verification are required per slice; preserve learning logic and functionality.
+
+
+## Current execution boundary — 2026-10-04
+
+C3 contextual tool capabilities and recovery have shipped in the corresponding slice records. No relevant audio-lab relationship was found in the current authored project sections; do not add arbitrary lab links. This is a source-coverage limit, not a reason to invent unrelated C3 tasks. Human C3 acceptance remains open. Next bounded implementation is the C4 area-scoped map contract in [area-map-plan](../slices/area-map-plan.md). Stored skill-area membership exists, but the current map API does not expose scoped results. Preserve all learning decisions while adding the read-only projection. Earlier “next C2/C3” paragraphs above are historical.

@@ -981,3 +981,8 @@ Project course/step/notebook view have URL identity and browser-history recovery
 ## C3 authored audio-lab links — 2026-10-04
 
 Optional project-to-audio lesson relations now have validation, explicit explanation selection and named return. See slices/project-audio-lab-contract.md for synthetic browser/review evidence. No real material mapped yet; relevance requires source inspection. Full C3/C5 remains open.
+
+
+## C4 map investigation and baseline — 2026-10-04
+
+Recorded read-only area-map contract in docs/slices/area-map-plan.md. Verified stored area membership exists; map currently exposes only the whole graph. No audio mapping justified by current authored project sections. Corrected the existing mobile map journey to open its collapsed menu by keyboard before choosing Home. Both 390/1280 recovery journeys pass after the test correction; narrow screenshot inspected and focused ESLint passed. No production application or learning-logic change; no build rerun needed for documentation/test-only delta. Next: implement verified map scope with outside-area prerequisites and exact URL/cache identity. Full C4 remains open.

@@ -98,3 +98,8 @@ Project course/step/notebook view have URL identity and browser-history recovery
 ## C3 authored audio-lab links — 2026-10-04
 
 Optional project-to-audio lesson relations now have validation, explicit explanation selection and named return. See slices/project-audio-lab-contract.md for synthetic browser/review evidence. No real material mapped yet; relevance requires source inspection. Full C3/C5 remains open.
+
+
+## Current execution boundary — 2026-10-04
+
+C3 contextual tool capabilities and recovery have shipped in the corresponding slice records. No relevant audio-lab relationship was found in the current authored project sections; do not add arbitrary lab links. This is a source-coverage limit, not a reason to invent unrelated C3 tasks. Human C3 acceptance remains open. Next bounded implementation is the C4 area-scoped map contract in [area-map-plan](slices/area-map-plan.md). Stored skill-area membership exists, but the current map API does not expose scoped results. Preserve all learning decisions while adding the read-only projection. Earlier “next C2/C3” paragraphs above are historical.

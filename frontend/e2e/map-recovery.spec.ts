@@ -21,6 +21,10 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('listitem').filter({ hasText: 'First concept' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Locked', exact: true })).toBeDisabled()
     failing = true
+    if (width < 768) {
+      await page.getByRole('button', { name: 'Menu · Skill map', exact: true }).focus()
+      await page.keyboard.press('Enter')
+    }
     await page.getByRole('link', { name: 'Home', exact: true }).click()
     await expect(page).toHaveURL(/\/$/)
     await expect(page.getByRole('heading', { name: 'Your next step', exact: true })).toBeVisible()
