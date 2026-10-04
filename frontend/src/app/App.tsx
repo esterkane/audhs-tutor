@@ -6,6 +6,7 @@ import { useLayoutEffect, useRef, useState } from 'react'
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { ParkingLotButton } from '../components/ParkingLotButton'
 import { Corpus } from '../routes/Corpus'
+import { Search } from '../routes/Search'
 import { Sources } from '../routes/Sources'
 import { Answers } from '../routes/Answers'
 import { Areas } from '../routes/Areas'
@@ -37,7 +38,7 @@ const primaryPages = [
 const navigationGroups: ReadonlyArray<{ label: string; pages: ReadonlyArray<readonly [string, string]> }> = [
   { label: 'Learn', pages: [['/', 'Start or resume'], ['/review', 'Review'], ['/vocab', 'Vocabulary'], ['/together', 'Work alongside']] },
   { label: 'Explore', pages: [['/areas', 'Learning areas'], ['/map', 'Skill map']] },
-  { label: 'Library', pages: [['/answers', 'Saved answers'], ['/sources', 'Sources']] },
+  { label: 'Library', pages: [['/search', 'Search material'], ['/answers', 'Saved answers'], ['/sources', 'Sources']] },
   { label: 'Tools', pages: [['/playground', 'Playground'], ['/playground/visualizer', 'Audio visualizer']] },
   { label: 'Manage', pages: [['/corpus', 'Materials'], ['/curriculum', 'Lesson drafts'], ['/models', 'Models'], ['/experiments', 'Experiments'], ['/preferences', 'Preferences']] },
 ] as const
@@ -192,6 +193,7 @@ export default function App() {
         <Shell>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/search" element={<Search />} />
             <Route path="/sources" element={<Sources />} />
             <Route path="/answers" element={<Answers />} />
             <Route path="/answers/:answerId" element={<Answers />} />

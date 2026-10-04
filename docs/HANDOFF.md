@@ -1103,3 +1103,6 @@ Recent project views and guarded lesson checkpoints are implemented; tests and l
 
 
 C7 area history now shares the Home disclosure while retaining its validated area-picker store. Additional skill/project/notebook/thought search inventory and the next two-provider search slice are recorded in docs/slices/recent-contexts.md. No global-search completeness claim.
+
+
+Material-search slice: Library /search now searches saved explanations and source passages independently, with URL query and separate retries. Original3 browser journeys, lint/types/build passed; review clear. Details and remaining C7 scope: docs/slices/recent-contexts.md. No learning logic changes.

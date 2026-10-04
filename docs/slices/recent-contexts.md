@@ -67,3 +67,13 @@ Next bounded search UI: an explicit Search material entry and page that independ
 Area consolidation verification:6original browser journeys passed (area and material history), lint/types/build passed with inherited warnings; narrow layout inspected and read-only review clear. Initial area tests incorrectly toggled an already-restored open disclosure closed after Back; corrected to inspect open state before activating. No learning writes or area-selection resets.
 
 Final sanitized3area-history journeys and type check passed.
+
+
+## Material search page — 2026-10-04
+Library now offers Search material. Explicit submission searches saved explanations and indexed source passages independently, using the existing bounded read APIs. Query lives in the URL for refresh/Back; exact answer/chunk links preserve identity. Each category has independent loading, empty and retry states. Historical answers are not presented as reverified; source warnings and quarantine remain visible. Exclusions are explicit: notebook edits, unsaved chats, project notes and saved thoughts are not searched. No new backend, dependency, hosted model or learning-state write.
+
+Original verification: three browser journeys pass at390/1280, covering keyboard submission/opening, independent source retry, Back/reload/clear, invalid query and stale-answer completion. Narrow screenshot inspected; lint, types and production build pass with inherited bundle/worker warnings. Initial passing run exposed duplicate sibling React keys; prefixed keys fixed and all three journeys rerun cleanly. Read-only code/UX review found no blockers or majors.
+
+Still open: global shell search/command access, additional searchable categories with verified contracts, broader accessibility/theme/zoom checks and human comprehension acceptance. This is the first two-provider search page, not completion of C7 or the whole design system.
+
+Final sanitized verification: all3 material-search browser journeys and type check passed.

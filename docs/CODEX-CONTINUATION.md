@@ -348,3 +348,6 @@ pass; this corrects the reported CI failure, with next full remote workflow stil
 Next audio slices remain visualizer audible monitoring (silent analysis stays independent), output
 test-tone ownership and ambient sound ownership. Preserve explicit start/resume, identity-safe late
 promises and honest Stop sound semantics. Physical headphone audibility remains an owner check.
+
+
+Material-search slice: Library /search now searches saved explanations and source passages independently, with URL query and separate retries. Original3 browser journeys, lint/types/build passed; review clear. Details and remaining C7 scope: docs/slices/recent-contexts.md. No learning logic changes.
