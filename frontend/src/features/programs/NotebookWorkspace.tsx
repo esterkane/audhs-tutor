@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Markdown } from '../../components/Markdown'
 import { Button } from '../../components/ui/button'
 import { CodeEditor } from '../code/CodeEditor'
@@ -16,6 +16,7 @@ type Props = {
   checks?: Check[]
   prelude?: string
   onFinish?: (summary: string) => void
+  paused?: boolean
   runnerFactory?: () => Runner
 }
 type Draft = { sources: string[]; predictions: Record<string, string>; selected: number }
@@ -32,6 +33,7 @@ function Workspace({
   checks = [],
   onFinish,
   runnerFactory = createPyodideRunner,
+  paused = false,
 }: Props) {
   const baseline = JSON.stringify(cells)
   let contentHash = 2166136261
@@ -106,7 +108,7 @@ function Workspace({
       setSaveStatus('Could not save in this browser. Your edits are still here; export before leaving.')
     }
   }
-  function stop() {
+  const stop = useCallback(() => {
     if (deadline.current) clearTimeout(deadline.current)
     operation.current += 1
     runner.current?.dispose()
@@ -114,7 +116,12 @@ function Workspace({
     setBusy(false)
     setCheckedRun(null)
     setStatus('Run stopped. Your edits are preserved.')
-  }
+  }, [])
+  useEffect(() => {
+    // Mirror termination of the external worker in its run/status state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (paused && busy) stop()
+  }, [paused, busy, stop])
   async function run(all = false) {
     if (busy) return
     const token = ++operation.current
@@ -230,6 +237,7 @@ function Workspace({
     .map((c, i) => ({ c, i }))
     .filter(({ c }) => c.cell_type === 'markdown')
     .at(-1)
+  if (paused) return null
   return (
     <section aria-label="Notebook workspace" className="space-y-4 border border-line rounded-lg p-4">
       <h3 className="text-xl font-semibold">Read → predict → run → explain</h3>

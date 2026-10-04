@@ -116,8 +116,9 @@ function TaskNotebookLoad({ courseId, sectionId, practice, identity, title, paus
       ) : (
         !loaded && <p role="status">Loading starter and local dataset…</p>
       )}
-      {loaded && !paused && (
+      {loaded && (
         <NotebookWorkspace
+          paused={paused}
           courseId={courseId}
           sectionId={sectionId}
           cells={loaded.cells}

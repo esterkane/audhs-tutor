@@ -314,3 +314,28 @@ it('edits and restores the answer for the tutor focus without moving or running 
   expect(screen.getByLabelText('Your prediction or explanation')).toHaveValue('Step explanation.')
   expect(runner.run).not.toHaveBeenCalled()
 })
+
+it('stops active execution on pause and ignores its late result after resume', async () => {
+  let resolve!: (value: RunResult) => void
+  const runner = fake(
+    vi.fn(
+      () =>
+        new Promise<RunResult>((done) => {
+          resolve = done
+        }),
+    ),
+  )
+  const props = { identity: 'pause-active', cells, runnerFactory: () => runner }
+  const view = render(<NotebookWorkspace {...props} />)
+  fireEvent.change(screen.getByLabelText('Notebook cell'), { target: { value: '1' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Run through this cell' }))
+  view.rerender(<NotebookWorkspace {...props} paused />)
+  expect(runner.dispose).toHaveBeenCalled()
+  expect(screen.queryByRole('button', { name: 'Run through this cell' })).not.toBeInTheDocument()
+  view.rerender(<NotebookWorkspace {...props} paused={false} />)
+  await act(async () => {
+    resolve({ ...result, stdout: 'STALE OUTPUT' })
+  })
+  expect(screen.queryByText('STALE OUTPUT')).not.toBeInTheDocument()
+  expect(screen.getByRole('status')).toHaveTextContent('Run stopped')
+})

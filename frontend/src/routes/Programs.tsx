@@ -82,8 +82,9 @@ function NotebookReader({
           />
         </label>
         {error && <p role="alert">{error} The previous notebook remains open.</p>}
-        {!paused && cells.length > 0 && (
+        {cells.length > 0 && (
           <NotebookWorkspace
+            paused={paused}
             courseId={isSavedNotebook ? courseId : undefined}
             key={JSON.stringify(cells)}
             cells={cells}
