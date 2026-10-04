@@ -3909,6 +3909,30 @@ export interface components {
     } & {
       [key: string]: unknown
     }
+    /** LessonCapture */
+    LessonCapture: {
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /** Label */
+      label: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'lesson'
+      /** Session Id */
+      session_id: string
+      /** Skill Id */
+      skill_id: string
+      /** Block Index */
+      block_index: number
+      /** Block Started At */
+      block_started_at: string
+    }
     /** LessonList */
     LessonList: {
       /** Lessons */
@@ -4160,6 +4184,7 @@ export interface components {
             | components['schemas']['ProjectCapture']
             | components['schemas']['AnswerCapture']
             | components['schemas']['WorkspaceCapture']
+            | components['schemas']['LessonCapture']
           )
         | null
       /** Request Key */
@@ -4185,6 +4210,7 @@ export interface components {
             | components['schemas']['ProjectCapture']
             | components['schemas']['AnswerCapture']
             | components['schemas']['WorkspaceCapture']
+            | components['schemas']['LessonCapture']
           )
         | null
       /** Id */

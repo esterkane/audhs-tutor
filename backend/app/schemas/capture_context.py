@@ -35,6 +35,14 @@ class WorkspaceCapture(ContextBase):
     workspace_id: Identity
 
 
+class LessonCapture(ContextBase):
+    kind: Literal["lesson"]
+    session_id: Identity
+    skill_id: Identity
+    block_index: int = Field(ge=0)
+    block_started_at: str = Field(min_length=1, max_length=100)
+
+
 CaptureContext = Annotated[
-    AreaCapture | ProjectCapture | AnswerCapture | WorkspaceCapture, Field(discriminator="kind")
+    AreaCapture | ProjectCapture | AnswerCapture | WorkspaceCapture | LessonCapture, Field(discriminator="kind")
 ]

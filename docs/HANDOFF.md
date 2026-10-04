@@ -1062,3 +1062,7 @@ First durable capture context slice implemented; see docs/slices/capture-context
 
 ## C6 task starter return — 2026-10-04
 Fixed reproduced saved-thought task-notebook link opening only the guide after the notebook was closed. Distinct task view now restores the starter with saved code/notes; no automatic execution. Final sanitized5browser,9unit,5backend checks passed with lint/types/build. See capture-context-contract.md for review and limits. Next: session/audio/source identities and undo; broader C7 remains pending.
+
+
+## C6 original lesson return — 2026-10-04
+Saved lesson thoughts now check current session/block identity before resuming. Mismatch offers explicit selected-lesson choices; no automatic replacement or resurrection. Exact evidence and remaining audio/source/undo scope are in capture-context-contract.md. Final sanitized2lesson journeys plus11pause/return regressions,6frontend and5backend tests pass; lint/types/build and review clear.

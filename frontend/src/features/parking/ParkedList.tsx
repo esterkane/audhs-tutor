@@ -1,3 +1,4 @@
+import { OriginalLesson } from './OriginalLesson'
 import { Link } from 'react-router-dom'
 import { thoughtContextPath } from './context'
 import { useRef, useState } from 'react'
@@ -56,6 +57,7 @@ function ThoughtList({ status, onOpenContext }: { status: 'parked' | 'promoted';
           {items.map(p => (
             <li key={p.id} className="flex flex-wrap items-center gap-2">
               <span className="grow">{p.text}</span>
+              {p.original_context?.kind === 'lesson' && <OriginalLesson context={p.original_context} onOpen={onOpenContext} />}
               {p.original_context && thoughtContextPath(p.original_context) && <Link className="underline" to={thoughtContextPath(p.original_context)!} onClick={onOpenContext}>Open original material: {p.original_context.label}</Link>}
               {status === 'parked' && <Button size="sm" disabled={pending !== null} onClick={() => void act(p.id, 'promote', p.text)}>Show on Home</Button>}
               {confirm === p.id ? <div className="w-full">
