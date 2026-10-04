@@ -1,11 +1,16 @@
+import asyncio
+import logging
 from typing import Annotated
 from uuid import UUID
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Header, Request
 
 from app.api.answer_jobs import schedule_index
-from app.api.deps import DB, Gateway, Learner, SettingsDep
+from app.api.deps import DB, Gateway, Learner, SettingsDep, get_repo
 from app.db import workspace_requests
+from app.models_ai.provider import ProviderError
+from app.models_ai.routing import NoModelReady
 from app.orchestrator import playground
 from app.schemas.playground import PlaygroundReply, PlaygroundRequest
 
@@ -44,8 +49,22 @@ async def tutor(
         )
         if saved is not None:
             return PlaygroundReply.model_validate(saved)
+    repo = None
+    if body.lesson_origin and body.intent != "check_bins":
+        try:
+            repo = await asyncio.wait_for(get_repo(request, db, settings), timeout=5.0)
+        except (httpx.HTTPError, ProviderError, NoModelReady, TimeoutError, ValueError) as exc:
+            logging.getLogger(__name__).warning(
+                "Lesson repository unavailable: %s", type(exc).__name__
+            )
     reply = await playground.respond(
-        db, gateway, learner_id, body, settings=settings, recovery=request.app.state.answer_recovery
+        db,
+        gateway,
+        learner_id,
+        body,
+        settings=settings,
+        recovery=request.app.state.answer_recovery,
+        repo=repo,
     )
     if identity is not None:
         await workspace_requests.complete(db, learner_id, identity, reply.model_dump(mode="json"))

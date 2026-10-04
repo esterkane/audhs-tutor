@@ -60,7 +60,15 @@ class PlaygroundRequest(BaseModel):
         return self
 
 
+class PlaygroundSource(BaseModel):
+    chunk_id: str
+    citation: str
+    text: str
+
+
 class PlaygroundReply(BaseModel):
+    source_status: Literal["supplied", "empty", "unavailable", "not_requested"] | None = None
+    sources: list[PlaygroundSource] = Field(default_factory=list)
     text: str
     model: str
     route: str

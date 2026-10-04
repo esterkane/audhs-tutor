@@ -49,3 +49,7 @@ Read-through and seven passing retrieval/recovery tests establish these constrai
 Implementation files will include playground schemas/API/orchestrator, a focused evidence helper using existing context/retrieval types, answer reuse, versioned prompt, provenance disclosure, generated types, source UI and focused tests. No kernel, assessment, routing or database-schema change is required by this contract. Build evidence resolution and reuse together before enabling the grounded path; then add source presentation and explicit starter insertion.
 
 Verified now: test_retrieve_scope plus test_workspace_request_recovery, 7 passed locally. This validates existing widening, concurrent claims, cancellation, completed replay after reconnect/end and failed final persistence. It does not validate the proposed grounded path, which is still unimplemented. Browser/keyboard/responsive checks are not applicable to this documentation-only refinement; the next runtime slice must run them.
+
+## Runtime checkpoint — 2026-10-04
+
+Steps2–3 and the reference-panel part of4 are integrated; see lesson-playground-sources.md. Explicit starter insertion and real-model grounding evaluation remain unimplemented. This does not complete C3 or the design-system plan.

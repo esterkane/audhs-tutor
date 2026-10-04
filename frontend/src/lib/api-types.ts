@@ -4184,6 +4184,10 @@ export interface components {
     }
     /** PlaygroundReply */
     PlaygroundReply: {
+      /** Source Status */
+      source_status?: ('supplied' | 'empty' | 'unavailable' | 'not_requested') | null
+      /** Sources */
+      sources?: components['schemas']['PlaygroundSource'][]
       /** Text */
       text: string
       /** Model */
@@ -4261,6 +4265,15 @@ export interface components {
       output_stale: boolean
       /** History */
       history?: components['schemas']['PlaygroundMessage'][]
+    }
+    /** PlaygroundSource */
+    PlaygroundSource: {
+      /** Chunk Id */
+      chunk_id: string
+      /** Citation */
+      citation: string
+      /** Text */
+      text: string
     }
     /** PracticeIn */
     PracticeIn: {

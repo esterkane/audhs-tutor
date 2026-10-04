@@ -83,7 +83,12 @@ async def retrieve(
 
 
 async def exact_saved(
-    db: AsyncSession, learner_id: str, body: PlaygroundRequest, prompt_version: str
+    db: AsyncSession,
+    learner_id: str,
+    body: PlaygroundRequest,
+    prompt_version: str,
+    *,
+    evidence_identity: str | None = None,
 ) -> TutorAnswer | None:
     """Reopen identical supplied requests, never certify dataset or external-source freshness."""
     from app.db.answer_sources import check
@@ -117,6 +122,8 @@ async def exact_saved(
         stmt = stmt.where(*fields(value, "$." + key))
     rows = await db.scalars(stmt.order_by(TutorAnswer.id.desc()).limit(20))
     for row in rows:
+        if row.metadata_json.get("lesson_evidence_identity") != evidence_identity:
+            continue
         previous = {key: value for key, value in row.request_json.items() if key != "prefer_saved"}
         if previous != expected:
             continue

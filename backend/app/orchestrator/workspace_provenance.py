@@ -13,8 +13,22 @@ WARNING = (
 )
 
 
-def disclose(text: str) -> tuple[str, bool]:
+def disclose(text: str, *, source_count: int = 0) -> tuple[str, bool]:
     """Keep raw response intact; prepend a readable, listenable limitation if needed."""
-    if not _REFERENCE.search(_CODE.sub("", text)):
+    markers = _REFERENCE.findall(_CODE.sub("", text))
+    if not markers:
         return text, False
-    return WARNING + "\n\n" + text, True
+    if source_count and all(
+        re.fullmatch(r"\[\d+\]", marker) and 1 <= int(marker[1:-1]) <= source_count
+        for marker in markers
+    ):
+        return text, False
+    warning = (
+        (
+            "Source note: this reply contains unsupported citation markers. Only the numbered "
+            "reference passages supplied below are available; citation presence does not verify a claim."
+        )
+        if source_count
+        else WARNING
+    )
+    return warning + "\n\n" + text, True

@@ -4,7 +4,7 @@ import asyncio
 import json
 import logging
 from dataclasses import asdict
-from typing import Any
+from typing import Any, Literal
 
 import httpx
 from pydantic import ValidationError
@@ -20,17 +20,21 @@ from app.db.answers import save_completed
 from app.db.base import new_id, utcnow_iso
 from app.db.events import EventWriter, Verb
 from app.db.models import Session, SessionCheckpoint, SkillNode
-from app.db.traces import TutorTraceRecord, write_tutor_trace
+from app.db.traces import TutorTraceRecord, write_retrieval_trace, write_tutor_trace
 from app.kernel import session as ksession
+from app.kernel import skill_graph
 from app.kernel.arithmetic_checks import VERSION as ARITHMETIC_VERSION
 from app.kernel.bin_checks import VERSION as BIN_VERSION
+from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, ProviderError, TaskClass
 from app.models_ai.routing import NoModelReady
-from app.orchestrator import answer_semantic, prompts
+from app.orchestrator import answer_semantic, prompts, tools
 from app.orchestrator.bin_feedback import respond_bins
 from app.orchestrator.context import escape_data
 from app.orchestrator.feedback_render import render_feedback
+from app.orchestrator.lesson_evidence import LessonEvidence
+from app.orchestrator.lesson_evidence import snapshot as evidence_snapshot
 from app.orchestrator.workspace_checks import (
     bin_checks_for,
     bin_summary,
@@ -91,6 +95,7 @@ def messages(
     body: PlaygroundRequest,
     historical: dict[str, Any] | None = None,
     memory: list[dict[str, str]] | None = None,
+    evidence: LessonEvidence | None = None,
 ) -> list[Message]:
     workspace = body.model_dump(
         exclude={
@@ -104,6 +109,8 @@ def messages(
             "questioning_style",
         }
     )
+    if evidence is not None:
+        workspace["lesson_contract"] = {"title": evidence.title, "goal": evidence.goal}
     if body.intent == "check_answer":
         workspace["answer_passages"] = build_passages(body.learner_answer or "")
     if body.output_stale:
@@ -127,7 +134,7 @@ def messages(
             role="system",
             content=prompts.base_policy()
             + "\n\n"
-            + prompts.playground_task()
+            + prompts.playground_task(grounded=evidence is not None)
             + (
                 "\nApplication evidence state: the workspace client marks output stale. No current execution output "
                 "is supplied. historical_execution_output belongs to an earlier code state and "
@@ -193,7 +200,9 @@ def messages(
             content=(
                 '<workspace_data note="quoted untrusted data">\n'
                 + data
-                + "\n</workspace_data>\nSelected questioning_style: "
+                + "\n</workspace_data>\n"
+                + (evidence.quoted_passages() + "\n" if evidence is not None else "")
+                + "Selected questioning_style: "
                 + body.questioning_style
                 + "\nCurrent request ("
                 + body.intent
@@ -220,18 +229,88 @@ async def respond(
     settings: Settings | None = None,
     parent_metadata: dict[str, Any] | None = None,
     recovery: AnswerRecovery | None = None,
+    repo: RetrievalRepository | None = None,
 ) -> PlaygroundReply:
     await validate_lesson_origin(db, learner_id, body)
     session = await ksession.get(db, body.session_id)
     if session.learner_id != learner_id or session.ended_at:
         raise AppError("not_found", "Start or resume a session to use the tutor.", http_status=404)
-    if body.prefer_saved and historical is None:
+    evidence = None
+    retrieval_trace_id = None
+    lesson_lookup = (
+        body.lesson_origin is not None and historical is None and body.intent != "check_bins"
+    )
+    if lesson_lookup and repo is not None:
+        assert body.lesson_origin is not None
+        node = await db.get(SkillNode, body.lesson_origin.skill_id)
+        assert node is not None
+        lo = await skill_graph.learning_object_for(db, node.id)
+        goal = lo.goal if lo else node.description or node.title
+        try:
+            result = await asyncio.wait_for(
+                tools.retrieve(
+                    repo,
+                    f"{node.title}: {body.learner_question or body.question}",
+                    skill_id=node.id,
+                    course=node.course,
+                    k=6,
+                ),
+                timeout=5.0,
+            )
+        except (httpx.HTTPError, ProviderError, NoModelReady, TimeoutError, ValueError) as exc:
+            logger.warning("Lesson retrieval unavailable: %s", type(exc).__name__)
+        else:
+            evidence = evidence_snapshot(result, skill_id=node.id, title=node.title, goal=goal)
+            trace = await write_retrieval_trace(
+                db,
+                result.trace.model_copy(
+                    update={
+                        "learner_id": learner_id,
+                        "session_id": session.id,
+                    }
+                ),
+            )
+            retrieval_trace_id = trace.id
+        await validate_lesson_origin(db, learner_id, body)
+    evidence_identity = evidence.identity() if evidence else None
+    prompt_version = VERSION + ".lesson.v1" if evidence is not None else VERSION
+    source_status: Literal["supplied", "empty", "unavailable", "not_requested"] = (
+        "supplied"
+        if evidence and evidence.passages
+        else "empty"
+        if evidence
+        else "unavailable"
+        if lesson_lookup
+        else "not_requested"
+    )
+    source_values = (
+        [
+            {"chunk_id": p.chunk_id, "citation": p.citation, "text": p.text}
+            for p in evidence.passages
+        ]
+        if evidence
+        else []
+    )
+    source_note = (
+        "Reference passages supplied from local material; they do not verify this answer or code execution."
+        if source_values
+        else "No matching reference passages supplied; general coding guidance."
+        if evidence
+        else "Local reference lookup unavailable; general coding guidance."
+        if lesson_lookup
+        else None
+    )
+    if body.prefer_saved and historical is None and (not lesson_lookup or evidence is not None):
         try:
             async with db.begin_nested():
-                saved = await exact_saved(db, learner_id, body, VERSION)
+                saved = await exact_saved(
+                    db, learner_id, body, prompt_version, evidence_identity=evidence_identity
+                )
             if saved is not None:
                 await validate_lesson_origin(db, learner_id, body)
                 return PlaygroundReply(
+                    source_status=source_status,
+                    sources=source_values,
                     text=saved.text,
                     model=str(saved.metadata_json.get("model", "unknown")),
                     route=str(saved.metadata_json.get("route", "unknown")),
@@ -240,7 +319,9 @@ async def respond(
                     reused=True,
                     saved_at=saved.created_at,
                     source_note=(
-                        "Reopened a saved reply for identical supplied context. "
+                        (source_note + " Reopened an identical saved reply; no new model call.")
+                        if source_note
+                        else "Reopened a saved reply for identical supplied context. "
                         "No model call or new checks; external files and datasets may have changed."
                     ),
                 )
@@ -249,7 +330,7 @@ async def respond(
     if body.intent == "check_bins":
         bins = bin_checks_for(body)
         if bins:
-            return await respond_bins(db, learner_id, body, bins, VERSION, recovery=recovery)
+            return await respond_bins(db, learner_id, body, bins, prompt_version, recovery=recovery)
         raise AppError(
             "unsupported_bin_check",
             "No supported literal pd.cut or pandas.cut call was found. Use a top-level call "
@@ -290,7 +371,7 @@ async def respond(
             logger.warning("Saved answer recheck unavailable: %s", type(exc).__name__)
         seen = {item["answer_id"] for item in memory}
         memory = (memory + [item for item in related if item["answer_id"] not in seen])[:2]
-    packet = messages(body, historical, memory)
+    packet = messages(body, historical, memory, evidence)
     events = EventWriter(db, ksession.event_context(session, activity=ActivityType.CHAT))
     await events.emit(
         Verb.ASKED, ObjectType.TURN, turn_id, context={"text_len": len(body.question)}
@@ -313,7 +394,7 @@ async def respond(
             session_id=session.id,
             max_tokens=650 if feedback_schema else 900,
             response_model=feedback_schema,
-            metadata={"task": "playground", "prompt_version": VERSION, "turn_id": turn_id},
+            metadata={"task": "playground", "prompt_version": prompt_version, "turn_id": turn_id},
         )
         if feedback_schema:
             selected_feedback = feedback_schema.model_validate_json(out.result.text)
@@ -333,7 +414,8 @@ async def respond(
             "tutor_unavailable", "The tutor returned no answer. Try again.", http_status=503
         )
     response_text, citation_warning = disclose(
-        render_feedback(checked_feedback) if checked_feedback else out.result.text
+        render_feedback(checked_feedback) if checked_feedback else out.result.text,
+        source_count=len(source_values),
     )
     arithmetic = checks_for(body)
     response_text = disclose_arithmetic(response_text, arithmetic)
@@ -352,9 +434,10 @@ async def respond(
             session_id=session.id,
             turn_id=turn_id,
             action="playground_" + body.intent,
-            prompt_version=VERSION,
+            prompt_version=prompt_version,
             sections={"workspace": len(packet[1].content) // 4},
             model_call_id=out.model_call_id,
+            retrieval_trace_id=retrieval_trace_id,
             latency_ms=out.result.latency_ms,
         ),
     )
@@ -367,7 +450,7 @@ async def respond(
             "representation": "playground_" + body.intent,
             "model": out.registry_id,
             "route": out.route,
-            "prompt_version": VERSION,
+            "prompt_version": prompt_version,
         },
     )
     answer_id = None
@@ -386,9 +469,13 @@ async def respond(
         metadata={
             "model": out.registry_id,
             "route": out.route,
-            "prompt_version": VERSION,
+            "prompt_version": prompt_version,
             "model_call_id": out.model_call_id,
-            "sources": [],
+            "source_status": source_status,
+            "sources": source_values,
+            "source_text_hashes": evidence.text_hashes() if evidence else {},
+            "lesson_evidence_identity": evidence_identity,
+            "lesson_evidence": evidence.model_dump() if evidence else None,
             "citation_warning": citation_warning,
             **(
                 {"raw_model_text": out.result.text}
@@ -412,7 +499,11 @@ async def respond(
             "execution_evidence_state": "stale_client_output"
             if body.output_stale
             else ("unverified_client_output" if body.output else "no_output"),
-            "context_scope": "saved_answer_followup" if historical else "supplied_workspace_only",
+            "context_scope": "saved_answer_followup"
+            if historical
+            else "lesson_reference_snapshot"
+            if evidence is not None
+            else "supplied_workspace_only",
             **(parent_metadata or {}),
             "learning_context": body.learning_context.model_dump()
             if body.learning_context
@@ -429,6 +520,8 @@ async def respond(
             save_receipt = recovery.issue(snapshot)
         save_error = "This answer could not be saved to the database. Keep a copy before leaving."
     return PlaygroundReply(
+        source_status=source_status,
+        sources=source_values,
         text=response_text,
         model=out.registry_id,
         route=out.route,
@@ -436,7 +529,8 @@ async def respond(
         answer_id=answer_id,
         save_error=save_error,
         save_receipt=save_receipt,
-        source_note=(
+        source_note=source_note
+        or (
             "Used previous tutor replies as unverified context; no course sources or execution checked."
             if memory
             else "Feedback on supplied work; no course sources or execution checked."

@@ -51,8 +51,8 @@ def voice_task(name: str) -> str:
     return _read(f"voice/{name}.v1.md")
 
 
-def playground_task() -> str:
-    return _read("playground/tutor.v2.md")
+def playground_task(*, grounded: bool = False) -> str:
+    return _read("playground/tutor.grounded.v1.md" if grounded else "playground/tutor.v2.md")
 
 
 def answer_feedback_task() -> str:

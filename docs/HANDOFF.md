@@ -936,3 +936,8 @@ Source/retry inspection found a source-free prompt and disclosure that must chan
 ## Bounded source snapshot — 2026-10-04
 
 Pure lesson-evidence helper now preserves whole budgeted passages, hashes and quoted provenance; 11 focused tests and static checks pass, review clear. See slices/lesson-evidence-snapshot.md. Runtime integration/reuse/source UI remains next; this does not yet enable grounded tutoring.
+
+
+## Linked coding sources and reuse — 2026-10-04
+
+Explicit linked tutor requests now retrieve local references, retain per-answer source panels and use evidence-aware exact reuse. Known availability failures disclose general help; completed retries retain original sources. See slices/lesson-playground-sources.md for55 backend tests, browser/keyboard/reload evidence and real-model semantic limitations. Starter suggestions and broader workspace phases remain open.

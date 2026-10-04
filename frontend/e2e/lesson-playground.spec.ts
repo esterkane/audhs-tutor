@@ -32,7 +32,7 @@ for (const width of [390, 1280]) {
       const tutorBodies: Record<string, unknown>[] = []
       await page.route('**/api/playground/tutor', async route => {
         tutorBodies.push(route.request().postDataJSON())
-        await route.fulfill({ json: { text: 'Start with one small example.', model: 'fixture', route: 'local', source_note: 'No sources retrieved.', turn_id: 'fixture' } })
+        await route.fulfill({ json: { text: 'Start with one small example.', model: 'fixture', route: 'local', source_note: 'Reference passages supplied.', sources: [{ chunk_id: 'fixture-source', citation: 'Synthetic reference', text: 'Vectors have components.' }], turn_id: 'fixture' } })
       })
       await page.getByRole('textbox', { name: 'Ask about your code' }).fill('Explain my experiment')
       await page.getByRole('button', { name: 'Send question', exact: true }).click()
@@ -42,6 +42,14 @@ for (const width of [390, 1280]) {
       expect(tutorBodies[0].lesson_origin).toEqual({ skill_id: new URL(location).searchParams.get('lesson_skill') })
       expect(tutorBodies[0].exercise).toContain('Lesson:')
       expect(tutorBodies[0].learning_context).toMatchObject({ target_id: expect.stringContaining(`lesson:${session.id}:`) })
+      const sources = page.getByText('Reference passages supplied to the tutor (1)', { exact: true })
+      await sources.focus()
+      await page.keyboard.press('Enter')
+      await expect(page.getByText('Vectors have components.', { exact: true })).toBeVisible()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await page.reload()
+      await sources.click()
+      await expect(page.getByText('Vectors have components.', { exact: true })).toBeVisible()
       await page.screenshot({ path: info.outputPath('linked-experiment.png'), fullPage: true })
       await page.goto('/playground')
       await expect(code).not.toHaveValue('print("lesson-specific work")')

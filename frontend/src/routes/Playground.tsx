@@ -17,7 +17,7 @@ import { routeForPhase, useCurrentSession, useStartSession } from '../features/s
 import { TutorResponseStatus, type ResponseStatus } from '../features/tutor/TutorResponseStatus'
 import { useMode } from '../stores/mode'
 
-type Chat = { role: 'user' | 'assistant'; text: string; codeSnapshot?: string }
+type Chat = { role: 'user' | 'assistant'; text: string; codeSnapshot?: string; sources?: TutorReply['sources']; sourceNote?: string }
 type Draft = { code: string; prediction: string; chat: Chat[]; question?: string }
 const keyFor = (id: string) => `playground:v1:${id}`
 function restore(activity: Activity): Draft {
@@ -35,7 +35,13 @@ function restore(activity: Activity): Draft {
         question: typeof value.question === 'string' ? value.question : '',
         chat: value.chat
           .filter((m: Chat) => m && ['user', 'assistant'].includes(m.role) && typeof m.text === 'string')
-          .slice(-24),
+          .slice(-24)
+          .map((m: Chat) => ({ ...m,
+            sourceNote: typeof m.sourceNote === 'string' ? m.sourceNote : undefined,
+            sources: Array.isArray(m.sources) ? m.sources.filter(source => source &&
+              typeof source.chunk_id === 'string' && typeof source.citation === 'string' &&
+              typeof source.text === 'string').slice(0, 6) : [],
+          })),
       }
   } catch {
     /* absent or unusable browser storage */
@@ -70,7 +76,7 @@ export function Playground({ runnerFactory = createPyodideRunner }: { runnerFact
     return <div className="grid gap-4">
       <h1 className="text-page-title font-semibold">Lesson experiment</h1>
       <Link className="underline" to={routeForPhase(current.data?.state)} onClick={() => setSession(originSession!, originSkill!)}>Return to lesson: {skill.title}</Link>
-      <p className="text-sm text-muted">This workspace keeps separate code and chat for this lesson session. The tutor receives the lesson goal and your code; course sources are not retrieved. Run output is temporary.</p>
+      <p className="text-sm text-muted">This workspace keeps separate code and chat for this lesson session. The tutor receives the lesson goal and your code, and looks for local reference passages when you ask. Run output is temporary.</p>
       <Workspace key={linkedActivity.id} activity={linkedActivity} runnerFactory={runnerFactory} onNext={() => {}} expectedSession={originSession!} expectedSkill={originSkill!} />
     </div>
   }
@@ -335,7 +341,7 @@ function Workspace({
           chat: [
             ...d.chat,
             { role: 'user' as const, text: pending.view.display, codeSnapshot },
-            { role: 'assistant' as const, text: reply.text, codeSnapshot },
+            { role: 'assistant' as const, text: reply.text, codeSnapshot, sources: reply.sources, sourceNote: reply.source_note },
           ].slice(-24),
         }))
         setQuestion((currentQuestion) => (currentQuestion === pending.view.submitted ? '' : currentQuestion))
@@ -558,6 +564,20 @@ function Workspace({
                         <p className="text-xs text-warn">This answer refers to earlier code.</p>
                       )}
                     <Markdown text={m.text} />
+                    {m.sourceNote && <p className="text-xs text-muted">{m.sourceNote}</p>}
+              {m.sources && m.sources.length > 0 && (
+                <details className="mt-3">
+                  <summary>Reference passages supplied to the tutor ({m.sources.length})</summary>
+                  <p className="text-sm text-muted">These are references, not proof that the answer or code is correct.</p>
+                  {m.sources.map((source, index) => (
+                    <section key={source.chunk_id} className="mt-3">
+                      <h3 className="font-medium">[{index + 1}] {source.citation}</h3>
+                      <p className="whitespace-pre-wrap break-words text-sm">{source.text}</p>
+                    </section>
+                  ))}
+                </details>
+              )}
+
                     {m.role === 'user' && typeof m.codeSnapshot === 'string' && (
                       <details className="mt-1 text-xs">
                         <summary className="cursor-pointer">Code shared with this request</summary>
@@ -628,7 +648,7 @@ function Workspace({
               )}
               <p className="text-xs text-muted mt-3">
                 {modelNote ||
-                  'General coding guidance; no course sources retrieved. AI explanations can be wrong; verify them against run output.'}
+                  'AI explanations can be wrong. Reference details, when available, appear with each answer. Run output is not independently verified.'}
               </p>
             </Card>
           </aside>
