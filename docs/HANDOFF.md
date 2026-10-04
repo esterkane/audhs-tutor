@@ -926,3 +926,8 @@ Verified coding tutor still has no lesson retrieval and source-aware reuse. Next
 ## Linked lesson request validation — 2026-10-04
 
 C3 coding requests now validate typed lesson origin on the server while preserving completed retries and legacy fingerprints. See slices/lesson-origin-validation.md for checks and concurrency limits. Source retrieval/reuse remains next; no learning logic or routing changes.
+
+
+## Grounded playground integration boundary — 2026-10-04
+
+Source/retry inspection found a source-free prompt and disclosure that must change together with retrieval. The evidence plan now specifies bounded snapshots, cross-course provenance, source-aware reuse and completed replay without a new claim schema. Seven existing retrieval/recovery tests pass; grounded runtime remains unimplemented.
