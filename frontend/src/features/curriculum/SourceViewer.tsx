@@ -1,3 +1,4 @@
+import { RememberContext } from '../recent/RememberContext'
 import { requestCapture } from '../parking/requestCapture'
 import { useId, useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -38,6 +39,7 @@ export function SourceViewer({
   const c = chunk.isError ? undefined : chunk.data
   return (
     <Card role="region" aria-label={`Source ${citation}`} className="border-accent">
+      {c?.chunk_id === chunkId && <RememberContext context={{ version: 1, kind: 'source', chunk_id: chunkId, label: c.citation.slice(0, 200) || 'Source passage' }} />}
       <div className="flex justify-between gap-2 items-start">
         <p className="font-medium text-sm">{c ? c.citation : citation}</p>
         <Button size="sm" variant="ghost" onClick={onClose}>

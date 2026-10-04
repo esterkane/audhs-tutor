@@ -1,3 +1,4 @@
+import { RememberContext } from '../features/recent/RememberContext'
 import { appendExample, pythonExamples, STARTER_REQUEST } from '../features/playground/starterCode'
 import { useRequestRecovery, type PendingTutorRequest } from '../features/playground/useRequestRecovery'
 import { RequestRecoveryControls } from '../features/playground/RequestRecoveryControls'
@@ -92,6 +93,7 @@ export function Playground({ runnerFactory = createPyodideRunner }: { runnerFact
   }
   return (
     <div className="grid gap-4" data-capture-query={new URLSearchParams({ workspace: selected }).toString()}>
+      {(!requested || requested === selected) && <RememberContext context={{ version: 1, kind: 'workspace', workspace_id: selected, label: activity.title }} />}
       <div>
         <h1 className="text-xl font-semibold">Coding playground</h1>
         <Link to={`/playground/visualizer?workspace=${encodeURIComponent(selected)}`}>Open audio visualizer lab →</Link>

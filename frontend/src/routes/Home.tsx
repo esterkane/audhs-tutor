@@ -1,3 +1,4 @@
+import { RecentContexts } from '../features/recent/RecentContexts'
 import { RecentAreas } from '../features/areas/RecentAreas'
 import { HomeTopicPreparation } from '../features/areas/HomeTopicPreparation'
 import { SelectedLesson } from '../features/session/SelectedLesson'
@@ -301,6 +302,7 @@ function HomeOverview() {
         {newSessionCard}
       </details> : newSessionCard}
       <RecentAreas />
+      <RecentContexts />
       <AdaptationCards />
       <PromotedReminders />
       <details className="border border-line rounded-md p-3">

@@ -30,3 +30,11 @@ Project manifests, skill catalog, notebooks/learner-authored work and other stor
 C7 remains incomplete; no new recent-material UI or global search is claimed by the foundation.
 
 Baseline browser evidence: three Home recent-area journeys pass, including390/1280 keyboard return without learning writes and catalog failure recovery. The new store has four passing unit checks in both checkouts. Read-only review found no blockers/majors. No rendered surface changed in this increment.
+
+
+## First displayed destinations — 2026-10-04
+Home now has an optional Recently opened material disclosure below the primary learning action. Resolved matching source chunks and known standalone coding workspaces record typed visits. Failed/pending source lookups, unknown-workspace fallbacks and linked lesson experiments are not misrepresented as successful standalone visits. Existing recent areas remain intact. Links reuse established return/error routes; Clear removes only this material history, never saved work or learning progress.
+
+Original6browser journeys passed: recent sources/workspaces390/1280, keyboard return, reload, deleted-source recovery, clear, unknown workspace suppression and existing recent-area regressions. Seven unit checks, lint/types and production build passed (inherited build warnings remain). Narrow screenshot inspected; read-only review found no blockers/majors. No learning writes in the browser journeys. Next: resolved project/answer/audio/lesson destinations, area-history reconciliation and remaining search-store inventory. Human acceptance and global search remain incomplete.
+
+Final sanitized verification:3recent-material browser journeys and lint/types passed.

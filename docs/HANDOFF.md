@@ -1091,3 +1091,6 @@ C6 reminder Undo UI is implemented; exact retry identity, real end-to-end undo a
 
 
 C7 foundation: typed bounded tab-local history store and first verified search-store inventory in docs/slices/recent-contexts.md. No visit tracking/UI yet. Next: explicit resolved-view tracking and compact recent-material presentation, preserving existing recent areas and authoritative resume.
+
+
+C7 first recent-material UI now records loaded sources and known standalone coding workspaces, with keyboard return/clear and unchanged learning state. Evidence in docs/slices/recent-contexts.md. Other destination integrations and global search remain next.
