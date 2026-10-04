@@ -877,3 +877,7 @@ Idle header audio is shorter; active status and Stop/pause are visible with sett
 ## 2026-10-04 — Inline Work alongside
 
 Session now offers optional quiet work panel without unmounting the lesson or losing the current question draft. Existing standalone route preserved; no automatic sound or learning writes. Three browser cases, twelve unit tests and lint/types/build pass; see docs/slices/inline-alongside.md. Broader C3 and persistent tutor remain open.
+
+## 2026-10-04 — Playground selection recovery
+
+Selected workspace now survives URL history/reload with its existing saved code. Invalid target feedback is explicit; no model/learning writes. Six unit and two browser cases plus lint/types/build pass. See docs/slices/playground-location.md and contextual-tools-contract.md; lesson-context transfer remains unimplemented.

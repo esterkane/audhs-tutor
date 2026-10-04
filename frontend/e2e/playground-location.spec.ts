@@ -1,0 +1,36 @@
+import { expect, test } from '@playwright/test'
+
+for (const width of [390, 1280]) {
+  test(`playground workspace survives history and reload ${width}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => localStorage.setItem('code-editor:plain', '1'))
+    const writes: string[] = []
+    page.on('request', r => { if (r.url().includes('/api/') && r.method() !== 'GET') writes.push(r.url()) })
+    await page.goto('/playground?workspace=complete&keep=1')
+    const workspace = page.getByRole('combobox', { name: 'Workspace', exact: true })
+    const code = page.getByRole('textbox', { name: /Python code/ })
+    await expect(workspace).toHaveValue('complete')
+    await code.fill('print("retained complete draft")')
+    await workspace.focus()
+    await expect(workspace).toBeFocused()
+    await workspace.selectOption('scratch')
+    await expect(workspace).toHaveValue('scratch')
+    await code.fill('print("scratch draft")')
+    await page.goBack()
+    await expect(workspace).toHaveValue('complete')
+    await expect(code).toHaveValue('print("retained complete draft")')
+    await page.reload()
+    await expect(workspace).toHaveValue('complete')
+    await expect(code).toHaveValue('print("retained complete draft")')
+    await page.goForward()
+    await expect(workspace).toHaveValue('scratch')
+    await expect(code).toHaveValue('print("scratch draft")')
+    await expect(page).toHaveURL(/keep=1/)
+    await page.goto('/playground?workspace=missing')
+    await expect(page.getByRole('status').filter({ hasText: 'That workspace is unavailable' })).toBeVisible()
+    await expect(code).toHaveValue('print("scratch draft")')
+    await page.screenshot({ path: info.outputPath('workspace.png'), fullPage: true })
+    expect(writes).toEqual([])
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  })
+}

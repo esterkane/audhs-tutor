@@ -3,7 +3,7 @@ import { RequestRecoveryControls } from '../features/playground/RequestRecoveryC
 import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
 import { useIsMutating } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -43,8 +43,17 @@ function restore(activity: Activity): Draft {
 }
 
 export function Playground({ runnerFactory = createPyodideRunner }: { runnerFactory?: () => Runner }) {
-  const [selected, setSelected] = useState('scratch')
-  const activity = activities.find((a) => a.id === selected) ?? activities[0]
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('workspace')
+  const activity = activities.find((a) => a.id === requested) ?? activities[0]
+  const selected = activity.id
+  function setSelected(id: string) {
+    setParams(previous => {
+      const next = new URLSearchParams(previous)
+      next.set('workspace', id)
+      return next
+    })
+  }
   return (
     <div className="grid gap-4">
       <div>
@@ -54,6 +63,9 @@ export function Playground({ runnerFactory = createPyodideRunner }: { runnerFact
           Experiment with Python. Ask the tutor about your code. Practice here does not change mastery scores.
         </p>
       </div>
+      {requested && !activities.some(a => a.id === requested) && (
+        <p role="status">That workspace is unavailable. Showing Free experiment; your other saved work is unchanged.</p>
+      )}
       <label className="text-sm font-medium">
         Workspace
         <select
