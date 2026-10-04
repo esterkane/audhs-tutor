@@ -897,3 +897,7 @@ Browser reproduction confirms unsaved JSON is lost on route exit. The architectu
 ## Visualizer editing recovery — 2026-10-04
 
 Raw drafts, applied graph, history and selected view now recover across route exits/reload. Storage denial retains tab work and offers export. See slices/visualizer-editing-recovery.md for verification and explicit remaining media/lesson boundaries.
+
+## Paused visualizer file recovery — 2026-10-04
+
+File/position now survive route exit in tab memory, with disposed audio resources and explicit silent Resume. See slices/visualizer-media-recovery.md for verification, tone-detour correction and remaining reload/lesson boundaries.

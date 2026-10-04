@@ -2,6 +2,7 @@ import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { mediaCheckpoint } from '../features/visualizer/mediaCheckpoint'
 import { workspaceCheckpoint } from '../features/visualizer/workspaceCheckpoint'
 import { activities } from '../features/playground/exercises'
 import { Button } from '../components/ui/button'
@@ -39,6 +40,7 @@ export function Visualizer() {
   const originWorkspace = activities.find(activity => activity.id === requestedWorkspace)
   const returnTo = originWorkspace ? `/playground?workspace=${encodeURIComponent(originWorkspace.id)}` : '/playground'
 
+  const [recoveredMedia] = useState(() => mediaCheckpoint.read())
   const [recovered] = useState(() => workspaceCheckpoint.read())
   const [draftSaved, setDraftSaved] = useState(true)
   const [savedId, setSavedId] = useState<string | null>(() => {
@@ -68,12 +70,12 @@ export function Visualizer() {
   const importGeneration = useRef(0)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
-  const [file, setFile] = useState<File | null>(null)
-  const [source, setSource] = useState<'demo' | 'file' | 'lesson'>('demo')
+  const [file, setFile] = useState<File | null>(recoveredMedia?.file ?? null)
+  const [source, setSource] = useState<'demo' | 'file' | 'lesson'>(recoveredMedia ? 'file' : 'demo')
   const [running, setRunning] = useState(false)
-  const [position, setPosition] = useState({ seconds: 0, duration: 0 })
-  const [repeat, setRepeat] = useState<{ start: number; end: number } | null>(null)
-  const [paused, setPaused] = useState(false)
+  const [position, setPosition] = useState(recoveredMedia?.position ?? { seconds: 0, duration: 0 })
+  const [repeat, setRepeat] = useState<{ start: number; end: number } | null>(recoveredMedia?.repeat ?? null)
+  const [paused, setPaused] = useState(recoveredMedia?.resume ?? false)
   const [finished, setFinished] = useState(false)
   const [starting, setStarting] = useState(false)
   const [audible, setAudible] = useState(false)
@@ -110,6 +112,8 @@ export function Visualizer() {
     input: AudioInput | null
     abort: AbortController | null
     source: 'demo' | 'file'
+    position: { seconds: number; duration: number }
+    resume: boolean
     time: number
     audible: boolean
     repeat: { start: number; end: number } | null
@@ -119,6 +123,11 @@ export function Visualizer() {
     previousAudio.current?.input?.stop()
     previousAudio.current = null
   }
+
+  const mediaState = useRef({ file, source, position, repeat, running, paused, starting })
+  useEffect(() => {
+    mediaState.current = { file, source, position, repeat, running, paused, starting }
+  }, [file, source, position, repeat, running, paused, starting])
 
   const effectiveSound = useRef(false)
   const playbackGeneration = useRef(0)
@@ -233,6 +242,17 @@ export function Visualizer() {
     document.addEventListener('visibilitychange', onHidden)
     return () => {
       document.removeEventListener('visibilitychange', onHidden)
+      const state = mediaState.current
+      const previous = previousAudio.current
+      const sourceInput = state.source === 'lesson' ? previous?.input : input.current
+      const keepFile = state.source === 'file' || (state.source === 'lesson' && previous?.source === 'file')
+      const canResume = state.source === 'lesson' ? !!previous?.resume : state.running || state.paused || state.starting
+      mediaCheckpoint.write(keepFile && state.file ? {
+        file: state.file,
+        position: canResume ? sourceInput?.position?.() ?? (state.source === 'lesson' ? previous?.position ?? state.position : state.position) : { seconds: 0, duration: 0 },
+        repeat: canResume ? (state.source === 'lesson' ? previous?.repeat ?? null : state.repeat) : null,
+        resume: canResume,
+      } : null)
       releaseSound()
       abort.current?.abort()
       input.current?.stop()
@@ -295,6 +315,10 @@ export function Visualizer() {
     if (source === 'demo') {
       setPaused(false)
       setRunning(true)
+      return
+    }
+    if (!active && source === 'file' && file && !starting) {
+      await start(position.seconds, repeat)
       return
     }
     if (!active?.resume || starting) return
@@ -378,12 +402,12 @@ export function Visualizer() {
       target?.scrollIntoView?.({ block: 'start', behavior: 'instant' })
     })
   }
-  async function start() {
+  async function start(resumeAt = 0, resumeRepeat: { start: number; end: number } | null = null) {
     if (abort.current || running) return
     setError('')
     setNotice('')
     setFinished(false)
-    setPosition({ seconds: 0, duration: 0 })
+    setPosition({ seconds: resumeAt, duration: resumeAt ? position.duration : 0 })
     if (source === 'demo') {
       setRenderer('graph')
       sample()
@@ -414,6 +438,17 @@ export function Visualizer() {
       }
       input.current = opened
       setVisualInput(opened)
+      const duration = opened.position?.().duration ?? 0
+      if (resumeRepeat && resumeRepeat.start >= 0 && resumeRepeat.end <= duration && resumeRepeat.end - resumeRepeat.start >= 0.5) {
+        opened.setRepeat?.(resumeRepeat, () => {
+          memory.current.clear()
+          time.current = opened.position?.().seconds ?? 0
+        })
+      } else if (resumeRepeat) {
+        setRepeat(null)
+        setNotice('The previous repeat range is unavailable for this file.')
+      }
+      if (resumeAt > 0) opened.seek?.(Math.min(resumeAt, duration))
       const loadedPosition = opened.position?.()
       if (loadedPosition) setPosition(loadedPosition)
       const interrupted = document.hidden || generation !== playbackGeneration.current
@@ -471,6 +506,8 @@ export function Visualizer() {
         input: input.current,
         abort: abort.current,
         source,
+        position: input.current?.position?.() ?? position,
+        resume: running || paused || starting,
         time: time.current,
         audible,
         repeat,
@@ -524,8 +561,8 @@ export function Visualizer() {
     setAudible(false)
     previous.input?.setAudible(false)
     setRepeat(previous.repeat)
-    setPosition(previous.input?.position?.() ?? { seconds: 0, duration: 0 })
-    setPaused(!!previous.input || previous.source === 'demo')
+    setPosition(previous.input?.position?.() ?? previous.position)
+    setPaused(previous.resume || previous.source === 'demo')
     setRunning(false)
     memory.current.clear()
     setMeasurement(null)
@@ -594,8 +631,9 @@ export function Visualizer() {
       </div>
       <p className="text-sm text-muted" role="status">
         {draftSaved ? 'Editing draft kept automatically in this browser. Save a preset to add it to your collection.' : 'Browser recovery is unavailable. Edits remain in this tab until reload; export your draft to keep it. Existing stored data was not replaced.'}
-        {' '}Audio files, playback position and lesson controls are not recovered yet.
+        {' '}Files and positions stay only in this tab until reload. Lesson controls are not recovered yet.
       </p>
+      {recoveredMedia && <p className="text-sm text-muted">Your local file is retained in this tab. Playback is stopped until you press Play or Resume; enable sound explicitly if wanted.</p>}
       <nav aria-label="Visualizer views" className="flex flex-wrap gap-2">
         {(['Watch', 'Learn', 'Create'] as const).map((name) => (
           <Button
@@ -748,7 +786,7 @@ export function Visualizer() {
                 <Button
                   variant="outline"
                   onClick={sample}
-                  disabled={source !== 'demo' && !running && !paused}
+                  disabled={source !== 'demo' && (!visualInput || (!running && !paused))}
                 >
                   {source !== 'demo' ? 'Capture current picture' : 'Next sample'}
                 </Button>
@@ -968,7 +1006,7 @@ export function Visualizer() {
                   max={position.duration || 1}
                   step={0.1}
                   value={Math.min(position.seconds, position.duration || 1)}
-                  disabled={(!running && !paused) || !position.duration || starting}
+                  disabled={!visualInput || (!running && !paused) || !position.duration || starting}
                   aria-valuetext={`${position.seconds.toFixed(1)} seconds of ${position.duration.toFixed(1)} seconds`}
                   onChange={(e) => seekPlayback(Number(e.target.value))}
                 />
@@ -982,7 +1020,7 @@ export function Visualizer() {
               <RepeatSection
                 key={file ? `${file.name}-${file.lastModified}-${file.size}` : 'none'}
                 duration={position.duration}
-                enabled={(running || paused) && !starting}
+                enabled={!!visualInput && (running || paused) && !starting}
                 active={repeat}
                 onChange={changeRepeat}
               />
