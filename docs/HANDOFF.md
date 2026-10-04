@@ -893,3 +893,7 @@ Fixed the reproduced workspace reset when returning from the audio lab. See slic
 ## Visualizer lifecycle inspection — 2026-10-04
 
 Browser reproduction confirms unsaved JSON is lost on route exit. The architecture contract and three implementation slices are in slices/visualizer-route-recovery-plan.md. Next: editing checkpoint, then paused media and lesson-panel recovery. Runtime remains unchanged; no success claim for recovery.
+
+## Visualizer editing recovery — 2026-10-04
+
+Raw drafts, applied graph, history and selected view now recover across route exits/reload. Storage denial retains tab work and offers export. See slices/visualizer-editing-recovery.md for verification and explicit remaining media/lesson boundaries.

@@ -2,6 +2,7 @@ import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
+import { workspaceCheckpoint } from '../features/visualizer/workspaceCheckpoint'
 import { activities } from '../features/playground/exercises'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -38,21 +39,30 @@ export function Visualizer() {
   const originWorkspace = activities.find(activity => activity.id === requestedWorkspace)
   const returnTo = originWorkspace ? `/playground?workspace=${encodeURIComponent(originWorkspace.id)}` : '/playground'
 
+  const [recovered] = useState(() => workspaceCheckpoint.read())
+  const [draftSaved, setDraftSaved] = useState(true)
   const [savedId, setSavedId] = useState<string | null>(() => {
+    if (recovered) return recovered.savedId
     try {
       return readLibrary(localStorage).active
     } catch {
       return null
     }
   })
-  const [renderer, setRenderer] = useState<'graph' | 'milkdrop'>('graph')
+  const [renderer, setRenderer] = useState<'graph' | 'milkdrop'>(recovered?.renderer ?? 'graph')
   const [richPreset, setRichPreset] = useState(0)
   const [richError, setRichError] = useState('')
   const [collectionVersion, setCollectionVersion] = useState(0)
-  const [view, setView] = useState<'Watch' | 'Learn' | 'Create'>('Watch')
-  const [preset, setPreset] = useState(restoredPreset)
-  const history = useDraftHistory(JSON.stringify(preset, null, 2))
+  const [view, setView] = useState<'Watch' | 'Learn' | 'Create'>(recovered?.view ?? 'Watch')
+  const [preset, setPreset] = useState(() => recovered?.preset ?? restoredPreset())
+  const history = useDraftHistory(JSON.stringify(preset, null, 2), recovered?.history)
   const { text, change: setText } = history
+  useEffect(() => {
+    const saved = workspaceCheckpoint.write({ version: 1, preset, history: history.snapshot, view, renderer, savedId })
+    // Reflect external storage success without changing the editable draft.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDraftSaved(saved)
+  }, [preset, history.snapshot, view, renderer, savedId])
   const [importDraft, setImportDraft] = useState<Preset | null>(null)
   const [importError, setImportError] = useState('')
   const importGeneration = useRef(0)
@@ -582,6 +592,10 @@ export function Visualizer() {
           coding is needed.
         </p>
       </div>
+      <p className="text-sm text-muted" role="status">
+        {draftSaved ? 'Editing draft kept automatically in this browser. Save a preset to add it to your collection.' : 'Browser recovery is unavailable. Edits remain in this tab until reload; export your draft to keep it. Existing stored data was not replaced.'}
+        {' '}Audio files, playback position and lesson controls are not recovered yet.
+      </p>
       <nav aria-label="Visualizer views" className="flex flex-wrap gap-2">
         {(['Watch', 'Learn', 'Create'] as const).map((name) => (
           <Button
@@ -1059,7 +1073,7 @@ export function Visualizer() {
                 </Button>
               </div>
               <p className="text-xs text-muted">
-                Undo restores valid draft checkpoints; incomplete JSON edits are not retained.
+                Undo restores valid checkpoints. Your current unfinished text is recovered, but cannot be replayed after Undo.
               </p>
               {draftPreset && (
                 <BlockAuthoring preset={draftPreset} onChange={(p) => setText(JSON.stringify(p, null, 2))} />
@@ -1206,6 +1220,14 @@ export function Visualizer() {
                   These are the same settings as the controls above. You do not need to edit code to use this
                   lab.
                 </p>
+                <Button variant="outline" onClick={() => {
+                  const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
+                  const link = document.createElement('a')
+                  link.href = url
+                  link.download = 'visualizer-draft.txt'
+                  link.click()
+                  URL.revokeObjectURL(url)
+                }}>Export editing draft</Button>
                 <label htmlFor="visual-preset">Preset JSON</label>
                 <textarea
                   id="visual-preset"

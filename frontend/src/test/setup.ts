@@ -1,5 +1,7 @@
 import * as matchers from 'vitest-axe/matchers'
-import { expect } from 'vitest'
+import { beforeEach, expect } from 'vitest'
+import { workspaceCheckpoint, WORKSPACE_KEY } from '../features/visualizer/workspaceCheckpoint'
+beforeEach(() => { workspaceCheckpoint.clearMemory(); localStorage.removeItem(WORKSPACE_KEY) })
 import '@testing-library/jest-dom/vitest'
 
 // jsdom lacks these; Radix Dialog and Zustand's matchMedia probe need them.

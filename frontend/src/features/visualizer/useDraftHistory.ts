@@ -1,9 +1,11 @@
 import { useCallback, useState } from 'react'
 import { parsePreset } from './engine'
 
+export type DraftHistoryState = { text: string; past: string[]; future: string[] }
+
 // History retains valid graph snapshots only. Incomplete JSON remains editable but is not replayed.
-export function useDraftHistory(initial: string) {
-  const [state, setState] = useState({ text: initial, past: [] as string[], future: [] as string[] })
+export function useDraftHistory(initial: string, recovered?: DraftHistoryState) {
+  const [state, setState] = useState<DraftHistoryState>(() => recovered ?? { text: initial, past: [], future: [] })
   const change = useCallback(
     (text: string) =>
       setState((s) => {
@@ -41,6 +43,7 @@ export function useDraftHistory(initial: string) {
       return { text, past: [...s.past.slice(-49), s.text], future: s.future.slice(1) }
     })
   return {
+    snapshot: state,
     text: state.text,
     change,
     undo,
