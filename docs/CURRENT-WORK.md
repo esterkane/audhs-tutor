@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX foundations and recovery (2026-10-04)
+## Current owner scope — UX read recovery (2026-10-04)
 
-Implemented [Preferences heading correction](slices/preferences-page-heading.md) after reproducing missing h1. Existing CardTitle retains default h2; only Preferences opts into h1 for loading/ready states. Five browser and fourteen unit checks pass; lint/types/build pass. Narrow visual output unchanged. Next bounded work: Stage2a truthful Preferences read errors with retry and retained cached content. Other headings, button sizing, full design adoption and human acceptance remain open.
+Implemented [Preferences read recovery](slices/preferences-read-recovery.md): initial failure Retry/Home, cached-data refresh warning, bounded shared reads, and cancellation of stale reads before saving. Five browser and eighteen unit checks pass; lint/types/build pass with known warnings. No learning logic changed. Next bounded slice: Map read recovery. Other routes, settings semantics, complete layout adoption and human acceptance remain open.
 
 ## Prioritized next work
 

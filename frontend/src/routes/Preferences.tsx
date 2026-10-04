@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { Choice } from '../components/ui/choice'
@@ -17,10 +18,29 @@ type Spec = {
 export function Preferences() {
   const prefs = usePreferences()
   const set = useSetPreference()
-  if (prefs.isLoading || !prefs.data) return (
+  const readRecovery = prefs.isError && (
+    <div className="mb-3">
+      <p role="alert">
+        {prefs.data
+          ? 'Could not refresh preferences. Showing the last loaded settings.'
+          : 'Could not load preferences.'}
+      </p>
+      <p className="text-sm text-muted">Check that the local app backend is running, then retry.</p>
+      <Button className="mt-2" onClick={() => void prefs.refetch()} disabled={prefs.isFetching}>
+        Retry loading preferences
+      </Button>
+      {prefs.isFetching && <p role="status">Retrying preferences…</p>}
+      <details className="mt-2">
+        <summary>Technical details</summary>
+        <p className="text-sm break-words">{prefs.error.message}</p>
+      </details>
+    </div>
+  )
+  if (!prefs.data) return (
     <Card>
       <CardTitle as="h1">Preferences</CardTitle>
-      <p>Loading preferences…</p>
+      {readRecovery || <p role="status">Loading preferences…</p>}
+      <Link to="/" className="underline">Return Home</Link>
     </Card>
   )
   const values = prefs.data.values as Record<string, unknown>
@@ -29,6 +49,7 @@ export function Preferences() {
     <div className="grid gap-4">
       <Card>
         <CardTitle as="h1">Preferences</CardTitle>
+        {readRecovery}
         <p className="text-sm text-muted mb-3">
           Everything here is explicit and reversible. The system never changes these silently.
         </p>

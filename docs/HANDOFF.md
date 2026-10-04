@@ -821,3 +821,7 @@ Reproduced faint shared Textarea boundaries and unreadable system-dark inline co
 ## 2026-10-04 — Phase10 Stage1b heading adoption
 
 Corrected reproduced Preferences page heading through optional CardTitle heading level, preserving h2 default and appearance. Added loading-state heading without changing its existing error behavior. Two baseline checks failed for missing h1; final five browser and fourteen unit checks pass; lint/types/build pass with known warnings. Narrow before/after screenshot hashes identical; desktop/narrow visually inspected. No learning or preference mutation changes. Next: separate Preferences failed-read recovery slice (Stage2a).
+
+## 2026-10-04 — Stage2a Preferences read recovery
+
+Reproduced503 reads masking failure as loading. Added initial/stale-data recovery UI, existing15s bounded read and explicit retry; shared read cancellation before saving prevents late snapshots replacing saved preferences. Five browser checks, sixteen existing plus two new unit tests pass; lint/types/build pass. Screenshots inspected; exact fixture save values and keyboard retry verified. Shared-query deadline applies to other consumers; no backend or learning changes. See docs/slices/preferences-read-recovery.md. Next: separate Map read recovery.
