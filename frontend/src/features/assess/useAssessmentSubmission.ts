@@ -289,6 +289,32 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
     }
   }
 
+  async function finish() {
+    const pending = stored.pending
+    if (!pending || lookup?.status !== 'grade_ready' || operation.current) return
+    setChecking(true)
+    setError('')
+    try {
+      if (read(sessionId)?.id !== pending.id)
+        throw new Error('Recovery information changed. Reload it before saving.')
+      const result = await bounded((signal) =>
+        apiFetch<AttemptResult>(
+          `/api/assess/requests/${pending.id}/finish?session_id=${encodeURIComponent(sessionId)}`,
+          { method: 'POST', signal },
+        ),
+      )
+      if (result.assessment_id !== pending.body.assessment_id)
+        throw new Error('The saved feedback belongs to another assessment.')
+      setLookup({ status: 'completed', result })
+    } catch (cause) {
+      // Content changes here do not prove the answer was never graded. Retain
+      // the original identity and staged result rather than enabling regrading.
+      if (activeKey.current === key) setError((cause as Error).message)
+    } finally {
+      if (activeKey.current === key) setChecking(false)
+    }
+  }
+
   return {
     ...mutation,
     recovery: {
@@ -311,6 +337,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
       checking: checking || mutation.isPending,
       check,
       resend,
+      finish,
       clear,
       reload: () => setStored(load(sessionId)),
       memoryOnly: pageMemory.has(sessionId),

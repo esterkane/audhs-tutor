@@ -368,3 +368,53 @@ it('can archive a rejected answer in explicit page-memory mode when storage is b
   const resumed = setup(session)
   expect(resumed.result.current.recovery.previousAnswers[0].question).toBe('Keep in memory')
 })
+
+it('finishes a staged grade only explicitly and retains identity on content conflict', async () => {
+  const id = crypto.randomUUID()
+  sessionStorage.setItem(
+    assessmentRecoveryKey('session'),
+    JSON.stringify({
+      version: 1,
+      id,
+      endpoint: '/api/assess/attempt',
+      body,
+      question: 'Original',
+    }),
+  )
+  let fail = true
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      expect(url).toBe(`/api/assess/requests/${id}/finish?session_id=session`)
+      expect(init.body).toBeUndefined()
+      if (fail)
+        return jsonResponse(
+          { error: { code: 'assessment_content_changed', message: 'Question changed' } },
+          409,
+        )
+      return jsonResponse(reply)
+    }
+    return jsonResponse({ status: 'grade_ready', result: null })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const hook = setup()
+  await act(async () => {
+    await hook.result.current.recovery.finish()
+  })
+  expect(fetcher).not.toHaveBeenCalled()
+  await act(async () => {
+    await hook.result.current.recovery.check()
+  })
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  await act(async () => {
+    await hook.result.current.recovery.finish()
+  })
+  expect(hook.result.current.recovery.pending?.id).toBe(id)
+  expect(hook.result.current.recovery.stale).toBe(false)
+  expect(hook.result.current.recovery.error).toContain('Question changed')
+  fail = false
+  await act(async () => {
+    await hook.result.current.recovery.finish()
+  })
+  expect(hook.result.current.recovery.lookup?.status).toBe('completed')
+  expect(hook.result.current.recovery.pending?.id).toBe(id)
+})

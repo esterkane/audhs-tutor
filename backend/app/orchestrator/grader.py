@@ -9,12 +9,12 @@ import re
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.answer_recovery import AnswerRecovery
 from app.core.errors import AppError
-from app.db import workspace_requests
+from app.db import assessment_executions, workspace_requests
 from app.db.events import EventWriter, Verb
 from app.db.models import (
     Assessment,
@@ -22,6 +22,7 @@ from app.db.models import (
     MemoryState,
     Session,
     SkillNode,
+    WorkspaceRequest,
 )
 from app.kernel import competency, memory
 from app.kernel import session as ksession
@@ -288,6 +289,10 @@ class Grader:
         ]
         try:
             # Entering the gateway can have external effects even if it raises.
+            if self.request_claim_id is not None and not self.execution.gateway_entered:
+                await assessment_executions.mark_inference_started(
+                    self.db, learner_id, self.request_claim_id
+                )
             self.execution.gateway_entered = True
             out = await self.gateway.complete(
                 task,
@@ -342,6 +347,14 @@ class Grader:
         question_snapshot["content_version"] = assessment_content.token(content)
         # Close all reads before inference; gateway accounting owns its short transactions.
         await db.commit()
+        if self.request_claim_id is not None:
+            await assessment_executions.prepare(
+                db,
+                learner_id,
+                self.request_claim_id,
+                request_json=req.model_dump(mode="json"),
+                content_fingerprint=assessment_content.recovery_fingerprint(content),
+            )
         item = a.item_json
         correct: bool | None
         rubric_version = None
@@ -403,6 +416,112 @@ class Grader:
                     )
             correct = None if 0.0 < result.score < 1.0 else result.score == 1.0
 
+        if self.request_claim_id is not None:
+            # A failed acknowledgement may still mean the grade was persisted.
+            # Never release this claim and accidentally grade the answer again.
+            self.execution.result_persistence_started = True
+            await assessment_executions.save_grade(
+                db,
+                learner_id,
+                self.request_claim_id,
+                grade_json={
+                    "version": 1,
+                    "graded_at": now.isoformat(),
+                    "result": result.model_dump(mode="json"),
+                    "correct": correct,
+                    "level": level,
+                    "rubric_version": rubric_version,
+                },
+            )
+        return await self.apply_result(
+            req,
+            content,
+            result,
+            correct=correct,
+            level=level,
+            rubric_version=rubric_version,
+            now=now,
+        )
+
+    async def apply_result(
+        self,
+        req: AttemptRequest,
+        content: dict[str, Any],
+        result: GradeResult,
+        *,
+        correct: bool | None,
+        level: str,
+        rubric_version: int | None,
+        now: datetime | None = None,
+    ) -> AttemptResult:
+        try:
+            return await self._apply_result(
+                req,
+                content,
+                result,
+                correct=correct,
+                level=level,
+                rubric_version=rubric_version,
+                now=now,
+            )
+        except BaseException:
+            await self.db.rollback()
+            raise
+
+    async def _apply_result(
+        self,
+        req: AttemptRequest,
+        content: dict[str, Any],
+        result: GradeResult,
+        *,
+        correct: bool | None,
+        level: str,
+        rubric_version: int | None,
+        now: datetime | None = None,
+    ) -> AttemptResult:
+        """Apply an already validated grade without entering the model gateway.
+
+        Recovery callers must own the exact claim write lock and verify its
+        stable content fingerprint before calling. No transaction ends here
+        until the complete learning/outcome write set commits.
+        """
+        db = self.db
+        now = now or datetime.now(UTC)
+        if self.request_claim_id is not None:
+            # Serialize initial application and explicit recovery; both can race
+            # after the grade has been staged but before evidence is committed.
+            await db.commit()
+            await db.execute(
+                update(WorkspaceRequest)
+                .where(
+                    WorkspaceRequest.id == self.request_claim_id,
+                )
+                .values(fingerprint=WorkspaceRequest.fingerprint)
+            )
+            claim = await db.get(WorkspaceRequest, self.request_claim_id, populate_existing=True)
+            if claim is None or claim.session_id != req.session_id:
+                raise AppError("request_unavailable", "The saved request is unavailable.", 410)
+            if claim.response_json is not None:
+                from app.orchestrator.assessment_requests import recovered_result
+
+                saved = dict(claim.response_json)
+                await db.commit()
+                return await recovered_result(db, claim.learner_id, saved, self.recovery)
+            staged = await assessment_executions.get_owned(db, claim.learner_id, claim.id)
+            if staged is None or staged.phase != "grade_ready":
+                raise AppError("request_unresolved", "No saved grade is available.", 409)
+            if staged.content_fingerprint != assessment_content.recovery_fingerprint(content):
+                raise AppError(
+                    "assessment_content_changed",
+                    "The saved grade no longer matches this question.",
+                    409,
+                )
+        session = await ksession.get(db, req.session_id)
+        learner_id = session.learner_id
+        a = assessment_content.assessment(content)
+        item = a.item_json
+        question_snapshot = view(a).model_dump()
+        question_snapshot["content_version"] = assessment_content.token(content)
         listening_meta = item.get("listening") if isinstance(item.get("listening"), dict) else None
         # one label everywhere: the attempt row, the graded event and the result say where the
         # verdict came from (a code exercise is checked in the learner's browser sandbox)
@@ -583,6 +702,7 @@ class Grader:
                     durable_result,
                     commit=False,
                 )
+                await assessment_executions.mark_completed(db, learner_id, self.request_claim_id)
             # A commit error may mean acknowledgement was lost after success.
             self.execution.learning_commit_started = True
             await db.commit()

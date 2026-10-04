@@ -3,25 +3,26 @@
 import logging
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import AwareDatetime, BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.answer_recovery import AnswerRecovery
-from app.db import workspace_requests
+from app.core.errors import AppError
+from app.db import assessment_executions, workspace_requests
 from app.db.models import TutorAnswer, WorkspaceRequest
 from app.kernel.session import get_owned
 from app.models_ai.gateway import ModelGateway
 from app.orchestrator import assessment_content
 from app.orchestrator.assessment_execution import AssessmentExecution
 from app.orchestrator.grader import Grader
-from app.schemas.grading import AttemptRequest, AttemptResult
+from app.schemas.grading import AttemptRequest, AttemptResult, GradeResult
 
 logger = logging.getLogger(__name__)
 
 
 class AssessmentRequestState(BaseModel):
-    status: Literal["not_found", "unresolved", "completed"]
+    status: Literal["not_found", "unresolved", "grade_ready", "completed"]
     result: AttemptResult | None = None
 
 
@@ -92,7 +93,10 @@ async def lookup(
     if row is None:
         return AssessmentRequestState(status="not_found")
     if row.response_json is None:
-        return AssessmentRequestState(status="unresolved")
+        execution = await assessment_executions.get_owned(db, learner_id, row.id)
+        return AssessmentRequestState(
+            status="grade_ready" if execution and execution.phase == "grade_ready" else "unresolved"
+        )
     return AssessmentRequestState(
         status="completed",
         result=await recovered_result(db, learner_id, row.response_json, recovery),
@@ -134,4 +138,61 @@ async def recovered_result(
             ),
             "save_receipt": recovery.issue(snapshot) if recovery else None,
         }
+    )
+
+
+class StagedGrade(BaseModel):
+    version: Literal[1]
+    graded_at: AwareDatetime
+    result: GradeResult
+    correct: bool | None
+    level: Literal["deterministic", "rubric", "local", "hosted"]
+    rubric_version: int | None
+
+
+async def finish(
+    db: AsyncSession,
+    gateway: ModelGateway,
+    learner_id: str,
+    session_id: str,
+    identity: str,
+    recovery: AnswerRecovery,
+) -> AttemptResult:
+    """Explicitly save already graded work, including for an ended owned session."""
+    await get_owned(db, session_id, learner_id)
+    claim = await db.scalar(
+        select(WorkspaceRequest).where(
+            WorkspaceRequest.learner_id == learner_id,
+            WorkspaceRequest.session_id == session_id,
+            WorkspaceRequest.request_key == request_key(identity),
+        )
+    )
+    if claim is None:
+        raise AppError("not_found", "Assessment request not found.", 404)
+    if claim.response_json is not None:
+        return await recovered_result(db, learner_id, claim.response_json, recovery)
+    execution = await assessment_executions.get_owned(db, learner_id, claim.id)
+    if execution is None or execution.phase != "grade_ready" or execution.schema_version != 1:
+        raise AppError(
+            "request_unresolved", "No saved grade is available to finish. No model was called.", 409
+        )
+    staged = StagedGrade.model_validate(execution.grade_json)
+    body = AttemptRequest.model_validate(execution.request_json)
+    if body.session_id != session_id:
+        raise AppError("request_conflict", "The saved request belongs to another session.", 409)
+    content = await assessment_content.snapshot(db, body.assessment_id)
+    if assessment_content.recovery_fingerprint(content) != execution.content_fingerprint:
+        raise AppError(
+            "assessment_content_changed",
+            "The question changed. The saved grade is retained, but cannot update progress.",
+            409,
+        )
+    return await Grader(db, gateway, recovery=recovery, request_claim_id=claim.id).apply_result(
+        body,
+        content,
+        staged.result,
+        correct=staged.correct,
+        level=staged.level,
+        rubric_version=staged.rubric_version,
+        now=staged.graded_at,
     )

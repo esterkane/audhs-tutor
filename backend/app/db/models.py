@@ -80,6 +80,22 @@ class WorkspaceRequest(IdMixin, LearnerScoped, Base):
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 
+class AssessmentExecution(LearnerScoped, Base):
+    """Private staged grade; absence never proves a legacy request is restartable."""
+
+    __tablename__ = "assessment_execution"
+    claim_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("workspace_request.id", ondelete="CASCADE"), primary_key=True
+    )
+    schema_version: Mapped[int] = mapped_column(Integer, default=1)
+    phase: Mapped[str] = mapped_column(Text, default="prepared")
+    content_fingerprint: Mapped[str] = mapped_column(Text)
+    request_json: Mapped[JsonDict] = mapped_column(JSON)
+    grade_json: Mapped[JsonDict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class SessionCheckpoint(IdMixin, LearnerScoped, Base):
     __tablename__ = "session_checkpoint"
     session_id: Mapped[str] = mapped_column(Text, ForeignKey("session.id"), index=True)

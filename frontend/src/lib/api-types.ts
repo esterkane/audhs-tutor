@@ -704,6 +704,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/assess/requests/{request_id}/finish': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Finish Request */
+    post: operations['finish_request_api_assess_requests__request_id__finish_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/items/{item_id}': {
     parameters: {
       query?: never
@@ -2469,7 +2486,7 @@ export interface components {
        * Status
        * @enum {string}
        */
-      status: 'not_found' | 'unresolved' | 'completed'
+      status: 'not_found' | 'unresolved' | 'grade_ready' | 'completed'
       result?: components['schemas']['AttemptResult'] | null
     }
     /** AssessmentView */
@@ -6543,6 +6560,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AssessmentView']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  finish_request_api_assess_requests__request_id__finish_post: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        request_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AttemptResult']
         }
       }
       /** @description Validation Error */

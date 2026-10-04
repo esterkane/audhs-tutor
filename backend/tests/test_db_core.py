@@ -51,6 +51,7 @@ EXPECTED_TABLES = {
     "tutor_answer_replacement",
     "tutor_answer_vector",
     "workspace_request",
+    "assessment_execution",
     "retrieval_trace",
     "model_call",
     "learning_event",

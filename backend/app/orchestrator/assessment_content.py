@@ -1,7 +1,9 @@
 """Opaque process-bound content tokens; no hidden answers are exposed in public digests."""
 
 import copy
+import hashlib
 import hmac
+import json
 from typing import Any
 
 from sqlalchemy import select, update
@@ -10,6 +12,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.content_versions import token as token
 from app.core.errors import AppError
 from app.db.models import Assessment, AssessmentRubric
+
+
+def recovery_fingerprint(content: dict[str, Any]) -> str:
+    """Private durable identity, never sent to clients as a content token.
+
+    Public tokens intentionally expire on process restart. Recovery needs stable
+    equality without copying the hidden answer/rubric into another private record.
+    """
+    payload = json.dumps(
+        content, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False
+    )
+    return "assessment-recovery-v1:" + hashlib.sha256(payload.encode()).hexdigest()
 
 
 async def snapshot(db: AsyncSession, assessment_id: str) -> dict[str, Any]:

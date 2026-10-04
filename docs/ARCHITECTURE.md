@@ -155,3 +155,7 @@ Saved-answer replacement preferences (2026-10-02) live in learner-scoped `tutor_
 
 
 Representation provenance: representation.provenance_json preserves generation-time supplied-source metadata, citation flags and text hashes across cache hits. Empty legacy provenance means unknown. Current passage views remain distinct from historical text; this cache is not durable answer history. Migration a42e7f90d821.
+
+### Durable assessment results
+
+`assessment_execution` is private learner-scoped staging keyed to a workspace claim: prepared → inference_started → grade_ready → completed. It holds the original learner request, a private content fingerprint, validated grade and original grading time. Short transactions preserve model accounting; a serialized finish applies learning evidence and completed outcome atomically without another model call. Unknown legacy/inference-only outcomes are never reclaimed. No source passages or hidden keys are copied into this table. See `slices/assessment-durable-result-plan.md`.

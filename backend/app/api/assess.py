@@ -92,3 +92,22 @@ async def refresh_item(
     if item is None:
         raise AppError("not_found", "This assessment is unavailable.", 404)
     return await versioned_view(db, item)
+
+
+@router.post("/requests/{request_id}/finish", response_model=AttemptResult)
+async def finish_request(
+    request_id: UUID,
+    session_id: str,
+    db: DB,
+    gateway: Gateway,
+    learner: Learner,
+    request: Request,
+) -> AttemptResult:
+    return await assessment_requests.finish(
+        db,
+        gateway,
+        learner.id,
+        session_id,
+        str(request_id),
+        request.app.state.answer_recovery,
+    )

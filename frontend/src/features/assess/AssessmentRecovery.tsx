@@ -153,6 +153,17 @@ export function AssessmentRecovery({
               {recovery.checking ? 'Checking…' : 'Check saved result'}
             </Button>
           )}
+          {lookup?.status === 'grade_ready' && (
+            <>
+              <p role="status">
+                Your grade is saved. Finish saving to apply it to your learning progress. This uses the
+                existing grade and does not ask the tutor to grade again.
+              </p>
+              <Button disabled={recovery.checking} onClick={() => void recovery.finish()}>
+                {recovery.checking ? 'Saving…' : 'Finish saving this result'}
+              </Button>
+            </>
+          )}
           {lookup?.status === 'unresolved' && (
             <p role="status">
               This submission is still running or was interrupted. It may already have changed your learning

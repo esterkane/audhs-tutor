@@ -379,3 +379,66 @@ def test_inspect_streams_without_writing(tmp_path: Path, source: tuple[str, Path
     assert sorted(p.name for p in tmp_path.iterdir()) == before
     buf = io.BytesIO(out.read_bytes())
     assert zipfile.is_zipfile(buf)
+
+
+@pytest.mark.parametrize("scope", ["learner", "full"])
+def test_staged_assessment_survives_backup_export_and_wipe(tmp_path, source, scope):
+    from app.db.portability import export_learner, wipe_learner
+
+    url, _ = source
+    path = url.removeprefix("sqlite:///")
+    with sqlite3.connect(path) as conn:
+        claim_id, learner_id, session_id = conn.execute(
+            "SELECT id, learner_id, session_id FROM workspace_request LIMIT 1"
+        ).fetchone()
+        request = {
+            "session_id": session_id,
+            "assessment_id": "assessment-id",
+            "answer": "My reasoning",
+        }
+        grade = {
+            "version": 1,
+            "graded_at": "2026-10-04T09:00:00+00:00",
+            "correct": True,
+            "level": "deterministic",
+            "rubric_version": None,
+            "result": {
+                "criterion_results": [
+                    {
+                        "criterion": "reasoning",
+                        "passed": True,
+                        "evidence": "Learner identified the mechanism",
+                    }
+                ],
+                "confidence": 1,
+                "feedback": "Correct reasoning",
+                "next_step": "Apply it",
+            },
+        }
+        conn.execute(
+            "UPDATE workspace_request SET request_key=?, response_json=NULL WHERE id=?",
+            ("assessment:backup-recovery", claim_id),
+        )
+        conn.execute(
+            "UPDATE assessment_execution SET claim_id=?, learner_id=?, schema_version=1, "
+            "phase='grade_ready', content_fingerprint=?, request_json=?, grade_json=?",
+            (
+                claim_id,
+                learner_id,
+                "private-content-digest",
+                json.dumps(request),
+                json.dumps(grade),
+            ),
+        )
+        conn.commit()
+        before = export_learner(conn, learner_id)["assessment_execution"]
+        assert len(before) == 1
+        assert json.loads(before[0]["grade_json"]) == grade
+    archive = tmp_path / f"staged-{scope}.zip"
+    create_backup(url, archive, scope=scope)
+    target = tmp_path / f"restored-{scope}"
+    restore_backup(archive, target)
+    with sqlite3.connect(target / "data/dev.db") as conn:
+        assert export_learner(conn, learner_id)["assessment_execution"] == before
+        wipe_learner(conn, learner_id)
+        assert conn.execute("SELECT count(*) FROM assessment_execution").fetchone()[0] == 0

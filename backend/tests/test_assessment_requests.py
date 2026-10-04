@@ -220,10 +220,23 @@ async def test_failure_completing_claim_rolls_back_learning_state(client, db, mo
     found = await client.get(
         f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
     )
-    assert found.json() == {"status": "not_found", "result": None}
+    assert found.json() == {"status": "grade_ready", "result": None}
     monkeypatch.setattr(workspace_requests, "complete", original)
-    retry = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
-    assert retry.status_code == 200
+
+    async def no_regrading(*args, **kwargs):
+        raise AssertionError("Recovery must not grade again")
+
+    monkeypatch.setattr(Grader, "grade", no_regrading)
+    results = await asyncio.gather(
+        *[
+            client.post(
+                f"/api/assess/requests/{KEY}/finish", params={"session_id": body["session_id"]}
+            )
+            for _ in range(2)
+        ]
+    )
+    assert all(r.status_code == 200 for r in results), [r.text for r in results]
+    assert results[0].json()["attempt_id"] == results[1].json()["attempt_id"]
     assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 1
 
 

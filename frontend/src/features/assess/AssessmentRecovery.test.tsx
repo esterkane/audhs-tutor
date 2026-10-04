@@ -24,6 +24,7 @@ function recovery(): Recovery {
     memoryOnly: false,
     check: vi.fn(),
     resend: vi.fn(),
+    finish: vi.fn(),
     clear: vi.fn(),
     reload: vi.fn(),
     continueInMemory: vi.fn(),
@@ -81,5 +82,18 @@ it('aborts refresh on unmount and cannot clear its saved identity from a late re
   expect(signal.aborted).toBe(true)
   finish()
   await Promise.resolve()
+  expect(state.clear).not.toHaveBeenCalled()
+})
+
+it('offers explicit saving of a staged grade without a new submission', () => {
+  const state = recovery()
+  state.stale = false
+  state.lookup = { status: 'grade_ready', result: null }
+  render(<AssessmentRecovery recovery={state} />)
+  expect(screen.getByText(/does not ask the tutor to grade again/)).toBeInTheDocument()
+  expect(state.finish).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Finish saving this result' }))
+  expect(state.finish).toHaveBeenCalledOnce()
+  expect(state.resend).not.toHaveBeenCalled()
   expect(state.clear).not.toHaveBeenCalled()
 })

@@ -37,7 +37,19 @@ for (const narrow of [false, true]) {
       await page.reload()
       const lookup = page.getByRole('button', { name: 'Check saved result', exact: true })
       await expect(lookup).toBeVisible()
+      // Exercise the staged-result UI using a simulated lookup. The real finish
+      // endpoint replays the already committed result; backend tests separately
+      // inject interruption before evidence writes and verify staged application.
+      await page.route('**/api/assess/requests/**', async (route) => {
+        if (route.request().method() === 'GET')
+          await route.fulfill({ json: { status: 'grade_ready', result: null } })
+        else await route.continue()
+      })
       await lookup.focus()
+      await page.keyboard.press('Enter')
+      const finish = page.getByRole('button', { name: 'Finish saving this result', exact: true })
+      await expect(finish).toBeVisible()
+      await finish.focus()
       await page.keyboard.press('Enter')
       await expect(page.getByRole('heading', { name: 'Feedback on the original submission' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Open saved feedback', exact: true })).toBeVisible()
