@@ -1,0 +1,4 @@
+{
+  "path": "/models",
+  "text": "Hosted spend\n\nCost view unavailable: \"Audit fixture: backend unavailable\"\n\nModels\n\nOpenAI uses OPENAI_API_KEY; Claude uses ANTHROPIC_API_KEY in your local .env. Restart the backend after saving a key. Ready means a key is configured, not that access or tutoring quality has been verified. Hosted benchmarks make paid requests within the shared daily budget. Benchmark and review a model before assigning it to a task.\n\nEverything the tutor can run, where it comes from, whether it is downloaded and benchmarked, and which task uses it. Nothing downloads without your click.\n\nRouting: which model does each task use\nAdd a model (search Hugging Face)"
+}

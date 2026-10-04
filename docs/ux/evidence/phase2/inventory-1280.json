@@ -1,0 +1,475 @@
+[
+  {
+    "path": "/",
+    "title": "Home \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Your next step"
+      },
+      {
+        "level": "H2",
+        "text": "Start with one useful step"
+      },
+      {
+        "level": "H2",
+        "text": "Learn toward"
+      }
+    ],
+    "violations": [],
+    "incomplete": [
+      "aria-prohibited-attr"
+    ]
+  },
+  {
+    "path": "/areas",
+    "title": "Learning areas \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Learning areas"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/programs",
+    "title": "Project study \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Project study"
+      }
+    ],
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "path": "/playground",
+    "title": "Playground \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Coding playground"
+      },
+      {
+        "level": "H2",
+        "text": "Free experiment"
+      },
+      {
+        "level": "H2",
+        "text": "Output"
+      },
+      {
+        "level": "H2",
+        "text": "Tutor beside you"
+      }
+    ],
+    "violations": [
+      {
+        "id": "aria-prohibited-attr",
+        "impact": "serious",
+        "description": "Ensure ARIA attributes are not prohibited for an element's role",
+        "nodes": [
+          {
+            "target": [
+              ".mt-4"
+            ],
+            "summary": "Fix all of the following:\n  aria-label attribute cannot be used on a div with no valid role attribute."
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/playground/visualizer",
+    "title": "Audio visualizer \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Audio visualizer lab"
+      },
+      {
+        "level": "H2",
+        "text": "Your visual collection"
+      },
+      {
+        "level": "H2",
+        "text": "Create a visual"
+      },
+      {
+        "level": "H3",
+        "text": "Explore how it works (optional)"
+      },
+      {
+        "level": "H2",
+        "text": "Amplitude"
+      }
+    ],
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "path": "/answers",
+    "title": "Saved answers \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H1",
+        "text": "Saved answers"
+      }
+    ],
+    "violations": [],
+    "incomplete": []
+  },
+  {
+    "path": "/map",
+    "title": "Skill map \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Skill map"
+      },
+      {
+        "level": "H2",
+        "text": "Nodes"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": [
+      "color-contrast"
+    ]
+  },
+  {
+    "path": "/together",
+    "title": "Together \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Working alongside"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/experiments",
+    "title": "Experiments \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Experiments (n-of-1)"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/vocab",
+    "title": "Vocabulary \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Guided listening"
+      },
+      {
+        "level": "H2",
+        "text": "Vocabulary decks"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/corpus",
+    "title": "Materials \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Corpus"
+      },
+      {
+        "level": "H2",
+        "text": "Ingest course material"
+      },
+      {
+        "level": "H2",
+        "text": "Inspect retrieval"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/curriculum",
+    "title": "Lesson drafts \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Turn course material into lessons"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/models",
+    "title": "Models \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Hosted spend"
+      },
+      {
+        "level": "H2",
+        "text": "Voice"
+      },
+      {
+        "level": "H2",
+        "text": "Models"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/preferences",
+    "title": "Preferences \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [
+      {
+        "level": "H2",
+        "text": "Preferences"
+      },
+      {
+        "level": "H2",
+        "text": "Adaptation log"
+      }
+    ],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/session",
+    "title": "Learning session \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/review",
+    "title": "Review \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  },
+  {
+    "path": "/recap",
+    "title": "Session recap \u00b7 AuDHS Tutor",
+    "width": 1280,
+    "scrollWidth": 1280,
+    "headings": [],
+    "violations": [
+      {
+        "id": "page-has-heading-one",
+        "impact": "moderate",
+        "description": "Ensure that the page, or at least one of its frames contains a level-one heading",
+        "nodes": [
+          {
+            "target": [
+              "html"
+            ],
+            "summary": "Fix all of the following:\n  Page must have a level-one heading"
+          }
+        ]
+      }
+    ],
+    "incomplete": []
+  }
+]

@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 1 (2026-10-04)
+## Current owner scope — UX phase 2 (2026-10-04)
 
-The supplied design plan now has its Phase 1 [product inventory](ux/PRODUCT-UNDERSTANDING.md) and a separate [adversarial report](ux/ADVERSARIAL-USABILITY-REPORT.md). AU-01 pause/end ambiguity is corrected without changing learning logic. Remaining findings and model/human-test gaps are explicit; do not mark the 25-scenario matrix universally passed. Next incomplete design phase is Phase 2; earlier acquisition and architecture queues remain parked under this narrower scope.
+Phase 2 [running UX audit](ux/UX-AUDIT.md) records 17 route entry states at four widths, five API-failure probes and an actual local tutor session. No application or learning logic changed. Failed reads can resemble loading/empty states; Models overflows at 390px; two incorrect answers increased displayed mastery, requiring an explicit learning-metric review. The prior [adversarial report](ux/ADVERSARIAL-USABILITY-REPORT.md) remains the scenario ledger. Next incomplete design phase is Phase 3 heuristic prioritization, not a broad redesign. Acquisition and other architecture queues remain parked under this scope.
 
 ## Prioritized next work
 

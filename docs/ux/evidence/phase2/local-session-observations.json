@@ -1,0 +1,102 @@
+{
+  "environment": "disposable seeded sandbox; hosted keys absent, budget zero",
+  "calls": [
+    {
+      "provider": "ollama",
+      "model": "gemma3:12b",
+      "task": "explain_simple",
+      "route": "primary",
+      "tokens_out": 190,
+      "ok": 1,
+      "cost_usd": 0.0
+    },
+    {
+      "provider": "ollama",
+      "model": "nomic-embed-text",
+      "task": "embed",
+      "route": "primary",
+      "tokens_out": 0,
+      "ok": 1,
+      "cost_usd": 0.0
+    },
+    {
+      "provider": "ollama",
+      "model": "nomic-embed-text",
+      "task": "embed",
+      "route": "primary",
+      "tokens_out": 0,
+      "ok": 1,
+      "cost_usd": 0.0
+    },
+    {
+      "provider": "ollama",
+      "model": "gemma3:12b",
+      "task": "explain_simple",
+      "route": "primary",
+      "tokens_out": 173,
+      "ok": 1,
+      "cost_usd": 0.0
+    },
+    {
+      "provider": "ollama",
+      "model": "nomic-embed-text",
+      "task": "embed",
+      "route": "primary",
+      "tokens_out": 0,
+      "ok": 1,
+      "cost_usd": 0.0
+    },
+    {
+      "provider": "ollama",
+      "model": "nomic-embed-text",
+      "task": "embed",
+      "route": "primary",
+      "tokens_out": 0,
+      "ok": 1,
+      "cost_usd": 0.0
+    },
+    {
+      "provider": "ollama",
+      "model": "gemma3:12b",
+      "task": "explain_simple",
+      "route": "primary",
+      "tokens_out": 190,
+      "ok": 1,
+      "cost_usd": 0.0
+    },
+    {
+      "provider": "ollama",
+      "model": "nomic-embed-text",
+      "task": "embed",
+      "route": "primary",
+      "tokens_out": 0,
+      "ok": 1,
+      "cost_usd": 0.0
+    }
+  ],
+  "incorrect_attempt_evidence": [
+    {
+      "dimension": "recall",
+      "score": 0.0,
+      "grader_level": "deterministic"
+    },
+    {
+      "dimension": "recall",
+      "score": 0.0,
+      "grader_level": "deterministic"
+    }
+  ],
+  "final_competency_state": [
+    {
+      "dimension": "recall",
+      "score": 0.5,
+      "count": 2
+    }
+  ],
+  "observed_displayed_mastery_percent": [
+    0,
+    10,
+    21
+  ],
+  "note": "Human-readable audit extract, no learner/session identifiers or source material. Not a grading benchmark."
+}
