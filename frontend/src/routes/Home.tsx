@@ -143,7 +143,7 @@ function HomeOverview() {
   return (
     <div className="grid grid-cols-1 min-w-0 gap-4">
       <h1 className="text-2xl font-semibold">Your next step</h1>
-      <Card aria-label="Start or resume learning">
+      <Card lift aria-label="Start or resume learning">
         <CardTitle>{resumable ? 'Continue where you left off' : 'Start with one useful step'}</CardTitle>
         {current.isPending ? (
           <p role="status">Checking your saved session…</p>

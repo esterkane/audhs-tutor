@@ -1,8 +1,10 @@
 import * as React from 'react'
 import { cn } from '../../lib/utils'
 
-export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div className={cn('rounded-lg border border-line bg-card p-4 shadow-sm', className)} {...props} />
+type CardProps = React.HTMLAttributes<HTMLDivElement> & { lift?: boolean }
+
+export function Card({ className, lift = false, ...props }: CardProps) {
+  return <div className={cn('rounded-panel border border-line bg-card p-4', lift && 'shadow-panel', className)} {...props} />
 }
 
 type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
@@ -10,5 +12,5 @@ type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
 }
 
 export function CardTitle({ as: Heading = 'h2', className, ...props }: CardTitleProps) {
-  return <Heading className={cn('text-lg font-semibold mb-2', className)} {...props} />
+  return <Heading className={cn('font-semibold mb-3', Heading === 'h1' ? 'text-page-title' : 'text-panel-heading', className)} {...props} />
 }

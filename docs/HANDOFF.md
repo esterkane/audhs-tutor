@@ -857,3 +857,7 @@ Adopted canonical existing color roles and 2px focus styling. Eight theme/width 
 ## 2026-10-04 — Shared button design
 
 See docs/slices/design-buttons.md. Stronger control boundaries, explicit disabled/hover palette and wrapping-safe minimum heights; eight browser cases and lint/types/build pass. No learning behavior changed. Full shell and typography remain outstanding.
+
+## 2026-10-04 — Shared panel design
+
+Cards now follow supplied radius/flat surfaces, optional themed lift for Home resume, and separate panel/page heading tokens. Twelve browser cases passed in each checkout; original lint/types/build passed. See docs/slices/design-panels.md. Typography and contextual shell remain unfinished.
