@@ -931,3 +931,8 @@ C3 coding requests now validate typed lesson origin on the server while preservi
 ## Grounded playground integration boundary — 2026-10-04
 
 Source/retry inspection found a source-free prompt and disclosure that must change together with retrieval. The evidence plan now specifies bounded snapshots, cross-course provenance, source-aware reuse and completed replay without a new claim schema. Seven existing retrieval/recovery tests pass; grounded runtime remains unimplemented.
+
+
+## Bounded source snapshot — 2026-10-04
+
+Pure lesson-evidence helper now preserves whole budgeted passages, hashes and quoted provenance; 11 focused tests and static checks pass, review clear. See slices/lesson-evidence-snapshot.md. Runtime integration/reuse/source UI remains next; this does not yet enable grounded tutoring.
