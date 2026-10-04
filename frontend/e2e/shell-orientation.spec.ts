@@ -13,6 +13,10 @@ for (const width of [1280, 390, 320]) {
       'aria-current',
       'page',
     )
+    const navBox = await page.getByRole('navigation', { name: 'Main navigation' }).boundingBox()
+    const mainBox = await page.getByRole('main').boundingBox()
+    if (width >= 1024) expect(navBox!.x + navBox!.width).toBeLessThanOrEqual(mainBox!.x + 1)
+    else expect(navBox!.y + navBox!.height).toBeLessThanOrEqual(mainBox!.y + 1)
     await page.keyboard.press('Tab')
     await expect(page.getByRole('link', { name: 'Skip to learning content' })).toBeFocused()
     await page.keyboard.press('Enter')
@@ -46,7 +50,7 @@ for (const width of [1280, 390, 320]) {
     const violations = await page.evaluate(
       async () =>
         (
-          await (window as unknown as { axe: typeof axe }).axe.run('header', {
+          await (window as unknown as { axe: typeof axe }).axe.run('header, nav', {
             runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'] },
           })
         ).violations,

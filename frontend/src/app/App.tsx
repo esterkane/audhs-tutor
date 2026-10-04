@@ -83,7 +83,19 @@ export function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         <BrowseArea />
-        <nav aria-label="Main navigation" className="flex flex-wrap gap-2 text-sm items-start">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
+          <span>
+            {MODE_LABELS[mode].title} · energy {energy}
+          </span>
+          {sessionId && (
+            <Link to="/" className="underline">
+              Resume or manage session
+            </Link>
+          )}
+        </div>
+      </header>
+      <div className="shell-workspace">
+        <nav aria-label="Main navigation" className="shell-navigation flex flex-wrap gap-2 text-sm items-start">
           <NavLink to="/" end className={navClass}>Home</NavLink>
           {navigationGroups.map((group, index) => {
             const selected = group.pages.find(([path]) => path !== '/' &&
@@ -108,26 +120,18 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )
           })}
         </nav>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-          <span>
-            {MODE_LABELS[mode].title} · energy {energy}
-          </span>
-          {sessionId && (
-            <Link to="/" className="underline">
-              Resume or manage session
-            </Link>
-          )}
-        </div>
-      </header>
+      <div className="min-w-0">
       <main
         id="main-content"
         ref={main}
         tabIndex={-1}
-        className={`${wide ? 'max-w-7xl' : 'max-w-3xl'} mx-auto p-4 pb-24`}
+        className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto p-4 pb-24`}
       >
         {children}
       </main>
       <LearningCompanion key={pathname} />
+      </div>
+      </div>
     </div>
   )
 }

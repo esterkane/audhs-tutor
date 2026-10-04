@@ -18,6 +18,7 @@
   --color-focus-ring: #0b64dd;
   --color-ok: #0f7a5a;
   --color-warn: #9a5f00;
+  --spacing-nav-width: 15rem;
   --radius-panel: 0.375rem;
   --text-panel-heading: 1rem;
   --text-panel-heading--line-height: 1.5rem;
@@ -200,4 +201,32 @@ body {
   max-width: 100%;
   height: auto;
   border-radius: 0.5rem;
+}
+
+/* The desktop rail and workspace share one DOM order; zoom/narrow view stays in flow. */
+.shell-workspace {
+  min-width: 0;
+}
+.shell-navigation {
+  padding: 1rem;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-sunken);
+}
+@media (min-width: 64rem) {
+  .shell-workspace {
+    display: grid;
+    grid-template-columns: var(--spacing-nav-width) minmax(0, 1fr);
+    min-height: 80vh;
+  }
+  .shell-navigation {
+    flex-direction: column;
+    align-items: stretch;
+    align-content: start;
+    justify-content: flex-start;
+    border-bottom: 0;
+    border-right: 1px solid var(--color-line);
+  }
+  .shell-navigation summary, .shell-navigation a {
+    overflow-wrap: anywhere;
+  }
 }

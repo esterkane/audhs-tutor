@@ -861,3 +861,7 @@ See docs/slices/design-buttons.md. Stronger control boundaries, explicit disable
 ## 2026-10-04 — Shared panel design
 
 Cards now follow supplied radius/flat surfaces, optional themed lift for Home resume, and separate panel/page heading tokens. Twelve browser cases passed in each checkout; original lint/types/build passed. See docs/slices/design-panels.md. Typography and contextual shell remain unfinished.
+
+## 2026-10-04 — Desktop rail
+
+Existing navigation is now separate from desktop workspace; narrow in-flow navigation retained. Ten browser checks and four unit checks pass; lint/types/build pass. See docs/slices/desktop-navigation-rail.md. Compact mobile navigation and contextual shell remain outstanding.
