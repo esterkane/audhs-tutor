@@ -849,3 +849,7 @@ Area/draft choices now survive URL history and refresh; same-route history prese
 ## Browsing context and design authority — 2026-10-04
 
 Header Browse area uses independent tab-local history and existing URLs, with explicit same-area Open.11 unit/seven targeted browser checks and lint/types/build pass. No learning-state writes. See docs/slices/browse-area-context.md. Owner explicitly made uploaded package the design system; exact canonical tokens and hashes are in docs/design/source. Earlier prototype/defer visual language is superseded. Next implement its visual foundation, documenting real accessibility/state conflicts.
+
+## 2026-10-04 — Uploaded design palette
+
+Adopted canonical existing color roles and 2px focus styling. Eight theme/width browser cases, lint/types/build passed in original checkout. Visual inspection of desktop light and narrow dark completed; learning logic unchanged. See docs/slices/design-palette-adoption.md. Additional owner navigation document is authoritative alongside visual/component package. Sanitized checkout also passed all eight browser cases. Paired commits/pushes follow; both variants remain private.

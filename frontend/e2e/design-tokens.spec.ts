@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises'
+import { readFile, writeFile } from 'node:fs/promises'
 import { expect, test } from '@playwright/test'
 import { API, endOpenSession, expectOk } from './helpers'
 
@@ -49,13 +49,18 @@ for (const theme of ['light', 'dark', 'system-light', 'system-dark']) {
             inlineBackground: inline.backgroundColor, inlineContrast: contrast(inline.color, inline.backgroundColor),
             blockCodeBackground: block.backgroundColor, overflow: document.documentElement.scrollWidth > innerWidth }
         })
+        const canonical = JSON.parse(await readFile(new URL('../../docs/design/source/tokens.json', import.meta.url), 'utf8'))
+        const applied = await page.evaluate(() => Object.fromEntries(['bg', 'fg', 'muted', 'card', 'line', 'control', 'code', 'accent', 'accent-fg', 'ok', 'warn', 'focus-ring'].map(name => [name, getComputedStyle(document.documentElement).getPropertyValue(`--color-${name}`).trim()])))
+        for (const [name, value] of Object.entries(applied)) {
+          expect(value).toBe(canonical.color.tokens.find((token: { name: string }) => token.name === name).value[theme.endsWith('dark') ? 'dark' : 'light'])
+        }
         await writeFile(info.outputPath('tokens.json'), JSON.stringify(metrics, null, 2))
         await page.screenshot({ path: info.outputPath('lesson.png'), fullPage: true })
         expect(metrics.boundaryContrast).toBeGreaterThanOrEqual(3)
         expect(metrics.inlineContrast).toBeGreaterThanOrEqual(4.5)
         expect(metrics.blockCodeBackground).toBe('rgba(0, 0, 0, 0)')
         expect(metrics.focusContrast).toBeGreaterThanOrEqual(3)
-        expect(metrics.outlineWidth).toBe('3px')
+        expect(metrics.outlineWidth).toBe('2px')
         expect(metrics.overflow).toBe(false)
         await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
         await page.getByRole('button', { name: /^Resume previous session/ }).click()

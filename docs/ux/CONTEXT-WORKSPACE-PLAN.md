@@ -1,6 +1,6 @@
 # Context-preserving workspace proposal — reconciliation
 
-2026-10-04. Owner supplied a navigation/workspace proposal after Map recovery began. This records the next architectural work before implementation; it does not certify the proposal's usability or accept every example as an existing capability. The original attachment stays outside the sanitized repository.
+2026-10-04. Owner supplied a navigation/workspace proposal after Map recovery began. Owner subsequently confirmed this document as authoritative information architecture and interaction design. It does not certify usability or make example capabilities existing functionality. The original attachment stays outside the sanitized repository.
 
 ## Current evidence and revised direction
 
@@ -31,8 +31,12 @@ Human validation: ask the owner to locate a prior explanation, resume, switch an
 
 ## Uploaded visual reference reconciliation
 
-[Design-kit assessment](../design/UPLOADED-DESIGN-RECONCILIATION.md) merges ContextBar, ResumeCard and panel/error specimens into C2/C3/C6 and a bounded C1 visual follow-up. Existing route grouping and evidence semantics take precedence over conflicting/stale artifact proposals. No runtime assets/fonts/embedded skills imported.
+[Design-kit assessment](../design/UPLOADED-DESIGN-RECONCILIATION.md) merges ContextBar, ResumeCard and panel/error specimens into C2/C3/C6 and a bounded C1 visual follow-up. The owner-approved workspace specification governs navigation; uploaded component specifications govern appearance. Evidence semantics and accessibility conflicts require explicit reconciliation. No runtime assets/fonts/embedded skills imported.
 
 ## Owner design-system decision
 
 The uploaded package and companion information now govern visual/component decisions (docs/design/source/README.md). Adopt its tokens and component specifications deliberately; do not treat them as optional inspiration. Existing code is implementation evidence, not visual design authority. Reconcile navigation differences with the owner-approved workspace plan before changing routes; expose evidence/accessibility conflicts explicitly.
+
+## Additional owner authority confirmation — 2026-10-04
+
+The re-supplied 30-section workspace/navigation document is an authoritative design source, not optional inspiration. See ../design/source/README.md for provenance and precedence. C0–C7 remain the bounded execution sequence; do not redesign unrelated screens ahead of the shell/context work. Palette adoption alone does not fulfill this architecture. Desktop rail, responsive shell, contextual tools, persistent tutor, Library, area-scoped map, resume composition and recent-context/search work remain outstanding. Real user-flow, visual, keyboard and responsive verification are required per slice; preserve learning logic and functionality.

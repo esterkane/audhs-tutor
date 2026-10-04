@@ -1,3 +1,5 @@
+> Additional owner decision, 2026-10-04: the supplied navigation/workspace document is equally authoritative for information architecture and interaction composition. See [source/README.md](source/README.md) and [workspace plan](../ux/CONTEXT-WORKSPACE-PLAN.md). Apply it together with the uploaded visual/component specifications.
+
 > Owner decision,2026-10-04: the uploaded design package is the authoritative design system. Prior prototype/defer language below is historical assessment, not authority to substitute the old appearance. See [source/README.md](source/README.md). Implement its visual/component direction in bounded slices, documenting specific accessibility, learning-state and offline-provenance conflicts.
 
 # Design system — Phase 6

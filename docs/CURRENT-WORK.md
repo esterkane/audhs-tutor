@@ -62,3 +62,7 @@ Automated tests do not certify owner comprehension, Bluetooth output, VoiceOver 
 ## Proposed runtime extensions
 
 The owner-proposed memory, voice and development-tool additions are reconciled in [runtime-extension-evaluation](runtime-extension-evaluation.md). Evaluation and daily-learning acceptance come first; Hindsight/local memory comparison and optional hosted voice experiments follow. No new provider is activated and no architecture replacement is accepted by this queue entry.
+
+## Design adoption checkpoint
+
+Existing palette roles and focus styling now follow the uploaded canonical tokens; see design-palette-adoption in docs/slices. Typography, primitives and the authoritative navigation/workspace composition remain open. The additional workspace document is authoritative, recorded in docs/design/source/README.md.

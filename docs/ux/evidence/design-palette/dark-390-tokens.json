@@ -1,0 +1,11 @@
+{
+  "border": "rgb(127, 135, 151)",
+  "surface": "rgb(37, 38, 46)",
+  "boundaryContrast": 4.167289566900234,
+  "focusContrast": 5.787066937791668,
+  "outlineWidth": "2px",
+  "inlineBackground": "rgb(26, 27, 34)",
+  "inlineContrast": 13.557604787295096,
+  "blockCodeBackground": "rgba(0, 0, 0, 0)",
+  "overflow": false
+}

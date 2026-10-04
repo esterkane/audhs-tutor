@@ -3,17 +3,18 @@
 
 /* AuDHD UX invariants: calm palette, strong focus ring (≥ 3:1), no motion unless allowed. */
 @theme {
-  --color-bg: #f7f7f5;
-  --color-fg: #1f2328;
-  --color-muted: #5b6470;
+  --color-bg: #f7f8fc;
+  --color-fg: #343741;
+  --color-muted: #5e6673;
   --color-card: #ffffff;
-  --color-line: #d9dde3;
-  --color-control: #697380;
-  --color-code: #eef0f3;
-  --color-accent: #2f5fd4;
+  --color-line: #d3dae6;
+  --color-control: #7d8ba3;
+  --color-code: #f1f4fa;
+  --color-accent: #0b64dd;
   --color-accent-fg: #ffffff;
-  --color-ok: #1f7a4d;
-  --color-warn: #a35b00;
+  --color-focus-ring: #0b64dd;
+  --color-ok: #0f7a5a;
+  --color-warn: #9a5f00;
   --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 
@@ -28,7 +29,7 @@ body {
   line-height: 1.55;
 }
 *:focus-visible {
-  outline: 3px solid var(--color-accent);
+  outline: 2px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -50,32 +51,34 @@ body {
 
 /* Sensory settings (preferences ui.theme / ui.density / ui.font_scale / ui.reduced_motion) */
 :root[data-theme='dark'] {
-  --color-bg: #15181c;
-  --color-fg: #e6e8eb;
-  --color-muted: #a0a8b3;
-  --color-card: #1e2227;
-  --color-line: #343a42;
-  --color-control: #8993a0;
-  --color-code: #2a3038;
-  --color-accent: #7ea2ff;
-  --color-accent-fg: #0f1a33;
-  --color-ok: #5bc08a;
-  --color-warn: #e0a34a;
+  --color-bg: #1d1e24;
+  --color-fg: #dfe5ef;
+  --color-muted: #a1a8b5;
+  --color-card: #25262e;
+  --color-line: #343741;
+  --color-control: #7f8797;
+  --color-code: #1a1b22;
+  --color-accent: #5aa5f0;
+  --color-accent-fg: #0b1a33;
+  --color-focus-ring: #5aa5f0;
+  --color-ok: #5fc2a0;
+  --color-warn: #e5b046;
   color-scheme: dark;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
-    --color-bg: #15181c;
-    --color-fg: #e6e8eb;
-    --color-muted: #a0a8b3;
-    --color-card: #1e2227;
-    --color-line: #343a42;
-    --color-control: #8993a0;
-    --color-code: #2a3038;
-    --color-accent: #7ea2ff;
-    --color-accent-fg: #0f1a33;
-    --color-ok: #5bc08a;
-    --color-warn: #e0a34a;
+    --color-bg: #1d1e24;
+    --color-fg: #dfe5ef;
+    --color-muted: #a1a8b5;
+    --color-card: #25262e;
+    --color-line: #343741;
+    --color-control: #7f8797;
+    --color-code: #1a1b22;
+    --color-accent: #5aa5f0;
+    --color-accent-fg: #0b1a33;
+    --color-focus-ring: #5aa5f0;
+    --color-ok: #5fc2a0;
+    --color-warn: #e5b046;
     color-scheme: dark;
   }
 }
