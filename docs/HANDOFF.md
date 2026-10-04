@@ -809,3 +809,7 @@ Added design-experiments/ux-directions HTML and rationale, standalone design Pla
 ## 2026-10-04 — Phase 8 direction comparison
 
 Added docs/design/DESIGN-DECISION.md and nine initial-layout measurements; extended existing design probes without changing prototypes or production. Nine tests and focused ESLint passed. Weighted matrix arithmetic checked: A3.75/B3.50/C3.35; recommendation is sensitive to judgment changes, not measured learning efficacy. Quiet Workspace recommended for reading while retaining wide task surfaces. Below-fold help, human comprehension, themes/zoom and real state integration remain acceptance gates. Next: Phase 9 implementation plan.
+
+## 2026-10-04 — Phase 9 implementation plan
+
+Added docs/ux/IMPLEMENTATION-PLAN.md with bounded stage/slice file scopes, risks, tests, integrated acceptance matrix and original-phase mapping. Rechecked current component/test paths and document links. No production code, learning logic or new runtime test result. Next concrete slice: Phase 10/Stage 1a control-boundary and inline-code tokens, using existing CSS/Textarea with measured rendering. Navigation, mastery and recovery changes remain separate; full redesign acceptance stays open.

@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 8 (2026-10-04)
+## Current owner scope — UX phase 9 (2026-10-04)
 
-Phase 8 [design recommendation](design/DESIGN-DECISION.md) compares three directions against eight criteria and recorded layout measurements. Recommend Quiet Workspace for reading/session content, with explicit help-reachability and real-state acceptance gates; preserve wider existing task workspaces. Scores are reviewer judgments, not human outcomes. Nine standalone probes and focused lint passed. No production behavior changed. Next: Phase 9 bounded implementation plan with file/risk/test scopes.
+Phase 9 [bounded implementation plan](ux/IMPLEMENTATION-PLAN.md) defines files, components, risks, expected gains and acceptance for tokens/primitives, truthful states, shell, learning, progress, settings, reflow and accessibility. All proposed production slices remain unimplemented. Next is original Phase 10, Stage 1a: inspect and verify existing Textarea/inline-code styling, then adopt necessary semantic tokens with theme/keyboard/narrow checks. Mastery semantics require separate investigation; no silent kernel change. Other queues remain parked.
 
 ## Prioritized next work
 
