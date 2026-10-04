@@ -1,3 +1,4 @@
+import { RecentAreas } from '../features/areas/RecentAreas'
 import { HomeTopicPreparation } from '../features/areas/HomeTopicPreparation'
 import { SelectedLesson } from '../features/session/SelectedLesson'
 import { useAreas } from '../features/areas/api'
@@ -166,6 +167,9 @@ function HomeOverview() {
                       ? 'Next: review your session recap.'
                       : 'Next: return to your current learning step.'}
             </p>
+            {typeof current.data?.due_reviews === 'number' && Number.isInteger(current.data.due_reviews) && current.data.due_reviews >= 0 && <p className="text-sm mt-2">
+              {current.data.due_reviews >= 100 ? 'At least ' : ''}{current.data.due_reviews} {current.data.due_reviews === 1 ? 'review is' : 'reviews are'} due for this saved session.
+            </p>}
             <p className="text-sm text-muted">
               Resuming keeps this session’s topic and place. Settings below apply to a new session.
             </p>
@@ -285,6 +289,7 @@ function HomeOverview() {
           <Link to="/programs">Return to project notebooks</Link>
         </p>
       </Card>
+      <RecentAreas />
       <AdaptationCards />
       <PromotedReminders />
       <details className="border border-line rounded-md p-3">

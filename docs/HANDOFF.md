@@ -1026,3 +1026,8 @@ Versioned tab checkpoint retains text, original session/skill and unconfirmed-sa
 ## C6 saved-thought actions — 2026-10-04
 
 Show on Home and deliberate Remove replace misleading Promote/Drop/Done labels; pending/error/deadline/focus feedback added. See docs/slices/saved-thought-actions.md. Backend undo/idempotency are not implemented. Next: remaining Home composition/data reconciliation, then C7.
+
+
+## C6 Home recent areas/reviews — 2026-10-04
+
+Read-only recent browsing links and honest capped current-session review count added. No review-card endpoint or learning writes for decoration. See docs/slices/home-recent-areas.md. Next C6: ResumeCard intent separation/short action; C7 still open.

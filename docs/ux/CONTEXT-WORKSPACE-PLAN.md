@@ -69,3 +69,6 @@ C6 thought draft restoration is implemented and verified in ../slices/capture-re
 
 
 C6 saved-thought action feedback: ../slices/saved-thought-actions.md. Return now to remaining Home Resume/Review/Recent composition and actual data inventory. Undo/idempotency contracts remain open, not implicitly satisfied by confirmation.
+
+
+C6 recent browsing/review visibility: ../slices/home-recent-areas.md. Next reconcile ResumeCard intent separation and concise Continue action. Recent learning contexts and global search remain C7 work, not satisfied by recent-area links.
