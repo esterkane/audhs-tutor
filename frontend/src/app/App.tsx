@@ -130,7 +130,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
-      <LearningCompanion key={pathname} />
+      <LearningCompanion />
       </div>
       </div>
     </div>

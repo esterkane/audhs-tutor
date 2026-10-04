@@ -996,3 +996,8 @@ Map now offers explicit area URL scope and a global choice, using stored members
 ## C4 Library source discovery — 2026-10-04
 
 Library now offers Sources alongside Saved answers, reusing read-only retrieval and the source viewer with URL/history/focus recovery.15 component checks and6 browser journeys pass; final visual/lint/types/build evidence and limits are in slices/library-sources.md. Learning logic and model routing unchanged. C4 bounded implementation is present; human acceptance remains open. Next C5: inspect and define persistent tutor target/draft/stream lifecycle before changing the shell.
+
+
+## C5 companion context foundation — 2026-10-04
+
+Captured material, unapplied edits and one previous capture now survive route changes/reload; applying material explicitly separates conversation identities. Existing close/request/media cleanup remains intact. See slices/companion-context.md and persistent-tutor-contract.md for baseline, tests, reviews and limits. Next: implement desktop panel/narrow sheet using this state owner; footer placement is still temporary. Full C5 and human acceptance remain open.

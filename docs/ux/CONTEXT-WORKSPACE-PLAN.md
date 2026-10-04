@@ -51,3 +51,6 @@ C4 area-map implementation is recorded in ../slices/area-map.md. This supersedes
 
 
 C4 Library source discovery is recorded in ../slices/library-sources.md. Next bounded work is C5 tutor persistence contracts and implementation; owner comprehension of C4 remains unverified.
+
+
+C5 context foundation is implemented in ../slices/companion-context.md. Next is the persistent desktop panel/narrow sheet; do not interpret retained footer placement as final design compliance.
