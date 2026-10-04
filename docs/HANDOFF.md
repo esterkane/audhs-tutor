@@ -941,3 +941,8 @@ Pure lesson-evidence helper now preserves whole budgeted passages, hashes and qu
 ## Linked coding sources and reuse — 2026-10-04
 
 Explicit linked tutor requests now retrieve local references, retain per-answer source panels and use evidence-aware exact reuse. Known availability failures disclose general help; completed retries retain original sources. See slices/lesson-playground-sources.md for55 backend tests, browser/keyboard/reload evidence and real-model semantic limitations. Starter suggestions and broader workspace phases remain open.
+
+
+## Explicit starter-code help — 2026-10-04
+
+Lesson experiments now offer a starter request and explicit Python-example append with guarded Undo. Unsent questions/existing code are preserved; no autorun. See slices/lesson-starter-code.md for tests, browser evidence and limitations. Next: local-model grounding checks and remaining contextual workspace work.

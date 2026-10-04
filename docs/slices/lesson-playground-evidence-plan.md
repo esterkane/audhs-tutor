@@ -53,3 +53,7 @@ Verified now: test_retrieve_scope plus test_workspace_request_recovery, 7 passed
 ## Runtime checkpoint — 2026-10-04
 
 Steps2–3 and the reference-panel part of4 are integrated; see lesson-playground-sources.md. Explicit starter insertion and real-model grounding evaluation remain unimplemented. This does not complete C3 or the design-system plan.
+
+## Starter checkpoint — 2026-10-04
+
+Explicit starter suggestion and append/Undo are implemented; see lesson-starter-code.md. Real-model source/answer quality and owner comprehension remain open, as do broader C3/C4/C5 requirements.

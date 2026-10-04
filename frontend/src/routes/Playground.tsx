@@ -1,3 +1,4 @@
+import { appendExample, pythonExamples, STARTER_REQUEST } from '../features/playground/starterCode'
 import { useRequestRecovery, type PendingTutorRequest } from '../features/playground/useRequestRecovery'
 import { RequestRecoveryControls } from '../features/playground/RequestRecoveryControls'
 import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
@@ -156,6 +157,7 @@ function Workspace({
   const [tutorOpen, setTutorOpen] = useState(true)
   const [modelNote, setModelNote] = useState('')
   const [resetting, setResetting] = useState(false)
+  const [insertion, setInsertion] = useState<{ before: string; after: string } | null>(null)
   const operation = useRef<{ runner: Runner; abort: AbortController } | null>(null)
   const tutorAbort = useRef<{ cancel: () => void } | null>(null)
   const current = useCurrentSession()
@@ -238,7 +240,7 @@ function Workspace({
     setTutorError('')
   }
 
-  async function ask(intent: Exclude<TutorRequest['intent'], 'check_answer' | 'check_bins'>) {
+  async function ask(intent: Exclude<TutorRequest['intent'], 'check_answer' | 'check_bins'>, requestText?: string) {
     if (!sessionId || tutorAbort.current || contextCheck.current) return
     const defaults = {
       chat: '',
@@ -246,7 +248,7 @@ function Workspace({
       hint: 'Give me one hint for the current task without solving it.',
       big_picture: 'Show how this task fits into a larger data workflow, and one tradeoff.',
     }
-    const text = question.trim() || defaults[intent ?? 'chat']
+    const text = requestText ?? (question.trim() || defaults[intent ?? 'chat'])
     if (!text) return
     const check = {}
     contextCheck.current = check
@@ -274,7 +276,7 @@ function Workspace({
           output_stale: stale,
           history: draft.chat.slice(-6).map((m) => ({ role: m.role, text: m.text.slice(0, 4000) })),
         },
-        { snapshot: draft.code, submitted: question, display: text, mode: 'explicit' },
+        { snapshot: draft.code, submitted: requestText ? '' : question, display: requestText ? 'Suggest a small starter example for this lesson.' : text, mode: 'explicit' },
       )
       contextCheck.current = null
       setCheckingContext(false)
@@ -431,6 +433,15 @@ function Workspace({
                 {tutorOpen ? 'Hide tutor' : 'Show tutor'}
               </Button>
             </div>
+            {insertion && draft.code === insertion.after && (
+              <div className="mt-2">
+                <p role="status" className="text-sm">Example added below your code. Review it before choosing Run code.</p>
+                <Button disabled={running || busy} onClick={() => {
+                  setDraft(d => ({ ...d, code: insertion.before }))
+                  setInsertion(null)
+                }}>Undo adding example</Button>
+              </div>
+            )}
             <details className="mt-3 text-sm">
               <summary className="cursor-pointer">Editor and runtime options</summary>
               <p className="text-muted mt-2">
@@ -564,6 +575,19 @@ function Workspace({
                         <p className="text-xs text-warn">This answer refers to earlier code.</p>
                       )}
                     <Markdown text={m.text} />
+                    {m.role === 'assistant' && pythonExamples(m.text).map((example, exampleIndex) => (
+                      <div key={exampleIndex} className="mt-2">
+                        <p className="text-xs text-muted">Review the Python example above. Adding it preserves your code and does not run it.</p>
+                        <Button disabled={running || busy || appendExample(draft.code, example) === null}
+                          onClick={() => {
+                            const after = appendExample(draft.code, example)
+                            if (after === null) return
+                            setInsertion({ before: draft.code, after })
+                            setDraft(d => ({ ...d, code: after }))
+                          }}>Add Python example {exampleIndex + 1} below my code</Button>
+                        {appendExample(draft.code, example) === null && <p className="text-xs text-muted">{draft.code.endsWith(example) ? 'This example is already at the end of your code.' : 'Adding this example would exceed the 16,000-character limit.'}</p>}
+                      </div>
+                    ))}
                     {m.sourceNote && <p className="text-xs text-muted">{m.sourceNote}</p>}
               {m.sources && m.sources.length > 0 && (
                 <details className="mt-3">
@@ -612,6 +636,10 @@ function Workspace({
                 </Button>
                 {busy && <Button onClick={stopTutor}>Stop waiting</Button>}
               </div>
+              {expectedSession && expectedSkill && (
+                <Button className="mt-2" disabled={!sessionId || busy || draft.code.length > 16000}
+                  onClick={() => void ask('chat', STARTER_REQUEST)}>Suggest starter code</Button>
+              )}
               <div className="flex flex-wrap gap-2 mt-2">
                 {(['hint', 'explain', 'big_picture'] as const).map((intent) => (
                   <Button
