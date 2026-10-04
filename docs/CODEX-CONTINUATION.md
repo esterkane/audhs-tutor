@@ -351,3 +351,6 @@ promises and honest Stop sound semantics. Physical headphone audibility remains 
 
 
 Material-search slice: Library /search now searches saved explanations and source passages independently, with URL query and separate retries. Original3 browser journeys, lint/types/build passed; review clear. Details and remaining C7 scope: docs/slices/recent-contexts.md. No learning logic changes.
+
+
+Persistent header search implemented;5 original browser journeys and lint/types/build pass. See recent-contexts.md for startup dependency diagnosis and outstanding mobile chrome/search scope.

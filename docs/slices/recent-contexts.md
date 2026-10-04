@@ -77,3 +77,11 @@ Original verification: three browser journeys pass at390/1280, covering keyboard
 Still open: global shell search/command access, additional searchable categories with verified contracts, broader accessibility/theme/zoom checks and human comprehension acceptance. This is the first two-provider search page, not completion of C7 or the whole design system.
 
 Final sanitized verification: all3 material-search browser journeys and type check passed.
+
+
+## Persistent search access — 2026-10-04
+Header now exposes Search material without requiring Library discovery. Native link preserves standard navigation and existing main-content focus; no search request until a query is submitted, and no learning mutations. Five original browser journeys pass, including390/1280 keyboard tab access, Enter, Back, no writes and overflow checks; lint/types/build pass with inherited warnings. Narrow screenshot inspected; review found no blockers/majors. Mobile header remains tall: consolidate chrome in a separately evaluated slice, preserving reachable audio Stop and contextual tutor. Command palette and wider search categories remain incomplete.
+
+Two initial browser attempts timed out before tests. A Python faulthandler trace identified LiteLLM import waiting on remote model-cost-map HTTP fetch. Verification used LITELLM_LOCAL_MODEL_COST_MAP=True (supported by installed dependency) only for hosted-disabled sandbox. Separate architecture follow-up: remove unneeded network dependency from local startup while preserving current hosted cost accounting; no production pricing behavior changed here.
+
+Final sanitized verification: all5 search journeys passed with the same sandbox-only local-cost-map setting.

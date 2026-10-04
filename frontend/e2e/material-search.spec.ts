@@ -55,3 +55,27 @@ test('old searches cannot replace a new query and invalid queries send nothing',
   release()
   await expect(page.getByRole('link', { name: 'Answer old' })).toHaveCount(0)
 })
+
+for (const width of [390, 1280]) test(`header search is reachable by keyboard and preserves return ${width}`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 })
+  const writes: string[] = []
+  page.on('request', request => {
+    if (request.url().includes('/api/') && !['GET', 'OPTIONS'].includes(request.method())) writes.push(request.url())
+  })
+  await page.goto('/map')
+  const entry = page.locator('header').getByRole('link', { name: 'Search material', exact: true })
+  await expect(entry).toBeVisible()
+  // Reach the persistent entry through the actual tab order, without opening navigation.
+  await page.keyboard.press('Tab')
+  for (let i = 0; i < 12 && !(await entry.evaluate(el => el === document.activeElement)); i++) await page.keyboard.press('Tab')
+  await expect(entry).toBeFocused()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { level: 1, name: 'Search material' })).toBeVisible()
+  await expect(page.locator('#main-content')).toBeFocused()
+  await page.screenshot({ path: info.outputPath('header-search.png'), fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.goBack()
+  await expect(page).toHaveURL(/\/map$/)
+  await expect(entry).toBeVisible()
+  expect(writes).toEqual([])
+})

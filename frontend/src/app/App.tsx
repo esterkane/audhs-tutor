@@ -81,6 +81,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             AuDHS-Tutor
           </Link>
           <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
+            <Link to="/search" className="inline-flex min-h-10 items-center rounded-md border border-control px-3 py-2 text-sm underline underline-offset-4">Search material</Link>
             <div ref={setTutorEntry} className="min-w-0 max-w-full" />
             <AudioControls compact />
             <ParkingLotButton />
