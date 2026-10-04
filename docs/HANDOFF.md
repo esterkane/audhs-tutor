@@ -889,3 +889,7 @@ Optional lesson-to-playground entry now isolates code/chat/question drafts and r
 ## Audio lab return context — 2026-10-04
 
 Fixed the reproduced workspace reset when returning from the audio lab. See slices/visualizer-return-context.md for checks and remaining playback-lifecycle design. No learning-state or audio behavior changes.
+
+## Visualizer lifecycle inspection — 2026-10-04
+
+Browser reproduction confirms unsaved JSON is lost on route exit. The architecture contract and three implementation slices are in slices/visualizer-route-recovery-plan.md. Next: editing checkpoint, then paused media and lesson-panel recovery. Runtime remains unchanged; no success claim for recovery.
