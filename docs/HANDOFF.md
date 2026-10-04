@@ -1070,3 +1070,6 @@ Saved lesson thoughts now check current session/block identity before resuming. 
 
 ## C6 saved audio lessons — 2026-10-04
 Built-in Learn steps now have durable thought links with explicit application and no autoplay; unknown steps preserve draft. Scope/evidence in capture-context-contract.md:6original/2sanitized browser journeys,5unit/5backend checks, lint/types/build and read-only review. Preset identity restoration is not implemented. Next source-viewer return and reversible thought actions; broader context/search plan remains incomplete.
+
+
+Source-return groundwork: docs/slices/source-capture-return.md records the inspected direct-passage/capture contract and four passing baseline browser journeys. SourceViewer is inline, and existing passage URLs depend on search ranking. Next bounded implementation is explicit source capture plus independent chunk return; no runtime change or stage completion is claimed.

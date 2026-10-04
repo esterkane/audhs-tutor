@@ -91,3 +91,6 @@ Task-starter saved-thought round-trip acceptance now passes, with a distinct tas
 Displayed Session lesson capture/return is implemented with a fresh checkpoint match and explicit mismatch choices. Review/recap without displayed identity, audio/source returns and undo remain unfinished; see capture-context-contract.md.
 
 C6 built-in audio Learn-step return is implemented with explicit application and no playback; preset-specific restoration and source/undo remain open (capture-context-contract.md).
+
+
+Source-return groundwork: docs/slices/source-capture-return.md records the inspected direct-passage/capture contract and four passing baseline browser journeys. SourceViewer is inline, and existing passage URLs depend on search ranking. Next bounded implementation is explicit source capture plus independent chunk return; no runtime change or stage completion is claimed.
