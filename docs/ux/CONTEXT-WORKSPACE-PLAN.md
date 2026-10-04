@@ -45,3 +45,6 @@ The re-supplied 30-section workspace/navigation document is an authoritative des
 ## Current execution boundary — 2026-10-04
 
 C3 contextual tool capabilities and recovery have shipped in the corresponding slice records. No relevant audio-lab relationship was found in the current authored project sections; do not add arbitrary lab links. This is a source-coverage limit, not a reason to invent unrelated C3 tasks. Human C3 acceptance remains open. Next bounded implementation is the C4 area-scoped map contract in [area-map-plan](../slices/area-map-plan.md). Stored skill-area membership exists, but the current map API does not expose scoped results. Preserve all learning decisions while adding the read-only projection. Earlier “next C2/C3” paragraphs above are historical.
+
+
+C4 area-map implementation is recorded in ../slices/area-map.md. This supersedes the prior next-step map contract; Library/source discovery remains incomplete.

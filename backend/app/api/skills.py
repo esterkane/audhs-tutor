@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from app.api.deps import DB, Learner
 from app.api.plan import session_lock
 from app.db.models import SkillNode
-from app.kernel import competency, preferences, skill_graph
+from app.kernel import areas, competency, preferences, skill_graph
 from app.schemas.tutor import SkillView
 
 router = APIRouter(prefix="/skills", tags=["skills"])
@@ -51,6 +51,8 @@ class MapOut(BaseModel):
     nodes: list[dict[str, Any]]
     edges: list[dict[str, Any]]
     mermaid: str
+    area_id: str | None = None
+    area_title: str | None = None
 
 
 @router.get(
@@ -58,8 +60,13 @@ class MapOut(BaseModel):
     summary="Whole skill map with competency + memory overlays and a Mermaid rendering",
     response_model=MapOut,
 )
-async def skill_map(db: DB, learner: Learner) -> MapOut:
-    return MapOut.model_validate(await skill_graph.map_view(db, learner.id))
+async def skill_map(db: DB, learner: Learner, area_id: str | None = None) -> MapOut:
+    area = await areas.get(db, area_id) if area_id is not None else None
+    return MapOut(
+        **await skill_graph.map_view(db, learner.id, area_id=area_id),
+        area_id=area_id,
+        area_title=area.title if area else None,
+    )
 
 
 @router.get("/{skill_id}", summary="One skill with its state", response_model=SkillView)

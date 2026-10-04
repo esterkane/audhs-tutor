@@ -29,6 +29,7 @@ export function BrowseArea() {
         </select>
       </label>}
       <Link className="underline text-sm" to={selected ? `/areas?area=${encodeURIComponent(selected.id)}` : '/areas'}>{selected ? 'Open this area' : 'Open all learning areas'}</Link>
+      {selected && <Link className="underline text-sm" to={`/map?area=${encodeURIComponent(selected.id)}`}>View this area’s skill map</Link>}
       {areas.isSuccess && !catalog.length && <p className="text-sm">No areas yet. Open Learning areas to prepare them.</p>}
       {areas.isSuccess && current && !selected && <p className="text-sm">The previously browsed area is unavailable. Choose another area.</p>}
       {storageError && <p role="status" className="text-sm">Browsing history could not be saved in this tab.</p>}

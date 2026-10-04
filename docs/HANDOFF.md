@@ -986,3 +986,8 @@ Optional project-to-audio lesson relations now have validation, explicit explana
 ## C4 map investigation and baseline — 2026-10-04
 
 Recorded read-only area-map contract in docs/slices/area-map-plan.md. Verified stored area membership exists; map currently exposes only the whole graph. No audio mapping justified by current authored project sections. Corrected the existing mobile map journey to open its collapsed menu by keyboard before choosing Home. Both 390/1280 recovery journeys pass after the test correction; narrow screenshot inspected and focused ESLint passed. No production application or learning-logic change; no build rerun needed for documentation/test-only delta. Next: implement verified map scope with outside-area prerequisites and exact URL/cache identity. Full C4 remains open.
+
+
+## C4 area map implemented — 2026-10-04
+
+Map now offers explicit area URL scope and a global choice, using stored membership and transitive prerequisites. Outside-area prerequisites are labeled and readable as text. Learning goals/mastery/unlocks remain unchanged. See slices/area-map.md for backend/browser/build/review evidence and the native-select automation limitation. Next C4 work: organize existing Library/source discovery; persistent tutor remains C5. No broad phase closure or human-comprehension pass claimed.

@@ -3964,6 +3964,10 @@ export interface components {
       }[]
       /** Mermaid */
       mermaid: string
+      /** Area Id */
+      area_id?: string | null
+      /** Area Title */
+      area_title?: string | null
     }
     /** MaterialList */
     MaterialList: {
@@ -5600,7 +5604,9 @@ export interface operations {
   }
   skill_map_api_skills_map_get: {
     parameters: {
-      query?: never
+      query?: {
+        area_id?: string | null
+      }
       header?: never
       path?: never
       cookie?: never
@@ -5614,6 +5620,15 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['MapOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
         }
       }
     }

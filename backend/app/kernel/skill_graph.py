@@ -156,11 +156,28 @@ async def next_skill(
     return order[0] if order else None
 
 
-async def map_view(db: AsyncSession, learner_id: str) -> dict[str, Any]:
+async def map_view(
+    db: AsyncSession, learner_id: str, *, area_id: str | None = None
+) -> dict[str, Any]:
     """Open learner model: every node with mastery, dimensions, memory overlay and unlock state,
-    every prerequisite edge, plus a Mermaid rendering (whole map first)."""
+    every visible edge, plus Mermaid. Optional area scope retains transitive prerequisites."""
     order = await topological_order(db)
     nxt = await next_skill(db, learner_id)
+    graph_edges = await all_edges(db)
+    members = {n.id for n in order if n.area_id == area_id}
+    visible = set(members)
+    if area_id is not None:
+        incoming: dict[str, list[str]] = {}
+        for edge in graph_edges:
+            if edge.kind == "prerequisite":
+                incoming.setdefault(edge.to_skill_id, []).append(edge.from_skill_id)
+        frontier = list(visible)
+        while frontier:
+            for parent in incoming.get(frontier.pop(), []):
+                if parent not in visible:
+                    visible.add(parent)
+                    frontier.append(parent)
+        order = [n for n in order if n.id in visible]
     nodes = []
     for n in order:
         st = await competency.skill_state(db, learner_id, n.id)
@@ -170,6 +187,8 @@ async def map_view(db: AsyncSession, learner_id: str) -> dict[str, Any]:
                 "slug": n.slug,
                 "title": n.title,
                 "domain": n.domain,
+                "area_id": n.area_id,
+                "outside_area": area_id is not None and n.id not in members,
                 "mastery": st["mastery"],
                 "dimensions": st["dimensions"],
                 "memory": st["memory"],
@@ -178,7 +197,9 @@ async def map_view(db: AsyncSession, learner_id: str) -> dict[str, Any]:
             }
         )
     edges = [
-        {"from": e.from_skill_id, "to": e.to_skill_id, "kind": e.kind} for e in await all_edges(db)
+        {"from": e.from_skill_id, "to": e.to_skill_id, "kind": e.kind}
+        for e in graph_edges
+        if area_id is None or (e.from_skill_id in visible and e.to_skill_id in visible)
     ]
     return {"nodes": nodes, "edges": edges, "mermaid": to_mermaid(nodes, edges)}
 

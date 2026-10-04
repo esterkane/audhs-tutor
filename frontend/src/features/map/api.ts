@@ -5,10 +5,10 @@ import { boundedRead } from '../../lib/boundedRead'
 
 export type MapOut = Schemas['MapOut']
 
-export function useSkillMap() {
+export function useSkillMap(areaId = '') {
   return useQuery({
-    queryKey: ['skill-map'],
-    queryFn: ({ signal }) => boundedRead<MapOut>('/api/skills/map', signal, 'Skill map'),
+    queryKey: ['skill-map', areaId],
+    queryFn: ({ signal }) => boundedRead<MapOut>(`/api/skills/map${areaId ? `?area_id=${encodeURIComponent(areaId)}` : ''}`, signal, 'Skill map'),
     retry: false,
   })
 }
