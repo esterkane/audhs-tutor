@@ -55,6 +55,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   useSensory()
   const pathname = useLocation().pathname
   const routePath = pathname.replace(/\/+$/, '').toLowerCase() || '/'
+  const [tutorEntry, setTutorEntry] = useState<HTMLDivElement | null>(null)
   const main = useRef<HTMLElement>(null)
   const lastPath = useRef(pathname)
   const title = routePath.startsWith('/answers/') ? 'Saved answer' : (pageTitles[routePath] ?? 'Page not found')
@@ -79,6 +80,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             AuDHS-Tutor
           </Link>
           <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
+            <div ref={setTutorEntry} className="min-w-0 max-w-full" />
             <AudioControls compact />
             <ParkingLotButton />
           </div>
@@ -121,7 +123,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             )
           })}
         </ResponsiveNavigation>
-      <div className="min-w-0">
+      <div className="tutor-workspace min-w-0">
       <main
         id="main-content"
         ref={main}
@@ -130,7 +132,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
-      <LearningCompanion />
+      <LearningCompanion entryRoot={tutorEntry} />
       </div>
       </div>
     </div>

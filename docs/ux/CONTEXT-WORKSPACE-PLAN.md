@@ -54,3 +54,6 @@ C4 Library source discovery is recorded in ../slices/library-sources.md. Next bo
 
 
 C5 context foundation is implemented in ../slices/companion-context.md. Next is the persistent desktop panel/narrow sheet; do not interpret retained footer placement as final design compliance.
+
+
+C5 responsive presentation is implemented in ../slices/companion-panel.md: one persistent desktop panel/narrow sheet with explicit close cleanup. Human acceptance and cross-surface streaming unification remain open. Next planned phase is C6.

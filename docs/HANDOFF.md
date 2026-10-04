@@ -1001,3 +1001,8 @@ Library now offers Sources alongside Saved answers, reusing read-only retrieval 
 ## C5 companion context foundation — 2026-10-04
 
 Captured material, unapplied edits and one previous capture now survive route changes/reload; applying material explicitly separates conversation identities. Existing close/request/media cleanup remains intact. See slices/companion-context.md and persistent-tutor-contract.md for baseline, tests, reviews and limits. Next: implement desktop panel/narrow sheet using this state owner; footer placement is still temporary. Full C5 and human acceptance remain open.
+
+
+## C5 responsive tutor panel — 2026-10-04
+
+Global tutor entry, desktop panel and narrow modal sheet implemented without learning/provider changes. See docs/slices/companion-panel.md for recovery, resize, keyboard and test evidence, plus remaining human/voice gates. Narrow origin navigation closes the sheet to reveal the destination. Next: bounded C6 Home/audio/capture inspection.

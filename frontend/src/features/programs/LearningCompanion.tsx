@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { ReadAloud } from '../voice/ReadAloud'
@@ -30,12 +31,14 @@ function restore(): { context: Context; error: string } {
 }
 
 /** Browsing never silently changes the applied material or conversation target. */
-export function LearningCompanion() {
+export function LearningCompanion({ entryRoot }: { entryRoot: HTMLElement | null }) {
   const location = useLocation()
   const [restored] = useState(restore)
   const [context, setContext] = useState(restored.context)
   const [storageError, setStorageError] = useState(restored.error)
   const [open, setOpen] = useState(false)
+  const dialog = useRef<HTMLDialogElement>(null)
+  const closeButton = useRef<HTMLButtonElement>(null)
   const launcher = useRef<HTMLButtonElement>(null)
   const { active, draft, previous } = context
   const changed = JSON.stringify(draft) !== JSON.stringify(active)
@@ -51,6 +54,30 @@ export function LearningCompanion() {
       setStorageError('Captured material could not be saved in this tab. Copy it before reloading.')
     }
   }, [context, restored, storageError])
+  useLayoutEffect(() => {
+    const node = dialog.current
+    if (!node) return
+    if (!open) { node.close(); return }
+    const desktop = window.matchMedia('(min-width: 64rem)')
+    function present() {
+      if (!node) return
+      const focused = document.activeElement
+      const retainedFocus = focused instanceof HTMLElement && node.contains(focused) ? focused : null
+      if (node.open) node.close()
+      if (desktop.matches) node.show()
+      else node.showModal()
+      if (retainedFocus) retainedFocus.focus()
+      else closeButton.current?.focus()
+    }
+    present()
+    desktop.addEventListener('change', present)
+    return () => desktop.removeEventListener('change', present)
+  }, [open])
+  function close() {
+    dialog.current?.close()
+    setOpen(false)
+    launcher.current?.focus()
+  }
   function capture(): Capture {
     const selection = window.getSelection()?.toString().trim() ?? ''
     return {
@@ -60,17 +87,29 @@ export function LearningCompanion() {
       path: (location.pathname + location.search).slice(0, 2000),
     }
   }
-  return (
-    <section aria-label="Learning companion" className="border-t border-line p-4 max-w-3xl mx-auto">
-      <Button variant="outline" asChild><button type="button" ref={launcher} onClick={() => {
+  const entry = <>
+      <Button variant="outline" asChild><button type="button" ref={launcher} aria-expanded={open} aria-controls="learning-companion" onClick={() => {
         if (!active) { const next = capture(); setContext({ active: next, draft: next, previous: null }) }
         setOpen(true)
       }}>{active ? 'Reopen learning companion' : 'Listen or ask about this page'}</button></Button>
-      {active && !open && <p className="text-sm mt-2">Reopen your discussion of {active.title}. New page material is added only when you choose it.</p>}
+
       {storageError && <p role="alert" className="text-sm mt-2">{storageError}</p>}
-      {open && active && draft && <div className="grid gap-3 mt-3">
-        <p>Discussing material captured from <Link className="underline" to={active.path}>{active.title}</Link>.</p>
+  </>
+  return <>
+    {entryRoot && createPortal(entry, entryRoot)}
+    <dialog ref={dialog} id="learning-companion" aria-label="Learning companion" className="companion" data-open={open}
+      onCancel={event => { event.preventDefault(); close() }}>
+      {open && active && draft && <>
+      <div className="companion-heading">
+        <h2 className="font-semibold">Tutor</h2>
+        <Button variant="ghost" asChild><button ref={closeButton} onClick={close}>Close learning companion</button></Button>
+      </div>
+      <div className="grid gap-3 p-4">
+        <p>Discussing material captured from <Link className="underline" to={active.path} onClick={() => {
+          if (dialog.current?.matches(':modal')) { close(); document.querySelector<HTMLElement>('main')?.focus() }
+        }}>{active.title}</Link>.</p>
         {active.path !== location.pathname + location.search && <p role="status">You are browsing another page. The tutor still uses the captured material above.</p>}
+        <p className="text-sm companion-selection-help">On narrow screens, close the tutor to select page text, then reopen and capture it.</p>
         <p className="text-sm">Select page text for focused help. Only the captured text (up to 12,000 characters) is used. Editing below does not change the tutor’s material until you apply it.</p>
         <Button onClick={() => setContext(old => ({ ...old, draft: capture() }))}>Capture current page for review</Button>
         <label>Material to discuss
@@ -86,8 +125,7 @@ export function LearningCompanion() {
         <ReadAloud key={`read:${active.id}`} text={active.text} />
         <StudyTutor key={`tutor:${active.id}`} identity={`companion:${active.id}`} context={active.text} targetLabel={active.title} />
         <p className="text-sm text-muted">Closing stops local audio, microphone and waiting for a reply. A pending request can be recovered when you reopen; closing does not guarantee cancellation on the server.</p>
-        <Button variant="ghost" onClick={() => { setOpen(false); launcher.current?.focus() }}>Close learning companion</Button>
-      </div>}
-    </section>
-  )
+      </div></>}
+    </dialog>
+  </>
 }

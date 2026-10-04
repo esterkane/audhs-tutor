@@ -249,3 +249,43 @@ body {
   .shell-navigation-container { min-width: 0; background: var(--color-sunken); }
   .shell-navigation { min-height: 100%; }
 }
+
+/* One tutor instance: nonmodal beside the desktop workspace, modal on narrow screens. */
+:root { --spacing-tutor-width: 24rem; }
+.tutor-workspace { min-width: 0; }
+.companion {
+  color: var(--color-fg);
+  background: var(--color-card);
+  border: 1px solid var(--color-line);
+  padding: 0;
+  margin: 0;
+  inset: 0;
+  width: 100%;
+  max-width: none;
+  height: 100dvh;
+  max-height: 100dvh;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.companion-heading {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-line);
+  background: var(--color-card);
+}
+@media (min-width: 64rem) {
+  .tutor-workspace:has(.companion[data-open='true']) {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, var(--spacing-tutor-width));
+    align-items: start;
+  }
+  .companion { position: sticky; min-width: 0; }
+  .companion-selection-help { display: none; }
+}
