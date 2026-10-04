@@ -628,16 +628,11 @@ export function Visualizer() {
         {requestedWorkspace && !originWorkspace && <p role="status" className="text-sm text-muted">The linked coding workspace is unavailable. You can choose another in the playground; saved drafts are unchanged.</p>}
         <h1 className="text-xl font-semibold mt-2">Audio visualizer lab</h1>
         <p className="text-sm text-muted">
-          See how changing a sound signal changes a picture. Start with the silent demo; no audio file or
-          coding is needed.
+          Explore how sound changes a picture. Start with a silent demo or open your own audio.
         </p>
       </div>
-      <p className="text-sm text-muted" role="status">
-        {draftSaved ? 'Editing draft kept automatically in this browser. Save a preset to add it to your collection.' : 'Browser recovery is unavailable. Edits remain in this tab until reload; export your draft to keep it. Existing stored data was not replaced.'}
-        {' '}Files and positions stay only in this tab until reload. The lesson step, tone settings and hint are kept; test signals require Start.
-      </p>
-      {recoveredMedia && <p className="text-sm text-muted">Your local file is retained in this tab. Playback is stopped until you press Play or Resume; enable sound explicitly if wanted.</p>}
-      {source === 'file' && !file && needsFile && <p role="status" className="text-sm">Your audio file is no longer available after reload. Use Open audio to select a file again. Your visual and lesson work are kept; a newly selected file starts from the beginning.</p>}
+      {!draftSaved && <p className="text-sm" role="status">Browser recovery is unavailable. Edits remain in this tab until reload; export your draft to keep it. Existing stored data was not replaced.</p>}
+      {source === 'file' && !file && needsFile && <p role="status" className="text-sm">Your audio file is no longer available after reload. Use Open audio to select a file again.</p>}
       <nav aria-label="Visualizer views" className="flex flex-wrap gap-2">
         {(['Watch', 'Learn', 'Create'] as const).map((name) => (
           <Button
@@ -650,16 +645,6 @@ export function Visualizer() {
           </Button>
         ))}
       </nav>
-      <p className="text-sm">
-        Start demo runs silent synthetic levels. Open audio prepares a local file; playback starts only when
-        you press Play.
-      </p>
-      {energy <= 2 && (
-        <p className="text-sm">
-          Short version: keep the silent demo and use Next sample for a still view. The guided lesson is
-          optional.
-        </p>
-      )}
       {notice && (
         <p role="status" className="text-sm">
           {notice}
@@ -831,6 +816,15 @@ export function Visualizer() {
                 </p>
               )}
             </div>
+            <details>
+              <summary className="cursor-pointer text-sm">{draftSaved ? 'Draft saved · ' : ''}How it works and what is saved</summary>
+              <div className="grid gap-2 mt-2 text-sm text-muted">
+                <p>Start demo runs silent synthetic levels. Open audio prepares a local file; playback starts only when you press Play.</p>
+                <p>Your editing draft, lesson step, tone settings and comparison choices are kept automatically in this browser when storage is available. Save a preset to add it to your collection.</p>
+                <p>Files and positions stay only in this tab until reload. After returning to this page, press Play or Resume; sound remains an explicit choice. A newly selected file starts from the beginning.</p>
+                {energy <= 2 && <p>Short version: keep the silent demo and use Next sample for a still view. The guided lesson is optional.</p>}
+              </div>
+            </details>
             {view === 'Watch' && (
               <section className="grid gap-2" aria-label="Choose visual">
                 <label>

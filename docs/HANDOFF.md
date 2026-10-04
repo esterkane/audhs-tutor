@@ -913,3 +913,7 @@ Selected experiment, optional prediction, hint and reveal survive lesson/route c
 ## File reselection — 2026-10-04
 
 Reload now explains the missing local file and asks for reselection; replacement starts at zero. Empty chooser does not invent a lost file. See slices/visualizer-file-reselection.md for evidence and remaining presentation/context work.
+
+## Visualizer guidance layout — 2026-10-04
+
+Optional instructions moved below canvas/transport into keyboard-accessible details; saved summary and expanded failures remain. See slices/visualizer-guidance-layout.md for verification. No lifecycle/learning changes.
