@@ -24,7 +24,7 @@ for (const width of [1280, 390]) {
       await page.getByRole('button', { name: 'Pause and return Home', exact: true }).focus()
       await page.keyboard.press('Enter')
       await expect(page).toHaveURL(/\/$/)
-      const resume = page.getByRole('button', { name: /^Resume previous session/ })
+      const resume = page.getByRole('button', { name: /^Continue$/ })
       await expect(resume).toContainText('(teach)')
       const homeText = await page.getByRole('main').innerText()
       await page.screenshot({ path: info.outputPath('return-home.png'), fullPage: true })
@@ -40,7 +40,7 @@ for (const width of [1280, 390]) {
       try {
         const returned = await fresh.newPage()
         await returned.goto('/')
-        await returned.getByRole('button', { name: /^Resume previous session/ }).click()
+        await returned.getByRole('button', { name: /^Continue$/ }).click()
         await expect(returned.getByRole('heading', { name: title, exact: true })).toBeVisible()
         freshDraft = await returned.getByLabel('Ask about this lesson (optional)').inputValue()
         await returned.screenshot({ path: info.outputPath('fresh-context.png'), fullPage: true })

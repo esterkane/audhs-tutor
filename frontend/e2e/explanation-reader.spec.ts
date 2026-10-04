@@ -31,7 +31,7 @@ test('completed explanation sections preserve notes, focus and optional follow-u
       })
     })
     await page.goto('/')
-    await page.getByRole('button', { name: /^Resume previous session/ }).click()
+    await page.getByRole('button', { name: /^Continue$/ }).click()
     await expect(page.getByRole('button', { name: 'Listen to learning goal', exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Try a question', exact: true })).toHaveCount(0)
     expect(calls).toBe(0)

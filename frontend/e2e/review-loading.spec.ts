@@ -13,7 +13,7 @@ for (const width of [390, 1280]) {
     })
     try {
       await page.goto('/')
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       await page.goto('/review')
       await expect(page.getByRole('alert')).toContainText('Could not load review cards')
       await expect(page.getByRole('heading', { name: 'Review done' })).toHaveCount(0)

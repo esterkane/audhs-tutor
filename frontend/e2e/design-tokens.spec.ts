@@ -24,7 +24,7 @@ for (const theme of ['light', 'dark', 'system-light', 'system-dark']) {
           `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ turn_id: 'token-fixture', outcome: 'ok', text, sources: [], dropped: [], flagged: [] })}\n\n`,
         }))
         await page.goto('/')
-        await page.getByRole('button', { name: /^Resume previous session/ }).click()
+        await page.getByRole('button', { name: /^Continue$/ }).click()
         const input = page.getByLabel('Ask about this lesson (optional)')
         await input.fill('x'.repeat(4001))
         const send = page.getByRole('button', { name: 'Send lesson question' })
@@ -80,7 +80,7 @@ for (const theme of ['light', 'dark', 'system-light', 'system-dark']) {
         expect(metrics.outlineWidth).toBe('2px')
         expect(metrics.overflow).toBe(false)
         await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
-        await page.getByRole('button', { name: /^Resume previous session/ }).click()
+        await page.getByRole('button', { name: /^Continue$/ }).click()
         await expect(input).toHaveValue('Keep this next question. More detail.')
       } finally { await endOpenSession(request) }
     })

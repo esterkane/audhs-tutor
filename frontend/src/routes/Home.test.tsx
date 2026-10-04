@@ -133,7 +133,7 @@ describe('Home', () => {
         <Route path="/session" element={<p>SESSION SCREEN</p>} />
       </Routes>,
     )
-    const resume = await screen.findByRole('button', { name: /resume previous session \(review\)/i })
+    const resume = await screen.findByRole('button', { name: /^Continue$/ })
     fireEvent.click(resume)
     expect(await screen.findByText('REVIEW SCREEN')).toBeInTheDocument()
     expect(useMode.getState().sessionId).toBe('s1')
@@ -233,7 +233,7 @@ it('puts the actual running topic and next action before optional setup', async 
     ),
   )
   renderApp(<Home />)
-  const resume = await screen.findByRole('button', { name: /Resume previous session: Missing values/ })
+  const resume = await screen.findByRole('button', { name: /^Continue$/ })
   const setup = screen.getByText('Session options', { selector: 'summary' })
   expect(resume.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.getByText('Next: continue your saved review.')).toBeVisible()
@@ -253,7 +253,7 @@ it('does not offer a stale local session as a verified resume after a server fai
   )
   renderApp(<Home />)
   expect(await screen.findByText(/Could not check your saved session/)).toBeVisible()
-  expect(screen.queryByRole('button', { name: /Resume previous session/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /^Continue$/ })).not.toBeInTheDocument()
   expect(screen.getByRole('button', { name: 'Start session' })).toBeDisabled()
 })
 
@@ -271,7 +271,7 @@ it('offers activation in the start card for an empty selected area without repla
   renderApp(<Home />)
   const activate = await screen.findByRole('link', { name: 'Review and activate a lesson' })
   expect(activate).toHaveAttribute('href', '/areas?area=empty-area')
-  expect(activate.closest('[aria-label="Start or resume learning"]')).not.toBeNull()
+  expect(activate.closest('[aria-label="New session"]')).not.toBeNull()
   expect(screen.getByText('New session topic: Local models')).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Start session' })).not.toBeInTheDocument()
   expect(fetchMock.mock.calls.some(([url]) => url.endsWith('/api/sessions'))).toBe(false)

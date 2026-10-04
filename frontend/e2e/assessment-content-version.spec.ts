@@ -28,7 +28,7 @@ for (const narrow of [false, true]) {
       })
       if (narrow) await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/')
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       const submit = page.getByRole('button', { name: 'Check my answer', exact: true })
       await expect(submit).toBeVisible()
       const choices = page.getByRole('group', { name: 'Your answer', exact: true })

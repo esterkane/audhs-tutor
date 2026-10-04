@@ -25,7 +25,7 @@ for (const width of [1280, 390]) {
         }
         await page.setViewportSize({ width, height: 900 })
         await page.goto('/')
-        await page.getByRole('button', { name: /^Resume previous session/ }).click()
+        await page.getByRole('button', { name: /^Continue$/ }).click()
         const pause = page.getByRole('button', { name: 'Pause and return Home', exact: true })
         await expect(pause).toBeVisible()
         if (phase === 'teach') await page.getByLabel('Ask about this lesson (optional)').fill('Keep this unfinished question.')
@@ -37,10 +37,10 @@ for (const width of [1280, 390]) {
         await pause.focus()
         await page.keyboard.press('Enter')
         await expect(page).toHaveURL(/\/$/)
-        await expect(page.getByRole('button', { name: /^Resume previous session/ })).toBeVisible()
+        await expect(page.getByRole('button', { name: /^Continue$/ })).toBeVisible()
         expect(await currentSession(request)).toEqual(before)
         expect(writes).toEqual([])
-        await page.getByRole('button', { name: /^Resume previous session/ }).click()
+        await page.getByRole('button', { name: /^Continue$/ }).click()
         await expect(pause).toBeVisible()
         await page.reload()
         await expect(pause).toBeVisible()
@@ -76,7 +76,7 @@ for (const step of ['start', 'movement-next', 'review-next'] as const) {
         }))
       }
       await page.goto('/')
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       if (step === 'review-next') await finishReview(page)
       let release!: () => void
       const delivery = new Promise<void>((resolve) => { release = resolve })
@@ -102,11 +102,11 @@ for (const step of ['start', 'movement-next', 'review-next'] as const) {
       // Allow the intentionally delayed response callbacks to run before checking navigation.
       await page.waitForTimeout(200)
       // A read of the fresh server state on Home must settle without old navigation winning.
-      await expect(page.getByRole('button', { name: /^Resume previous session/ })).toBeVisible()
+      await expect(page.getByRole('button', { name: /^Continue$/ })).toBeVisible()
       await expect.poll(() => page.url()).toMatch(/\/$/)
       const persisted = await currentSession(request)
       expect(persisted?.id).toBe(session.id)
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       await expect(page.getByRole('button', { name: 'Pause and return Home', exact: true })).toBeVisible()
       expect(await currentSession(request)).toEqual(persisted)
     } finally {

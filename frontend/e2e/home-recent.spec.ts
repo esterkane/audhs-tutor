@@ -17,7 +17,7 @@ for (const width of [390, 1280]) {
     await expect(recent.getByRole('link', { name: 'python', exact: true })).toBeVisible()
     await expect(recent.getByText(/previously visited area is unavailable/)).toBeVisible()
     await expect(page.getByText('At least 100 reviews are due for this saved session.')).toBeVisible()
-    await expect(page.getByRole('button', { name: /Resume previous session: Comparing groups/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: /^Continue$/ })).toBeVisible()
     await page.screenshot({ path: info.outputPath('home-recent.png'), fullPage: true })
     await recent.getByRole('link', { name: 'audio', exact: true }).focus()
     await page.keyboard.press('Enter')

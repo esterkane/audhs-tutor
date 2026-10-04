@@ -45,7 +45,7 @@ for (const narrow of [false, true]) {
       })
       if (narrow) await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/')
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       await page.goto('/review')
       await page.getByRole('button', { name: 'Show answer', exact: true }).click()
       const reject = page.waitForResponse(

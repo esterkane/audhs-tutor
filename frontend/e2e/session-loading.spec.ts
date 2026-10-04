@@ -19,7 +19,7 @@ for (const width of [390, 1280]) {
     })
     try {
       await page.goto('/')
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       await expect(page.getByRole('alert')).toContainText('Could not load this session')
       await expect(page.getByRole('button', { name: 'Go to Home', exact: true })).toBeVisible()
       fail = false

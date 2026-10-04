@@ -13,7 +13,7 @@ for (const width of [390, 800, 1280]) {
       }),
     )
     await page.goto('/')
-    const resume = page.getByRole('button', { name: /^Resume previous session: Comparing groups/ })
+    const resume = page.getByRole('button', { name: /^Continue$/ })
     await expect(resume).toBeVisible()
     await expect(page.getByText('Next: continue your saved review.')).toBeVisible()
     const options = page.getByText('Session options', { exact: true })
@@ -63,7 +63,7 @@ test('an empty chosen topic offers activation instead of a dead Start button', a
     }),
   )
   await page.goto('/')
-  const startCard = page.getByLabel('Start or resume learning')
+  const startCard = page.getByLabel('New session')
   await expect(startCard.getByText('New session topic: Local inference')).toBeVisible()
   await expect(startCard.getByRole('button', { name: 'Start session', exact: true })).toHaveCount(0)
   const activate = startCard.getByRole('link', { name: 'Review and activate a lesson', exact: true })

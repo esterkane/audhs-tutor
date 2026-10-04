@@ -27,7 +27,7 @@ for (const narrow of [false, true])
       if (socket.url().includes('/api/voice/ws')) sockets++
     })
     await page.goto('/')
-    await page.getByRole('button', { name: /^Resume previous session/ }).click()
+    await page.getByRole('button', { name: /^Continue$/ }).click()
     await page.getByRole('button', { name: 'Talk instead' }).click()
     await page.getByLabel('Type instead').fill('Keep my voice question draft')
     await page.reload()

@@ -63,6 +63,12 @@ function HomeOverview() {
   const runningExperiment = (experiments.data?.experiments ?? []).find((e) => e.status === 'running')
 
   async function begin(skill_id?: string) {
+    if (current.isPending || current.isError) return
+    if (current.data) {
+      const target = skill_id ?? nextSkill?.id
+      if (target) nav(`/?lesson=${encodeURIComponent(target)}`)
+      return
+    }
     const s = await start.mutateAsync({ mode, energy, socratic, skill_id })
     setSession(s.id, s.state?.skill_id ?? s.next_skill?.id ?? null)
     // Offer, never auto-route: the learner picks which comes first. Without due items the plan
@@ -141,11 +147,9 @@ function HomeOverview() {
   const blockedSelection = Boolean(selectedArea && selectedArea.active_lessons > 0)
   const emptySelection = !selectionPending && !selectionFailed && Boolean(areaGoal || goal) && !nextSkill
   const scaffold = preview.data?.blocks.find((b) => b.type === 'new_material')?.reason
-  return (
-    <div className="grid grid-cols-1 min-w-0 gap-4">
-      <h1 className="text-2xl font-semibold">Your next step</h1>
-      <Card lift aria-label="Start or resume learning">
-        <CardTitle>{resumable ? 'Continue where you left off' : 'Start with one useful step'}</CardTitle>
+  const newSessionCard = (
+      <Card lift aria-label="New session">
+        <CardTitle>Start with one useful step</CardTitle>
         {current.isPending ? (
           <p role="status">Checking your saved session…</p>
         ) : current.isError ? (
@@ -153,27 +157,6 @@ function HomeOverview() {
             Could not check your saved session. Your work has not been replaced.{' '}
             <Button onClick={() => void current.refetch()}>Retry session check</Button>
           </p>
-        ) : resumable ? (
-          <>
-            <p className="font-medium mt-2">{current.data?.active_skill?.title ?? 'Your saved session'}</p>
-            <p>
-              {current.data?.state?.plan_complete
-                ? 'Next: review your session recap.'
-                : current.data?.state?.block_status !== 'running'
-                  ? 'Next: choose the next block in your saved plan.'
-                  : current.data?.state?.phase === 'review'
-                    ? 'Next: continue your saved review.'
-                    : current.data?.state?.phase === 'recap'
-                      ? 'Next: review your session recap.'
-                      : 'Next: return to your current learning step.'}
-            </p>
-            {typeof current.data?.due_reviews === 'number' && Number.isInteger(current.data.due_reviews) && current.data.due_reviews >= 0 && <p className="text-sm mt-2">
-              {current.data.due_reviews >= 100 ? 'At least ' : ''}{current.data.due_reviews} {current.data.due_reviews === 1 ? 'review is' : 'reviews are'} due for this saved session.
-            </p>}
-            <p className="text-sm text-muted">
-              Resuming keeps this session’s topic and place. Settings below apply to a new session.
-            </p>
-          </>
         ) : (
           <>
             <p className="font-medium mt-2">
@@ -197,7 +180,7 @@ function HomeOverview() {
           </>
         )}
         <p className="text-sm mt-2">New session topic: {topicLabel}</p>
-        {!resumable && <p className="text-sm text-muted">{MODE_LABELS[mode].title} · energy {energy} · {socratic ? 'Socratic questions' : 'Direct explanations'}. Adjust these in Session options.</p>}
+        <p className="text-sm text-muted">{MODE_LABELS[mode].title} · energy {energy} · {socratic ? 'Socratic questions' : 'Direct explanations'}. Adjust these in Session options.</p>
         {emptySelection && (
           <p role="status" className="mt-2">
             {blockedSelection
@@ -222,26 +205,6 @@ function HomeOverview() {
           </p>
         )}
         <div className="flex gap-2 flex-wrap">
-          {resumable && (
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => {
-                if (current.data)
-                  setSession(
-                    current.data.id,
-                    current.data.state?.skill_id ?? current.data.next_skill?.id ?? null,
-                  )
-                nav(routeForPhase(current.data?.state))
-              }}
-            >
-              Resume previous session
-              {current.data?.active_skill ? `: ${current.data.active_skill.title}` : ''}
-              {current.data?.state?.block_status === 'running' && current.data.state.phase
-                ? ` (${current.data.state.phase})`
-                : ''}
-            </Button>
-          )}
           {emptySelection && areaGoal && !blockedSelection ? (
             <HomeTopicPreparation areaId={areaGoal} secondary={Boolean(resumable)} />
           ) : emptySelection ? (
@@ -264,6 +227,7 @@ function HomeOverview() {
               size="lg"
               onClick={() => void begin()}
               disabled={
+                (Boolean(resumable) && !nextSkill) ||
                 current.isPending ||
                 current.isError ||
                 prefs.isPending ||
@@ -275,7 +239,7 @@ function HomeOverview() {
                 Boolean((areaGoal || goal) && !nextSkill)
               }
             >
-              {start.isPending ? 'Starting…' : 'Start session'}
+              {start.isPending ? 'Starting…' : resumable ? 'Choose whether to switch' : 'Start session'}
             </Button>
           )}
         </div>
@@ -289,6 +253,53 @@ function HomeOverview() {
           <Link to="/programs">Return to project notebooks</Link>
         </p>
       </Card>
+  )
+  return (
+    <div className="grid grid-cols-1 min-w-0 gap-4">
+      <h1 className="text-2xl font-semibold">Your next step</h1>
+      {resumable && <Card lift aria-label="Saved session">
+        <CardTitle>Continue where you left off</CardTitle>
+          <>
+            <p id="saved-session-topic" className="font-medium mt-2">{current.data?.active_skill?.title ?? 'Your saved session'}</p>
+            <p id="saved-session-next">
+              {current.data?.state?.plan_complete
+                ? 'Next: review your session recap.'
+                : current.data?.state?.block_status !== 'running'
+                  ? 'Next: choose the next block in your saved plan.'
+                  : current.data?.state?.phase === 'review'
+                    ? 'Next: continue your saved review.'
+                    : current.data?.state?.phase === 'recap'
+                      ? 'Next: review your session recap.'
+                      : 'Next: return to your current learning step.'}
+            </p>
+            {typeof current.data?.due_reviews === 'number' && Number.isInteger(current.data.due_reviews) && current.data.due_reviews >= 0 && <p className="text-sm mt-2">
+              {current.data.due_reviews >= 100 ? 'At least ' : ''}{current.data.due_reviews} {current.data.due_reviews === 1 ? 'review is' : 'reviews are'} due for this saved session.
+            </p>}
+            <p className="text-sm text-muted">
+              Continue keeps this topic and your saved place.
+            </p>
+          </>
+            <Button
+              variant="primary"
+              size="lg"
+              aria-describedby="saved-session-topic saved-session-next"
+              onClick={() => {
+                if (current.data)
+                  setSession(
+                    current.data.id,
+                    current.data.state?.skill_id ?? current.data.next_skill?.id ?? null,
+                  )
+                nav(routeForPhase(current.data?.state))
+              }}
+            >
+              Continue
+            </Button>
+      </Card>}
+      {resumable ? <details className="border border-line rounded-md p-3">
+        <summary className="cursor-pointer font-medium">Start a different session</summary>
+        <p className="text-sm text-muted my-2">Review the selected lesson before deciding whether to end your current session. Opening this does not change your saved work.</p>
+        {newSessionCard}
+      </details> : newSessionCard}
       <RecentAreas />
       <AdaptationCards />
       <PromotedReminders />

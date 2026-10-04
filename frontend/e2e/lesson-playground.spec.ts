@@ -24,7 +24,7 @@ for (const width of [390, 1280]) {
       const index = session.plan.findIndex((b: { type: string }) => b.type === 'new_material')
       await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index } }))
       await page.goto('/')
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       const input = page.getByLabel('Ask about this lesson (optional)')
       await input.fill('Keep my lesson question')
       await page.getByRole('main').getByText('Work alongside', { exact: true }).focus()

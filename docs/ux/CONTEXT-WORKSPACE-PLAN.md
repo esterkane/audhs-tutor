@@ -72,3 +72,6 @@ C6 saved-thought action feedback: ../slices/saved-thought-actions.md. Return now
 
 
 C6 recent browsing/review visibility: ../slices/home-recent-areas.md. Next reconcile ResumeCard intent separation and concise Continue action. Recent learning contexts and global search remain C7 work, not satisfied by recent-area links.
+
+
+C6 Home resume intent is implemented in ../slices/home-resume-intent.md. Continue and optional new-session preparation are separate; changing the active lesson uses explicit session-switch confirmation. This does not complete C6 or authorize multiple independently paused sessions.

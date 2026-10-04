@@ -27,7 +27,7 @@ test('context, optional confidence, saved labels and stopping without recap', as
     await request.post(`${API}/api/sessions/${session.id}/checkpoint`, { data: { phase: 'assess' } }),
   )
   await page.goto('/')
-  await page.getByRole('button', { name: /^Resume previous session/ }).click()
+  await page.getByRole('button', { name: /^Continue$/ }).click()
   await expect(page.getByRole('heading', { name: 'Learning goal' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Give me a hint' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Explain the idea first' })).toBeVisible()
@@ -84,6 +84,7 @@ test('context, optional confidence, saved labels and stopping without recap', as
   await page.getByRole('button', { name: 'Ask me again later' }).click()
   await expect(page.getByRole('status').filter({ hasText: 'Ask me later list' })).toBeVisible()
   await page.getByRole('button', { name: 'Change topic' }).click()
+  await page.getByText('Change new-session topic', { exact: true }).click()
   await expect(page.getByRole('combobox', { name: 'Knowledge area' })).toBeVisible()
   expect(await currentSession(request)).toBeNull()
   const ended = await (await request.get(`${API}/api/sessions/${session.id}`)).json()

@@ -19,7 +19,7 @@ for (const narrow of [false, true]) {
       )
       if (narrow) await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/')
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       await expect(page.getByRole('button', { name: 'Check my answer', exact: true })).toBeVisible()
       const choices = page.getByRole('group', { name: 'Your answer', exact: true })
       if (await choices.count()) await choices.getByRole('button').first().click()

@@ -63,7 +63,7 @@ for (const narrow of [false, true]) {
       )
       if (narrow) await page.setViewportSize({ width: 390, height: 844 })
       await page.goto('/')
-      await page.getByRole('button', { name: /^Resume previous session/ }).click()
+      await page.getByRole('button', { name: /^Continue$/ }).click()
       await page.getByRole('button', { name: 'Start explanation', exact: true }).click()
       await page.getByText('Need another explanation or a different activity?', { exact: true }).click()
       await page.getByRole('button', { name: 'Analogy', exact: false }).click()

@@ -138,7 +138,7 @@ test('stop here keeps the session resumable from Home at the next block', async 
   try {
     const home = await fresh.newPage()
     await home.goto('/')
-    await home.getByRole('button', { name: /^Resume previous session/ }).click()
+    await home.getByRole('button', { name: /^Continue$/ }).click()
     await expect(home.getByRole('heading', { name: 'Continue the plan?' })).toBeVisible()
     await home.getByRole('button', { name: /^Continue: / }).click()
     await expect(home.getByRole('heading', { name: /^Learn: / })).toBeVisible()
