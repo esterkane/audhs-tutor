@@ -4201,6 +4201,7 @@ export interface components {
       /** Original Context */
       original_context?:
         | (
+            | components['schemas']['SourceCapture']
             | components['schemas']['AreaCapture']
             | components['schemas']['ProjectCapture']
             | components['schemas']['AnswerCapture']
@@ -4228,6 +4229,7 @@ export interface components {
       /** Original Context */
       original_context?:
         | (
+            | components['schemas']['SourceCapture']
             | components['schemas']['AreaCapture']
             | components['schemas']['ProjectCapture']
             | components['schemas']['AnswerCapture']
@@ -5097,6 +5099,24 @@ export interface components {
       solution: string
       /** Check Question */
       check_question: string
+    }
+    /** SourceCapture */
+    SourceCapture: {
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /** Label */
+      label: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'source'
+      /** Chunk Id */
+      chunk_id: string
     }
     /** SourceOut */
     SourceOut: {

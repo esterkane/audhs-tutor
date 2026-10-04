@@ -13,6 +13,11 @@ class ContextBase(BaseModel):
     label: str = Field(min_length=1, max_length=200)
 
 
+class SourceCapture(ContextBase):
+    kind: Literal["source"]
+    chunk_id: Identity
+
+
 class AreaCapture(ContextBase):
     kind: Literal["area"]
     area_id: Identity
@@ -49,7 +54,8 @@ class AudioLessonCapture(ContextBase):
 
 
 CaptureContext = Annotated[
-    AreaCapture
+    SourceCapture
+    | AreaCapture
     | ProjectCapture
     | AnswerCapture
     | WorkspaceCapture

@@ -94,3 +94,6 @@ C6 built-in audio Learn-step return is implemented with explicit application and
 
 
 Source-return groundwork: docs/slices/source-capture-return.md records the inspected direct-passage/capture contract and four passing baseline browser journeys. SourceViewer is inline, and existing passage URLs depend on search ranking. Next bounded implementation is explicit source capture plus independent chunk return; no runtime change or stage completion is claimed.
+
+
+Explicit source capture/direct return is implemented; evidence and remaining acceptance coverage are recorded in docs/slices/source-capture-return.md. C6/C7 are not complete.

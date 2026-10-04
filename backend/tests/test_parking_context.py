@@ -51,3 +51,13 @@ async def test_pre_context_key_still_replays(client: AsyncClient, db: AsyncSessi
     response = await client.post("/api/parking", json={**payload, "request_key": "old-key"})
     assert response.status_code == 201 and response.json()["id"] == row.id
     assert response.json()["original_context"] is None
+
+
+async def test_source_context_replay(client: AsyncClient):
+    context = {"version": 1, "kind": "source", "label": "Passage", "chunk_id": "chunk-one"}
+    body = {"request_key": "source-replay", "text": "Remember source", "original_context": context}
+    first = await client.post("/api/parking", json=body)
+    replay = await client.post("/api/parking", json=body)
+    assert first.status_code == 201
+    assert replay.json()["id"] == first.json()["id"]
+    assert replay.json()["original_context"] == context

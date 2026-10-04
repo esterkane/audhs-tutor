@@ -1,3 +1,4 @@
+import { requestCapture } from '../parking/requestCapture'
 import { useId, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card } from '../../components/ui/card'
@@ -58,6 +59,7 @@ export function SourceViewer({
       )}
       {c && (
         <>
+          <Button size="sm" variant="secondary" className="mt-2" onClick={event => requestCapture({ version: 1, kind: 'source', chunk_id: chunkId, label: c.citation.slice(0, 200) || 'Source passage' }, event.currentTarget)}>Save a thought about this passage</Button>
           <p className="text-xs text-muted mt-1">
             {c.document_title} · {c.source_type} · trust {c.trust_tier}
             {mmss(c.t_start) ? ` · at ${mmss(c.t_start)}${mmss(c.t_end) ? `–${mmss(c.t_end)}` : ''}` : ''}

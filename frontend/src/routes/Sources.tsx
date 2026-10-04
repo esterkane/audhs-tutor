@@ -9,11 +9,18 @@ import { boundedRead } from '../lib/boundedRead'
 
 export function Sources() {
   const [params, setParams] = useSearchParams()
+  const direct = params.get('chunk')
+  const directRegion = useRef<HTMLElement>(null)
+  useEffect(() => { if (direct !== null) directRegion.current?.focus() }, [direct])
   const applied = params.get('q')?.trim() ?? ''
   return <div className="grid gap-4">
     <h1 className="text-2xl font-semibold">Sources</h1>
     <p>Find passages in your indexed material and inspect their source details.</p>
     <p className="text-sm text-muted">Searches the local retrieval index, not the web or saved tutor answers. Up to 8 matching passages are shown; a match is not a verification of the source.</p>
+    {direct !== null && <section ref={directRegion} tabIndex={-1} aria-label="Saved source passage">
+      {/^[A-Za-z0-9_.:-]{1,128}$/.test(direct) ? <SourceViewer key={direct} chunkId={direct} citation="Saved source passage" onClose={() => { const next = new URLSearchParams(params); next.delete('chunk'); setParams(next) }} /> : <p role="alert">This saved passage identifier is invalid. Search your source material below.</p>}
+      <p className="text-sm text-muted">If the passage has been removed or re-ingested, search your source material below.</p>
+    </section>}
     <SourceSearch key={`search:${applied}`} initial={applied} onSearch={q => {
       const next = new URLSearchParams()
       if (q) next.set('q', q)

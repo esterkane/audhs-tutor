@@ -6,6 +6,7 @@ export function validThoughtContext(value: unknown): value is ThoughtContext {
   if (!value || typeof value !== 'object') return false
   const c = value as Record<string, unknown>
   if (c.version !== 1 || typeof c.label !== 'string' || !c.label.length || c.label.length > 200) return false
+  if (c.kind === 'source') return id(c.chunk_id)
   if (c.kind === 'audio_lesson') return lessonIds.includes(c.lesson as typeof lessonIds[number])
   if (c.kind === 'lesson') return id(c.session_id) && id(c.skill_id) && Number.isInteger(c.block_index) && Number(c.block_index) >= 0 && typeof c.block_started_at === 'string' && c.block_started_at.length > 0 && c.block_started_at.length <= 100
   if (c.kind === 'area') return id(c.area_id)
@@ -28,6 +29,7 @@ export function captureThoughtContext(path: string, search: string, label: strin
 export function thoughtContextPath(context: ThoughtContext): string | undefined {
   if (!validThoughtContext(context)) return undefined
   const c = context
+  if (c.kind === 'source') return `/sources?chunk=${encodeURIComponent(c.chunk_id)}`
   if (c.kind === 'audio_lesson') return `/playground/visualizer?saved_lesson=${c.lesson}`
   if (c.kind === 'lesson') return undefined // Requires a fresh authoritative checkpoint check.
   if (c.kind === 'area') return `/areas?area=${encodeURIComponent(c.area_id)}`

@@ -1073,3 +1073,6 @@ Built-in Learn steps now have durable thought links with explicit application an
 
 
 Source-return groundwork: docs/slices/source-capture-return.md records the inspected direct-passage/capture contract and four passing baseline browser journeys. SourceViewer is inline, and existing passage URLs depend on search ranking. Next bounded implementation is explicit source capture plus independent chunk return; no runtime change or stage completion is claimed.
+
+
+Explicit source capture/direct return is implemented; evidence and remaining acceptance coverage are recorded in docs/slices/source-capture-return.md. C6/C7 are not complete.

@@ -1,4 +1,6 @@
 import { useLocation } from 'react-router-dom'
+import { CAPTURE_REQUEST } from '../features/parking/requestCapture'
+import { validThoughtContext, type ThoughtContext } from '../features/parking/context'
 import { captureThoughtContext } from '../features/parking/context'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useEffect, useRef, useState } from 'react'
@@ -14,6 +16,9 @@ import { Textarea } from './ui/textarea'
 export function ParkingLotButton() {
   const { sessionId, skillId } = useMode()
   const location = useLocation()
+  const [requestedContext, setRequestedContext] = useState<ThoughtContext>()
+  const [captureNotice, setCaptureNotice] = useState('')
+  const sourceTrigger = useRef<HTMLElement | null>(null)
   const [open, setOpen] = useState(false)
   const { draft, update: updateDraft, storageError } = useThoughtDraft()
   const text = draft.text
@@ -24,6 +29,19 @@ export function ParkingLotButton() {
   const { invalidate } = useParkingActions()
 
   useEffect(() => () => { pending.current?.abort(); pending.current = null }, [])
+
+  useEffect(() => {
+    const receive = (event: Event) => {
+      const detail = (event as CustomEvent).detail
+      if (!validThoughtContext(detail?.context)) return
+      sourceTrigger.current = detail.trigger instanceof HTMLElement ? detail.trigger : null
+      setRequestedContext(detail.context)
+      setCaptureNotice(text ? 'Your unfinished thought and its original material are kept. Save it first, then choose Save a thought about this passage again for a new thought.' : '')
+      setOpen(true)
+    }
+    window.addEventListener(CAPTURE_REQUEST, receive)
+    return () => window.removeEventListener(CAPTURE_REQUEST, receive)
+  }, [text])
 
   async function submit() {
     if (!text.trim() || pending.current) return
@@ -57,7 +75,7 @@ export function ParkingLotButton() {
 
   return (
     <div className="grid gap-2 min-w-0 max-w-full">
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={next => { setOpen(next); if (next) { setRequestedContext(undefined); setCaptureNotice(''); sourceTrigger.current = null } }}>
       <Dialog.Trigger asChild>
         <Button
           variant="outline"
@@ -72,12 +90,15 @@ export function ParkingLotButton() {
         <Dialog.Overlay className="fixed inset-0 bg-black/30" />
         <Dialog.Content
           className="fixed left-1/2 top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(90vw,32rem)] -translate-x-1/2 rounded-lg bg-card p-4 shadow-lg border border-line"
+          onCloseAutoFocus={event => { if (sourceTrigger.current?.isConnected) { event.preventDefault(); sourceTrigger.current.focus() } sourceTrigger.current = null }}
           aria-describedby="park-desc"
         >
           <Dialog.Title className="text-lg font-semibold">Save a thought for later</Dialog.Title>
           <Dialog.Description id="park-desc" className="text-sm text-muted mb-2">
             Save an idea without leaving your work. Press Enter to save or Shift+Enter for a new line. Session and skill context are included when available.
           </Dialog.Description>
+          {captureNotice && <p role="status" className="text-sm mb-2">{captureNotice}</p>}
+          {!text && requestedContext && <p className="text-sm mb-2">Original material: {requestedContext.label}</p>}
           <Textarea
             autoFocus
             disabled={saving}
@@ -89,7 +110,7 @@ export function ParkingLotButton() {
               skillId: text ? draft.skillId : skillId,
               unconfirmed: Boolean(e.target.value) && draft.unconfirmed,
               requestKey: e.target.value === text ? draft.requestKey : undefined,
-              originalContext: text ? draft.originalContext : captureThoughtContext(location.pathname, Array.from(document.querySelectorAll('[data-capture-query]')).at(-1)?.getAttribute('data-capture-query') ?? location.search, Array.from(document.querySelectorAll('[data-capture-query]')).at(-1)?.getAttribute('data-capture-label') ?? document.querySelector('main h1')?.textContent ?? 'Original material'),
+              originalContext: text ? draft.originalContext : requestedContext ?? captureThoughtContext(location.pathname, Array.from(document.querySelectorAll('[data-capture-query]')).at(-1)?.getAttribute('data-capture-query') ?? location.search, Array.from(document.querySelectorAll('[data-capture-query]')).at(-1)?.getAttribute('data-capture-label') ?? document.querySelector('main h1')?.textContent ?? 'Original material'),
             }) }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {

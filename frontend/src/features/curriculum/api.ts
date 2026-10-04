@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { boundedRead } from '../../lib/boundedRead'
 import { apiFetch, type Schemas } from '../../lib/api'
 
 export type MaterialList = Schemas['MaterialList']
@@ -71,7 +72,7 @@ export function useDraftActions() {
 export function useChunk(chunkId: string | null) {
   return useQuery({
     queryKey: ['curriculum', 'chunk', chunkId],
-    queryFn: () => apiFetch<ChunkOut>(`/api/curriculum/chunks/${chunkId}`),
+    queryFn: ({ signal }) => boundedRead<ChunkOut>(`/api/curriculum/chunks/${encodeURIComponent(chunkId ?? "")}`, signal, 'Source passage'),
     enabled: !!chunkId,
     retry: false,
   })

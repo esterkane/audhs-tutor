@@ -26,3 +26,9 @@ it('audio lesson links use a known step and no playback instruction', () => {
   expect(thoughtContextPath(context)).toBe('/playground/visualizer?saved_lesson=harmonics')
   expect(captureThoughtContext('/playground/visualizer', '?capture_audio_lesson=unknown', 'Unknown')).toBeUndefined()
 })
+
+it('source return validates identity and never depends on retrieval queries', () => {
+  const context = { version: 1 as const, kind: 'source' as const, chunk_id: 'chunk-one', label: 'Source' }
+  expect(thoughtContextPath(context)).toBe('/sources?chunk=chunk-one')
+  expect(validThoughtContext({ ...context, chunk_id: '../private' })).toBe(false)
+})
