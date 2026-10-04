@@ -74,3 +74,7 @@ Shared palette/buttons/panels now follow uploaded specifications. Desktop rail i
 ## Contextual tools checkpoint
 
 Lesson-linked coding experiments now retain isolated drafts and validate the current origin (slices/lesson-experiment.md). Audio-lab detours now return to their named coding workspace (slices/visualizer-return-context.md). C3 remains partial: source-grounded context, project/review entry and route-independent paused visualizer state remain; C5 persistent tutor is not implemented.
+
+## C3 next implementation: server-verified lesson origin
+
+Tool recovery slices are recorded in visualizer-*-recovery and related slice docs. The next substantive gap is lesson-grounded coding help: read slices/lesson-playground-evidence-plan.md. Begin with optional typed origin/server validation, preserving existing standalone/program callers and completed replays. Source snapshots/reuse require their own bounded follow-up. Full C3/C4/C5 remain open.

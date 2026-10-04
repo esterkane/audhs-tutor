@@ -917,3 +917,7 @@ Reload now explains the missing local file and asks for reselection; replacement
 ## Visualizer guidance layout — 2026-10-04
 
 Optional instructions moved below canvas/transport into keyboard-accessible details; saved summary and expanded failures remain. See slices/visualizer-guidance-layout.md for verification. No lifecycle/learning changes.
+
+## C3 evidence contract inspection — 2026-10-04
+
+Verified coding tutor still has no lesson retrieval and source-aware reuse. Next plan is slices/lesson-playground-evidence-plan.md; source labels must remain general until evidence/retry contracts are implemented. No runtime changes in this planning slice.
