@@ -5,7 +5,7 @@ import json
 from collections.abc import Awaitable, Callable
 from typing import Any
 
-from sqlalchemy import select, update
+from sqlalchemy import JSON, delete, or_, select, update
 from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -155,3 +155,30 @@ async def complete(
         await db.commit()
     else:
         await db.flush()
+
+
+async def release_unstarted_assessment(
+    db: AsyncSession,
+    learner_id: str,
+    session_id: str,
+    key: str,
+    claim_id: str,
+) -> None:
+    """Caller must prove no gateway/learning commit began and rollback succeeded.
+
+    Exact generation identity prevents a delayed cleanup deleting a replacement.
+    This is not a reclaim API for old unresolved requests.
+    """
+    await db.execute(
+        delete(WorkspaceRequest).where(
+            WorkspaceRequest.id == claim_id,
+            WorkspaceRequest.learner_id == learner_id,
+            WorkspaceRequest.session_id == session_id,
+            WorkspaceRequest.request_key == key,
+            or_(
+                WorkspaceRequest.response_json.is_(None),
+                WorkspaceRequest.response_json == JSON.NULL,
+            ),
+        )
+    )
+    await db.commit()

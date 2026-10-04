@@ -30,6 +30,7 @@ from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import NoModelReady
 from app.orchestrator import assessment_content, prompts
 from app.orchestrator.assessment_answers import feedback_snapshot, save_feedback
+from app.orchestrator.assessment_execution import AssessmentExecution
 from app.orchestrator.context import escape_data, learner_answer_block
 from app.schemas.common import ActivityType, Domain, ObjectType
 from app.schemas.grading import (
@@ -213,11 +214,13 @@ class Grader:
         recovery: AnswerRecovery | None = None,
         *,
         request_claim_id: str | None = None,
+        execution: AssessmentExecution | None = None,
     ) -> None:
         self.db = db
         self.gateway = gateway
         self.recovery = recovery
         self.request_claim_id = request_claim_id
+        self.execution = execution or AssessmentExecution()
 
     async def next_item(self, learner_id: str, skill_id: str) -> Assessment | None:
         """Rotate kinds (mcq → cloze → explain_back); prefer items never attempted, then the oldest attempt."""
@@ -284,6 +287,8 @@ class Grader:
             Message(role="user", content=user),
         ]
         try:
+            # Entering the gateway can have external effects even if it raises.
+            self.execution.gateway_entered = True
             out = await self.gateway.complete(
                 task,
                 messages,
@@ -329,7 +334,7 @@ class Grader:
                 raise AppError(
                     "assessment_content_changed_during_grading",
                     "Content changed after submission. No learning evidence was saved; "
-                    "this request remains unresolved.",
+                    "check the saved result before retrying.",
                     409,
                 )
         a = assessment_content.assessment(content)
@@ -578,6 +583,8 @@ class Grader:
                     durable_result,
                     commit=False,
                 )
+            # A commit error may mean acknowledgement was lost after success.
+            self.execution.learning_commit_started = True
             await db.commit()
         except BaseException:
             await db.rollback()

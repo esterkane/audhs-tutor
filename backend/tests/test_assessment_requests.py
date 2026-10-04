@@ -220,4 +220,165 @@ async def test_failure_completing_claim_rolls_back_learning_state(client, db, mo
     found = await client.get(
         f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
     )
-    assert found.json() == {"status": "unresolved", "result": None}
+    assert found.json() == {"status": "not_found", "result": None}
+    monkeypatch.setattr(workspace_requests, "complete", original)
+    retry = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert retry.status_code == 200
+    assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 1
+
+
+async def test_pre_inference_failure_releases_only_new_claim(client, db, monkeypatch):
+    from app.orchestrator import grader
+
+    body = await prepare(client, db)
+    original = grader.grade_mcq
+
+    def fail(*args):
+        raise RuntimeError("before inference")
+
+    monkeypatch.setattr(grader, "grade_mcq", fail)
+    with pytest.raises(RuntimeError, match="before inference"):
+        await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert await db.scalar(select(func.count()).select_from(models.WorkspaceRequest)) == 0
+    monkeypatch.setattr(grader, "grade_mcq", original)
+    assert (await client.post("/api/assess/attempt", json=body, headers=HEADERS)).status_code == 200
+    assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 1
+
+
+async def test_gateway_entry_failure_keeps_claim(client, db, monkeypatch):
+    from app.models_ai.gateway import ModelGateway
+    from app.orchestrator import assessment_content
+
+    body = await prepare(client, db)
+    item = await db.get(models.Assessment, body["assessment_id"])
+    item.kind = "explain_back"
+    item.item_json = {"prompt": "Explain the mechanism"}
+    await db.commit()
+    body["content_version"] = assessment_content.token(
+        await assessment_content.snapshot(db, item.id)
+    )
+    body["answer"] = "A mechanism with a causal explanation."
+    calls = []
+
+    async def fail(*args, **kwargs):
+        calls.append(True)
+        raise RuntimeError("provider acknowledgement lost")
+
+    monkeypatch.setattr(ModelGateway, "complete", fail)
+    with pytest.raises(RuntimeError, match="provider acknowledgement lost"):
+        await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    retry = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert retry.status_code == 409
+    assert retry.json()["error"]["code"] == "request_unresolved"
+    assert len(calls) == 1
+    assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 0
+
+
+async def test_cleanup_failure_preserves_original_exception(client, db, monkeypatch):
+    from app.db import workspace_requests
+    from app.orchestrator import grader
+
+    body = await prepare(client, db)
+
+    def fail(*args):
+        raise RuntimeError("original grading failure")
+
+    async def cleanup_fail(*args):
+        raise RuntimeError("cleanup unavailable")
+
+    monkeypatch.setattr(grader, "grade_mcq", fail)
+    monkeypatch.setattr(workspace_requests, "release_unstarted_assessment", cleanup_fail)
+    with pytest.raises(RuntimeError, match="original grading failure"):
+        await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    found = await client.get(
+        f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
+    )
+    assert found.json()["status"] == "unresolved"
+
+
+async def test_learning_commit_acknowledgement_loss_is_not_released(client, db, monkeypatch):
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+    body = await prepare(client, db)
+    original = AsyncSession.commit
+    raised = []
+
+    async def lost_ack(self):
+        # Only fail the transaction containing the completed response, after commit.
+        completed = await self.scalar(
+            select(models.WorkspaceRequest).where(
+                models.WorkspaceRequest.response_json.is_not(None)
+            )
+        )
+        await original(self)
+        if completed is not None and completed.response_json is not None and not raised:
+            raised.append(True)
+            raise RuntimeError("learning commit acknowledgement lost")
+
+    monkeypatch.setattr(AsyncSession, "commit", lost_ack)
+    with pytest.raises(RuntimeError, match="learning commit acknowledgement lost"):
+        await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    monkeypatch.setattr(AsyncSession, "commit", original)
+    retry = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert retry.status_code == 200
+    assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 1
+    assert await db.scalar(select(func.count()).select_from(models.CompetencyEvidence)) == 1
+
+
+async def test_legacy_uncertain_claim_is_not_released(client, db, monkeypatch):
+    from app.db import workspace_requests
+
+    body = await prepare(client, db)
+    session = await db.get(models.Session, body["session_id"])
+    from app.schemas.grading import AttemptRequest
+
+    await workspace_requests.claim(
+        db,
+        session.learner_id,
+        session.id,
+        "assessment:" + KEY,
+        AttemptRequest.model_validate(body).model_dump(mode="json"),
+    )
+
+    async def never_grade(*args, **kwargs):
+        raise AssertionError("legacy claim must not enter grading")
+
+    monkeypatch.setattr(Grader, "grade", never_grade)
+    result = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert result.status_code == 409
+    assert result.json()["error"]["code"] == "request_unresolved"
+    assert await db.scalar(select(func.count()).select_from(models.WorkspaceRequest)) == 1
+
+
+async def test_pre_gateway_cancellation_remains_uncertain(client, db, monkeypatch):
+    body = await prepare(client, db)
+
+    async def cancel(*args, **kwargs):
+        raise asyncio.CancelledError()
+
+    monkeypatch.setattr(Grader, "grade", cancel)
+    with pytest.raises(RuntimeError, match="No response returned"):
+        await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    found = await client.get(
+        f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
+    )
+    assert found.json()["status"] == "unresolved"
+
+
+async def test_old_cleanup_cannot_delete_replacement_or_completed_claim(client, db):
+    from app.db import workspace_requests
+
+    body = await prepare(client, db)
+    session = await db.get(models.Session, body["session_id"])
+    owner, sid = session.learner_id, session.id
+    key = "assessment:" + KEY
+    first, _ = await workspace_requests.claim(db, owner, sid, key, body)
+    await workspace_requests.release_unstarted_assessment(db, owner, sid, key, first)
+    replacement, _ = await workspace_requests.claim(db, owner, sid, key, body)
+    await workspace_requests.release_unstarted_assessment(db, owner, sid, key, first)
+    row = await db.get(models.WorkspaceRequest, replacement)
+    assert row is not None
+    await workspace_requests.complete(db, owner, replacement, {"completed": True})
+    await workspace_requests.release_unstarted_assessment(db, owner, sid, key, replacement)
+    await db.refresh(row)
+    assert row.response_json == {"completed": True}

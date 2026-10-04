@@ -111,6 +111,7 @@ async def test_rubric_edit_during_inference_rejects_learning_commit(
     body["answer"] = "My explanation"
 
     async def changed(self, *args, **kwargs):
+        self.execution.gateway_entered = True  # This fake replaces the inference boundary.
         async with session_factory() as other:
             r = await other.get(models.AssessmentRubric, rubric.id)
             r.criteria_json = [

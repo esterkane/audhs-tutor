@@ -1,5 +1,6 @@
 """Durable grading claims; unresolved work is never automatically graded again."""
 
+import logging
 from typing import Any, Literal
 
 from pydantic import BaseModel
@@ -12,8 +13,11 @@ from app.db.models import TutorAnswer, WorkspaceRequest
 from app.kernel.session import get_owned
 from app.models_ai.gateway import ModelGateway
 from app.orchestrator import assessment_content
+from app.orchestrator.assessment_execution import AssessmentExecution
 from app.orchestrator.grader import Grader
 from app.schemas.grading import AttemptRequest, AttemptResult
+
+logger = logging.getLogger(__name__)
 
 
 class AssessmentRequestState(BaseModel):
@@ -50,7 +54,24 @@ async def submit(
             return await recovered_result(db, learner_id, saved, recovery)
     else:
         await validate()
-    return await Grader(db, gateway, recovery=recovery, request_claim_id=claim_id).grade(body)
+    execution = AssessmentExecution()
+    try:
+        return await Grader(
+            db, gateway, recovery=recovery, request_claim_id=claim_id, execution=execution
+        ).grade(body)
+    except Exception:
+        # Cancellation/process death and all post-gateway failures stay uncertain.
+        # Only this invocation owns the new claim; legacy unresolved claims never
+        # pass claim() above. Preserve the original error if cleanup also fails.
+        if claim_id is not None and identity is not None and execution.can_release:
+            try:
+                await db.rollback()
+                await workspace_requests.release_unstarted_assessment(
+                    db, learner_id, body.session_id, request_key(identity), claim_id
+                )
+            except Exception:
+                logger.exception("Could not release an unstarted assessment claim")
+        raise
 
 
 async def lookup(
