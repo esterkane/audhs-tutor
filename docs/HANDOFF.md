@@ -837,3 +837,7 @@ Mapped every current route to the proposed navigation; inspected server/session,
 ## C1 grouped navigation — 2026-10-04
 
 Home/Projects plus named Learn/Explore/Library/Tools/Manage groups preserve destinations and state.25 browser/four unit checks, lint/types/build and read-only review pass. See docs/slices/grouped-navigation.md. Park still obstructs expanded navigation at narrow200% text; correct that before C2. No learning logic or model changes.
+
+## Park obstruction correction — 2026-10-04
+
+Capture and status moved into header flow; dialog scrolls within viewport. Six unit/six relevant browser checks and lint/types/build pass; independent review clear. No learning changes. Header access replaces viewport-floating access. Preferences200% overflow remains separate. See docs/slices/parking-header.md. Next C2 browse-area context.

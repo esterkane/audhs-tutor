@@ -76,7 +76,10 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link to="/" className="font-semibold no-underline text-fg">
             AuDHS-Tutor
           </Link>
-          <AudioControls />
+          <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
+            <AudioControls />
+            <ParkingLotButton />
+          </div>
         </div>
         <nav aria-label="Main navigation" className="flex flex-wrap gap-2 text-sm items-start">
           <NavLink to="/" end className={navClass}>Home</NavLink>
@@ -123,7 +126,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       <LearningCompanion key={pathname} />
-      <ParkingLotButton />
     </div>
   )
 }

@@ -7,7 +7,7 @@ import { useMode } from '../stores/mode'
 import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 
-/** Always visible in the shell. Capture in ≤ 2 interactions: open, type + Enter. */
+/** Always available in the shell header. Capture in ≤ 2 interactions: open, type + Enter. */
 export function ParkingLotButton() {
   const { sessionId, skillId } = useMode()
   const [open, setOpen] = useState(false)
@@ -29,11 +29,12 @@ export function ParkingLotButton() {
   }
 
   return (
+    <div className="grid gap-2 min-w-0 max-w-full">
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger asChild>
         <Button
           variant="outline"
-          className="fixed bottom-4 right-4 shadow-md bg-card"
+          className="bg-card"
           aria-label="Parking lot: park a tangent for later"
           title="Park a tangent for later"
         >
@@ -43,7 +44,7 @@ export function ParkingLotButton() {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/30" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/3 w-[min(90vw,32rem)] -translate-x-1/2 rounded-lg bg-card p-4 shadow-lg border border-line"
+          className="fixed left-1/2 top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(90vw,32rem)] -translate-x-1/2 rounded-lg bg-card p-4 shadow-lg border border-line"
           aria-describedby="park-desc"
         >
           <Dialog.Title className="text-lg font-semibold">Park a tangent</Dialog.Title>
@@ -63,7 +64,7 @@ export function ParkingLotButton() {
             aria-label="Tangent to park"
             className="min-h-16"
           />
-          <div className="flex gap-2 justify-end mt-2">
+          <div className="flex flex-wrap gap-2 justify-end mt-2">
             <Dialog.Close asChild>
               <Button variant="ghost">Cancel</Button>
             </Dialog.Close>
@@ -82,11 +83,12 @@ export function ParkingLotButton() {
       {status && (
         <p
           role="status"
-          className="fixed bottom-16 right-4 rounded-md bg-card border border-line px-3 py-2 text-sm shadow"
+          className="max-w-sm rounded-md bg-card border border-line px-3 py-2 text-sm"
         >
           {status}
         </p>
       )}
     </Dialog.Root>
+    </div>
   )
 }
