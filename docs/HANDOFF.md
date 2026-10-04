@@ -1054,3 +1054,7 @@ Unchanged thought saves now retain a durable identity across retries/reload; edi
 
 ## C6 original-context contract — 2026-10-04
 Inspected existing identities and ran 12 passing context/deep-link browser journeys. docs/slices/capture-context-contract.md defines typed original identity, immutable promotion provenance, stale-target recovery and implementation sequence shared with C7. No runtime change yet. Next implement typed capture context and durable storage; never use a plain historical /session link as proof of old-session recovery.
+
+
+## C6 typed original material links — 2026-10-04
+First durable capture context slice implemented; see docs/slices/capture-context-contract.md for exact supported types, migration, evidence and remaining limits. Uses displayed route identity, preserving source context through promotion and reload. 14 backend/8 unit checks plus browser regressions and sanitized final 6 context journeys pass. Next complete lesson/source/audio identity handling and project-notebook saved-thought acceptance before declaring source-return complete.

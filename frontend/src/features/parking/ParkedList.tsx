@@ -1,12 +1,14 @@
+import { Link } from 'react-router-dom'
+import { thoughtContextPath } from './context'
 import { useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { useParked, useParkingActions } from './api'
 
-export function ParkedList() { return <ThoughtList status="parked" /> }
+export function ParkedList({ onOpenContext }: { onOpenContext?: () => void } = {}) { return <ThoughtList status="parked" onOpenContext={onOpenContext} /> }
 export function PromotedReminders() { return <ThoughtList status="promoted" /> }
 
 /** These are optional reminders, never evidence of learning or completed work. */
-function ThoughtList({ status }: { status: 'parked' | 'promoted' }) {
+function ThoughtList({ status, onOpenContext }: { status: 'parked' | 'promoted'; onOpenContext?: () => void }) {
   const query = useParked(status)
   const { promote, drop } = useParkingActions()
   const lock = useRef(false)
@@ -54,6 +56,7 @@ function ThoughtList({ status }: { status: 'parked' | 'promoted' }) {
           {items.map(p => (
             <li key={p.id} className="flex flex-wrap items-center gap-2">
               <span className="grow">{p.text}</span>
+              {p.original_context && thoughtContextPath(p.original_context) && <Link className="underline" to={thoughtContextPath(p.original_context)!} onClick={onOpenContext}>Open original material: {p.original_context.label}</Link>}
               {status === 'parked' && <Button size="sm" disabled={pending !== null} onClick={() => void act(p.id, 'promote', p.text)}>Show on Home</Button>}
               {confirm === p.id ? <div className="w-full">
                 <p>Remove this thought from your reminders? There is currently no undo.</p>

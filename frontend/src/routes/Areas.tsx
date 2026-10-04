@@ -62,7 +62,7 @@ export function Areas() {
     job.error ||
     drafts.error
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4" data-capture-query={area ? new URLSearchParams({ area: area.id }).toString() : ""}>
       <Card>
         <CardTitle>Learning areas</CardTitle>
         {locationChanged && (dirty || areaDirty) && <div role="alert" className="mt-2">

@@ -366,6 +366,7 @@ class ParkingLotItem(IdMixin, LearnerScoped, Base):
     __table_args__ = (Index("uq_parking_owner_request", "learner_id", "request_key", unique=True),)
     request_key: Mapped[str | None] = mapped_column(Text)
     request_fingerprint: Mapped[str | None] = mapped_column(Text)
+    original_context_json: Mapped[JsonDict | None] = mapped_column(JSON, nullable=True)
     session_id: Mapped[str | None] = mapped_column(Text, ForeignKey("session.id"))
     text: Mapped[str] = mapped_column(Text)
     node_id: Mapped[str | None] = mapped_column(Text, ForeignKey("skill_node.id"))

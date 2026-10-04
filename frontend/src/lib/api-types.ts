@@ -2162,6 +2162,24 @@ export interface components {
        */
       price_out: number
     }
+    /** AnswerCapture */
+    AnswerCapture: {
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /** Label */
+      label: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'answer'
+      /** Answer Id */
+      answer_id: string
+    }
     /** AnswerDetail */
     AnswerDetail: {
       /** Id */
@@ -2305,6 +2323,24 @@ export interface components {
       role: string
       /** Documents */
       documents: number
+    }
+    /** AreaCapture */
+    AreaCapture: {
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /** Label */
+      label: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'area'
+      /** Area Id */
+      area_id: string
     }
     /** AreaEdit */
     AreaEdit: {
@@ -4117,6 +4153,15 @@ export interface components {
     }
     /** ParkIn */
     ParkIn: {
+      /** Original Context */
+      original_context?:
+        | (
+            | components['schemas']['AreaCapture']
+            | components['schemas']['ProjectCapture']
+            | components['schemas']['AnswerCapture']
+            | components['schemas']['WorkspaceCapture']
+          )
+        | null
       /** Request Key */
       request_key?: string | null
       /** Session Id */
@@ -4133,6 +4178,15 @@ export interface components {
     }
     /** ParkOut */
     ParkOut: {
+      /** Original Context */
+      original_context?:
+        | (
+            | components['schemas']['AreaCapture']
+            | components['schemas']['ProjectCapture']
+            | components['schemas']['AnswerCapture']
+            | components['schemas']['WorkspaceCapture']
+          )
+        | null
       /** Id */
       id: string
       /** Text */
@@ -4366,6 +4420,31 @@ export interface components {
       where: string
       /** Message */
       message: string
+    }
+    /** ProjectCapture */
+    ProjectCapture: {
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /** Label */
+      label: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'project'
+      /** Course Id */
+      course_id: string
+      /** Section Id */
+      section_id: string
+      /**
+       * View
+       * @enum {string}
+       */
+      view: 'guide' | 'notebook'
     }
     /** PromoteIn */
     PromoteIn: {
@@ -5205,6 +5284,24 @@ export interface components {
        * @default false
        */
       interrupted: boolean
+    }
+    /** WorkspaceCapture */
+    WorkspaceCapture: {
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /** Label */
+      label: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'workspace'
+      /** Workspace Id */
+      workspace_id: string
     }
     /** SectionOut */
     app__schemas__curriculum__SectionOut: {

@@ -83,3 +83,5 @@ C6 durable capture retry backend is recorded in ../slices/capture-retry.md. Fron
 C6 frontend save identity adoption is implemented in ../slices/capture-retry-ui.md. Durable source return and action undo remain open; retry work alone does not complete context preservation.
 
 Next C6 source-return implementation follows ../slices/capture-context-contract.md; the 12 passing baseline journeys cover existing routes only, not durable saved-thought return.
+
+C6 durable context first slice is implemented for areas/projects/answers/standalone code workspaces; see capture-context-contract.md for unresolved lesson/audio/source identities and remaining acceptance. C7 remains pending.

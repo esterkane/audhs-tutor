@@ -1,0 +1,26 @@
+import { expect, test } from '@playwright/test'
+
+for (const width of [390, 1280]) test(`saved thought returns to its coding workspace ${width}`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 })
+  const thought = `Context return ${width}`
+  await page.goto('/playground?workspace=complete')
+  await expect(page.getByRole('combobox', { name: 'Workspace', exact: true })).toHaveValue('complete')
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click()
+  await page.getByLabel('Thought to save').fill(thought)
+  await page.reload()
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click()
+  await expect(page.getByLabel('Thought to save')).toHaveValue(thought)
+  await expect(page.getByText(/^Original material:/)).toBeVisible()
+  await page.getByRole('button', { name: 'Save thought', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click()
+  await page.getByText('Saved thoughts', { exact: true }).click()
+  const row = page.getByRole('listitem').filter({ hasText: thought })
+  await row.getByRole('link', { name: /Open original material/ }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await expect(page).toHaveURL(/\/playground\?workspace=complete$/)
+  await expect(page.getByRole('combobox', { name: 'Workspace', exact: true })).toHaveValue('complete')
+  await page.screenshot({ path: info.outputPath('returned-workspace.png'), fullPage: true })
+})

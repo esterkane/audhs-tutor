@@ -1,3 +1,5 @@
+import { useLocation } from 'react-router-dom'
+import { captureThoughtContext } from '../features/parking/context'
 import * as Dialog from '@radix-ui/react-dialog'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
@@ -11,6 +13,7 @@ import { Textarea } from './ui/textarea'
 /** Always available in the shell header. Capture in ≤ 2 interactions: open, type + Enter. */
 export function ParkingLotButton() {
   const { sessionId, skillId } = useMode()
+  const location = useLocation()
   const [open, setOpen] = useState(false)
   const { draft, update: updateDraft, storageError } = useThoughtDraft()
   const text = draft.text
@@ -34,7 +37,7 @@ export function ParkingLotButton() {
     setStatus(null)
     try {
       const saved = await Promise.race([
-        api.park({ session_id: draft.sessionId, text: text.trim(), node_id: draft.skillId, request_key: requestKey }, controller.signal),
+        api.park({ session_id: draft.sessionId, text: text.trim(), node_id: draft.skillId, request_key: requestKey, original_context: draft.originalContext }, controller.signal),
         new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('Save wait timed out')) }, 15000) }),
       ])
       if (pending.current !== controller) return
@@ -86,6 +89,7 @@ export function ParkingLotButton() {
               skillId: text ? draft.skillId : skillId,
               unconfirmed: Boolean(e.target.value) && draft.unconfirmed,
               requestKey: e.target.value === text ? draft.requestKey : undefined,
+              originalContext: text ? draft.originalContext : captureThoughtContext(location.pathname, document.querySelector('[data-capture-query]')?.getAttribute('data-capture-query') ?? location.search, document.querySelector('main h1')?.textContent ?? 'Original material'),
             }) }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
@@ -97,6 +101,7 @@ export function ParkingLotButton() {
             className="min-h-16"
           />
           <p className="text-sm text-muted">{text.length}/500 characters. {storageError ? 'Draft is available here while this page stays open.' : 'Draft retained in this browser tab until saved or cleared.'}</p>
+          {text && <p className="text-sm">{draft.originalContext ? `Original material: ${draft.originalContext.label}. Opening it later does not restore temporary output or playback.` : 'No exact material link is attached to this thought.'}</p>}
           {storageError && <p role="alert" className="text-sm">{storageError}</p>}
           {text && (draft.sessionId !== sessionId || draft.skillId !== skillId) && <p className="text-sm">This draft keeps its original session and skill context; you are now in a different learning context.</p>}
           {draft.unconfirmed && !saving && !error && <p role="alert" className="text-sm">{draft.requestKey ? 'An earlier save is unconfirmed. Retry this unchanged thought without creating another copy.' : 'An earlier save is unconfirmed. This older or edited draft cannot be matched to it. Check Saved thoughts first; saving now creates a new thought.'}</p>}
@@ -113,7 +118,7 @@ export function ParkingLotButton() {
           <details className="mt-3">
             <summary className="cursor-pointer text-sm font-medium">Saved thoughts</summary>
             <div className="mt-2">
-              <ParkedList />
+              <ParkedList onOpenContext={() => setOpen(false)} />
             </div>
           </details>
         </Dialog.Content>

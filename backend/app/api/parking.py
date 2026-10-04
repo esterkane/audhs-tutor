@@ -2,7 +2,7 @@ import hashlib
 import json
 
 from fastapi import APIRouter, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter
 from sqlalchemy import select
 from sqlalchemy.dialects.sqlite import insert
 
@@ -12,13 +12,14 @@ from app.db.base import new_id
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import ParkingLotItem, SkillNode
 from app.kernel import session as ksession
-from app.orchestrator.tools import park_tangent
+from app.schemas.capture_context import CaptureContext
 from app.schemas.common import Mode, ObjectType
 
 router = APIRouter(prefix="/parking", tags=["parking"])
 
 
 class ParkIn(BaseModel):
+    original_context: CaptureContext | None = None
     request_key: str | None = Field(default=None, min_length=1, max_length=128)
     session_id: str | None = None
     text: str = Field(min_length=1, max_length=500)
@@ -26,6 +27,7 @@ class ParkIn(BaseModel):
 
 
 class ParkOut(BaseModel):
+    original_context: CaptureContext | None = None
     id: str
     text: str
     node_id: str | None
@@ -40,6 +42,11 @@ class ParkList(BaseModel):
 
 def _out(p: ParkingLotItem) -> ParkOut:
     return ParkOut(
+        original_context=(
+            TypeAdapter(CaptureContext).validate_python(p.original_context_json)
+            if p.original_context_json
+            else None
+        ),
         id=p.id,
         text=p.text,
         node_id=p.node_id,
@@ -56,13 +63,19 @@ def _out(p: ParkingLotItem) -> ParkOut:
     status_code=201,
 )
 async def park(body: ParkIn, db: DB, learner: Learner) -> ParkOut:
+    context = body.original_context.model_dump() if body.original_context else None
     if body.request_key is not None:
         ctx = EventContext(learner_id=learner.id, session_id=None, mode=Mode.STEADY, energy=3)
         if body.session_id:
             session = await ksession.get_owned(db, body.session_id, learner.id)
             ctx = ksession.event_context(session)
         fingerprint = hashlib.sha256(
-            json.dumps(body.model_dump(exclude={"request_key"}), sort_keys=True).encode()
+            json.dumps(
+                body.model_dump(
+                    exclude={"request_key"} | ({"original_context"} if context is None else set())
+                ),
+                sort_keys=True,
+            ).encode()
         ).hexdigest()
         # End dependency reads before the insert acquires SQLite's write lock.
         # A duplicate waits for the first short item/event transaction to finish.
@@ -78,6 +91,7 @@ async def park(body: ParkIn, db: DB, learner: Learner) -> ParkOut:
                 node_id=body.node_id,
                 request_key=body.request_key,
                 request_fingerprint=fingerprint,
+                original_context_json=context,
             )
             .on_conflict_do_nothing(index_elements=["learner_id", "request_key"])
             .returning(ParkingLotItem.id)
@@ -100,16 +114,19 @@ async def park(body: ParkIn, db: DB, learner: Learner) -> ParkOut:
         else:
             await db.commit()
         return _out(item)
+    ctx = EventContext(learner_id=learner.id, session_id=None, mode=Mode.STEADY, energy=3)
     if body.session_id:
-        s = await ksession.get_owned(db, body.session_id, learner.id)
-        events = EventWriter(db, ksession.event_context(s))
-        return _out(await park_tangent(db, s, body.text, node_id=body.node_id, events=events))
+        session = await ksession.get_owned(db, body.session_id, learner.id)
+        ctx = ksession.event_context(session)
     item = ParkingLotItem(
-        learner_id=learner.id, session_id=None, text=body.text, node_id=body.node_id
+        learner_id=learner.id,
+        session_id=body.session_id,
+        text=body.text,
+        node_id=body.node_id,
+        original_context_json=context,
     )
     db.add(item)
     await db.flush()
-    ctx = EventContext(learner_id=learner.id, session_id=None, mode=Mode.STEADY, energy=3)
     await EventWriter(db, ctx).emit(
         Verb.PARKED, ObjectType.NOTE, item.id, context={"node_id": body.node_id}
     )

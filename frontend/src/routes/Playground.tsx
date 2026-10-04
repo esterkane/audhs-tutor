@@ -91,7 +91,7 @@ export function Playground({ runnerFactory = createPyodideRunner }: { runnerFact
     })
   }
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4" data-capture-query={new URLSearchParams({ workspace: selected }).toString()}>
       <div>
         <h1 className="text-xl font-semibold">Coding playground</h1>
         <Link to={`/playground/visualizer?workspace=${encodeURIComponent(selected)}`}>Open audio visualizer lab →</Link>

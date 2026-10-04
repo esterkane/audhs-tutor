@@ -115,7 +115,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  park: (body: { session_id: string | null; text: string; node_id?: string | null; request_key?: string }, signal?: AbortSignal) =>
+  park: (body: Schemas['ParkIn'], signal?: AbortSignal) =>
     apiFetch<ParkOut>('/api/parking', {
       signal,
       method: 'POST',
