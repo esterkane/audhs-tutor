@@ -104,3 +104,38 @@ test('timed out save unlocks the draft and ignores a late response', async ({ pa
   await expect(input).toHaveValue('Retain my edited idea')
   await expect(page.getByRole('dialog')).toBeVisible()
 })
+
+test('unsent thought survives reload without being submitted', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  let posts = 0
+  page.on('request', request => { if (request.method() === 'POST' && request.url().endsWith('/api/parking')) posts++ })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click()
+  await page.getByRole('textbox', { name: 'Thought to save' }).fill('Resume this thought after refresh')
+  await page.reload()
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Thought to save' })).toHaveValue('Resume this thought after refresh')
+  expect(posts).toBe(0)
+  await page.screenshot({ path: info.outputPath('restored-draft.png'), fullPage: true })
+})
+
+test('restored unconfirmed draft uses its original context after the lesson changes', async ({ page }) => {
+  await page.addInitScript(() => {
+    sessionStorage.setItem('parking-draft:v1', JSON.stringify({ version: 1, draft: { text: 'Original thought', sessionId: 'original-session', skillId: 'original-skill', unconfirmed: true } }))
+    localStorage.setItem('audhs-mode', JSON.stringify({ state: { mode: 'steady', energy: 3, sessionId: 'new-session', skillId: 'new-skill' }, version: 0 }))
+  })
+  const posts: unknown[] = []
+  await page.route('**/api/parking', async route => {
+    posts.push(route.request().postDataJSON())
+    await route.fulfill({ status: 201, json: { id: 'confirmed', text: 'Original thought', status: 'parked' } })
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Save for later', exact: true }).click()
+  await expect(page.getByText(/An earlier save is unconfirmed/)).toBeVisible()
+  await expect(page.getByText(/keeps its original session and skill context/)).toBeVisible()
+  expect(posts).toHaveLength(0)
+  await page.getByRole('button', { name: 'Save thought', exact: true }).click()
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  expect(posts).toEqual([{ session_id: 'original-session', node_id: 'original-skill', text: 'Original thought' }])
+  expect(await page.evaluate(() => sessionStorage.getItem('parking-draft:v1'))).toBeNull()
+})

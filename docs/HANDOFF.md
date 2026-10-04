@@ -1016,3 +1016,8 @@ Collapsed optional topic form, retained visible selection and new-session settin
 ## C6 capture clarity/recovery — 2026-10-04
 
 Save for later replaces Park; failed/timed-out save retains text with uncertainty guidance, repeated pending submission is guarded, saved-list failures are explicit. Audio active Stop confirmed already outside collapsed settings. See docs/slices/save-for-later.md for checks and remaining idempotency/context/promotion gaps. C6 remains partial.
+
+
+## C6 thought draft recovery — 2026-10-04
+
+Versioned tab checkpoint retains text, original session/skill and unconfirmed-save state; reload never submits. API text bound and storage errors explicit. docs/slices/capture-recovery-contract.md records tests and larger backend gaps. Next: saved-thought action feedback/recovery; C6/C7 remain open.

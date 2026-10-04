@@ -1,0 +1,16 @@
+# Capture recovery contract
+
+Inspection: parking stores text, learner, session and skill IDs, status and creation time. It has no durable route/notebook identity, no request idempotency key, and creation/event recording is not uniformly atomic. A browser draft alone cannot establish exactly-once saves or a meaningful return to every learning workspace.
+
+Next bounded slice: versioned sessionStorage checkpoint of unsent text (API maximum 500 characters), original session/skill IDs and whether a submitted save is unconfirmed. Capture context at first edit; do not reassign it when navigation/session state changes. Persist uncertainty before sending. Reload never retries automatically. Clear checkpoint only after confirmed success or explicit text deletion; retain in-memory work and explain storage failures. Invalid checkpoints are disclosed, not submitted or silently overwritten until explicit editing. No learning-state writes from restoration.
+
+Future backend contract required before broader return/retry implementation: learner-scoped durable intent ID, payload fingerprint conflict semantics, atomic item/event write and replay response; typed source context with validated internal target, human-readable label and versioned item identity. Restore only actual saved checkpoints; /session must resolve server activity and cannot resurrect an old session. Notebook, lab, source and area targets need per-type stale/deleted recovery. Do not store arbitrary external URLs or promise navigation recreates media playback. Promotion/drop undo requires separate status/event semantics. These decisions must be reconciled with existing ADRs before schema changes.
+
+
+## Implemented draft slice and evidence
+
+The tab checkpoint is implemented in features/parking/draft.ts and used by ParkingLotButton. Original IDs are captured on first edit and retained across navigation/reload; unconfirmed state is written before sending. Explicit editing clears invalid-checkpoint errors. Storage failures preserve in-memory work and disclose that an older draft may return. The API 500-character limit is enforced in the textarea. Closing retains the draft and is labeled Close. No restoration automatically submits anything.
+
+Baseline unsent-refresh browser test failed, then passed after implementation. Final sanitized browser run: seven parking journeys passed (keyboard/focus/200% text at 320/390/1280, failure/list recovery, timeout/late response, refresh without POST, exact original context and uncertainty on explicit save). Six component tests passed, including invalid/oversized checkpoint, storage failure and confirmed removal. Frontend lint, types and production build passed; inherited bundle/worker warnings remain. Inspected the restored-draft 390px screenshot. Code and pedagogy reviews identified overconfident restore-error wording; changed to describe restoration only and retain earlier-save uncertainty. No learning logic changed.
+
+This does not fulfill the future backend idempotency or durable source-return contracts above. Tab closure/cross-device recovery is not promised. Human comprehension and assistive-technology acceptance remain open. Next audit: saved-thought promotion/discard feedback and reversibility, then reconcile remaining C6 Home composition before C7.

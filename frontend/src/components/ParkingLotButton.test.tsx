@@ -5,7 +5,7 @@ import { jsonResponse, renderApp } from '../test/utils'
 import { ParkingLotButton } from './ParkingLotButton'
 
 describe('ParkingLotButton', () => {
-  afterEach(() => vi.unstubAllGlobals())
+  afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear() })
 
   it('is always rendered and usable even without a session', () => {
     useMode.setState({ sessionId: null })

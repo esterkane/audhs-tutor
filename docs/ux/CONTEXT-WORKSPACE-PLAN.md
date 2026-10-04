@@ -63,3 +63,6 @@ C6 Home topic disclosure is recorded in ../slices/home-topic-disclosure.md. This
 
 
 C6 capture clarity and audio audit: ../slices/save-for-later.md. Durable contextual return, promotion recovery and remaining Home composition are still open; do not mark C6/C7 complete.
+
+
+C6 thought draft restoration is implemented and verified in ../slices/capture-recovery-contract.md. Durable server idempotency/source return, action recovery and remaining Home composition are explicitly unfinished.

@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
+import { useThoughtDraft } from '../features/parking/draft'
 import { ParkedList } from '../features/parking/ParkedList'
 import { useParkingActions } from '../features/parking/api'
 import { useMode } from '../stores/mode'
@@ -11,7 +12,8 @@ import { Textarea } from './ui/textarea'
 export function ParkingLotButton() {
   const { sessionId, skillId } = useMode()
   const [open, setOpen] = useState(false)
-  const [text, setText] = useState('')
+  const { draft, update: updateDraft, storageError } = useThoughtDraft()
+  const text = draft.text
   const pending = useRef<AbortController | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -25,16 +27,17 @@ export function ParkingLotButton() {
     const controller = new AbortController()
     pending.current = controller
     let timer: ReturnType<typeof setTimeout> | undefined
+    updateDraft({ ...draft, unconfirmed: true })
     setSaving(true)
     setError('')
     setStatus(null)
     try {
       await Promise.race([
-        api.park({ session_id: sessionId, text: text.trim(), node_id: skillId }, controller.signal),
+        api.park({ session_id: draft.sessionId, text: text.trim(), node_id: draft.skillId }, controller.signal),
         new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('Save wait timed out')) }, 15000) }),
       ])
       if (pending.current !== controller) return
-      setText('')
+      updateDraft({ text: '', sessionId: null, skillId: null, unconfirmed: false })
       invalidate()
       setStatus('Thought saved. Open Save for later to find it under Saved thoughts.')
       setOpen(false)
@@ -74,10 +77,16 @@ export function ParkingLotButton() {
           <Textarea
             autoFocus
             disabled={saving}
+            maxLength={500}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => updateDraft({
+              text: e.target.value,
+              sessionId: text ? draft.sessionId : sessionId,
+              skillId: text ? draft.skillId : skillId,
+              unconfirmed: Boolean(e.target.value) && draft.unconfirmed,
+            })}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
+              if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault()
                 void submit()
               }
@@ -85,9 +94,13 @@ export function ParkingLotButton() {
             aria-label="Thought to save"
             className="min-h-16"
           />
+          <p className="text-sm text-muted">{text.length}/500 characters. {storageError ? 'Draft is available here while this page stays open.' : 'Draft retained in this browser tab until saved or cleared.'}</p>
+          {storageError && <p role="alert" className="text-sm">{storageError}</p>}
+          {text && (draft.sessionId !== sessionId || draft.skillId !== skillId) && <p className="text-sm">This draft keeps its original session and skill context; you are now in a different learning context.</p>}
+          {draft.unconfirmed && !saving && !error && <p role="alert" className="text-sm">An earlier save is unconfirmed. Check Saved thoughts before trying again; it may already be saved.</p>}
           <div className="flex flex-wrap gap-2 justify-end mt-2">
             <Dialog.Close asChild>
-              <Button variant="ghost">{saving ? 'Close' : 'Cancel'}</Button>
+              <Button variant="ghost">Close</Button>
             </Dialog.Close>
             <Button variant="primary" onClick={() => void submit()} disabled={saving || !text.trim()}>
               {saving ? 'Saving…' : 'Save thought'}
