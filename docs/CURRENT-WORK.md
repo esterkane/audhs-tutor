@@ -88,3 +88,8 @@ The embedded quiet-panel choice survives matching-session/tab detours and reload
 ## C3 task notebook re-entry — 2026-10-04
 
 Task notebook view restores for matching course/section and starter/dataset paths; explicit return clears it. Results remain temporary; no code autoruns. See slices/task-notebook-view-recovery.md for evidence and versioning limits. Full C3/C5 remains open.
+
+
+## C3 project location links — 2026-10-04
+
+Project course/step/notebook view have URL identity and browser-history recovery; existing notes remain scoped. See slices/project-location-links.md. Relevant authored lab links remain next; full C3/C5 is open.

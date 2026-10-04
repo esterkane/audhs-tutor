@@ -1,5 +1,6 @@
+import { useSearchParams } from 'react-router-dom'
 import { SavedContextAnswers } from '../features/programs/SavedContextAnswers'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { LocalNotebookLab } from '../features/programs/LocalNotebookLab'
 import { NotebookWorkspace } from '../features/programs/NotebookWorkspace'
 import { GuidedSection } from '../features/programs/GuidedSection'
@@ -121,14 +122,30 @@ function restoreLocation(): { location: StudyLocation | null; error: string } {
   }
 }
 
+function rememberLocation(next: StudyLocation): string {
+  try {
+    localStorage.setItem(locationKey, JSON.stringify(next))
+    return 'Your place is saved in this browser.'
+  } catch {
+    return 'Your place could not be saved in this browser. Keep the page address to return here. Existing notes have not been removed.'
+  }
+}
+
 export function Programs() {
   const [program, setProgram] = useState<Program | null>(null)
   const [error, setError] = useState('')
   const [restored] = useState(restoreLocation)
-  const [location, setLocation] = useState(restored.location)
+  const [params, setParams] = useSearchParams()
+  const linked = params.has('course') || params.has('step') || params.has('view')
+  const location = useMemo(() => linked ? {
+    version: 1 as const,
+    courseId: params.get('course') ?? '',
+    sectionId: params.get('step') ?? '',
+    notebook: params.get('view') === 'notebook',
+  } : restored.location, [linked, params, restored.location])
   const [placeStatus, setPlaceStatus] = useState(restored.error)
   const [paused, setPaused] = useState(false)
-  const [notebookView, setNotebookView] = useState(restored.location?.notebook ?? false)
+  const notebookView = location?.notebook ?? false
   const [chooserOpen, setChooserOpen] = useState(false)
   const heading = useRef<HTMLHeadingElement>(null)
   const focusRequested = useRef(false)
@@ -158,18 +175,45 @@ export function Programs() {
     !!program &&
     !!location &&
     (course?.id !== location.courseId || (section?.id ?? '') !== location.sectionId)
+  useEffect(() => {
+    if (linked || !course || staleLocation) return
+    setParams(
+      (previous) => {
+        const query = new URLSearchParams(previous)
+        query.set('course', course.id)
+        query.set('step', section?.id ?? '')
+        if (notebookView) query.set('view', 'notebook')
+        return query
+      },
+      { replace: true },
+    )
+  }, [linked, course, section, staleLocation, notebookView, setParams])
   function savePlace(courseId: string, sectionId: string, notebook = false) {
-    const next: StudyLocation = { version: 1, courseId, sectionId, notebook }
-    setLocation(next)
-    try {
-      localStorage.setItem(locationKey, JSON.stringify(next))
-      setPlaceStatus('Your place is saved in this browser.')
-    } catch {
-      setPlaceStatus(
-        'Your place could not be saved. Keep this page open; reloading may return to an earlier step. Existing notes have not been removed.',
-      )
-    }
+    setParams((previous) => {
+      const query = new URLSearchParams(previous)
+      query.set('course', courseId)
+      query.set('step', sectionId)
+      if (notebook) query.set('view', 'notebook')
+      else query.delete('view')
+      return query
+    })
+    setPlaceStatus(rememberLocation({ version: 1, courseId, sectionId, notebook }))
   }
+  const resolvedCourseId = course?.id
+  const resolvedSectionId = section?.id ?? ''
+  useEffect(() => {
+    if (!resolvedCourseId || staleLocation) return
+    const next: StudyLocation = {
+      version: 1,
+      courseId: resolvedCourseId,
+      sectionId: resolvedSectionId,
+      notebook: notebookView,
+    }
+    // Report the result of synchronizing browser history with external saved-place storage.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPlaceStatus(rememberLocation(next))
+  }, [resolvedCourseId, resolvedSectionId, notebookView, staleLocation])
+
   function focusStep() {
     focusRequested.current = true
   }
@@ -177,14 +221,12 @@ export function Programs() {
     if (!course) return
     savePlace(course.id, id)
     setPaused(false)
-    setNotebookView(false)
     setChooserOpen(false)
     focusStep()
   }
   function showNotebook(value: boolean) {
     if (!course) return
     savePlace(course.id, section?.id ?? '', value)
-    setNotebookView(value)
     setPaused(false)
     focusStep()
   }
@@ -226,7 +268,6 @@ export function Programs() {
                       const next = program.courses.find((c) => c.id === e.target.value)!
                       savePlace(next.id, next.sections[0]?.id ?? '')
                       setPaused(false)
-                      setNotebookView(false)
                     }}
                   >
                     {program.courses.map((c) => (
@@ -259,11 +300,14 @@ export function Programs() {
             </details>
             {staleLocation && (
               <p role="status">
-                Your saved course or step is no longer available. Showing the first available step; choose
-                where to continue. Existing notes have not been removed.
+                {linked
+                  ? 'The linked course or step could not be found.'
+                  : 'Your saved course or step is no longer available.'}{' '}
+                Showing the first available step; choose where to continue. Existing notes have not been
+                removed.
               </p>
             )}
-            {placeStatus && (
+            {placeStatus && !staleLocation && (
               <p role="status" className="text-xs text-muted">
                 {placeStatus}
               </p>

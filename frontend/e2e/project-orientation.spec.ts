@@ -124,3 +124,26 @@ for (const width of [1280, 320]) {
     await page.screenshot({ path: info.outputPath('project-orientation.png'), fullPage: true })
   })
 }
+
+
+test('project links and browser history preserve the selected step', async ({ page }) => {
+  await page.route('**/local-learning/program.json', route => route.fulfill({ json: program }))
+  await page.goto('/programs?course=b&step=second')
+  await expect(page.getByRole('heading', { name: 'Compare results', exact: true })).toBeVisible()
+  await page.getByText('Change course or project step', { exact: true }).click()
+  await page.getByRole('combobox', { name: 'Project step', exact: true }).selectOption('first')
+  await expect(page).toHaveURL(/step=first/)
+  await page.goBack()
+  await expect(page.getByRole('heading', { name: 'Compare results', exact: true })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('project-study-location:v1') ?? 'null')?.sectionId)).toBe('second')
+  await page.goForward()
+  await expect(page.getByRole('heading', { name: 'Inspect the data', exact: true })).toBeVisible()
+})
+
+
+test('missing project link discloses fallback without a saved-place claim', async ({ page }) => {
+  await page.route('**/local-learning/program.json', route => route.fulfill({ json: program }))
+  await page.goto('/programs?course=missing&step=missing')
+  await expect(page.getByText(/linked course or step could not be found/)).toBeVisible()
+  await expect(page.getByText('Your place is saved in this browser.', { exact: true })).toHaveCount(0)
+})
