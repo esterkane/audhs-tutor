@@ -1042,3 +1042,7 @@ Final sanitized checkout verification: 16 component tests, frontend lint, TypeSc
 
 ## C6 capture transaction recovery — 2026-10-04
 Thought creation and promotion now commit their audit event atomically with the item change. See docs/slices/capture-atomicity.md. Verified 22 backend tests in both variants, 11 browser regressions, targeted Ruff/mypy, read-only review. No UI/schema/learning logic change. Next: durable retry intent and source-return contracts; do not claim exactly-once network saves yet.
+
+
+## C6 durable capture retry protocol — 2026-10-04
+Added optional learner-scoped save identity with immutable payload fingerprint, conflict response and atomic replay; additive migration c945fa0137bd preserves legacy rows. Existing clients remain unkeyed. 28 backend tests in both variants, 11 browser regressions, targeted Ruff/mypy and generated frontend type check passed; review clear. See docs/slices/capture-retry.md. Next: persist frontend save identity across reload/retry, handle legacy uncertain drafts and edited content explicitly. Source return, undo and C7 remain open.

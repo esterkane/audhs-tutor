@@ -1,0 +1,9 @@
+# C6 durable capture retry contract
+
+Existing workspace_request is session-bound and rejects new requests after session end. Reusing it would incorrectly make standalone capture require a session. Add nullable request_key and immutable request_fingerprint to parking_lot_item, uniquely indexed by learner/key. Legacy rows remain null. Store the original text/session/node payload fingerprint separately because promotion may change node_id.
+
+POST /parking accepts an optional bounded request_key. A matching replay returns the same item in its current state, including promoted/dropped; it never restores status or emits another event. A different payload returns 409. A SQLite insert-on-conflict serializes duplicate writes; item and event commit together. Session ownership is checked for new/replayed session contexts. No model/learning scheduling change. Existing unkeyed clients retain current semantics.
+
+Files: ORM model, additive Alembic migration, parking API, generated API schema/types, backend tests. Verify standalone/session replay, conflict, concurrent requests, dropped replay, event failure/retry and migration preservation. Frontend adoption is the following slice: persist one intent with its submitted payload, retain across reload/retry, allocate a new key only for explicit edited/new content, disclose legacy unconfirmed drafts without implying deduplication. Never auto-submit on reload.
+
+Backend protocol implemented. Verification: 28 backend tests passed in both variants, including concurrent requests, conflicts, dropped replay, keyed/unkeyed audit failures, upgrade preservation and downgrade/re-upgrade. Targeted Ruff and mypy passed; frontend generated types pass tsc. 11 isolated browser capture/action regression journeys passed. Read-only review found no blockers/majors. No UI behaviour changed in this slice: frontend adoption and corresponding reload/retry UX tests remain next, and no safe-retry promise is shown yet.

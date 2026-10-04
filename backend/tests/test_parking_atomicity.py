@@ -10,10 +10,17 @@ from app.db.models import LearningEvent, ParkingLotItem
 
 
 @pytest.mark.parametrize("with_session", [False, True])
+@pytest.mark.parametrize("keyed", [False, True])
 async def test_failed_park_event_rolls_back_thought(
-    client: AsyncClient, db: AsyncSession, monkeypatch: pytest.MonkeyPatch, with_session: bool
+    client: AsyncClient,
+    db: AsyncSession,
+    monkeypatch: pytest.MonkeyPatch,
+    with_session: bool,
+    keyed: bool,
 ) -> None:
     body: dict[str, str] = {"text": "Keep this idea for later"}
+    if keyed:
+        body["request_key"] = "retry-after-failure"
     if with_session:
         response = await client.post("/api/sessions", json={"mode": "steady", "energy": 3})
         assert response.status_code == 201

@@ -1,8 +1,14 @@
+import hashlib
+import json
+
 from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 
 from app.api.deps import DB, Learner
+from app.core.errors import AppError
+from app.db.base import new_id
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import ParkingLotItem, SkillNode
 from app.kernel import session as ksession
@@ -13,6 +19,7 @@ router = APIRouter(prefix="/parking", tags=["parking"])
 
 
 class ParkIn(BaseModel):
+    request_key: str | None = Field(default=None, min_length=1, max_length=128)
     session_id: str | None = None
     text: str = Field(min_length=1, max_length=500)
     node_id: str | None = None
@@ -49,8 +56,52 @@ def _out(p: ParkingLotItem) -> ParkOut:
     status_code=201,
 )
 async def park(body: ParkIn, db: DB, learner: Learner) -> ParkOut:
+    if body.request_key is not None:
+        ctx = EventContext(learner_id=learner.id, session_id=None, mode=Mode.STEADY, energy=3)
+        if body.session_id:
+            session = await ksession.get_owned(db, body.session_id, learner.id)
+            ctx = ksession.event_context(session)
+        fingerprint = hashlib.sha256(
+            json.dumps(body.model_dump(exclude={"request_key"}), sort_keys=True).encode()
+        ).hexdigest()
+        # End dependency reads before the insert acquires SQLite's write lock.
+        # A duplicate waits for the first short item/event transaction to finish.
+        await db.commit()
+        identity = new_id()
+        inserted = await db.scalar(
+            insert(ParkingLotItem)
+            .values(
+                id=identity,
+                learner_id=learner.id,
+                session_id=body.session_id,
+                text=body.text,
+                node_id=body.node_id,
+                request_key=body.request_key,
+                request_fingerprint=fingerprint,
+            )
+            .on_conflict_do_nothing(index_elements=["learner_id", "request_key"])
+            .returning(ParkingLotItem.id)
+        )
+        item = await db.scalar(
+            select(ParkingLotItem).where(
+                ParkingLotItem.learner_id == learner.id,
+                ParkingLotItem.request_key == body.request_key,
+            )
+        )
+        assert item is not None
+        if item.request_fingerprint != fingerprint:
+            raise AppError(
+                "request_conflict", "This save identity belongs to different text or context.", 409
+            )
+        if inserted:
+            await EventWriter(db, ctx).emit(
+                Verb.PARKED, ObjectType.NOTE, item.id, context={"node_id": body.node_id}
+            )
+        else:
+            await db.commit()
+        return _out(item)
     if body.session_id:
-        s = await ksession.get(db, body.session_id)
+        s = await ksession.get_owned(db, body.session_id, learner.id)
         events = EventWriter(db, ksession.event_context(s))
         return _out(await park_tangent(db, s, body.text, node_id=body.node_id, events=events))
     item = ParkingLotItem(

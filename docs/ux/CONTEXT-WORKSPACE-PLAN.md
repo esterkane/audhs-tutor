@@ -77,3 +77,5 @@ C6 recent browsing/review visibility: ../slices/home-recent-areas.md. Next recon
 C6 Home resume intent is implemented in ../slices/home-resume-intent.md. Continue and optional new-session preparation are separate; changing the active lesson uses explicit session-switch confirmation. This does not complete C6 or authorize multiple independently paused sessions.
 
 C6 capture transaction prerequisite: ../slices/capture-atomicity.md. Event failure no longer leaves a committed item/status change. Durable intent IDs, contextual return and C7 remain unfinished.
+
+C6 durable capture retry backend is recorded in ../slices/capture-retry.md. Frontend adoption is next; existing UI saves are still unkeyed.

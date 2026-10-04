@@ -363,6 +363,9 @@ class ModelRegistry(Base):
 # ---------------------------------------------------------------- UX
 class ParkingLotItem(IdMixin, LearnerScoped, Base):
     __tablename__ = "parking_lot_item"
+    __table_args__ = (Index("uq_parking_owner_request", "learner_id", "request_key", unique=True),)
+    request_key: Mapped[str | None] = mapped_column(Text)
+    request_fingerprint: Mapped[str | None] = mapped_column(Text)
     session_id: Mapped[str | None] = mapped_column(Text, ForeignKey("session.id"))
     text: Mapped[str] = mapped_column(Text)
     node_id: Mapped[str | None] = mapped_column(Text, ForeignKey("skill_node.id"))

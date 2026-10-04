@@ -4117,6 +4117,8 @@ export interface components {
     }
     /** ParkIn */
     ParkIn: {
+      /** Request Key */
+      request_key?: string | null
       /** Session Id */
       session_id?: string | null
       /** Text */
