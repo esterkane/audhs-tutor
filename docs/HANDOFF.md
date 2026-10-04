@@ -1097,3 +1097,6 @@ C7 first recent-material UI now records loaded sources and known standalone codi
 
 
 Recent material now includes resolved saved explanations and displayed audio lessons; source/project/learning state contracts remain distinct. Evidence in docs/slices/recent-contexts.md. Next: project/checkpoint recent destinations.
+
+
+Recent project views and guarded lesson checkpoints are implemented; tests and limitations in docs/slices/recent-contexts.md. Next: reconcile area history and complete search-store inventory; preserve authoritative Resume.

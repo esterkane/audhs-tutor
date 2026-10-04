@@ -109,3 +109,6 @@ C7 foundation: typed bounded tab-local history store and first verified search-s
 
 
 C7 first recent-material UI now records loaded sources and known standalone coding workspaces, with keyboard return/clear and unchanged learning state. Evidence in docs/slices/recent-contexts.md. Other destination integrations and global search remain next.
+
+
+Recent project views and guarded lesson checkpoints are implemented; tests and limitations in docs/slices/recent-contexts.md. Next: reconcile area history and complete search-store inventory; preserve authoritative Resume.

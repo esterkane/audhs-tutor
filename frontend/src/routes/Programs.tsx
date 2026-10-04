@@ -1,3 +1,4 @@
+import { RememberContext } from '../features/recent/RememberContext'
 import { useSearchParams } from 'react-router-dom'
 import { SavedContextAnswers } from '../features/programs/SavedContextAnswers'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
@@ -321,6 +322,7 @@ export function Programs() {
           )}
           {notebookView && !paused && (
             <div className="grid gap-2">
+              {!staleLocation && section && <RememberContext context={{ version: 1, kind: 'project', course_id: course.id, section_id: section.id, view: 'notebook', label: `${course.title} — full notebook`.slice(0, 200) }} />}
               <Button onClick={() => showNotebook(false)}>Back to guided lesson</Button>
               <p className="text-sm">
                 This is the whole course notebook and its datasets. For a smaller practice task, return to the

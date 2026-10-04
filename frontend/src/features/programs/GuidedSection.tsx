@@ -1,3 +1,4 @@
+import { RememberContext } from '../recent/RememberContext'
 import { Link } from 'react-router-dom'
 import { useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -125,6 +126,7 @@ function Content({ section, course, paused, onOpenNotebook, requestedTask, onClo
   if (practiceOpen && section.practice)
     return (
       <div className="grid gap-3" data-capture-query={!paused && captureContext ? new URLSearchParams({ course, step: section.id, view: "task" }).toString() : undefined}>
+        {!paused && captureContext && <RememberContext context={{ version: 1, kind: 'project', course_id: course, section_id: section.id, view: 'task', label: `${section.title} — task notebook`.slice(0, 200) }} />}
         <p role="status">
           {saved === 'Saved work restored.'
             ? 'Your notebook view and saved project notes were restored.'
@@ -153,6 +155,7 @@ function Content({ section, course, paused, onOpenNotebook, requestedTask, onClo
     )
   return (
     <Card className="grid grid-cols-1 min-w-0 gap-4 [overflow-wrap:anywhere]">
+      {!paused && captureContext && <RememberContext context={{ version: 1, kind: 'project', course_id: course, section_id: section.id, view: 'guide', label: section.title.slice(0, 200) }} />}
       <p className="text-sm text-muted">
         {work.phase === 'Understand'
           ? 'Start here: read the idea and example. Then try one task.'

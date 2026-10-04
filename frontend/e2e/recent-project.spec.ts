@@ -1,0 +1,33 @@
+import { expect, test } from '@playwright/test'
+
+for (const width of [390, 1280]) test(`recent task notebook preserves code after returning to the guide ${width}`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.route('**/local-learning/program.json', route => route.fulfill({ json: {
+    title: 'Practice', courses: [{ id: 'fixture', title: 'Data practice', project: 'Count', status: 'Fixture', sections: [{ id: 'data', title: 'Inspect rows', explanation: 'Inspect first.', task: 'Count rows.', question: 'Why?', hint: 'Count.', criteria: 'Explain.', source: 'Fixture', practice: { notebook: '/local-learning/task.ipynb' } }] }],
+  } }))
+  await page.route('**/local-learning/task.ipynb', route => route.fulfill({ json: { nbformat: 4, metadata: { practice_checks: [{ name: 'Count', criterion: 'Two', code: 'assert 2 == 2' }] }, cells: [{ cell_type: 'code', source: 'print(2)' }] } }))
+  await page.goto('/programs?course=fixture&step=data')
+  await page.getByRole('button', { name: 'Try', exact: true }).click()
+  await page.getByLabel('Project notes').fill('Retain my observation')
+  await page.getByRole('button', { name: 'Open task starter notebook' }).click()
+  await expect(page.getByRole('region', { name: 'Notebook workspace', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Use plain editor', exact: true }).click()
+  await page.getByLabel('Starter code — edit your working copy').fill('print(42)')
+  await page.getByRole('button', { name: 'Back to task without results' }).click()
+  await expect(page.getByLabel('Project notes')).toHaveValue('Retain my observation')
+  await page.goto('/')
+  const recent = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Recently opened material' }) })
+  await recent.locator('summary').click()
+  await recent.getByRole('link', { name: 'Inspect rows — task notebook' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('region', { name: 'Notebook workspace', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Use plain editor', exact: true }).click()
+  await expect(page.getByLabel('Starter code — edit your working copy')).toHaveValue('print(42)')
+  await page.screenshot({ path: info.outputPath('returned-notebook.png'), fullPage: true })
+  await page.getByRole('button', { name: 'Back to task without results' }).click()
+  await expect(page.getByLabel('Project notes')).toHaveValue('Retain my observation')
+  await page.goto('/programs?course=fixture&step=missing&view=task')
+  await page.goto('/')
+  await recent.locator('summary').click()
+  await expect(recent.locator('a[href*="step=missing"]')).toHaveCount(0)
+})

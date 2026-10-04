@@ -1,0 +1,36 @@
+import { test, expect } from '@playwright/test'
+import { API, endOpenSession, expectOk } from './helpers'
+
+test.afterEach(async ({ request }) => { await endOpenSession(request) })
+for (const width of [390, 1280]) test(`recent lesson checks the server checkpoint ${width}`, async ({ page, request }, info) => {
+  await page.setViewportSize({ width, height: 900 })
+  await endOpenSession(request)
+  for (const key of ['goal.area', 'goal.course']) await request.put(`${API}/api/preferences`, { data: { key, value: '' } })
+  const started = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
+  await expectOk(started)
+  const session = await started.json()
+  const index = session.plan.findIndex((block: { type: string }) => block.type === 'new_material')
+  await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index } }))
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
+  const writes: string[] = []
+  page.on('request', req => { if (req.method() !== 'GET' && req.url().includes('/api/sessions')) writes.push(req.url()) })
+  async function openThought() {
+    const recent = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Recently opened material' }) })
+    await recent.locator('summary').click()
+    const original = recent.getByRole('button', { name: /Open original lesson/ })
+    await original.focus(); await page.keyboard.press('Enter')
+  }
+  await openThought()
+  await expect(page).toHaveURL(/\/session$/)
+  await expect(page.getByRole('dialog')).toHaveCount(0)
+  await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
+  await endOpenSession(request)
+  await openThought()
+  await expect(page.getByText(/Your learning session has moved on/)).toBeVisible()
+  await page.screenshot({ path: info.outputPath('original-lesson-moved.png'), fullPage: true })
+  await page.getByRole('link', { name: 'Choose whether to return to this lesson' }).click()
+  await expect(page).toHaveURL(/\?lesson=/)
+  expect(writes).toEqual([])
+})
