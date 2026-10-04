@@ -11,12 +11,12 @@ export function useParked(status: 'parked' | 'promoted' = 'parked') {
 }
 
 /** A deadline bounds the client wait, not server-side execution. Never retry mutations automatically. */
-async function changeThought(path: string, body?: object): Promise<ParkOut> {
+async function changeThought(path: string, body?: object): Promise<Schemas['ThoughtActionOut']> {
   const controller = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
   try {
     return await Promise.race([
-      apiFetch<ParkOut>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined, signal: controller.signal }),
+      apiFetch<Schemas['ThoughtActionOut']>(path, { method: 'POST', body: body ? JSON.stringify(body) : undefined, signal: controller.signal }),
       new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('Thought action timed out')) }, 15000) }),
     ])
   } finally { clearTimeout(timer) }
@@ -25,16 +25,11 @@ async function changeThought(path: string, body?: object): Promise<ParkOut> {
 export function useParkingActions() {
   const qc = useQueryClient()
   const invalidate = () => void qc.invalidateQueries({ queryKey: ['parking'] })
-  const promote = useMutation({
-    mutationFn: ({ id, to }: { id: string; to: string }) =>
-      changeThought(`/api/parking/${encodeURIComponent(id)}/promote`, { promoted_to: to }),
+  const change = useMutation({
+    mutationFn: ({ id, body }: { id: string; body: Schemas['ThoughtActionIn'] }) =>
+      changeThought(`/api/parking/${encodeURIComponent(id)}/actions`, body),
     retry: false,
     onSettled: invalidate,
   })
-  const drop = useMutation({
-    mutationFn: (id: string) => changeThought(`/api/parking/${encodeURIComponent(id)}/drop`),
-    retry: false,
-    onSettled: invalidate,
-  })
-  return { promote, drop, invalidate }
+  return { change, invalidate }
 }

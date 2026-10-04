@@ -1085,3 +1085,6 @@ Next C6 slice: docs/slices/thought-action-undo.md records the inspected revision
 
 
 Reminder undo backend foundation is implemented (migration e167bc2359df and revisioned action receipts). See docs/slices/thought-action-undo.md for evidence. Next: connect guarded actions/retry/Undo to existing UI; do not claim end-user undo available yet.
+
+
+C6 reminder Undo UI is implemented; exact retry identity, real end-to-end undo and stale-conflict evidence are in docs/slices/thought-action-undo.md. Controls are view-local, with durable server receipts. Next bounded phase: C7 typed recent destinations and actual searchable-store inventory. Human acceptance and remaining context gaps remain open.

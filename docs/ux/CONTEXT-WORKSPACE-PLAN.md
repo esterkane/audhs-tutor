@@ -100,3 +100,6 @@ Explicit source capture/direct return is implemented; evidence and remaining acc
 
 
 Next C6 slice: docs/slices/thought-action-undo.md records the inspected revision/receipt/atomicity contract for safe reversible reminder actions. Four existing browser journeys passed. No undo is implemented by this plan; backend transaction evidence precedes UI adoption.
+
+
+C6 reminder Undo UI is implemented; exact retry identity, real end-to-end undo and stale-conflict evidence are in docs/slices/thought-action-undo.md. Controls are view-local, with durable server receipts. Next bounded phase: C7 typed recent destinations and actual searchable-store inventory. Human acceptance and remaining context gaps remain open.
