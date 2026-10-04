@@ -946,3 +946,8 @@ Explicit linked tutor requests now retrieve local references, retain per-answer 
 ## Explicit starter-code help — 2026-10-04
 
 Lesson experiments now offer a starter request and explicit Python-example append with guarded Undo. Unsent questions/existing code are preserved; no autorun. See slices/lesson-starter-code.md for tests, browser evidence and limitations. Next: local-model grounding checks and remaining contextual workspace work.
+
+
+## Actual local grounding sample — 2026-10-04
+
+Seven synthetic real-local runtime cases completed; independent review:0 full passes,6 partials,1 failure. Source/citation mechanics are not model accuracy. Fixed the numeric-vector false citation warning; see slices/lesson-grounding-diagnostic.md for methods, limits and next reasoning/starter contract work. Routing and owner data unchanged.

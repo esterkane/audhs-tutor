@@ -149,3 +149,9 @@ async def test_repository_initialization_failure_completes_disclosed_reply(
     assert "unavailable" in first.json()["source_note"]
     replay = await client.post("/api/playground/tutor", json=body, headers=headers)
     assert replay.json() == first.json()
+
+
+def test_numeric_vectors_are_not_mislabeled_as_invalid_grounded_citations():
+    text = "For [1,2] and [3,4], the dot product is11 [1]."
+    assert disclose(text, source_count=1) == (text, False)
+    assert disclose("Unsupported source [9]", source_count=1)[1]

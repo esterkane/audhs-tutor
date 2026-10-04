@@ -12,7 +12,7 @@ The server validates lesson origin, resolves title/goal and searches local mater
 
 Saved answers include exact evidence text/hashes, identity and retrieval trace. Fresh exact reuse requires the same evidence/goal/contract plus existing corpus freshness checks. Completed idempotent retries return their original reply, including passages, without retrieving again. Missing embedding initialization and ordinary retrieval availability failures have bounded waits and disclosed general-help fallback. Cancellation remains cancellation. Standalone/program help, arithmetic/bin checking, routing, assessment and mastery are unchanged.
 
-Citation checking accepts only in-range single numeric markers outside code; ambiguous/composite markers get a warning without destroying prose. A valid marker does not prove that the passage supports the claim. Reference panels say this explicitly. No code is automatically inserted or executed, and opening the page does not trigger retrieval.
+Citation checking accepts only in-range single numeric markers outside code; out-of-range single markers get a warning without destroying prose. Composite numeric brackets remain ambiguous and are not validated as citations. A valid marker does not prove that the passage supports the claim. Reference panels say this explicitly. No code is automatically inserted or executed, and opening the page does not trigger retrieval.
 
 ## Evidence
 

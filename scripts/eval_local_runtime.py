@@ -391,7 +391,9 @@ def attempt_diagnostic(call):
     return result
 
 
-async def evaluate_case(db, gateway, learner_id, name, body, criteria, settings, on_respond=None):
+async def evaluate_case(
+    db, gateway, learner_id, name, body, criteria, settings, on_respond=None, repo=None
+):
     before = set(await db.scalars(select(ModelCall.id)))
     recorder = RecordedGateway(gateway)
     result = {
@@ -407,7 +409,7 @@ async def evaluate_case(db, gateway, learner_id, name, body, criteria, settings,
         if on_respond is not None:
             on_respond()
         reply = await asyncio.wait_for(
-            playground.respond(db, recorder, learner_id, body, settings=settings),
+            playground.respond(db, recorder, learner_id, body, settings=settings, repo=repo),
             timeout=120,
         )
         result["reply"] = reply.model_dump()
