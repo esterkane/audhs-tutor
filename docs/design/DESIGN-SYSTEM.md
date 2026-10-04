@@ -1,3 +1,5 @@
+> Owner decision,2026-10-04: the uploaded design package is the authoritative design system. Prior prototype/defer language below is historical assessment, not authority to substitute the old appearance. See [source/README.md](source/README.md). Implement its visual/component direction in bounded slices, documenting specific accessibility, learning-state and offline-provenance conflicts.
+
 # Design system — Phase 6
 
 2026-10-04. Specification for later prototypes and bounded implementation; production CSS is unchanged. Reuse the existing Tailwind v4 `@theme` in [index.css](../../frontend/src/index.css), shared UI primitives and sensory preferences. There is no new framework, font download or parallel component library. The [information architecture](../ux/UX-ARCHITECTURE.md) defines content priorities; tokens cannot solve unclear learning-state semantics.

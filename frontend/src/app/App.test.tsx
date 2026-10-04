@@ -3,6 +3,7 @@ import { expect, it, vi } from 'vitest'
 import { Shell } from './App'
 import { renderApp } from '../test/utils'
 import { useMode } from '../stores/mode'
+vi.mock('../features/areas/BrowseArea', () => ({ BrowseArea: () => null }))
 vi.mock('../features/sensory/useSensory', () => ({ useSensory: () => {} }))
 vi.mock('../features/audio/AudioControls', () => ({ AudioControls: () => <button>Audio controls</button> }))
 vi.mock('../features/programs/LearningCompanion', () => ({ LearningCompanion: () => null }))

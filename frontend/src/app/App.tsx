@@ -1,3 +1,4 @@
+import { BrowseArea } from '../features/areas/BrowseArea'
 import { AudioControls } from '../features/audio/AudioControls'
 import { LearningCompanion } from '../features/programs/LearningCompanion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -81,6 +82,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <ParkingLotButton />
           </div>
         </div>
+        <BrowseArea />
         <nav aria-label="Main navigation" className="flex flex-wrap gap-2 text-sm items-start">
           <NavLink to="/" end className={navClass}>Home</NavLink>
           {navigationGroups.map((group, index) => {

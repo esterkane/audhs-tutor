@@ -1,3 +1,4 @@
+import { useBrowseAreas } from '../features/areas/browseState'
 import { SavedContextAnswers } from '../features/programs/SavedContextAnswers'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -44,6 +45,10 @@ export function Areas() {
     setSearch(next, { replace })
   }
   const area = query.data?.areas.find((a) => a.id === selected)
+  const remember = useBrowseAreas(state => state.remember)
+  useEffect(() => {
+    if (area || (!selected && query.isSuccess)) remember(area?.id ?? '')
+  }, [area, selected, query.isSuccess, remember])
   const areaDrafts =
     drafts.data?.drafts.filter((d) => d.area_id === selected && d.status !== 'rejected') ?? []
   const draft = areaDrafts.find((d) => d.id === draftId)

@@ -845,3 +845,7 @@ Capture and status moved into header flow; dialog scrolls within viewport. Six u
 ## C2a and uploaded design assessment — 2026-10-04
 
 Area/draft choices now survive URL history and refresh; same-route history preserves unsaved editors. Five unit/three browser checks and lint/types/build pass. Normalized-save review issue fixed without overwriting newer input. Full-route draft retention and global browse context remain. See docs/slices/area-location.md. Uploaded design patterns assessed/merged in docs/design/UPLOADED-DESIGN-RECONCILIATION.md; no bundled runtime, font or skill installed.
+
+## Browsing context and design authority — 2026-10-04
+
+Header Browse area uses independent tab-local history and existing URLs, with explicit same-area Open.11 unit/seven targeted browser checks and lint/types/build pass. No learning-state writes. See docs/slices/browse-area-context.md. Owner explicitly made uploaded package the design system; exact canonical tokens and hashes are in docs/design/source. Earlier prototype/defer visual language is superseded. Next implement its visual foundation, documenting real accessibility/state conflicts.

@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, type Schemas } from '../../lib/api'
+import { boundedRead } from '../../lib/boundedRead'
 export type Area = Schemas['AreaOut']
 export function useAreas() {
-  return useQuery({ queryKey: ['areas'], queryFn: () => apiFetch<Schemas['AreaList']>('/api/areas') })
+  return useQuery({ queryKey: ['areas'], queryFn: ({ signal }) => boundedRead<Schemas['AreaList']>('/api/areas', signal, 'Areas'), retry: false })
 }
 export function useAreaJob() {
   return useQuery({

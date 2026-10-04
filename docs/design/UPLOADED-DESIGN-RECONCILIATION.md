@@ -1,3 +1,5 @@
+> Owner decision,2026-10-04: the uploaded design package is the authoritative design system. Prior prototype/defer language below is historical assessment, not authority to substitute the old appearance. See [source/README.md](source/README.md). Implement its visual/component direction in bounded slices, documenting specific accessibility, learning-state and offline-provenance conflicts.
+
 # Uploaded design kit reconciliation — 2026-10-04
 
 Owner requested assessment and useful integration into the current UX plan. Reviewed the saved design conversation and exported archive as reference data, including metadata, information architecture, component/pattern inventory and token recommendations. No bundled scripts executed, package installed or embedded SKILL adopted. Original exports remain local, outside the sanitized checkout.

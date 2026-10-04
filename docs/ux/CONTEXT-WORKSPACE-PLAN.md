@@ -32,3 +32,7 @@ Human validation: ask the owner to locate a prior explanation, resume, switch an
 ## Uploaded visual reference reconciliation
 
 [Design-kit assessment](../design/UPLOADED-DESIGN-RECONCILIATION.md) merges ContextBar, ResumeCard and panel/error specimens into C2/C3/C6 and a bounded C1 visual follow-up. Existing route grouping and evidence semantics take precedence over conflicting/stale artifact proposals. No runtime assets/fonts/embedded skills imported.
+
+## Owner design-system decision
+
+The uploaded package and companion information now govern visual/component decisions (docs/design/source/README.md). Adopt its tokens and component specifications deliberately; do not treat them as optional inspiration. Existing code is implementation evidence, not visual design authority. Reconcile navigation differences with the owner-approved workspace plan before changing routes; expose evidence/accessibility conflicts explicitly.
