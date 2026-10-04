@@ -1,0 +1,7 @@
+# JSON record dataset ingestion
+
+Implemented 2026-10-04. The JSON loader now accepts a nonempty list of nonempty objects, or an object whose values are nonempty record lists, after existing transcript/workflow/link detection. Each record is preserved as JSON code with collection and ordinal headings. Nested values, nulls and booleans remain typed; original URI, file hash and course provenance use the existing pipeline. No data is executed and no model is used to parse records.
+
+Arbitrary configuration, scalar lists, empty datasets and mixed metadata/collection objects remain unsupported. Only collections made entirely of link-only entries are references; URL-bearing dataset records retain all fields. Nested workflow-shaped objects are rejected to prevent bypassing workflow credential omission. Existing file-size and chunk limits apply. This adds searchable data, not automatic code execution or notebook dataset mounting.
+
+Verification: eight new loader cases cover wrapped workflow rejection, URL-column preservation, plain/named collections, value fidelity, provenance, reference-only links, excluded configuration and malformed input. Together with existing ingest, progress, format and workflow suites, 67 tests pass. Focused ruff and mypy checks pass. Two previously skipped local datasets imported as five indexed chunks; acquired source data and exact index verification remain private.

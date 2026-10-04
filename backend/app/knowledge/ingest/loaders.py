@@ -29,6 +29,7 @@ from app.knowledge.ingest.course_manifest import (
 from app.knowledge.ingest.drawio import drawio_blocks
 from app.knowledge.ingest.epub import epub_blocks
 from app.knowledge.ingest.htmltext import html_blocks
+from app.knowledge.ingest.jsondata import dataset_blocks
 from app.knowledge.ingest.latex import latex_blocks
 from app.knowledge.ingest.markdown import parse_markdown
 from app.knowledge.ingest.media import (
@@ -75,7 +76,7 @@ SUFFIX_TYPES: dict[str, str] = {
     ".adoc": "text",
     ".asciidoc": "text",
     ".textile": "text",
-    ".json": "text",  # sniffed: transcript / links / n8n workflow; other JSON is reported as skipped
+    ".json": "text",  # sniffed: transcript / links / workflow / record dataset
     ".tsv": "document",
     ".csv": "document",
     ".xml": "transcript",  # sniff TTML, otherwise validated XML source
@@ -171,7 +172,7 @@ FORMAT_GROUPS: dict[str, list[str]] = {
     "slides": [".pptx", ".odp", ".ppt*", ".key*", ".pdf (slides)"],
     "books & web": [".epub", ".html", ".htm", ".xhtml", ".webarchive*"],
     "notes": [".md", ".mdx", ".rmd", ".qmd", ".txt", ".rst", ".org", ".adoc", ".textile"],
-    "notebooks & code": [".ipynb", ".json (n8n workflow)", *sorted(LANG_BY_SUFFIX)],
+    "notebooks & code": [".ipynb", ".json (workflow or record dataset)", *sorted(LANG_BY_SUFFIX)],
     "archives": sorted(ARCHIVE_SUFFIXES),
     "audio (transcribed)": sorted(AUDIO_SUFFIXES),
     "video (transcribed)": sorted(MEDIA_SUFFIXES - AUDIO_SUFFIXES),
@@ -301,6 +302,8 @@ def stub_doc(
 def _links_blocks(obj: Any) -> list[Block]:
     """course `external-links.json`-style lists → one block of `title — url` lines."""
     if isinstance(obj, dict):
+        if len(obj) != 1:
+            raise SkipFile("json: not a links-only wrapper")
         for key in ("links", "resources", "items"):
             if isinstance(obj.get(key), list):
                 obj = obj[key]
@@ -309,6 +312,28 @@ def _links_blocks(obj: Any) -> list[Block]:
         raise SkipFile("json: not a transcript or a links list")
     if not obj:
         raise SkipFile("json: empty list")
+    link_fields = {
+        "url",
+        "href",
+        "link",
+        "title",
+        "name",
+        "label",
+        "type",
+        "courseTitle",
+        "sectionTitle",
+        "lectureTitle",
+        "fetchURL",
+    }
+    if not all(
+        isinstance(it, str)
+        and it.startswith(("http://", "https://"))
+        or isinstance(it, dict)
+        and set(it) <= link_fields
+        and any(it.get(k) for k in ("url", "href", "link"))
+        for it in obj
+    ):
+        raise SkipFile("json: not a links-only collection")
     lines: list[str] = []
     for it in obj:
         if isinstance(it, dict) and any(k in it for k in ("url", "href", "link")):
@@ -492,7 +517,14 @@ def load_file(
                 meta["format"] = "n8n-workflow-v1"
                 meta["omitted"] = ["parameter_values", "credentials", "runtime_data"]
                 return done(workflow, source_type=source_type or "code")
-            blocks = _links_blocks(obj)
+            try:
+                blocks = _links_blocks(obj)
+            except SkipFile:
+                dataset = dataset_blocks(obj)
+                if dataset is None:
+                    raise
+                meta["format"] = "json-records-v1"
+                return done(dataset, source_type=source_type or "code")
         except json.JSONDecodeError as e:
             raise ValueError(f"json: {e.msg}") from e
         meta["reference_only"] = True  # a list of links references material; it is not material
