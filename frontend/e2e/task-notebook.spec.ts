@@ -2,8 +2,13 @@ import { expect, test } from '@playwright/test'
 
 test('task starter runs locally and returns checked output to preserved notes', async ({ page }) => {
   await page.route('**/api/sessions/current', (route) => route.fulfill({ json: { id: 'fixture-session' } }))
+  let feedbackRequests = 0
   await page.route('**/api/playground/tutor', async (route) => {
-    expect(route.request().postDataJSON().learner_answer).toBe('Count rows before cleaning.')
+    expect(route.request().postDataJSON().learner_answer).toBe(
+      feedbackRequests++ === 0
+        ? 'Count rows before cleaning.'
+        : 'The run confirms two rows, before cleaning.',
+    )
     await route.fulfill({
       json: {
         text: 'Synthetic focused answer feedback.',
@@ -64,19 +69,32 @@ test('task starter runs locally and returns checked output to preserved notes', 
   await page.getByRole('button', { name: 'Open task starter notebook' }).click()
   await expect(page.getByRole('heading', { name: 'Notebook: Inspect rows' })).toBeFocused()
   await page.getByRole('combobox', { name: 'Notebook cell', exact: true }).selectOption('1')
-  await page.getByRole('textbox', { name: 'Your prediction or explanation', exact: true }).fill('Two printed rows.')
+  await page
+    .getByRole('textbox', { name: 'Your prediction or explanation', exact: true })
+    .fill('Two printed rows.')
   await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('0')
-  await page.getByRole('textbox', { name: 'Your prediction or explanation', exact: true }).fill('Count rows before cleaning.')
+  await page
+    .getByRole('textbox', { name: 'Your prediction or explanation', exact: true })
+    .fill('Count rows before cleaning.')
   await page.getByRole('button', { name: 'Review my answer', exact: true }).click()
   await expect(page.getByText('Synthetic focused answer feedback.')).toBeVisible()
   await expect(page.getByRole('combobox', { name: 'Notebook cell', exact: true })).toHaveValue('1')
   await page.getByRole('combobox', { name: 'Tutor focus', exact: true }).selectOption('current')
-  await expect(page.getByRole('textbox', { name: 'Your prediction or explanation', exact: true })).toHaveValue(
-    'Two printed rows.',
-  )
+  await expect(
+    page.getByRole('textbox', { name: 'Your prediction or explanation', exact: true }),
+  ).toHaveValue('Two printed rows.')
   await page.getByRole('button', { name: 'Run all and check' }).click()
   const done = page.getByRole('button', { name: 'Return to task with results' })
   await expect(done).toBeEnabled({ timeout: 45000 })
+  await page
+    .getByRole('textbox', { name: 'Your prediction or explanation', exact: true })
+    .fill('The run confirms two rows, before cleaning.')
+  await page.getByRole('button', { name: 'Review my answer', exact: true }).click()
+  await expect.poll(() => feedbackRequests).toBe(2)
+  await expect(done).toBeEnabled()
+  await page.getByRole('combobox', { name: 'Notebook cell', exact: true }).selectOption('0')
+  await expect(done).toBeEnabled()
+  await expect(page.getByText(/Calculation checks passed for this unchanged notebook code/)).toBeVisible()
   await page.setViewportSize({ width: 390, height: 844 })
   await done.focus()
   await page.keyboard.press('Enter')

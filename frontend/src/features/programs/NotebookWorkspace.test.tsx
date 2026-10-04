@@ -244,6 +244,12 @@ it('requires a clean full run before returning results and invalidates results a
     expect.arrayContaining([expect.objectContaining({ name: 'check' })]),
     expect.any(Object),
   )
+  fireEvent.change(screen.getByLabelText('Your prediction or explanation'), {
+    target: { value: 'The output confirms the row count.' },
+  })
+  expect(finish).toBeEnabled()
+  fireEvent.change(screen.getByLabelText('Notebook cell'), { target: { value: '1' } })
+  expect(finish).toBeEnabled()
   fireEvent.click(finish)
   expect(done).toHaveBeenCalledWith(expect.stringContaining('2'))
   fireEvent.change(screen.getByLabelText('Notebook cell'), { target: { value: '1' } })

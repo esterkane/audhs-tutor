@@ -81,7 +81,7 @@ function Workspace({
   const [plain, setPlain] = useState(false)
   const [tutorTarget, setTutorTarget] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
-  const [checked, setChecked] = useState(false)
+  const [checkedRun, setCheckedRun] = useState<RunResult | null>(null)
   const [result, setResult] = useState<RunResult | null>(null)
   const [status, setStatus] = useState(
     'Read the instructions, select a code cell, then predict what it will produce.',
@@ -98,7 +98,6 @@ function Workspace({
     [],
   )
   function update(next: Draft) {
-    setChecked(false)
     setDraft(next)
     try {
       localStorage.setItem(storageKey, JSON.stringify({ baseline, draft: next }))
@@ -113,7 +112,7 @@ function Workspace({
     runner.current?.dispose()
     runner.current = null
     setBusy(false)
-    setChecked(false)
+    setCheckedRun(null)
     setStatus('Run stopped. Your edits are preserved.')
   }
   async function run(all = false) {
@@ -122,7 +121,7 @@ function Workspace({
     const selected = all ? cells.length - 1 : draft.selected
     setBusy(true)
     setResult(null)
-    setChecked(false)
+    setCheckedRun(null)
     setStatus(`Running code through cell ${selected + 1} in a fresh Python sandbox…`)
     let current: Runner | null = null
     const timer = setTimeout(() => {
@@ -151,13 +150,15 @@ function Workspace({
       })
       if (operation.current !== token) return
       setResult(output)
-      setChecked(
+      setCheckedRun(
         all &&
           !output.error &&
           !output.timedOut &&
           checks.length > 0 &&
           output.results.length === checks.length &&
-          checks.every((c, i) => output.results[i]?.name === c.name && output.results[i]?.passed),
+          checks.every((c, i) => output.results[i]?.name === c.name && output.results[i]?.passed)
+          ? output
+          : null,
       )
       setStatus(
         output.error
@@ -290,6 +291,7 @@ function Workspace({
             value={draft.sources[draft.selected]}
             onChange={(source) => {
               if (busy) stop()
+              setCheckedRun(null)
               const sources = [...draft.sources]
               sources[draft.selected] = source
               update({ ...draft, sources })
@@ -413,14 +415,20 @@ function Workspace({
             Run every cell and the separate calculation checks before returning results. A clean run verifies
             those checks only, not your interpretation or course completion.
           </p>
+          {checkedRun && (
+            <p role="status">
+              Calculation checks passed for this unchanged notebook code. Your explanation has not been graded
+              by these checks.
+            </p>
+          )}
           <Button disabled={busy} onClick={() => void run(true)}>
             Run all and check
           </Button>
           <Button
-            disabled={!checked || busy}
+            disabled={!checkedRun || busy}
             onClick={() =>
               onFinish(
-                `Notebook run and checks completed.\n${result?.stdout ?? ''}${result?.truncated ? '\n(Output shortened.)' : ''}`,
+                `Notebook run and checks completed.\n${checkedRun?.stdout ?? ''}${checkedRun?.truncated ? '\n(Output shortened.)' : ''}`,
               )
             }
           >
