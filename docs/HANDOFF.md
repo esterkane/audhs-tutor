@@ -1011,3 +1011,8 @@ Global tutor entry, desktop panel and narrow modal sheet implemented without lea
 ## C6 Home topic disclosure — 2026-10-04
 
 Collapsed optional topic form, retained visible selection and new-session settings summary. Learning handlers unchanged. Evidence and remaining C6 scope: docs/slices/home-topic-disclosure.md. Next: inspect audio active-stop and contextual capture before the next bounded change.
+
+
+## C6 capture clarity/recovery — 2026-10-04
+
+Save for later replaces Park; failed/timed-out save retains text with uncertainty guidance, repeated pending submission is guarded, saved-list failures are explicit. Audio active Stop confirmed already outside collapsed settings. See docs/slices/save-for-later.md for checks and remaining idempotency/context/promotion gaps. C6 remains partial.

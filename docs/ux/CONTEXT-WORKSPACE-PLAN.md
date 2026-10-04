@@ -60,3 +60,6 @@ C5 responsive presentation is implemented in ../slices/companion-panel.md: one p
 
 
 C6 Home topic disclosure is recorded in ../slices/home-topic-disclosure.md. This is partial C6 progress; audio/capture audit and human comprehension remain open.
+
+
+C6 capture clarity and audio audit: ../slices/save-for-later.md. Durable contextual return, promotion recovery and remaining Home composition are still open; do not mark C6/C7 complete.

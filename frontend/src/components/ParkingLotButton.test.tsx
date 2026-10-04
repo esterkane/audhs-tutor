@@ -10,7 +10,7 @@ describe('ParkingLotButton', () => {
   it('is always rendered and usable even without a session', () => {
     useMode.setState({ sessionId: null })
     renderApp(<ParkingLotButton />)
-    expect(screen.getByRole('button', { name: /parking lot/i })).toBeEnabled()
+    expect(screen.getByRole('button', { name: /save for later/i })).toBeEnabled()
   })
 
   it('parks a tangent in two interactions (open, type + Enter)', async () => {
@@ -29,8 +29,8 @@ describe('ParkingLotButton', () => {
     )
     vi.stubGlobal('fetch', fetchMock)
     renderApp(<ParkingLotButton />)
-    fireEvent.click(screen.getByRole('button', { name: /parking lot/i }))
-    const box = await screen.findByLabelText(/tangent to park/i)
+    fireEvent.click(screen.getByRole('button', { name: /save for later/i }))
+    const box = await screen.findByLabelText(/thought to save/i)
     fireEvent.change(box, { target: { value: 'look up RoPE' } })
     fireEvent.keyDown(box, { key: 'Enter' })
     const posts = () =>

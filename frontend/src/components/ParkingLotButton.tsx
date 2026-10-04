@@ -1,5 +1,5 @@
 import * as Dialog from '@radix-ui/react-dialog'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { api } from '../lib/api'
 import { ParkedList } from '../features/parking/ParkedList'
 import { useParkingActions } from '../features/parking/api'
@@ -12,20 +12,40 @@ export function ParkingLotButton() {
   const { sessionId, skillId } = useMode()
   const [open, setOpen] = useState(false)
   const [text, setText] = useState('')
+  const pending = useRef<AbortController | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
   const [status, setStatus] = useState<string | null>(null)
   const { invalidate } = useParkingActions()
 
+  useEffect(() => () => { pending.current?.abort(); pending.current = null }, [])
+
   async function submit() {
-    if (!text.trim()) return
-    await api.park({
-      session_id: sessionId,
-      text: text.trim(),
-      node_id: skillId,
-    })
-    setText('')
-    invalidate()
-    setStatus('Parked. It stays out of the way until you promote it.')
-    setOpen(false)
+    if (!text.trim() || pending.current) return
+    const controller = new AbortController()
+    pending.current = controller
+    let timer: ReturnType<typeof setTimeout> | undefined
+    setSaving(true)
+    setError('')
+    setStatus(null)
+    try {
+      await Promise.race([
+        api.park({ session_id: sessionId, text: text.trim(), node_id: skillId }, controller.signal),
+        new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('Save wait timed out')) }, 15000) }),
+      ])
+      if (pending.current !== controller) return
+      setText('')
+      invalidate()
+      setStatus('Thought saved. Open Save for later to find it under Saved thoughts.')
+      setOpen(false)
+    } catch {
+      if (pending.current !== controller) return
+      invalidate()
+      setError('Could not confirm the save. Your text is still here. Check Saved thoughts before trying again; the server may have saved it.')
+    } finally {
+      clearTimeout(timer)
+      if (pending.current === controller) { pending.current = null; setSaving(false) }
+    }
   }
 
   return (
@@ -35,10 +55,10 @@ export function ParkingLotButton() {
         <Button
           variant="outline"
           className="bg-card"
-          aria-label="Parking lot: park a tangent for later"
-          title="Park a tangent for later"
+          aria-label="Save for later"
+          title="Save a thought for later"
         >
-          🅿 Park
+          Save for later
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>
@@ -47,12 +67,13 @@ export function ParkingLotButton() {
           className="fixed left-1/2 top-4 max-h-[calc(100dvh-2rem)] overflow-y-auto w-[min(90vw,32rem)] -translate-x-1/2 rounded-lg bg-card p-4 shadow-lg border border-line"
           aria-describedby="park-desc"
         >
-          <Dialog.Title className="text-lg font-semibold">Park a tangent</Dialog.Title>
+          <Dialog.Title className="text-lg font-semibold">Save a thought for later</Dialog.Title>
           <Dialog.Description id="park-desc" className="text-sm text-muted mb-2">
-            One line. Enter to park. It is linked to the current skill.
+            Save an idea without leaving your work. Press Enter to save or Shift+Enter for a new line. Session and skill context are included when available.
           </Dialog.Description>
           <Textarea
             autoFocus
+            disabled={saving}
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={(e) => {
@@ -61,19 +82,21 @@ export function ParkingLotButton() {
                 void submit()
               }
             }}
-            aria-label="Tangent to park"
+            aria-label="Thought to save"
             className="min-h-16"
           />
           <div className="flex flex-wrap gap-2 justify-end mt-2">
             <Dialog.Close asChild>
-              <Button variant="ghost">Cancel</Button>
+              <Button variant="ghost">{saving ? 'Close' : 'Cancel'}</Button>
             </Dialog.Close>
-            <Button variant="primary" onClick={() => void submit()} disabled={!text.trim()}>
-              Park it
+            <Button variant="primary" onClick={() => void submit()} disabled={saving || !text.trim()}>
+              {saving ? 'Saving…' : 'Save thought'}
             </Button>
           </div>
+          {error && <p role="alert" className="mt-2 text-sm">{error}</p>}
+          {saving && <p role="status" className="mt-2 text-sm">Saving your thought… Closing does not cancel the save.</p>}
           <details className="mt-3">
-            <summary className="cursor-pointer text-sm font-medium">Parked so far</summary>
+            <summary className="cursor-pointer text-sm font-medium">Saved thoughts</summary>
             <div className="mt-2">
               <ParkedList />
             </div>

@@ -5,8 +5,10 @@ import { useParked, useParkingActions } from './api'
 export function ParkedList() {
   const parked = useParked('parked')
   const { promote, drop } = useParkingActions()
+  if (parked.isPending) return <p role="status">Loading saved thoughts…</p>
+  if (parked.isError) return <p role="alert">Could not load saved thoughts. <Button onClick={() => void parked.refetch()}>Retry saved thoughts</Button></p>
   const items = parked.data?.items ?? []
-  if (items.length === 0) return <p className="text-sm text-muted">Nothing parked.</p>
+  if (items.length === 0) return <p className="text-sm text-muted">No saved thoughts.</p>
   return (
     <ul className="grid gap-1 text-sm" aria-label="Parked tangents">
       {items.map((p) => (
