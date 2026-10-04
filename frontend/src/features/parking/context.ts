@@ -1,3 +1,4 @@
+import { lessonIds } from '../visualizer/lessonCheckpoint'
 import type { Schemas } from '../../lib/api'
 export type ThoughtContext = NonNullable<Schemas['ParkIn']['original_context']>
 const id = (value: unknown): value is string => typeof value === 'string' && /^[A-Za-z0-9_.:-]{1,128}$/.test(value)
@@ -5,6 +6,7 @@ export function validThoughtContext(value: unknown): value is ThoughtContext {
   if (!value || typeof value !== 'object') return false
   const c = value as Record<string, unknown>
   if (c.version !== 1 || typeof c.label !== 'string' || !c.label.length || c.label.length > 200) return false
+  if (c.kind === 'audio_lesson') return lessonIds.includes(c.lesson as typeof lessonIds[number])
   if (c.kind === 'lesson') return id(c.session_id) && id(c.skill_id) && Number.isInteger(c.block_index) && Number(c.block_index) >= 0 && typeof c.block_started_at === 'string' && c.block_started_at.length > 0 && c.block_started_at.length <= 100
   if (c.kind === 'area') return id(c.area_id)
   if (c.kind === 'answer') return id(c.answer_id)
@@ -15,7 +17,8 @@ export function captureThoughtContext(path: string, search: string, label: strin
   const p = new URLSearchParams(search)
   const base = { version: 1 as const, label: label.slice(0, 200) || 'Original material' }
   let context: unknown
-  if (path === '/session' && p.has('capture_session') && p.has('capture_block')) context = { ...base, kind: 'lesson', session_id: p.get('capture_session'), skill_id: p.get('capture_skill'), block_index: Number(p.get('capture_block')), block_started_at: p.get('capture_started') }
+  if (path === '/playground/visualizer') context = { ...base, kind: 'audio_lesson', lesson: p.get('capture_audio_lesson') }
+  else if (path === '/session' && p.has('capture_session') && p.has('capture_block')) context = { ...base, kind: 'lesson', session_id: p.get('capture_session'), skill_id: p.get('capture_skill'), block_index: Number(p.get('capture_block')), block_started_at: p.get('capture_started') }
   else if (path === '/areas') context = { ...base, kind: 'area', area_id: p.get('area') }
   else if (path === '/programs') context = { ...base, kind: 'project', course_id: p.get('course'), section_id: p.get('step'), view: ['notebook', 'task'].includes(p.get('view') ?? '') ? p.get('view') : 'guide' }
   else if (/^\/answers\/[^/]+$/.test(path)) context = { ...base, kind: 'answer', answer_id: path.split('/')[2] }
@@ -25,6 +28,7 @@ export function captureThoughtContext(path: string, search: string, label: strin
 export function thoughtContextPath(context: ThoughtContext): string | undefined {
   if (!validThoughtContext(context)) return undefined
   const c = context
+  if (c.kind === 'audio_lesson') return `/playground/visualizer?saved_lesson=${c.lesson}`
   if (c.kind === 'lesson') return undefined // Requires a fresh authoritative checkpoint check.
   if (c.kind === 'area') return `/areas?area=${encodeURIComponent(c.area_id)}`
   if (c.kind === 'answer') return `/answers/${encodeURIComponent(c.answer_id)}`

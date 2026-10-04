@@ -89,3 +89,5 @@ C6 durable context first slice is implemented for areas/projects/answers/standal
 Task-starter saved-thought round-trip acceptance now passes, with a distinct task view; see capture-context-contract.md. This does not close remaining session/audio/source return requirements.
 
 Displayed Session lesson capture/return is implemented with a fresh checkpoint match and explicit mismatch choices. Review/recap without displayed identity, audio/source returns and undo remain unfinished; see capture-context-contract.md.
+
+C6 built-in audio Learn-step return is implemented with explicit application and no playback; preset-specific restoration and source/undo remain open (capture-context-contract.md).

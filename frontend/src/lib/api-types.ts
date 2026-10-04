@@ -2618,6 +2618,27 @@ export interface components {
       /** Mastery */
       mastery: number
     }
+    /** AudioLessonCapture */
+    AudioLessonCapture: {
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /** Label */
+      label: string
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: 'audio_lesson'
+      /**
+       * Lesson
+       * @enum {string}
+       */
+      lesson: 'amplitude' | 'frequency' | 'harmonics' | 'sampling' | 'mapping' | 'create'
+    }
     /** Block */
     Block: {
       /**
@@ -4185,6 +4206,7 @@ export interface components {
             | components['schemas']['AnswerCapture']
             | components['schemas']['WorkspaceCapture']
             | components['schemas']['LessonCapture']
+            | components['schemas']['AudioLessonCapture']
           )
         | null
       /** Request Key */
@@ -4211,6 +4233,7 @@ export interface components {
             | components['schemas']['AnswerCapture']
             | components['schemas']['WorkspaceCapture']
             | components['schemas']['LessonCapture']
+            | components['schemas']['AudioLessonCapture']
           )
         | null
       /** Id */

@@ -20,3 +20,9 @@ it('distinguishes task starter from full course notebook and guide', () => {
   const context = captureThoughtContext('/programs', '?course=c&step=s&view=task', 'Starter')!
   expect(thoughtContextPath(context)).toBe('/programs?course=c&step=s&view=task')
 })
+
+it('audio lesson links use a known step and no playback instruction', () => {
+  const context = captureThoughtContext('/playground/visualizer', '?capture_audio_lesson=harmonics', 'Harmonics')!
+  expect(thoughtContextPath(context)).toBe('/playground/visualizer?saved_lesson=harmonics')
+  expect(captureThoughtContext('/playground/visualizer', '?capture_audio_lesson=unknown', 'Unknown')).toBeUndefined()
+})

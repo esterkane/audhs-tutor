@@ -1066,3 +1066,7 @@ Fixed reproduced saved-thought task-notebook link opening only the guide after t
 
 ## C6 original lesson return — 2026-10-04
 Saved lesson thoughts now check current session/block identity before resuming. Mismatch offers explicit selected-lesson choices; no automatic replacement or resurrection. Exact evidence and remaining audio/source/undo scope are in capture-context-contract.md. Final sanitized2lesson journeys plus11pause/return regressions,6frontend and5backend tests pass; lint/types/build and review clear.
+
+
+## C6 saved audio lessons — 2026-10-04
+Built-in Learn steps now have durable thought links with explicit application and no autoplay; unknown steps preserve draft. Scope/evidence in capture-context-contract.md:6original/2sanitized browser journeys,5unit/5backend checks, lint/types/build and read-only review. Preset identity restoration is not implemented. Next source-viewer return and reversible thought actions; broader context/search plan remains incomplete.

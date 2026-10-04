@@ -43,6 +43,17 @@ class LessonCapture(ContextBase):
     block_started_at: str = Field(min_length=1, max_length=100)
 
 
+class AudioLessonCapture(ContextBase):
+    kind: Literal["audio_lesson"]
+    lesson: Literal["amplitude", "frequency", "harmonics", "sampling", "mapping", "create"]
+
+
 CaptureContext = Annotated[
-    AreaCapture | ProjectCapture | AnswerCapture | WorkspaceCapture | LessonCapture, Field(discriminator="kind")
+    AreaCapture
+    | ProjectCapture
+    | AnswerCapture
+    | WorkspaceCapture
+    | LessonCapture
+    | AudioLessonCapture,
+    Field(discriminator="kind"),
 ]

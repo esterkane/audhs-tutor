@@ -1,5 +1,5 @@
 import { ProjectAudioContext } from '../features/visualizer/ProjectAudioContext'
-import { initialLesson } from '../features/visualizer/lessonCheckpoint'
+import { initialLesson, lessonIds } from '../features/visualizer/lessonCheckpoint'
 import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -38,6 +38,8 @@ const Milkdrop = lazy(() => import('../features/visualizer/Milkdrop'))
 const EMPTY: Frame = { bass: 0, mid: 0, treble: 0, rms: 0 }
 export function Visualizer() {
   const [params] = useSearchParams()
+  const savedLesson = params.get('saved_lesson')
+  const validSavedLesson = lessonIds.find(step => step === savedLesson)
   const projectLinked = params.has('project_course') || params.has('project_step')
   const requestedWorkspace = params.get('workspace')
   const originWorkspace = activities.find(activity => activity.id === requestedWorkspace)
@@ -624,7 +626,13 @@ export function Visualizer() {
     if (view === 'Learn' && inspectId) document.getElementById('visualizer-explanation')?.focus()
   }, [view, inspectId])
   return (
-    <div className="grid gap-4">
+    <div className="grid gap-4" data-capture-query={view === 'Learn' ? new URLSearchParams({ capture_audio_lesson: lessonState.step }).toString() : ''} data-capture-label={`Audio lesson: ${lessonState.step}`}>
+      {savedLesson && <section className="border border-line rounded-lg p-4 grid gap-2" aria-label="Saved audio lesson">
+        {validSavedLesson ? <>
+          <p>Saved audio lesson: {validSavedLesson}. Opening it keeps your preset draft and tone settings. Audio and animation do not start automatically.</p>
+          <Button onClick={() => { setLessonState(previous => ({ ...previous, step: validSavedLesson, hint: false })); void revealView('Learn') }}>Open saved audio lesson</Button>
+        </> : <p role="status">This saved audio lesson is unavailable. Choose a learning step in Learn; your draft is unchanged.</p>}
+      </section>}
       <div>
         {!projectLinked && <Link to={returnTo}>{originWorkspace ? `← Return to coding workspace: ${originWorkspace.title}` : '← Coding playground'}</Link>}
         {!projectLinked && requestedWorkspace && !originWorkspace && <p role="status" className="text-sm text-muted">The linked coding workspace is unavailable. You can choose another in the playground; saved drafts are unchanged.</p>}
