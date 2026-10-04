@@ -48,3 +48,6 @@ C3 contextual tool capabilities and recovery have shipped in the corresponding s
 
 
 C4 area-map implementation is recorded in ../slices/area-map.md. This supersedes the prior next-step map contract; Library/source discovery remains incomplete.
+
+
+C4 Library source discovery is recorded in ../slices/library-sources.md. Next bounded work is C5 tutor persistence contracts and implementation; owner comprehension of C4 remains unverified.

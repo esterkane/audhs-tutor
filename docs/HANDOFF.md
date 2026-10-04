@@ -991,3 +991,8 @@ Recorded read-only area-map contract in docs/slices/area-map-plan.md. Verified s
 ## C4 area map implemented — 2026-10-04
 
 Map now offers explicit area URL scope and a global choice, using stored membership and transitive prerequisites. Outside-area prerequisites are labeled and readable as text. Learning goals/mastery/unlocks remain unchanged. See slices/area-map.md for backend/browser/build/review evidence and the native-select automation limitation. Next C4 work: organize existing Library/source discovery; persistent tutor remains C5. No broad phase closure or human-comprehension pass claimed.
+
+
+## C4 Library source discovery — 2026-10-04
+
+Library now offers Sources alongside Saved answers, reusing read-only retrieval and the source viewer with URL/history/focus recovery.15 component checks and6 browser journeys pass; final visual/lint/types/build evidence and limits are in slices/library-sources.md. Learning logic and model routing unchanged. C4 bounded implementation is present; human acceptance remains open. Next C5: inspect and define persistent tutor target/draft/stream lifecycle before changing the shell.

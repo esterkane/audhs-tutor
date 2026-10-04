@@ -3,7 +3,7 @@ import { apiFetch } from './api'
 export const READ_TIMEOUT_MS = 15000
 
 /** Bound the whole response, even when a transport ignores AbortSignal. */
-export async function boundedRead<T>(path: string, signal: AbortSignal, label: string): Promise<T> {
+export async function boundedRead<T>(path: string, signal: AbortSignal, label: string, init?: Omit<RequestInit, 'signal'>): Promise<T> {
   const controller = new AbortController()
   let timer: ReturnType<typeof setTimeout> | undefined
   let cancel: () => void = () => {}
@@ -20,7 +20,7 @@ export async function boundedRead<T>(path: string, signal: AbortSignal, label: s
     }, READ_TIMEOUT_MS)
   })
   try {
-    return await Promise.race([apiFetch<T>(path, { signal: controller.signal }), deadline])
+    return await Promise.race([apiFetch<T>(path, { ...init, signal: controller.signal }), deadline])
   } finally {
     clearTimeout(timer)
     signal.removeEventListener('abort', cancel)
