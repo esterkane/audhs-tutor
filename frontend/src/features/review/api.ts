@@ -1,11 +1,18 @@
 import { useReviewSubmission } from './useReviewSubmission'
 import { useQuery, useIsMutating } from '@tanstack/react-query'
-import { api } from '../../lib/api'
+import type { DueList } from '../../lib/api'
+import { boundedRead } from '../../lib/boundedRead'
 
 export function useDue(sessionId: string | null, all = false) {
   return useQuery({
     queryKey: ['due', sessionId, all],
-    queryFn: () => api.due(sessionId!, all),
+    queryFn: ({ signal }) =>
+      boundedRead<DueList>(
+        `/api/review/due?session_id=${encodeURIComponent(sessionId!)}${all ? '&all=true' : ''}`,
+        signal,
+        'Review cards',
+      ),
+    retry: false,
     enabled: !!sessionId,
   })
 }

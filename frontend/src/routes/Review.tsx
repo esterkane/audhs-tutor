@@ -154,12 +154,15 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
         </Button>
       </Card>
     )
-  if (due.isError)
+  if (due.isError && !due.data)
     return (
       <Card>
         {recoveryPanel}
         <p role="alert">Could not load review cards. Your saved ratings are retained.</p>
-        <Button onClick={() => void due.refetch()}>Retry</Button>
+        <Button disabled={due.isFetching} onClick={() => void due.refetch()}>
+          Retry
+        </Button>
+        <Button onClick={() => nav('/')}>Go to Home</Button>
         <SessionControls sessionId={sessionId} />
       </Card>
     )
@@ -167,9 +170,20 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
     return (
       <>
         {recoveryPanel}
-        <Card>Loading review…</Card>
+        <Card>
+          <p role="status">Loading review…</p>
+          <Button onClick={() => nav('/')}>Go to Home</Button>
+        </Card>
       </>
     )
+  const refreshWarning = due.isError ? (
+    <Card>
+      <p role="status">Could not refresh review cards. The displayed card and your progress are kept.</p>
+      <Button disabled={due.isFetching} onClick={() => void due.refetch()}>
+        {due.isFetching ? 'Retrying…' : 'Retry review cards'}
+      </Button>
+    </Card>
+  ) : null
   const items = due.data.items
   const admitted = queue.admitted ?? items.map((i) => i.item_id)
   if (queue.admitted === null) setQueue((q) => ({ ...q, admitted }))
@@ -224,6 +238,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       <Card>
         <SessionControls sessionId={sessionId} />
         {recoveryPanel}
+        {refreshWarning}
         <CardTitle>Review done</CardTitle>
         <p>
           {due.data.total_due === 0
@@ -284,6 +299,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
 
   return (
     <div className="grid gap-4">
+      {refreshWarning}
       {recoveryPanel}
       <SessionControls sessionId={sessionId} skillId={item.skill_id} />
       {state && !inReviewBlock && (

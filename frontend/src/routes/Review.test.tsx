@@ -366,3 +366,71 @@ it('does not restore a revealed answer against a changed content version', async
   sessionStorage.clear()
   vi.unstubAllGlobals()
 })
+
+it('retains the revealed card during a failed background refresh and explicit retry', async () => {
+  sessionStorage.clear()
+  useMode.setState({ sessionId: 's1' })
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  let fail = false
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.startsWith('/api/review/due'))
+        return fail
+          ? jsonResponse({ error: { code: 'offline', message: 'Offline' } }, 503)
+          : jsonResponse(due)
+      if (url.includes('/api/sessions/')) return jsonResponse(reviewSession)
+      return jsonResponse({ skills: [] })
+    }),
+  )
+  const mounted = render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter>
+        <Review />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+  try {
+    fireEvent.click(await screen.findByRole('button', { name: 'Show answer' }))
+    const card = screen.getByText(due.items[0].reveal)
+    fail = true
+    await act(async () => {
+      await qc.invalidateQueries({ queryKey: ['due', 's1'] })
+    })
+    expect(await screen.findByText(/Could not refresh review cards/)).toBeInTheDocument()
+    expect(screen.getByText(due.items[0].reveal)).toBe(card)
+    expect(screen.getByRole('button', { name: /^Good/ })).toBeEnabled()
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Retry review cards' }))
+    await waitFor(() => expect(screen.queryByText(/Could not refresh review cards/)).not.toBeInTheDocument())
+    expect(screen.getByText(due.items[0].reveal)).toBe(card)
+  } finally {
+    mounted.unmount()
+    qc.clear()
+    sessionStorage.clear()
+    vi.unstubAllGlobals()
+  }
+})
+
+it('does not report an empty review when its initial read fails', async () => {
+  sessionStorage.clear()
+  useMode.setState({ sessionId: 's1' })
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async (url: string) => {
+      if (url.startsWith('/api/review/due')) return jsonResponse({}, 503)
+      if (url.includes('/api/sessions/')) return jsonResponse(reviewSession)
+      return jsonResponse({ skills: [] })
+    }),
+  )
+  const mounted = renderApp(<Review />)
+  try {
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load review cards')
+    expect(screen.queryByText('Review done')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Go to Home' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Stop session' })).toBeEnabled()
+  } finally {
+    mounted.unmount()
+    vi.unstubAllGlobals()
+  }
+})
