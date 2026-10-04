@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 3 (2026-10-04)
+## Current owner scope — UX phase 4 (2026-10-04)
 
-Phase 3 [heuristic review](ux/HEURISTIC-REVIEW.md) ranks 14 open findings against usability/accessibility principles using the Phase 2 runtime evidence. Mastery after incorrect answers is S3 and requires a separate metric investigation; failed-read recovery and other presentation issues remain S2 unless stronger consequences are demonstrated. The earlier pause/end fix remains closed within its documented limits. No application or learning logic changed. Next incomplete design phase is Phase 4 behavioral persona testing; acquisition and other architecture queues remain parked under this scope.
+Phase 4 [persona walkthrough](ux/LEARNER-PERSONA-TESTS.md) covers five behavioral profiles with explicit evidence limits. New desktop/narrow probes verify pause/resume, local draft scope, fresh-context checkpoints and bookmark/Undo semantics; the combined 14-test run and final tightened two-probe run passed. No application or learning logic changed. Human comprehension, a real week-long return and complete adaptation actions remain open. Next incomplete phase is Phase 5 information architecture, derived from these findings; other queues remain parked.
 
 ## Prioritized next work
 

@@ -789,3 +789,7 @@ Findings: loading/empty states conceal failed reads; Models overflows on narrow 
 ## 2026-10-04 — Phase 3 heuristic review
 
 Added docs/ux/HEURISTIC-REVIEW.md: 14 severity-sorted open findings, original evidence crosswalk, Nielsen/WCAG mappings, closed AU-01 boundaries, unresolved hypotheses, candidate file/risk/test scopes. Rechecked relevant source and primary guidance; local document links and diff whitespace validated. No new browser run or production code change is claimed. The mastery observation is serious but does not establish an algorithm defect or authorize a formula change. Next is Phase 4 persona testing, preserving human comprehension, physical audio and delayed re-entry as open gates.
+
+## 2026-10-04 — Phase 4 persona walkthrough
+
+Added five-profile docs/ux/LEARNER-PERSONA-TESTS.md, opt-in learner-persona-audit.spec.ts and desktop/narrow evidence. Initial combined 14 browser tests passed; tightened evidence capture to wait for refreshed teach-phase status, then final two probes passed. Focused ESLint and screenshot review completed. Same-context draft survives pause/reload; fresh context retains server checkpoint but not unsent draft. Bookmarks do not advance or award mastery. Initial combined run exposed a real adaptation proposal with raw setting key; acceptance effects remain untested. Narrow capture flags Park overlap and below-fold explanation action for later layout verification. No production code changes; no human or learning-outcome pass claimed. Next: Phase 5 information architecture.
