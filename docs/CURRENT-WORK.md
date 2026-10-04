@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 4 (2026-10-04)
+## Current owner scope — UX phase 5 (2026-10-04)
 
-Phase 4 [persona walkthrough](ux/LEARNER-PERSONA-TESTS.md) covers five behavioral profiles with explicit evidence limits. New desktop/narrow probes verify pause/resume, local draft scope, fresh-context checkpoints and bookmark/Undo semantics; the combined 14-test run and final tightened two-probe run passed. No application or learning logic changed. Human comprehension, a real week-long return and complete adaptation actions remain open. Next incomplete phase is Phase 5 information architecture, derived from these findings; other queues remain parked.
+Phase 5 [proposed information architecture](ux/UX-ARCHITECTURE.md) maps all existing routes into task-oriented Home/Learn/Library/Progress/Settings groups and defines essential/contextual/optional/advanced learning content. Existing deep links, capabilities, checkpoint ownership and learning logic remain unchanged. This is a proposal awaiting later prototype validation, not a shipped navigation redesign. Next incomplete phase is Phase 6 design-system documentation using the existing tokens and primitives. Other queues remain parked.
 
 ## Prioritized next work
 
