@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { useSkillMap } from '../features/map/api'
@@ -29,7 +29,27 @@ export function Map() {
     }
   }, [map.data])
 
-  if (map.isLoading || !map.data) return <Card>Loading map…</Card>
+  const readRecovery = map.isError && (
+    <div className="mb-3">
+      <p role="alert">{map.data
+        ? 'Could not refresh the skill map. Showing the last loaded map.'
+        : 'Could not load the skill map.'}</p>
+      <p className="text-sm text-muted">Check that the local app backend is running, then retry.</p>
+      <Button className="mt-2" onClick={() => void map.refetch()} disabled={map.isFetching}>
+        Retry loading map
+      </Button>
+      {map.isFetching && <p role="status">Retrying map…</p>}
+      <details className="mt-2">
+        <summary>Technical details</summary>
+        <p className="text-sm break-words">{map.error.message}</p>
+      </details>
+    </div>
+  )
+  if (!map.data) return <Card>
+    <CardTitle as="h1">Skill map</CardTitle>
+    {readRecovery || <p role="status">Loading map…</p>}
+    <Link to="/" className="underline">Return Home</Link>
+  </Card>
 
   function learn(id: string) {
     nav(`/?lesson=${encodeURIComponent(id)}`)
@@ -38,7 +58,8 @@ export function Map() {
   return (
     <div className="grid gap-4">
       <Card>
-        <CardTitle>Skill map</CardTitle>
+        <CardTitle as="h1">Skill map</CardTitle>
+        {readRecovery}
         <p className="text-sm text-muted mb-2">
           Mastery is computed from evidence; memory shows items due for review. Locked nodes need their
           prerequisites at 60 %.

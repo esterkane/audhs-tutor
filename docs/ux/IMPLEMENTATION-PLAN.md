@@ -71,3 +71,5 @@ Stage1a implemented and verified: [control/code token slice](../slices/design-co
 Stage1b bounded adoption: [Preferences page heading](../slices/preferences-page-heading.md). CardTitle supports contextual heading level while default callers stay h2. Other heading migrations and any future button issue remain scoped to reproduced evidence. Next: Stage2a Preferences failed-read recovery.
 
 Stage2a Preferences correction implemented: [read recovery](../slices/preferences-read-recovery.md). Other failed-read routes remain open; Map is next.
+
+Stage2a Map recovery implemented: [slice](../slices/map-read-recovery.md). The new owner navigation proposal changes the next priority to [context/workspace reconciliation](CONTEXT-WORKSPACE-PLAN.md), C0 then bounded C1. Remaining read-recovery and other gates stay open.

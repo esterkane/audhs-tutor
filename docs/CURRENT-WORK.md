@@ -12,7 +12,7 @@ Acquisition, stored source text, search indexing, activated lessons and executab
 
 ## Current owner scope — UX read recovery (2026-10-04)
 
-Implemented [Preferences read recovery](slices/preferences-read-recovery.md): initial failure Retry/Home, cached-data refresh warning, bounded shared reads, and cancellation of stale reads before saving. Five browser and eighteen unit checks pass; lint/types/build pass with known warnings. No learning logic changed. Next bounded slice: Map read recovery. Other routes, settings semantics, complete layout adoption and human acceptance remain open.
+Implemented [Preferences read recovery](slices/preferences-read-recovery.md): initial failure Retry/Home, cached-data refresh warning, bounded shared reads, and cancellation of stale reads before saving. Five browser and eighteen unit checks pass; lint/types/build pass with known warnings. No learning logic changed. Map read recovery is now verified (two browser/two unit checks, lint/types/build); see slices/map-read-recovery.md. Next: C0 context/navigation inventory from ux/CONTEXT-WORKSPACE-PLAN.md, reconciling the new owner proposal before shell implementation. Other routes, settings semantics, complete layout adoption and human acceptance remain open.
 
 ## Prioritized next work
 

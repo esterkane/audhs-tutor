@@ -1,8 +1,14 @@
 import { useQuery } from '@tanstack/react-query'
-import { apiFetch, type Schemas } from '../../lib/api'
+import { type Schemas } from '../../lib/api'
+
+import { boundedRead } from '../../lib/boundedRead'
 
 export type MapOut = Schemas['MapOut']
 
 export function useSkillMap() {
-  return useQuery({ queryKey: ['skill-map'], queryFn: () => apiFetch<MapOut>('/api/skills/map') })
+  return useQuery({
+    queryKey: ['skill-map'],
+    queryFn: ({ signal }) => boundedRead<MapOut>('/api/skills/map', signal, 'Skill map'),
+    retry: false,
+  })
 }

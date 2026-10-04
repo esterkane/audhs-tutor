@@ -825,3 +825,7 @@ Corrected reproduced Preferences page heading through optional CardTitle heading
 ## 2026-10-04 — Stage2a Preferences read recovery
 
 Reproduced503 reads masking failure as loading. Added initial/stale-data recovery UI, existing15s bounded read and explicit retry; shared read cancellation before saving prevents late snapshots replacing saved preferences. Five browser checks, sixteen existing plus two new unit tests pass; lint/types/build pass. Screenshots inspected; exact fixture save values and keyboard retry verified. Shared-query deadline applies to other consumers; no backend or learning changes. See docs/slices/preferences-read-recovery.md. Next: separate Map read recovery.
+
+## Map recovery and revised navigation priority — 2026-10-04
+
+Map now has bounded reads, Retry/Home and retained cached map on refresh errors. Two unit/two browser checks, lint/types/build and read-only review pass. Park overlap remains. See docs/slices/map-read-recovery.md. New owner workspace proposal is reconciled in docs/ux/CONTEXT-WORKSPACE-PLAN.md: inventory context contracts before C1 shell changes; preserve all capabilities and learning state.
