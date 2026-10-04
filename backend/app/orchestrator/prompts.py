@@ -57,3 +57,7 @@ def playground_task(*, grounded: bool = False) -> str:
 
 def answer_feedback_task() -> str:
     return _read("playground/quoted-feedback.v3.md")
+
+
+def starter_task() -> str:
+    return _read("playground/starter.v1.md")

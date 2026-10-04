@@ -1,4 +1,4 @@
-export const STARTER_REQUEST = 'Suggest one small starter Python example for this lesson and explain what to try next. Use one fenced python code block with standard-library-only code. Label invented example data. Do not invent missing datasets, packages or credentials. Leave the main learning task for me to complete; do not claim the code has been run.'
+export const STARTER_REQUEST = 'Suggest one small starter Python example for this lesson and explain what to try next. Propose illustrative JSON data and one task for me to implement using Python built-ins. The app will supply an unfinished function. Do not invent missing datasets, packages or credentials, or claim the code has been run.'
 
 // Only complete, explicitly Python-tagged blocks are eligible for insertion.
 export function pythonExamples(text: string): string[] {

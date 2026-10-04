@@ -47,6 +47,8 @@ from app.orchestrator.workspace_provenance import disclose
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.feedback_selection import bound_selection, build_passages, to_quoted
 from app.schemas.playground import PlaygroundReply, PlaygroundRequest
+from app.schemas.starter import VERSION as STARTER_VERSION
+from app.schemas.starter import StarterPlan
 
 logger = logging.getLogger(__name__)
 
@@ -216,6 +218,10 @@ def messages(
         packet[0] = packet[0].model_copy(
             update={"content": packet[0].content + "\n\n" + prompts.answer_feedback_task()}
         )
+    if body.intent == "starter":
+        packet[0] = packet[0].model_copy(
+            update={"content": packet[0].content + "\n\n" + prompts.starter_task()}
+        )
     return packet
 
 
@@ -274,6 +280,8 @@ async def respond(
         await validate_lesson_origin(db, learner_id, body)
     evidence_identity = evidence.identity() if evidence else None
     prompt_version = VERSION + ".lesson.v2" if evidence is not None else VERSION
+    if body.intent == "starter":
+        prompt_version += "." + STARTER_VERSION
     source_status: Literal["supplied", "empty", "unavailable", "not_requested"] = (
         "supplied"
         if evidence and evidence.passages
@@ -383,6 +391,7 @@ async def respond(
     )
     checked_feedback = None
     selected_feedback = None
+    starter_plan = None
     await validate_lesson_origin(db, learner_id, body)
     try:
         out = await gateway.complete(
@@ -393,9 +402,11 @@ async def respond(
             learner_id=learner_id,
             session_id=session.id,
             max_tokens=650 if feedback_schema else 900,
-            response_model=feedback_schema,
+            response_model=StarterPlan if body.intent == "starter" else feedback_schema,
             metadata={"task": "playground", "prompt_version": prompt_version, "turn_id": turn_id},
         )
+        if body.intent == "starter":
+            starter_plan = StarterPlan.model_validate_json(out.result.text)
         if feedback_schema:
             selected_feedback = feedback_schema.model_validate_json(out.result.text)
             checked_feedback = to_quoted(
@@ -406,7 +417,12 @@ async def respond(
     except (GatewayError, ValidationError, NoModelReady) as exc:
         raise AppError(
             "tutor_unavailable",
-            "The tutor is unavailable. Your work is retained; check the selected model and budget, then retry.",
+            (
+                "The tutor could not provide a usable starter template. Your code is unchanged. "
+                "You can ask for an explanation or start a new request."
+            )
+            if body.intent == "starter"
+            else "The tutor is unavailable. Your work is retained; check the selected model and budget, then retry.",
             http_status=503,
         ) from exc
     if not out.result.text.strip():
@@ -414,7 +430,11 @@ async def respond(
             "tutor_unavailable", "The tutor returned no answer. Try again.", http_status=503
         )
     response_text, citation_warning = disclose(
-        render_feedback(checked_feedback) if checked_feedback else out.result.text,
+        starter_plan.render()
+        if starter_plan
+        else render_feedback(checked_feedback)
+        if checked_feedback
+        else out.result.text,
         source_count=len(source_values),
         grounded=evidence is not None,
     )
@@ -477,6 +497,8 @@ async def respond(
             "source_text_hashes": evidence.text_hashes() if evidence else {},
             "lesson_evidence_identity": evidence_identity,
             "lesson_evidence": evidence.model_dump() if evidence else None,
+            "starter_plan": starter_plan.model_dump() if starter_plan else None,
+            "starter_contract": STARTER_VERSION if starter_plan else None,
             "citation_warning": citation_warning,
             **(
                 {"raw_model_text": out.result.text}

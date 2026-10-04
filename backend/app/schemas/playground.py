@@ -37,7 +37,9 @@ class PlaygroundRequest(BaseModel):
     learning_context: PlaygroundContext | None = None
     learner_question: str | None = Field(default=None, max_length=2000)
     learner_answer: str | None = Field(default=None, max_length=8000)
-    intent: Literal["chat", "explain", "hint", "big_picture", "check_answer", "check_bins"] = "chat"
+    intent: Literal[
+        "chat", "explain", "hint", "big_picture", "check_answer", "check_bins", "starter"
+    ] = "chat"
     question: str = Field(default="", max_length=2000)
     exercise: str = Field(max_length=8000)
     code: str = Field(max_length=16000)

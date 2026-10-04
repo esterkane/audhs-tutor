@@ -4243,7 +4243,7 @@ export interface components {
        * @default chat
        * @enum {string}
        */
-      intent: 'chat' | 'explain' | 'hint' | 'big_picture' | 'check_answer' | 'check_bins'
+      intent: 'chat' | 'explain' | 'hint' | 'big_picture' | 'check_answer' | 'check_bins' | 'starter'
       /**
        * Question
        * @default

@@ -956,3 +956,8 @@ Seven synthetic real-local runtime cases completed; independent review:0 full pa
 ## Grounded explanation revision — 2026-10-04
 
 Prompt v2 plus versioned reuse improves the bounded local sample but does not pass the quality gate. Llama:1pass/5partial/1fail; Gemma:2pass/4partial/1fail, including incorrect source attribution. No routing switch. Empty-grounded vector warning fixed. See slices/grounded-explanation-v2.md; next is a validated starter contract.
+
+
+## Validated starter contract — 2026-10-04
+
+Starter help now separates model-proposed data/result from app-owned unfinished Python scaffolding. Keyboard insertion, Undo and lesson return remain explicit; narrow conversation overflow fixed. See slices/starter-contract-progress.md for verification and remaining semantic quality limits. Full C3/design plan remains open.

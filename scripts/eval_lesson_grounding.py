@@ -110,7 +110,7 @@ FIXTURES = [
 ]
 
 
-async def prepare(db, owner, session, index, fixture):
+async def prepare(db, owner, session, index, fixture, *, starter_contract=False):
     name, texts, question, answer, output, stale, criteria = fixture
     skill_id = f"grounding-{index}"
     db.add(
@@ -155,6 +155,7 @@ async def prepare(db, owner, session, index, fixture):
         PlaygroundRequest(
             session_id=session.id,
             lesson_origin=LessonOrigin(skill_id=skill_id),
+            intent="starter" if starter_contract and name == "starter" else "chat",
             exercise="A synthetic small reasoning task.",
             question=question,
             learner_answer=answer or None,
@@ -166,10 +167,12 @@ async def prepare(db, owner, session, index, fixture):
     )
 
 
-async def run(output, model):
+async def run(output, model, *, starter_contract=False, selected_case=None):
     local_settings(get_settings())
     report = {
-        "version": 1,
+        "version": 2,
+        "starter_contract": starter_contract,
+        "selected_case": selected_case,
         "model": model,
         "synthetic": True,
         "production_routing_exercised": False,
@@ -200,8 +203,15 @@ async def run(output, model):
                             db, world.learner_id, mode=Mode.STEADY, energy=3
                         )
                         for index, fixture in enumerate(FIXTURES):
+                            if selected_case and fixture[0] != selected_case:
+                                continue
                             repo, body, criteria = await prepare(
-                                db, world.learner_id, session, index, fixture
+                                db,
+                                world.learner_id,
+                                session,
+                                index,
+                                fixture,
+                                starter_contract=starter_contract,
                             )
                             result = await evaluate_case(
                                 db,
@@ -230,5 +240,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--model", choices=["llama31-8b", "gemma3-12b", "gemma3-27b"], default="llama31-8b"
     )
+    parser.add_argument("--starter-contract", action="store_true")
+    parser.add_argument("--case", choices=[fixture[0] for fixture in FIXTURES])
     args = parser.parse_args()
-    asyncio.run(run(args.out, args.model))
+    asyncio.run(
+        run(args.out, args.model, starter_contract=args.starter_contract, selected_case=args.case)
+    )

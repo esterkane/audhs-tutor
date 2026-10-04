@@ -244,6 +244,7 @@ function Workspace({
     if (!sessionId || tutorAbort.current || contextCheck.current) return
     const defaults = {
       chat: '',
+      starter: STARTER_REQUEST,
       explain: 'Explain how this code works.',
       hint: 'Give me one hint for the current task without solving it.',
       big_picture: 'Show how this task fits into a larger data workflow, and one tradeoff.',
@@ -567,7 +568,7 @@ function Workspace({
               )}
               <div className="grid gap-3 mt-4 max-h-[30rem] overflow-auto" aria-label="Tutor conversation">
                 {draft.chat.map((m, i) => (
-                  <div key={i} className="border-b border-line pb-2">
+                  <div key={i} className="min-w-0 border-b border-line pb-2">
                     <p className="text-xs font-medium">{m.role === 'user' ? 'You' : 'Tutor'}</p>
                     {m.role === 'assistant' &&
                       typeof m.codeSnapshot === 'string' &&
@@ -638,7 +639,7 @@ function Workspace({
               </div>
               {expectedSession && expectedSkill && (
                 <Button className="mt-2" disabled={!sessionId || busy || draft.code.length > 16000}
-                  onClick={() => void ask('chat', STARTER_REQUEST)}>Suggest starter code</Button>
+                  onClick={() => void ask('starter', STARTER_REQUEST)}>Suggest starter code</Button>
               )}
               <div className="flex flex-wrap gap-2 mt-2">
                 {(['hint', 'explain', 'big_picture'] as const).map((intent) => (
