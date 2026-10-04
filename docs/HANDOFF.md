@@ -951,3 +951,8 @@ Lesson experiments now offer a starter request and explicit Python-example appen
 ## Actual local grounding sample — 2026-10-04
 
 Seven synthetic real-local runtime cases completed; independent review:0 full passes,6 partials,1 failure. Source/citation mechanics are not model accuracy. Fixed the numeric-vector false citation warning; see slices/lesson-grounding-diagnostic.md for methods, limits and next reasoning/starter contract work. Routing and owner data unchanged.
+
+
+## Grounded explanation revision — 2026-10-04
+
+Prompt v2 plus versioned reuse improves the bounded local sample but does not pass the quality gate. Llama:1pass/5partial/1fail; Gemma:2pass/4partial/1fail, including incorrect source attribution. No routing switch. Empty-grounded vector warning fixed. See slices/grounded-explanation-v2.md; next is a validated starter contract.

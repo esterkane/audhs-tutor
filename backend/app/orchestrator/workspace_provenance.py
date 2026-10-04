@@ -13,10 +13,10 @@ WARNING = (
 )
 
 
-def disclose(text: str, *, source_count: int = 0) -> tuple[str, bool]:
+def disclose(text: str, *, source_count: int = 0, grounded: bool = False) -> tuple[str, bool]:
     """Keep raw response intact; prepend a readable, listenable limitation if needed."""
     markers = _REFERENCE.findall(_CODE.sub("", text))
-    if source_count:
+    if grounded or source_count:
         # Grounded prompts use single [n] references. Composite numeric brackets are
         # ambiguous (often vector/list literals), not proof of an invalid citation.
         markers = [marker for marker in markers if re.fullmatch(r"\[\d+\]", marker)]

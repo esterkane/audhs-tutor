@@ -155,3 +155,28 @@ def test_numeric_vectors_are_not_mislabeled_as_invalid_grounded_citations():
     text = "For [1,2] and [3,4], the dot product is11 [1]."
     assert disclose(text, source_count=1) == (text, False)
     assert disclose("Unsupported source [9]", source_count=1)[1]
+
+
+async def test_previous_grounded_prompt_answer_is_not_reused(client, db, fake_repo, fake_local):
+    body, _ = await setup(client, db, fake_repo)
+    first = await client.post("/api/playground/tutor", json=body)
+    assert first.status_code == 200, first.text
+    saved = await db.get(TutorAnswer, first.json()["answer_id"])
+    assert saved.metadata_json["prompt_version"].endswith(".lesson.v2")
+    saved.metadata_json = {
+        **saved.metadata_json,
+        "prompt_version": saved.metadata_json["prompt_version"].replace(".lesson.v2", ".lesson.v1"),
+    }
+    await db.commit()
+    calls = len(fake_local.calls)
+    fresh = await client.post("/api/playground/tutor", json=body)
+    assert fresh.status_code == 200, fresh.text
+    assert not fresh.json()["reused"]
+    assert len(fake_local.calls) == calls + 1
+
+
+def test_empty_grounded_lookup_does_not_mislabel_vectors_but_rejects_references():
+    text = "The vectors are [1,2] and [3,4]."
+    assert disclose(text, grounded=True) == (text, False)
+    assert disclose("A claim [1]", grounded=True)[1]
+    assert disclose(text)[1]  # Historical source-free disclosure remains conservative.

@@ -52,7 +52,7 @@ def voice_task(name: str) -> str:
 
 
 def playground_task(*, grounded: bool = False) -> str:
-    return _read("playground/tutor.grounded.v1.md" if grounded else "playground/tutor.v2.md")
+    return _read("playground/tutor.grounded.v2.md" if grounded else "playground/tutor.v2.md")
 
 
 def answer_feedback_task() -> str:

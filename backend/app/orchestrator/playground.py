@@ -273,7 +273,7 @@ async def respond(
             retrieval_trace_id = trace.id
         await validate_lesson_origin(db, learner_id, body)
     evidence_identity = evidence.identity() if evidence else None
-    prompt_version = VERSION + ".lesson.v1" if evidence is not None else VERSION
+    prompt_version = VERSION + ".lesson.v2" if evidence is not None else VERSION
     source_status: Literal["supplied", "empty", "unavailable", "not_requested"] = (
         "supplied"
         if evidence and evidence.passages
@@ -416,6 +416,7 @@ async def respond(
     response_text, citation_warning = disclose(
         render_feedback(checked_feedback) if checked_feedback else out.result.text,
         source_count=len(source_values),
+        grounded=evidence is not None,
     )
     arithmetic = checks_for(body)
     response_text = disclose_arithmetic(response_text, arithmetic)
