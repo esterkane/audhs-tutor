@@ -32,6 +32,7 @@ class Verb(StrEnum):
     UNDONE = "undone"
     PARKED = "parked"
     PROMOTED = "promoted"
+    THOUGHT_CHANGED = "thought_changed"
     SPOKE = "spoke"
     PRACTICED = "practiced"
     LISTENED = "listened"
@@ -112,6 +113,7 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
     Verb.UNDONE: (_R(), _R({"what", "why", "reversible", "policy_version"})),
     Verb.PARKED: (_R(), _R({"node_id", "promoted_to"})),
     Verb.PROMOTED: (_R(), _R({"node_id", "promoted_to"})),
+    Verb.THOUGHT_CHANGED: (_R(), _R({"action_id", "action", "revision", "undo_of"})),
     Verb.SPOKE: (
         _R({"stt_ms", "llm_first_token_ms", "tts_first_audio_ms", "total_ms", "interrupted"}),
         _R({"stt_model", "tts_model", "lang", "first_chunk"}),

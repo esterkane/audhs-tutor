@@ -67,3 +67,6 @@ or reversal of `questions.applied`, `questions.connections` or `questions.step_b
 None of these events writes competency evidence, review scheduling or assessment scores.
 
 Session clarity (2026-09-24): `attempted.confidence_pre` and `reviewed.confidence_pre` may be null when omitted. `reviewed.result.hint_count` records delivered question help; assisted review ratings are capped at Hard (2). Clear/later material marks are reversible explicit preferences and do not emit competency evidence.
+
+
+`thought_changed` (NOTE): context keys action_id, action, revision, undo_of; no result keys. Records reminder removal/undo atomically with its state and receipt, never competency evidence. Promotion retains its existing promoted event.

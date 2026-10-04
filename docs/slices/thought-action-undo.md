@@ -41,3 +41,9 @@ Likely files: db/models.py, new migration, schemas or api/parking.py, a focused 
 - Keyboard focus, slow/error/conflict feedback, narrow layout and refreshed Home/Saved thoughts agree with server state.
 
 C6 remains open until implementation and verification. C7 typed recents follows; human acceptance remains separate.
+
+
+## Backend foundation — 2026-10-04
+Migration e167bc2359df adds item revisions and learner-scoped action receipts. POST /parking/{id}/actions accepts request identity/expected revision and promote/drop/undo. A short BEGIN IMMEDIATE transaction serializes revision validation, state update, receipt and audit commit. Replay returns the recorded receipt alongside current item state; can_undo is false after newer changes. Undo restores only status/node_id/promoted_to from the latest non-undo receipt. Existing promote/drop routes use the same service and advance revisions, preserving older clients. Removal now emits thought_changed; promotion retains promoted. Original context/text/learning evidence are unchanged.
+
+Verification:31 backend tests passed in each checkout including concurrent same/different identities, replay, stale undo following legacy actions, source preservation, event rollback, schema migration and backup restoration; Ruff and focused mypy passed, generated frontend types compile. Read-only review found no blockers/majors. This is backend-only: existing UI still truthfully states no undo. UI guarded actions, explicit retained retry identity, Undo feedback and browser acceptance are next. Missing-skill restoration and cross-owner action tests should be expanded alongside that integration.

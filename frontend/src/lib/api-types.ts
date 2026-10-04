@@ -841,6 +841,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/parking/{item_id}/actions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Change Thought */
+    post: operations['change_thought_api_parking__item_id__actions_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/parking/{item_id}/promote': {
     parameters: {
       query?: never
@@ -850,7 +867,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Promote a parked tangent: to the next session (Home reminder) or onto a skill node */
+    /** Promote */
     post: operations['promote_api_parking__item_id__promote_post']
     delete?: never
     options?: never
@@ -867,7 +884,7 @@ export interface paths {
     }
     get?: never
     put?: never
-    /** Drop a parked or promoted item */
+    /** Drop */
     post: operations['drop_api_parking__item_id__drop_post']
     delete?: never
     options?: never
@@ -4226,6 +4243,11 @@ export interface components {
     }
     /** ParkOut */
     ParkOut: {
+      /**
+       * Revision
+       * @default 0
+       */
+      revision: number
       /** Original Context */
       original_context?:
         | (
@@ -5196,6 +5218,35 @@ export interface components {
     TemplateIn: {
       /** Template */
       template: string
+    }
+    /** ThoughtActionIn */
+    ThoughtActionIn: {
+      /** Request Key */
+      request_key: string
+      /** Expected Revision */
+      expected_revision: number
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: 'promote' | 'drop' | 'undo'
+      /**
+       * Promoted To
+       * @default next_session
+       */
+      promoted_to: string
+      /** Undo Of */
+      undo_of?: string | null
+    }
+    /** ThoughtActionOut */
+    ThoughtActionOut: {
+      item: components['schemas']['ParkOut']
+      /** Action Id */
+      action_id: string
+      /** Action Revision */
+      action_revision: number
+      /** Can Undo */
+      can_undo: boolean
     }
     /** ToolStatus */
     ToolStatus: {
@@ -7071,6 +7122,41 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ParkOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  change_thought_api_parking__item_id__actions_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        item_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ThoughtActionIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ThoughtActionOut']
         }
       }
       /** @description Validation Error */

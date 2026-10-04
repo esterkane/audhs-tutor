@@ -367,11 +367,26 @@ class ParkingLotItem(IdMixin, LearnerScoped, Base):
     request_key: Mapped[str | None] = mapped_column(Text)
     request_fingerprint: Mapped[str | None] = mapped_column(Text)
     original_context_json: Mapped[JsonDict | None] = mapped_column(JSON, nullable=True)
+    revision: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     session_id: Mapped[str | None] = mapped_column(Text, ForeignKey("session.id"))
     text: Mapped[str] = mapped_column(Text)
     node_id: Mapped[str | None] = mapped_column(Text, ForeignKey("skill_node.id"))
     status: Mapped[str] = mapped_column(Text, default="parked")  # parked | promoted | dropped
     promoted_to: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class ThoughtAction(IdMixin, LearnerScoped, Base):
+    __tablename__ = "thought_action"
+    __table_args__ = (UniqueConstraint("learner_id", "request_key"),)
+    item_id: Mapped[str] = mapped_column(Text, ForeignKey("parking_lot_item.id"))
+    request_key: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    action: Mapped[str] = mapped_column(Text)
+    before_json: Mapped[JsonDict] = mapped_column(JSON)
+    after_json: Mapped[JsonDict] = mapped_column(JSON)
+    revision: Mapped[int] = mapped_column(Integer)
+    undo_of: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 

@@ -1082,3 +1082,6 @@ Source acceptance expanded: competing viewers, retained draft source, actual sav
 
 
 Next C6 slice: docs/slices/thought-action-undo.md records the inspected revision/receipt/atomicity contract for safe reversible reminder actions. Four existing browser journeys passed. No undo is implemented by this plan; backend transaction evidence precedes UI adoption.
+
+
+Reminder undo backend foundation is implemented (migration e167bc2359df and revisioned action receipts). See docs/slices/thought-action-undo.md for evidence. Next: connect guarded actions/retry/Undo to existing UI; do not claim end-user undo available yet.

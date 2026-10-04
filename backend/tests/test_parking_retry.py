@@ -28,7 +28,8 @@ async def test_save_replay_and_conflict(client: AsyncClient, db: AsyncSession, w
     events = (
         await db.scalars(select(LearningEvent).where(LearningEvent.object_id == item["id"]))
     ).all()
-    assert len(events) == 1
+    assert len(events) == 2
+    assert sum(event.verb == "parked" for event in events) == 1
 
 
 async def test_concurrent_save_replays(client: AsyncClient):
