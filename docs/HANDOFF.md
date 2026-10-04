@@ -1076,3 +1076,6 @@ Source-return groundwork: docs/slices/source-capture-return.md records the inspe
 
 
 Explicit source capture/direct return is implemented; evidence and remaining acceptance coverage are recorded in docs/slices/source-capture-return.md. C6/C7 are not complete.
+
+
+Source acceptance expanded: competing viewers, retained draft source, actual saved identity and15-second timeout/retry pass in four browser journeys; details in docs/slices/source-capture-return.md. No runtime change. Next: reversible saved-thought action contract.
