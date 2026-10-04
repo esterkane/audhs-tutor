@@ -14,7 +14,7 @@ import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { OptionalConfidence } from '../components/OptionalConfidence'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
 import { useLayoutEffect, useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -103,6 +103,11 @@ export function Session() {
         <p className="text-sm text-muted my-2">Keep this lesson open with a quiet work panel. Closing it keeps your answer here.</p>
         {alongside && <Together embedded />}
       </details>
+      {st.skill_id && <details>
+        <summary className="cursor-pointer text-sm font-medium">Try a coding experiment</summary>
+        <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson. Code and chat stay separate from your assessed answers; no code runs automatically.</p>
+        <Link className="underline" to={`/playground?lesson_session=${encodeURIComponent(sessionId)}&lesson_skill=${encodeURIComponent(st.skill_id)}`}>Open lesson experiment</Link>
+      </details>}
       <SessionBody
         key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
         sessionId={sessionId}

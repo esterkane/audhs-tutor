@@ -195,3 +195,72 @@ it('ends timed-out waiting even if transport ignores abort, retaining the questi
   expect(screen.queryByText('Late timeout response')).toBeNull()
   expect(input).toHaveValue('Keep my question')
 })
+
+it('does not send lesson context after leaving during its preflight check', async () => {
+  let currentReads = 0
+  let holdCheck = false
+  let resolveCheck!: (value: Response) => void
+  const tutor = vi.fn()
+  const currentSession = { id: 'linked-session', state: { skill_id: 'linked-skill' }, active_skill: { id: 'linked-skill', title: 'Linked idea', description: 'Explore the idea' } }
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.endsWith('/api/sessions/current')) {
+      currentReads += 1
+      if (!holdCheck) return jsonResponse(currentSession)
+      return new Promise<Response>(resolve => { resolveCheck = resolve })
+    }
+    if (url.endsWith('/api/playground/tutor')) tutor()
+    return jsonResponse({})
+  }))
+  const view = renderApp(<Playground runnerFactory={runner} />, { route: '/playground?lesson_session=linked-session&lesson_skill=linked-skill' })
+  const question = await screen.findByRole('textbox', { name: 'Ask about your code' })
+  fireEvent.change(question, { target: { value: 'Keep my unsent question' } })
+  const send = screen.getByRole('button', { name: 'Send question' })
+  const beforeCheck = currentReads
+  holdCheck = true
+  fireEvent.click(send)
+  fireEvent.click(send)
+  await waitFor(() => expect(resolveCheck).toBeDefined())
+  expect(currentReads).toBe(beforeCheck + 1)
+  view.unmount()
+  await act(async () => resolveCheck(jsonResponse(currentSession)))
+  expect(tutor).not.toHaveBeenCalled()
+  expect(JSON.parse(localStorage.getItem('playground:v1:lesson:linked-session:linked-skill')!)).toMatchObject({ question: 'Keep my unsent question' })
+})
+
+it.each([false, true])('verifies lesson context before immutable retry (changed=%s)', async changed => {
+  let switchContext = false
+  let reads = 0
+  const calls: RequestInit[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/api/sessions/current')) {
+      reads += 1
+      const skill = switchContext ? 'different-skill' : 'linked-skill'
+      return jsonResponse({ id: 'linked-session', state: { skill_id: skill }, active_skill: { id: skill, title: 'Idea', description: 'Goal' } })
+    }
+    if (url.endsWith('/api/playground/tutor')) {
+      calls.push(init!)
+      return calls.length === 1 ? jsonResponse({ error: { code: 'unavailable', message: 'Try later' } }, 503) : jsonResponse({ text: 'Recovered reply', model: 'fixture', route: 'local', source_note: 'No sources', turn_id: 'retry' })
+    }
+    return jsonResponse({})
+  }))
+  renderApp(<Playground runnerFactory={runner} />, { route: '/playground?lesson_session=linked-session&lesson_skill=linked-skill' })
+  const question = await screen.findByRole('textbox', { name: 'Ask about your code' })
+  fireEvent.change(question, { target: { value: 'Original question' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send question' }))
+  const retry = await screen.findByRole('button', { name: 'Retry previous request' })
+  fireEvent.change(question, { target: { value: 'New unsent question' } })
+  const before = reads
+  switchContext = changed
+  fireEvent.click(retry)
+  await waitFor(() => expect(reads).toBeGreaterThan(before))
+  if (changed) {
+    await screen.findByText(/This lesson is no longer the current learning context/)
+    expect(calls).toHaveLength(1)
+  } else {
+    await screen.findByText('Recovered reply')
+    expect(calls).toHaveLength(2)
+    expect(calls[1].body).toBe(calls[0].body)
+    expect(calls[1].headers).toEqual(calls[0].headers)
+    expect(question).toHaveValue('New unsent question')
+  }
+})

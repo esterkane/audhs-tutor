@@ -881,3 +881,7 @@ Session now offers optional quiet work panel without unmounting the lesson or lo
 ## 2026-10-04 — Playground selection recovery
 
 Selected workspace now survives URL history/reload with its existing saved code. Invalid target feedback is explicit; no model/learning writes. Six unit and two browser cases plus lint/types/build pass. See docs/slices/playground-location.md and contextual-tools-contract.md; lesson-context transfer remains unimplemented.
+
+## 2026-10-04 — Lesson-linked experiment
+
+Optional lesson-to-playground entry now isolates code/chat/question drafts and returns to the current lesson. Origin checked for fresh/retry sends, late checks suppressed, original retry identity retained. 17 unit tests and lint/types/build pass; browser payload/round-trip checks cover desktop/narrow. See docs/slices/lesson-experiment.md for evidence and remaining C3 scope.

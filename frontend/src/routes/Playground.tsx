@@ -13,12 +13,12 @@ import { createPyodideRunner, type Runner, type RunResult } from '../features/co
 import { readPlainPreference, writePlainPreference } from '../features/code/editorPreference'
 import { activities, type Activity } from '../features/playground/exercises'
 import { askTutor, type TutorRequest, type TutorReply } from '../features/playground/api'
-import { useCurrentSession, useStartSession } from '../features/session/api'
+import { routeForPhase, useCurrentSession, useStartSession } from '../features/session/api'
 import { TutorResponseStatus, type ResponseStatus } from '../features/tutor/TutorResponseStatus'
 import { useMode } from '../stores/mode'
 
 type Chat = { role: 'user' | 'assistant'; text: string; codeSnapshot?: string }
-type Draft = { code: string; prediction: string; chat: Chat[] }
+type Draft = { code: string; prediction: string; chat: Chat[]; question?: string }
 const keyFor = (id: string) => `playground:v1:${id}`
 function restore(activity: Activity): Draft {
   try {
@@ -32,6 +32,7 @@ function restore(activity: Activity): Draft {
       return {
         code: value.code,
         prediction: value.prediction,
+        question: typeof value.question === 'string' ? value.question : '',
         chat: value.chat
           .filter((m: Chat) => m && ['user', 'assistant'].includes(m.role) && typeof m.text === 'string')
           .slice(-24),
@@ -45,6 +46,34 @@ function restore(activity: Activity): Draft {
 export function Playground({ runnerFactory = createPyodideRunner }: { runnerFactory?: () => Runner }) {
   const [params, setParams] = useSearchParams()
   const requested = params.get('workspace')
+  const originSession = params.get('lesson_session')
+  const originSkill = params.get('lesson_skill')
+  const current = useCurrentSession()
+  const { setSession } = useMode()
+  const linked = originSession !== null || originSkill !== null
+  const matches = !!originSession && !!originSkill && !current.isError && current.data?.id === originSession && current.data?.state.skill_id === originSkill && current.data?.active_skill?.id === originSkill
+  const skill = matches ? current.data?.active_skill : null
+  if (linked) {
+    if (!skill) return <Card>
+      <CardTitle as="h1">Lesson experiment</CardTitle>
+      <p>{current.isPending ? 'Checking the lesson context…' : 'This lesson is no longer the current learning context. Your saved experiment has not been changed.'}</p>
+      {current.isError && <Button onClick={() => void current.refetch()}>Retry lesson context</Button>}
+      <Link to="/">Return Home to resume or choose a lesson</Link>
+    </Card>
+    const linkedActivity: Activity = {
+      id: `lesson:${originSession}:${originSkill}`,
+      title: `Experiment: ${skill.title}`,
+      task: `Explore a small Python example related to this lesson. Lesson: ${skill.title}. Goal: ${skill.description}`.slice(0, 8000),
+      code: '# Write a small experiment for this lesson.\n# Ask the tutor for a starting example or one hint.\n',
+      checks: [],
+    }
+    return <div className="grid gap-4">
+      <h1 className="text-page-title font-semibold">Lesson experiment</h1>
+      <Link className="underline" to={routeForPhase(current.data?.state)} onClick={() => setSession(originSession!, originSkill!)}>Return to lesson: {skill.title}</Link>
+      <p className="text-sm text-muted">This workspace keeps separate code and chat for this lesson session. The tutor receives the lesson goal and your code; course sources are not retrieved. Run output is temporary.</p>
+      <Workspace key={linkedActivity.id} activity={linkedActivity} runnerFactory={runnerFactory} onNext={() => {}} expectedSession={originSession!} expectedSkill={originSkill!} />
+    </div>
+  }
   const activity = activities.find((a) => a.id === requested) ?? activities[0]
   const selected = activity.id
   function setSelected(id: string) {
@@ -94,10 +123,14 @@ function Workspace({
   activity,
   runnerFactory,
   onNext,
+  expectedSession,
+  expectedSkill,
 }: {
   activity: Activity
   runnerFactory: () => Runner
   onNext: () => void
+  expectedSession?: string
+  expectedSkill?: string
 }) {
   const [draft, setDraft] = useState(() => restore(activity))
   const recovery = useRequestRecovery(`playground:${activity.id}`)
@@ -106,12 +139,14 @@ function Workspace({
   const [running, setRunning] = useState(false)
   const [last, setLast] = useState<{ code: string; result: RunResult } | null>(null)
   const [runError, setRunError] = useState('')
-  const [question, setQuestion] = useState('')
+  const [question, setQuestion] = useState(draft.question ?? '')
   const [tutorError, setTutorError] = useState('')
   const [saveReply, setSaveReply] = useState<TutorReply | null>(null)
   const [tutorStatus, setTutorStatus] = useState<ResponseStatus>('idle')
   const [tutorStartedAt, setTutorStartedAt] = useState<number | null>(null)
-  const busy = tutorStatus === 'streaming'
+  const [checkingContext, setCheckingContext] = useState(false)
+  const contextCheck = useRef<object | null>(null)
+  const busy = tutorStatus === 'streaming' || checkingContext
   const [tutorOpen, setTutorOpen] = useState(true)
   const [modelNote, setModelNote] = useState('')
   const [resetting, setResetting] = useState(false)
@@ -121,21 +156,22 @@ function Workspace({
   const start = useStartSession()
   const { mode, energy, socratic, setSession } = useMode()
   const startingSession = useIsMutating({ mutationKey: ['session-start'] }) > 0
-  const sessionId = current.data?.id ?? null
+  const sessionId = (!expectedSession || (!current.isError && current.data?.id === expectedSession)) ? current.data?.id ?? null : null
   const stale = !!last && last.code !== draft.code
 
   useEffect(() => {
     try {
-      localStorage.setItem(keyFor(activity.id), JSON.stringify(draft))
+      localStorage.setItem(keyFor(activity.id), JSON.stringify({ ...draft, question }))
       // External storage can fail independently of React state; reflect the write result.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setSaveError(false)
     } catch {
       setSaveError(true)
     }
-  }, [draft, activity.id])
+  }, [draft, question, activity.id])
   useEffect(
     () => () => {
+      contextCheck.current = null
       operation.current?.abort.abort()
       operation.current?.runner.dispose()
       tutorAbort.current?.cancel()
@@ -188,6 +224,8 @@ function Workspace({
   }
 
   function stopTutor() {
+    contextCheck.current = null
+    setCheckingContext(false)
     tutorAbort.current?.cancel()
     tutorAbort.current = null
     setTutorStatus('stopped')
@@ -195,7 +233,7 @@ function Workspace({
   }
 
   async function ask(intent: Exclude<TutorRequest['intent'], 'check_answer' | 'check_bins'>) {
-    if (!sessionId || tutorAbort.current) return
+    if (!sessionId || tutorAbort.current || contextCheck.current) return
     const defaults = {
       chat: '',
       explain: 'Explain how this code works.',
@@ -204,7 +242,10 @@ function Workspace({
     }
     const text = question.trim() || defaults[intent ?? 'chat']
     if (!text) return
+    const check = {}
+    contextCheck.current = check
     try {
+      if (expectedSession && !(await verifyOrigin(check))) return
       const pending = recovery.prepare(
         {
           session_id: sessionId,
@@ -213,6 +254,7 @@ function Workspace({
           intent,
           question: text,
           exercise: activity.task,
+          ...(expectedSession ? { learning_context: { target_id: activity.id, target_label: activity.title.slice(0, 300) } } : {}),
           code: draft.code,
           output: last
             ? [
@@ -228,9 +270,39 @@ function Workspace({
         },
         { snapshot: draft.code, submitted: question, display: text, mode: 'explicit' },
       )
+      contextCheck.current = null
+      setCheckingContext(false)
       await execute(pending)
     } catch (e) {
-      setTutorError((e as Error).message)
+      if (contextCheck.current === check) setTutorError((e as Error).message)
+    } finally {
+      if (contextCheck.current === check) { contextCheck.current = null; setCheckingContext(false) }
+    }
+  }
+  async function verifyOrigin(check: object) {
+    if (!expectedSession) return contextCheck.current === check
+    setCheckingContext(true)
+    const fresh = await current.refetch()
+    if (contextCheck.current !== check) return false
+    if (fresh.isError || fresh.data?.id !== expectedSession || fresh.data?.state.skill_id !== expectedSkill) {
+      setTutorError('The lesson context changed or could not be verified. Return Home to resume the intended lesson.')
+      return false
+    }
+    return true
+  }
+  async function retryPending(pending: PendingTutorRequest) {
+    if (tutorAbort.current || contextCheck.current) return
+    const check = {}
+    contextCheck.current = check
+    try {
+      if (expectedSession && !(await verifyOrigin(check))) return
+      contextCheck.current = null
+      setCheckingContext(false)
+      await execute(pending)
+    } catch (error) {
+      if (contextCheck.current === check) setTutorError((error as Error).message)
+    } finally {
+      if (contextCheck.current === check) { contextCheck.current = null; setCheckingContext(false) }
     }
   }
   async function execute(pending: PendingTutorRequest) {
@@ -445,6 +517,7 @@ function Workspace({
                 On each request, the tutor receives this task, current code, last output and the last six chat
                 messages. It cannot edit or run your code. Your configured model route is used.
               </p>
+              {checkingContext && <p role="status">Checking the lesson context before sending…</p>}
               {!sessionId && (
                 <div className="mt-3">
                   <p className="text-sm">
@@ -543,9 +616,9 @@ function Workspace({
               <TutorResponseStatus status={tutorStatus} startedAt={tutorStartedAt} />
               <RequestRecoveryControls
                 recovery={recovery}
-                busy={tutorStatus === 'streaming'}
+                busy={busy}
                 retry={() => {
-                  if (recovery.pending) void execute(recovery.pending)
+                  if (recovery.pending) void retryPending(recovery.pending)
                 }}
               />
               {tutorError && (
