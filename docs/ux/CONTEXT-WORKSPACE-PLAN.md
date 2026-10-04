@@ -28,3 +28,7 @@ C0 inventory is recorded in [CONTEXT-INVENTORY.md](CONTEXT-INVENTORY.md), with23
 Browse context is not the learning kernel's active target. Sources used for reading differ from source import/administration. Saved answers are one Library type, but nonexistent notes/collections should not be implied. Language practice must remain reachable outside an inferred language area. Contextual tools must retain standalone workflows. Moving Together must preserve explicit controls rather than covertly changing mode. Active sound/recording Stop must remain available when audio details collapse.
 
 Human validation: ask the owner to locate a prior explanation, resume, switch and return, find sources and reach model settings without coaching. Count decisions and lost context alongside automated checks. Treat labels and layout as hypotheses until this evidence exists.
+
+## Uploaded visual reference reconciliation
+
+[Design-kit assessment](../design/UPLOADED-DESIGN-RECONCILIATION.md) merges ContextBar, ResumeCard and panel/error specimens into C2/C3/C6 and a bounded C1 visual follow-up. Existing route grouping and evidence semantics take precedence over conflicting/stale artifact proposals. No runtime assets/fonts/embedded skills imported.

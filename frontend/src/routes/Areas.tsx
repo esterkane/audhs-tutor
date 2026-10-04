@@ -23,10 +23,26 @@ export function Areas() {
     }
     wasRunning.current = Boolean(job.data?.running)
   }, [job.data?.running, qc])
-  const [search] = useSearchParams()
+  const [search, setSearch] = useSearchParams()
   const [selected, setSelected] = useState(() => search.get('area') ?? ''),
     [draftId, setDraftId] = useState(() => search.get('draft') ?? ''),
     [dirty, setDirty] = useState(false)
+  const [areaDirty, setAreaDirty] = useState(false)
+  const requestedArea = search.get('area') ?? ''
+  const requestedDraft = search.get('draft') ?? ''
+  const locationChanged = requestedArea !== selected || requestedDraft !== draftId
+  if (locationChanged && !dirty && !areaDirty) {
+    setSelected(requestedArea)
+    setDraftId(requestedDraft)
+  }
+  function browse(areaId: string, nextDraft = '', replace = false) {
+    const next = new URLSearchParams(search)
+    if (areaId) next.set('area', areaId)
+    else next.delete('area')
+    if (nextDraft) next.set('draft', nextDraft)
+    else next.delete('draft')
+    setSearch(next, { replace })
+  }
   const area = query.data?.areas.find((a) => a.id === selected)
   const areaDrafts =
     drafts.data?.drafts.filter((d) => d.area_id === selected && d.status !== 'rejected') ?? []
@@ -44,6 +60,10 @@ export function Areas() {
     <div className="grid gap-4">
       <Card>
         <CardTitle>Learning areas</CardTitle>
+        {locationChanged && (dirty || areaDirty) && <div role="alert" className="mt-2">
+          Your edits are still open. Save them to open the requested location, or keep editing here.
+          <Button onClick={() => browse(selected, draftId, true)}>Keep editing here</Button>
+        </div>}
         <p className="text-sm mt-2">
           Build knowledge across courses. Choose an area, review its source-backed draft, then activate
           lessons when they are ready.
@@ -66,11 +86,10 @@ export function Areas() {
             <select
               id="knowledge-area"
               value={selected}
-              disabled={dirty}
+              disabled={dirty || areaDirty}
               className="w-full border border-line rounded p-2"
               onChange={(e) => {
-                setSelected(e.target.value)
-                setDraftId('')
+                browse(e.target.value)
               }}
             >
               <option value="">Choose a knowledge area…</option>
@@ -130,7 +149,7 @@ export function Areas() {
         <Card>
           <CardTitle>{area.title}</CardTitle>
           <SavedContextAnswers key={`area:${area.id}`} areaId={area.id} />
-          <AreaSettings key={area.id} area={area} disabled={dirty || Boolean(job.data?.running)} />
+          <AreaSettings key={area.id} area={area} disabled={dirty || Boolean(job.data?.running)} onDirtyChange={setAreaDirty} />
           {preparedDraft && !draft && (
             <div className="mt-3">
               <p>
@@ -140,8 +159,8 @@ export function Areas() {
               <Button
                 className="mt-2"
                 variant="primary"
-                disabled={dirty}
-                onClick={() => setDraftId(preparedDraft.id)}
+                disabled={dirty || areaDirty}
+                onClick={() => browse(selected, preparedDraft.id)}
               >
                 Review prepared draft
               </Button>
@@ -165,7 +184,7 @@ export function Areas() {
           <ul className="grid gap-2 mt-3">
             {areaDrafts.map((d) => (
               <li key={d.id}>
-                <Button disabled={dirty} onClick={() => setDraftId(d.id)}>
+                <Button disabled={dirty || areaDirty} onClick={() => browse(selected, d.id)}>
                   {d.title} —{' '}
                   {d.status === 'published'
                     ? 'active'
@@ -222,10 +241,18 @@ export function Areas() {
     </div>
   )
 }
-function AreaSettings({ area, disabled }: { area: Area; disabled: boolean }) {
+function AreaSettings({ area, disabled, onDirtyChange }: { area: Area; disabled: boolean; onDirtyChange: (dirty: boolean) => void }) {
   const { edit } = useAreaActions()
   const [title, setTitle] = useState(area.title),
     [terms, setTerms] = useState(area.terms.join(', '))
+  const [baseline, setBaseline] = useState({ title: area.title, terms: area.terms.join(', ') })
+  const changed = title !== baseline.title || terms !== baseline.terms
+  if (!changed && (baseline.title !== area.title || baseline.terms !== area.terms.join(', '))) {
+    setBaseline({ title: area.title, terms: area.terms.join(', ') })
+    setTitle(area.title)
+    setTerms(area.terms.join(', '))
+  }
+  useEffect(() => { onDirtyChange(changed) }, [changed, onDirtyChange])
   return (
     <details className="mt-3 text-sm">
       <summary>Edit area name and matching terms</summary>
@@ -261,7 +288,14 @@ function AreaSettings({ area, disabled }: { area: Area; disabled: boolean }) {
               .map((s) => s.trim())
               .filter(Boolean),
             description: area.description,
-          })
+          }, { onSuccess: data => {
+            const saved = data.areas.find(item => item.id === area.id)
+            if (!saved) return
+            const normalizedTerms = saved.terms.join(', ')
+            setBaseline({ title: saved.title, terms: normalizedTerms })
+            setTitle(current => current === title ? saved.title : current)
+            setTerms(current => current === terms ? normalizedTerms : current)
+          } })
         }
       >
         Save area

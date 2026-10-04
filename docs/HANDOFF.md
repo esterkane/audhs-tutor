@@ -841,3 +841,7 @@ Home/Projects plus named Learn/Explore/Library/Tools/Manage groups preserve dest
 ## Park obstruction correction — 2026-10-04
 
 Capture and status moved into header flow; dialog scrolls within viewport. Six unit/six relevant browser checks and lint/types/build pass; independent review clear. No learning changes. Header access replaces viewport-floating access. Preferences200% overflow remains separate. See docs/slices/parking-header.md. Next C2 browse-area context.
+
+## C2a and uploaded design assessment — 2026-10-04
+
+Area/draft choices now survive URL history and refresh; same-route history preserves unsaved editors. Five unit/three browser checks and lint/types/build pass. Normalized-save review issue fixed without overwriting newer input. Full-route draft retention and global browse context remain. See docs/slices/area-location.md. Uploaded design patterns assessed/merged in docs/design/UPLOADED-DESIGN-RECONCILIATION.md; no bundled runtime, font or skill installed.
