@@ -1088,3 +1088,6 @@ Reminder undo backend foundation is implemented (migration e167bc2359df and revi
 
 
 C6 reminder Undo UI is implemented; exact retry identity, real end-to-end undo and stale-conflict evidence are in docs/slices/thought-action-undo.md. Controls are view-local, with durable server receipts. Next bounded phase: C7 typed recent destinations and actual searchable-store inventory. Human acceptance and remaining context gaps remain open.
+
+
+C7 foundation: typed bounded tab-local history store and first verified search-store inventory in docs/slices/recent-contexts.md. No visit tracking/UI yet. Next: explicit resolved-view tracking and compact recent-material presentation, preserving existing recent areas and authoritative resume.
