@@ -1,3 +1,4 @@
+import { openMainMenu } from './helpers'
 import { expect, test } from '@playwright/test'
 
 for (const width of [390, 1280]) {
@@ -28,8 +29,10 @@ for (const width of [390, 1280]) {
     await page.keyboard.press('Enter')
     await expect(page.getByRole('button', { name: 'normal', exact: true })).toHaveAttribute('aria-pressed', 'true')
     expect(writes).toEqual([])
+    await openMainMenu(page)
     await page.getByRole('link', { name: 'Home', exact: true }).click()
     failing = true
+    await openMainMenu(page)
     await page.getByText('Manage', { exact: true }).click()
     await page.getByRole('link', { name: 'Preferences', exact: true }).click()
     await expect(page.getByText('Could not refresh preferences. Showing the last loaded settings.', { exact: true })).toBeVisible()

@@ -2,7 +2,7 @@ import { BrowseArea } from '../features/areas/BrowseArea'
 import { AudioControls } from '../features/audio/AudioControls'
 import { LearningCompanion } from '../features/programs/LearningCompanion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { ParkingLotButton } from '../components/ParkingLotButton'
 import { Corpus } from '../routes/Corpus'
@@ -95,7 +95,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <div className="shell-workspace">
-        <nav aria-label="Main navigation" className="shell-navigation flex flex-wrap gap-2 text-sm items-start">
+        <ResponsiveNavigation key={pathname} title={title}>
           <NavLink to="/" end className={navClass}>Home</NavLink>
           {navigationGroups.map((group, index) => {
             const selected = group.pages.find(([path]) => path !== '/' &&
@@ -119,7 +119,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
               </div>
             )
           })}
-        </nav>
+        </ResponsiveNavigation>
       <div className="min-w-0">
       <main
         id="main-content"
@@ -134,6 +134,52 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   )
+}
+
+function ResponsiveNavigation({ title, children }: { title: string; children: React.ReactNode }) {
+  const [open, setOpen] = useState(false)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const nav = useRef<HTMLElement>(null)
+  const lastNavigationFocus = useRef<Element | null>(null)
+  useLayoutEffect(() => {
+    const desktop = window.matchMedia('(min-width: 64rem)')
+    const trackFocus = () => {
+      const active = document.activeElement
+      lastNavigationFocus.current = active === trigger.current || nav.current?.contains(active) ? active : null
+    }
+    const restoreVisibleFocus = () => {
+      // CSS can blur a newly hidden control before the media-query event arrives.
+      const active = document.activeElement === document.body ? lastNavigationFocus.current : document.activeElement
+      if (!desktop.matches && !open && nav.current?.contains(active)) trigger.current?.focus()
+      if (desktop.matches && active === trigger.current) nav.current?.querySelector<HTMLAnchorElement>('a')?.focus()
+    }
+    document.addEventListener('focusin', trackFocus)
+    desktop.addEventListener('change', restoreVisibleFocus)
+    return () => {
+      desktop.removeEventListener('change', restoreVisibleFocus)
+      document.removeEventListener('focusin', trackFocus)
+    }
+  }, [open])
+  return <div className="shell-navigation-container">
+    <button ref={trigger} type="button" className="shell-menu-toggle" aria-expanded={open}
+      aria-controls="main-navigation" onClick={() => setOpen(!open)}>
+      {open ? 'Close menu' : 'Menu'} · {title}
+    </button>
+    <nav ref={nav} id="main-navigation" aria-label="Main navigation" data-open={open}
+      className="shell-navigation flex flex-wrap gap-2 text-sm items-start"
+      onKeyDown={event => {
+        if (event.key === 'Escape' && open) { setOpen(false); trigger.current?.focus() }
+      }}
+      onClick={event => {
+        const link = (event.target as HTMLElement).closest('a')
+        if (link && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
+          setOpen(false)
+          document.getElementById('main-content')?.focus()
+        }
+      }}>
+      {children}
+    </nav>
+  </div>
 }
 
 export default function App() {

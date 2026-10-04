@@ -66,3 +66,7 @@ The owner-proposed memory, voice and development-tool additions are reconciled i
 ## Design adoption checkpoint
 
 Existing palette roles and focus styling now follow the uploaded canonical tokens; see design-palette-adoption in docs/slices. Typography, primitives and the authoritative navigation/workspace composition remain open. The additional workspace document is authoritative, recorded in docs/design/source/README.md.
+
+## Context shell design progress
+
+Shared palette/buttons/panels now follow uploaded specifications. Desktop rail is implemented; mobile navigation now uses a closed-by-default disclosure with focus recovery (slices/mobile-navigation.md). These are partial C1/C2 visual stages. Next reconcile compact header and contextual mode/tool entry; persistent tutor, complete mobile composition, font system and human acceptance remain outstanding.

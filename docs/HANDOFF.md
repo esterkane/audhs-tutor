@@ -865,3 +865,7 @@ Cards now follow supplied radius/flat surfaces, optional themed lift for Home re
 ## 2026-10-04 — Desktop rail
 
 Existing navigation is now separate from desktop workspace; narrow in-flow navigation retained. Ten browser checks and four unit checks pass; lint/types/build pass. See docs/slices/desktop-navigation-rail.md. Compact mobile navigation and contextual shell remain outstanding.
+
+## 2026-10-04 — Collapsible mobile navigation
+
+Menu starts closed on narrow screens, names current page, closes on route change/Escape, and recovers visible keyboard focus when resized. All destinations preserved. Final original 24 browser/four shell unit checks and lint/types/build pass. See docs/slices/mobile-navigation.md. Full mobile bottom navigation, compact header and persistent tutor remain open.

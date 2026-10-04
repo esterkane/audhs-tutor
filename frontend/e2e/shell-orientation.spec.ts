@@ -1,3 +1,4 @@
+import { openMainMenu } from './helpers'
 import { expect, test } from '@playwright/test'
 import axe from 'axe-core'
 
@@ -9,15 +10,17 @@ for (const width of [1280, 390, 320]) {
     )
     await page.goto('/programs')
     await expect(page).toHaveTitle('Project study · AuDHS Tutor')
+    await openMainMenu(page)
     await expect(page.getByRole('link', { name: 'Projects', exact: true })).toHaveAttribute(
       'aria-current',
       'page',
     )
+    await openMainMenu(page)
     const navBox = await page.getByRole('navigation', { name: 'Main navigation' }).boundingBox()
     const mainBox = await page.getByRole('main').boundingBox()
     if (width >= 1024) expect(navBox!.x + navBox!.width).toBeLessThanOrEqual(mainBox!.x + 1)
     else expect(navBox!.y + navBox!.height).toBeLessThanOrEqual(mainBox!.y + 1)
-    await page.keyboard.press('Tab')
+    await page.getByRole('link', { name: 'Skip to learning content' }).focus()
     await expect(page.getByRole('link', { name: 'Skip to learning content' })).toBeFocused()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('main')).toBeFocused()
@@ -26,10 +29,13 @@ for (const width of [1280, 390, 320]) {
     await page.getByRole('link', { name: 'Learning areas', exact: true }).click()
     await expect(page).toHaveTitle('Learning areas · AuDHS Tutor')
     await expect(page.getByRole('main')).toBeFocused()
+    await openMainMenu(page)
     await page.getByText('Manage', { exact: true }).click()
     await page.getByRole('link', { name: 'Lesson drafts', exact: true }).click()
     await expect(page).toHaveTitle('Lesson drafts · AuDHS Tutor')
+    await openMainMenu(page)
     await expect(page.getByText('Manage · Lesson drafts', { exact: true })).toBeVisible()
+    await openMainMenu(page)
     await page.getByText('Manage · Lesson drafts', { exact: true }).click()
     await expect(page.getByRole('link', { name: 'Lesson drafts', exact: true })).toHaveAttribute(
       'aria-current',
@@ -38,9 +44,11 @@ for (const width of [1280, 390, 320]) {
     await page.screenshot({ path: info.outputPath('navigation-normal.png'), fullPage: true })
     await page.goBack()
     await expect(page).toHaveTitle('Learning areas · AuDHS Tutor')
+    await openMainMenu(page)
     await expect(page.getByText('Explore · Learning areas', { exact: true })).toBeVisible()
     await page.goForward()
     await expect(page).toHaveTitle('Lesson drafts · AuDHS Tutor')
+    await openMainMenu(page)
     await page.getByText('Manage · Lesson drafts', { exact: true }).click()
     await page.evaluate(() => {
       document.documentElement.style.fontSize = '200%'

@@ -1,3 +1,4 @@
+import { openMainMenu } from './helpers'
 import { expect, test } from '@playwright/test'
 
 for (const width of [320, 390, 1280]) {
@@ -12,6 +13,7 @@ for (const width of [320, 390, 1280]) {
     })
     await page.goto('/curriculum')
     await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+    await openMainMenu(page)
     await page.getByText('Manage · Lesson drafts', { exact: true }).click()
     const park = page.getByRole('button', { name: 'Parking lot: park a tangent for later' })
     const nav = page.getByRole('navigation', { name: 'Main navigation' })

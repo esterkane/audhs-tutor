@@ -126,3 +126,8 @@ with db:
 print(skill_id)
 `], { cwd: root, encoding: 'utf8' }).trim()
 }
+
+export async function openMainMenu(page: import('@playwright/test').Page) {
+  const menu = page.getByRole('button', { name: /^Menu ·/ })
+  if (await menu.isVisible()) await menu.click()
+}

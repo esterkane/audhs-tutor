@@ -230,3 +230,22 @@ body {
     overflow-wrap: anywhere;
   }
 }
+
+.shell-menu-toggle {
+  display: block;
+  width: 100%;
+  min-height: 2.75rem;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  overflow-wrap: anywhere;
+  background: var(--color-sunken);
+  border-bottom: 1px solid var(--color-line);
+}
+@media (max-width: 63.999rem) {
+  .shell-navigation[data-open='false'] { display: none; }
+}
+@media (min-width: 64rem) {
+  .shell-menu-toggle { display: none; }
+  .shell-navigation-container { min-width: 0; background: var(--color-sunken); }
+  .shell-navigation { min-height: 100%; }
+}
