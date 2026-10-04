@@ -97,3 +97,6 @@ Source-return groundwork: docs/slices/source-capture-return.md records the inspe
 
 
 Explicit source capture/direct return is implemented; evidence and remaining acceptance coverage are recorded in docs/slices/source-capture-return.md. C6/C7 are not complete.
+
+
+Next C6 slice: docs/slices/thought-action-undo.md records the inspected revision/receipt/atomicity contract for safe reversible reminder actions. Four existing browser journeys passed. No undo is implemented by this plan; backend transaction evidence precedes UI adoption.

@@ -1079,3 +1079,6 @@ Explicit source capture/direct return is implemented; evidence and remaining acc
 
 
 Source acceptance expanded: competing viewers, retained draft source, actual saved identity and15-second timeout/retry pass in four browser journeys; details in docs/slices/source-capture-return.md. No runtime change. Next: reversible saved-thought action contract.
+
+
+Next C6 slice: docs/slices/thought-action-undo.md records the inspected revision/receipt/atomicity contract for safe reversible reminder actions. Four existing browser journeys passed. No undo is implemented by this plan; backend transaction evidence precedes UI adoption.
