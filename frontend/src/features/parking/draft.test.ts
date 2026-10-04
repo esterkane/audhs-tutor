@@ -35,3 +35,12 @@ it('rejects oversized restored content', () => {
   expect(result.current.draft.text).toBe('')
   expect(result.current.storageError).not.toBe('')
 })
+
+it('retains a save identity across reload and rejects invalid identities', () => {
+  const first = renderHook(useThoughtDraft)
+  act(() => first.result.current.update({ ...draft, requestKey: 'same-intent' }))
+  first.unmount()
+  expect(renderHook(useThoughtDraft).result.current.draft.requestKey).toBe('same-intent')
+  sessionStorage.setItem('parking-draft:v1', JSON.stringify({ version: 1, draft: { ...draft, requestKey: '' } }))
+  expect(renderHook(useThoughtDraft).result.current.storageError).not.toBe('')
+})

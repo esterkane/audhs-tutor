@@ -27,24 +27,25 @@ export function ParkingLotButton() {
     const controller = new AbortController()
     pending.current = controller
     let timer: ReturnType<typeof setTimeout> | undefined
-    updateDraft({ ...draft, unconfirmed: true })
+    const requestKey = draft.requestKey ?? crypto.randomUUID()
+    updateDraft({ ...draft, requestKey, unconfirmed: true })
     setSaving(true)
     setError('')
     setStatus(null)
     try {
-      await Promise.race([
-        api.park({ session_id: draft.sessionId, text: text.trim(), node_id: draft.skillId }, controller.signal),
+      const saved = await Promise.race([
+        api.park({ session_id: draft.sessionId, text: text.trim(), node_id: draft.skillId, request_key: requestKey }, controller.signal),
         new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error('Save wait timed out')) }, 15000) }),
       ])
       if (pending.current !== controller) return
       updateDraft({ text: '', sessionId: null, skillId: null, unconfirmed: false })
       invalidate()
-      setStatus('Thought saved. Open Save for later to find it under Saved thoughts.')
+      setStatus(saved.status === 'dropped' ? 'This thought was already saved and later removed. Retrying did not restore it.' : saved.status === 'promoted' ? 'This thought is already saved and shown on Home.' : 'Thought saved. Open Save for later to find it under Saved thoughts.')
       setOpen(false)
     } catch {
       if (pending.current !== controller) return
       invalidate()
-      setError('Could not confirm the save. Your text is still here. Check Saved thoughts before trying again; the server may have saved it.')
+      setError('Could not confirm the save. Your text is still here. Retrying this unchanged thought checks the same save without creating another copy.')
     } finally {
       clearTimeout(timer)
       if (pending.current === controller) { pending.current = null; setSaving(false) }
@@ -79,12 +80,13 @@ export function ParkingLotButton() {
             disabled={saving}
             maxLength={500}
             value={text}
-            onChange={(e) => updateDraft({
+            onChange={(e) => { setError(''); updateDraft({
               text: e.target.value,
               sessionId: text ? draft.sessionId : sessionId,
               skillId: text ? draft.skillId : skillId,
               unconfirmed: Boolean(e.target.value) && draft.unconfirmed,
-            })}
+              requestKey: e.target.value === text ? draft.requestKey : undefined,
+            }) }}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
                 e.preventDefault()
@@ -97,13 +99,13 @@ export function ParkingLotButton() {
           <p className="text-sm text-muted">{text.length}/500 characters. {storageError ? 'Draft is available here while this page stays open.' : 'Draft retained in this browser tab until saved or cleared.'}</p>
           {storageError && <p role="alert" className="text-sm">{storageError}</p>}
           {text && (draft.sessionId !== sessionId || draft.skillId !== skillId) && <p className="text-sm">This draft keeps its original session and skill context; you are now in a different learning context.</p>}
-          {draft.unconfirmed && !saving && !error && <p role="alert" className="text-sm">An earlier save is unconfirmed. Check Saved thoughts before trying again; it may already be saved.</p>}
+          {draft.unconfirmed && !saving && !error && <p role="alert" className="text-sm">{draft.requestKey ? 'An earlier save is unconfirmed. Retry this unchanged thought without creating another copy.' : 'An earlier save is unconfirmed. This older or edited draft cannot be matched to it. Check Saved thoughts first; saving now creates a new thought.'}</p>}
           <div className="flex flex-wrap gap-2 justify-end mt-2">
             <Dialog.Close asChild>
               <Button variant="ghost">Close</Button>
             </Dialog.Close>
             <Button variant="primary" onClick={() => void submit()} disabled={saving || !text.trim()}>
-              {saving ? 'Saving…' : 'Save thought'}
+              {saving ? 'Saving…' : draft.unconfirmed && !draft.requestKey ? 'Save as new thought' : 'Save thought'}
             </Button>
           </div>
           {error && <p role="alert" className="mt-2 text-sm">{error}</p>}

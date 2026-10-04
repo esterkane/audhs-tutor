@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-export type ThoughtDraft = { text: string; sessionId: string | null; skillId: string | null; unconfirmed: boolean }
+export type ThoughtDraft = { text: string; sessionId: string | null; skillId: string | null; unconfirmed: boolean; requestKey?: string }
 const KEY = 'parking-draft:v1'
 const empty: ThoughtDraft = { text: '', sessionId: null, skillId: null, unconfirmed: false }
 const validId = (value: unknown) => value === null || (typeof value === 'string' && value.length > 0 && value.length <= 128)
@@ -11,7 +11,7 @@ function restore(): { draft: ThoughtDraft; error: string } {
     if (raw.length > 5000) throw new Error('Oversized draft')
     const value = JSON.parse(raw)
     const d = value.draft
-    if (value.version !== 1 || !d || typeof d.text !== 'string' || d.text.length > 500 || !validId(d.sessionId) || !validId(d.skillId) || typeof d.unconfirmed !== 'boolean') throw new Error('Invalid draft')
+    if (value.version !== 1 || !d || typeof d.text !== 'string' || d.text.length > 500 || !validId(d.sessionId) || !validId(d.skillId) || typeof d.unconfirmed !== 'boolean' || (d.requestKey !== undefined && (typeof d.requestKey !== 'string' || !d.requestKey.length || d.requestKey.length > 128))) throw new Error('Invalid draft')
     return { draft: d, error: '' }
   } catch {
     return { draft: empty, error: 'The previous thought draft could not be restored. Restoring this page did not submit anything. Check Saved thoughts if an earlier save was unconfirmed.' }

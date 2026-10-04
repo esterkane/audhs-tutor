@@ -1046,3 +1046,7 @@ Thought creation and promotion now commit their audit event atomically with the 
 
 ## C6 durable capture retry protocol — 2026-10-04
 Added optional learner-scoped save identity with immutable payload fingerprint, conflict response and atomic replay; additive migration c945fa0137bd preserves legacy rows. Existing clients remain unkeyed. 28 backend tests in both variants, 11 browser regressions, targeted Ruff/mypy and generated frontend type check passed; review clear. See docs/slices/capture-retry.md. Next: persist frontend save identity across reload/retry, handle legacy uncertain drafts and edited content explicitly. Source return, undo and C7 remain open.
+
+
+## C6 frontend capture retries — 2026-10-04
+Unchanged thought saves now retain a durable identity across retries/reload; edits and older unconfirmed drafts explicitly use Save as new thought. Replayed dropped/promoted outcomes are reported honestly. No auto-submit on restoration. Verification: 5 draft tests, 14 sanitized browser journeys, lint/types, original build, visual/keyboard checks and read-only review. See docs/slices/capture-retry-ui.md. Next: typed original-context return and reversible saved-thought actions, then C7 contexts/search.

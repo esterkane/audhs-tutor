@@ -79,3 +79,5 @@ C6 Home resume intent is implemented in ../slices/home-resume-intent.md. Continu
 C6 capture transaction prerequisite: ../slices/capture-atomicity.md. Event failure no longer leaves a committed item/status change. Durable intent IDs, contextual return and C7 remain unfinished.
 
 C6 durable capture retry backend is recorded in ../slices/capture-retry.md. Frontend adoption is next; existing UI saves are still unkeyed.
+
+C6 frontend save identity adoption is implemented in ../slices/capture-retry-ui.md. Durable source return and action undo remain open; retry work alone does not complete context preservation.
