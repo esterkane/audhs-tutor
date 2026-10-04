@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 5 (2026-10-04)
+## Current owner scope — UX phase 6 (2026-10-04)
 
-Phase 5 [proposed information architecture](ux/UX-ARCHITECTURE.md) maps all existing routes into task-oriented Home/Learn/Library/Progress/Settings groups and defines essential/contextual/optional/advanced learning content. Existing deep links, capabilities, checkpoint ownership and learning logic remain unchanged. This is a proposal awaiting later prototype validation, not a shipped navigation redesign. Next incomplete phase is Phase 6 design-system documentation using the existing tokens and primitives. Other queues remain parked.
+Phase 6 [design-system specification](design/DESIGN-SYSTEM.md) documents existing semantic tokens/primitives, typography, spacing, component and interaction-state contracts. Twenty opaque color-pair calculations identify adequate sampled text contrast and weak decorative boundaries unsuitable as sole required control identification. Production CSS is unchanged; missing semantic roles require rendered verification during bounded adoption. Next is Phase 7: three isolated visual directions sharing Phase 5 IA and this foundation. Other queues remain parked.
 
 ## Prioritized next work
 

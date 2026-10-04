@@ -1,0 +1,166 @@
+{
+  "source": "frontend/src/index.css",
+  "method": "WCAG relative luminance of opaque sRGB token pairs; excludes opacity, images and rendered state combinations",
+  "pairs": [
+    {
+      "theme": "light",
+      "foreground": "fg",
+      "background": "bg",
+      "ratio": 14.73,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "fg",
+      "background": "card",
+      "ratio": 15.8,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 5.59,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 6.0,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "accent-fg",
+      "background": "accent",
+      "ratio": 5.66,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "accent",
+      "background": "bg",
+      "ratio": 5.28,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "accent",
+      "background": "card",
+      "ratio": 5.66,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "ok",
+      "background": "card",
+      "ratio": 5.32,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "warn",
+      "background": "card",
+      "ratio": 5.18,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "light",
+      "foreground": "line",
+      "background": "card",
+      "ratio": 1.36,
+      "normal_text_4_5": false,
+      "nontext_3": false
+    },
+    {
+      "theme": "dark",
+      "foreground": "fg",
+      "background": "bg",
+      "ratio": 14.51,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "fg",
+      "background": "card",
+      "ratio": 13.03,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "muted",
+      "background": "bg",
+      "ratio": 7.42,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 6.66,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "accent-fg",
+      "background": "accent",
+      "ratio": 6.99,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "accent",
+      "background": "bg",
+      "ratio": 7.21,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "accent",
+      "background": "card",
+      "ratio": 6.47,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "ok",
+      "background": "card",
+      "ratio": 7.12,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "warn",
+      "background": "card",
+      "ratio": 7.24,
+      "normal_text_4_5": true,
+      "nontext_3": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "line",
+      "background": "card",
+      "ratio": 1.39,
+      "normal_text_4_5": false,
+      "nontext_3": false
+    }
+  ]
+}

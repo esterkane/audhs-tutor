@@ -797,3 +797,7 @@ Added five-profile docs/ux/LEARNER-PERSONA-TESTS.md, opt-in learner-persona-audi
 ## 2026-10-04 — Phase 5 information architecture
 
 Added docs/ux/UX-ARCHITECTURE.md. Reconciled all 19 explicit route entries including detail and unknown-path handling; defined task groups, content hierarchy, always-reachable help/pause/audio/status and transition safeguards. No routes, features, learning logic or dependencies changed. Document links and publication sanitation checked; prior runtime evidence supports the proposal but does not validate proposed labels with users. Next is Phase 6, preserving current tokens/primitives rather than replacing them.
+
+## 2026-10-04 — Phase 6 design-system specification
+
+Added docs/design/DESIGN-SYSTEM.md and token-contrast.json. Inspected existing CSS and four primitives; computed20 light/dark opaque token pairs, checked primary accessibility guidance and local links. Sampled text pairs clear4.5:1; line/card is1.36/1.39 and cannot alone establish a required control boundary. This is not rendered conformance certification. Defined typography/spacing/state/component rules and missing semantic roles without production CSS or learning changes. Next: Phase7 isolated visual directions, no new component library.
