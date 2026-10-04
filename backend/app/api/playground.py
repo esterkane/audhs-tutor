@@ -28,10 +28,19 @@ async def tutor(
     idempotency_key: Annotated[UUID | None, Header()] = None,
 ) -> PlaygroundReply:
     learner_id = learner.id
+
+    async def validate_origin() -> None:
+        await playground.validate_lesson_origin(db, learner_id, body)
+
     identity = None
     if idempotency_key is not None:
         identity, saved = await workspace_requests.claim(
-            db, learner_id, body.session_id, str(idempotency_key), body.model_dump(mode="json")
+            db,
+            learner_id,
+            body.session_id,
+            str(idempotency_key),
+            body.model_dump(mode="json"),
+            validate_new=validate_origin if body.lesson_origin else None,
         )
         if saved is not None:
             return PlaygroundReply.model_validate(saved)

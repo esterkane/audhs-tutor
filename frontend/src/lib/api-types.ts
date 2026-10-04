@@ -3878,6 +3878,11 @@ export interface components {
       /** Lessons */
       lessons: components['schemas']['LessonSummary'][]
     }
+    /** LessonOrigin */
+    LessonOrigin: {
+      /** Skill Id */
+      skill_id: string
+    }
     /** LessonOut */
     LessonOut: {
       /** Document Id */
@@ -4210,6 +4215,7 @@ export interface components {
     }
     /** PlaygroundRequest */
     PlaygroundRequest: {
+      lesson_origin?: components['schemas']['LessonOrigin'] | null
       /** Session Id */
       session_id: string
       /**

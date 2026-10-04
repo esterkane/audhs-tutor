@@ -254,7 +254,7 @@ function Workspace({
           intent,
           question: text,
           exercise: activity.task,
-          ...(expectedSession ? { learning_context: { target_id: activity.id, target_label: activity.title.slice(0, 300) } } : {}),
+          ...(expectedSession && expectedSkill ? { lesson_origin: { skill_id: expectedSkill }, learning_context: { target_id: activity.id, target_label: activity.title.slice(0, 300) } } : {}),
           code: draft.code,
           output: last
             ? [

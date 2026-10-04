@@ -1,8 +1,14 @@
 """Bounded workspace context for explicit playground tutoring requests."""
 
-from typing import Literal, Self
+from typing import Any, Literal, Self, cast
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import (
+    BaseModel,
+    Field,
+    SerializerFunctionWrapHandler,
+    model_serializer,
+    model_validator,
+)
 
 
 class PlaygroundMessage(BaseModel):
@@ -19,7 +25,12 @@ class PlaygroundContext(BaseModel):
     target_label: str | None = Field(default=None, max_length=300)
 
 
+class LessonOrigin(BaseModel):
+    skill_id: str = Field(min_length=1, max_length=200)
+
+
 class PlaygroundRequest(BaseModel):
+    lesson_origin: LessonOrigin | None = None
     session_id: str
     prefer_saved: bool = False
     questioning_style: Literal["explicit", "socratic"] = "explicit"
@@ -33,6 +44,14 @@ class PlaygroundRequest(BaseModel):
     output: str = Field(default="", max_length=4000)
     output_stale: bool = False
     history: list[PlaygroundMessage] = Field(default_factory=list, max_length=6)
+
+    @model_serializer(mode="wrap")
+    def serialize(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
+        data = cast(dict[str, Any], handler(self))
+        # Preserve historical request fingerprints and exact reuse for existing callers.
+        if self.lesson_origin is None:
+            data.pop("lesson_origin", None)
+        return data
 
     @model_validator(mode="after")
     def check_requires_answer(self) -> Self:

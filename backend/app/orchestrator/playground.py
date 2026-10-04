@@ -8,6 +8,7 @@ from typing import Any
 
 import httpx
 from pydantic import ValidationError
+from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,8 +17,9 @@ from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.answer_memory import exact_saved, retrieve
 from app.db.answers import save_completed
-from app.db.base import new_id
+from app.db.base import new_id, utcnow_iso
 from app.db.events import EventWriter, Verb
+from app.db.models import Session, SessionCheckpoint, SkillNode
 from app.db.traces import TutorTraceRecord, write_tutor_trace
 from app.kernel import session as ksession
 from app.kernel.arithmetic_checks import VERSION as ARITHMETIC_VERSION
@@ -47,6 +49,44 @@ logger = logging.getLogger(__name__)
 VERSION = "playground.tutor.v14"
 
 
+async def validate_lesson_origin(
+    db: AsyncSession, learner_id: str, body: PlaygroundRequest
+) -> None:
+    if body.lesson_origin is None:
+        return
+    # Read columns rather than a potentially stale ORM identity-map object.
+    row = (
+        await db.execute(
+            select(Session.ended_at).where(
+                Session.id == body.session_id, Session.learner_id == learner_id
+            )
+        )
+    ).one_or_none()
+    if row is None or row[0] is not None:
+        raise AppError("not_found", "Start or resume a session to use the tutor.", 404)
+    checkpoint = await db.scalar(
+        select(SessionCheckpoint.packet_json)
+        .where(
+            SessionCheckpoint.session_id == body.session_id,
+            SessionCheckpoint.learner_id == learner_id,
+            SessionCheckpoint.expires_at > utcnow_iso(),
+        )
+        .order_by(SessionCheckpoint.ts.desc(), SessionCheckpoint.id.desc())
+        .limit(1)
+    )
+    skill = body.lesson_origin.skill_id
+    if (
+        not checkpoint
+        or checkpoint.get("skill_id") != skill
+        or not await db.scalar(select(SkillNode.id).where(SkillNode.id == skill))
+    ):
+        raise AppError(
+            "lesson_context_changed",
+            "This lesson context has changed. Return to the lesson before asking again; your code draft is unchanged.",
+            409,
+        )
+
+
 def messages(
     body: PlaygroundRequest,
     historical: dict[str, Any] | None = None,
@@ -55,6 +95,7 @@ def messages(
     workspace = body.model_dump(
         exclude={
             "session_id",
+            "lesson_origin",
             "question",
             "intent",
             "learning_context",
@@ -180,6 +221,7 @@ async def respond(
     parent_metadata: dict[str, Any] | None = None,
     recovery: AnswerRecovery | None = None,
 ) -> PlaygroundReply:
+    await validate_lesson_origin(db, learner_id, body)
     session = await ksession.get(db, body.session_id)
     if session.learner_id != learner_id or session.ended_at:
         raise AppError("not_found", "Start or resume a session to use the tutor.", http_status=404)
@@ -188,6 +230,7 @@ async def respond(
             async with db.begin_nested():
                 saved = await exact_saved(db, learner_id, body, VERSION)
             if saved is not None:
+                await validate_lesson_origin(db, learner_id, body)
                 return PlaygroundReply(
                     text=saved.text,
                     model=str(saved.metadata_json.get("model", "unknown")),
@@ -259,6 +302,7 @@ async def respond(
     )
     checked_feedback = None
     selected_feedback = None
+    await validate_lesson_origin(db, learner_id, body)
     try:
         out = await gateway.complete(
             TaskClass.ANSWER_FEEDBACK

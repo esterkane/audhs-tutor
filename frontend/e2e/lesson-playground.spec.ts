@@ -39,6 +39,7 @@ for (const width of [390, 1280]) {
       await expect(page.getByText('Start with one small example.', { exact: true })).toBeVisible()
       expect(tutorBodies).toHaveLength(1)
       expect(tutorBodies[0].session_id).toBe(session.id)
+      expect(tutorBodies[0].lesson_origin).toEqual({ skill_id: new URL(location).searchParams.get('lesson_skill') })
       expect(tutorBodies[0].exercise).toContain('Lesson:')
       expect(tutorBodies[0].learning_context).toMatchObject({ target_id: expect.stringContaining(`lesson:${session.id}:`) })
       await page.screenshot({ path: info.outputPath('linked-experiment.png'), fullPage: true })

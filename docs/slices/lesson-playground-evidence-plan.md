@@ -29,3 +29,7 @@ Expected files: backend schemas/API/orchestrator playground, appropriate existin
 ## Queue reconciliation
 
 C3 recovery now includes working-mode entry, lesson-linked coding, standalone workspace history, audio return targets, visualizer editing/file/lesson/comparison recovery and explicit file reselection. These do not complete source-grounded context or the persistent tutor. C4 Library/map and C5 persistent panel remain later in the authoritative sequence. Active-tone restart, MilkDrop selection/discard and owner comprehension remain open, without blocking design of the higher-impact lesson-source contract.
+
+## Implementation checkpoint — 2026-10-04
+
+Step1 implemented with the bounded checks and limitations in [lesson-origin-validation.md](lesson-origin-validation.md). Steps2–4 remain incomplete; do not label answers source-grounded yet.

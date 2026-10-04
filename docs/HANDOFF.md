@@ -921,3 +921,8 @@ Optional instructions moved below canvas/transport into keyboard-accessible deta
 ## C3 evidence contract inspection — 2026-10-04
 
 Verified coding tutor still has no lesson retrieval and source-aware reuse. Next plan is slices/lesson-playground-evidence-plan.md; source labels must remain general until evidence/retry contracts are implemented. No runtime changes in this planning slice.
+
+
+## Linked lesson request validation — 2026-10-04
+
+C3 coding requests now validate typed lesson origin on the server while preserving completed retries and legacy fingerprints. See slices/lesson-origin-validation.md for checks and concurrency limits. Source retrieval/reuse remains next; no learning logic or routing changes.
