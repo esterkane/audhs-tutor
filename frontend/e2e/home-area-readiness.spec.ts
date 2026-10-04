@@ -53,6 +53,7 @@ test('Home switches ready to unprepared and back before starting the selected to
   })
   await page.goto('/')
   await expect(page.getByRole('button', { name: 'Start session', exact: true })).toBeEnabled()
+  await page.getByText('Change new-session topic', { exact: true }).click()
   const area = page.getByRole('combobox', { name: 'Knowledge area' })
   await expect(area.getByRole('option', { name: 'Python · 1 activated lessons' })).toHaveCount(1)
   await area.selectOption('empty')
@@ -91,7 +92,8 @@ for (const width of [320, 390]) {
       }),
     )
     await page.goto('/')
-    const area = page.getByRole('combobox', { name: 'Knowledge area' })
+    await page.getByText('Change new-session topic', { exact: true }).click()
+  const area = page.getByRole('combobox', { name: 'Knowledge area' })
     await expect(area.getByRole('option', { name: /Understanding local inference/ })).toHaveCount(1)
     await expect(area).toBeEnabled()
     const geometry = await page.evaluate(() => ({

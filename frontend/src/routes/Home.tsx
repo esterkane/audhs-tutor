@@ -193,6 +193,7 @@ function HomeOverview() {
           </>
         )}
         <p className="text-sm mt-2">New session topic: {topicLabel}</p>
+        {!resumable && <p className="text-sm text-muted">{MODE_LABELS[mode].title} · energy {energy} · {socratic ? 'Socratic questions' : 'Direct explanations'}. Adjust these in Session options.</p>}
         {emptySelection && (
           <p role="status" className="mt-2">
             {blockedSelection
@@ -303,8 +304,9 @@ function HomeOverview() {
           </p>
         ))}
       </details>
-      <Card>
-        <CardTitle>Learn toward</CardTitle>
+      <details className="border border-line rounded-md p-3">
+        <summary className="cursor-pointer font-medium">Change new-session topic</summary>
+        <p className="text-sm text-muted mt-2">Changing this selection affects the next session you start. Resuming keeps your saved topic and place.</p>
         <label className="block min-w-0 text-sm font-medium mt-2">
           Knowledge area
           <select
@@ -379,7 +381,7 @@ function HomeOverview() {
             {scaffold ? ` · ${scaffold}` : ''}
           </p>
         )}
-      </Card>
+      </details>
       <details className="border border-line rounded-md p-3">
         <summary className="cursor-pointer font-medium">Session options</summary>
         <p className="text-sm text-muted my-2">

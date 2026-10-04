@@ -1006,3 +1006,8 @@ Captured material, unapplied edits and one previous capture now survive route ch
 ## C5 responsive tutor panel — 2026-10-04
 
 Global tutor entry, desktop panel and narrow modal sheet implemented without learning/provider changes. See docs/slices/companion-panel.md for recovery, resize, keyboard and test evidence, plus remaining human/voice gates. Narrow origin navigation closes the sheet to reveal the destination. Next: bounded C6 Home/audio/capture inspection.
+
+
+## C6 Home topic disclosure — 2026-10-04
+
+Collapsed optional topic form, retained visible selection and new-session settings summary. Learning handlers unchanged. Evidence and remaining C6 scope: docs/slices/home-topic-disclosure.md. Next: inspect audio active-stop and contextual capture before the next bounded change.

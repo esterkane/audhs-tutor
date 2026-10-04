@@ -57,3 +57,6 @@ C5 context foundation is implemented in ../slices/companion-context.md. Next is 
 
 
 C5 responsive presentation is implemented in ../slices/companion-panel.md: one persistent desktop panel/narrow sheet with explicit close cleanup. Human acceptance and cross-surface streaming unification remain open. Next planned phase is C6.
+
+
+C6 Home topic disclosure is recorded in ../slices/home-topic-disclosure.md. This is partial C6 progress; audio/capture audit and human comprehension remain open.

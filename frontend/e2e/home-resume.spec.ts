@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [390, 800, 1280]) {
-  test(`Home puts the saved topic first at ${width}px`, async ({ page }) => {
+  test(`Home puts the saved topic first at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     await page.route('**/api/sessions/current', (route) =>
       route.fulfill({
@@ -21,6 +21,14 @@ for (const width of [390, 800, 1280]) {
     const box = await resume.boundingBox()
     expect(box!.y).toBeLessThan((await options.boundingBox())!.y)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    const topic = page.getByText('Change new-session topic', { exact: true })
+    await expect(topic.locator('..')).not.toHaveAttribute('open')
+    await topic.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('combobox', { name: 'Knowledge area' })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(topic.locator('..')).not.toHaveAttribute('open')
+    await page.screenshot({ path: info.outputPath('resume-home.png'), fullPage: true })
     await resume.focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/review$/)

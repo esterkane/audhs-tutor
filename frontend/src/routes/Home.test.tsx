@@ -193,6 +193,7 @@ describe('Home', () => {
       </Routes>,
     )
     // only courses with published skills can be a goal; the duration preview names the blocks
+    fireEvent.click(screen.getByText('Change new-session topic', { selector: 'summary' }))
     const goal = (await screen.findByLabelText('Goal')) as HTMLSelectElement
     await screen.findByRole('option', { name: 'LLM Evaluation (3 skills)' })
     expect(Array.from(goal.options).map((o) => o.textContent)).toEqual([
