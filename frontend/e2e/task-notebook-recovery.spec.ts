@@ -1,7 +1,7 @@
 import { expect, test, type Route } from '@playwright/test'
 
 for (const width of [1280, 390]) {
-  test(`starter timeout keeps project notes and allows retry (${width}px)`, async ({ page }) => {
+  test(`starter timeout keeps project notes and allows retry (${width}px)`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 850 })
     await page.clock.install()
     await page.route('**/local-learning/program.json', (route) => route.fulfill({ json: {
@@ -35,7 +35,17 @@ for (const width of [1280, 390]) {
     await page.keyboard.press('Enter')
     await expect(page.getByRole('region', { name: 'Notebook workspace', exact: true })).toBeVisible()
     await pending?.fulfill({ body: 'old,data' }).catch(() => {})
-    await page.getByRole('button', { name: 'Back to task without results', exact: true }).click()
+    await page.getByRole('combobox', { name: 'Notebook cell', exact: true }).selectOption('1')
+    await page.getByRole('textbox', { name: 'Your prediction or explanation', exact: true }).fill('Keep my notebook prediction.')
+    await page.reload()
+    await expect(page.getByRole('region', { name: 'Notebook workspace', exact: true })).toBeVisible()
+    await expect(page.getByRole('combobox', { name: 'Notebook cell', exact: true })).toHaveValue('1')
+    await expect(page.getByRole('textbox', { name: 'Your prediction or explanation', exact: true })).toHaveValue('Keep my notebook prediction.')
+    await expect(page.getByRole('button', { name: 'Return to task with results', exact: true })).toBeDisabled()
+    await page.screenshot({ path: info.outputPath('restored-task-notebook.png'), fullPage: true })
+    const back = page.getByRole('button', { name: 'Back to task without results', exact: true })
+    await back.focus()
+    await page.keyboard.press('Enter')
     await expect(page.getByRole('textbox', { name: 'Project notes', exact: true })).toHaveValue('Keep my observation.')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
   })

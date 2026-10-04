@@ -83,3 +83,8 @@ Tool recovery slices are recorded in visualizer-*-recovery and related slice doc
 ## C3 work-alongside recovery — 2026-10-04
 
 The embedded quiet-panel choice survives matching-session/tab detours and reload without audio autoplay. See slices/alongside-recovery.md for verification and limits. Source retrieval/starter scaffolding shipped separately; older TODOs are historical. Remaining project/review/audio entry contracts and C5 stay open.
+
+
+## C3 task notebook re-entry — 2026-10-04
+
+Task notebook view restores for matching course/section and starter/dataset paths; explicit return clears it. Results remain temporary; no code autoruns. See slices/task-notebook-view-recovery.md for evidence and versioning limits. Full C3/C5 remains open.

@@ -15,6 +15,7 @@ type Work = {
   answers: Record<string, string>
   phase: Phase
   questionId: string
+  practiceOrigin: string | null
 }
 const phases: Phase[] = ['Understand', 'Try', 'Think deeper']
 type Props = { section: Section; course: string; paused: boolean; onOpenNotebook?: () => void }
@@ -23,6 +24,9 @@ export function GuidedSection(props: Props) {
 }
 function Content({ section, course, paused, onOpenNotebook }: Props) {
   const key = `project-study:v1:${course}:${section.id}`
+  const practiceOrigin = section.practice
+    ? JSON.stringify([section.practice.notebook, section.practice.dataset ?? null])
+    : null
   const [restored] = useState(() => {
     const fresh: Work = {
       answer: '',
@@ -31,6 +35,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
       answers: {},
       phase: 'Understand',
       questionId: 'original',
+      practiceOrigin: null,
     }
     try {
       const value = JSON.parse(localStorage.getItem(key) ?? 'null')
@@ -53,8 +58,12 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
           answers,
           phase: phases.includes(value.phase) ? (value.phase as Phase) : ('Understand' as Phase),
           questionId: typeof value.questionId === 'string' ? value.questionId : 'original',
+          practiceOrigin: value.practiceOrigin === practiceOrigin ? practiceOrigin : null,
         },
-        status: 'Saved work restored.',
+        status:
+          value.practiceOrigin && value.practiceOrigin !== practiceOrigin
+            ? 'The task notebook link changed. Your notes are restored; choose the current starter explicitly.'
+            : 'Saved work restored.',
       }
     } catch {
       return { work: fresh, status: 'Saved work could not be restored. Keep a copy before leaving.' }
@@ -62,7 +71,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
   })
   const [work, setWork] = useState<Work>(restored.work)
   const [saved, setSaved] = useState(restored.status)
-  const [practiceOpen, setPracticeOpen] = useState(false)
+  const practiceOpen = practiceOrigin !== null && work.practiceOrigin === practiceOrigin
   const [hint, setHint] = useState(false)
   const [check, setCheck] = useState(false)
   const [tutorOpen, setTutorOpen] = useState(false)
@@ -114,20 +123,26 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
   const tutorAnswer = work.phase === 'Try' ? work.note : work.phase === 'Think deeper' ? answer : ''
   if (practiceOpen && section.practice)
     return (
-      <TaskNotebook
-        courseId={course}
-        sectionId={section.id}
-        key={`${course}:${section.id}`}
-        practice={section.practice}
-        identity={`${course}:${section.id}`}
-        title={section.title}
-        paused={paused}
-        onBack={(summary) => {
-          if (summary) update({ ...work, note: [work.note, summary].filter(Boolean).join('\n\n') })
-          setPracticeOpen(false)
-          requestAnimationFrame(() => heading.current?.focus())
-        }}
-      />
+      <div className="grid gap-3">
+        <p role="status">{saved === 'Saved work restored.' ? 'Your notebook view and saved project notes were restored.' : saved} Execution results are temporary; no code runs automatically.</p>
+        <TaskNotebook
+          courseId={course}
+          sectionId={section.id}
+          key={`${course}:${section.id}`}
+          practice={section.practice}
+          identity={`${course}:${section.id}`}
+          title={section.title}
+          paused={paused}
+          onBack={(summary) => {
+            update({
+              ...work,
+              practiceOrigin: null,
+              note: summary ? [work.note, summary].filter(Boolean).join('\n\n') : work.note,
+            })
+            requestAnimationFrame(() => heading.current?.focus())
+          }}
+        />
+      </div>
     )
   return (
     <Card className="grid grid-cols-1 min-w-0 gap-4 [overflow-wrap:anywhere]">
@@ -177,7 +192,7 @@ function Content({ section, course, paused, onOpenNotebook }: Props) {
         <>
           <Markdown text={section.task} />
           {section.practice && (
-            <Button variant="primary" onClick={() => setPracticeOpen(true)}>
+            <Button variant="primary" onClick={() => update({ ...work, practiceOrigin })}>
               Open task starter notebook
             </Button>
           )}
