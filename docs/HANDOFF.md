@@ -869,3 +869,7 @@ Existing navigation is now separate from desktop workspace; narrow in-flow navig
 ## 2026-10-04 — Collapsible mobile navigation
 
 Menu starts closed on narrow screens, names current page, closes on route change/Escape, and recovers visible keyboard focus when resized. All destinations preserved. Final original 24 browser/four shell unit checks and lint/types/build pass. See docs/slices/mobile-navigation.md. Full mobile bottom navigation, compact header and persistent tutor remain open.
+
+## 2026-10-04 — Header audio controls
+
+Idle header audio is shorter; active status and Stop/pause are visible with settings closed. Stop restores focus. Seven unit tests, audio/parking browser checks and lint/types/build pass. See docs/slices/compact-header-audio.md. Local speech routing unchanged; physical output and broader header composition remain open.

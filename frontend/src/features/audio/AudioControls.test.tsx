@@ -173,3 +173,18 @@ it('a current resume failure releases the sound-test owner and explains the erro
   expect(useReadingControls.getState().reading).toBeNull()
   expect(screen.getByText('Sound test failed: output unavailable')).toBeInTheDocument()
 })
+
+it('keeps compact playback controls visible with settings closed and restores focus after Stop', () => {
+  const view = render(<AudioControls compact />)
+  let release!: () => void
+  act(() => {
+    release = claimReading(() => {}, 'a reading')
+    updateReading(release, { kind: 'voice', status: 'Listening locally', stop: release })
+  })
+  expect(view.container.querySelector('details')).not.toHaveAttribute('open')
+  const stop = screen.getByRole('button', { name: 'Stop voice activity' })
+  expect(stop.closest('details')).toBeNull()
+  fireEvent.click(stop)
+  expect(view.container.querySelector('summary')).toHaveFocus()
+  expect(screen.queryByRole('button', { name: 'Stop voice activity' })).not.toBeInTheDocument()
+})

@@ -78,7 +78,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             AuDHS-Tutor
           </Link>
           <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
-            <AudioControls />
+            <AudioControls compact />
             <ParkingLotButton />
           </div>
         </div>

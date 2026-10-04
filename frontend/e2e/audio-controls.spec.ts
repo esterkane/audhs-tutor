@@ -25,7 +25,7 @@ test('audio controls persist across routes and remain usable on narrow screens',
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
 })
 
-test('requested reading shows preparation, silence settings and completion', async ({ page }) => {
+test('requested reading shows preparation, silence settings and completion', async ({ page }, info) => {
   await page.setViewportSize({ width: 320, height: 900 })
   await page.addInitScript(() =>
     localStorage.setItem('audio-settings-v1', JSON.stringify({ muted: true, volume: 0.5, rate: 1 })),
@@ -71,19 +71,21 @@ test('requested reading shows preparation, silence settings and completion', asy
   await expect(page.getByText('Preparing audio…', { exact: true })).toBeVisible()
   await expect(page.getByText(/Audio is muted/).first()).toBeVisible()
   const shared = page.locator('header details').filter({ hasText: 'Audio controls' })
-  await shared.locator('summary').click()
-  await shared.getByRole('button', { name: 'Pause reading', exact: true }).click()
+  await expect(shared).not.toHaveAttribute('open')
+  await page.screenshot({ path: info.outputPath('active-audio-320.png'), fullPage: true })
+  await page.locator('header').getByRole('button', { name: 'Pause reading', exact: true }).click()
   await expect(page.getByText('Audio paused. Resume continues from the same position.')).toBeVisible()
   release()
   await expect(page.getByRole('button', { name: 'Resume audio', exact: true })).toBeVisible()
-  await shared.getByRole('button', { name: 'Resume reading', exact: true }).focus()
+  await page.locator('header').getByRole('button', { name: 'Resume reading', exact: true }).focus()
   await page.keyboard.press('Enter')
   await expect(page.getByText('Audio finished.', { exact: true })).toBeVisible()
   await listen.click()
 
-  await shared.getByRole('button', { name: 'Stop reading', exact: true }).focus()
+  await page.locator('header').getByRole('button', { name: 'Stop reading', exact: true }).focus()
   await page.keyboard.press('Enter')
   await expect(page.getByText('Audio stopped. Listen again starts from the beginning.')).toBeVisible()
+  await expect(shared.locator('summary')).toBeFocused()
   release()
   await listen.click()
   await expect(page.getByText('Audio finished.', { exact: true })).toBeVisible()
