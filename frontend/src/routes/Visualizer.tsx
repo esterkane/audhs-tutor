@@ -1,7 +1,8 @@
 import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
+import { activities } from '../features/playground/exercises'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { useSensory } from '../features/sensory/useSensory'
@@ -32,6 +33,11 @@ import { restoredPreset, readLibrary, writeLibrary } from '../features/visualize
 const Milkdrop = lazy(() => import('../features/visualizer/Milkdrop'))
 const EMPTY: Frame = { bass: 0, mid: 0, treble: 0, rms: 0 }
 export function Visualizer() {
+  const [params] = useSearchParams()
+  const requestedWorkspace = params.get('workspace')
+  const originWorkspace = activities.find(activity => activity.id === requestedWorkspace)
+  const returnTo = originWorkspace ? `/playground?workspace=${encodeURIComponent(originWorkspace.id)}` : '/playground'
+
   const [savedId, setSavedId] = useState<string | null>(() => {
     try {
       return readLibrary(localStorage).active
@@ -568,7 +574,8 @@ export function Visualizer() {
   return (
     <div className="grid gap-4">
       <div>
-        <Link to="/playground">← Coding playground</Link>
+        <Link to={returnTo}>{originWorkspace ? `← Return to coding workspace: ${originWorkspace.title}` : '← Coding playground'}</Link>
+        {requestedWorkspace && !originWorkspace && <p role="status" className="text-sm text-muted">The linked coding workspace is unavailable. You can choose another in the playground; saved drafts are unchanged.</p>}
         <h1 className="text-xl font-semibold mt-2">Audio visualizer lab</h1>
         <p className="text-sm text-muted">
           See how changing a sound signal changes a picture. Start with the silent demo; no audio file or

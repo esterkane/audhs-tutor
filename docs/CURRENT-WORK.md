@@ -70,3 +70,7 @@ Existing palette roles and focus styling now follow the uploaded canonical token
 ## Context shell design progress
 
 Shared palette/buttons/panels now follow uploaded specifications. Desktop rail is implemented; mobile navigation now uses a closed-by-default disclosure with focus recovery (slices/mobile-navigation.md). These are partial C1/C2 visual stages. Next reconcile compact header and contextual mode/tool entry; persistent tutor, complete mobile composition, font system and human acceptance remain outstanding.
+
+## Contextual tools checkpoint
+
+Lesson-linked coding experiments now retain isolated drafts and validate the current origin (slices/lesson-experiment.md). Audio-lab detours now return to their named coding workspace (slices/visualizer-return-context.md). C3 remains partial: source-grounded context, project/review entry and route-independent paused visualizer state remain; C5 persistent tutor is not implemented.

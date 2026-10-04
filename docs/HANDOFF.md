@@ -885,3 +885,7 @@ Selected workspace now survives URL history/reload with its existing saved code.
 ## 2026-10-04 — Lesson-linked experiment
 
 Optional lesson-to-playground entry now isolates code/chat/question drafts and returns to the current lesson. Origin checked for fresh/retry sends, late checks suppressed, original retry identity retained. 17 unit tests and lint/types/build pass; browser payload/round-trip checks cover desktop/narrow. See docs/slices/lesson-experiment.md for evidence and remaining C3 scope.
+
+## Audio lab return context — 2026-10-04
+
+Fixed the reproduced workspace reset when returning from the audio lab. See slices/visualizer-return-context.md for checks and remaining playback-lifecycle design. No learning-state or audio behavior changes.
