@@ -1,3 +1,4 @@
+import { RememberContext } from '../features/recent/RememberContext'
 import { ProjectAudioContext } from '../features/visualizer/ProjectAudioContext'
 import { initialLesson, lessonIds } from '../features/visualizer/lessonCheckpoint'
 import { claimReading, updateReading } from '../features/voice/readingOwner'
@@ -627,6 +628,7 @@ export function Visualizer() {
   }, [view, inspectId])
   return (
     <div className="grid gap-4" data-capture-query={view === 'Learn' ? new URLSearchParams({ capture_audio_lesson: lessonState.step }).toString() : ''} data-capture-label={`Audio lesson: ${lessonState.step}`}>
+      {view === 'Learn' && <RememberContext context={{ version: 1, kind: 'audio_lesson', lesson: lessonState.step, label: lessonState.step.charAt(0).toUpperCase() + lessonState.step.slice(1) }} />}
       {savedLesson && <section className="border border-line rounded-lg p-4 grid gap-2" aria-label="Saved audio lesson">
         {validSavedLesson ? <>
           <p>Saved audio lesson: {validSavedLesson}. Opening it keeps your preset draft and tone settings. Audio and animation do not start automatically.</p>

@@ -1,3 +1,4 @@
+import { RememberContext } from '../features/recent/RememberContext'
 import { AssessmentHistoryDetails } from '../features/programs/AssessmentHistoryDetails'
 import { AnswerReplacement } from '../features/programs/AnswerReplacement'
 import { AnswerChildren } from '../features/programs/AnswerChildren'
@@ -236,6 +237,7 @@ function Answer({ id }: { id: string }) {
       ) : (
         data && (
           <>
+            {data.id === id && <RememberContext context={{ version: 1, kind: 'answer', answer_id: data.id, label: (data.request_text || data.target_label || 'Saved explanation').slice(0, 200) }} />}
             <p className="text-sm text-muted">
               Saved {new Date(data.created_at).toLocaleString()}. This is a past response, not a newly checked
               answer.

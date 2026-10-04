@@ -38,3 +38,9 @@ Home now has an optional Recently opened material disclosure below the primary l
 Original6browser journeys passed: recent sources/workspaces390/1280, keyboard return, reload, deleted-source recovery, clear, unknown workspace suppression and existing recent-area regressions. Seven unit checks, lint/types and production build passed (inherited build warnings remain). Narrow screenshot inspected; read-only review found no blockers/majors. No learning writes in the browser journeys. Next: resolved project/answer/audio/lesson destinations, area-history reconciliation and remaining search-store inventory. Human acceptance and global search remain incomplete.
 
 Final sanitized verification:3recent-material browser journeys and lint/types passed.
+
+
+## Saved explanations and audio lessons — 2026-10-04
+Matching loaded saved answers and the displayed audio Learn step now join recent material. Answer history is not recorded during loading/error; audio links retain the explicit Open saved audio lesson action and never start playback. Visual inspection shortened redundant audio labels. Original six browser journeys passed (new recent-answer/audio390/1280 plus saved-answer and saved-audio regressions), with no learning writes or AudioContext creation. Lint/types and production build passed with inherited warnings; read-only review clear. Project/checkpoint tracking, area consolidation and remaining search inventory still follow.
+
+Final sanitized rerun: both390/1280 journeys passed after the label change. The preceding run was already in progress when the label changed and retained the old locator, causing its desktop case to time out; rerun used the final code and selectors.
