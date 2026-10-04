@@ -34,3 +34,6 @@ evals/results/
 docs/research/
 
 frontend/public/local-learning/
+
+# Isolated design prototype browser artifacts
+frontend/test-results-design/

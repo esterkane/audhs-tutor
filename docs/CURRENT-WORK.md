@@ -10,9 +10,9 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
-## Current owner scope — UX phase 6 (2026-10-04)
+## Current owner scope — UX phase 7 (2026-10-04)
 
-Phase 6 [design-system specification](design/DESIGN-SYSTEM.md) documents existing semantic tokens/primitives, typography, spacing, component and interaction-state contracts. Twenty opaque color-pair calculations identify adequate sampled text contrast and weak decorative boundaries unsuitable as sole required control identification. Production CSS is unchanged; missing semantic roles require rendered verification during bounded adoption. Next is Phase 7: three isolated visual directions sharing Phase 5 IA and this foundation. Other queues remain parked.
+Phase 7 [isolated prototypes](../design-experiments/ux-directions/README.md) provide Quiet Workspace, Structured Learning and Adaptive Canvas with identical fixture content and actions. Nine standalone browser checks across320/390/1280px, initial axe scans, focused lint and inline-script syntax passed; desktop/narrow images inspected. Help focus and preview navigation state corrected within prototypes. Production routes, learning logic and services unchanged. Next: Phase8 comparison matrix and recommendation; no winner or human usability pass claimed yet.
 
 ## Prioritized next work
 

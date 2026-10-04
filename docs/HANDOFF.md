@@ -801,3 +801,7 @@ Added docs/ux/UX-ARCHITECTURE.md. Reconciled all 19 explicit route entries inclu
 ## 2026-10-04 — Phase 6 design-system specification
 
 Added docs/design/DESIGN-SYSTEM.md and token-contrast.json. Inspected existing CSS and four primitives; computed20 light/dark opaque token pairs, checked primary accessibility guidance and local links. Sampled text pairs clear4.5:1; line/card is1.36/1.39 and cannot alone establish a required control boundary. This is not rendered conformance certification. Defined typography/spacing/state/component rules and missing semantic roles without production CSS or learning changes. Next: Phase7 isolated visual directions, no new component library.
+
+## 2026-10-04 — Phase 7 isolated visual directions
+
+Added design-experiments/ux-directions HTML and rationale, standalone design Playwright config/probes and screenshots. Three directions share one fixture, script and IA; no database/network/model calls or production replacements. Initial6 checks and final9 checks passed, focused ESLint and script syntax pass; desktop/320px images reviewed. Explicit help now focuses the updated heading and navigation preview reflects current state. Narrow layouts remain long. Dark mode, real audio/streaming/persistence and human comprehension remain outside prototype verification. Next is Phase8 scoring/recommendation.
