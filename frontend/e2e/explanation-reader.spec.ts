@@ -75,7 +75,7 @@ test('completed explanation sections preserve notes, focus and optional follow-u
       await page.getByRole('textbox', { name: 'Ask about this lesson (optional)' }).inputValue(),
     ).toContain('Compare matching components.')
     expect(calls).toBe(1)
-    await page.getByRole('button', { name: 'Stop session', exact: true }).click()
+    await page.getByRole('button', { name: 'End session', exact: true }).click()
   } finally {
     await endOpenSession(request)
   }

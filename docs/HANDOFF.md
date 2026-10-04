@@ -773,3 +773,9 @@ pass; this corrects the reported CI failure, with next full remote workflow stil
 Next audio slices remain visualizer audible monitoring (silent analysis stays independent), output
 test-tone ownership and ambient sound ownership. Preserve explicit start/resume, identity-safe late
 promises and honest Stop sound semantics. Physical headphone audibility remains an owner check.
+
+## 2026-10-04 — UX phase 1 and pause/end clarity
+
+Added the Phase 1 product inventory and adversarial report under docs/ux. The report ranks ten findings and records evidence limits for all 25 scenarios. Corrected only AU-01: explicit Pause and return Home preserves the active checkpoint; End session retains termination; late transition responses cannot navigate away after pause. No learning kernel, routing, grading or scheduling changes.
+
+Verification in the original checkout: baseline browser24; first post-change regression15; final pause suite9 (corrected due-card fixture); focused unit23; lint/type/build passed; desktop/narrow screenshots and keyboard checked. No claim of real-model remediation quality, elapsed-time suspension or universal draft persistence. Next incomplete design phase is Phase2; remaining findings and coverage gaps are in the report. Both repository variants remain private.

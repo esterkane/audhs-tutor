@@ -107,6 +107,11 @@ export function Session() {
 
 function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut }) {
   const nav = useNavigate()
+  const active = useRef(false)
+  useEffect(() => {
+    active.current = true
+    return () => { active.current = false }
+  }, [sessionId])
   const transition = useBlockTransition(sessionId)
   const plan = (data.plan ?? []) as Block[]
   const reviewIx = firstIndex(plan, (t) => REVIEW_BLOCK_TYPES.includes(t))
@@ -115,6 +120,7 @@ function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut })
   async function beginChecked(index: number) {
     if (transition.pending) return
     const state = await transition.start(index)
+    if (!active.current) return
     if (!state.allowed) {
       setNote(state.message)
       return
@@ -124,6 +130,7 @@ function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut })
   async function continuePlan() {
     if (transition.pending || !data.state) return
     const state = await transition.next({ from_index: data.state.block_index ?? null, reason: 'finished' })
+    if (!active.current) return
     if (!state.allowed) {
       setNote(state.message)
       return
@@ -200,6 +207,11 @@ function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut })
 }
 
 function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut }) {
+  const active = useRef(false)
+  useEffect(() => {
+    active.current = true
+    return () => { active.current = false }
+  }, [sessionId])
   const stopSession = useStopSession(sessionId)
   const { skillId, setSkill, mode, setEnergy } = useMode()
   const nav = useNavigate()
@@ -264,6 +276,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
       return
     }
     const res = await transition.next({ from_index: blockIndex, reason, grasp_passed: graspPassed })
+    if (!active.current) return
     if (!res.allowed) {
       setBlockNote(res.message)
       changePhase('assess')

@@ -50,7 +50,7 @@ export function SoftTimer({
   useEffect(() => {
     if (!show || !notify) return
     if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      new Notification('Planned time is up', { body: 'Save & stop, 5 more minutes, or finish the block.' })
+      new Notification('Planned time is up', { body: 'End session now, 5 more minutes, or finish the block.' })
     }
   }, [show, notify])
   if (!show) return null
@@ -62,7 +62,7 @@ export function SoftTimer({
       </p>
       <div className="flex gap-2 flex-wrap">
         <Button variant="primary" onClick={onSaveStop} disabled={pending}>
-          Save &amp; stop
+          End session now
         </Button>
         <Button onClick={() => onExtend(5)} disabled={pending}>
           5 more minutes

@@ -3,9 +3,11 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../components/ui/button'
 import { apiFetch, type Schemas } from '../../lib/api'
 import { usePreferences } from '../preferences/api'
+import { useNavigate } from 'react-router-dom'
 
 /** Ending a session is always available and never submits an assessment or a rating. */
 export function SessionControls({ sessionId, skillId }: { sessionId: string; skillId?: string | null }) {
+  const navigate = useNavigate()
   const qc = useQueryClient()
   const prefs = usePreferences()
   const marks = (prefs.data?.values?.['learning.material_marks'] ?? {}) as Record<string, string>
@@ -23,8 +25,11 @@ export function SessionControls({ sessionId, skillId }: { sessionId: string; ski
   return (
     <section aria-label="Session controls" className="border border-line rounded-md p-3">
       <div className="flex gap-2 flex-wrap">
+        <Button onClick={() => navigate('/')} disabled={stop.isPending}>
+          Pause and return Home
+        </Button>
         <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
-          Stop session
+          End session
         </Button>
         <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
           Change topic
@@ -54,8 +59,8 @@ export function SessionControls({ sessionId, skillId }: { sessionId: string; ski
         )}
       </div>
       <p className="text-xs text-muted mt-2">
-        Stop saves completed work and returns Home; change topic opens the topic chooser there. No rating
-        needed.
+        Pause keeps this session available to resume from Home. End session or change topic finishes
+        it; completed work stays saved. No rating needed.
       </p>
       {skillId && marks[skillId] && (
         <p role="status" className="text-sm mt-2">

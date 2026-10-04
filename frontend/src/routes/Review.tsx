@@ -225,6 +225,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
     if (!state || transition.pending) return
     try {
       const next = await transition.next({ from_index: state.block_index ?? null, reason: 'finished' })
+      if (!active.current) return
       nav(next.plan_complete ? '/recap' : routeForPhase(next))
     } catch {
       /* transition.error is rendered; the plan did not move */

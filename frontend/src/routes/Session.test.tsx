@@ -278,7 +278,7 @@ it('guides explanation to a question with optional controls collapsed and access
     ),
   ).toBeVisible()
   expect(screen.getByText('More ways to learn').closest('details')).not.toHaveAttribute('open')
-  expect(screen.getByRole('button', { name: 'Stop session' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'End session' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Listen to explanation' })).not.toBeInTheDocument()
   expect(screen.getByText(/No explanation has been prepared yet/)).toBeVisible()

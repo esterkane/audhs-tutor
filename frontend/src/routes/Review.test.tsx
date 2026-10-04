@@ -549,7 +549,7 @@ it('does not report an empty review when its initial read fails', async () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load review cards')
     expect(screen.queryByText('Review done')).not.toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Go to Home' })).toBeEnabled()
-    expect(screen.getByRole('button', { name: 'Stop session' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'End session' })).toBeEnabled()
   } finally {
     mounted.unmount()
     vi.unstubAllGlobals()

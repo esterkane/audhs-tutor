@@ -10,6 +10,10 @@ Recent verified changes include explicit local bin-boundary checks, an optional 
 
 Acquisition, stored source text, search indexing, activated lessons and executable notebooks are separate states. Private coverage reconciliation found empty and malformed notebooks plus duplicate-path evidence; recovered text is not a repaired executable notebook. Full external-resource and course coverage remains incomplete. Detailed acquisition reports and scripts belong only in the private archive.
 
+## Current owner scope — UX phase 1 (2026-10-04)
+
+The supplied design plan now has its Phase 1 [product inventory](ux/PRODUCT-UNDERSTANDING.md) and a separate [adversarial report](ux/ADVERSARIAL-USABILITY-REPORT.md). AU-01 pause/end ambiguity is corrected without changing learning logic. Remaining findings and model/human-test gaps are explicit; do not mark the 25-scenario matrix universally passed. Next incomplete design phase is Phase 2; earlier acquisition and architecture queues remain parked under this narrower scope.
+
 ## Prioritized next work
 
 1. **R3 unresolved-request recovery.** Assessment/challenge/listening/code submissions and review/vocabulary ratings now bind to displayed content, preserve original completed outcomes and offer explicit refresh without losing earlier work (see the assessment/review content-version slices). New model-free review ratings now roll back their claim and learning writes together, enabling safe original-identity resend (see `docs/slices/review-atomic-recovery.md`). Caught pre-model/pre-commit assessment failures now release only their own claim after rollback (see `docs/slices/assessment-unstarted-recovery.md`). Validated grades now persist before learning writes and can be finished explicitly without inference; crash-orphaned claims and model results lost before persistence remain uncertain.

@@ -27,3 +27,24 @@ it('stops without an assessment or recap rating and returns to topic selection',
   await waitFor(() => expect(calls).toEqual([['/api/sessions/s1/end', {}]]))
   expect(useMode.getState().sessionId).toBeNull()
 })
+
+it('pauses without ending, rating or clearing the active session', async () => {
+  useMode.setState({ sessionId: 's1', skillId: 'k1' })
+  const calls: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    calls.push(url)
+    return jsonResponse({ values: {}, specs: [] })
+  }))
+  renderApp(
+    <Routes>
+      <Route path="/session" element={<SessionControls sessionId="s1" skillId="k1" />} />
+      <Route path="/" element={<p>Resume from Home</p>} />
+    </Routes>,
+    { route: '/session' },
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Pause and return Home' }))
+  expect(await screen.findByText('Resume from Home')).toBeVisible()
+  expect(useMode.getState().sessionId).toBe('s1')
+  expect(useMode.getState().skillId).toBe('k1')
+  expect(calls.every((url) => url.endsWith('/preferences'))).toBe(true)
+})

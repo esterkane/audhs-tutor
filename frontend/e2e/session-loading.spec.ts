@@ -27,7 +27,7 @@ for (const width of [390, 1280]) {
       await retry.focus()
       await page.keyboard.press('Enter')
       await expect(page.getByRole('heading', { name: 'Choose where to begin' })).toBeVisible()
-      await expect(page.getByRole('button', { name: 'Stop session', exact: true })).toBeVisible()
+      await expect(page.getByRole('button', { name: 'End session', exact: true })).toBeVisible()
     } finally {
       await endOpenSession(request)
     }
