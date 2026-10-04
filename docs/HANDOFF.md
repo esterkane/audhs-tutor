@@ -905,3 +905,7 @@ File/position now survive route exit in tab memory, with disposed audio resource
 ## Audio lesson controls — 2026-10-04
 
 Lesson step, tone settings and hint recover across route exit/reload without autoplay. See slices/visualizer-lesson-recovery.md. Next recover comparison predictions and close source/reselection gaps; full C3 remains open.
+
+## Comparison recovery — 2026-10-04
+
+Selected experiment, optional prediction, hint and reveal survive lesson/route changes and reload. Explicit Restart/Stop behavior retained. See slices/visualizer-comparison-recovery.md for verification and remaining context gaps.

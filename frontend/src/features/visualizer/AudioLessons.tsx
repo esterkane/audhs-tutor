@@ -1,3 +1,4 @@
+import { initialComparison } from './comparisonCheckpoint'
 import { lessonIds, type LessonCheckpoint } from './lessonCheckpoint'
 import { Button } from '../../components/ui/button'
 import { type ToneSettings } from './tone'
@@ -83,7 +84,7 @@ export function AudioLessons({
           onChange={(e) => {
             const next = Number(e.target.value)
             const nextSettings: ToneSettings = next === 2 ? settings : { ...settings, waveform: 'sine' }
-            onChange({ step: lessonIds[next], settings: nextSettings, hint: false })
+            onChange({ ...state, step: lessonIds[next], settings: nextSettings, hint: false })
             if (active) onUpdate(nextSettings)
           }}
         >
@@ -167,7 +168,7 @@ export function AudioLessons({
           )}
         </>
       )}
-      {step === 4 && <GuidedExperiments />}
+      {step === 4 && <GuidedExperiments state={state.comparison ?? initialComparison} onChange={(comparison) => onChange({ ...state, comparison })} />}
       {step === 5 && <Button onClick={onCreate}>Open Create</Button>}
       <div className="flex gap-2">
         <Button variant="outline" onClick={() => onChange({ ...state, hint: !hint })}>

@@ -1,18 +1,17 @@
+import { initialComparison, type ComparisonCheckpoint } from './comparisonCheckpoint'
 import { ComparisonPicture } from './ComparisonPicture'
 import { useState } from 'react'
 import { Button } from '../../components/ui/button'
-import { experiments, experimentSnapshot, type ExperimentId } from './experiments'
+import { experiments, experimentSnapshot } from './experiments'
 
-export function GuidedExperiments() {
-  const [active, setActive] = useState<ExperimentId | null>(null)
-  const [compared, setCompared] = useState(false)
-  const [hint, setHint] = useState(false)
-  const [prediction, setPrediction] = useState('')
+export function GuidedExperiments({ state: controlled, onChange }: { state?: ComparisonCheckpoint; onChange?: (state: ComparisonCheckpoint) => void } = {}) {
+  const [local, setLocal] = useState(initialComparison)
+  const state = controlled ?? local
+  const { active, compared, hint, prediction } = state
+  const change = onChange ?? setLocal
   const lesson = experiments.find((e) => e.id === active)
   function reset() {
-    setCompared(false)
-    setHint(false)
-    setPrediction('')
+    change({ ...initialComparison, active })
   }
   if (!lesson)
     return (
@@ -26,8 +25,7 @@ export function GuidedExperiments() {
             key={e.id}
             variant="outline"
             onClick={() => {
-              reset()
-              setActive(e.id)
+              change({ ...initialComparison, active: e.id })
             }}
           >
             {e.title}
@@ -47,7 +45,7 @@ export function GuidedExperiments() {
         <select
           className="bg-card border border-line rounded p-2"
           value={prediction}
-          onChange={(e) => setPrediction(e.target.value)}
+          onChange={(e) => change({ ...state, prediction: e.target.value as ComparisonCheckpoint['prediction'] })}
         >
           <option value="">Skip prediction</option>
           <option>Smaller</option>
@@ -56,10 +54,10 @@ export function GuidedExperiments() {
         </select>
       </label>
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" onClick={() => setHint(!hint)}>
+        <Button variant="outline" onClick={() => change({ ...state, hint: !hint })}>
           {hint ? 'Hide experiment hint' : 'Show experiment hint'}
         </Button>
-        <Button variant="primary" onClick={() => setCompared(true)}>
+        <Button variant="primary" onClick={() => change({ ...state, compared: true })}>
           Try change and compare
         </Button>
       </div>
@@ -125,8 +123,7 @@ export function GuidedExperiments() {
         <Button
           variant="outline"
           onClick={() => {
-            reset()
-            setActive(null)
+            change(initialComparison)
           }}
         >
           Stop experiment

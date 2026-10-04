@@ -1,6 +1,7 @@
+import { parseComparison, type ComparisonCheckpoint } from './comparisonCheckpoint'
 import { defaultTone, type ToneSettings } from './tone'
 export const lessonIds = ['amplitude', 'frequency', 'harmonics', 'sampling', 'mapping', 'create'] as const
-export type LessonCheckpoint = { step: typeof lessonIds[number]; settings: ToneSettings; hint: boolean }
+export type LessonCheckpoint = { step: typeof lessonIds[number]; settings: ToneSettings; hint: boolean; comparison?: ComparisonCheckpoint }
 export const initialLesson: LessonCheckpoint = { step: 'amplitude', settings: defaultTone, hint: false }
 export function parseLesson(value: unknown): LessonCheckpoint {
   const state = value as LessonCheckpoint
@@ -10,5 +11,5 @@ export function parseLesson(value: unknown): LessonCheckpoint {
       !Number.isFinite(settings.amplitude) || settings.amplitude < 0 || settings.amplitude > 0.5 ||
       !['sine', 'square'].includes(settings.waveform) || ![512, 2048, 8192].includes(settings.fftSize))
     throw new Error('Invalid lesson checkpoint')
-  return { step: state.step, hint: state.hint, settings: { frequency: settings.frequency, amplitude: settings.amplitude, waveform: settings.waveform, fftSize: settings.fftSize } }
+  return { step: state.step, hint: state.hint, ...(state.comparison === undefined ? {} : { comparison: parseComparison(state.comparison) }), settings: { frequency: settings.frequency, amplitude: settings.amplitude, waveform: settings.waveform, fftSize: settings.fftSize } }
 }
