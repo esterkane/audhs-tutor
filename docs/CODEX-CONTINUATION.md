@@ -402,3 +402,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 owner visibility/efficiency update: sanitized repository made PUBLIC after clean-index publication check and all reachable history scan (2746 blobs, no prohibited path/source identifier or credential-pattern findings); original archive verified PRIVATE. No releases, wiki or Pages; CI artifacts are sandbox journey traces. AGENTS.md now records focused context, bounded reviews, coherent slices and reuse of passing checks without reducing quality gates. This overrides earlier both-private notes.
+
+
+2026-10-05 long reading re-entry: two prepared browser baselines reproduce missing section reader and question continuation after completed-response reload. Text and archived notes survive. No runtime change. See slices/lesson-reading-reentry.md for bounded recovery plan and evidence limits.
