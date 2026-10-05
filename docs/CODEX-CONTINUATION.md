@@ -390,3 +390,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 Session pause ownership: two delayed-destination tests failed before fix, pass after parent-owned guard covering async block responses and cache-driven review/recap redirects. Committed state survives and explicit resume works. Original10 unit/11 browser, lint/types/build pass; keyboard/narrow visual checked, independent review clear. See ux/DAILY-LEARNING-ACCEPTANCE.md. General non-Pause navigation remains unverified; crowded lesson layout remains open.
+
+
+2026-10-05 reading order: topic heading precedes plan metadata; optional Alongside/coding follow lesson; repeated intro shortened. Start explanation moves~150px earlier at390px/~100px at1280px. Original10 unit,6 initial and6 final browser journeys, lint/types/build pass; keyboard320/390/1280 and narrow visual checked; independent review clear. No learning logic changes. docs/slices/lesson-reading-order.md records evidence and remaining control-stack/discoverability work; DL-02 stays partial.

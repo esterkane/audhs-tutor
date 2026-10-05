@@ -107,18 +107,18 @@ export function Session() {
         </Card>
       )}
       <SessionControls sessionId={sessionId} skillId={st.skill_id} onPause={() => { navigationOwner.current.paused = true }} />
-      <AlongsideMode sessionId={sessionId} />
-      {st.skill_id && <details>
-        <summary className="cursor-pointer text-sm font-medium">Try a coding experiment</summary>
-        <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson. Code and chat stay separate from your assessed answers; no code runs automatically.</p>
-        <Link className="underline" to={`/playground?lesson_session=${encodeURIComponent(sessionId)}&lesson_skill=${encodeURIComponent(st.skill_id)}`}>Open lesson experiment</Link>
-      </details>}
       <SessionBody
         canNavigate={canNavigate}
         key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
         sessionId={sessionId}
         data={session.data}
       />
+      <AlongsideMode sessionId={sessionId} />
+      {st.skill_id && <details>
+        <summary className="cursor-pointer text-sm font-medium">Try a coding experiment</summary>
+        <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson. Code and chat stay separate from your assessed answers; no code runs automatically.</p>
+        <Link className="underline" to={`/playground?lesson_session=${encodeURIComponent(sessionId)}&lesson_skill=${encodeURIComponent(st.skill_id)}`}>Open lesson experiment</Link>
+      </details>}
     </div>
   )
 }
@@ -315,6 +315,11 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
       <AdaptationCards origin="planner" />
       {stopSession.error && <p role="alert">{stopSession.error.message}</p>}
       <Card>
+        <CardTitle className="mb-2">
+          {phase === 'practice'
+            ? `${currentBlock.domain === 'language' ? 'Language' : currentBlock.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
+            : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}
+        </CardTitle>
         <p className="text-sm text-muted">
           Activity {blockIndex + 1} of {plan.length} · {BLOCK_LABELS[currentBlock.type] ?? currentBlock.type}{' '}
           · about {timerMinutes} min
@@ -368,11 +373,6 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             </div>
           </div>
         </details>
-        <CardTitle className="mt-3">
-          {phase === 'practice'
-            ? `${currentBlock.domain === 'language' ? 'Language' : currentBlock.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
-            : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}
-        </CardTitle>
         {skill && (phase === 'teach' || phase === 'assess') && (
           <div className="mt-2 text-sm">
             <h3 className="font-medium">Learning goal</h3>
@@ -536,13 +536,12 @@ function TeachPanel({
         <CardTitle>Your explanation</CardTitle>
         {!text && !busy && !error && status !== 'stopped' && (
           <p className="mt-2">
-            No explanation has been prepared yet. Start explanation to get the idea and a worked example
-            before trying a question. The learning goal above is only a summary of what you will learn.
+            No explanation has been prepared yet. Start with the idea and a worked example, or type a
+            specific question below.
           </p>
         )}
         <p className="text-sm text-muted mt-2">
-          Read the explanation below when it is ready, or use its Listen control. Audio starts only when you
-          choose it. You can also type a specific lesson question below.
+          Read at your own pace or choose Listen when the explanation is ready. Audio never starts automatically.
         </p>
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
