@@ -1109,3 +1109,6 @@ Material-search slice: Library /search now searches saved explanations and sourc
 
 
 Persistent header search implemented;5 original browser journeys and lint/types/build pass. See recent-contexts.md for startup dependency diagnosis and outstanding mobile chrome/search scope.
+
+
+2026-10-05 header spacing: brand and search share a wrapping row on narrow screens. Screenshot shows header reduced from276px to243px at390 width; no controls hidden or learning logic changed. Five original search/keyboard/Back journeys, lint and types passed. Narrow screenshot inspected. Broader mobile composition and command access remain open.

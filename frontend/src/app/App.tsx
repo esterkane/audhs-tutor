@@ -77,11 +77,13 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </a>
       <header className="grid gap-3 px-4 py-3 border-b border-line bg-card">
         <div className="flex flex-wrap gap-3 items-center justify-between">
-          <Link to="/" className="font-semibold no-underline text-fg">
-            AuDHS-Tutor
-          </Link>
-          <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
+          <div className="flex flex-wrap items-center justify-between gap-3 w-full lg:w-auto">
+            <Link to="/" className="font-semibold no-underline text-fg">
+              AuDHS-Tutor
+            </Link>
             <Link to="/search" className="inline-flex min-h-10 items-center rounded-md border border-control px-3 py-2 text-sm underline underline-offset-4">Search material</Link>
+          </div>
+          <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
             <div ref={setTutorEntry} className="min-w-0 max-w-full" />
             <AudioControls compact />
             <ParkingLotButton />

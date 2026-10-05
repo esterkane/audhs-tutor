@@ -85,3 +85,8 @@ Header now exposes Search material without requiring Library discovery. Native l
 Two initial browser attempts timed out before tests. A Python faulthandler trace identified LiteLLM import waiting on remote model-cost-map HTTP fetch. Verification used LITELLM_LOCAL_MODEL_COST_MAP=True (supported by installed dependency) only for hosted-disabled sandbox. Separate architecture follow-up: remove unneeded network dependency from local startup while preserving current hosted cost accounting; no production pricing behavior changed here.
 
 Final sanitized verification: all5 search journeys passed with the same sandbox-only local-cost-map setting.
+
+
+2026-10-05 header spacing: brand and search share a wrapping row on narrow screens. Screenshot shows header reduced from276px to243px at390 width; no controls hidden or learning logic changed. Five original search/keyboard/Back journeys, lint and types passed. Narrow screenshot inspected. Broader mobile composition and command access remain open.
+
+Sanitized header keyboard/return journeys also pass at390/1280.
