@@ -123,6 +123,42 @@
       "text": "You answered \"5\" to the question \"What is 2 + 3?\". [historical_answer] The feedback incorrectly stated the answer was wrong and gave \"4\" as the correct sum. Two plus three is indeed five. Your reasoning was sound.",
       "elapsed_s": 2.577,
       "latency_ms": 2577
+    },
+    {
+      "run": "flat-context",
+      "model": "llama3.1:8b",
+      "case": "missing",
+      "variant": "after",
+      "text": "There is no learner answer to explain. The original question was \"What is 2 + 3?\" and the learner submission was null. The tutor feedback was to try counting forward carefully, one number at a time.",
+      "elapsed_s": 7.417,
+      "latency_ms": 7416
+    },
+    {
+      "run": "flat-context",
+      "model": "llama3.1:8b",
+      "case": "reasoning",
+      "variant": "after",
+      "text": "You originally answered that you started at 2 and counted three more, resulting in the numbers 3, 4, and 5. This is a correct step-by-step process for counting forward, but it doesn't directly address the question of what the result of 2 + 3 is. Your reasoning was sound in terms of counting, but it didn't explicitly calculate the sum.",
+      "elapsed_s": 2.049,
+      "latency_ms": 2049
+    },
+    {
+      "run": "flat-context",
+      "model": "llama3.1:8b",
+      "case": "sum",
+      "variant": "after",
+      "text": "You originally answered \"4\" to the question \"What is 2 + 3?\". Your reasoning was not sound. When adding 2 and 3, you should count forward one number at a time: 2, 3, 5. The correct sum is 5, not 4.",
+      "elapsed_s": 1.714,
+      "latency_ms": 1713
+    },
+    {
+      "run": "flat-context",
+      "model": "llama3.1:8b",
+      "case": "reported_error",
+      "variant": "after",
+      "text": "Your original question was \"What is 2 + 3?\" and your recorded learner submission was \"5\". Your reasoning was simply stating the answer, without showing any calculation or explanation. This reasoning is not sound because it doesn't demonstrate an understanding of how to add numbers.",
+      "elapsed_s": 1.612,
+      "latency_ms": 1611
     }
   ],
   "decision": "Rejected; no API/prompt/routing change shipped. Both local samples confuse tutor versus learner evidence or misjudge correct arithmetic."

@@ -1256,3 +1256,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 assessment-origin candidate rejected:18 structural tests passed, but14 synthetic local replies exposed learner/tutor attribution failures and incorrect arithmetic across Llama3.1:8b and Gemma3:12b. API/test candidate reverted; no routing/prompt change. Evidence and next flat-context comparison are in slices/assessment-followup-context.md and assessment-origin-local-sample.json. Original-answer continuity beyond the direct parent remains open.
+
+
+2026-10-05 assessment discussion now shows the saved question and displayed learner answer in an independent read-only panel.4 component tests,2 desktop/narrow keyboard journeys, types/lint and review pass; screenshot inspected. Another flat-context model sample rejected; no inference/prompt/routing change. See slices/assessment-followup-context.md. Longer-term attribution and expanded-panel density remain open.

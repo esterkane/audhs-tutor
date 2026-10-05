@@ -77,3 +77,11 @@ The additional source-role instruction failed on Llama3.1:8b: it invented an abs
 Reverted the pending API and tests after review of these failures. The test-only reproduction and candidate patch remain local at /tmp/assessment-origin-rejected-candidate.patch for follow-up;18 structural tests had passed, but that was not a teaching-quality gate. No pending origin implementation should be treated as shipped. Current runtime still limits follow-ups to the immediate saved parent and the original assessment context can be lost on later turns.
 
 Next design must make tutor-authored text and learner-authored submissions unambiguous in the model packet, compare a small flat context against the current nested history, and test missing/ambiguous/correct/disputed answers before adopting it. Preserve an immutable original-answer view for the learner independently of model interpretation. Do not switch models or add hosted calls based on these failing samples.
+
+## Visible original work — 2026-10-05
+
+A further four-case flat-context local sample still misjudges correct reasoning and invents steps; it was not adopted. Raw results appended to assessment-origin-local-sample.json. No model/prompt/context change shipped.
+
+The assessment discussion now reads and displays the original saved question and displayed learner answer separately from tutor replies. Fetch starts only when first opened, validates ID/surface, and provides retry/missing-record copy. Missing displayed answers never fall back to raw option indices. The independent read panel does not unmount conversation state on query errors. This gives the learner inspectable original work; it does not fix the model's later-turn attribution limits.
+
+Four focused component tests, TypeScript and lint pass. Two sandbox desktop/narrow journeys verify displayed answer against the real saved record, keyboard opening, no inference on open, continued discussion and no overflow. Narrow screenshot inspected; layout remains long when multiple optional help panels are expanded, so DL-02 density remains open. Independent review: no actionable findings. No schema, grade, model-route or inference change.

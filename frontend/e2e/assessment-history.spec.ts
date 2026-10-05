@@ -106,6 +106,10 @@ for (const narrow of [false, true]) {
       await discussion.focus()
       await page.keyboard.press('Enter')
       await expect(page.getByRole('textbox', { name: 'Your follow-up question' })).toBeVisible()
+      const originalRecord = await (await request.get(`${API}/api/answers/${grade.answer_id}`)).json()
+      const recorded = page.getByRole('region', { name: 'Your recorded assessment', exact: true })
+      await expect(recorded).toBeVisible()
+      await expect(recorded.getByText(originalRecord.request.learner_answer_display, { exact: true })).toBeVisible()
       expect(discussionCalls).toBe(0)
       await page
         .getByRole('textbox', { name: 'Your follow-up question' })
