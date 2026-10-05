@@ -1184,3 +1184,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 first-text timing: actual lesson has null memory score; rounding rejected as irrelevant. Batch512/1024/2048 has~12.3s prefill throughout, so defaults retained. Stream records now distinguish first_token_ms from total time, without generation/accounting changes.53 backend checks plus final18 accounting checks pass; Ruff/mypy and independent review clear. Real isolated timing agrees with preparation+provider elapsed. See slices/local-tutor-latency.md; latency remains open.
+
+
+2026-10-05 next performance slice: Study Tutor buffers ordinary replies until complete, unlike session SSE. Documented a single streaming vertical slice in slices/study-tutor-streaming-plan.md with unchanged prompts/routing, authoritative final checks, retained partial text and durable recovery. No runtime change yet; next implement and test that contract. Do not remove bounded history or enable saved reuse silently.
