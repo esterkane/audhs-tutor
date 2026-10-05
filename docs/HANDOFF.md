@@ -1124,3 +1124,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 Library typography: Search, Sources and saved-answer list/detail h1 now use existing22/30 page-title token; Search panels use16/24 heading token. No semantic, prose or behavior changes. Original13 search/brand journeys, lint/types pass; sanitized6 source/answer journeys pass using8011/5175 because8010 was occupied. Dark narrow screenshot inspected; read-only review clear. Other screen headings remain a separate adoption step.
+
+
+2026-10-05 C7 area search: Search now reuses the bounded shared area catalog to match names, descriptions and topic terms by case-insensitive phrase. Separate result group, count/8-result cap, retry and exact browse links; opening an area does not start/change a session. Eight browser journeys pass in both checkouts, including unavailable retrieval alongside area results and zero learning writes; lint/types pass, narrow screenshot inspected, read-only review clear. Used separate sandbox ports8011/5175 and search-area-check.db. Project/skill/notes search and broader accessibility/human acceptance remain open.

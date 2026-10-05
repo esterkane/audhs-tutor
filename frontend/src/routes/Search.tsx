@@ -1,3 +1,4 @@
+import { useAreas } from '../features/areas/api'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -10,10 +11,10 @@ export function Search() {
   const query = params.get('q')?.trim() ?? ''
   return <div className="grid gap-4 min-w-0">
     <h1 className="text-page-title font-semibold">Search material</h1>
-    <p>Find saved tutor explanations and passages in your indexed sources.</p>
+    <p>Find knowledge areas, saved tutor explanations and passages in your indexed sources.</p>
     <p className="text-sm text-muted">Searches local material, not the web. Notebook edits, unsaved chats, project notes and saved thoughts are not searched here.</p>
     <SearchForm key={`form:${query}`} initial={query} onSearch={q => setParams(q ? { q } : {})} />
-    {!query ? <p>Enter a phrase to search both collections.</p> : query.length > 200 ? <p role="alert">Use a search of 200 characters or fewer.</p> : <Results key={`results:${query}`} query={query} />}
+    {!query ? <p>Enter a phrase to search your local material.</p> : query.length > 200 ? <p role="alert">Use a search of 200 characters or fewer.</p> : <Results key={`results:${query}`} query={query} />}
     <p className="text-sm">Browse instead: <Link className="underline" to="/areas">Learning areas</Link> · <Link className="underline" to="/programs">Project study</Link> · <Link className="underline" to="/map">Skill map</Link></p>
   </div>
 }
@@ -28,6 +29,8 @@ function SearchForm({ initial, onSearch }: { initial: string; onSearch: (q: stri
   </form>
 }
 function Results({ query }: { query: string }) {
+  const areas = useAreas()
+  const matchingAreas = (areas.data?.areas ?? []).filter(area => [area.title, area.description, ...area.terms].some(text => text.toLocaleLowerCase().includes(query.toLocaleLowerCase())))
   const answers = useQuery({
     queryKey: ['material-search', 'answers', query],
     queryFn: ({ signal }) => boundedRead<Schemas['AnswerPage']>(`/api/answers?${new URLSearchParams({ q: query, limit: '8' })}`, signal, 'Saved answer search'),
@@ -39,6 +42,18 @@ function Results({ query }: { query: string }) {
     retry: false,
   })
   return <div className="grid gap-4 min-w-0">
+    <section aria-labelledby="search-areas" className="rounded-md border border-line p-3 min-w-0 break-words">
+      <h2 id="search-areas" className="text-panel-heading font-semibold">Knowledge areas</h2>
+      <p className="text-sm text-muted">Names, descriptions and topic terms matching your phrase. Opening an area does not start or switch a learning session.</p>
+      {areas.isPending ? <p role="status">Searching knowledge areas…</p> : areas.isError ? <div role="alert">Knowledge areas could not be refreshed. <Button disabled={areas.isFetching} onClick={() => void areas.refetch()}>Retry area search</Button></div> : <>
+        <p role="status">{matchingAreas.length ? `${Math.min(8, matchingAreas.length)} of ${matchingAreas.length} matching areas shown.` : 'No knowledge areas matched.'}</p>
+        <ul className="grid gap-3 my-2">{matchingAreas.slice(0, 8).map(area => <li key={area.id}>
+          <Link className="underline" to={`/areas?${new URLSearchParams({ area: area.id })}`}>{area.title}</Link>
+          {area.description && <p className="text-sm">{area.description}</p>}
+        </li>)}</ul>
+        {matchingAreas.length > 8 && <Link className="underline" to="/areas">Browse all knowledge areas</Link>}
+      </>}
+    </section>
     <section aria-labelledby="search-answers" className="rounded-md border border-line p-3 min-w-0 break-words">
       <h2 id="search-answers" className="text-panel-heading font-semibold">Saved explanations</h2>
       <p className="text-sm text-muted">Past answers matching your words, newest first. They have not been checked again.</p>

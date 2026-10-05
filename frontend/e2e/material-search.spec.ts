@@ -29,7 +29,7 @@ for (const width of [390, 1280]) test(`material search keeps independent results
   await page.reload()
   await expect(page.getByRole('link', { name: 'Explain groups' })).toBeVisible()
   await page.getByRole('button', { name: 'Clear search' }).click()
-  await expect(page.getByText('Enter a phrase to search both collections.')).toBeVisible()
+  await expect(page.getByText('Enter a phrase to search your local material.')).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
 
@@ -115,4 +115,21 @@ for (const width of [390, 1280]) test(`quick navigation preserves work on cancel
   await expect(page).toHaveURL(/\/search\?q=groups$/)
   await expect(menu).not.toBeVisible()
   await expect(page.locator('#main-content')).toBeFocused()
+})
+
+test('area matches survive unavailable retrieval and browse without session writes', async ({ page }) => {
+  const writes: string[] = []
+  page.on('request', request => { if (request.url().includes('/api/') && request.method() !== 'GET' && !request.url().endsWith('/api/corpus/search')) writes.push(request.url()) })
+  await page.route('**/api/areas', route => route.fulfill({ json: { areas: [{ id: 'area-python', title: 'Programming', description: 'Practice with Python.', terms: ['python'], slug: 'programming', documents: 0, courses: [], draft_ids: [], active_lessons: 0, related: [] }], unassigned_documents: 0, total_documents: 0 } }))
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], next_cursor: null } }))
+  await page.route('**/api/corpus/search', route => route.fulfill({ status: 503, json: {} }))
+  await page.goto('/search?q=PYTHON')
+  const group = page.getByRole('region', { name: 'Knowledge areas', exact: true })
+  const match = group.getByRole('link', { name: 'Programming', exact: true })
+  await expect(match).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry source search' })).toBeVisible()
+  await match.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/areas\?area=area-python$/)
+  expect(writes).toEqual([])
 })

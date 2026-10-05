@@ -49,7 +49,7 @@ export function QuickNavigation({ pages }: { pages: ReadonlyArray<readonly [stri
         <Button onClick={() => close()}>Close</Button>
       </div>
       <div className="min-h-0 overflow-y-auto p-4">
-      <p id="quick-navigation-help" className="text-sm text-muted my-2">Search saved explanations and indexed sources, or choose a page. Escape returns to your current work. Shortcut: Ctrl/Cmd+K outside text editors.</p>
+      <p id="quick-navigation-help" className="text-sm text-muted my-2">Search knowledge areas, saved explanations and indexed sources, or choose a page. Escape returns to your current work. Shortcut: Ctrl/Cmd+K outside text editors.</p>
       <form className="grid gap-2" onSubmit={event => {
         event.preventDefault()
         close(false)
