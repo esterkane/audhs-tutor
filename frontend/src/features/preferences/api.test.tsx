@@ -121,3 +121,31 @@ it('a failed save releases the next explicit intent without automatic retry', as
   await waitFor(() => expect(result.current.otherSave.isSuccess).toBe(true))
   expect(result.current.read.data?.values['ui.font_scale']).toBe('normal')
 })
+
+
+it('a refresh started during a save cannot overwrite the confirmed snapshot', async () => {
+  let finishSave!: (response: Response) => void
+  let finishRead!: (response: Response) => void
+  let reads = 0
+  vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') return new Promise<Response>(resolve => { finishSave = resolve })
+    if (++reads === 1) return Promise.resolve(jsonResponse({ values: { 'ui.font_scale': 'normal' }, specs: [] }))
+    return new Promise<Response>(resolve => { finishRead = resolve })
+  }))
+  const { result } = setup()
+  await waitFor(() => expect(result.current.read.isSuccess).toBe(true))
+  let saved!: Promise<unknown>
+  act(() => { saved = result.current.save.mutateAsync({ key: 'ui.font_scale', value: 'large' }) })
+  await waitFor(() => expect(finishSave).toBeDefined())
+  act(() => { void result.current.read.refetch() })
+  await waitFor(() => expect(reads).toBe(2))
+  await act(async () => {
+    finishSave(jsonResponse({ values: { 'ui.font_scale': 'large' }, specs: [] }))
+    await saved
+  })
+  await act(async () => {
+    finishRead(jsonResponse({ values: { 'ui.font_scale': 'normal' }, specs: [] }))
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
+  expect(result.current.read.data?.values['ui.font_scale']).toBe('large')
+})

@@ -22,7 +22,9 @@ export function useSetPreference() {
     onMutate: () => qc.cancelQueries({ queryKey: ['preferences'] }),
     mutationFn: (body: { key: string; value: unknown }) =>
       apiFetch<PrefOut>('/api/preferences', { method: 'PUT', body: JSON.stringify(body) }),
-    onSuccess: (data, variables) => {
+    onSuccess: async (data, variables) => {
+      // A remount/refocus can start a new read while the write is in flight.
+      await qc.cancelQueries({ queryKey: ['preferences'] })
       qc.setQueryData(['preferences'], data)
       if (variables.key.startsWith('goal.'))
         void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'preferences' })

@@ -22,3 +22,11 @@ Independent read-only code review found no blockers or major findings; reviewer 
 
 
 Follow-up2026-10-05: same-client preference writes now share a serial mutation scope to prevent reversed full-snapshot responses. Five hook/four browser tests, lint/types/build and review pass. See docs/ux/DAILY-LEARNING-ACCEPTANCE.md for evidence and remaining cross-tab/transport/read-order limits.
+
+
+## Read started during save — 2026-10-05
+Reproduced a delayed refresh begun after PUT started overwriting its successful full snapshot. The new hook regression failed before the change (normal instead of large). Success now cancels reads again before installing confirmed settings; the existing mutation scope still serializes writes. This changes cache ordering only, not preference values, backend writes or learning logic.
+
+Verification: six hook tests; four Chromium journeys at390/1280 covering keyboard choice, Home/Preferences return during a delayed save, stale refresh delivery, rapid sequential choices and responsive overflow. Each new browser case explicitly resets the sandbox font to normal first. Screenshot inspected; frontend lint, TypeScript and production build passed (existing chunk-size warning). Independent bounded code review: no blockers/majors. Logs: /tmp/preferences-mid-save-{before,unit,browser,lint,build}.log. No paid model calls or learner DB writes in tests.
+
+Remaining: cross-tab changes, ambiguous transport outcomes, durable queued intent and global pending visibility after remount are separate. Actual browser zoom and human acceptance remain open. Prior public CI80e8a25/run37368390718 was queued when checked; not claimed green. Next daily-flow work should return to the outstanding zoom/keyboard matrix rather than expand preference architecture without evidence.

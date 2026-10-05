@@ -1308,3 +1308,7 @@ Recording retention displays days rather than minutes, with matching accessible 
 
 ## 2026-10-05 — Preference save ordering
 Full-snapshot preference writes are serialized across hooks within one QueryClient; pending saves are announced. Five hook and four desktop/narrow browser checks pass, with lint/types/build and review. No backend or learning-policy change. Cross-tab conflicts, uncertain transport outcomes and read-during-save ordering remain open; see docs/ux/DAILY-LEARNING-ACCEPTANCE.md.
+
+
+## 2026-10-05 — Preference refresh during save
+Fixed a reproduced late refresh overwriting confirmed settings after navigating away and back during a save. Six hook/four browser tests, lint/types/build, screenshot and independent review pass. See slices/preferences-read-recovery.md for exact evidence and remaining limits. Learning logic unchanged.
