@@ -434,6 +434,7 @@ def test_staged_assessment_survives_backup_export_and_wipe(tmp_path, source, sco
         before = export_learner(conn, learner_id)["assessment_execution"]
         assert len(before) == 1
         assert json.loads(before[0]["grade_json"]) == grade
+        before[0]["owner_json"] = None  # Restores invalidate machine-local proof.
     archive = tmp_path / f"staged-{scope}.zip"
     create_backup(url, archive, scope=scope)
     target = tmp_path / f"restored-{scope}"
@@ -442,3 +443,23 @@ def test_staged_assessment_survives_backup_export_and_wipe(tmp_path, source, sco
         assert export_learner(conn, learner_id)["assessment_execution"] == before
         wipe_learner(conn, learner_id)
         assert conn.execute("SELECT count(*) FROM assessment_execution").fetchone()[0] == 0
+
+
+@pytest.mark.parametrize("scope", ["learner", "full"])
+def test_restore_invalidates_assessment_ownership(tmp_path: Path, source, scope):
+    url, _ = source
+    path = Path(url.removeprefix("sqlite:///"))
+    receipt = json.dumps({"version": 1, "device": 1, "inode": 2, "token": "a" * 32})
+    with sqlite3.connect(path) as db:
+        db.execute("UPDATE assessment_execution SET phase='prepared', owner_json=?", (receipt,))
+    archive = tmp_path / f"{scope}.zip"
+    create_backup(url, archive, scope=scope)
+    target = tmp_path / f"restored-{scope}"
+    restore_backup(archive, target)
+    with sqlite3.connect(target / "data/dev.db") as db:
+        assert db.execute("SELECT phase, owner_json FROM assessment_execution").fetchone() == (
+            "prepared",
+            None,
+        )
+    with sqlite3.connect(path) as db:
+        assert db.execute("SELECT owner_json FROM assessment_execution").fetchone()[0] == receipt

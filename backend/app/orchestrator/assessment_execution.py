@@ -2,9 +2,12 @@
 
 from dataclasses import dataclass
 
+from app.orchestrator.assessment_guard import AssessmentGuard
+
 
 @dataclass
 class AssessmentExecution:
+    guard: AssessmentGuard | None = None
     gateway_entered: bool = False
     learning_commit_started: bool = False
     result_persistence_started: bool = False

@@ -45,7 +45,7 @@ import stat
 import tempfile
 import zipfile
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import closing, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -597,6 +597,13 @@ def restore_backup(path: Path, target: Path, password: str | None = None) -> Rep
         _check_snapshot_schema(db_file, revision)
         upgrade_to_head(f"sqlite:///{db_file}")
         _check_after_upgrade(db_file)
+        # A snapshot may predate inference even when its original lock file survives.
+        # Ownership is installation-lifetime evidence, never a restorable learning record.
+        with closing(sqlite3.connect(db_file)) as restored:
+            restored.execute("UPDATE assessment_execution SET owner_json=NULL")
+            restored.commit()
+            if restored.execute("PRAGMA wal_checkpoint(TRUNCATE)").fetchone()[0] != 0:
+                raise BackupError("Could not checkpoint restored ownership invalidation")
         manifest.pop("_total_bytes", None)
         (staging / "backup-manifest.json").write_text(
             json.dumps(manifest, indent=2, ensure_ascii=False)

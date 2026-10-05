@@ -45,6 +45,10 @@ def _value(table: Table, col: Any, n: int, ids: dict[str, str]) -> Any:
         return _ULID.format(n) if not table.name == "model_registry" else f"model-{n}"
     name = col.name
     t = col.type
+    if table.name == "assessment_execution" and name == "owner_json":
+        # Generic round trips represent legacy/unknown ownership. Dedicated restore tests
+        # assert that non-null machine-local receipts are deliberately invalidated.
+        return None
     if isinstance(t, JSON):
         return (
             []

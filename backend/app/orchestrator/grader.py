@@ -288,6 +288,9 @@ class Grader:
             Message(role="user", content=user),
         ]
         try:
+            # Seal outside SQL before any gateway entry; a seal failure forbids inference.
+            if self.execution.guard is not None:
+                self.execution.guard.seal_inference()
             # Entering the gateway can have external effects even if it raises.
             if self.request_claim_id is not None and not self.execution.gateway_entered:
                 await assessment_executions.mark_inference_started(
@@ -354,6 +357,7 @@ class Grader:
                 self.request_claim_id,
                 request_json=req.model_dump(mode="json"),
                 content_fingerprint=assessment_content.recovery_fingerprint(content),
+                owner_json=self.execution.guard.receipt if self.execution.guard else None,
             )
         item = a.item_json
         correct: bool | None

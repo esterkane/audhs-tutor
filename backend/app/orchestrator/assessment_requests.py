@@ -1,6 +1,7 @@
 """Durable grading claims; unresolved work is never automatically graded again."""
 
 import logging
+from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import AwareDatetime, BaseModel
@@ -9,12 +10,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.answer_recovery import AnswerRecovery
 from app.core.errors import AppError
+from app.core.local_ownership import OwnershipUnavailable
 from app.db import assessment_executions, workspace_requests
 from app.db.models import TutorAnswer, WorkspaceRequest
 from app.kernel.session import get_owned
 from app.models_ai.gateway import ModelGateway
 from app.orchestrator import assessment_content
 from app.orchestrator.assessment_execution import AssessmentExecution
+from app.orchestrator.assessment_guard import AssessmentGuard
 from app.orchestrator.grader import Grader
 from app.schemas.grading import AttemptRequest, AttemptResult, GradeResult
 
@@ -58,6 +61,19 @@ async def submit(
         await validate()
     execution = AssessmentExecution()
     try:
+        if claim_id is not None:
+            url = db.get_bind().engine.url
+            if (
+                url.get_backend_name() == "sqlite"
+                and url.database
+                and url.database != ":memory:"
+                and not url.query
+            ):
+                try:
+                    execution.guard = AssessmentGuard.create(Path(url.database), claim_id)
+                except (OwnershipUnavailable, OSError):
+                    # Grading stays available without recovery proof on unsupported storage.
+                    logger.warning("Assessment ownership unavailable; recovery remains unknown")
         return await Grader(
             db, gateway, recovery=recovery, request_claim_id=claim_id, execution=execution
         ).grade(body)
@@ -74,6 +90,9 @@ async def submit(
             except Exception:
                 logger.exception("Could not release an unstarted assessment claim")
         raise
+    finally:
+        if execution.guard is not None:
+            execution.guard.close()
 
 
 async def lookup(

@@ -58,6 +58,7 @@ async def prepare(
     *,
     request_json: dict[str, Any],
     content_fingerprint: str,
+    owner_json: dict[str, Any] | None = None,
 ) -> None:
     """Only the invocation that just created the claim may call this method."""
     if not request_json or not content_fingerprint:
@@ -76,6 +77,7 @@ async def prepare(
                 content_fingerprint=content_fingerprint,
                 request_json=request_json,
                 grade_json=None,
+                owner_json=owner_json,
             )
         )
         await db.commit()

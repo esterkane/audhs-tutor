@@ -1350,3 +1350,7 @@ Architecture review found and documented a major restore-rollback hazard: surviv
 
 ## 2026-10-05 — Assessment guard foundation
 Added a separate assessment guard with nonce and durable pre-inference seal; database rollback cannot unseal the retained file. Extracted the shared primitive without changing import lock namespaces.29 targeted tests, Ruff, strict mypy and bounded review pass. See slices/assessment-ownership-design.md. No grading caller or recovery endpoint is enabled yet; schema/lifecycle integration is next.
+
+
+## 2026-10-05 — Assessment ownership lifecycle
+New grading holds optional ownership and seals before inference; restores invalidate receipts with checked WAL checkpoint/close. Migration, lifecycle and restore verification:63 targeted tests, Ruff, mypy and review pass. See slices/assessment-ownership-design.md. No recovery endpoint enabled; live backend restart/migration activation remains pending. Next: conservative classification and explicit prepared continuation.

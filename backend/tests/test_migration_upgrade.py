@@ -99,3 +99,18 @@ def test_saved_answer_search_backfills_and_rebuilds_after_downgrade(tmp_path: Pa
             assert conn.execute(
                 "SELECT text FROM tutor_answer WHERE id=?", (answer_id,)
             ).fetchone() == ("searchable representation",)
+
+
+def test_assessment_ownership_upgrade_preserves_legacy_execution(tmp_path: Path) -> None:
+    path = tmp_path / "ownership.db"
+    url = f"sqlite:///{path}"
+    command.upgrade(alembic_config(url), "e167bc2359df")
+    fill_all_tables(url)
+    before = dump_rows(url)["assessment_execution"]
+    for _ in range(2):
+        upgrade_to_head(url)
+        rows = dump_rows(url)["assessment_execution"]
+        assert len(rows) == len(before) == 1
+        assert rows[0]["owner_json"] is None
+        assert {key: rows[0][key] for key in before[0]} == before[0]
+        command.downgrade(alembic_config(url), "e167bc2359df")
