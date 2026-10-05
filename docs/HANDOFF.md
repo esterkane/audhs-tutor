@@ -1328,3 +1328,7 @@ Confirmed that the saved Socratic default is not consumed by fresh Home (one iso
 
 ## 2026-10-05 — Preference scope and preview freshness
 Added verified effect descriptions with accessible associations; planner saves refresh plan previews only. Nine unit/eight browser checks, lint/types/build, screenshot and code/pedagogy review passed. See slices/preference-effect-timing.md. Saved Socratic-default activation remains unresolved and is now disclosed in the UI; no teaching-policy change.
+
+
+## 2026-10-05 — Preserve explicit Home mode
+Fixed reproduced delayed saved-default override of an explicit Home mode selection. Three browser/twelve Home unit checks, lint/types/build and screenshot pass. See slices/preference-effect-timing.md; saved defaults, active sessions and Socratic behavior are unchanged.

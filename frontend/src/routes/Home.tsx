@@ -415,7 +415,11 @@ function HomeOverview() {
             hint: MODE_LABELS[m].hint,
           }))}
           value={mode}
-          onChange={setMode}
+          onChange={(value) => {
+            // A late saved default must not replace the learner's choice for this visit.
+            preselected.current = true
+            setMode(value)
+          }}
         />
         {typeof defaultMode === 'string' && defaultMode === mode && !sessionId && (
           <p className="text-sm text-muted mt-1">
