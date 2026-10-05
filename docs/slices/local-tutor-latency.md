@@ -102,3 +102,20 @@ Semantic inspection matters more than the hard count. Both hint variants disclos
 **No runtime reorder shipped.** Next compare at deployed temperature through the complete runtime, include source/history changes and altered learner evidence, and use semantic hint/mode checks rather than treating word-list passes as pedagogy. If quality holds, investigate a versioned rollout with exact section-preservation tests; otherwise retain current order. Raw synthetic observations:matched-prompt-order-sample.json. Isolated runner terminated, port confirmed closed.
 
 CI follow-up: run37327101830 finished with the full browser job passing. Backend failed a formatting check in the new resume test; frontend had one stale expectation that resume sends no POST. Formatting corrected; the unit test now asserts exactly the optional prepare POST (mocked503), unchanged skill and successful review navigation, thereby still excluding start/end writes. Full frontend520, focused backend16, Ruff lint and format checks pass. No app behavior changed by these test repairs; new remote full run remains pending.
+
+
+## Full-runtime Socratic contract investigation — both candidates reverted
+
+2026-10-05. Before promoting any prompt-order optimization, actual TutorTurn samples on Gemma3:12b at gateway default temperature0.3 reproduced a teaching-contract conflict: the base policy mandates worked-example-first at low mastery, while the learner's Socratic output contract prohibits explaining the target first. The generic shape example also models an answer. Three synthetic first-turn samples (masking, scaling, QKV) used fresh disposable SQLite, the same seeded dot-product skill, offline synthetic retrieval, local-only isolated Ollama and no owner DB.
+
+A session-only versioned policy candidate restricted worked-example-first to explicit explanations; a dedicated Socratic instruction and question-first contract supplied a three-sentence cap. Other orchestrators retained their policy. First candidate avoided immediate answers but substituted vague analogies. One revision required actual source concepts, necessary definitions/concrete givens and one answerable question. Final outputs cited source facts, but independent review still found:
+
+- Masking: repeats the original normalization question without a probability example or softmax definition.
+- Scaling: correctly preserves variance assumptions but assumes the learner already understands softmax's response to larger scores.
+- QKV: supplies definitions yet asks about an unexplained dot-product-to-weight relationship; three setup sentences exceed the requested two.
+
+**All application, prompt and candidate test changes were reverted.** The34 passing candidate functional checks did not establish instructional quality. Current runtime/prompt versions remain unchanged. Neither the source-order optimization nor this Socratic rewrite is enabled. Raw synthetic candidate outputs are in socratic-runtime-candidates.json; timing differs in runner warmth and is not a speed comparison. The isolated runner exited and its port was confirmed closed.
+
+Next quality gate: use source-complete, concrete question fixtures with known expected reasoning and explicit prerequisites, test learner replies and simpler-explanation recovery, then revisit generation changes. A question mark and lack of a disclosed answer are inadequate success criteria. Do not expand into a new tutor architecture or hosted routing as an incidental performance fix. The main performance improvements already shipped—streaming, residency, preparation and opt-in exact answer reuse—remain in place; cold/new-context inference and source-rich generation remain open.
+
+CI run37329042232: backend, frontend, publication and migration jobs passed at the inspected state; browser job was still running. This confirms the previous test repairs, not a completed full release gate.

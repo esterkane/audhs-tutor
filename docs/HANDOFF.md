@@ -1238,3 +1238,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 matched-model latency investigation: candidate repeated-turn first-text median1.347s vs5.531s current; hard checks8/10 vs6/10, but semantic weaknesses and deployed-setting/runtime gaps prevent rollout. No app prompt change. Full browser CI37327101830 passed; fixed backend formatting and stale resume unit expectation, full frontend520 plus backend16 pass. See slices/local-tutor-latency.md and matched-prompt-order-sample.json.
+
+
+2026-10-05 full-runtime Socratic investigation: three current and six candidate synthetic local turns at deployed temperature0.3 expose conflicting scaffold instructions and insufficient question givens. Both prompt candidates reverted after semantic review;34 functional checks were not a teaching-quality pass. No runtime change. See slices/local-tutor-latency.md and socratic-runtime-candidates.json. Next: concrete source-complete question and response-continuation fixtures before any prompt rollout.

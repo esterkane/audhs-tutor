@@ -1,0 +1,235 @@
+{
+  "model": "gemma3:12b",
+  "temperature": 0.3,
+  "method": "Actual TutorTurn with fresh disposable SQLite for each case, seeded attention skill, synthetic source via offline retrieval, local-only isolated Ollama with cloud disabled, no learner database",
+  "limits": [
+    "Three first turns per version; no response continuation",
+    "All requests use same seeded dot-product skill; masking/scaling are adjacent topic requests",
+    "No fixed seed, no production retrieval benchmark",
+    "Latency includes differing cold/warm states and is not an A/B performance result"
+  ],
+  "samples": {
+    "current": [
+      {
+        "case": "mask",
+        "question": "Why is the mask applied with minus infinity before the softmax instead of zeroing weights after?",
+        "first_text_s": 8.542108666995773,
+        "total_s": 10.635271833001752,
+        "text": "(analogy) Applying negative infinity before softmax ensures that masked positions have zero probability *and* that the remaining probabilities are renormalized [1]. Zeroing probabilities after softmax would remove mass without renormalization, which would distort the attention weights.\n\nWhy is renormalization important in this context?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 3,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": true
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v2+tutor.v2"
+      },
+      {
+        "case": "scale",
+        "question": "Why do we divide attention scores by sqrt(d_k)?",
+        "first_text_s": 1.7672827920032432,
+        "total_s": 3.990070083003957,
+        "text": "(analogy) Scaling by the square root of the key dimension, `sqrt(d_k)`, helps keep the variance of the attention scores near one [1]. Without this, large scores can lead to very peaked softmax distributions and less effective gradient updates.\n\nWhy is variance important in this context?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 3,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": true
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v2+tutor.v2"
+      },
+      {
+        "case": "qkv",
+        "question": "How do queries, keys and values combine to produce an attention output?",
+        "first_text_s": 1.7202250830014236,
+        "total_s": 5.90234795800643,
+        "text": "(analogy) Queries, keys, and values work together to focus on the most relevant parts of the input sequence. Queries represent what a token is looking for, keys represent what each candidate token offers, and values carry the information [1].\n\nTo see how this works, imagine you're looking for information in a library. The query is your search term, the keys are the keywords associated with each book, and the values are the actual content of each book.\n\nWhat do you think the dot product between a query and a key represents in this analogy?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 5,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": true
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v2+tutor.v2"
+      }
+    ],
+    "first_candidate": [
+      {
+        "case": "mask",
+        "question": "Why is the mask applied with minus infinity before the softmax instead of zeroing weights after?",
+        "first_text_s": 8.04548137501115,
+        "total_s": 9.965911792009138,
+        "text": "(analogy) Imagine you're distributing prizes based on how well each contestant matches a specific criteria. If you simply set a contestant's score to zero *after* distributing the prizes, how would that affect the overall fairness of the distribution?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 2,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": false
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v3+tutor.v3"
+      },
+      {
+        "case": "scale",
+        "question": "Why do we divide attention scores by sqrt(d_k)?",
+        "first_text_s": 1.431186332993093,
+        "total_s": 2.881246665987419,
+        "text": "(analogy) Imagine you're trying to compare two things by how similar they are. What happens to the range of your similarity scores if the things you're comparing have many different aspects?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 2,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": false
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v3+tutor.v3"
+      },
+      {
+        "case": "qkv",
+        "question": "How do queries, keys and values combine to produce an attention output?",
+        "first_text_s": 1.3533999580104137,
+        "total_s": 4.067838666000171,
+        "text": "(analogy) Imagine queries as search terms, keys as document keywords, and values as the actual document content.\n\nQueries represent what a token is looking for [1]. Keys represent what each candidate token offers for matching [1]. Values carry the information [1].\n\nGiven this, how do the dot products of queries and keys influence which values contribute most to the output?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 5,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": true
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v3+tutor.v3"
+      }
+    ],
+    "revised_candidate": [
+      {
+        "case": "mask",
+        "question": "Why is the mask applied with minus infinity before the softmax instead of zeroing weights after?",
+        "first_text_s": 8.18170633399859,
+        "total_s": 10.192998500002432,
+        "text": "A causal mask prevents a position from attending to future positions [1]. This mask is applied by adding negative infinity to logits before the softmax.\n\nWhy does this approach, adding negative infinity, preserve the normalization property of softmax, whereas zeroing weights afterward does not?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 3,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": true
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v3+tutor.v3"
+      },
+      {
+        "case": "scale",
+        "question": "Why do we divide attention scores by sqrt(d_k)?",
+        "first_text_s": 1.4977061660028994,
+        "total_s": 3.883778165996773,
+        "text": "Queries and keys are vectors, and their dot product yields a score representing similarity [1]. If the query and key components are independent, zero-mean, and unit-variance, their dot product has variance d_k [1].\n\nWhy might a variance of d_k for the dot product scores be problematic for the softmax function?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 3,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": true
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v3+tutor.v3"
+      },
+      {
+        "case": "qkv",
+        "question": "How do queries, keys and values combine to produce an attention output?",
+        "first_text_s": 1.4427312500047265,
+        "total_s": 3.283686042006593,
+        "text": "Queries represent what a token is looking for [1]. Keys represent what each candidate token offers for matching [1]. Values carry the information that gets combined [1].\n\nGiven a query and a key, how does their dot product relate to the attention weights?",
+        "result": {
+          "outcome": "ok",
+          "registry_id": "gemma3-12b",
+          "route": "primary",
+          "sentences": 4,
+          "sources": [
+            {
+              "chunk_id": "synthetic-attention",
+              "citation": "[synthetic-attention.md]",
+              "trust_tier": 3,
+              "score": 0.03278688524590164,
+              "flagged": [],
+              "cited": true
+            }
+          ]
+        },
+        "prompt_version": "pedagogy.v3+tutor.v3"
+      }
+    ]
+  }
+}
