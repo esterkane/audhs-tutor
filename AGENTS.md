@@ -4,9 +4,18 @@ Read `CLAUDE.md` for the shared architecture and working conventions, `docs/ARCH
 
 Owner policy (2026-09-24): use local execution whenever accurate and capable. OpenAI is optional for demonstrated local gaps, with task-specific evaluation; configuring a key never authorizes a blanket routing switch. See `docs/CLAUDE-CONFIG-AUDIT.md`.
 
-Before continuing, read `docs/HANDOFF.md`, `docs/CODEX-CONTINUATION.md`, and `docs/IMPROVEMENT-PLAN.md`. Preserve all inherited uncommitted work. Do not assume untracked files are disposable. Avoid concurrent edits by different coding agents.
+Before continuing, read the current checklist in `docs/CURRENT-WORK.md`, relevant sections of `docs/HANDOFF.md`, recent `docs/CODEX-CONTINUATION.md` entries, and the applicable stage in `docs/IMPROVEMENT-PLAN.md`. Preserve all inherited uncommitted work. Do not assume untracked files are disposable. Avoid concurrent edits by different coding agents.
 
 For each bounded implementation slice, test it, record exact verification and outstanding work in the shared handoff/slice docs, and distinguish the new delta from inherited changes. Follow existing manual-only commit/ADR conventions. Do not mark a whole stage complete from a partial review.
 
 ## Owner visibility policy — 2026-10-01
-This sanitized repository must remain PRIVATE until the owner explicitly requests a visibility change. It is prepared for a possible future public release: preserve all publication guards and exclusions for databases, acquired materials, acquisition scripts, private configuration and credentials. Keep the separate private archive and its history distinct.
+Owner update 2026-10-05: this sanitized repository is PUBLIC again. The separate original archive must remain PRIVATE. This supersedes earlier both-private instructions: preserve all publication guards and exclusions for databases, acquired materials, acquisition scripts, private configuration and credentials. Keep the separate private archive and its history distinct.
+
+
+## Efficient execution — owner request 2026-10-05
+- Start with the current checklist and relevant slice records; read matching handoff sections and recent continuation entries, not the full accumulated history each turn. Preserve all applicable architecture, safety and learning invariants.
+- Batch related changes into one coherent, reviewable slice and one final validation/publication cycle. Do not create separate cycles for every small copy/layout adjustment.
+- Keep full command logs locally; return concise outcomes and relevant failure excerpts. Batch independent reads and avoid repeating unchanged file dumps.
+- Reuse passing checks for unchanged code. Repeat or broaden checks when a change, failure or risk justifies it; retain relevant unit, browser, keyboard, visual and publication gates.
+- Give reviewers bounded diffs, file paths, invariants and test evidence instead of full conversation history. Use agents only for concrete independent work where review or parallelism adds value.
+- Keep progress updates brief and meaningful. Record evidence once in the slice document and link it from handoffs. Do not lower model quality, weaken tests or drop requirements to save tokens.

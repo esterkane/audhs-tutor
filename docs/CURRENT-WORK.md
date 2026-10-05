@@ -2,7 +2,7 @@
 
 ## Current execution checklist — 2026-10-05
 
-This checklist supersedes older “next” instructions below; those paragraphs are dated history, not parallel work orders. The broad goal remains active. Keep both repositories private and preserve the independent acquisition worktree delta.
+This checklist supersedes older “next” instructions below; those paragraphs are dated history, not parallel work orders. The broad goal remains active. Keep the original archive private and the sanitized repository public (owner update2026-10-05) and preserve the independent acquisition worktree delta.
 
 Recently delivered: authoritative palette/components, local Inter and Roboto Mono, original logo/favicon, grouped desktop/narrow shell, persistent companion context, contextual capture/return and reminder Undo, tab-local recent contexts, keyboard quick navigation, search for areas/project guides/saved explanations/source passages. Skill search and result-group keyboard jump links are published in both private variants. These capabilities do not close whole-stage human or accessibility acceptance.
 
@@ -17,7 +17,7 @@ Execution order:
 See slices/recent-contexts.md for current search evidence; design/BRAND-FOUNDATION.md for colors, typography, logo and limitations. The stage ledger below remains a broader backlog. Estimates communicated to the owner are planning ranges, not completion promises.
 
 
-Reconciled 2026-10-03 against current code, slice records and two independent queue reviews. This page is the current navigation point; older dated handoff entries remain historical evidence. A shipped slice does not close its entire stage. Both repository variants remain private.
+Reconciled 2026-10-03 against current code, slice records and two independent queue reviews. This page is the current navigation point; older dated handoff entries remain historical evidence. A shipped slice does not close its entire stage. The sanitized variant is public again by owner decision2026-10-05; the original archive remains private.
 
 ## Working baseline
 

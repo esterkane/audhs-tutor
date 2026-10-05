@@ -399,3 +399,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 explanation entry: action group follows its heading, with help text below; duplicate teaching-overview instruction removed. Goal still precedes action; all audio/learning logic unchanged. Original10 unit/6 browser, lint/types/build pass, independent review clear, narrow visual inspected. Button fits the390×900 empty fixture, not320 or arbitrary content. Next inspect prepared explanation→question→feedback as one journey; see slices/lesson-reading-order.md.
+
+
+2026-10-05 owner visibility/efficiency update: sanitized repository made PUBLIC after clean-index publication check and all reachable history scan (2746 blobs, no prohibited path/source identifier or credential-pattern findings); original archive verified PRIVATE. No releases, wiki or Pages; CI artifacts are sandbox journey traces. AGENTS.md now records focused context, bounded reviews, coherent slices and reuse of passing checks without reducing quality gates. This overrides earlier both-private notes.
