@@ -3,6 +3,18 @@
 
 /* AuDHD UX invariants: calm palette, strong focus ring (≥ 3:1), no motion unless allowed. */
 @theme {
+  --color-accent-tint: #e6f0fc;
+  --color-ok-tint: #e3f4ee;
+  --color-warn-tint: #fbf1dc;
+  --color-danger: #bd271e;
+  --color-danger-tint: #fbe9e7;
+  --color-on-status: #ffffff;
+  --color-code-fg: #2f333d;
+  --color-code-keyword: #0b64dd;
+  --color-code-string: #8a5a10;
+  --color-code-comment: #636b7a;
+  --color-scrim: #34374199;
+
   --color-bg: #f7f8fc;
   --color-sunken: #eef1f7;
   --color-faint: #7f899a;
@@ -25,8 +37,34 @@
   --text-page-title: 1.375rem;
   --text-page-title--line-height: 1.875rem;
   --shadow-panel: 0 0.8px 0.8px #34374112, 0 2.3px 2px #3437410a;
-  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, sans-serif;
+  --font-mono: 'Roboto Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
+
+
+/* Locally bundled, unmodified OFL fonts; provenance and licenses: public/fonts. */
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/InterVariable.woff2') format('woff2');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Inter';
+  src: url('/fonts/InterVariable-Italic.woff2') format('woff2');
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Roboto Mono';
+  src: url('/fonts/RobotoMono.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 700;
+  font-display: swap;
+}
+code, pre, kbd, samp { font-family: var(--font-mono); }
 
 html {
   color-scheme: light;
@@ -61,6 +99,18 @@ body {
 
 /* Sensory settings (preferences ui.theme / ui.density / ui.font_scale / ui.reduced_motion) */
 :root[data-theme='dark'] {
+  --color-accent-tint: #1b3150;
+  --color-ok-tint: #173029;
+  --color-warn-tint: #332a15;
+  --color-danger: #f08682;
+  --color-danger-tint: #3a1f1e;
+  --color-on-status: #16171c;
+  --color-code-fg: #d4dbe6;
+  --color-code-keyword: #5aa5f0;
+  --color-code-string: #dfae5a;
+  --color-code-comment: #8a92a2;
+  --color-scrim: #000000a6;
+
   --shadow-panel: 0 0.8px 0.8px #0000004d, 0 2.3px 2px #00000033;
   --color-bg: #1d1e24;
   --color-sunken: #16171c;
@@ -81,6 +131,18 @@ body {
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme='light']):not([data-theme='dark']) {
+    --color-accent-tint: #1b3150;
+    --color-ok-tint: #173029;
+    --color-warn-tint: #332a15;
+    --color-danger: #f08682;
+    --color-danger-tint: #3a1f1e;
+    --color-on-status: #16171c;
+    --color-code-fg: #d4dbe6;
+    --color-code-keyword: #5aa5f0;
+    --color-code-string: #dfae5a;
+    --color-code-comment: #8a92a2;
+    --color-scrim: #000000a6;
+
     --shadow-panel: 0 0.8px 0.8px #0000004d, 0 2.3px 2px #00000033;
     --color-bg: #1d1e24;
     --color-sunken: #16171c;

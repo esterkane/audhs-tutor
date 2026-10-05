@@ -1,0 +1,27 @@
+[
+  {
+    "file": "InterVariable.woff2",
+    "source": "https://raw.githubusercontent.com/rsms/inter/e3a3d4c57d5ecc01453a575621882a384c1995a3/docs/font-files/InterVariable.woff2",
+    "sha256": "693b77d4f32ee9b8bfc995589b5fad5e99adf2832738661f5402f9978429a8e3"
+  },
+  {
+    "file": "InterVariable-Italic.woff2",
+    "source": "https://raw.githubusercontent.com/rsms/inter/e3a3d4c57d5ecc01453a575621882a384c1995a3/docs/font-files/InterVariable-Italic.woff2",
+    "sha256": "e564f652916db6c139570fefb9524a77c4d48f30c92928de9db19b6b5c7a262a"
+  },
+  {
+    "file": "Inter-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/rsms/inter/e3a3d4c57d5ecc01453a575621882a384c1995a3/LICENSE.txt",
+    "sha256": "262481e844521b326f5ecd053e59b98c8b2da78c8ee1bdbb6e8174305e54935a"
+  },
+  {
+    "file": "RobotoMono.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/robotomono/RobotoMono%5Bwght%5D.ttf",
+    "sha256": "66a80e79d17e4c7cabd162e2916578a4cc08fd19eef6e2a643305eae9c567b2b"
+  },
+  {
+    "file": "RobotoMono-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/9710da1eacb3be272583c3224dcb70f9da6eadbb/ofl/robotomono/OFL.txt",
+    "sha256": "50ab8dd54680d3473f649c9db86fece88434d097c7834475c1c72d2f8c429215"
+  }
+]

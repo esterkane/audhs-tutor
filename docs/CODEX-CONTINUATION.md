@@ -360,3 +360,6 @@ Persistent header search implemented;5 original browser journeys and lint/types/
 
 
 Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering, explicit material search, Escape with retained workspace. Seven browser journeys pass in both checkouts; lint/types and review clear. Details and remaining gates in docs/slices/recent-contexts.md.
+
+
+2026-10-05 brand foundation: authoritative palette supporting tokens, local Inter/Roboto Mono, original book/connected-path mark and favicon. Assessment, font provenance, conflicts and remaining acceptance: docs/design/BRAND-FOUNDATION.md. Original11 browser checks, sanitized4, lint/types/build and read-only review passed. No learning logic changes.

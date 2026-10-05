@@ -1,3 +1,4 @@
+import { Brand } from '../components/Brand'
 import { QuickNavigation } from '../components/QuickNavigation'
 import { BrowseArea } from '../features/areas/BrowseArea'
 import { AudioControls } from '../features/audio/AudioControls'
@@ -80,7 +81,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-wrap gap-3 items-center justify-between">
           <div className="flex flex-wrap items-center justify-between gap-3 w-full lg:w-auto">
             <Link to="/" className="font-semibold no-underline text-fg">
-              AuDHS-Tutor
+              <Brand />
             </Link>
             <QuickNavigation pages={[...primaryPages, ...toolPages]} />
           </div>
