@@ -25,3 +25,6 @@ Only a verified abandoned **prepared** execution is a candidate for explicit rec
 - UI keeps original answer, clearly names the safe action, and still allows stop/change topic. Keyboard/narrow/slow/error journeys and independent code/pedagogy review.
 
 This is a bounded pre-inference recovery plan. It does not recover a provider result that was never persisted or establish exactly-once remote execution. Cancellation cleanup is a separate audit, not a shortcut around these ownership gates.
+
+
+2026-10-05 compatibility/design follow-up: see assessment-ownership-design.md for nullable metadata, stable payload identity, preserved import adapter, restored-ownership limits and explicit continuation contract.21 existing compatibility tests pass; implementation remains pending.

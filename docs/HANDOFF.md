@@ -1340,3 +1340,9 @@ All five groups retain cached matches with explicit stale-data warnings and inde
 
 ## 2026-10-05 — Assessment process-exit boundary evidence
 Added two real-child-exit tests for prepared/inference-started assessment records.21 request/execution tests and Ruff pass; retries preserve uncertain claims without model/learning writes. No runtime change. Proposed next ownership/migration/explicit-continuation contract is in slices/assessment-prepared-recovery-plan.md; R3 remains open. Earlier full frontend validation at5758c9f passed538 tests; CI runner acquisition remains an external limitation, not a claimed latest-head pass.
+
+
+## 2026-10-05 — Assessment ownership compatibility
+Reviewed same-host ownership reuse and backup/migration boundaries;21 existing compatibility tests pass. Concrete schema/lifecycle/explicit-continuation design is in slices/assessment-ownership-design.md. No application or live database change; implementation and new-schema acceptance remain pending.
+
+Architecture review found and documented a major restore-rollback hazard: surviving lock identity is not proof of no post-snapshot inference. Prepared recovery must stay disabled until restore invalidation/non-restored boundary evidence and its adversarial test are implemented.
