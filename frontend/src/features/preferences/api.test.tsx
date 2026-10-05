@@ -10,7 +10,7 @@ const clients: QueryClient[] = []
 function setup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   clients.push(client)
-  return renderHook(() => ({ read: usePreferences(), save: useSetPreference() }), {
+  return renderHook(() => ({ read: usePreferences(), save: useSetPreference(), otherSave: useSetPreference() }), {
     wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>,
   })
 }
@@ -54,4 +54,70 @@ it('a late refresh cannot overwrite a successful preference save', async () => {
     await new Promise(resolve => setTimeout(resolve, 0))
   })
   expect(result.current.read.data?.values['ui.font_scale']).toBe('large')
+})
+
+
+it.each([
+  { key: 'ui.font_scale', value: 'normal' },
+  { key: 'ui.theme', value: 'dark' },
+])('serializes full-snapshot saves across hook instances: $key', async second => {
+  const writes: Array<{ key: string; value: unknown }> = []
+  let finishFirst!: () => void
+  const values: Record<string, unknown> = { 'ui.font_scale': 'normal', 'ui.theme': 'light' }
+  vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => {
+    if (init?.method !== 'PUT') return Promise.resolve(jsonResponse({ values, specs: [] }))
+    const body = JSON.parse(String(init.body)) as { key: string; value: unknown }
+    writes.push(body)
+    values[body.key] = body.value
+    const snapshot = { ...values }
+    if (writes.length === 1) return new Promise<Response>(resolve => {
+      finishFirst = () => resolve(jsonResponse({ values: snapshot, specs: [] }))
+    })
+    return Promise.resolve(jsonResponse({ values: snapshot, specs: [] }))
+  }))
+  const { result } = setup()
+  await waitFor(() => expect(result.current.read.isSuccess).toBe(true))
+  let first!: Promise<unknown>
+  let last!: Promise<unknown>
+  act(() => { first = result.current.save.mutateAsync({ key: 'ui.font_scale', value: 'large' }) })
+  await waitFor(() => expect(writes).toHaveLength(1))
+  try {
+    await act(async () => {
+      last = result.current.otherSave.mutateAsync(second)
+      await new Promise(resolve => setTimeout(resolve, 0))
+    })
+    expect(writes).toHaveLength(1)
+  } finally {
+    await act(async () => { finishFirst(); await first; await last })
+  }
+  expect(writes).toEqual([{ key: 'ui.font_scale', value: 'large' }, second])
+  await waitFor(() => expect(result.current.read.data?.values).toEqual(values))
+  expect(result.current.read.data?.values[second.key]).toBe(second.value)
+})
+
+it('a failed save releases the next explicit intent without automatic retry', async () => {
+  let writes = 0
+  let finishFirst!: (response: Response) => void
+  vi.stubGlobal('fetch', vi.fn((_url: string, init?: RequestInit) => {
+    if (init?.method !== 'PUT') return Promise.resolve(jsonResponse({ values: { 'ui.font_scale': 'normal' }, specs: [] }))
+    if (++writes === 1) return new Promise<Response>(resolve => { finishFirst = resolve })
+    return Promise.resolve(jsonResponse({ values: { 'ui.font_scale': 'normal' }, specs: [] }))
+  }))
+  const { result } = setup()
+  await waitFor(() => expect(result.current.read.isSuccess).toBe(true))
+  let first!: Promise<boolean>
+  let second!: Promise<unknown>
+  act(() => {
+    first = result.current.save.mutateAsync({ key: 'ui.font_scale', value: 'large' }).then(() => true, () => false)
+    second = result.current.otherSave.mutateAsync({ key: 'ui.font_scale', value: 'normal' })
+  })
+  await waitFor(() => expect(writes).toBe(1))
+  await act(async () => {
+    finishFirst(jsonResponse({ error: { code: 'unavailable', message: 'Save unavailable' } }, 503))
+    expect(await first).toBe(false)
+    await second
+  })
+  expect(writes).toBe(2)
+  await waitFor(() => expect(result.current.otherSave.isSuccess).toBe(true))
+  expect(result.current.read.data?.values['ui.font_scale']).toBe('normal')
 })

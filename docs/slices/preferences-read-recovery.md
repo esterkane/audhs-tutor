@@ -19,3 +19,6 @@ Screenshots inspected: [initial narrow failure](../ux/evidence/preferences-recov
 Map, Vocabulary, Experiments and Models still need their own failed-read corrections. Preferences units/grouping, failed-save ambiguity and concurrent-save ordering are separate work. A successful empty preference registry remains the existing empty controls state, not invented defaults. Next bounded slice: Map read recovery, preserving map contents and learning selection.
 
 Independent read-only code review found no blockers or major findings; reviewer did not execute tests.
+
+
+Follow-up2026-10-05: same-client preference writes now share a serial mutation scope to prevent reversed full-snapshot responses. Five hook/four browser tests, lint/types/build and review pass. See docs/ux/DAILY-LEARNING-ACCEPTANCE.md for evidence and remaining cross-tab/transport/read-order limits.

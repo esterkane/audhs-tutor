@@ -15,6 +15,9 @@ export function usePreferences() {
 export function useSetPreference() {
   const qc = useQueryClient()
   return useMutation({
+    // Every save returns the full settings snapshot. Serialize across hook instances,
+    // including different keys, so an older response cannot replace a newer save.
+    scope: { id: 'preferences-write' },
     // A late read must not replace the successful save response in the shared cache.
     onMutate: () => qc.cancelQueries({ queryKey: ['preferences'] }),
     mutationFn: (body: { key: string; value: unknown }) =>

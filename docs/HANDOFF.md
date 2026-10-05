@@ -1304,3 +1304,7 @@ New recorded local imports hold verified POSIX ownership through durable writes.
 
 ## 2026-10-05 — Preferences numeric units
 Recording retention displays days rather than minutes, with matching accessible slider value text. Planner minute values and all mutations are unchanged. Five browser checks, frontend lint/types/build and review pass; screenshot inspected. Actual browser zoom remains unverified. See docs/ux/DAILY-LEARNING-ACCEPTANCE.md.
+
+
+## 2026-10-05 — Preference save ordering
+Full-snapshot preference writes are serialized across hooks within one QueryClient; pending saves are announced. Five hook and four desktop/narrow browser checks pass, with lint/types/build and review. No backend or learning-policy change. Cross-tab conflicts, uncertain transport outcomes and read-during-save ordering remain open; see docs/ux/DAILY-LEARNING-ACCEPTANCE.md.

@@ -112,6 +112,7 @@ export function Preferences() {
             </div>
           ))}
         </div>
+        {set.isPending && <p role="status" className="text-sm text-muted mt-2">Saving preferences…</p>}
         {set.isError && (
           <p role="alert" className="text-warn mt-2">
             {(set.error as Error).message}
