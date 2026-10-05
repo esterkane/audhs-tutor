@@ -1,0 +1,63 @@
+{
+  "scope": "Synthetic local prompt-cache diagnostic; not end-to-end tutor latency or quality evidence",
+  "model": "gemma3:12b",
+  "ollama_version": "0.33.3",
+  "isolation": "Separate loopback Ollama process, cloud disabled, no learner database; process terminated and port closed",
+  "options": {
+    "num_predict": 24,
+    "temperature": 0,
+    "seed": 7,
+    "context_length_requested": 32768,
+    "parallel": 1
+  },
+  "prompt": "One-sentence instruction followed by 40 synthetic group-retention examples and an identical question in every run.",
+  "limitations": [
+    "Two empty preparation requests only; same prompt and model throughout.",
+    "First baseline includes cold-run setup; subsequent calls have warm prompt cache.",
+    "24-token cap intentionally truncates answers; no semantic or completion-quality claim.",
+    "Shared Mac resources and weight cache; not an isolated hardware benchmark."
+  ],
+  "runs": [
+    {
+      "case": "baseline_0",
+      "first_text_s": 6.683463250010391,
+      "total_s": 7.52327212500677,
+      "prefill_s": 5.028461,
+      "input_tokens": 1362,
+      "text": "Comparing proportions accounts for differences in the initial group size, providing a more accurate representation of the cleaning process's impact regardless"
+    },
+    {
+      "case": "empty_preload_0",
+      "elapsed_s": 0.0020705000060843304
+    },
+    {
+      "case": "after_preload_0",
+      "first_text_s": 0.05093479200149886,
+      "total_s": 0.8629820000060135,
+      "prefill_s": 0.04389,
+      "input_tokens": 1362,
+      "text": "Comparing proportions accounts for differences in the initial group size, providing a more accurate representation of the cleaning process's impact regardless"
+    },
+    {
+      "case": "baseline_1",
+      "first_text_s": 0.04776766599388793,
+      "total_s": 0.8674604160041781,
+      "prefill_s": 0.042494,
+      "input_tokens": 1362,
+      "text": "Comparing proportions accounts for differences in the initial group size, providing a more accurate representation of the cleaning process's impact regardless"
+    },
+    {
+      "case": "empty_preload_1",
+      "elapsed_s": 0.0014547080063493922
+    },
+    {
+      "case": "after_preload_1",
+      "first_text_s": 0.047312083988799714,
+      "total_s": 0.8611190419906052,
+      "prefill_s": 0.042376,
+      "input_tokens": 1362,
+      "text": "Comparing proportions accounts for differences in the initial group size, providing a more accurate representation of the cleaning process's impact regardless"
+    }
+  ],
+  "decision": "Keep existing empty preparation: this sample does not support prompt-cache invalidation by preparation."
+}

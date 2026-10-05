@@ -1277,3 +1277,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 semantic history precheck skips model discovery when eligible answers have no vectors, preserving indexed-candidate validation.28 backend tests,4 browser journeys, lint/format/full mypy and independent review pass. See slices/local-tutor-latency.md; generation latency remains open.
+
+
+2026-10-05 isolated local cache experiment found empty resume preparation preserves the warm prefix in the tested runtime. No preparation/prompt change; raw synthetic evidence and limits in slices/preload-cache-sample.json and local-tutor-latency.md. New-context processing remains open.
