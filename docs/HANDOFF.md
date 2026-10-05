@@ -1,5 +1,10 @@
 # Local operational notes
 
+## 2026-10-05 — Repair CI contract drift
+
+Test-only alignment for thought-action inventory, dropped-item409 conflict with unchanged state, save-request UUID and jsdom native-dialog methods. Full backend847/frontend516 passed locally; lint/types and nine real-browser keyboard/narrow/reminder journeys passed. Independent review clear. No runtime or learning change. See docs/slices/ci-contract-alignment.md; new remote CI must still finish.
+
+
 ## 2026-10-05 — Retain explicit saved-answer reuse choice
 
 Study Tutor now retains the learner’s reuse checkbox for the same session/target conversation. Legacy records stay opted out; no automatic generation or matching/learning-policy change. Regression reproduced before fix. 35 frontend tests, lint/types/build and two desktop/narrow keyboard/re-entry journeys passed. Separate warm local full-tutor samples: first text0.825/3.261s, total5.153/7.577s; not a cold-start or quality guarantee. See docs/slices/study-tutor-streaming-plan.md and local-tutor-latency.md.

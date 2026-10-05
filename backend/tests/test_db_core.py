@@ -39,6 +39,7 @@ EXPECTED_TABLES = {
     "index_state",
     "model_registry",
     "parking_lot_item",
+    "thought_action",  # revisioned reminder actions and undo receipts
     "adaptation",
     "adaptation_decision",
     "experiment",

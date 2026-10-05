@@ -2,7 +2,11 @@ import * as matchers from 'vitest-axe/matchers'
 import { beforeEach, expect } from 'vitest'
 import { mediaCheckpoint } from '../features/visualizer/mediaCheckpoint'
 import { workspaceCheckpoint, WORKSPACE_KEY } from '../features/visualizer/workspaceCheckpoint'
-beforeEach(() => { mediaCheckpoint.write(null); workspaceCheckpoint.clearMemory(); localStorage.removeItem(WORKSPACE_KEY) })
+beforeEach(() => {
+  mediaCheckpoint.write(null)
+  workspaceCheckpoint.clearMemory()
+  localStorage.removeItem(WORKSPACE_KEY)
+})
 import '@testing-library/jest-dom/vitest'
 
 // jsdom lacks these; Radix Dialog and Zustand's matchMedia probe need them.
@@ -40,3 +44,19 @@ import { afterEach } from 'vitest'
 afterEach(() => cleanup())
 
 expect.extend(matchers)
+
+// jsdom has the dialog element but not its methods. These model open/close state only;
+// actual modal focus trapping, Escape and keyboard return are verified by Playwright.
+if (!HTMLDialogElement.prototype.showModal) {
+  HTMLDialogElement.prototype.showModal = function () {
+    this.open = true
+  }
+}
+if (!HTMLDialogElement.prototype.close) {
+  HTMLDialogElement.prototype.close = function (returnValue?: string) {
+    if (!this.open) return
+    if (returnValue !== undefined) this.returnValue = returnValue
+    this.open = false
+    this.dispatchEvent(new Event('close'))
+  }
+}

@@ -84,7 +84,10 @@ async def test_parking_promote_and_drop(client: AsyncClient) -> None:
     assert dropped.json()["status"] == "dropped"
     assert (await client.post("/api/parking/nope/promote", json={})).status_code == 404
     gone = await client.post(f"/api/parking/{item['id']}/promote", json={})
-    assert gone.status_code == 400  # dropped items are not promotable
+    assert gone.status_code == 409  # dropped items require undo before promotion
+    assert gone.json()["error"]["code"] == "revision_conflict"
+    still_dropped = (await client.get("/api/parking", params={"status": "dropped"})).json()["items"]
+    assert [row["id"] for row in still_dropped] == [item["id"]]
 
 
 async def test_sensory_preferences_exist(client: AsyncClient) -> None:

@@ -5,7 +5,10 @@ import { jsonResponse, renderApp } from '../test/utils'
 import { ParkingLotButton } from './ParkingLotButton'
 
 describe('ParkingLotButton', () => {
-  afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear() })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    sessionStorage.clear()
+  })
 
   it('is always rendered and usable even without a session', () => {
     useMode.setState({ sessionId: null })
@@ -44,6 +47,9 @@ describe('ParkingLotButton', () => {
       session_id: 's1',
       text: 'look up RoPE',
       node_id: 'k1',
+      request_key: expect.stringMatching(
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+      ),
     })
   })
 })
