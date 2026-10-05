@@ -1312,3 +1312,7 @@ Full-snapshot preference writes are serialized across hooks within one QueryClie
 
 ## 2026-10-05 — Preference refresh during save
 Fixed a reproduced late refresh overwriting confirmed settings after navigating away and back during a save. Six hook/four browser tests, lint/types/build, screenshot and independent review pass. See slices/preferences-read-recovery.md for exact evidence and remaining limits. Learning logic unchanged.
+
+
+## 2026-10-05 — Preferences keyboard acceptance
+Added two desktop/narrow full main-control Tab/Shift+Tab journeys, zero-write and keyboard return checks. Both pass; targeted lint and screenshot inspected. No application code changed. See ux/DAILY-LEARNING-ACCEPTANCE.md for scope and open zoom/human gates.
