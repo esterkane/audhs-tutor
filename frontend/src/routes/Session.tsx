@@ -3,6 +3,7 @@ import { useCheckedQuestion } from '../features/assess/useCheckedQuestion'
 import { RememberContext } from '../features/recent/RememberContext'
 import { AlongsideMode } from '../features/session/AlongsideMode'
 import { AssessmentRecovery } from '../features/assess/AssessmentRecovery'
+import { AssessmentDiscussion } from '../features/assess/AssessmentDiscussion'
 import { AssessmentSaveStatus } from '../features/programs/AssessmentSaveStatus'
 import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
 import { RepresentationSources } from '../features/representations/RepresentationSources'
@@ -1190,6 +1191,14 @@ function AssessPanel({
             </Button>
           </div>
         </Card>
+      )}
+      {result && (
+        <AssessmentDiscussion
+          key={`discussion:${result.attempt_id}`}
+          answerId={result.answer_id}
+          sessionId={sessionId}
+          active={active && !transitionPending}
+        />
       )}
       {result && (
         <QuestionHelp

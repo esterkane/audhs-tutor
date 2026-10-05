@@ -17,7 +17,15 @@ import { useCurrentSession } from '../session/api'
 import { ReadAloud } from '../voice/ReadAloud'
 import { DictationButton } from '../voice/DictationButton'
 
-export function AnswerFollowup({ answerId }: { answerId: string }) {
+export function AnswerFollowup({
+  answerId,
+  expectedSessionId,
+  active = true,
+}: {
+  answerId: string
+  expectedSessionId?: string
+  active?: boolean
+}) {
   const session = useCurrentSession()
   return (
     <section className="border border-line rounded p-4 grid gap-3" aria-label="Continue this explanation">
@@ -33,11 +41,17 @@ export function AnswerFollowup({ answerId }: { answerId: string }) {
         <p role="alert">
           Could not check your session. <Button onClick={() => void session.refetch()}>Retry session</Button>
         </p>
+      ) : expectedSessionId && session.data?.id !== expectedSessionId ? (
+        <p role="status">
+          This activity is no longer the current session. <Link to="/">Return Home</Link> to resume it. Your
+          saved feedback and discussion draft remain available.
+        </p>
       ) : session.data?.id ? (
         <Conversation
           key={`${answerId}:${session.data.id}`}
           answerId={answerId}
           sessionId={session.data.id}
+          active={active}
         />
       ) : (
         <p>
@@ -49,7 +63,15 @@ export function AnswerFollowup({ answerId }: { answerId: string }) {
   )
 }
 
-function Conversation({ answerId, sessionId }: { answerId: string; sessionId: string }) {
+function Conversation({
+  answerId,
+  sessionId,
+  active,
+}: {
+  answerId: string
+  sessionId: string
+  active: boolean
+}) {
   const key = `saved-answer-followup:v1:${answerId}`
   const recovery = useFollowupRequestRecovery(`${key}:${sessionId}`)
   const [restored] = useState(() => {
@@ -155,8 +177,15 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     )
     input.current?.focus()
   }
+  useEffect(() => {
+    if (active || !request.current) return
+    request.current.abort()
+    request.current = null
+    setBusy(false)
+    setError('Stopped waiting. Your draft is kept. Retry the original request to check for its result.')
+  }, [active])
   async function send() {
-    if (request.current || !draft.trim() || !parentFeedback.isSuccess) return
+    if (!active || request.current || !draft.trim() || !parentFeedback.isSuccess) return
     try {
       const pending = recovery.prepare(
         {
@@ -173,7 +202,7 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     }
   }
   async function execute(pending: PendingTutorRequest<FollowupRetryBody>) {
-    if (request.current) return
+    if (!active || request.current) return
     const { question, parent_answer_id: originalParent, session_id: originalSession } = pending.body
     const ctl = new AbortController()
     request.current = ctl
@@ -267,7 +296,7 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
           </h3>
           <p className="whitespace-pre-wrap">{question}</p>
           <Markdown text={reply.text} />
-          <ReadAloud text={`Your question: ${question}\n\n${reply.text}`} />
+          {active && <ReadAloud text={`Your question: ${question}\n\n${reply.text}`} />}
           <AnswerSaveStatus
             answerId={reply.answer_id}
             receipt={reply.save_receipt}
@@ -373,10 +402,12 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
         >
           Send follow-up
         </Button>
-        <DictationButton
-          disabled={busy || unsaved}
-          onTranscript={(text) => edit([draft, text].filter(Boolean).join(' '))}
-        />
+        {active && (
+          <DictationButton
+            disabled={busy || unsaved}
+            onTranscript={(text) => edit([draft, text].filter(Boolean).join(' '))}
+          />
+        )}
         {busy && <Button onClick={stop}>Stop</Button>}
       </div>
       {busy && <p role="status">Preparing a follow-up…</p>}

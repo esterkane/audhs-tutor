@@ -73,6 +73,40 @@ for (const narrow of [false, true]) {
       expect(helpCalls).toBe(1)
       await page.screenshot({ path: info.outputPath('feedback-help.png'), fullPage: true })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      let discussionCalls = 0
+      await page.route('**/api/answers/*/followup/stream', async (route) => {
+        discussionCalls++
+        expect(route.request().url()).toContain(`/api/answers/${grade.answer_id}/followup/stream`)
+        expect(route.request().postDataJSON()).toMatchObject({ session_id: session.id })
+        await route.fulfill({
+          contentType: 'text/event-stream',
+          body: `event: done\ndata: ${JSON.stringify({ turn_id: 'discussion-test', text: 'Let us inspect the saved reasoning together.', answer_id: grade.answer_id, source_note: 'Synthetic browser response' })}\n\n`,
+        })
+      })
+      const discussion = page.getByText('Discuss this feedback', { exact: true })
+      await discussion.focus()
+      await page.keyboard.press('Enter')
+      await expect(page.getByRole('textbox', { name: 'Your follow-up question' })).toBeVisible()
+      expect(discussionCalls).toBe(0)
+      await page
+        .getByRole('textbox', { name: 'Your follow-up question' })
+        .fill('Why was this answer checked this way?')
+      await page.getByRole('button', { name: 'Send follow-up', exact: true }).click()
+      await expect(
+        page.getByText('Let us inspect the saved reasoning together.', { exact: true }),
+      ).toBeVisible()
+      expect(discussionCalls).toBe(1)
+      expect(extraAttempts).toBe(0)
+      await page.screenshot({ path: info.outputPath('feedback-discussion.png'), fullPage: true })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await page.getByRole('textbox', { name: 'Your follow-up question' }).fill('A draft to retain')
+      await discussion.focus()
+      await page.keyboard.press('Enter')
+      await expect(page.getByRole('textbox', { name: 'Your follow-up question' })).toHaveCount(0)
+      await page.keyboard.press('Enter')
+      await expect(page.getByRole('textbox', { name: 'Your follow-up question' })).toHaveValue(
+        'A draft to retain',
+      )
       const writes: string[] = []
       page.on('request', (request) => {
         if (request.method() === 'POST') writes.push(request.url())

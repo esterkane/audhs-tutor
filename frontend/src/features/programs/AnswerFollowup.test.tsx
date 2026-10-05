@@ -25,8 +25,8 @@ vi.mock('../../lib/api', async (importOriginal) => {
         : original.apiFetch(url, init),
   }
 })
-vi.mock('../voice/ReadAloud', () => ({ ReadAloud: () => null }))
-vi.mock('../voice/DictationButton', () => ({ DictationButton: () => null }))
+vi.mock('../voice/ReadAloud', () => ({ ReadAloud: () => <span>Reading control mounted</span> }))
+vi.mock('../voice/DictationButton', () => ({ DictationButton: () => <span>Dictation control mounted</span> }))
 beforeEach(() => {
   localStorage.clear()
   sessionStorage.clear()
@@ -89,11 +89,17 @@ it('retains a failed-save reply and pauses continuation rather than using the wr
       completedReply({ text: 'Keep this reply', answer_id: null, save_error: 'Storage unavailable' }),
     ),
   )
-  renderApp(<AnswerFollowup answerId="parent" />)
+  const view = renderApp(<AnswerFollowup answerId="parent" />)
   await waitFor(() => expect(screen.queryByText(/Checking feedback for/)).not.toBeInTheDocument())
   fireEvent.change(screen.getByLabelText('Your follow-up question'), { target: { value: 'Explain' } })
   fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
   expect(await screen.findByText('Keep this reply')).toBeVisible()
+  expect(screen.getByText('Reading control mounted')).toBeInTheDocument()
+  view.rerender(<AnswerFollowup answerId="parent" active={false} />)
+  expect(screen.queryByText('Reading control mounted')).not.toBeInTheDocument()
+  expect(screen.queryByText('Dictation control mounted')).not.toBeInTheDocument()
+  view.rerender(<AnswerFollowup answerId="parent" active />)
+  expect(screen.getByText('Keep this reply')).toBeVisible()
   expect(screen.getByRole('button', { name: 'Send follow-up' })).toBeDisabled()
 })
 
@@ -279,4 +285,36 @@ it('retains visible partial text and reports preview storage denial', async () =
   } finally {
     storage.mockRestore()
   }
+})
+
+it('does not attach an assessment discussion to a different current session', () => {
+  const fetcher = vi.fn()
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<AnswerFollowup answerId="parent" expectedSessionId="original-session" />)
+  expect(screen.getByText(/no longer the current session/)).toBeVisible()
+  expect(screen.queryByLabelText('Your follow-up question')).not.toBeInTheDocument()
+  expect(fetcher).not.toHaveBeenCalled()
+})
+
+it('stops on deactivation and ignores a late completed reply', async () => {
+  let resolve!: (response: Response) => void
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(
+      () =>
+        new Promise<Response>((done) => {
+          resolve = done
+        }),
+    ),
+  )
+  const view = renderApp(<AnswerFollowup answerId="parent" active />)
+  await waitFor(() => expect(screen.queryByText(/Checking feedback for/)).not.toBeInTheDocument())
+  fireEvent.change(screen.getByLabelText('Your follow-up question'), { target: { value: 'Explain' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
+  view.rerender(<AnswerFollowup answerId="parent" active={false} />)
+  await act(async () => resolve(completedReply({ text: 'Late response', answer_id: 'late' })))
+  view.rerender(<AnswerFollowup answerId="parent" active />)
+  expect(screen.queryByText('Late response')).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Your follow-up question')).toHaveValue('Explain')
+  expect(screen.getByRole('alert')).toHaveTextContent('Stopped waiting')
 })

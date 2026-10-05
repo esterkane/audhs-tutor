@@ -1244,3 +1244,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 continuation inspection: full public CI run37329042232 at runtime9d05f91 passed all five jobs, including browser journeys. Checked-feedback discussion remains unimplemented; source inspection found hidden assessment panels stay mounted and the existing follow-up chooses a global session. The next integration must bind session identity and deactivate requests on phase exit. Exact scope and acceptance are recorded in slices/assessment-followup-context.md. No runtime change or new UI verification claimed.
+
+
+2026-10-05 checked-feedback discussion shipped: explicit collapsed entry uses immutable saved parent and bound session; close/phase exit stops streaming/media while preserving mounted replies and save receipts.13 focused component tests,2 sandbox desktop/narrow keyboard journeys, TypeScript/build/lint and independent review pass. See slices/assessment-followup-context.md for evidence and remaining receipt-recovery/whole-route persistence limits. No grading/model/prompt change.
