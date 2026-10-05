@@ -139,3 +139,14 @@ Scope: local Session explanations only. Other providers do not yet emit finish m
 complete_streamed now rejects an explicit length stop with OutputLimitError after accounting/cleanup. Study Tutor translates that into tutor_output_limit with retained-preview and shorter-request guidance; saved-answer streams use the same path. Neither emits authoritative done nor saves a completed answer. Existing request claims remain unresolved, so same-key retry cannot regenerate; the learner can explicitly start different work. This intentionally reuses interruption recovery rather than silently increasing output budgets.
 
 28 focused provider/accounting/stream tests pass, including both surfaces, no extra generation on retry and no assessment or completed-answer writes. Ruff/format and full production mypy200 files pass; independent review clear. A narrow keyboard browser test displays retained preview/draft, output-limit message and recovery controls without a saved-answer link; screenshot inspected, no overflow. Its model response is mocked; prior real local adapter smoke proves length signaling. Buffered/structured completions and providers not emitting finish metadata remain outside scope. No prompt/model/grade change or speed improvement claimed.
+
+
+## Full verification and buffered-path boundary — 2026-10-05
+
+Full backend suite at the streamed output-limit runtime:879 passed (65.36s), with three existing dependency warnings. Public GitHub Actions run37337784627 at6925265 completed successfully. These broaden the prior focused checks; they do not establish teaching quality or an end-to-end latency target.
+
+Inspection of ModelGateway.complete and OllamaProvider.complete confirms a separate buffered-path issue: successful provider results discard finish_reason, while ProviderError triggers route fallback and StructuredOutputError can trigger repair. Raising a generic provider error for a known length stop would therefore risk additional generation and lose the successful attempt's usage accounting. Do not extend the streaming fix through that shortcut.
+
+A bounded follow-up must retain termination metadata in ProviderResult, account for the attempt before returning an explicit incomplete-output error, and prove that known capped plain-text replies cause neither repair nor fallback nor completed-answer writes. Structured output requires separate evidence: Instructor exceptions, valid parsed output at a length stop, assessment consumers and existing bounded repair all need explicit treatment. Do not silently change grading or structured repair policy as a latency optimization. No buffered runtime change was made in this inspection.
+
+Performance priority remains first-text delay with complete context and teaching quality retained. Existing streaming, residency and explicit session preparation are shipped; source-rich prompt processing, semantic quality and representative browser latency remain open.

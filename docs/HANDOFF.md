@@ -1271,3 +1271,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 streamed Study Tutor and saved discussions reject output-limit completions while retaining preview/draft and original retry identity.28 focused backend tests, full mypy, lint/format, narrow keyboard browser test and review pass. No completed-answer/assessment writes or duplicate retry generation. See slices/local-tutor-latency.md; buffered/structured paths remain separate.
+
+
+2026-10-05 full verification:879 backend tests pass; public CI37337784627 at6925265 passed. Buffered termination handling requires a separate accounting/no-regeneration contract; documented in slices/local-tutor-latency.md. No runtime or learning-policy change. Latency and broader learning acceptance remain open.
