@@ -1133,3 +1133,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 skill search: read-only catalog title/description matching, capped results, prerequisite status without fabricated mastery, exact existing lesson-choice links. Ten browser journeys pass in both variants, including no learning writes from result navigation; lint/types pass, narrow screenshot inspected, read-only review clear. CURRENT-WORK now begins with a reconciled execution checklist superseding historical next-step paragraphs. Search category orientation and broader daily-learning acceptance are next; notes/notebook search remains excluded.
+
+
+2026-10-05 result orientation: compact native jump links reach all five search-group headings, preserving query and focusing the target without reissuing searches. Original11 browser journeys and sanitized focused journey pass; lint/types pass, narrow screenshot inspected, review clear. This reduces forced scrolling but does not establish owner comprehension or close the broader search/accessibility phase. Next: integrated daily-learning journey and reproduced usability blockers; retain notes/notebook search exclusions.

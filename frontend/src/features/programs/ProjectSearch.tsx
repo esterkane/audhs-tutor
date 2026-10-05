@@ -23,7 +23,7 @@ export function ProjectSearch({ phrase }: { phrase: string }) {
     .filter(section => [course.title, section.title, section.explanation].some(text => text.toLocaleLowerCase().includes(term)))
     .map(section => ({ course, section })))
   return <section aria-labelledby="search-projects" className="rounded-md border border-line p-3 min-w-0 break-words">
-    <h2 id="search-projects" className="text-panel-heading font-semibold">Project guides</h2>
+    <h2 tabIndex={-1} id="search-projects" className="text-panel-heading font-semibold">Project guides</h2>
     <p className="text-sm text-muted">Guide titles and section explanations matching your phrase. Notebook cells and your notes are not searched.</p>
     {guide.isPending ? <p role="status">Searching project guides…</p> : guide.isError ? <div role="alert">Project guides could not be loaded. Other search results remain available. <Button disabled={guide.isFetching} onClick={() => void guide.refetch()}>Retry project search</Button></div> : !guide.data ? <p>No local project guide is configured.</p> : <>
       <p role="status">{matches.length ? `${Math.min(8, matches.length)} of ${matches.length} matching sections shown.` : 'No project guide sections matched.'}</p>

@@ -174,3 +174,20 @@ test('skill results open an explicit lesson choice without starting it', async (
   await expect(page.getByRole('heading', { name: 'Learn: Vector comparison' })).toBeVisible()
   expect(writes).toEqual([])
 })
+
+test('result group links move keyboard focus without repeating searches', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 800 })
+  let reads = 0
+  await page.route('**/api/answers?*', route => { reads++; return route.fulfill({ json: { items: [], next_cursor: null } }) })
+  await page.route('**/api/corpus/search', route => { reads++; return route.fulfill({ json: { hits: [] } }) })
+  await page.goto('/search?q=example')
+  await expect(page.getByText('No indexed passages matched.')).toBeVisible()
+  const before = reads
+  const jump = page.getByRole('navigation', { name: 'Search result groups' }).getByRole('link', { name: 'Indexed sources', exact: true })
+  await jump.focus()
+  await jump.press('Enter')
+  await expect(page.getByRole('heading', { name: 'Indexed sources', exact: true })).toBeFocused()
+  await expect(page).toHaveURL(/q=example#search-sources$/)
+  expect(reads).toBe(before)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})

@@ -44,8 +44,13 @@ function Results({ query }: { query: string }) {
     retry: false,
   })
   return <div className="grid gap-4 min-w-0">
+    <nav aria-label="Search result groups" className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
+      <span className="font-semibold">Jump to:</span>
+      {([['areas', 'Knowledge areas'], ['skills', 'Skills'], ['projects', 'Project guides'], ['answers', 'Saved explanations'], ['sources', 'Indexed sources']] as const).map(([id, label]) =>
+        <a key={id} className="underline py-1" href={`#search-${id}`}>{label}</a>)}
+    </nav>
     <section aria-labelledby="search-areas" className="rounded-md border border-line p-3 min-w-0 break-words">
-      <h2 id="search-areas" className="text-panel-heading font-semibold">Knowledge areas</h2>
+      <h2 tabIndex={-1} id="search-areas" className="text-panel-heading font-semibold">Knowledge areas</h2>
       <p className="text-sm text-muted">Names, descriptions and topic terms matching your phrase. Opening an area does not start or switch a learning session.</p>
       {areas.isPending ? <p role="status">Searching knowledge areas…</p> : areas.isError ? <div role="alert">Knowledge areas could not be refreshed. <Button disabled={areas.isFetching} onClick={() => void areas.refetch()}>Retry area search</Button></div> : <>
         <p role="status">{matchingAreas.length ? `${Math.min(8, matchingAreas.length)} of ${matchingAreas.length} matching areas shown.` : 'No knowledge areas matched.'}</p>
@@ -59,7 +64,7 @@ function Results({ query }: { query: string }) {
     <SkillSearch phrase={query} />
     <ProjectSearch phrase={query} />
     <section aria-labelledby="search-answers" className="rounded-md border border-line p-3 min-w-0 break-words">
-      <h2 id="search-answers" className="text-panel-heading font-semibold">Saved explanations</h2>
+      <h2 tabIndex={-1} id="search-answers" className="text-panel-heading font-semibold">Saved explanations</h2>
       <p className="text-sm text-muted">Past answers matching your words, newest first. They have not been checked again.</p>
       {answers.isPending ? <p role="status">Searching saved explanations…</p> : answers.isError ? <div role="alert">Saved explanations could not be searched. <Button disabled={answers.isFetching} onClick={() => void answers.refetch()}>Retry explanation search</Button></div> : <>
         <p role="status">{answers.data.items.length ? `${answers.data.items.length} matching saved explanations shown.` : 'No saved explanations matched.'}</p>
@@ -71,7 +76,7 @@ function Results({ query }: { query: string }) {
       </>}
     </section>
     <section aria-labelledby="search-sources" className="rounded-md border border-line p-3 min-w-0 break-words">
-      <h2 id="search-sources" className="text-panel-heading font-semibold">Indexed sources</h2>
+      <h2 tabIndex={-1} id="search-sources" className="text-panel-heading font-semibold">Indexed sources</h2>
       <p className="text-sm text-muted">Up to 8 potentially relevant passages. A match is not verification of the source.</p>
       {sources.isPending ? <p role="status">Searching indexed sources…</p> : sources.isError ? <div role="alert">Source search is unavailable. Check the local retrieval service and embedding model. <Button disabled={sources.isFetching} onClick={() => void sources.refetch()}>Retry source search</Button></div> : <>
         <p role="status">{sources.data.hits.length ? `${sources.data.hits.length} source passages shown.` : 'No indexed passages matched.'}</p>
