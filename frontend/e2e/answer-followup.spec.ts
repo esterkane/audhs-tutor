@@ -1,8 +1,35 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [1280, 390]) {
-  test(`saved follow-up sends explicitly and retains lineage (${width}px)`, async ({ page }) => {
+  test(`saved follow-up sends explicitly and retains lineage (${width}px)`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => {
+      const original = window.fetch.bind(window)
+      let held = false
+      window.fetch = async (input, init) => {
+        const response = await original(input, init)
+        if (held || !String(input).endsWith('/followup/stream')) return response
+        held = true
+        const finalEvents = await response.text()
+        const encoder = new TextEncoder()
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                encoder.encode(
+                  'event: token\ndata: {"text":"Compare each group before drawing a conclusion."}\n\n',
+                ),
+              )
+              ;(window as Window & { releaseFollowup?: () => void }).releaseFollowup = () => {
+                controller.enqueue(encoder.encode(finalEvents))
+                controller.close()
+              }
+            },
+          }),
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        )
+      }
+    })
     await page.route('**/api/sessions/current', (route) => route.fulfill({ json: { id: 'session' } }))
     let feedback = { verdict: null as string | null, note: '', hidden: false, revision: 0 }
     await page.route('**/api/answers/*/feedback', async (route) => {
@@ -24,7 +51,12 @@ for (const width of [1280, 390]) {
       const params = new URL(route.request().url()).searchParams
       expect(params.get('parent_answer_id')).toBe('parent')
       historyReads++
-      await route.fulfill({ json: { items: [{ ...parent, id: 'child', learner_question: 'Show a small example.' }], next_cursor: null } })
+      await route.fulfill({
+        json: {
+          items: [{ ...parent, id: 'child', learner_question: 'Show a small example.' }],
+          next_cursor: null,
+        },
+      })
     })
     let preferred: string | null = null
     let revision = 0
@@ -38,14 +70,17 @@ for (const width of [1280, 390]) {
       await route.fulfill({ json: { replacement_id: preferred, revision } })
     })
     let calls = 0
-    await page.route('**/api/answers/parent/followup', async (route) => {
+    await page.route('**/api/answers/parent/followup/stream', async (route) => {
       calls++
       expect(route.request().postDataJSON()).toEqual({
         session_id: 'session',
         question: 'Show a small example.',
         purpose: 'correction',
       })
-      await route.fulfill({ json: { text: 'Illustrative: compare 9/10 with 6/10.', answer_id: 'child' } })
+      await route.fulfill({
+        contentType: 'text/event-stream',
+        body: `event: done\ndata: ${JSON.stringify({ turn_id: 'turn', text: 'Illustrative: compare 9/10 with 6/10.', answer_id: 'child' })}\n\n`,
+      })
     })
     await page.route('**/api/answers/child', (route) =>
       route.fulfill({
@@ -72,7 +107,19 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('combobox', { name: 'Request type' })).toHaveValue('correction')
     expect(calls).toBe(0)
     await input.fill('Show a small example.')
-    await page.getByRole('button', { name: 'Send follow-up' }).click()
+    const send = page.getByRole('button', { name: 'Send follow-up' })
+    await send.focus()
+    await page.keyboard.press('Enter')
+    const preview = page.getByRole('region', { name: 'Unfinished follow-up' })
+    await expect(preview).toContainText('Compare each group before drawing a conclusion.')
+    await expect(page.getByRole('link', { name: 'Open saved follow-up' })).not.toBeVisible()
+    await expect(page.getByRole('button', { name: 'Stop', exact: true })).toBeVisible()
+    await preview.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: info.outputPath('followup-streaming.png'), fullPage: true })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.evaluate(() => (window as Window & { releaseFollowup?: () => void }).releaseFollowup?.())
+    await expect(preview).not.toBeVisible()
+
     await expect(page.getByText('Illustrative: compare 9/10 with 6/10.')).toBeVisible()
     expect(calls).toBe(1)
     await page.getByRole('link', { name: 'Open saved follow-up' }).click()
@@ -84,7 +131,9 @@ for (const width of [1280, 390]) {
     await page.getByText('Review this correction as your preferred reply', { exact: true }).click()
     const prefer = page.getByRole('button', { name: 'Prefer this correction', exact: true })
     await expect(prefer).toBeDisabled()
-    await page.getByRole('checkbox', { name: 'I reviewed both answers and want to prefer this correction.' }).check()
+    await page
+      .getByRole('checkbox', { name: 'I reviewed both answers and want to prefer this correction.' })
+      .check()
     await prefer.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText('Preferred correction saved. Both answers remain in history.')).toBeVisible()
@@ -103,7 +152,10 @@ for (const width of [1280, 390]) {
     expect(historyReads).toBe(0)
     await page.getByText('Later replies to this answer', { exact: true }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('link', { name: 'Show a small example.', exact: true })).toHaveAttribute('href', '/answers/child')
+    await expect(page.getByRole('link', { name: 'Show a small example.', exact: true })).toHaveAttribute(
+      'href',
+      '/answers/child',
+    )
     expect(historyReads).toBe(1)
     expect(calls).toBe(1)
   })

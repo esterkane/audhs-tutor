@@ -3,6 +3,8 @@ import {
   type PendingTutorRequest,
   type FollowupRetryBody,
 } from '../playground/useRequestRecovery'
+import { streamAnswerFollowup } from '../playground/streamTutor'
+import { readTextCache, writeTextCache } from '../tutor/streamCache'
 import { RequestRecoveryControls } from '../playground/RequestRecoveryControls'
 import { AnswerSaveStatus } from './AnswerSaveStatus'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -62,7 +64,12 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
           (saved.purpose !== undefined && !['followup', 'correction'].includes(saved.purpose)))
       )
         throw new Error('Invalid draft')
-      return { draft: (saved?.draft ?? '').slice(0, 2000), parentId: saved?.parentId ?? answerId, purpose: (saved?.purpose ?? 'followup') as 'followup' | 'correction', error: '' }
+      return {
+        draft: (saved?.draft ?? '').slice(0, 2000),
+        parentId: saved?.parentId ?? answerId,
+        purpose: (saved?.purpose ?? 'followup') as 'followup' | 'correction',
+        error: '',
+      }
     } catch {
       return {
         draft: '',
@@ -78,7 +85,36 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [parentId, setParentId] = useState<string>(restored.parentId)
-  const [replies, setReplies] = useState<Array<{ question: string; purpose: 'followup' | 'correction'; reply: Schemas['PlaygroundReply'] }>>([])
+  const [replies, setReplies] = useState<
+    Array<{ question: string; purpose: 'followup' | 'correction'; reply: Schemas['PlaygroundReply'] }>
+  >([])
+  const previewKey = `answer-followup-preview:${key}:${sessionId}`
+  const [initialPreview] = useState(() => readTextCache(previewKey))
+  const [preview, setPreview] = useState(initialPreview.value?.text ?? '')
+  const [previousPreview, setPreviousPreview] = useState(initialPreview.value?.previousText ?? '')
+  const previewRef = useRef({ text: preview, previousText: previousPreview })
+  const [previewError, setPreviewError] = useState(initialPreview.error)
+  function flushPreview() {
+    try {
+      setPreviewError(writeTextCache(previewKey, { ...previewRef.current, status: 'partial' }))
+    } catch {
+      setPreviewError('Unfinished text could not be saved in this tab. Copy it before leaving.')
+    }
+  }
+  useEffect(() => {
+    const save = () => {
+      try {
+        writeTextCache(previewKey, { ...previewRef.current, status: 'partial' })
+      } catch {
+        /* Stop/error paths surface storage failure while the page is mounted. */
+      }
+    }
+    window.addEventListener('pagehide', save)
+    return () => {
+      window.removeEventListener('pagehide', save)
+      save()
+    }
+  }, [previewKey])
   const request = useRef<AbortController | null>(null)
   const input = useRef<HTMLTextAreaElement>(null)
   const qc = useQueryClient()
@@ -100,13 +136,17 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     setPurpose(nextPurpose)
     setDraft(value.slice(0, 2000))
     try {
-      localStorage.setItem(key, JSON.stringify({ draft: value.slice(0, 2000), parentId: savedParent, purpose: nextPurpose }))
+      localStorage.setItem(
+        key,
+        JSON.stringify({ draft: value.slice(0, 2000), parentId: savedParent, purpose: nextPurpose }),
+      )
       setStorageError('')
     } catch {
       setStorageError('Draft could not be saved. Keep a copy before leaving.')
     }
   }
   function stop() {
+    flushPreview()
     request.current?.abort()
     request.current = null
     setBusy(false)
@@ -119,7 +159,12 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     if (request.current || !draft.trim() || !parentFeedback.isSuccess) return
     try {
       const pending = recovery.prepare(
-        { session_id: sessionId, question: draft.trim(), parent_answer_id: parentId, ...(purpose === 'correction' ? { purpose } : {}) },
+        {
+          session_id: sessionId,
+          question: draft.trim(),
+          parent_answer_id: parentId,
+          ...(purpose === 'correction' ? { purpose } : {}),
+        },
         { snapshot: parentId, submitted: draft, display: draft.trim(), mode: 'explicit' },
       )
       await execute(pending)
@@ -134,26 +179,44 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     request.current = ctl
     setBusy(true)
     setError('')
+    if (previewRef.current.text) {
+      previewRef.current.previousText = [previewRef.current.previousText, previewRef.current.text]
+        .filter(Boolean)
+        .join('\n\n---\n\n')
+      setPreviousPreview(previewRef.current.previousText)
+    }
+    previewRef.current.text = ''
+    setPreview('')
+    flushPreview()
     const timer = setTimeout(() => {
       if (request.current === ctl) stop()
     }, 120_000)
     try {
-      const reply = await apiFetch<Schemas['PlaygroundReply']>(
-        `/api/answers/${encodeURIComponent(originalParent)}/followup`,
-        {
-          method: 'POST',
-          body: JSON.stringify({ session_id: originalSession, question, ...(pending.body.purpose === 'correction' ? { purpose: 'correction' } : {}) }),
-          signal: ctl.signal,
-          headers: { 'Idempotency-Key': pending.key },
+      const reply = await streamAnswerFollowup(
+        originalParent,
+        { session_id: originalSession, question, purpose: pending.body.purpose ?? 'followup' },
+        ctl.signal,
+        pending.key,
+        (token) => {
+          if (request.current !== ctl || ctl.signal.aborted) return
+          previewRef.current.text += token
+          setPreview(previewRef.current.text)
         },
       )
       if (request.current !== ctl || ctl.signal.aborted) return
+      previewRef.current.text = ''
+      setPreview('')
+      flushPreview()
       setReplies((old) => [...old, { question, purpose: pending.body.purpose ?? 'followup', reply }])
       if (reply.answer_id) {
         setParentId(reply.answer_id)
         void qc.invalidateQueries({ queryKey: ['answers'] })
       }
-      edit(draft === pending.view.submitted ? '' : draft, reply.answer_id ?? originalParent, draft === pending.view.submitted ? 'followup' : purpose)
+      edit(
+        draft === pending.view.submitted ? '' : draft,
+        reply.answer_id ?? originalParent,
+        draft === pending.view.submitted ? 'followup' : purpose,
+      )
       recovery.accept(pending.key)
       input.current?.focus()
     } catch (e) {
@@ -164,6 +227,7 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
     } finally {
       clearTimeout(timer)
       if (request.current === ctl) {
+        flushPreview()
         request.current = null
         setBusy(false)
       }
@@ -196,7 +260,11 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
       )}
       {replies.map(({ question, reply, purpose: replyPurpose }, index) => (
         <div key={index} className="border-t border-line pt-3">
-          <h3 className="font-medium">{replyPurpose === 'correction' ? 'Proposed correction — review before relying on it' : 'Your follow-up'}</h3>
+          <h3 className="font-medium">
+            {replyPurpose === 'correction'
+              ? 'Proposed correction — review before relying on it'
+              : 'Your follow-up'}
+          </h3>
           <p className="whitespace-pre-wrap">{question}</p>
           <Markdown text={reply.text} />
           <ReadAloud text={`Your question: ${question}\n\n${reply.text}`} />
@@ -226,6 +294,22 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
           />
         </div>
       ))}
+      {previewError && <p role="alert">{previewError}</p>}
+      {preview && (
+        <section aria-label="Unfinished follow-up" className="border border-line rounded p-3">
+          <p className="text-sm text-muted">
+            {busy ? 'Reply arriving' : 'Unfinished reply retained · your question may have changed'} · not
+            checked or saved as an answer. Final wording and source notes may change.
+          </p>
+          <Markdown text={preview} />
+        </section>
+      )}
+      {previousPreview && (
+        <details>
+          <summary>Earlier unfinished follow-ups · questions may have changed</summary>
+          <Markdown text={previousPreview} />
+        </details>
+      )}
       {unsaved && (
         <p role="alert">
           Save failed for the latest reply. Keep a copy; further follow-ups are paused so they do not silently
@@ -234,18 +318,42 @@ function Conversation({ answerId, sessionId }: { answerId: string; sessionId: st
       )}
       <label>
         Request type
-        <select className="block" value={purpose} disabled={busy || unsaved}
-          onChange={(event) => edit(draft, parentId, event.target.value as 'followup' | 'correction')}>
+        <select
+          className="block"
+          value={purpose}
+          disabled={busy || unsaved}
+          onChange={(event) => edit(draft, parentId, event.target.value as 'followup' | 'correction')}
+        >
           <option value="followup">Continue the explanation</option>
           <option value="correction">Request a proposed correction</option>
         </select>
       </label>
-      <Button disabled={busy || unsaved || !!draft.trim()} onClick={() => {
-        edit('Please reconsider the previous answer and my saved feedback. Explain what should change and why, or why the earlier reasoning still holds. State what evidence is missing.', parentId, 'correction')
-        input.current?.focus()
-      }}>Prepare correction request</Button>
-      {!!draft.trim() && <p className="text-sm text-muted">To keep your draft, choose Request a proposed correction above. Preparing a template is available when the draft is empty.</p>}
-      {purpose === 'correction' && <p role="status">Sending asks for a proposed correction to the reply you are continuing from. It does not replace the original, verify the result or change your feedback. Only saved feedback is supplied; save any edited report first.</p>}
+      <Button
+        disabled={busy || unsaved || !!draft.trim()}
+        onClick={() => {
+          edit(
+            'Please reconsider the previous answer and my saved feedback. Explain what should change and why, or why the earlier reasoning still holds. State what evidence is missing.',
+            parentId,
+            'correction',
+          )
+          input.current?.focus()
+        }}
+      >
+        Prepare correction request
+      </Button>
+      {!!draft.trim() && (
+        <p className="text-sm text-muted">
+          To keep your draft, choose Request a proposed correction above. Preparing a template is available
+          when the draft is empty.
+        </p>
+      )}
+      {purpose === 'correction' && (
+        <p role="status">
+          Sending asks for a proposed correction to the reply you are continuing from. It does not replace the
+          original, verify the result or change your feedback. Only saved feedback is supplied; save any
+          edited report first.
+        </p>
+      )}
       <label>
         Your follow-up question
         <textarea

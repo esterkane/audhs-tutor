@@ -1,14 +1,17 @@
 """Local saved history. Reopening never regenerates or awards learning evidence."""
 
+from collections.abc import Awaitable, Callable
 from typing import Annotated, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Header, Query, Request
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 from sqlalchemy import select, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import DB, Gateway, Learner
+from app.api.sse import stream_reply
 from app.core.answer_recovery import MAX_RECEIPT
 from app.core.errors import AppError
 from app.db import answer_feedback, answer_replacement, answer_sources, workspace_requests
@@ -193,6 +196,43 @@ async def followup(
     request: Request,
     idempotency_key: Annotated[UUID | None, Header()] = None,
 ) -> PlaygroundReply:
+    return await _followup(answer_id, body, db, learner, gateway, request, idempotency_key)
+
+
+@router.post(
+    "/{answer_id}/followup/stream",
+    summary="Stream an owned saved-answer discussion, then its authoritative reply",
+)
+async def followup_stream(
+    answer_id: str,
+    body: AnswerFollowup,
+    db: DB,
+    learner: Learner,
+    gateway: Gateway,
+    request: Request,
+    idempotency_key: Annotated[UUID | None, Header()] = None,
+) -> StreamingResponse:
+    # Reject inaccessible parents before opening the stream, as the buffered API does.
+    await answer_feedback.owned(db, learner.id, answer_id)
+
+    async def produce(on_token: Callable[[str], Awaitable[None]]) -> PlaygroundReply:
+        return await _followup(
+            answer_id, body, db, learner, gateway, request, idempotency_key, on_token
+        )
+
+    return stream_reply(produce)
+
+
+async def _followup(
+    answer_id: str,
+    body: AnswerFollowup,
+    db: DB,
+    learner: Learner,
+    gateway: Gateway,
+    request: Request,
+    idempotency_key: UUID | None,
+    on_token: Callable[[str], Awaitable[None]] | None = None,
+) -> PlaygroundReply:
     row = await db.scalar(
         select(TutorAnswer).where(TutorAnswer.id == answer_id, TutorAnswer.learner_id == learner.id)
     )
@@ -273,6 +313,7 @@ async def followup(
         learner_id,
         workspace_request,
         historical=historical,
+        on_token=on_token,
         recovery=request.app.state.answer_recovery,
         parent_metadata={
             "parent_answer_id": row.id,

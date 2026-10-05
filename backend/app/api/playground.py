@@ -1,18 +1,16 @@
 import asyncio
 import logging
-from collections.abc import AsyncIterator, Awaitable, Callable
-from contextlib import suppress
-from typing import Annotated, Any
+from collections.abc import Awaitable, Callable
+from typing import Annotated
 from uuid import UUID
 
-import anyio
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Header, Request
 from fastapi.responses import StreamingResponse
 
 from app.api.answer_jobs import schedule_index
 from app.api.deps import DB, Gateway, Learner, SettingsDep, get_repo
-from app.api.sse import sse
+from app.api.sse import stream_reply
 from app.core.errors import AppError
 from app.db import workspace_requests
 from app.models_ai.provider import ProviderError
@@ -110,62 +108,9 @@ async def tutor_stream(
     if body.intent not in {"explain", "hint", "chat"}:
         raise AppError("buffered_intent", "Use the checked response endpoint for this action.", 422)
 
-    async def generate() -> AsyncIterator[bytes]:
-        queue: asyncio.Queue[tuple[str, dict[str, Any]]] = asyncio.Queue(maxsize=32)
+    async def produce(on_token: Callable[[str], Awaitable[None]]) -> PlaygroundReply:
+        return await _answer(
+            body, db, learner, gateway, settings, request, background, idempotency_key, on_token
+        )
 
-        async def token(text: str) -> None:
-            await queue.put(("token", {"text": text}))
-
-        async def work() -> None:
-            try:
-                reply = await _answer(
-                    body,
-                    db,
-                    learner,
-                    gateway,
-                    settings,
-                    request,
-                    background,
-                    idempotency_key,
-                    token,
-                )
-                await queue.put(("done", reply.model_dump(mode="json")))
-            except AppError as exc:
-                await queue.put(("error", {"code": exc.code, "message": exc.message}))
-            except Exception:
-                logging.getLogger(__name__).exception("Workspace stream failed")
-                await queue.put(
-                    (
-                        "error",
-                        {
-                            "code": "tutor_failed",
-                            "message": (
-                                "The reply could not finish. Keep received text and use request recovery; "
-                                "no automatic retry was made."
-                            ),
-                        },
-                    )
-                )
-
-        task = asyncio.create_task(work())
-        try:
-            while True:
-                kind, data = await queue.get()
-                yield sse(kind, data)
-                if kind in {"done", "error"}:
-                    break
-        finally:
-            # Uvicorn/Starlette's disconnect scope is already cancelled here. Shield the
-            # join so the worker can finish its model-accounting cleanup after one cancel.
-            with anyio.CancelScope(shield=True):
-                if not task.done():
-                    task.cancel()
-                with suppress(asyncio.CancelledError):
-                    await task
-
-    return StreamingResponse(
-        generate(),
-        media_type="text/event-stream",
-        background=background,
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    return stream_reply(produce, background=background)

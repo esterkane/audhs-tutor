@@ -1,4 +1,5 @@
 import type { TutorReply, TutorRequest } from './api'
+import type { Schemas } from '../../lib/api'
 
 /** Preview tokens are never a completed/checked reply; only done settles this promise. */
 export async function streamTutor(
@@ -7,7 +8,33 @@ export async function streamTutor(
   requestKey: string | undefined,
   onToken: (text: string) => void,
 ): Promise<TutorReply> {
-  const response = await fetch('/api/playground/tutor/stream', {
+  return streamReply('/api/playground/tutor/stream', body, signal, requestKey, onToken)
+}
+
+export function streamAnswerFollowup(
+  answerId: string,
+  body: Schemas['AnswerFollowup'],
+  signal: AbortSignal,
+  requestKey: string,
+  onToken: (text: string) => void,
+): Promise<TutorReply> {
+  return streamReply(
+    `/api/answers/${encodeURIComponent(answerId)}/followup/stream`,
+    body,
+    signal,
+    requestKey,
+    onToken,
+  )
+}
+
+async function streamReply(
+  endpoint: string,
+  body: TutorRequest | Schemas['AnswerFollowup'],
+  signal: AbortSignal,
+  requestKey: string | undefined,
+  onToken: (text: string) => void,
+): Promise<TutorReply> {
+  const response = await fetch(endpoint, {
     method: 'POST',
     signal,
     headers: { 'Content-Type': 'application/json', ...(requestKey ? { 'Idempotency-Key': requestKey } : {}) },

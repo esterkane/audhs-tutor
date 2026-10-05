@@ -1215,3 +1215,11 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 browser contract and Home text-size repair: streaming companion fixtures, disclosure/mobile navigation journeys aligned with actual UI; Home choices stack at narrow container sizes without changing learning behavior.16 affected browser checks plus final keyboard/text-size check passed; frontend517, lint/types/build passed. Initial Review recovery failure did not recur in unchanged focused/full reruns; cause remains unproven. Independent review clear. Full remote browser run remains open. See slices/browser-contract-and-home-text-size.md.
+
+
+2026-10-05 saved-answer follow-ups now stream through shared bounded transport while preserving parent context, original request recovery and save receipts. Partial text survives Stop/re-entry without becoming learning evidence.33 backend plus final4 failure checks, frontend520, four desktop/narrow browser journeys, lint/types/build pass; independent review clear. Real local synthetic sample first13.053s/complete14.915s: first-text latency remains open. Existing inappropriate code-output notice on a non-code parent identified for a separate fix. See slices/saved-answer-streaming.md.
+
+
+Full remote browser run37319478975 (preceding70feac6) finished:228 passed,20 skipped,3 failed. Remaining: Home adaptation suggestion overflows at320px/200% text sizing (Choice stacking fixed the previously reproduced control overflow but not this separate populated card); visualizer coordination journey cannot locate the global Stop visualizer sound button; narrow visualizer canvas exceeds the expected500px top position. All other CI jobs passed. These are remaining release gates, not failures resolved by follow-up streaming.
+
+Final saved-answer streaming verification: full backend857 passed; sanitized shared-transport checks and type checking recorded separately.
