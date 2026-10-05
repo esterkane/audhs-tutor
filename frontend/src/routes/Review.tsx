@@ -1,3 +1,4 @@
+import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
 import { apiFetch, type Schemas } from '../lib/api'
 import { ReviewRecovery } from '../features/review/ReviewRecovery'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
@@ -304,6 +305,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
           </Button>
         </div>
         {stopError && <p role="alert">{stopError}</p>}
+        <TransitionWaitNotice visible={transition.waitingLong} />
         {transition.error && (
           <p role="alert" className="text-warn mt-2">
             {transition.error.message} — We could not confirm the latest session state. Use Pause and return Home, then Continue to load the current activity.

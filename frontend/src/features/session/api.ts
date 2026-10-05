@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { loadSession } from './loadSession'
 import { api, apiFetch, type Schemas, type SessionOut } from '../../lib/api'
 
@@ -70,11 +70,16 @@ export function useEndSession() {
  * BlockState, which is written straight into the cached session so the UI never renders a stale
  * block index. `next` is idempotent on `from_index`, so a double-click cannot advance twice.
  */
+export const TRANSITION_WAIT_NOTICE_MS = 15000
+
 export function useBlockTransition(sessionId: string | null) {
   const qc = useQueryClient()
   // one transition at a time: a second click while the first request is in flight gets the same
   // promise (React state alone updates too late to stop a synchronous double-click)
   const inFlight = useRef<Promise<BlockState> | null>(null)
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const [waitingLong, setWaitingLong] = useState(false)
+  useEffect(() => () => clearTimeout(noticeTimer.current), [])
   const post = (path: string) => (body: Record<string, unknown>) =>
     apiFetch<BlockState>(`/api/plan/blocks/${path}`, {
       method: 'POST',
@@ -85,18 +90,24 @@ export function useBlockTransition(sessionId: string | null) {
       qc.setQueryData<SessionOut>(['session', sessionId], (old) => (old ? { ...old, state } : old))
     void qc.invalidateQueries({ queryKey: ['session-current'] })
   }
-  const start = useMutation({ mutationFn: post('start'), onSuccess })
-  const next = useMutation({ mutationFn: post('next'), onSuccess })
-  const end = useMutation({ mutationFn: post('end'), onSuccess })
-  const extend = useMutation({ mutationFn: post('extend'), onSuccess })
+  const start = useMutation({ mutationFn: post('start'), onSuccess, retry: false })
+  const next = useMutation({ mutationFn: post('next'), onSuccess, retry: false })
+  const end = useMutation({ mutationFn: post('end'), onSuccess, retry: false })
+  const extend = useMutation({ mutationFn: post('extend'), onSuccess, retry: false })
   const once = (run: () => Promise<BlockState>) => {
     if (inFlight.current) return inFlight.current
+    setWaitingLong(false)
+    const timer = setTimeout(() => setWaitingLong(true), TRANSITION_WAIT_NOTICE_MS)
+    noticeTimer.current = timer
     const p = run().finally(() => {
+      clearTimeout(timer)
+      if (noticeTimer.current === timer) noticeTimer.current = undefined
       inFlight.current = null
     })
     inFlight.current = p
     return p
   }
+  const pending = start.isPending || next.isPending || end.isPending || extend.isPending
   return {
     start: (index: number) => once(() => start.mutateAsync({ index })),
     next: (body: {
@@ -108,7 +119,8 @@ export function useBlockTransition(sessionId: string | null) {
     end: (body: { index: number; reason?: string; switched_early?: boolean; grasp_passed?: boolean }) =>
       once(() => end.mutateAsync(body)),
     extend: (index: number, minutes = 5) => once(() => extend.mutateAsync({ index, minutes })),
-    pending: start.isPending || next.isPending || end.isPending || extend.isPending,
+    pending,
+    waitingLong: pending && waitingLong,
     error: (start.error ?? next.error ?? end.error ?? extend.error) as Error | null,
   }
 }

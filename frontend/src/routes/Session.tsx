@@ -1,3 +1,4 @@
+import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
 import { useCheckedQuestion } from '../features/assess/useCheckedQuestion'
 import { RememberContext } from '../features/recent/RememberContext'
 import { AlongsideMode } from '../features/session/AlongsideMode'
@@ -216,6 +217,7 @@ function StartCard({ sessionId, data, canNavigate }: { sessionId: string; data: 
           {note}
         </p>
       )}
+      <TransitionWaitNotice visible={transition.waitingLong} />
       {transition.error && (
         <p role="alert" className="text-warn mt-2">
           {transition.error.message} — We could not confirm the latest session state. Use Pause and return Home, then Continue to load the current activity.
@@ -390,6 +392,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             {blockNote}
           </p>
         )}
+        <TransitionWaitNotice visible={transition.waitingLong} />
         {transition.error && (
           <p role="alert" className="text-sm text-warn mt-2">
             {transition.error.message} — We could not confirm the latest session state. Use Pause and return Home, then Continue to load the current activity.
@@ -450,6 +453,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
       )}
       {phase === 'practice' && currentBlock.domain !== 'language' && (
         <PracticePanel
+          transitionPending={transition.pending}
           sessionId={sessionId}
           domain={currentBlock.domain === 'guitar' ? 'guitar' : 'movement'}
           plannedMin={currentBlock.planned_min}

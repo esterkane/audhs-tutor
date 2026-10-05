@@ -1172,3 +1172,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 transition outcome message: real lost-delivery tests proved server advancement despite the old nothing-changed notice. Errors now give an honest uncertainty message and existing Pause/Home/Continue recovery.23 unit/11 browser, lint/types pass; narrow visual/keyboard and read-only review clear. See slices/transition-outcome-message.md. No learning/routing change; prolonged request handling remains open.
+
+
+2026-10-05 prolonged transitions: delayed status after15s explains uncertainty and Pause recovery; retries explicitly disabled. Practice Log/Skip reflect pending transition. Original28 unit/11 browser, lint/types/build pass; final narrow visual and keyboard checked, independent review clear. See slices/prolonged-transition-status.md. No learning-policy change; execution bounds and broader reliability/learning acceptance remain open.

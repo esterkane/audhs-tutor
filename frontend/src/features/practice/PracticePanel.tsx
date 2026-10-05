@@ -14,12 +14,14 @@ export function PracticePanel({
   plannedMin,
   onDone,
   onSkip,
+  transitionPending = false,
 }: {
   sessionId: string
   domain: 'movement' | 'guitar'
   plannedMin: number
   onDone: () => void
   onSkip: () => void
+  transitionPending?: boolean
 }) {
   const activities = useActivities()
   const log = useLogPractice()
@@ -30,7 +32,7 @@ export function PracticePanel({
   const [startedAt] = useState(() => Date.now())
 
   async function finish() {
-    if (!activity || !rating) return
+    if (!activity || !rating || transitionPending) return
     await log.mutateAsync({
       session_id: sessionId,
       domain,
@@ -77,12 +79,12 @@ export function PracticePanel({
       <div className="flex flex-wrap gap-2 mt-4">
         <Button
           variant="primary"
-          disabled={!activity || !rating || log.isPending}
+          disabled={!activity || !rating || log.isPending || transitionPending}
           onClick={() => void finish()}
         >
           Log and continue
         </Button>
-        <Button variant="ghost" onClick={onSkip}>
+        <Button variant="ghost" onClick={onSkip} disabled={transitionPending}>
           Skip this block
         </Button>
       </div>
