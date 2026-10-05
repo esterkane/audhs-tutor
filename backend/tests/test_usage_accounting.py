@@ -444,3 +444,56 @@ async def test_usage_only_stream_does_not_claim_first_text(seeded):
     ]
     assert tokens == []
     assert (await _calls(seeded))[0].metadata_json["first_token_ms"] is None
+
+
+@pytest.mark.parametrize("hosted_call", [False, True])
+async def test_buffered_limit_accounts_once_without_fallback(seeded, monkeypatch, hosted_call):
+    from app.models_ai.gateway import OutputLimitError
+
+    local = FakeProvider()
+    hosted = FakeProvider(tokens_in=100, tokens_out=20)
+    provider = hosted if hosted_call else local
+    original = provider.complete
+
+    async def capped(*args, **kwargs):
+        result = await original(*args, **kwargs)
+        return result.model_copy(update={"finish_reason": "length"})
+
+    monkeypatch.setattr(provider, "complete", capped)
+    budget = Budget(1.0)
+    with pytest.raises(OutputLimitError):
+        await _gw(seeded, local, hosted, budget).complete(
+            TaskClass.TUTOR_DEEP if hosted_call else TaskClass.CHAT, MSGS
+        )
+    assert len(provider.calls) == 1
+    assert len((local if hosted_call else hosted).calls) == 0
+    calls = await _calls(seeded)
+    assert len(calls) == 1
+    assert calls[0].outcome == "invalid_output" and not calls[0].ok
+    assert calls[0].metadata_json["finish_reason"] == "length"
+    assert calls[0].tokens_in == provider.tokens_in
+    assert calls[0].tokens_out == provider.tokens_out
+    assert calls[0].usage_source == "reported"
+    assert all(r.status == "reconciled" for r in await _reservations(seeded))
+    spend = await budget.spend_today(seeded)
+    assert spend.open_reservations == 0
+    if hosted_call:
+        assert spend.counted == pytest.approx(calls[0].cost_usd)
+        assert spend.counted > 0
+
+
+async def test_structured_success_keeps_its_existing_validation_policy(seeded, monkeypatch):
+    local = FakeProvider(structured={"passed": True})
+    original = local.complete
+
+    async def capped(*args, **kwargs):
+        result = await original(*args, **kwargs)
+        return result.model_copy(update={"finish_reason": "length"})
+
+    monkeypatch.setattr(local, "complete", capped)
+    result = await _gw(seeded, local, FakeProvider(), Budget(1.0)).complete(
+        TaskClass.CHAT, MSGS, response_model=Grade
+    )
+    assert result.result.parsed == Grade(passed=True)
+    assert len(local.calls) == 1
+    assert (await _calls(seeded))[0].outcome == "ok"

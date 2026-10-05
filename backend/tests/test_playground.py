@@ -485,3 +485,32 @@ async def test_explicit_bin_check_needs_no_answer_and_never_falls_back_to_model(
     assert reviewed.json()["reused"] is False
     assert len(fake_local.calls) == 1
     assert "Synthetic feedback on reasoning" in reviewed.json()["text"]
+
+
+async def test_buffered_capped_reply_is_not_saved_or_regenerated(
+    client, db, fake_local, monkeypatch
+):
+    from uuid import uuid4
+
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    session = (await client.post("/api/sessions", json={})).json()
+    original = fake_local.complete
+
+    async def capped(*args, **kwargs):
+        result = await original(*args, **kwargs)
+        return result.model_copy(update={"finish_reason": "length"})
+
+    monkeypatch.setattr(fake_local, "complete", capped)
+    body = {"session_id": session["id"], "intent": "explain", "exercise": "Explain", "code": ""}
+    headers = {"Idempotency-Key": str(uuid4())}
+    response = await client.post("/api/playground/tutor", json=body, headers=headers)
+    assert response.status_code == 503
+    assert "tutor_output_limit" in response.text
+    assert "received text" not in response.text
+    retry = await client.post("/api/playground/tutor", json=body, headers=headers)
+    assert "request_unresolved" in retry.text
+    assert len(fake_local.calls) == 1
+    for table in (TutorAnswer, AssessmentAttempt, CompetencyEvidence):
+        assert await db.scalar(select(func.count()).select_from(table)) == 0
+    call = (await db.scalars(select(ModelCall))).one()
+    assert call.outcome == "invalid_output" and call.tokens_out == fake_local.tokens_out

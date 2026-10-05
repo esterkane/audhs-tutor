@@ -74,3 +74,21 @@ async def test_stream_keeps_finish_reason_separate_from_missing_usage(monkeypatc
         )
     ]
     assert parts == ["unfinished", StreamFinish(reason=reason)]
+
+
+@pytest.mark.parametrize("reason", [None, "stop", "length"])
+async def test_buffered_completion_retains_finish_reason(monkeypatch, reason):
+    completion = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="Answer"), finish_reason=reason)],
+        usage=SimpleNamespace(prompt_tokens=12, completion_tokens=4),
+    )
+    monkeypatch.setattr(
+        "app.models_ai.ollama.litellm.acompletion", AsyncMock(return_value=completion)
+    )
+    result = await OllamaProvider("http://localhost:11434").complete(
+        ModelSpec(registry_id="local", provider="ollama", model="test"),
+        [Message(role="user", content="Explain")],
+    )
+    assert result.finish_reason == reason
+    assert result.text == "Answer"
+    assert (result.tokens_in, result.tokens_out) == (12, 4)

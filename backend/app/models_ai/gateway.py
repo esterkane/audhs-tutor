@@ -388,6 +388,9 @@ class ModelGateway:
                     )
                     break
                 source = "reported" if (result.tokens_in or result.tokens_out) else "unavailable"
+                # Structured validation/repair retains its own policy. A known capped
+                # plain reply is accounted for, then rejected without another attempt.
+                capped = response_model is None and result.finish_reason == "length"
                 cost, status = _accounting(
                     spec,
                     result.tokens_in,
@@ -404,6 +407,7 @@ class ModelGateway:
                     session_id,
                     {
                         **meta,
+                        "finish_reason": result.finish_reason,
                         **({"repair": repairs} if repairs else {}),
                         **(
                             {
@@ -417,13 +421,15 @@ class ModelGateway:
                     },
                     request_id=request_id,
                     attempt=attempt,
-                    outcome="ok",
+                    outcome="invalid_output" if capped else "ok",
                     usage_source=source,
                     cost_status=status,
                     cost_usd=cost,
                     reserved_usd=bound,
                     reservation=reservation,
                 )
+                if capped:
+                    raise OutputLimitError("The buffered reply reached its output limit.")
                 return GatewayResult(
                     result=result,
                     model_call_id=call.id,

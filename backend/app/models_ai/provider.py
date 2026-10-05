@@ -76,6 +76,7 @@ class ProviderResult(BaseModel):
     cached_tokens: int = 0
     latency_ms: int = 0
     first_token_ms: int | None = None
+    finish_reason: str | None = None
     model: str
     provider: str
     reported_cost_usd: float | None = None

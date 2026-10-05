@@ -1280,3 +1280,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 isolated local cache experiment found empty resume preparation preserves the warm prefix in the tested runtime. No preparation/prompt change; raw synthetic evidence and limits in slices/preload-cache-sample.json and local-tutor-latency.md. New-context processing remains open.
+
+
+2026-10-05 buffered plain-text output caps now reject after usage accounting, without regeneration or completed-history save.887 backend tests, full mypy/lint/format, narrow keyboard browser regression and independent review pass; real local adapter smoke verified. Structured policy unchanged. See slices/local-tutor-latency.md for scope and remaining provider/message limits.

@@ -440,7 +440,10 @@ async def respond(
         raise AppError(
             "tutor_output_limit",
             "The reply reached the model's output limit. The received text is incomplete and was not "
-            "saved as a completed answer. Keep a copy; use Start different work to ask a shorter question.",
+            "saved as a completed answer. Keep a copy; use Start different work to ask a shorter question."
+            if on_token is not None
+            else "The reply reached the model's output limit and was not saved as a completed answer. "
+            "Your work is retained; use Start different work to ask a shorter question.",
             http_status=503,
         ) from exc
     except (GatewayError, ValidationError, NoModelReady) as exc:

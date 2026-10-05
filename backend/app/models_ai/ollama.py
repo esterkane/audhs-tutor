@@ -109,6 +109,7 @@ class OllamaProvider:
         except Exception as e:  # httpx / litellm transport errors
             raise ProviderError(f"ollama {spec.model}: {e}") from e
         tin, tout, cached = usage_of(completion)
+        reason = getattr(completion.choices[0], "finish_reason", None)
         return ProviderResult(
             text=text,
             parsed=parsed,
@@ -119,6 +120,7 @@ class OllamaProvider:
             model=spec.model,
             provider=self.name,
             reported_cost_usd=0.0,
+            finish_reason=reason if isinstance(reason, str) else None,
         )
 
     async def stream(
