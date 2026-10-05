@@ -1292,3 +1292,7 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 added repeated-errors browser regression: two distinct incorrect attempts retain feedback/help/revisit/continue; reload and keyboard Pause do not resubmit. Narrow journey, visual inspection and targeted lint pass. No app/model change; see ux/DAILY-LEARNING-ACCEPTANCE.md for scope.
+
+
+## 2026-10-05 — Preferences enlarged-text reflow
+Preferences uses existing responsive choice stacking and bounded grid tracks to prevent narrow enlarged-text overflow. Eight browser checks, three final keyboard-save reflow checks, two API unit tests, lint and TypeScript/build pass; screenshot and bounded review clear. No learning logic changes. See docs/ux/DAILY-LEARNING-ACCEPTANCE.md. Actual browser zoom and human acceptance remain open.

@@ -150,3 +150,12 @@ A shared frame now keeps ReviewRecovery at the same React position across query 
 A new390px sandbox journey submits two incorrect answers to isolated deterministic practice. It verifies distinct attempts, feedback and concept-help availability, enabled revisit/continue choices, keyboard selection of another question, checked-feedback restoration after reload, exactly two assessment POSTs and keyboard Pause without another submission. The journey and targeted ESLint pass; screenshot inspected without horizontal overflow. It does not call a teaching model or touch learner data. No application change was needed.
 
 This covers two consecutive incorrect submissions and control availability, not semantic teaching quality, automatic error-pattern adaptation, owner comprehension, audio audibility or broader task diversity. Existing explanation/assistance quality and page-density findings remain open. Unchanged app build/unit results were reused rather than rerun for a test-only addition.
+
+
+## Preferences enlarged-text reflow — 2026-10-05
+
+Real sandbox Preferences at 320px with 200% root text sizing overflowed horizontally: four-column options and implicit grid minimums extended beyond the viewport. Preferences now opts into the existing Choice narrow-container stacking and explicit single-column minmax grid tracks. Values, saving handlers, options, adaptation and learning decisions are unchanged. No new styles or dependencies.
+
+Eight browser checks cover 320/640/1280 reflow, existing heading/keyboard save, loading and read recovery. Three final reflow checks additionally save the code representation by keyboard and confirm the server response and selected state. Two preference API unit tests, full frontend lint and TypeScript/production build pass. Narrow choice screenshot inspected; code review found no blockers. Known build chunk warning remains. This covers root text enlargement, not actual browser zoom or screen-reader/human acceptance. At extreme narrow text sizes longer option labels wrap; internal option wording is a separate existing issue.
+
+Separate read-only Chromium probes passed three browser Back and six header/Forward delayed-transition cases across start, movement and review. They preserved checkpoints without duplicate transition calls; no application fix was warranted. Temporary probes/logs are outside the repository. Broader daily-learning and owner comprehension gates remain open.

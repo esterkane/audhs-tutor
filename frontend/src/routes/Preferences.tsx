@@ -46,18 +46,19 @@ export function Preferences() {
   const values = prefs.data.values as Record<string, unknown>
   const specs = prefs.data.specs as Spec[]
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <Card>
         <CardTitle as="h1">Preferences</CardTitle>
         {readRecovery}
         <p className="text-sm text-muted mb-3">
           Everything here is explicit and reversible. The system never changes these silently.
         </p>
-        <div className="grid gap-4">
+        <div className="grid grid-cols-1 gap-4">
           {specs.map((s) => (
             <div key={s.key}>
               {s.type === 'bool' && (
                 <Choice<string>
+                  stackOnNarrow
                   label={s.description}
                   options={[
                     { value: 'on', label: 'On' },
@@ -75,6 +76,7 @@ export function Preferences() {
               )}
               {s.type === 'enum' && (
                 <Choice<string>
+                  stackOnNarrow
                   label={s.description}
                   options={(s.choices ?? []).map((c) => ({ value: c, label: c || '(none)' }))}
                   value={(values[s.key] as string) ?? ''}
