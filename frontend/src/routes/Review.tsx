@@ -7,7 +7,7 @@ import { ReadAloud } from '../features/voice/ReadAloud'
 import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
 import { useSkills } from '../features/skills/api'
 import { OptionalConfidence } from '../components/OptionalConfidence'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -160,6 +160,15 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
     />
   )
 
+  // Keep recovery controls at the same React position across query states so a
+  // completed background read cannot replace a keyboard-focused retry button.
+  const withRecovery = (content: ReactNode) => (
+    <div className="grid gap-4">
+      {recoveryPanel}
+      {content}
+    </div>
+  )
+
   if (!sessionId)
     return (
       <Card>
@@ -170,9 +179,8 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       </Card>
     )
   if (due.isError && !due.data)
-    return (
+    return withRecovery(
       <Card>
-        {recoveryPanel}
         <p role="alert">Could not load review cards. Your saved ratings are retained.</p>
         <Button disabled={due.isFetching} onClick={() => void due.refetch()}>
           Retry
@@ -182,14 +190,11 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       </Card>
     )
   if (due.isLoading || !due.data)
-    return (
-      <>
-        {recoveryPanel}
-        <Card>
-          <p role="status">Loading review…</p>
-          <Button onClick={() => nav('/')}>Go to Home</Button>
-        </Card>
-      </>
+    return withRecovery(
+      <Card>
+        <p role="status">Loading review…</p>
+        <Button onClick={() => nav('/')}>Go to Home</Button>
+      </Card>
     )
   const refreshWarning = due.isError ? (
     <Card>
@@ -277,10 +282,9 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   }
 
   if (!item)
-    return (
+    return withRecovery(
       <Card>
         <SessionControls onPause={pause} sessionId={sessionId} />
-        {recoveryPanel}
         {refreshWarning}
         <CardTitle>Review done</CardTitle>
         <p>
@@ -342,10 +346,9 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
     }
   }
 
-  return (
-    <div className="grid gap-4">
+  return withRecovery(
+    <>
       {refreshWarning}
-      {recoveryPanel}
       <SessionControls onPause={pause} sessionId={sessionId} skillId={item.skill_id} />
       {state && !inReviewBlock && (
         <p className="text-sm text-muted" role="status">
@@ -446,6 +449,6 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
           </Button>
         )}
       </div>
-    </div>
+    </>
   )
 }

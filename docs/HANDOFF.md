@@ -1286,3 +1286,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 review concept help is available after reveal without rating/hint writes; collapse/rating stops help and reopening retains text.16 unit tests,2 desktop/narrow keyboard browser journeys, lint/types/build and independent review pass. See ux/DAILY-LEARNING-ACCEPTANCE.md. Lower-credit execution rules recorded in AGENTS.md; broader performance/UX gates remain open.
+
+
+2026-10-05 CI review-recovery failure reproduced as focus loss during query completion. Stable recovery frame fixes three deterministic cases;32 unit tests,8 browser journeys plus final narrow visual/keyboard check, lint/types/build and review pass. See ux/DAILY-LEARNING-ACCEPTANCE.md. New remote CI remains pending.

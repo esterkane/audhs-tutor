@@ -600,3 +600,38 @@ it('keeps pause intent when Home rendering is delayed and a block response arriv
 })
 
 })
+
+describe('Review recovery focus during loading', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+    sessionStorage.clear()
+  })
+  it.each(['card', 'empty', 'failure'])('keeps the recovery button focused when due becomes %s', async state => {
+    useMode.setState({ sessionId: 's1' })
+    sessionStorage.setItem('review-request:v1:s1', JSON.stringify({
+      version: 1, id: '12345678-1234-1234-1234-123456789012', itemId: 'i1',
+      question: 'Original card', body: { session_id: 's1', rating: 3 },
+    }))
+    let release!: (value: Response) => void
+    const pending = new Promise<Response>(resolve => { release = resolve })
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.startsWith('/api/review/due')) return pending
+      if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
+      if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
+      return jsonResponse(null)
+    }))
+    renderApp(<Review />)
+    const button = await screen.findByRole('button', { name: 'Check saved rating' })
+    button.focus()
+    expect(button).toHaveFocus()
+    await act(async () => {
+      release(state === 'failure'
+        ? jsonResponse({ error: { code: 'offline', message: 'Offline' } }, 503)
+        : jsonResponse(state === 'empty' ? { ...due, items: [] } : due))
+    })
+    await waitFor(() => expect(screen.queryByText('Loading review…')).not.toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Check saved rating' })).toBe(button)
+    expect(button).toHaveFocus()
+  })
+})

@@ -6,7 +6,7 @@ for (const beforeCommit of [false, true]) {
     test(`review ${beforeCommit ? 'before-commit failure' : 'lost-response'} recovery ${narrow ? 'narrow' : 'desktop'}`, async ({
       page,
       request,
-    }) => {
+    }, info) => {
       await endOpenSession(request)
       try {
         await request.put(`${API}/api/preferences`, { data: { key: 'goal.area', value: '' } })
@@ -80,6 +80,7 @@ for (const beforeCommit of [false, true]) {
           await page.getByRole('button', { name: 'Send original rating', exact: true }).click()
         }
         await expect(page.getByText(/The original rating was saved/)).toBeVisible()
+        await page.screenshot({ path: info.outputPath('review-recovery-confirmed.png'), fullPage: true })
         await page.getByRole('button', { name: 'Update review queue' }).click()
         await expect(page.getByRole('region', { name: 'Review submission recovery' })).toHaveCount(0)
         expect(posts).toBe(beforeCommit ? 2 : 1)
