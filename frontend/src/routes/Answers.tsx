@@ -59,7 +59,7 @@ function History() {
   }
   return (
     <div className="grid gap-4">
-      <h1 className="text-2xl font-semibold">Saved answers</h1>
+      <h1 className="text-page-title font-semibold">Saved answers</h1>
       <p>
         Reopen explanations you already received. Reopening them does not generate a new tutor response or
         change your progress. Listening is optional.
@@ -222,7 +222,7 @@ function Answer({ id }: { id: string }) {
   return (
     <div className="grid gap-4 min-w-0 break-words">
       <Link to={`/answers?${params}`}>Back to saved answers</Link>
-      <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold">
+      <h1 ref={heading} tabIndex={-1} className="text-page-title font-semibold">
         Saved answer
       </h1>
       {answer.isPending ? (

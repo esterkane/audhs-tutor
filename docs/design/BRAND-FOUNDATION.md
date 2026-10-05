@@ -39,3 +39,6 @@ Final sanitized4 brand journeys also pass. Dark narrow and light desktop screens
 
 
 2026-10-05 accessibility follow-up:320px with200% root text enlargement exposed the quick-menu Close button scrolling away. Dialog heading/Close now sit outside its scrolling content. Final enlarged-text and font-failure journeys pass in both checkouts; screenshot inspected. Original six-brand baseline passed; final relevant two rerun after layout refinement. Lint/types/build pass with inherited warnings. This is text enlargement, not browser zoom or complete accessibility certification. No learning logic changes.
+
+
+2026-10-05 Library typography: Search, Sources and saved-answer list/detail h1 now use existing22/30 page-title token; Search panels use16/24 heading token. No semantic, prose or behavior changes. Original13 search/brand journeys, lint/types pass; sanitized6 source/answer journeys pass using8011/5175 because8010 was occupied. Dark narrow screenshot inspected; read-only review clear. Other screen headings remain a separate adoption step.

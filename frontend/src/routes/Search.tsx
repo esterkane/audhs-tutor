@@ -9,7 +9,7 @@ export function Search() {
   const [params, setParams] = useSearchParams()
   const query = params.get('q')?.trim() ?? ''
   return <div className="grid gap-4 min-w-0">
-    <h1 className="text-2xl font-semibold">Search material</h1>
+    <h1 className="text-page-title font-semibold">Search material</h1>
     <p>Find saved tutor explanations and passages in your indexed sources.</p>
     <p className="text-sm text-muted">Searches local material, not the web. Notebook edits, unsaved chats, project notes and saved thoughts are not searched here.</p>
     <SearchForm key={`form:${query}`} initial={query} onSearch={q => setParams(q ? { q } : {})} />
@@ -40,7 +40,7 @@ function Results({ query }: { query: string }) {
   })
   return <div className="grid gap-4 min-w-0">
     <section aria-labelledby="search-answers" className="rounded-md border border-line p-3 min-w-0 break-words">
-      <h2 id="search-answers" className="text-lg font-semibold">Saved explanations</h2>
+      <h2 id="search-answers" className="text-panel-heading font-semibold">Saved explanations</h2>
       <p className="text-sm text-muted">Past answers matching your words, newest first. They have not been checked again.</p>
       {answers.isPending ? <p role="status">Searching saved explanations…</p> : answers.isError ? <div role="alert">Saved explanations could not be searched. <Button disabled={answers.isFetching} onClick={() => void answers.refetch()}>Retry explanation search</Button></div> : <>
         <p role="status">{answers.data.items.length ? `${answers.data.items.length} matching saved explanations shown.` : 'No saved explanations matched.'}</p>
@@ -52,7 +52,7 @@ function Results({ query }: { query: string }) {
       </>}
     </section>
     <section aria-labelledby="search-sources" className="rounded-md border border-line p-3 min-w-0 break-words">
-      <h2 id="search-sources" className="text-lg font-semibold">Indexed sources</h2>
+      <h2 id="search-sources" className="text-panel-heading font-semibold">Indexed sources</h2>
       <p className="text-sm text-muted">Up to 8 potentially relevant passages. A match is not verification of the source.</p>
       {sources.isPending ? <p role="status">Searching indexed sources…</p> : sources.isError ? <div role="alert">Source search is unavailable. Check the local retrieval service and embedding model. <Button disabled={sources.isFetching} onClick={() => void sources.refetch()}>Retry source search</Button></div> : <>
         <p role="status">{sources.data.hits.length ? `${sources.data.hits.length} source passages shown.` : 'No indexed passages matched.'}</p>

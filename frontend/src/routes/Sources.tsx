@@ -14,7 +14,7 @@ export function Sources() {
   useEffect(() => { if (direct !== null) directRegion.current?.focus() }, [direct])
   const applied = params.get('q')?.trim() ?? ''
   return <div className="grid gap-4">
-    <h1 className="text-2xl font-semibold">Sources</h1>
+    <h1 className="text-page-title font-semibold">Sources</h1>
     <p>Find passages in your indexed material and inspect their source details.</p>
     <p className="text-sm text-muted">Searches the local retrieval index, not the web or saved tutor answers. Up to 8 matching passages are shown; a match is not a verification of the source.</p>
     {direct !== null && <section ref={directRegion} tabIndex={-1} aria-label="Saved source passage">
