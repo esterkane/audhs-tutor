@@ -1300,3 +1300,7 @@ Preferences uses existing responsive choice stacking and bounded grid tracks to 
 
 ## 2026-10-05 — Local import crash recovery
 New recorded local imports hold verified POSIX ownership through durable writes. Startup/CLI reconciliation leaves live workers and unverifiable legacy rows alone; abandoned owned runs appear in the existing interrupted list for explicit Resume. Atomic continuation claim prevents duplicate resumptions. Saved CLI indexing options are restored before retrieval initialization. Full backend896 tests plus final five recovery tests, lint/mypy and two desktop/narrow keyboard browser journeys pass; screenshot and bounded review clear. See ADR-0018 and slices/ingest-restart-recovery-plan.md. Persistent job IDs, pre-run failures and other job types remain open.
+
+
+## 2026-10-05 — Preferences numeric units
+Recording retention displays days rather than minutes, with matching accessible slider value text. Planner minute values and all mutations are unchanged. Five browser checks, frontend lint/types/build and review pass; screenshot inspected. Actual browser zoom remains unverified. See docs/ux/DAILY-LEARNING-ACCEPTANCE.md.

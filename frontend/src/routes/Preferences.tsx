@@ -15,6 +15,16 @@ type Spec = {
   description: string
 }
 
+const numericUnits: Record<string, string> = {
+  'planner.new_material_min': 'min',
+  'planner.review_min': 'min',
+  'voice.retention_days': 'days',
+}
+
+function numericValue(key: string, value: unknown) {
+  return [String(value), numericUnits[key]].filter(Boolean).join(' ')
+}
+
 export function Preferences() {
   const prefs = usePreferences()
   const set = useSetPreference()
@@ -86,7 +96,7 @@ export function Preferences() {
               )}
               {s.type === 'int' && (
                 <label className="text-sm font-medium">
-                  {s.description}: {String(values[s.key])} min
+                  {s.description}: {numericValue(s.key, values[s.key])}
                   <input
                     type="range"
                     min={s.min ?? 0}
@@ -95,6 +105,7 @@ export function Preferences() {
                     onChange={(e) => set.mutate({ key: s.key, value: Number(e.target.value) })}
                     className="block w-full"
                     aria-label={s.description}
+                    aria-valuetext={numericValue(s.key, values[s.key])}
                   />
                 </label>
               )}

@@ -159,3 +159,10 @@ Real sandbox Preferences at 320px with 200% root text sizing overflowed horizont
 Eight browser checks cover 320/640/1280 reflow, existing heading/keyboard save, loading and read recovery. Three final reflow checks additionally save the code representation by keyboard and confirm the server response and selected state. Two preference API unit tests, full frontend lint and TypeScript/production build pass. Narrow choice screenshot inspected; code review found no blockers. Known build chunk warning remains. This covers root text enlargement, not actual browser zoom or screen-reader/human acceptance. At extreme narrow text sizes longer option labels wrap; internal option wording is a separate existing issue.
 
 Separate read-only Chromium probes passed three browser Back and six header/Forward delayed-transition cases across start, movement and review. They preserved checkpoints without duplicate transition calls; no application fix was warranted. Temporary probes/logs are outside the repository. Broader daily-learning and owner comprehension gates remain open.
+
+
+## Preferences numeric units — 2026-10-05
+
+A native Chrome inspection of the sandbox exposed recording retention labelled 7 min although voice.retention_days is a day count. Preferences now uses explicit units for the three numeric settings: planner durations remain minutes, retention is days, and unknown numeric keys do not inherit a guessed unit. Visible values and slider aria-valuetext agree. No stored values, mutation payloads, retention behavior or learning logic changed.
+
+Five browser checks passed: 390/1280 keyboard retention updates, exact PUT values and persistence after reload, plus 320/640/1280 enlarged-text reflow. Full frontend lint, TypeScript/production build and bounded review passed; narrow screenshot inspected. Known chunk-size warnings remain. The separate native browser zoom attempt was interrupted before a zoom level was verified; it is NOT evidence of actual browser-zoom acceptance. Broader screen-reader and human usability gates remain open. Temporary sandbox listeners/tab were closed; the live app was not used for preference changes.
