@@ -673,3 +673,33 @@ it('retains every interrupted preview across repeated retries', async () => {
   expect(screen.getByText('Second fragment.')).toBeInTheDocument()
   expect(screen.getByText('Third fragment.')).toBeVisible()
 })
+
+it('retains the explicit reuse choice only for the same study conversation', () => {
+  active()
+  const first = renderApp(<StudyTutor context="Groups" identity="reuse-one" />)
+  fireEvent.click(screen.getByRole('checkbox', { name: /Use a saved answer/ }))
+  first.unmount()
+  const other = renderApp(<StudyTutor context="Groups" identity="reuse-two" />)
+  expect(screen.getByRole('checkbox', { name: /Use a saved answer/ })).not.toBeChecked()
+  other.unmount()
+  const restored = renderApp(<StudyTutor context="Groups" identity="reuse-one" />)
+  expect(screen.getByRole('checkbox', { name: /Use a saved answer/ })).toBeChecked()
+  fireEvent.click(screen.getByRole('checkbox', { name: /Use a saved answer/ }))
+  restored.unmount()
+  renderApp(<StudyTutor context="Groups" identity="reuse-one" />)
+  expect(screen.getByRole('checkbox', { name: /Use a saved answer/ })).not.toBeChecked()
+  expect(askTutor).not.toHaveBeenCalled()
+})
+
+it.each([undefined, 'true'])('does not opt in from a legacy or malformed saved choice (%s)', (value) => {
+  active()
+  const view = renderApp(<StudyTutor context="Groups" identity="legacy-reuse" />)
+  view.unmount()
+  const key = 'study-tutor:v1:s:legacy-reuse'
+  const saved = JSON.parse(localStorage.getItem(key)!)
+  saved.preferSaved = value
+  localStorage.setItem(key, JSON.stringify(saved))
+  renderApp(<StudyTutor context="Groups" identity="legacy-reuse" />)
+  expect(screen.getByRole('checkbox', { name: /Use a saved answer/ })).not.toBeChecked()
+  expect(askTutor).not.toHaveBeenCalled()
+})

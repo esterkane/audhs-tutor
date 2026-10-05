@@ -1,5 +1,10 @@
 # Local operational notes
 
+## 2026-10-05 — Retain explicit saved-answer reuse choice
+
+Study Tutor now retains the learner’s reuse checkbox for the same session/target conversation. Legacy records stay opted out; no automatic generation or matching/learning-policy change. Regression reproduced before fix. 35 frontend tests, lint/types/build and two desktop/narrow keyboard/re-entry journeys passed. Separate warm local full-tutor samples: first text0.825/3.261s, total5.153/7.577s; not a cold-start or quality guarantee. See docs/slices/study-tutor-streaming-plan.md and local-tutor-latency.md.
+
+
 ## 2026-10-05 — Study Tutor streaming
 
 Plain explanation/hint/chat replies now display unfinished tokens before final validation/save. Structured answer checks remain buffered. Stop, stale callbacks and re-entry preserve partial work; final replies alone enter conversation history. Same model/prompt/temperature/output limit and learning policy. Backend38/frontend35 tests, lint/types/build, two desktop/narrow keyboard browser journeys and independent review passed. First-token inference can still be slow; this slice removes the buffered-display wait, not the model processing cost. See docs/slices/study-tutor-streaming-plan.md.

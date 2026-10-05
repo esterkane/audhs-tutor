@@ -43,7 +43,7 @@ Run affected backend/frontend tests, lint/types/build and independent code/pedag
 
 ## Follow-up, not bundled
 
-Saved-answer reuse preference currently lives only in component state and is not included in the saved conversation. Investigate retaining an explicit choice on re-entry as a separate bounded UX change; do not change the default silently. General notebook execution, answer grading, audio behavior and the repeated-error UX investigation remain outside this transport slice.
+The separately verified reuse-preference follow-up below retains explicit choice on re-entry without changing its default. General notebook execution, answer grading, audio behavior and the repeated-error UX investigation remain outside this transport slice.
 
 
 ## Delivered evidence
@@ -52,4 +52,15 @@ Ordinary explain/hint/chat now stream unfinished previews, followed by the autho
 
 Verification: 38 affected backend tests; 35 frontend tests; backend Ruff and mypy (199 files); frontend ESLint, TypeScript and production build. Two isolated Playwright journeys passed at 1280px and 390px, including delayed preview-before-completion, final replacement, keyboard interaction, re-entry and Stop; screenshots inspected. Independent focused review closed disconnect cleanup and partial overwrite findings with no remaining blockers or pedagogy concerns. No hosted model or live learner database used for tests.
 
-This proves earlier display when tokens arrive, not a new real-model latency percentile. Existing local profiling still shows variable first-token delays; see local-tutor-latency.md. Physical audio, screen-reader testing and broader page complexity remain separate. Existing production bundle warnings remain. Saved-answer preference persistence is still a follow-up.
+This proves earlier display when tokens arrive, not a new real-model latency percentile. Existing local profiling still shows variable first-token delays; see local-tutor-latency.md. Physical audio, screen-reader testing and broader page complexity remain separate. Existing production bundle warnings remain. Saved-answer preference persistence is covered by the follow-up below.
+
+
+## Explicit reuse choice on re-entry — 2026-10-05
+
+Reproduced: switching away and returning reset the opt-in saved-answer reuse checkbox, even though the conversation survived. A failing regression demonstrated the lost choice. The existing per-session/target conversation record now also stores the boolean. Only literal true restores opt-in; legacy/malformed values default off. Turning it off persists too. No automatic request runs, matching rules change, approximate cache is enabled, or learning state is written. An existing storage-failure alert remains applicable; browser-local persistence is not database sync.
+
+Verified: 35 StudyTutor tests, frontend ESLint, TypeScript and production build; two desktop/390px browser journeys exercise keyboard opt-in, target switching and preserved selection with no unsolicited requests. Screenshots reviewed; the long notebook page remains a separate usability issue. No backend changes in this follow-up. Existing warning about large build chunks remains.
+
+Independent read-only code/pedagogy review found no actionable issue in the reuse preference change.
+
+Broader CI on the preceding streaming commit exposed outstanding suite drift: test_db_core table inventory lacks thought_action; parking promotion still expects400 instead of the conflict contract409; ParkingLotButton exact payload assertion omits request_key; App tests lack dialog.close support in jsdom. These are not covered by the focused passing checks and are the next verification repair. Browser CI was still running when inspected.

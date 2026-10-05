@@ -85,6 +85,7 @@ function Conversation({
   const [restored] = useState(() => {
     const fresh = {
       question: '',
+      preferSaved: false,
       reply: null as TutorReply | null,
       history: [] as NonNullable<TutorRequest['history']>,
       conversation: [] as NonNullable<TutorRequest['history']>,
@@ -117,6 +118,7 @@ function Conversation({
       return {
         ...fresh,
         question: value.question.slice(0, 2000),
+        preferSaved: value.preferSaved === true,
         reply: value.reply as TutorReply | null,
         history: value.history
           .slice(-6)
@@ -184,7 +186,7 @@ function Conversation({
   const socratic = mode === 'socratic' && replySnapshot === snapshot
   const [storageError, setStorageError] = useState(restored.error)
   const [busy, setBusy] = useState(false)
-  const [preferSaved, setPreferSaved] = useState(false)
+  const [preferSaved, setPreferSaved] = useState(restored.preferSaved)
   const [startedAt, setStartedAt] = useState(0)
   const [ready, setReady] = useState(false)
   const [error, setError] = useState('')
@@ -202,14 +204,14 @@ function Conversation({
     try {
       localStorage.setItem(
         storageKey,
-        JSON.stringify({ question, reply, history, conversation, replySnapshot, mode }),
+        JSON.stringify({ question, reply, history, conversation, replySnapshot, mode, preferSaved }),
       )
     } catch {
       // Storage is external state: surface a failed write without losing the in-memory draft.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStorageError('Tutor conversation could not be saved. Copy your message before leaving.')
     }
-  }, [storageKey, question, reply, history, conversation, replySnapshot, mode])
+  }, [storageKey, question, reply, history, conversation, replySnapshot, mode, preferSaved])
   useEffect(() => {
     focusGeneration.current++
     if (operation.current) {

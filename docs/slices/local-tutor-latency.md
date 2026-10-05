@@ -68,3 +68,8 @@ Accepted diagnostic change: streamed model-call metadata now stores first_token_
 Verification:53 affected backend tests, targeted Ruff and full mypy passed. Final18 accounting tests additionally assert first-token bounds on canceled streams. Timed fake stream proves2000ms first text vs5000ms total and unchanged usage/cost; usage-only stream remains null. Independent review found no actionable issue. An isolated real local tutor turn recorded15782ms provider first text versus16217ms full-turn first text and433ms preparation, total20504ms. This run included returning from the experimental runner batch configuration; it is a compatibility check, not a steady-state performance result. Owner progress was not modified. UI unchanged, so no new visual/keyboard claims.
 
 Next: gather representative new and repeated lesson timings using these records. The measured first-turn bottleneck remains prompt evaluation. Do not declare the latency request complete; consider only targeted optimizations that pass tutoring-quality checks.
+
+
+## Warm full-path follow-up after streaming — 2026-10-05
+
+Repeated the disposable-copy, local-only full tutor path: first visible text0.825s/3.261s, total5.153s/7.577s, retrieval0.262s/0.156s, generation began0.351s/0.297s. Both Gemma3:12b turns had three source references and ok transport outcomes. These are two warm samples that may benefit from prior prefix reuse, not a cold-start comparison, percentile, or quality verdict. The main Session surface already streamed; do not attribute these timings to the new Study Tutor transport. No live learner state or hosted inference was used. Source-heavy new prompts and cold starts remain open.
