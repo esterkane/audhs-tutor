@@ -1127,3 +1127,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 C7 area search: Search now reuses the bounded shared area catalog to match names, descriptions and topic terms by case-insensitive phrase. Separate result group, count/8-result cap, retry and exact browse links; opening an area does not start/change a session. Eight browser journeys pass in both checkouts, including unavailable retrieval alongside area results and zero learning writes; lint/types pass, narrow screenshot inspected, read-only review clear. Used separate sandbox ports8011/5175 and search-area-check.db. Project/skill/notes search and broader accessibility/human acceptance remain open.
+
+
+2026-10-05 C7 project-guide search: separate validated/bounded manifest query searches course/section titles and explanations; exact course+step guide links, cap8 and total count.404 reports no guide; invalid/unavailable data gets independent retry. No notebook cells/notes indexing or code execution. Original9 and sanitized9 journeys pass; final sanitized rerun uses explicit404 default fixture so unrelated tests cannot read owner material. Lint/types pass, narrow layout inspected, read-only review clear. Skill/notes search and broader acceptance remain incomplete.

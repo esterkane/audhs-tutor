@@ -1,4 +1,8 @@
 import { expect, test } from '@playwright/test'
+// Keep default journeys independent of the owner's local guide. Specific tests override this.
+test.beforeEach(async ({ page }) => {
+  await page.route('**/local-learning/program.json', route => route.fulfill({ status: 404, json: {} }))
+})
 for (const width of [390, 1280]) test(`material search keeps independent results and query ${width}`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 })
   let sourceFail = true
@@ -132,4 +136,23 @@ test('area matches survive unavailable retrieval and browse without session writ
   await page.keyboard.press('Enter')
   await expect(page).toHaveURL(/\/areas\?area=area-python$/)
   expect(writes).toEqual([])
+})
+
+test('project search validates local guide and opens the exact section', async ({ page }) => {
+  let invalid = true
+  const section = { id: 'clean', title: 'Cleaning', explanation: 'Compare representation before removing rows.', task: 'Compare groups', question: 'Why?', hint: 'Inspect groups', criteria: 'Explain selection', source: 'Local guide' }
+  await page.route('**/local-learning/program.json', route => route.fulfill({ json: invalid ? { courses: 'invalid' } : { title: 'Study', courses: [{ id: 'data', title: 'Data practice', project: 'Compare groups', status: 'ready', sections: [section] }] } }))
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], next_cursor: null } }))
+  await page.route('**/api/corpus/search', route => route.fulfill({ json: { hits: [] } }))
+  await page.goto('/search?q=representation')
+  await expect(page.getByRole('button', { name: 'Retry project search' })).toBeVisible()
+  await expect(page.getByText('No saved explanations matched.')).toBeVisible()
+  invalid = false
+  await page.getByRole('button', { name: 'Retry project search' }).click()
+  const link = page.getByRole('link', { name: 'Data practice · Cleaning' })
+  await expect(link).toHaveAttribute('href', '/programs?course=data&step=clean')
+  await link.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/programs\?course=data&step=clean$/)
+  await expect(page.getByRole('heading', { name: 'Cleaning', exact: true })).toBeVisible()
 })
