@@ -1,3 +1,4 @@
+import { readTextCache, writeTextCache } from '../tutor/streamCache'
 import { useRequestRecovery, type PendingTutorRequest } from '../playground/useRequestRecovery'
 import { RequestRecoveryControls } from '../playground/RequestRecoveryControls'
 import { AnswerSaveStatus } from './AnswerSaveStatus'
@@ -143,6 +144,33 @@ function Conversation({
       }
     }
   })
+  const previewKey = `study-preview:${storageKey}`
+  const [initialPreview] = useState(() => readTextCache(previewKey))
+  const [preview, setPreview] = useState(initialPreview.value?.text ?? '')
+  const [previousPreview, setPreviousPreview] = useState(initialPreview.value?.previousText ?? '')
+  const previewRef = useRef({ text: preview, previousText: previousPreview })
+  const [previewError, setPreviewError] = useState(initialPreview.error)
+  function flushPreview() {
+    try {
+      setPreviewError(writeTextCache(previewKey, { ...previewRef.current, status: 'partial' }))
+    } catch {
+      setPreviewError('Unfinished text could not be saved in this tab. Copy it before leaving.')
+    }
+  }
+  useEffect(() => {
+    const save = () => {
+      try {
+        writeTextCache(previewKey, { ...previewRef.current, status: 'partial' })
+      } catch {
+        /* live Stop/error paths surface storage failure */
+      }
+    }
+    window.addEventListener('pagehide', save)
+    return () => {
+      window.removeEventListener('pagehide', save)
+      save()
+    }
+  }, [previewKey])
   const id = useId()
   const [question, setQuestion] = useState<string>(restored.question)
   const [reply, setReply] = useState<TutorReply | null>(restored.reply)
@@ -194,6 +222,7 @@ function Conversation({
     }
   }, [snapshot])
   function stop() {
+    flushPreview()
     focusGeneration.current++
     operation.current?.abort()
     operation.current = null
@@ -322,6 +351,15 @@ function Conversation({
     setReady(false)
     setBusy(true)
     setError('')
+    if (previewRef.current.text) {
+      previewRef.current.previousText = [previewRef.current.previousText, previewRef.current.text]
+        .filter(Boolean)
+        .join('\n\n---\n\n')
+      setPreviousPreview(previewRef.current.previousText)
+    }
+    previewRef.current.text = ''
+    setPreview('')
+    flushPreview()
     const timer = setTimeout(() => {
       if (operation.current === ctl) {
         ctl.abort()
@@ -331,9 +369,17 @@ function Conversation({
       }
     }, 90000)
     try {
-      const next = await askTutor(pending.body, ctl.signal, pending.key)
+      const next = await askTutor(pending.body, ctl.signal, pending.key, (token) => {
+        if (operation.current !== ctl || ctl.signal.aborted || focusGeneration.current !== ownFocusGeneration)
+          return
+        previewRef.current.text += token
+        setPreview(previewRef.current.text)
+      })
       if (operation.current !== ctl || ctl.signal.aborted) return
       if (next.answer_id) void queryClient.invalidateQueries({ queryKey: ['answers'] })
+      previewRef.current.text = ''
+      setPreview('')
+      flushPreview()
       setReply(next)
       setReady(true)
       setReplySnapshot(pending.view.snapshot)
@@ -367,6 +413,7 @@ function Conversation({
       if (operation.current === ctl && !ctl.signal.aborted)
         setError(`${(e as Error).message} Your message is retained.`)
     } finally {
+      flushPreview()
       clearTimeout(timer)
       if (operation.current === ctl) {
         operation.current = null
@@ -428,6 +475,22 @@ function Conversation({
         status={busy ? 'streaming' : ready && replySnapshot === snapshot ? 'complete' : 'idle'}
         startedAt={startedAt}
       />
+      {previewError && <p role="alert">{previewError}</p>}
+      {preview && (
+        <section aria-label="Unfinished tutor reply" className="border border-line rounded-md p-3 my-3">
+          <p className="text-sm text-muted">
+            {busy ? 'Reply arriving' : 'Unfinished reply retained · work may have changed'} · not checked or
+            saved as an answer. Final wording and source notes may change.
+          </p>
+          <Markdown text={preview} />
+        </section>
+      )}
+      {previousPreview && (
+        <details className="my-3">
+          <summary>Earlier unfinished reply · work may have changed</summary>
+          <Markdown text={previousPreview} />
+        </details>
+      )}
       {busy && (
         <div className="my-2">
           <Button type="button" onClick={stop}>

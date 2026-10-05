@@ -1,5 +1,10 @@
 # Local operational notes
 
+## 2026-10-05 — Study Tutor streaming
+
+Plain explanation/hint/chat replies now display unfinished tokens before final validation/save. Structured answer checks remain buffered. Stop, stale callbacks and re-entry preserve partial work; final replies alone enter conversation history. Same model/prompt/temperature/output limit and learning policy. Backend38/frontend35 tests, lint/types/build, two desktop/narrow keyboard browser journeys and independent review passed. First-token inference can still be slow; this slice removes the buffered-display wait, not the model processing cost. See docs/slices/study-tutor-streaming-plan.md.
+
+
 Personal inventories, execution logs and handoff history are kept outside the public repository.
 
 ## Chunked session reading — 2026-10-01

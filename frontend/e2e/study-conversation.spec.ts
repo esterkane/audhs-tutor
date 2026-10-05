@@ -1,8 +1,35 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [1280, 390]) {
-  test(`notebook focus and Socratic follow-up at ${width}px`, async ({ page }) => {
+  test(`notebook focus and Socratic follow-up at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
+    await page.addInitScript(() => {
+      const original = window.fetch.bind(window)
+      let held = false
+      window.fetch = async (input, init) => {
+        const response = await original(input, init)
+        if (held || !String(input).endsWith('/api/playground/tutor/stream')) return response
+        held = true
+        const finalEvents = await response.text()
+        const encoder = new TextEncoder()
+        return new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(
+                encoder.encode(
+                  'event: token\ndata: {"text":"A preview arrives before the completed explanation."}\n\n',
+                ),
+              )
+              ;(window as Window & { releaseStudyReply?: () => void }).releaseStudyReply = () => {
+                controller.enqueue(encoder.encode(finalEvents))
+                controller.close()
+              }
+            },
+          }),
+          { headers: { 'Content-Type': 'text/event-stream' } },
+        )
+      }
+    })
     await page.route('**/api/sessions/current', (route) => route.fulfill({ json: { id: 'fixture-session' } }))
     await page.route('**/local-learning/program.json', (route) =>
       route.fulfill({
@@ -44,7 +71,7 @@ for (const width of [1280, 390]) {
     )
     let requests = 0
     let release: (() => void) | undefined
-    await page.route('**/api/playground/tutor', async (route) => {
+    await page.route('**/api/playground/tutor{,/stream}', async (route) => {
       const body = route.request().postDataJSON()
       expect(body.questioning_style).toBe(requests < 2 ? 'socratic' : 'explicit')
       expect(body.exercise).toContain('Compare group retention')
@@ -65,17 +92,19 @@ for (const width of [1280, 390]) {
         await new Promise<void>((resolve) => {
           release = resolve
         })
+      const final = {
+        text,
+        model: 'fixture',
+        route: 'fake',
+        turn_id: 'fixture',
+        source_note: 'Synthetic historical context',
+        memory_answers: ['prior'],
+        reused: body.prefer_saved,
+        saved_at: '2026-10-01T09:00:00Z',
+      }
       await route.fulfill({
-        json: {
-          text,
-          model: 'fixture',
-          route: 'fake',
-          turn_id: 'fixture',
-          source_note: 'Synthetic historical context',
-          memory_answers: ['prior'],
-          reused: body.prefer_saved,
-          saved_at: '2026-10-01T09:00:00Z',
-        },
+        contentType: 'text/event-stream',
+        body: `event: done\ndata: ${JSON.stringify(final)}\n\n`,
       })
     })
     await page.route('**/api/answers?*', async (route) => {
@@ -125,6 +154,16 @@ for (const width of [1280, 390]) {
     const socratic = page.getByRole('button', { name: 'Ask me a Socratic question', exact: true })
     await socratic.focus()
     await page.keyboard.press('Enter')
+    await expect(page.getByRole('region', { name: 'Unfinished tutor reply' })).toContainText(
+      'A preview arrives',
+    )
+    await expect(
+      page.getByText('Why compare proportions rather than counts?', { exact: true }),
+    ).not.toBeVisible()
+    await page.screenshot({ path: info.outputPath('streaming-preview.png'), fullPage: true })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.evaluate(() => (window as Window & { releaseStudyReply?: () => void }).releaseStudyReply?.())
+    await expect(page.getByRole('region', { name: 'Unfinished tutor reply' })).not.toBeVisible()
     const answer = page.getByLabel('Your answer to the tutor’s question', { exact: true })
     await expect(answer).toBeFocused()
     await expect(page.getByText(/Saved answer from 2026-10-01/)).toBeVisible()

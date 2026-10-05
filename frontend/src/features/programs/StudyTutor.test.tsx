@@ -60,6 +60,7 @@ it('sends explicit bounded context, answer and opt-in Socratic intent', async ()
     }),
     expect.any(AbortSignal),
     expect.any(String),
+    expect.any(Function),
   )
   expect(screen.getByText(/not a verified grade/)).toBeVisible()
   expect(screen.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
@@ -193,6 +194,7 @@ it('checks an answer explicitly against the selected question and offers spoken 
     }),
     expect.any(AbortSignal),
     expect.any(String),
+    expect.any(Function),
   )
 })
 
@@ -410,6 +412,7 @@ it('opts into saved reuse explicitly and labels the original dated response', as
     expect.objectContaining({ prefer_saved: true }),
     expect.any(AbortSignal),
     expect.any(String),
+    expect.any(Function),
   )
   fireEvent.click(reuse)
   fireEvent.change(screen.getByLabelText('Your tutor message or response'), {
@@ -421,6 +424,7 @@ it('opts into saved reuse explicitly and labels the original dated response', as
       expect.objectContaining({ prefer_saved: false }),
       expect.any(AbortSignal),
       expect.any(String),
+      expect.any(Function),
     ),
   )
 })
@@ -591,4 +595,81 @@ it('marks a boundary result outdated when only the selected check code changes',
   )
   expect(screen.getByText(/Earlier feedback:/)).toBeVisible()
   expect(askTutor).toHaveBeenCalledTimes(1)
+})
+
+it('shows unfinished tokens, retains them on Stop/re-entry and ignores late completion', async () => {
+  active()
+  let token!: (text: string) => void
+  let finish!: (value: typeof reply) => void
+  vi.mocked(askTutor).mockImplementation((_body, _signal, _key, onToken) => {
+    token = onToken!
+    return new Promise((resolve) => {
+      finish = resolve
+    })
+  })
+  const view = renderApp(<StudyTutor context="Groups" identity="preview" />)
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), {
+    target: { value: 'Why groups?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
+  act(() => token('A useful beginning.'))
+  expect(screen.getByRole('region', { name: 'Unfinished tutor reply' })).toHaveTextContent(
+    'A useful beginning.',
+  )
+  expect(screen.getByText(/not checked or saved as an answer/)).toBeVisible()
+  expect(screen.queryByRole('button', { name: 'Listen to explanation' })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Stop tutor response' }))
+  await act(async () => {
+    token('Late tokens')
+    finish(reply)
+  })
+  expect(screen.queryByText(/Late tokens/)).not.toBeInTheDocument()
+  expect(screen.queryByText(reply.text)).not.toBeInTheDocument()
+  expect(screen.getByLabelText('Your tutor message or response')).toHaveValue('Why groups?')
+  view.unmount()
+  renderApp(<StudyTutor context="Groups" identity="preview" />)
+  expect(screen.getByText('A useful beginning.')).toBeVisible()
+  expect(screen.getByLabelText('Your tutor message or response')).toHaveValue('Why groups?')
+})
+
+it('uses only the completed authoritative wording in conversation history', async () => {
+  active()
+  vi.mocked(askTutor).mockImplementation(async (_body, _signal, _key, onToken) => {
+    onToken?.('Unverified draft wording')
+    return reply
+  })
+  renderApp(<StudyTutor context="Groups" />)
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Why?' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
+  await screen.findByText(reply.text)
+  expect(screen.queryByText('Unverified draft wording')).not.toBeInTheDocument()
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), {
+    target: { value: 'And next?' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
+  await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
+  expect(vi.mocked(askTutor).mock.calls[1][0].history?.at(-1)?.text).toBe(reply.text)
+})
+
+it('retains every interrupted preview across repeated retries', async () => {
+  active()
+  let token!: (text: string) => void
+  vi.mocked(askTutor).mockImplementation((_body, _signal, _key, onToken) => {
+    token = onToken!
+    return new Promise(() => {})
+  })
+  const view = renderApp(<StudyTutor context="Groups" identity="multiple-preview" />)
+  fireEvent.change(screen.getByLabelText('Your tutor message or response'), { target: { value: 'Why?' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send to tutor' }))
+  for (const text of ['First fragment.', 'Second fragment.', 'Third fragment.']) {
+    act(() => token(text))
+    fireEvent.click(screen.getByRole('button', { name: 'Stop tutor response' }))
+    if (text !== 'Third fragment.')
+      fireEvent.click(screen.getByRole('button', { name: 'Retry previous request' }))
+  }
+  view.unmount()
+  renderApp(<StudyTutor context="Groups" identity="multiple-preview" />)
+  expect(screen.getByText('First fragment.')).toBeInTheDocument()
+  expect(screen.getByText('Second fragment.')).toBeInTheDocument()
+  expect(screen.getByText('Third fragment.')).toBeVisible()
 })

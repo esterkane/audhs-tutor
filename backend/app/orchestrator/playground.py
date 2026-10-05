@@ -3,6 +3,7 @@
 import asyncio
 import json
 import logging
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict
 from typing import Any, Literal
 
@@ -236,6 +237,7 @@ async def respond(
     parent_metadata: dict[str, Any] | None = None,
     recovery: AnswerRecovery | None = None,
     repo: RetrievalRepository | None = None,
+    on_token: Callable[[str], Awaitable[None]] | None = None,
 ) -> PlaygroundReply:
     await validate_lesson_origin(db, learner_id, body)
     session = await ksession.get(db, body.session_id)
@@ -394,17 +396,37 @@ async def respond(
     starter_plan = None
     await validate_lesson_origin(db, learner_id, body)
     try:
-        out = await gateway.complete(
-            TaskClass.ANSWER_FEEDBACK
-            if feedback_schema
-            else (TaskClass.HINT if body.intent == "hint" else TaskClass.EXPLAIN_SIMPLE),
-            packet,
-            learner_id=learner_id,
-            session_id=session.id,
-            max_tokens=650 if feedback_schema else 900,
-            response_model=StarterPlan if body.intent == "starter" else feedback_schema,
-            metadata={"task": "playground", "prompt_version": prompt_version, "turn_id": turn_id},
-        )
+        if on_token is not None and body.intent in {"explain", "hint", "chat"}:
+            out = await gateway.complete_streamed(
+                TaskClass.HINT if body.intent == "hint" else TaskClass.EXPLAIN_SIMPLE,
+                packet,
+                on_token=on_token,
+                learner_id=learner_id,
+                session_id=session.id,
+                max_tokens=900,
+                temperature=0.2,
+                metadata={
+                    "task": "playground",
+                    "prompt_version": prompt_version,
+                    "turn_id": turn_id,
+                },
+            )
+        else:
+            out = await gateway.complete(
+                TaskClass.ANSWER_FEEDBACK
+                if feedback_schema
+                else (TaskClass.HINT if body.intent == "hint" else TaskClass.EXPLAIN_SIMPLE),
+                packet,
+                learner_id=learner_id,
+                session_id=session.id,
+                max_tokens=650 if feedback_schema else 900,
+                response_model=StarterPlan if body.intent == "starter" else feedback_schema,
+                metadata={
+                    "task": "playground",
+                    "prompt_version": prompt_version,
+                    "turn_id": turn_id,
+                },
+            )
         if body.intent == "starter":
             starter_plan = StarterPlan.model_validate_json(out.result.text)
         if feedback_schema:

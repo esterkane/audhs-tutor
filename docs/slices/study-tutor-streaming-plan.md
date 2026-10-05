@@ -1,6 +1,6 @@
 # Study Tutor streaming: implementation boundary
 
-2026-10-05 — next performance slice, not implemented.
+2026-10-05 — implemented and verified; broader inference latency remains open.
 
 ## Concrete problem
 
@@ -44,3 +44,12 @@ Run affected backend/frontend tests, lint/types/build and independent code/pedag
 ## Follow-up, not bundled
 
 Saved-answer reuse preference currently lives only in component state and is not included in the saved conversation. Investigate retaining an explicit choice on re-entry as a separate bounded UX change; do not change the default silently. General notebook execution, answer grading, audio behavior and the repeated-error UX investigation remain outside this transport slice.
+
+
+## Delivered evidence
+
+Ordinary explain/hint/chat now stream unfinished previews, followed by the authoritative existing reply. Structured feedback remains buffered. Stop and re-entry retain partial text, including multiple interrupted attempts. Disconnect cleanup is shielded against ASGI cancellation; no preview enters completed conversation history. Model, prompt, temperature, output bound and learning logic are unchanged.
+
+Verification: 38 affected backend tests; 35 frontend tests; backend Ruff and mypy (199 files); frontend ESLint, TypeScript and production build. Two isolated Playwright journeys passed at 1280px and 390px, including delayed preview-before-completion, final replacement, keyboard interaction, re-entry and Stop; screenshots inspected. Independent focused review closed disconnect cleanup and partial overwrite findings with no remaining blockers or pedagogy concerns. No hosted model or live learner database used for tests.
+
+This proves earlier display when tokens arrive, not a new real-model latency percentile. Existing local profiling still shows variable first-token delays; see local-tutor-latency.md. Physical audio, screen-reader testing and broader page complexity remain separate. Existing production bundle warnings remain. Saved-answer preference persistence is still a follow-up.

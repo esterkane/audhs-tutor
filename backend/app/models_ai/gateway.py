@@ -16,7 +16,7 @@ import asyncio
 import json
 import re
 import time
-from collections.abc import AsyncGenerator
+from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import suppress
 from typing import Any
 
@@ -627,6 +627,60 @@ class ModelGateway:
                     handle.cost_usd, handle.outcome = cost, outcome
             return
         raise GatewayError(f"{task}: all routes failed: {errors}")
+
+    async def complete_streamed(
+        self,
+        task: TaskClass,
+        messages: list[Message],
+        *,
+        on_token: Callable[[str], Awaitable[None]],
+        learner_id: str | None = None,
+        session_id: str | None = None,
+        max_tokens: int = 900,
+        temperature: float = 0.2,
+        metadata: dict[str, Any] | None = None,
+    ) -> GatewayResult:
+        """Preview plain text while retaining the normal completed-result boundary."""
+        handle = StreamHandle()
+        chunks: list[str] = []
+        stream = self.stream(
+            task,
+            messages,
+            handle=handle,
+            learner_id=learner_id,
+            session_id=session_id,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            metadata=metadata,
+        )
+        try:
+            async for token in stream:
+                chunks.append(token)
+                await on_token(token)
+        finally:
+            await stream.aclose()
+        if not handle.model_call_id or not handle.registry_id or handle.outcome != "ok":
+            raise GatewayError("The streamed reply did not complete.")
+        spec = await registry.get_spec(self.db, handle.registry_id)
+        return GatewayResult(
+            result=ProviderResult(
+                text="".join(chunks),
+                model=spec.model,
+                provider=spec.provider,
+                tokens_in=handle.tokens_in,
+                tokens_out=handle.tokens_out,
+                cached_tokens=handle.cached_tokens,
+                latency_ms=handle.latency_ms,
+            ),
+            model_call_id=handle.model_call_id,
+            registry_id=handle.registry_id,
+            route=handle.route or "primary",
+            cost_usd=handle.cost_usd,
+            hosted=spec.hosted,
+            request_id=handle.request_id or "",
+            usage_source=handle.usage_source,
+            cost_status=handle.cost_status,
+        )
 
     # ------------------------------------------------------------------ log
     async def _log(
