@@ -1241,3 +1241,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 full-runtime Socratic investigation: three current and six candidate synthetic local turns at deployed temperature0.3 expose conflicting scaffold instructions and insufficient question givens. Both prompt candidates reverted after semantic review;34 functional checks were not a teaching-quality pass. No runtime change. See slices/local-tutor-latency.md and socratic-runtime-candidates.json. Next: concrete source-complete question and response-continuation fixtures before any prompt rollout.
+
+
+2026-10-05 continuation inspection: full public CI run37329042232 at runtime9d05f91 passed all five jobs, including browser journeys. Checked-feedback discussion remains unimplemented; source inspection found hidden assessment panels stay mounted and the existing follow-up chooses a global session. The next integration must bind session identity and deactivate requests on phase exit. Exact scope and acceptance are recorded in slices/assessment-followup-context.md. No runtime change or new UI verification claimed.
