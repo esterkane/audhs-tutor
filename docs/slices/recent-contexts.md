@@ -90,3 +90,9 @@ Final sanitized verification: all5 search journeys passed with the same sandbox-
 2026-10-05 header spacing: brand and search share a wrapping row on narrow screens. Screenshot shows header reduced from276px to243px at390 width; no controls hidden or learning logic changed. Five original search/keyboard/Back journeys, lint and types passed. Narrow screenshot inspected. Broader mobile composition and command access remain open.
 
 Sanitized header keyboard/return journeys also pass at390/1280.
+
+
+## Quick navigation — 2026-10-05
+Header Search or go to opens a native modal over the current workspace; Ctrl/Cmd+K opens it outside text editors and other modals. Filtering page names is local; explicit submission navigates to material search. Existing Library search remains available. Close/Escape restores prior focus without navigating or discarding the underlying draft. Destination links reuse existing shell routes; no new backend, model call or learning-state write. Initial cancellation test exposed native search-input Escape consumption; explicit dialog Escape handling fixes it.
+
+Seven browser journeys pass in both checkouts at390/1280, including preserved draft, shortcut editor guard, focus return, empty page-filter results, explicit search, Back and existing source retry/stale-query regressions. Narrow screenshot inspected; lint/types pass; build passed before the Escape event fix, with inherited warnings. Read-only review found no blockers/majors. Sandbox uses bundled LiteLLM cost map as documented above. Remaining: fuller modal/zoom/theme accessibility acceptance, additional material categories and human usability validation; C7 is not wholly complete.

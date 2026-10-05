@@ -357,3 +357,6 @@ Persistent header search implemented;5 original browser journeys and lint/types/
 
 
 2026-10-05 header spacing: brand and search share a wrapping row on narrow screens. Screenshot shows header reduced from276px to243px at390 width; no controls hidden or learning logic changed. Five original search/keyboard/Back journeys, lint and types passed. Narrow screenshot inspected. Broader mobile composition and command access remain open.
+
+
+Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering, explicit material search, Escape with retained workspace. Seven browser journeys pass in both checkouts; lint/types and review clear. Details and remaining gates in docs/slices/recent-contexts.md.

@@ -1,3 +1,4 @@
+import { QuickNavigation } from '../components/QuickNavigation'
 import { BrowseArea } from '../features/areas/BrowseArea'
 import { AudioControls } from '../features/audio/AudioControls'
 import { LearningCompanion } from '../features/programs/LearningCompanion'
@@ -81,7 +82,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <Link to="/" className="font-semibold no-underline text-fg">
               AuDHS-Tutor
             </Link>
-            <Link to="/search" className="inline-flex min-h-10 items-center rounded-md border border-control px-3 py-2 text-sm underline underline-offset-4">Search material</Link>
+            <QuickNavigation pages={[...primaryPages, ...toolPages]} />
           </div>
           <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
             <div ref={setTutorEntry} className="min-w-0 max-w-full" />
