@@ -1283,3 +1283,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 buffered plain-text output caps now reject after usage accounting, without regeneration or completed-history save.887 backend tests, full mypy/lint/format, narrow keyboard browser regression and independent review pass; real local adapter smoke verified. Structured policy unchanged. See slices/local-tutor-latency.md for scope and remaining provider/message limits.
+
+
+2026-10-05 review concept help is available after reveal without rating/hint writes; collapse/rating stops help and reopening retains text.16 unit tests,2 desktop/narrow keyboard browser journeys, lint/types/build and independent review pass. See ux/DAILY-LEARNING-ACCEPTANCE.md. Lower-credit execution rules recorded in AGENTS.md; broader performance/UX gates remain open.

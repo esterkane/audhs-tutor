@@ -19,3 +19,10 @@ Owner update 2026-10-05: this sanitized repository is PUBLIC again. The separate
 - Reuse passing checks for unchanged code. Repeat or broaden checks when a change, failure or risk justifies it; retain relevant unit, browser, keyboard, visual and publication gates.
 - Give reviewers bounded diffs, file paths, invariants and test evidence instead of full conversation history. Use agents only for concrete independent work where review or parallelism adds value.
 - Keep progress updates brief and meaningful. Record evidence once in the slice document and link it from handoffs. Do not lower model quality, weaken tests or drop requirements to save tokens.
+
+
+## Lower-credit execution — owner request 2026-10-05
+- Finish one bounded task with one validation/publication cycle. Do not launch open-ended investigation loops; state the hypothesis and stopping criterion before a model experiment.
+- Reuse verified results for unchanged code. Do not rerun whole suites for documentation-only changes, or publish separate documentation commits solely to report routine CI status; batch that evidence into the next relevant handoff.
+- Use compact targeted file reads and concise logs. Keep progress updates minimal. Delegate only a concrete required review or independently useful task, with a bounded diff instead of conversation history.
+- Preserve required correctness, security, learning, browser and accessibility checks. Saving credits never justifies weaker teaching models, dropping context or skipping a necessary gate.

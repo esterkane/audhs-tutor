@@ -13,12 +13,14 @@ export function QuestionHelp({
   question,
   onHint,
   afterAnswer = false,
+  afterAnswerNote,
 }: {
   sessionId: string
   skillId: string | null
   question: string
   onHint?: () => void
   afterAnswer?: boolean
+  afterAnswerNote?: string
   active?: boolean
 }) {
   const tutor = useTutorStream()
@@ -37,13 +39,13 @@ export function QuestionHelp({
     <div className="border border-line rounded-md p-3 my-3">
       <p className="text-sm mb-2">
         {afterAnswer
-          ? 'Still unclear? Review the idea here. Your recorded feedback stays unchanged.'
+          ? afterAnswerNote ?? 'Still unclear? Review the idea here. Your recorded feedback stays unchanged.'
           : 'You can learn before answering. Help keeps your answer in place.'}
       </p>
       <div className="flex gap-2 flex-wrap">
         {!afterAnswer && (
           <Button
-            disabled={tutor.busy}
+            disabled={tutor.busy || !active}
             onClick={() => {
               void tutor.run({
                 session_id: sessionId,
@@ -57,7 +59,7 @@ export function QuestionHelp({
           </Button>
         )}
         <Button
-          disabled={tutor.busy}
+          disabled={tutor.busy || !active}
           onClick={() => {
             void tutor.run({
               session_id: sessionId,

@@ -1,6 +1,7 @@
 import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
 import { apiFetch, type Schemas } from '../lib/api'
 import { ReviewRecovery } from '../features/review/ReviewRecovery'
+import { ReviewConceptHelp } from '../features/review/ReviewConceptHelp'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { ReadAloud } from '../features/voice/ReadAloud'
 import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
@@ -402,6 +403,13 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
             <p className="font-medium">Answer</p>
             <p>{item.reveal}</p>
             <ReadAloud key={item.item_id} text={item.reveal} />
+            <ReviewConceptHelp
+              key={`${item.item_id}:${item.content_version}`}
+              sessionId={sessionId}
+              skillId={item.skill_id}
+              question={item.question}
+              active={!ratingPending}
+            />
             {hintCount > 0 && (
               <p className="text-sm">Help was used. Choose Again or Hard so this question returns sooner.</p>
             )}
