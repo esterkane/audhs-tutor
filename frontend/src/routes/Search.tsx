@@ -52,33 +52,36 @@ function Results({ query }: { query: string }) {
     <section aria-labelledby="search-areas" className="rounded-md border border-line p-3 min-w-0 break-words">
       <h2 tabIndex={-1} id="search-areas" className="text-panel-heading font-semibold">Knowledge areas</h2>
       <p className="text-sm text-muted">Names, descriptions and topic terms matching your phrase. Opening an area does not start or switch a learning session.</p>
-      {areas.isPending ? <p role="status">Searching knowledge areas…</p> : areas.isError ? <div role="alert">Knowledge areas could not be refreshed. <Button disabled={areas.isFetching} onClick={() => void areas.refetch()}>Retry area search</Button></div> : <>
+      {areas.isError && <div role="alert">Knowledge areas could not be refreshed. <Button disabled={areas.isFetching} onClick={() => void areas.refetch()}>Retry area search</Button>{areas.data && <p>Showing previously loaded results; they may be out of date.</p>}</div>}
+      {areas.isPending ? <p role="status">Searching knowledge areas…</p> : areas.data ? <>
         <p role="status">{matchingAreas.length ? `${Math.min(8, matchingAreas.length)} of ${matchingAreas.length} matching areas shown.` : 'No knowledge areas matched.'}</p>
         <ul className="grid gap-3 my-2">{matchingAreas.slice(0, 8).map(area => <li key={area.id}>
           <Link className="underline" to={`/areas?${new URLSearchParams({ area: area.id })}`}>{area.title}</Link>
           {area.description && <p className="text-sm">{area.description}</p>}
         </li>)}</ul>
         {matchingAreas.length > 8 && <Link className="underline" to="/areas">Browse all knowledge areas</Link>}
-      </>}
+      </> : null}
     </section>
     <SkillSearch phrase={query} />
     <ProjectSearch phrase={query} />
     <section aria-labelledby="search-answers" className="rounded-md border border-line p-3 min-w-0 break-words">
       <h2 tabIndex={-1} id="search-answers" className="text-panel-heading font-semibold">Saved explanations</h2>
       <p className="text-sm text-muted">Past answers matching your words, newest first. They have not been checked again.</p>
-      {answers.isPending ? <p role="status">Searching saved explanations…</p> : answers.isError ? <div role="alert">Saved explanations could not be searched. <Button disabled={answers.isFetching} onClick={() => void answers.refetch()}>Retry explanation search</Button></div> : <>
+      {answers.isError && <div role="alert">Saved explanations could not be searched. <Button disabled={answers.isFetching} onClick={() => void answers.refetch()}>Retry explanation search</Button>{answers.data && <p>Showing previously loaded results; they may be out of date.</p>}</div>}
+      {answers.isPending ? <p role="status">Searching saved explanations…</p> : answers.data ? <>
         <p role="status">{answers.data.items.length ? `${answers.data.items.length} matching saved explanations shown.` : 'No saved explanations matched.'}</p>
         <ul className="grid gap-3 my-2">{answers.data.items.map(answer => <li key={answer.id}>
           <Link className="underline" to={`/answers/${encodeURIComponent(answer.id)}?${new URLSearchParams({ q: query })}`}>{answer.request_text || 'Saved explanation'}</Link>
           <p className="text-sm">{answer.preview}</p>
         </li>)}</ul>
         {answers.data.next_cursor && <Link className="underline" to={`/answers?${new URLSearchParams({ q: query })}`}>See all matching saved explanations</Link>}
-      </>}
+      </> : null}
     </section>
     <section aria-labelledby="search-sources" className="rounded-md border border-line p-3 min-w-0 break-words">
       <h2 tabIndex={-1} id="search-sources" className="text-panel-heading font-semibold">Indexed sources</h2>
       <p className="text-sm text-muted">Up to 8 potentially relevant passages. A match is not verification of the source.</p>
-      {sources.isPending ? <p role="status">Searching indexed sources…</p> : sources.isError ? <div role="alert">Source search is unavailable. Check the local retrieval service and embedding model. <Button disabled={sources.isFetching} onClick={() => void sources.refetch()}>Retry source search</Button></div> : <>
+      {sources.isError && <div role="alert">Source search is unavailable. Check the local retrieval service and embedding model. <Button disabled={sources.isFetching} onClick={() => void sources.refetch()}>Retry source search</Button>{sources.data && <p>Showing previously loaded results; they may be out of date.</p>}</div>}
+      {sources.isPending ? <p role="status">Searching indexed sources…</p> : sources.data ? <>
         <p role="status">{sources.data.hits.length ? `${sources.data.hits.length} source passages shown.` : 'No indexed passages matched.'}</p>
         <ul className="grid gap-3 my-2">{sources.data.hits.map(hit => <li key={hit.chunk_id}>
           <Link className="underline" to={`/sources?${new URLSearchParams({ chunk: hit.chunk_id })}`}>{hit.citation}</Link>
@@ -87,7 +90,7 @@ function Results({ query }: { query: string }) {
           {hit.quarantined && <p className="text-sm">Withheld from tutor context.</p>}
           <p className="text-sm whitespace-pre-wrap">{hit.text.slice(0, 500)}{hit.text.length > 500 ? '…' : ''}</p>
         </li>)}</ul>
-      </>}
+      </> : null}
     </section>
   </div>
 }

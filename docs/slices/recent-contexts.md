@@ -108,3 +108,9 @@ Seven browser journeys pass in both checkouts at390/1280, including preserved dr
 
 
 2026-10-05 result orientation: compact native jump links reach all five search-group headings, preserving query and focusing the target without reissuing searches. Original11 browser journeys and sanitized focused journey pass; lint/types pass, narrow screenshot inspected, review clear. This reduces forced scrolling but does not establish owner comprehension or close the broader search/accessibility phase. Next: integrated daily-learning journey and reproduced usability blockers; retain notes/notebook search exclusions.
+
+
+## Search refresh recovery — 2026-10-05
+A390px browser reproduction loaded matches, opened a source and returned with services failing; previously loaded matches disappeared. Five result groups now display available cached matches alongside their independent error/Retry and an explicit out-of-date warning. Initial failures without data do not show false empty results. Project404 remains no-guide; validated prior guides survive failed refresh. Query identities, filtering, limits, destinations and learning logic are unchanged.
+
+Thirteen Chromium journeys pass, including390/1280 five-group retention, keyboard source retry with exact independent request counts, original initial-failure/retry, stale query isolation, malformed guide recovery, result-group focus and no-write navigation. Full frontend lint/types/build pass (existing chunk warning), narrow screenshot inspected, independent review clear. Logs: /tmp/search-refresh-{before,browser,lint,build}.log. No backend/model or learner data changes. Results remain cache-bound; reload while unavailable cannot restore cache from disk. Full screen-reader/zoom/human acceptance and retry-result focus remain open; notes/notebook indexing remains excluded.

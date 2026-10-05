@@ -1332,3 +1332,7 @@ Added verified effect descriptions with accessible associations; planner saves r
 
 ## 2026-10-05 — Preserve explicit Home mode
 Fixed reproduced delayed saved-default override of an explicit Home mode selection. Three browser/twelve Home unit checks, lint/types/build and screenshot pass. See slices/preference-effect-timing.md; saved defaults, active sessions and Socratic behavior are unchanged.
+
+
+## 2026-10-05 — Keep search matches during refresh failures
+All five groups retain cached matches with explicit stale-data warnings and independent Retry. Thirteen browser checks, lint/types/build, screenshot and review passed. See slices/recent-contexts.md; persistent offline cache and broad accessibility acceptance remain open.
