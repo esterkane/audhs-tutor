@@ -54,3 +54,26 @@ for (const narrow of [false, true])
     expect(calls[0].key).toBeTruthy()
     expect(calls[1]).toEqual(calls[0])
   })
+
+test('a length-limited lesson stays visibly partial', async ({ page, request }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
+  await expectOk(response)
+  const session = await response.json()
+  const index = session.plan.findIndex((block: { type: string }) => block.type === 'new_material')
+  await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index } }))
+  const text = 'The explanation reached its limit while describing'
+  await page.route('**/api/tutor/stream', route => route.fulfill({
+    contentType: 'text/event-stream',
+    body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ turn_id: 'limited', outcome: 'partial', text, sources: [], dropped: [], flagged: [], answer_id: null })}\n\n`,
+  }))
+  await page.goto('/')
+  await page.getByRole('button', { name: /^Continue$/ }).click()
+  await page.getByLabel('Ask about this lesson (optional)').fill('Explain this idea')
+  await page.getByRole('button', { name: 'Send lesson question' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText(text, { exact: true })).toBeVisible()
+  await expect(page.getByText('Response interrupted. The text received so far is kept.', { exact: true })).toBeVisible()
+  await page.screenshot({ path: info.outputPath('limited-lesson.png'), fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})

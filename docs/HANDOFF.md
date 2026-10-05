@@ -1265,3 +1265,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 current local diagnostic:3 synthetic/disposable explicit TutorTurns first-text6.44/2.06/2.04s, total13.05/7.64/8.74s after2.70s preload. See slices/local-tutor-latency.md and current-tutor-timing-sample.json for warm-cache/retrieval/raw-preview limits. No runtime changes, no owner learning activity, no broad speed/quality claim.
+
+
+2026-10-05 local Session output-cap safeguard: explicit Ollama length termination now marks a reply partial and prevents completed-history save, preserving text/accounting/replay.72 backend tests plus final7 API checks,3 browser journeys, Ruff/format/full mypy and review pass; local adapter smoke and narrow visual/keyboard verified. See slices/local-tutor-latency.md. Other providers and Study Tutor/follow-up consumers remain separate work.

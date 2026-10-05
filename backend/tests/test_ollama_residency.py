@@ -46,3 +46,31 @@ def test_residency_is_configurable_and_bounded():
     for value in [-1, 86401]:
         with pytest.raises(ValidationError):
             Settings(_env_file=None, ollama_keep_alive_s=value)
+
+
+@pytest.mark.parametrize("reason", ["stop", "length"])
+async def test_stream_keeps_finish_reason_separate_from_missing_usage(monkeypatch, reason):
+    from app.models_ai.provider import StreamFinish
+
+    async def chunks():
+        yield SimpleNamespace(
+            choices=[
+                SimpleNamespace(delta=SimpleNamespace(content="unfinished"), finish_reason=None)
+            ]
+        )
+        yield SimpleNamespace(
+            choices=[SimpleNamespace(delta=SimpleNamespace(content=None), finish_reason=reason)]
+        )
+
+    monkeypatch.setattr(
+        "app.models_ai.ollama.litellm.acompletion", AsyncMock(return_value=chunks())
+    )
+    provider = OllamaProvider("http://localhost:11434")
+    parts = [
+        part
+        async for part in provider.stream(
+            ModelSpec(registry_id="local", provider="ollama", model="test"),
+            [Message(role="user", content="Explain")],
+        )
+    ]
+    assert parts == ["unfinished", StreamFinish(reason=reason)]

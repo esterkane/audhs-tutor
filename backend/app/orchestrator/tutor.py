@@ -380,7 +380,8 @@ class TutorTurn:
                 async for tok in stream:
                     text += tok
                     yield ("token", {"text": tok})
-                completed = True
+                partial = handle.finish_reason == "length"
+                completed = not partial
             except GatewayError:
                 if not text:
                     raise  # nothing was said: the caller reports the failure

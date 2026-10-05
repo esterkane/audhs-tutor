@@ -237,3 +237,37 @@ async def test_tutor_save_failure_does_not_discard_reply(
     assert response.json()["text"]
     assert response.json()["answer_id"] is None
     assert "could not be saved" in response.json()["save_error"]
+
+
+@pytest.mark.parametrize("reason", ["stop", "length"])
+async def test_tutor_output_limit_is_partial_without_saving_as_complete(
+    seeded_client: AsyncClient,
+    db: AsyncSession,
+    fake_local: FakeProvider,
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+) -> None:
+    from app.models_ai.provider import StreamFinish
+
+    async def finished(*args, **kwargs):
+        yield "An explanation that ends with an unfinished question about"
+        yield StreamFinish(reason=reason)
+
+    monkeypatch.setattr(fake_local, "stream", finished)
+    session = (
+        await seeded_client.post("/api/sessions", json={"mode": "steady", "energy": 3})
+    ).json()
+    payload = {"session_id": session["id"], "text": "Explain", "action": "explain"}
+    headers = {"Idempotency-Key": "12345678-1234-1234-1234-123456789abc"}
+    response = await seeded_client.post("/api/tutor/turn", json=payload, headers=headers)
+    replay = await seeded_client.post("/api/tutor/turn", json=payload, headers=headers)
+    assert replay.json() == response.json()
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["outcome"] == ("partial" if reason == "length" else "ok")
+    assert body["text"].endswith("question about")
+    answers = (await db.execute(select(models.TutorAnswer))).scalars().all()
+    assert len(answers) == (0 if reason == "length" else 1)
+    call = (await db.execute(select(models.ModelCall))).scalars().one()
+    assert call.metadata_json["finish_reason"] == reason
+    assert call.usage_source == "estimated"

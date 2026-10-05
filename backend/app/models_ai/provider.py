@@ -91,7 +91,13 @@ class StreamUsage(BaseModel):
     reported_cost_usd: float | None = None
 
 
-StreamEvent = str | StreamUsage
+class StreamFinish(BaseModel):
+    """Provider termination metadata, separate from token accounting."""
+
+    reason: str
+
+
+StreamEvent = str | StreamUsage | StreamFinish
 
 
 class ProviderError(Exception):

@@ -17,6 +17,7 @@ from app.models_ai.provider import (
     ProviderError,
     ProviderResult,
     StreamEvent,
+    StreamFinish,
     StreamUsage,
     StructuredOutputError,
     structured_reason,
@@ -129,6 +130,7 @@ class OllamaProvider:
         temperature: float = 0.2,
     ) -> AsyncIterator[StreamEvent]:
         usage: Any | None = None
+        finish_reason: str | None = None
         try:
             response = await litellm.acompletion(
                 model=self._model(spec),
@@ -146,6 +148,9 @@ class OllamaProvider:
                     usage = chunk.usage  # the provider's final usage chunk
                 if not chunk.choices:
                     continue
+                reason = getattr(chunk.choices[0], "finish_reason", None)
+                if isinstance(reason, str):
+                    finish_reason = reason
                 delta = chunk.choices[0].delta.content
                 if delta:
                     yield delta
@@ -155,6 +160,9 @@ class OllamaProvider:
             tin, tout, cached = usage_of(usage)
             if tin or tout:
                 yield StreamUsage(tokens_in=tin, tokens_out=tout, cached_tokens=cached)
+
+        if finish_reason is not None:
+            yield StreamFinish(reason=finish_reason)
 
     async def embed(self, spec: ModelSpec, texts: list[str]) -> list[list[float]]:
         """Ollama's native /api/embed (batched); returns one vector per input."""

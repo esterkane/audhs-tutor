@@ -36,6 +36,7 @@ from app.models_ai.provider import (
     ModelSpec,
     ProviderError,
     ProviderResult,
+    StreamFinish,
     StreamUsage,
     StructuredOutputError,
     TaskClass,
@@ -123,6 +124,7 @@ class StreamHandle:
         self.cost_status: str = "free"
         self.cost_usd: float = 0.0
         self.outcome: str = "ok"
+        self.finish_reason: str | None = None
 
 
 def _accounting(
@@ -521,6 +523,7 @@ class ModelGateway:
             out_chars = 0
             started = False
             first_token_ms: int | None = None
+            handle.finish_reason = None
             usage: StreamUsage | None = None
             failure: str | None = None
             outcome = "ok"
@@ -528,6 +531,9 @@ class ModelGateway:
             stream = provider.stream(spec, messages, max_tokens=max_tokens, temperature=temperature)
             try:
                 async for ev in stream:
+                    if isinstance(ev, StreamFinish):
+                        handle.finish_reason = ev.reason
+                        continue
                     if isinstance(ev, StreamUsage):
                         usage = ev
                         continue
@@ -608,6 +614,7 @@ class ModelGateway:
                             **meta,
                             "estimated_tokens": usage is None,
                             "first_token_ms": first_token_ms,
+                            "finish_reason": handle.finish_reason,
                         },
                         request_id=request_id,
                         attempt=attempt,
