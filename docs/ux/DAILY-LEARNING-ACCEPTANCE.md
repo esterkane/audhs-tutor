@@ -62,3 +62,34 @@ these journeys; keyboard pause/retry/original-lesson actions are exercised.
 
 Lint/type/build were not repeated because this pass changes documentation only.
 Next bounded work is DL-01 reproduction, then the remaining failure/learning matrix.
+
+
+## DL-01 follow-up: deterministic reproduction and bounded fix
+
+The mounted-route timing gap is now reproduced in Review.test.tsx: a Suspense
+boundary holds the Home transition while Review remains mounted, then the block
+response arrives. Before the fix this renders the next lesson instead of Home.
+This test models the vulnerable interval; it does not claim Home currently loads
+through Suspense in production.
+
+SessionControls now calls an optional pause callback before navigating. Review
+increments a navigation-intent generation synchronously. Pending continue/finish
+callbacks check their original generation as well as mounted state; a late response
+can update authoritative cached progress but cannot take back navigation after Pause.
+The finish path also stops further work after a paused, pending session read.
+Generation rather than a permanently disabled flag allows a later explicit action.
+No backend, curriculum, assessment, rating, mastery, audio or visual layout changes.
+
+Original validation: 13 Review unit tests, 10 pause/clarity browser journeys,
+TypeScript, lint and production build passed. The build retains existing chunk-size
+and wavesurfer worker_threads warnings. Narrow resumed-review screenshot inspected;
+keyboard pause, reload, persisted state and no-overflow checks pass at390/1280px.
+Read-only code/control review found no blockers or majors.
+
+DL-01's explicit Review Pause race is addressed. Header/Back navigation and the
+analogous mounted-transition window on other screens are separate verification
+items, not covered by this fix. DL-02, human comprehension, physical audio and the
+rest of daily-learning acceptance remain open.
+
+Sanitized variant: the same13 Review unit tests,9 pause browser journeys, TypeScript
+and lint passed. Publication guard is required before its paired commit.

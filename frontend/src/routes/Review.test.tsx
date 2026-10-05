@@ -1,3 +1,4 @@
+import { Suspense } from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -554,4 +555,48 @@ it('does not report an empty review when its initial read fails', async () => {
     mounted.unmount()
     vi.unstubAllGlobals()
   }
+
+})
+
+describe('Pause during a pending route transition', () => {
+  afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear() })
+
+it('keeps pause intent when Home rendering is delayed and a block response arrives', async () => {
+  useMode.setState({ sessionId: 's1' })
+  let finish!: (response: Response) => void
+  let homeReady = false
+  let openHome!: () => void
+  const homePending = new Promise<void>(resolve => { openHome = resolve })
+  function DelayedHome() {
+    if (!homeReady) throw homePending
+    return <h1>Paused Home</h1>
+  }
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.startsWith('/api/review/due')) return jsonResponse({ ...due, items: [], total_due: 0 })
+    if (url === '/api/sessions/s1') return jsonResponse(reviewSession)
+    if (url === '/api/plan/blocks/next') return new Promise<Response>(resolve => { finish = resolve })
+    return jsonResponse({ skills: [], values: {} })
+  }))
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/review']}>
+    <Suspense fallback={<p>Loading destination</p>}><Routes>
+      <Route path="/review" element={<Review />} />
+      <Route path="/" element={<DelayedHome />} />
+      <Route path="/session" element={<h1>Unexpected lesson</h1>} />
+    </Routes></Suspense>
+  </MemoryRouter></QueryClientProvider>)
+  fireEvent.click(await screen.findByRole('button', { name: 'Continue the plan' }))
+  await waitFor(() => expect(finish).toBeDefined())
+  fireEvent.click(screen.getByRole('button', { name: 'Pause and return Home' }))
+  // The previous route remains mounted while the destination transition waits.
+  expect(screen.getByRole('heading', { name: 'Review done' })).toBeInTheDocument()
+  await act(async () => {
+    finish(jsonResponse({ ...reviewSession.state, phase: 'teach', block_index: 1 }))
+    await new Promise(resolve => setTimeout(resolve, 0))
+  })
+  await act(async () => { homeReady = true; openHome() })
+  expect(await screen.findByRole('heading', { name: 'Paused Home' })).toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'Unexpected lesson' })).not.toBeInTheDocument()
+})
+
 })

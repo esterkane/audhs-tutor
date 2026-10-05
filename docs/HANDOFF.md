@@ -1139,3 +1139,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 daily-learning acceptance: initial17-test batch had one late review-next/pause failure; three isolated repetitions and full17-test rerun passed, plus6 recovery journeys. Failure remains open, not fixed. Desktop/narrow screenshots inspected; narrow explanation is below the first viewport (S2). No runtime changes. See ux/DAILY-LEARNING-ACCEPTANCE.md for evidence and remaining gates.
+
+
+2026-10-05 Review pause intent: deterministic delayed-Home regression failed before fix, passes after synchronous intent invalidation. Late block response preserves server progress but cannot reclaim navigation after explicit Pause. Original13 unit/10 browser checks, lint/types/build pass (inherited build warnings); keyboard/narrow screenshot inspected; independent review clear. See ux/DAILY-LEARNING-ACCEPTANCE.md. Other navigation exits and narrow lesson hierarchy remain open.

@@ -61,6 +61,9 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   const [queue, setQueue] = useState(() => restoreQueue(queueKey))
   const saving = useRef(false)
   const stopping = useRef(false)
+  // Navigation intent changes at the click, before a concurrent route transition unmounts us.
+  const navigationIntent = useRef(0)
+  const pause = () => { navigationIntent.current += 1 }
   const active = useRef(false)
   useEffect(() => {
     active.current = true
@@ -173,7 +176,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
           Retry
         </Button>
         <Button onClick={() => nav('/')}>Go to Home</Button>
-        <SessionControls sessionId={sessionId} />
+        <SessionControls onPause={pause} sessionId={sessionId} />
       </Card>
     )
   if (due.isLoading || !due.data)
@@ -223,9 +226,10 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
 
   async function continuePlan() {
     if (!state || transition.pending) return
+    const intent = navigationIntent.current
     try {
       const next = await transition.next({ from_index: state.block_index ?? null, reason: 'finished' })
-      if (!active.current) return
+      if (!active.current || navigationIntent.current !== intent) return
       nav(next.plan_complete ? '/recap' : routeForPhase(next))
     } catch {
       /* transition.error is rendered; the plan did not move */
@@ -234,6 +238,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
 
   async function stopHere() {
     if (transition.pending || stopping.current) return
+    const intent = navigationIntent.current
     stopping.current = true
     setStopPending(true)
     setStopError(null)
@@ -241,7 +246,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       // Cards can finish loading before the session. Missing state is not proof that
       // no block needs saving; resolve the authoritative state before leaving.
       const fresh = await session.refetch()
-      if (!active.current) return
+      if (!active.current || navigationIntent.current !== intent) return
       if (fresh.error) throw fresh.error
       const current = fresh.data?.state
       if (!current) throw new Error('Session state is unavailable. Retry saving your progress.')
@@ -255,13 +260,13 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
           reason: 'save_and_stop',
           switched_early: true,
         })
-        if (!active.current) return
+        if (!active.current || navigationIntent.current !== intent) return
         if (saved.block_status !== 'ended')
           throw new Error('The session changed before progress was saved. Retry or return to the session.')
       }
-      nav('/recap')
+      if (navigationIntent.current === intent) nav('/recap')
     } catch (error) {
-      if (!active.current) return
+      if (!active.current || navigationIntent.current !== intent) return
       setStopError(error instanceof Error ? error.message : 'Could not save progress. Please retry.')
     } finally {
       stopping.current = false
@@ -272,7 +277,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   if (!item)
     return (
       <Card>
-        <SessionControls sessionId={sessionId} />
+        <SessionControls onPause={pause} sessionId={sessionId} />
         {recoveryPanel}
         {refreshWarning}
         <CardTitle>Review done</CardTitle>
@@ -338,7 +343,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
     <div className="grid gap-4">
       {refreshWarning}
       {recoveryPanel}
-      <SessionControls sessionId={sessionId} skillId={item.skill_id} />
+      <SessionControls onPause={pause} sessionId={sessionId} skillId={item.skill_id} />
       {state && !inReviewBlock && (
         <p className="text-sm text-muted" role="status">
           Off-plan review: rating cards here is always useful, but it does not advance the session plan

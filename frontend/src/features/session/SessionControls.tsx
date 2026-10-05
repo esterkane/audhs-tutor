@@ -6,7 +6,7 @@ import { usePreferences } from '../preferences/api'
 import { useNavigate } from 'react-router-dom'
 
 /** Ending a session is always available and never submits an assessment or a rating. */
-export function SessionControls({ sessionId, skillId }: { sessionId: string; skillId?: string | null }) {
+export function SessionControls({ sessionId, skillId, onPause }: { sessionId: string; skillId?: string | null; onPause?: () => void }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const prefs = usePreferences()
@@ -25,7 +25,7 @@ export function SessionControls({ sessionId, skillId }: { sessionId: string; ski
   return (
     <section aria-label="Session controls" className="border border-line rounded-md p-3">
       <div className="flex gap-2 flex-wrap">
-        <Button onClick={() => navigate('/')} disabled={stop.isPending}>
+        <Button onClick={() => { onPause?.(); navigate('/') }} disabled={stop.isPending}>
           Pause and return Home
         </Button>
         <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
