@@ -21,7 +21,9 @@ for (const width of [390, 1280]) {
       ).join('\n\n')
       let calls = 0
       let gradingCalls = 0
+      let nextQuestionReads = 0
       page.on('request', (request) => {
+        if (request.url().includes('/api/assess/next?')) nextQuestionReads++
         if (request.url().endsWith('/api/assess/attempt') && request.method() === 'POST') gradingCalls++
       })
       await page.route('**/api/tutor/stream', async (route) => {
@@ -54,7 +56,10 @@ for (const width of [390, 1280]) {
       const choices = page.getByRole('button', { name: '13', exact: true })
       if (await choices.isVisible()) await choices.click()
       else await page.getByLabel('Your answer', { exact: true }).fill('no idea')
-      const graded = page.waitForResponse((response) => response.url().endsWith('/api/assess/attempt') && response.request().method() === 'POST')
+      const graded = page.waitForResponse(
+        (response) =>
+          response.url().endsWith('/api/assess/attempt') && response.request().method() === 'POST',
+      )
       await page.getByRole('button', { name: 'Check my answer', exact: true }).click()
       const outcome = await (await graded).json()
       expect(outcome.score).toBeLessThan(0.85)
@@ -84,9 +89,42 @@ for (const width of [390, 1280]) {
       )
       await page.screenshot({ path: info.outputPath('reading.png'), fullPage: true })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      const readsBeforeRestoration = nextQuestionReads
+      let failFeedbackLookup = width === 390
+      if (width === 390) {
+        await page.route('**/api/assess/requests/*', async (route) => {
+          if (failFeedbackLookup) {
+            await route.fulfill({
+              status: 503,
+              contentType: 'application/json',
+              body: JSON.stringify({
+                error: {
+                  code: 'temporarily_unavailable',
+                  message: 'Feedback service temporarily unavailable.',
+                },
+              }),
+            })
+          } else await route.continue()
+        })
+      }
       await question.focus()
       await page.keyboard.press('Enter')
+      if (width === 390) {
+        await expect(page.getByRole('alert')).toContainText('Feedback service temporarily unavailable.')
+        expect(nextQuestionReads).toBe(readsBeforeRestoration)
+        failFeedbackLookup = false
+        await page.getByRole('button', { name: 'Retry feedback lookup' }).focus()
+        await page.keyboard.press('Enter')
+      }
+      await expect(page.getByRole('heading', { name: 'Feedback on your answer' })).toBeVisible()
+      await expect(page.getByText(outcome.feedback, { exact: true })).toBeVisible()
+      expect(gradingCalls).toBe(1)
+      expect(nextQuestionReads).toBe(readsBeforeRestoration)
+      await page.screenshot({ path: info.outputPath('restored-feedback.png'), fullPage: true })
+      await page.getByRole('button', { name: 'Try another question (optional)' }).click()
       await expect(page.getByRole('button', { name: 'Check my answer', exact: true })).toBeVisible()
+      expect(nextQuestionReads).toBe(readsBeforeRestoration + 1)
+      expect(gradingCalls).toBe(1)
       expect(calls).toBe(1)
     } finally {
       await endOpenSession(request)

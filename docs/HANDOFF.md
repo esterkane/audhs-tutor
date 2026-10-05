@@ -1166,3 +1166,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 assessment/explanation return: real wrong-answer tests reproduced feedback loss. Assessment now retained during in-page explanation visits, with hidden query/help/audio inactive and explicit Return to your question. No grading changes.29 unit/7 browser baseline, final29 unit/2 affected browser, lint/types pass; build before copy-only adjustment, visual/keyboard checked, review clear. See slices/assessment-explanation-return.md. Broader reload/pending-submission and repeated-error gates remain.
+
+
+2026-10-05 checked-question reload: activity-scoped pointer restores original server feedback via GET only, preserving question snapshot and historical-result semantics. Explicit next clears pointer; lookup/storage failures remain visible.36 unit/7 browser, full lint/types/build pass, narrow/keyboard checked, independent review clear. See slices/assessment-reload.md. Older no-pointer sessions and pre-delivery uncertainty use existing archive/recovery; broader races and repeated-error guidance remain.

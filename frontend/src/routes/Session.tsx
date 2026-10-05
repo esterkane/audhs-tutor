@@ -1,3 +1,4 @@
+import { useCheckedQuestion } from '../features/assess/useCheckedQuestion'
 import { RememberContext } from '../features/recent/RememberContext'
 import { AlongsideMode } from '../features/session/AlongsideMode'
 import { AssessmentRecovery } from '../features/assess/AssessmentRecovery'
@@ -418,6 +419,8 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
       {assessmentEntered && (phase === 'teach' || phase === 'assess') && (
         <div hidden={phase !== 'assess'}>
           <AssessPanel
+            key={JSON.stringify([sessionId, blockIndex, st?.block_started_at ?? null, activeSkillId])}
+            recoveryScope={JSON.stringify([sessionId, blockIndex, st?.block_started_at ?? null, activeSkillId])}
             active={phase === 'assess'}
             sessionId={sessionId}
             skillId={activeSkillId}
@@ -895,6 +898,7 @@ function TeachPanel({
 }
 
 function AssessPanel({
+  recoveryScope,
   active,
   sessionId,
   skillId,
@@ -912,23 +916,37 @@ function AssessPanel({
   onFinishBlock: () => void
   transitionPending: boolean
   active: boolean
+  recoveryScope: string
 }) {
+  const checked = useCheckedQuestion(recoveryScope, sessionId, skillId, active)
   const [round, setRound] = useState(0)
-  const next = useNextItem(sessionId, skillId, round, active)
-  const attempt = useAttempt(sessionId)
+  const next = useNextItem(sessionId, skillId, round, active && !checked.saved && !checked.error)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [answer, setAnswer] = useState('')
-  const [result, setResult] = useState<AttemptResult | null>(null)
+  const [localResult, setResult] = useState<AttemptResult | null>(null)
+  const result = localResult ?? checked.result.data ?? null
   const [startedAt, setStartedAt] = useState(() => Date.now())
   const [refreshedItem, setRefreshedItem] = useState<AssessmentView | null>(null)
   const [frozenItem, setFrozenItem] = useState<{ round: number; item: AssessmentView } | null>(null)
-  if (next.data?.item && frozenItem?.round !== round) setFrozenItem({ round, item: next.data.item })
-  const item = refreshedItem ?? (frozenItem?.round === round ? frozenItem.item : next.data?.item)
+  const candidate = checked.saved?.item ?? next.data?.item
+  if (candidate && frozenItem?.round !== round) setFrozenItem({ round, item: candidate })
+  const item = refreshedItem ?? (frozenItem?.round === round ? frozenItem.item : candidate)
   const [previousChoice, setPreviousChoice] = useState('')
   const displayedItem = useRef(item)
   useLayoutEffect(() => {
     displayedItem.current = item
   }, [item])
+  const attempt = useAttempt(sessionId, (pending, outcome) => {
+    if (displayedItem.current) checked.remember(pending, outcome, displayedItem.current)
+  })
+  const restoredAttempt = useRef<string | null>(null)
+  useEffect(() => {
+    const restored = checked.result.data
+    if (restored && restoredAttempt.current !== restored.attempt_id) {
+      restoredAttempt.current = restored.attempt_id
+      onGraded(restored) // local continuation readiness only; no submission or learning write
+    }
+  }, [checked.result.data, onGraded])
   const answerKey = `audhs-answer:${sessionId}:${item?.id ?? ''}`
   const savedAnswer = item ? readDraft(answerKey).answer : ''
   const currentAnswer = answer || savedAnswer
@@ -961,6 +979,7 @@ function AssessPanel({
   }
 
   function nextItem() {
+    if (!checked.clear()) return
     setRefreshedItem(null)
     setPreviousChoice('')
     setStartedAt(Date.now())
@@ -1001,6 +1020,7 @@ function AssessPanel({
           body.content_version !== item?.content_version
         )
           return false
+        if (attempt.recovery.pending && item) checked.remember(attempt.recovery.pending, saved, item)
         setResult(saved)
         onGraded(saved)
         clearDraft(answerKey)
@@ -1008,6 +1028,21 @@ function AssessPanel({
       }}
     />
   )
+  if (!result && (checked.saved || checked.error))
+    return (
+      <Card>
+        <p role={checked.error || checked.result.isError ? 'alert' : 'status'}>
+          {checked.error || (checked.result.error as Error | null)?.message || 'Restoring your checked question and feedback…'}
+        </p>
+        <p>No answer is submitted or graded by restoring feedback.</p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          {checked.saved && <Button disabled={checked.result.isFetching} onClick={() => void checked.result.refetch()}>Retry feedback lookup</Button>}
+          <Button onClick={onBack}>Back to explanation</Button>
+          <Button variant="ghost" onClick={nextItem}>Choose another question</Button>
+        </div>
+        {recoveryPanel}
+      </Card>
+    )
   if (next.isLoading)
     return (
       <>
@@ -1027,6 +1062,8 @@ function AssessPanel({
   return (
     <>
       {recoveryPanel}
+      {checked.error && <p role="alert">{checked.error}</p>}
+      {checked.saved && result && <p role="status">Restored your checked feedback. No new grading or learning progress. Scores and review dates describe that attempt.</p>}
       <Card>
         <p className="text-sm text-muted mb-2">
           {result

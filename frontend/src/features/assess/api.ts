@@ -1,6 +1,6 @@
-import { useAssessmentSubmission } from './useAssessmentSubmission'
+import { useAssessmentSubmission, type PendingAssessment } from './useAssessmentSubmission'
 import { useQuery } from '@tanstack/react-query'
-import { api } from '../../lib/api'
+import { api, type AttemptResult } from '../../lib/api'
 
 export function useNextItem(sessionId: string | null, skillId: string | null, key: number, active = true) {
   return useQuery({
@@ -10,6 +10,9 @@ export function useNextItem(sessionId: string | null, skillId: string | null, ke
   })
 }
 
-export function useAttempt(sessionId: string) {
-  return useAssessmentSubmission(sessionId)
+export function useAttempt(
+  sessionId: string,
+  onDelivered?: (pending: PendingAssessment, result: AttemptResult) => void,
+) {
+  return useAssessmentSubmission(sessionId, '/api/assess/attempt', onDelivered)
 }

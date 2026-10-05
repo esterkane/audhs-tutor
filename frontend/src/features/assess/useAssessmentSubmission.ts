@@ -81,7 +81,7 @@ function load(session: string) {
 }
 
 /** One unresolved grading intent per session/tab. Never regenerate from a lookup or timeout. */
-export function useAssessmentSubmission(sessionId: string, endpoint = '/api/assess/attempt') {
+export function useAssessmentSubmission(sessionId: string, endpoint = '/api/assess/attempt', onDelivered?: (pending: PendingAssessment, result: AttemptResult) => void) {
   const key = assessmentRecoveryKey(sessionId)
   const [previousAnswers, setPreviousAnswers] = useState(() => loadPrevious(sessionId))
   const [scope, setScope] = useState(key)
@@ -228,6 +228,11 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
       }
       if (result.assessment_id !== pending.body.assessment_id)
         throw new Error('The returned feedback belongs to another assessment.')
+      try {
+        onDelivered?.(pending, result)
+      } catch {
+        setError('Feedback arrived, but its return information could not be saved.')
+      }
       // Successful delivery may clear the intent. On storage failure retain it for explicit lookup.
       try {
         if (read(sessionId)?.id === pending.id) remove(sessionId)
