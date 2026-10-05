@@ -22,9 +22,9 @@ export function AdaptationCards({ origin }: { origin?: 'planner' | 'observed_pat
   const cards = (pending.data?.proposals ?? []).filter((c) => !origin || c.origin === origin)
   if (cards.length === 0) return null
   return (
-    <div className="grid gap-3" aria-label="Suggested adaptations">
+    <div className="grid min-w-0 grid-cols-1 gap-3 [overflow-wrap:anywhere]" aria-label="Suggested adaptations">
       {cards.map((c) => (
-        <Card key={c.id} className="border-accent">
+        <Card key={c.id} className="min-w-0 border-accent">
           <CardTitle>Suggestion: {c.what}</CardTitle>
           <p className="text-sm">{c.why}</p>
           <p className="text-sm text-muted mt-1">
@@ -38,6 +38,7 @@ export function AdaptationCards({ origin }: { origin?: 'planner' | 'observed_pat
             ).map((ch) => (
               <Button
                 key={ch.decision}
+                className="min-w-0 max-w-full whitespace-normal"
                 variant={ch.decision === 'try' ? 'primary' : 'secondary'}
                 disabled={decide.isPending}
                 title={ch.hint}

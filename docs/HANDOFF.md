@@ -1229,3 +1229,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 explicit resume preparation: Home Continue and Keep current session now request optional local loading without waiting. Ordinary GET/navigation remains read-only; ownership/ended guards and unchanged saved state verified. 47 backend checks, six browser journeys, lint/types/build and independent review pass. Direct-route re-entry, prompt processing and the three earlier CI UI failures remain open. See slices/local-tutor-preparation.md.
+
+
+2026-10-05 browser release gates: reproduced and repaired all three outstanding Home/visualizer failures from run37324111481. Suggestion-card reflow, visible global audio Stop test, and duplicate preview padding; no learning/audio behavior changes. Fifteen journeys, lint/types/build and review pass. See slices/browser-reflow-repair.md; latest-head full CI remains open.

@@ -87,6 +87,14 @@ test('recent area lookup failure offers retry without inventing reviews or stale
   page,
 }, info) => {
   await page.setViewportSize({ width: 320, height: 900 })
+  await page.route('**/api/adaptations', route => route.fulfill({ json: {
+    proposals: [{
+      id: 'movement-proposal', what: 'Leave movement out of the plan',
+      why: 'You skipped 3 of the last 3 movement blocks.',
+      origin: 'observed_pattern', pattern: 'skipped_movement', pref: 'plan.movement_enabled',
+      value: false, evidence: {}, proposed_at: '2026-10-05T00:00:00Z', reversible: true,
+    }],
+  } }))
   await page.addInitScript(() =>
     sessionStorage.setItem(
       'audhs-browse-areas:v1',
@@ -138,6 +146,12 @@ test('recent area lookup failure offers retry without inventing reviews or stale
   await expect(mode.getByRole('button')).toHaveCount(3)
   await page.evaluate(() => document.fonts.ready)
   await mode.screenshot({ path: info.outputPath('mode-options-zoom.png') })
+  const suggestions = page.getByLabel('Suggested adaptations')
+  await expect(suggestions.getByRole('button')).toHaveCount(3)
+  const decline = suggestions.getByRole('button', { name: 'No', exact: true })
+  await decline.focus()
+  await expect(decline).toBeFocused()
+  await suggestions.screenshot({ path: info.outputPath('adaptation-zoom.png') })
   await page.screenshot({ path: info.outputPath('recent-long-title-zoom.png'), fullPage: true })
   const overflow = await page.evaluate(() =>
     [...document.querySelectorAll('body *')]

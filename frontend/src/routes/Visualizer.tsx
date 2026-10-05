@@ -669,7 +669,7 @@ export function Visualizer() {
       <div className="grid gap-4">
         <div className="grid gap-4 self-start min-w-0">
           <Card className="grid gap-3">
-            <div ref={stage} className="bg-card p-2 rounded grid gap-2">
+            <div ref={stage} className="bg-card [&:fullscreen]:p-2 rounded grid gap-2">
               <div className="relative">
                 <canvas
                   ref={canvas}
