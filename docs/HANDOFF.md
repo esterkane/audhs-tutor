@@ -1336,3 +1336,7 @@ Fixed reproduced delayed saved-default override of an explicit Home mode selecti
 
 ## 2026-10-05 — Keep search matches during refresh failures
 All five groups retain cached matches with explicit stale-data warnings and independent Retry. Thirteen browser checks, lint/types/build, screenshot and review passed. See slices/recent-contexts.md; persistent offline cache and broad accessibility acceptance remain open.
+
+
+## 2026-10-05 — Assessment process-exit boundary evidence
+Added two real-child-exit tests for prepared/inference-started assessment records.21 request/execution tests and Ruff pass; retries preserve uncertain claims without model/learning writes. No runtime change. Proposed next ownership/migration/explicit-continuation contract is in slices/assessment-prepared-recovery-plan.md; R3 remains open. Earlier full frontend validation at5758c9f passed538 tests; CI runner acquisition remains an external limitation, not a claimed latest-head pass.
