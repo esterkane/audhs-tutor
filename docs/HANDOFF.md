@@ -1130,3 +1130,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 C7 project-guide search: separate validated/bounded manifest query searches course/section titles and explanations; exact course+step guide links, cap8 and total count.404 reports no guide; invalid/unavailable data gets independent retry. No notebook cells/notes indexing or code execution. Original9 and sanitized9 journeys pass; final sanitized rerun uses explicit404 default fixture so unrelated tests cannot read owner material. Lint/types pass, narrow layout inspected, read-only review clear. Skill/notes search and broader acceptance remain incomplete.
+
+
+2026-10-05 skill search: read-only catalog title/description matching, capped results, prerequisite status without fabricated mastery, exact existing lesson-choice links. Ten browser journeys pass in both variants, including no learning writes from result navigation; lint/types pass, narrow screenshot inspected, read-only review clear. CURRENT-WORK now begins with a reconciled execution checklist superseding historical next-step paragraphs. Search category orientation and broader daily-learning acceptance are next; notes/notebook search remains excluded.

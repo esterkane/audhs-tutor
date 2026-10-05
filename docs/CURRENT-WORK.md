@@ -1,5 +1,22 @@
 # Current work and next acceptance gates
 
+## Current execution checklist — 2026-10-05
+
+This checklist supersedes older “next” instructions below; those paragraphs are dated history, not parallel work orders. The broad goal remains active. Keep both repositories private and preserve the independent acquisition worktree delta.
+
+Recently delivered: authoritative palette/components, local Inter and Roboto Mono, original logo/favicon, grouped desktop/narrow shell, persistent companion context, contextual capture/return and reminder Undo, tab-local recent contexts, keyboard quick navigation, search for areas/project guides/saved explanations/source passages. Skill search is the current verified slice being published. These capabilities do not close whole-stage human or accessibility acceptance.
+
+Execution order:
+1. Finish skill-search paired publication. Exact lesson-choice links must not auto-start/change a session.
+2. Search usability: review long combined results on narrow screens, category orientation, independent failure/retry, return paths, and accessibility. Search still excludes notebook cells, edits, personal notes and saved thoughts; define indexing/privacy/version rules before adding them.
+3. Integrated daily-learning acceptance: choose topic → explanation → notebook → checked answer → pause/resume, including unavailable services, interrupted/slow requests, refresh, keyboard and narrow/zoom. Fix reproduced S3/S4 issues one at a time. Record comprehension and physical audio separately from automated evidence.
+4. Reliability follow-ups: unresolved inference/crash outcomes, content/draft conflicts, question suspension/replacement, job restart recovery. Reuse existing durable outcomes; never infer safe resend from timeout alone.
+5. Continue remaining design adoption per affected screen; retain reading size, local fonts, control visibility and honest evidence semantics. Browser zoom/screen-reader/full preference-flow coverage remain open.
+6. Resume material/provenance/quality work and dependent visual-learning/authoring/resource/code-tutor/avatar/native queues using their existing contracts. Acquired text is not proof of complete material coverage or a runnable notebook.
+
+See slices/recent-contexts.md for current search evidence; design/BRAND-FOUNDATION.md for colors, typography, logo and limitations. The stage ledger below remains a broader backlog. Estimates communicated to the owner are planning ranges, not completion promises.
+
+
 Reconciled 2026-10-03 against current code, slice records and two independent queue reviews. This page is the current navigation point; older dated handoff entries remain historical evidence. A shipped slice does not close its entire stage. Both repository variants remain private.
 
 ## Working baseline

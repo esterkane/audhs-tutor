@@ -156,3 +156,21 @@ test('project search validates local guide and opens the exact section', async (
   await expect(page).toHaveURL(/\/programs\?course=data&step=clean$/)
   await expect(page.getByRole('heading', { name: 'Cleaning', exact: true })).toBeVisible()
 })
+
+test('skill results open an explicit lesson choice without starting it', async ({ page }) => {
+  const writes: string[] = []
+  page.on('request', request => { if (request.url().includes('/api/') && request.method() !== 'GET' && !request.url().endsWith('/api/corpus/search')) writes.push(request.url()) })
+  await page.route('**/api/skills', route => route.fulfill({ json: { skills: [{ id: 'vectors', title: 'Vector comparison', description: 'Compare directions.', unlocked: false, domain: 'math', slug: 'vectors', success_criteria: [], prerequisites: ['numbers'], mastery: 0, state: {} }], next_skill_id: null } }))
+  await page.route('**/api/sessions/current', route => route.fulfill({ json: null }))
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], next_cursor: null } }))
+  await page.route('**/api/corpus/search', route => route.fulfill({ json: { hits: [] } }))
+  await page.goto('/search?q=directions')
+  const group = page.getByRole('region', { name: 'Skills', exact: true })
+  await expect(group.getByText('Prerequisites are not yet met.')).toBeVisible()
+  const link = group.getByRole('link', { name: 'Vector comparison' })
+  await link.focus()
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/\/\?lesson=vectors$/)
+  await expect(page.getByRole('heading', { name: 'Learn: Vector comparison' })).toBeVisible()
+  expect(writes).toEqual([])
+})

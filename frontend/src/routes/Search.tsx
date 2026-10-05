@@ -1,3 +1,4 @@
+import { SkillSearch } from '../features/skills/SkillSearch'
 import { ProjectSearch } from '../features/programs/ProjectSearch'
 import { useAreas } from '../features/areas/api'
 import { useQuery } from '@tanstack/react-query'
@@ -12,7 +13,7 @@ export function Search() {
   const query = params.get('q')?.trim() ?? ''
   return <div className="grid gap-4 min-w-0">
     <h1 className="text-page-title font-semibold">Search material</h1>
-    <p>Find knowledge areas, project guides, saved tutor explanations and passages in your indexed sources.</p>
+    <p>Find knowledge areas, skills, project guides, saved tutor explanations and passages in your indexed sources.</p>
     <p className="text-sm text-muted">Searches local material, not the web. Notebook edits, unsaved chats, project notes and saved thoughts are not searched here.</p>
     <SearchForm key={`form:${query}`} initial={query} onSearch={q => setParams(q ? { q } : {})} />
     {!query ? <p>Enter a phrase to search your local material.</p> : query.length > 200 ? <p role="alert">Use a search of 200 characters or fewer.</p> : <Results key={`results:${query}`} query={query} />}
@@ -55,6 +56,7 @@ function Results({ query }: { query: string }) {
         {matchingAreas.length > 8 && <Link className="underline" to="/areas">Browse all knowledge areas</Link>}
       </>}
     </section>
+    <SkillSearch phrase={query} />
     <ProjectSearch phrase={query} />
     <section aria-labelledby="search-answers" className="rounded-md border border-line p-3 min-w-0 break-words">
       <h2 id="search-answers" className="text-panel-heading font-semibold">Saved explanations</h2>
