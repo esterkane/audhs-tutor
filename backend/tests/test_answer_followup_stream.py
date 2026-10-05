@@ -87,7 +87,7 @@ async def test_followup_stream_keeps_context_identity_ownership_and_evidence(
     assert await db.scalar(select(func.count()).select_from(AssessmentAttempt)) == 0
 
 
-@pytest.mark.parametrize("failure", ["partial", "save"])
+@pytest.mark.parametrize("failure", ["partial", "length", "save"])
 async def test_followup_failure_never_regenerates_or_loses_save_recovery(
     client, db, fake_local, monkeypatch, failure
 ):
@@ -114,6 +114,17 @@ async def test_followup_failure_never_regenerates_or_loses_save_recovery(
     fake_local.text = "Compare these groups carefully."
     if failure == "partial":
         fake_local.fail_after_words = 1
+    elif failure == "length":
+        from app.models_ai.provider import StreamFinish
+
+        original = fake_local.stream
+
+        async def capped(*args, **kwargs):
+            async for event in original(*args, **kwargs):
+                yield event
+            yield StreamFinish(reason="length")
+
+        monkeypatch.setattr(fake_local, "stream", capped)
     else:
 
         async def fail(connection, **snapshot):
@@ -129,8 +140,10 @@ async def test_followup_failure_never_regenerates_or_loses_save_recovery(
     retry = events(await client.post("/api/answers/p/followup/stream", json=body, headers=headers))
     assert len(fake_local.calls) == calls == 1
     assert await db.scalar(select(func.count()).select_from(AssessmentAttempt)) == 0
-    if failure == "partial":
+    if failure in {"partial", "length"}:
         assert first[-1][0] == "error"
+        if failure == "length":
+            assert first[-1][1]["code"] == "tutor_output_limit"
         assert not any(kind == "done" for kind, _ in first)
         assert retry[-1][1]["code"] == "request_unresolved"
         assert await db.scalar(select(func.count()).select_from(TutorAnswer)) == 1

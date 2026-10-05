@@ -188,3 +188,25 @@ test('unsaved follow-up can be recovered after refresh without a new request ide
   await page.screenshot({ path: info.outputPath('unsaved-recovered.png'), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+test('output-limited discussion keeps its preview and recovery controls', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/sessions/current', route => route.fulfill({ json: { id: 'session' } }))
+  await page.route('**/api/answers/parent', route => route.fulfill({ json: { id: 'parent', text: 'Original explanation', request_text: 'Explain', request: {}, metadata: {}, created_at: '2026-10-01T10:00:00Z' } }))
+  await page.route('**/api/answers/*/feedback', route => route.fulfill({ json: { verdict: null, note: '', hidden: false, revision: 0 } }))
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], total: 0 } }))
+  await page.route('**/api/answers/parent/followup/stream', route => route.fulfill({
+    contentType: 'text/event-stream',
+    body: 'event: token\ndata: {"text":"An unfinished explanation"}\n\nevent: error\ndata: {"code":"tutor_output_limit","message":"The reply reached the model output limit. Keep a copy and use Start different work to ask a shorter question."}\n\n',
+  }))
+  await page.goto('/answers/parent')
+  await page.getByRole('textbox', { name: 'Your follow-up question' }).fill('Explain in detail')
+  await page.getByRole('button', { name: 'Send follow-up', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('region', { name: 'Unfinished follow-up' })).toContainText('An unfinished explanation')
+  await expect(page.getByRole('textbox', { name: 'Your follow-up question' })).toHaveValue('Explain in detail')
+  await expect(page.getByText(/reply reached the model output limit/)).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Open saved follow-up' })).toHaveCount(0)
+  await page.screenshot({ path: info.outputPath('output-limit-followup.png'), fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})

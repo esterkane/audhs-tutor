@@ -123,3 +123,36 @@ async def test_actual_asgi_disconnect_awaits_worker_cleanup(monkeypatch):
         response({"type": "http", "asgi": {"spec_version": "2.3"}}, receive, send), 1
     )
     assert cleaned.is_set()
+
+
+async def test_output_limit_keeps_preview_but_never_saves_a_complete_answer(
+    client, db, fake_local, monkeypatch
+):
+    from app.models_ai.provider import StreamFinish
+
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    original = fake_local.stream
+
+    async def capped(*args, **kwargs):
+        async for event in original(*args, **kwargs):
+            yield event
+        yield StreamFinish(reason="length")
+
+    monkeypatch.setattr(fake_local, "stream", capped)
+    body = {
+        "session_id": session["id"],
+        "intent": "explain",
+        "exercise": "Explain this",
+        "code": "",
+    }
+    headers = {"Idempotency-Key": str(uuid4())}
+    response = await client.post("/api/playground/tutor/stream", json=body, headers=headers)
+    assert "event: token" in response.text
+    assert "tutor_output_limit" in response.text
+    assert "event: done" not in response.text
+    retry = await client.post("/api/playground/tutor/stream", json=body, headers=headers)
+    assert "request_unresolved" in retry.text
+    assert len(fake_local.calls) == 1
+    assert await db.scalar(select(func.count()).select_from(TutorAnswer)) == 0
+    assert await db.scalar(select(func.count()).select_from(AssessmentAttempt)) == 0

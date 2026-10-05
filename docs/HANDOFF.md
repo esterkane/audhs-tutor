@@ -1268,3 +1268,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 local Session output-cap safeguard: explicit Ollama length termination now marks a reply partial and prevents completed-history save, preserving text/accounting/replay.72 backend tests plus final7 API checks,3 browser journeys, Ruff/format/full mypy and review pass; local adapter smoke and narrow visual/keyboard verified. See slices/local-tutor-latency.md. Other providers and Study Tutor/follow-up consumers remain separate work.
+
+
+2026-10-05 streamed Study Tutor and saved discussions reject output-limit completions while retaining preview/draft and original retry identity.28 focused backend tests, full mypy, lint/format, narrow keyboard browser test and review pass. No completed-answer/assessment writes or duplicate retry generation. See slices/local-tutor-latency.md; buffered/structured paths remain separate.

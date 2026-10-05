@@ -27,7 +27,7 @@ from app.kernel import skill_graph
 from app.kernel.arithmetic_checks import VERSION as ARITHMETIC_VERSION
 from app.kernel.bin_checks import VERSION as BIN_VERSION
 from app.knowledge.repository import RetrievalRepository
-from app.models_ai.gateway import GatewayError, ModelGateway
+from app.models_ai.gateway import GatewayError, ModelGateway, OutputLimitError
 from app.models_ai.provider import Message, ProviderError, TaskClass
 from app.models_ai.routing import NoModelReady
 from app.orchestrator import answer_semantic, prompts, tools
@@ -436,6 +436,13 @@ async def respond(
                 selected_feedback,
                 socratic=body.questioning_style == "socratic",
             )
+    except OutputLimitError as exc:
+        raise AppError(
+            "tutor_output_limit",
+            "The reply reached the model's output limit. The received text is incomplete and was not "
+            "saved as a completed answer. Keep a copy; use Start different work to ask a shorter question.",
+            http_status=503,
+        ) from exc
     except (GatewayError, ValidationError, NoModelReady) as exc:
         raise AppError(
             "tutor_unavailable",

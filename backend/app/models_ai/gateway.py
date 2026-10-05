@@ -108,6 +108,10 @@ class GatewayError(Exception):
     pass
 
 
+class OutputLimitError(GatewayError):
+    """A provider explicitly stopped at its generation limit."""
+
+
 class StreamHandle:
     """Filled in after a `stream()` finishes so the caller can link traces to the model_call row."""
 
@@ -666,6 +670,8 @@ class ModelGateway:
                 await on_token(token)
         finally:
             await stream.aclose()
+        if handle.finish_reason == "length":
+            raise OutputLimitError("The streamed reply reached its output limit.")
         if not handle.model_call_id or not handle.registry_id or handle.outcome != "ok":
             raise GatewayError("The streamed reply did not complete.")
         spec = await registry.get_spec(self.db, handle.registry_id)
