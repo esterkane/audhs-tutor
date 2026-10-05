@@ -1,12 +1,13 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, BackgroundTasks, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
-from app.api.deps import DB, Learner
+from app.api.deps import DB, Learner, SettingsDep
 from app.api.plan import build_plan, plan_to_json, session_lock
+from app.api.tutor_preparation import schedule_preparation
 from app.core.errors import AppError
 from app.db import models
 from app.db.models import Assessment, ReviewItem, Session
@@ -135,7 +136,14 @@ async def check_selection(skill_id: str, db: DB, learner: Learner) -> SkillView:
     response_model=SessionOut,
     status_code=201,
 )
-async def start(body: SessionStart, db: DB, learner: Learner) -> SessionOut:
+async def start(
+    body: SessionStart,
+    db: DB,
+    learner: Learner,
+    request: Request,
+    background: BackgroundTasks,
+    settings: SettingsDep,
+) -> SessionOut:
     if body.skill_id:
         await check_selection(body.skill_id, db, learner)
     chosen = await skill_graph.selection(db, learner.id, body.skill_id)
@@ -179,7 +187,9 @@ async def start(body: SessionStart, db: DB, learner: Learner) -> SessionOut:
     await ksession.emit_started(db, s, [b.type for b in plan.blocks])
     # 4. look for patterns worth a card
     await adaptation.observe(db, learner.id, session=s)
-    return await _out(db, learner.id, s)
+    result = await _out(db, learner.id, s)
+    schedule_preparation(request, background, settings, learner.id, s.id)
+    return result
 
 
 @router.get(

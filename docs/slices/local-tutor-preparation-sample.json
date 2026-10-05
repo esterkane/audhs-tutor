@@ -1,0 +1,35 @@
+{
+  "dataset": "synthetic arithmetic; isolated Ollama 0.33.3; no learner DB",
+  "model": "gemma3:12b",
+  "context_length": 32768,
+  "temperature": 0.2,
+  "seed": 7,
+  "max_output_tokens": 120,
+  "runs": [
+    {
+      "case": "cold-direct",
+      "first_text_s": 13.115,
+      "total_s": 16.031,
+      "load_s": 6.735,
+      "prefill_s": 6.364,
+      "input_tokens": 1606,
+      "output_tokens": 82,
+      "text": "Your answer of 4 was incorrect because you didn't count the steps. The problem asks you to count *forward* from 2, not to simply add 3.\n\nFor example, if the problem were \"count three steps forward from 2,\" you would start at 2 and count: 2, 3, 4, 5. The final number is 5."
+    },
+    {
+      "case": "empty-preparation",
+      "loaded": true,
+      "elapsed_s": 3.012
+    },
+    {
+      "case": "after-preparation",
+      "first_text_s": 6.06,
+      "total_s": 8.977,
+      "load_s": 0.003,
+      "prefill_s": 6.049,
+      "input_tokens": 1606,
+      "output_tokens": 82,
+      "text": "Your answer of 4 was incorrect because you didn't count the steps. The problem asks you to count *forward* from 2, not to simply add 3.\n\nFor example, if the problem were \"count three steps forward from 2,\" you would start at 2 and count: 2, 3, 4, 5. The final number is 5."
+    }
+  ]
+}

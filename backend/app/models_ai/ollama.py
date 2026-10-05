@@ -3,6 +3,7 @@
 import time
 from collections.abc import AsyncIterator
 from typing import Any, cast
+from urllib.parse import urlparse
 
 import httpx
 import instructor
@@ -40,6 +41,36 @@ class OllamaProvider:
 
     def _model(self, spec: ModelSpec) -> str:
         return f"ollama_chat/{spec.model}"
+
+    async def preload(self, spec: ModelSpec) -> bool:
+        """Load an installed local model only; no prompts, inference or model pull."""
+        if (
+            urlparse(self.host).hostname not in {"localhost", "127.0.0.1", "::1"}
+            or spec.provider != "ollama"
+            or self.keep_alive_s == 0
+        ):
+            return False
+        async with httpx.AsyncClient(timeout=min(self.timeout_s, 30.0)) as client:
+            info = await client.post(f"{self.host}/api/show", json={"model": spec.model})
+            info.raise_for_status()
+            details = info.json()
+            # Cloud aliases may still have provider=ollama. Require local weight metadata,
+            # and inspect upstream metadata rather than trusting a model's display name.
+            if (
+                details.get("remote_host")
+                or details.get("remote_model")
+                or not details.get("model_info")
+            ):
+                return False
+            response = await client.post(
+                f"{self.host}/api/chat",
+                json={"model": spec.model, "stream": False, "keep_alive": self.keep_alive_s},
+            )
+            response.raise_for_status()
+            payload = response.json()
+            if not payload.get("done") or payload.get("message", {}).get("content"):
+                raise ProviderError("Local model preparation did not return an empty completion")
+            return True
 
     async def complete(
         self,

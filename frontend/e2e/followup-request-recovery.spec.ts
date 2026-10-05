@@ -21,10 +21,11 @@ for (const width of [1280, 390]) {
     )
     let key = ''
     let generations = 0
-    await page.route('**/api/answers/parent/followup', async (route) => {
+    await page.route('**/api/answers/parent/followup/stream', async (route) => {
       expect(route.request().postDataJSON()).toEqual({
         session_id: 'session',
         question: 'Show a small example.',
+        purpose: 'followup',
       })
       const nextKey = route.request().headers()['idempotency-key']
       expect(nextKey).toMatch(/^[a-f0-9-]{36}$/)
@@ -35,13 +36,14 @@ for (const width of [1280, 390]) {
       } else {
         expect(nextKey).toBe(key)
         await route.fulfill({
-          json: {
+          contentType: 'text/event-stream',
+          body: `event: done\ndata: ${JSON.stringify({
             text: 'Illustrative: compare 9/10 with 6/10.',
             answer_id: 'child',
             turn_id: 'turn',
             model: 'fixture',
             route: 'fake',
-          },
+          })}\n\n`,
         })
       }
     })
