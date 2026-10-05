@@ -95,6 +95,7 @@ it('keeps the current session and returns to its review phase without starting o
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
       if (init?.method === 'POST') posts.push(url)
+      if (url === '/api/sessions/old/prepare') return jsonResponse({ error: 'unavailable' }, 503)
       if (url === '/api/skills')
         return jsonResponse({ skills: [{ id: 'chosen', title: 'Chosen', unlocked: true }] })
       return jsonResponse({
@@ -112,6 +113,6 @@ it('keeps the current session and returns to its review phase without starting o
   )
   fireEvent.click(await screen.findByRole('button', { name: 'Keep current session' }))
   expect(await screen.findByText('Existing review')).toBeInTheDocument()
-  expect(posts).toEqual([])
+  expect(posts).toEqual(['/api/sessions/old/prepare'])
   expect(useMode.getState().skillId).toBe('default')
 })

@@ -1235,3 +1235,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 context-allocation latency experiment: identical synthetic requests at32768 vs8192 yielded only~0.04s median first-text difference across four isolated samples. No runtime setting changed; larger-context support retained. Exact saved-answer reuse inspected, main-session automatic replay still requires its own learning-evidence contract. Next matched-model prefix/semantic evaluation; see slices/local-tutor-latency.md.
+
+
+2026-10-05 matched-model latency investigation: candidate repeated-turn first-text median1.347s vs5.531s current; hard checks8/10 vs6/10, but semantic weaknesses and deployed-setting/runtime gaps prevent rollout. No app prompt change. Full browser CI37327101830 passed; fixed backend formatting and stale resume unit expectation, full frontend520 plus backend16 pass. See slices/local-tutor-latency.md and matched-prompt-order-sample.json.

@@ -1,0 +1,428 @@
+{
+  "dataset": "Synthetic attention source with five existing eval requests; no learner DB",
+  "model": "gemma3:12b",
+  "temperature": 0.2,
+  "seed": 7,
+  "context_requested": 32768,
+  "method": "Variant order alternated by case; unload isolated model and preload between variants; two turns change only memory .61 to .609999; second turn can reuse prefix; no prompts changed in application",
+  "limitations": [
+    "Single seed; synthetic learner state; no historical-answer block",
+    "Experimental temperature .2 differs from deployed Session default .3",
+    "Native raw outputs before app postprocessing",
+    "Some CPU-side test validation ran concurrently; latency figures are exploratory, not production percentiles"
+  ],
+  "runs": [
+    {
+      "case": "explain-qkv",
+      "variant": "current",
+      "turn": 1,
+      "action": "explain",
+      "first_text_s": 5.924,
+      "total_s": 12.139,
+      "prefill_s": 5.912,
+      "input_tokens": 1588,
+      "output_tokens": 172,
+      "stop_reason": "stop",
+      "hard": {
+        "citation_present": true,
+        "max_sentences": false,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Queries, keys, and values are all vectors that participate in a single attention step. Queries represent what a token is looking for, keys represent what each candidate token offers, and values carry the information [1]. The query is compared to each key to determine how much attention should be paid to the corresponding value.\n\n## A worked example\n\nImagine you're searching for information about \"cats.\" Your query might be a vector representing \"cats.\" Each document in a database has a key vector representing its topic. The dot product of your \"cats\" query and each document's key vector tells you how relevant that document is to your search. The value vector for each document contains the actual text of the document.\n\n## Try one step\n\nGiven that queries represent what a token is looking for, what do you think keys represent?",
+      "prompt_sha256": "1f4c566b1f5e9440dee126f82ffad459b9c13d966e74e1b231ed6da706c6c30f"
+    },
+    {
+      "case": "explain-qkv",
+      "variant": "current",
+      "turn": 2,
+      "action": "explain",
+      "first_text_s": 6.002,
+      "total_s": 11.256,
+      "prefill_s": 5.912,
+      "input_tokens": 1592,
+      "output_tokens": 147,
+      "stop_reason": "stop",
+      "hard": {
+        "citation_present": true,
+        "max_sentences": false,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Queries, keys, and values are all vectors that participate in a single attention step. Queries represent what a token is looking for, keys represent what each candidate token offers, and values carry the information [1].\n\n## A worked example\n\nImagine you're searching for a specific book in a library. Your search terms (what you're looking for) are the *query*. The library catalog entries (what each book offers) are the *keys*. If your search terms match a catalog entry, you retrieve the book itself \u2013 that's the *value* [1].\n\n## Try one step\n\nGiven that queries represent what a token is looking for, what do you think the keys represent?",
+      "prompt_sha256": "af2a82a782ac4797786687c0eb287355e245a371d4c9915547ac36201c9b5f3e"
+    },
+    {
+      "case": "explain-qkv",
+      "variant": "stable-first",
+      "turn": 1,
+      "action": "explain",
+      "first_text_s": 5.925,
+      "total_s": 11.73,
+      "prefill_s": 5.915,
+      "input_tokens": 1588,
+      "output_tokens": 157,
+      "stop_reason": "stop",
+      "hard": {
+        "citation_present": true,
+        "max_sentences": false,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Queries, keys, and values are all vectors involved in calculating attention [1]. Queries represent what a token is looking for, keys represent what each candidate token offers, and values carry the information to be combined [1].\n\n## A worked example\n\nImagine you're searching for a specific ingredient in a pantry. Your \"query\" is what you're looking for (e.g., \"salt\"). Each item in the pantry has a \"key\" describing what it is (e.g., \"sugar,\" \"flour,\" \"salt\"). The \"value\" is the actual item itself.\n\n## Try one step\n\nNow, consider a sentence: \"The cat sat on the mat.\" What would be a query for the word \"cat\"?",
+      "prompt_sha256": "26b105e83c44b68871868fdc2a68b70bc5dc12c3d6a511b670f911a3b206c6b0"
+    },
+    {
+      "case": "explain-qkv",
+      "variant": "stable-first",
+      "turn": 2,
+      "action": "explain",
+      "first_text_s": 2.317,
+      "total_s": 8.505,
+      "prefill_s": 2.304,
+      "input_tokens": 1592,
+      "output_tokens": 158,
+      "stop_reason": "stop",
+      "hard": {
+        "citation_present": true,
+        "max_sentences": false,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Queries, keys, and values are all vectors involved in calculating attention [1]. Queries represent what a token is looking for, keys represent what each candidate token offers, and values carry the information to be combined [1].\n\n## A worked example\n\nImagine you're searching for a specific ingredient in a pantry. Your \"query\" is what you're looking for (e.g., \"salt\"). Each item in the pantry has a \"key\" describing what it is (e.g., \"sugar,\" \"flour,\" \"salt\"). The \"value\" is the actual item itself.\n\n## Try one step\n\nNow, consider a sentence: \"The cat sat on the mat.\" What would be a reasonable query for the word \"cat\"?",
+      "prompt_sha256": "70df445e92915f7f3bf653068651d99983960f1f086332fa37fb541bbcd8bef9"
+    },
+    {
+      "case": "hint-first-scaled-attention",
+      "variant": "stable-first",
+      "turn": 1,
+      "action": "hint",
+      "first_text_s": 5.516,
+      "total_s": 7.423,
+      "prefill_s": 5.506,
+      "input_tokens": 1479,
+      "output_tokens": 54,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) The scaling by sqrt(d_k) helps keep the variance of the dot products under control [1]. Without it, large scores can lead to problems with the softmax function. Next: consider what impact that has on the gradients during training.",
+      "prompt_sha256": "83ee340b02429eb4acefdd08474d48feab6aef0f82b87abebdd2e7646baf9ee3"
+    },
+    {
+      "case": "hint-first-scaled-attention",
+      "variant": "stable-first",
+      "turn": 2,
+      "action": "hint",
+      "first_text_s": 1.347,
+      "total_s": 3.255,
+      "prefill_s": 1.334,
+      "input_tokens": 1483,
+      "output_tokens": 54,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Scaling by sqrt(d_k) helps keep the variance of the dot products near one [1]. This prevents the softmax function from becoming too peaked, which can hinder learning. What do you think would happen if the scores became very large?",
+      "prompt_sha256": "fd322495ae4861842ab6aa2272116044b79318c30ec8b1b4a460db65b084adcf"
+    },
+    {
+      "case": "hint-first-scaled-attention",
+      "variant": "current",
+      "turn": 1,
+      "action": "hint",
+      "first_text_s": 5.523,
+      "total_s": 7.534,
+      "prefill_s": 5.514,
+      "input_tokens": 1479,
+      "output_tokens": 57,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Scaling by sqrt(d_k) helps keep the variance of the dot products near one [1]. This prevents the softmax function from becoming too peaked, which can hinder learning. What do you think might happen to the gradients if the scores become very large?",
+      "prompt_sha256": "eff79ae27aae726068d3757baa2f42e3b4d63914f7c7cf5bec71a1e4d397b641"
+    },
+    {
+      "case": "hint-first-scaled-attention",
+      "variant": "current",
+      "turn": 2,
+      "action": "hint",
+      "first_text_s": 5.531,
+      "total_s": 7.594,
+      "prefill_s": 5.518,
+      "input_tokens": 1483,
+      "output_tokens": 57,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Scaling by sqrt(d_k) helps keep the variance of the dot products near one [1]. This prevents the softmax function from becoming too peaked, which can hinder learning. What do you think might happen to the gradients if the scores become very large?",
+      "prompt_sha256": "5ddad5f6086dab71f31372c1705b023d017837e7406e6de2187da2d1ab6090a1"
+    },
+    {
+      "case": "kv-cache-recap",
+      "variant": "current",
+      "turn": 1,
+      "action": "summarize",
+      "first_text_s": 5.321,
+      "total_s": 8.554,
+      "prefill_s": 5.312,
+      "input_tokens": 1416,
+      "output_tokens": 90,
+      "stop_reason": "stop",
+      "hard": {
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) A KV cache speeds up autoregressive decoding by storing key and value representations from previous tokens [1]. This avoids recomputing them for each new token, saving computational work. New queries still attend over these cached keys and values, but the cache doesn't eliminate attention entirely [1]. The cache consumes memory that grows with the sequence length [1]. Can you explain why post-softmax masking isn't a good idea?",
+      "prompt_sha256": "ee26434c0f1f0dde196f0fde37fcbeaaab2c2002996fefc892d47aec26d4a5ff"
+    },
+    {
+      "case": "kv-cache-recap",
+      "variant": "current",
+      "turn": 2,
+      "action": "summarize",
+      "first_text_s": 5.397,
+      "total_s": 9.294,
+      "prefill_s": 5.384,
+      "input_tokens": 1420,
+      "output_tokens": 106,
+      "stop_reason": "stop",
+      "hard": {
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) A KV cache speeds up autoregressive decoding by storing key and value representations from previous tokens [1]. This avoids recomputing them for each new token, saving computational work. New queries still attend over these cached keys and values, but the cache doesn't eliminate attention entirely [1]. It consumes memory that grows with the sequence length [1], and is distinct from other memory mechanisms like databases or prompt reuse [1]. What\u2019s the key difference between a KV cache and a database of completed answers?",
+      "prompt_sha256": "54e0f0db6c4c596827e8d1e431af0e7b16442e68293f8bda6ca950a3308f8aa9"
+    },
+    {
+      "case": "kv-cache-recap",
+      "variant": "stable-first",
+      "turn": 1,
+      "action": "summarize",
+      "first_text_s": 5.405,
+      "total_s": 9.323,
+      "prefill_s": 5.395,
+      "input_tokens": 1416,
+      "output_tokens": 109,
+      "stop_reason": "stop",
+      "hard": {
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) A KV cache speeds up autoregressive decoding by storing previously computed key and value representations [1]. This allows each new token to attend only to the cached keys and values of prior tokens, rather than recomputing them. The cache consumes memory that grows with the sequence length [1]. It's important to remember that the cache doesn't eliminate all attention work; new queries still attend to the cached keys and values [1]. What's the difference between a KV cache and a database of completed answers [1]?",
+      "prompt_sha256": "3710059f1faa85b2fff55ae6330d535672130ea587e81cb60dee533038bf476e"
+    },
+    {
+      "case": "kv-cache-recap",
+      "variant": "stable-first",
+      "turn": 2,
+      "action": "summarize",
+      "first_text_s": 1.085,
+      "total_s": 4.947,
+      "prefill_s": 1.071,
+      "input_tokens": 1420,
+      "output_tokens": 109,
+      "stop_reason": "stop",
+      "hard": {
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) A KV cache speeds up autoregressive decoding by storing previously computed key and value representations [1]. This allows each new token to attend only to the cached keys and values of prior tokens, rather than recomputing them. The cache consumes memory that grows with the sequence length [1]. It's important to note that the cache doesn't eliminate all attention work; new queries still attend to the cached keys and values [1]. What's the difference between a KV cache and a database of completed answers [1]?",
+      "prompt_sha256": "5c857c36624161ecec3146d7c0e7004c00df13677a0a2aca1989408448d3be35"
+    },
+    {
+      "case": "negated-full-solution",
+      "variant": "stable-first",
+      "turn": 1,
+      "action": "hint",
+      "first_text_s": 5.67,
+      "total_s": 8.643,
+      "prefill_s": 5.661,
+      "input_tokens": 1478,
+      "output_tokens": 68,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Scaling by sqrt(d_k) helps keep the variance of the dot products near one [1]. This prevents the softmax from becoming too peaked, which can hinder gradient flow during training. Now, consider what would happen if the variance *wasn't* controlled \u2013 how might that affect the softmax output?",
+      "prompt_sha256": "c178a0e32f456a220a1ba20a2b068ef8eb415bc78349160856cdb3a76b622d8a"
+    },
+    {
+      "case": "negated-full-solution",
+      "variant": "stable-first",
+      "turn": 2,
+      "action": "hint",
+      "first_text_s": 1.288,
+      "total_s": 4.282,
+      "prefill_s": 1.27,
+      "input_tokens": 1482,
+      "output_tokens": 68,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Scaling by sqrt(d_k) helps keep the variance of the dot products near one [1]. This prevents the softmax from becoming too peaked, which can hinder gradient flow during training. Now, consider what would happen if the variance *wasn't* controlled \u2013 how might that affect the softmax output?",
+      "prompt_sha256": "408c490764323c6412a25b9f288bc1f96a9df7caaffde27bd1eb09dfe05d8000"
+    },
+    {
+      "case": "negated-full-solution",
+      "variant": "current",
+      "turn": 1,
+      "action": "hint",
+      "first_text_s": 5.585,
+      "total_s": 8.203,
+      "prefill_s": 5.575,
+      "input_tokens": 1478,
+      "output_tokens": 71,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Scaling by sqrt(d_k) helps keep the variance of the dot products near one [1]. This prevents the softmax function from becoming too peaked, which can hinder gradient flow during training. Now, consider what might happen if the variance *wasn't* controlled \u2013 what impact could that have on the softmax output?",
+      "prompt_sha256": "72e524ec5c993f07a8af83716d7e6edca550135b440e4c7b6275981021a3b25a"
+    },
+    {
+      "case": "negated-full-solution",
+      "variant": "current",
+      "turn": 2,
+      "action": "hint",
+      "first_text_s": 4.066,
+      "total_s": 6.609,
+      "prefill_s": 4.054,
+      "input_tokens": 1482,
+      "output_tokens": 71,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Scaling by sqrt(d_k) helps keep the variance of the dot products near one [1]. This prevents the softmax function from becoming overly peaked, which can hinder gradient flow during training. Now, consider what might happen if the variance *wasn't* controlled \u2013 what impact could that have on the softmax output?",
+      "prompt_sha256": "120478d140ad4cc71111e601a45b6d21861c7d052e1ad3c7259963c940e93859"
+    },
+    {
+      "case": "socratic-masking",
+      "variant": "current",
+      "turn": 1,
+      "action": "explain",
+      "first_text_s": 6.014,
+      "total_s": 10.67,
+      "prefill_s": 6.004,
+      "input_tokens": 1617,
+      "output_tokens": 120,
+      "stop_reason": "length",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": false
+      },
+      "text": "(analogy) Zeroing weights *after* softmax removes probability mass without re-normalizing, which changes the meaning of the remaining weights [1]. Applying negative infinity *before* softmax ensures those positions have zero probability and the remaining probabilities are correctly normalized.\n\n## The idea\nMasking with negative infinity before softmax is crucial for maintaining the correct probability distribution. This ensures that the softmax function accurately reflects the relative importance of the unmasked positions.\n\n## A worked example\nImagine you have scores [2, 5, 1, 3] and want to mask the third position.",
+      "prompt_sha256": "65d89bd624293c56cb026518eec10d9229e6f73c61de059bdbb67eb102861873"
+    },
+    {
+      "case": "socratic-masking",
+      "variant": "current",
+      "turn": 2,
+      "action": "explain",
+      "first_text_s": 6.067,
+      "total_s": 10.343,
+      "prefill_s": 6.009,
+      "input_tokens": 1621,
+      "output_tokens": 120,
+      "stop_reason": "length",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": false
+      },
+      "text": "(analogy) Zeroing weights *after* softmax removes mass without renormalization, which changes the probabilities [1]. Applying negative infinity *before* softmax ensures those positions have zero probability and the remaining probabilities are renormalized [1].\n\n## The idea\nMasking logits with negative infinity before applying softmax is crucial for maintaining probability distributions. This ensures that the remaining, unmasked positions are properly normalized.\n\n## A worked example\nImagine you have two tokens, A and B, and you want to mask B. If you zero B's weight *after* softmax, the total probability no longer sums",
+      "prompt_sha256": "e6a5dfcff7fb3905ae2e8bb781a133fcedb90c8af8ed92cd0aef4a223efc62c3"
+    },
+    {
+      "case": "socratic-masking",
+      "variant": "stable-first",
+      "turn": 1,
+      "action": "explain",
+      "first_text_s": 6.0,
+      "total_s": 8.655,
+      "prefill_s": 5.99,
+      "input_tokens": 1617,
+      "output_tokens": 73,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Zeroing weights *after* softmax removes probability mass without re-normalizing, which can skew the remaining weights [1]. Applying negative infinity *before* softmax ensures those positions have zero probability and the remaining probabilities are correctly normalized.\n\nWhat would happen to the sum of the probabilities if you zeroed the weights *after* the softmax?",
+      "prompt_sha256": "fdf7127449cb705b9200baa4d9e74c2ef84b8e88ffb1b8085577f308730b1bda"
+    },
+    {
+      "case": "socratic-masking",
+      "variant": "stable-first",
+      "turn": 2,
+      "action": "explain",
+      "first_text_s": 1.793,
+      "total_s": 4.224,
+      "prefill_s": 1.783,
+      "input_tokens": 1621,
+      "output_tokens": 69,
+      "stop_reason": "stop",
+      "hard": {
+        "no_full_solution": true,
+        "citation_present": true,
+        "max_sentences": true,
+        "no_banned_language": true,
+        "mode_respected": true
+      },
+      "text": "(analogy) Zeroing probabilities *after* softmax removes mass without renormalization, which would skew the remaining weights [1]. Applying negative infinity *before* softmax ensures those positions have zero probability and the remaining probabilities are renormalized [1].\n\nWhat would happen to the sum of the probabilities if you zeroed them *after* applying softmax?",
+      "prompt_sha256": "11f4b5f30dde411c3059d871ba949fb4aa9df8492299ffdd63e5ea8edb8e001c"
+    }
+  ]
+}

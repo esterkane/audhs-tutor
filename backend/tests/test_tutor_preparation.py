@@ -226,7 +226,9 @@ async def test_explicit_resume_prepares_without_changing_saved_session(client, d
         assert await db.scalar(select(func.count()).select_from(model)) == 0
 
 
-@pytest.mark.parametrize("scenario,status", [("missing", 404), ("other_owner", 404), ("ended", 409)])
+@pytest.mark.parametrize(
+    "scenario,status", [("missing", 404), ("other_owner", 404), ("ended", 409)]
+)
 async def test_resume_rejects_invalid_session_without_loading(client, db, scenario, status):
     from app.db.models import LearnerProfile, Session
 
