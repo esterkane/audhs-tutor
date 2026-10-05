@@ -363,3 +363,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 brand foundation: authoritative palette supporting tokens, local Inter/Roboto Mono, original book/connected-path mark and favicon. Assessment, font provenance, conflicts and remaining acceptance: docs/design/BRAND-FOUNDATION.md. Original11 browser checks, sanitized4, lint/types/build and read-only review passed. No learning logic changes.
+
+
+2026-10-05 accessibility follow-up:320px with200% root text enlargement exposed the quick-menu Close button scrolling away. Dialog heading/Close now sit outside its scrolling content. Final enlarged-text and font-failure journeys pass in both checkouts; screenshot inspected. Original six-brand baseline passed; final relevant two rerun after layout refinement. Lint/types/build pass with inherited warnings. This is text enlargement, not browser zoom or complete accessibility certification. No learning logic changes.

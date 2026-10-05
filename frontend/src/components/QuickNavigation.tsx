@@ -40,13 +40,15 @@ export function QuickNavigation({ pages }: { pages: ReadonlyArray<readonly [stri
   return <>
     <Button variant="outline" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k" onClick={open}>Search or go to</Button>
     <dialog ref={dialog} aria-labelledby="quick-navigation-title" aria-describedby="quick-navigation-help"
-      className="m-auto w-full max-w-lg max-h-[85dvh] overflow-y-auto rounded-lg border border-line bg-card text-fg p-4 backdrop:bg-fg/30"
+      className="m-auto w-full max-w-lg max-h-[85dvh] overflow-hidden rounded-lg border border-line bg-card text-fg p-0 backdrop:bg-fg/30"
       onCancel={event => { event.preventDefault(); close() }}
       onKeyDown={event => { if (event.key === 'Escape') { event.preventDefault(); event.stopPropagation(); close() } }}>
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="flex max-h-[85dvh] flex-col">
+      <div className="shrink-0 border-b border-line p-4 flex flex-wrap items-center justify-between gap-2">
         <h2 id="quick-navigation-title" className="text-lg font-semibold">Search or go to</h2>
         <Button onClick={() => close()}>Close</Button>
       </div>
+      <div className="min-h-0 overflow-y-auto p-4">
       <p id="quick-navigation-help" className="text-sm text-muted my-2">Search saved explanations and indexed sources, or choose a page. Escape returns to your current work. Shortcut: Ctrl/Cmd+K outside text editors.</p>
       <form className="grid gap-2" onSubmit={event => {
         event.preventDefault()
@@ -67,6 +69,8 @@ export function QuickNavigation({ pages }: { pages: ReadonlyArray<readonly [stri
           document.getElementById('main-content')?.focus()
         }
       }}>{title}</Link></li>)}</ul>
+      </div>
+      </div>
     </dialog>
   </>
 }
