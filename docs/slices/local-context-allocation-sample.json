@@ -1,0 +1,50 @@
+{
+  "dataset": "synthetic arithmetic; isolated Ollama 0.33.3; no learner DB",
+  "model": "gemma3:12b",
+  "temperature": 0.2,
+  "seed": 7,
+  "max_output_tokens": 120,
+  "method": "ABBA context 32768/8192/8192/32768, unload isolated model and empty preload before each sample; identical messages; no prefix reuse across unload",
+  "runs": [
+    {
+      "case": "context-32768-sample-1",
+      "first_text_s": 6.231,
+      "total_s": 9.307,
+      "load_s": 0.002,
+      "prefill_s": 6.219,
+      "input_tokens": 1606,
+      "output_tokens": 82,
+      "text": "Your answer of 4 was incorrect because you didn't count the steps. The problem asks you to count *forward* from 2, not to simply add 3.\n\nFor example, if the problem were \"count three steps forward from 2,\" you would start at 2 and count: 2, 3, 4, 5. The final number is 5."
+    },
+    {
+      "case": "context-8192-sample-2",
+      "first_text_s": 6.17,
+      "total_s": 9.19,
+      "load_s": 0.001,
+      "prefill_s": 6.161,
+      "input_tokens": 1606,
+      "output_tokens": 82,
+      "text": "Your answer of 4 was incorrect because you didn't count the steps. The problem asks you to count *forward* from 2, not to simply add 3.\n\nFor example, if the problem were \"count three steps forward from 2,\" you would start at 2 and count: 2, 3, 4, 5. The final number is 5."
+    },
+    {
+      "case": "context-8192-sample-3",
+      "first_text_s": 6.152,
+      "total_s": 9.224,
+      "load_s": 0.001,
+      "prefill_s": 6.141,
+      "input_tokens": 1606,
+      "output_tokens": 82,
+      "text": "Your answer of 4 was incorrect because you didn't count the steps. The problem asks you to count *forward* from 2, not to simply add 3.\n\nFor example, if the problem were \"count three steps forward from 2,\" you would start at 2 and count: 2, 3, 4, 5. The final number is 5."
+    },
+    {
+      "case": "context-32768-sample-4",
+      "first_text_s": 6.173,
+      "total_s": 9.265,
+      "load_s": 0.001,
+      "prefill_s": 6.161,
+      "input_tokens": 1606,
+      "output_tokens": 82,
+      "text": "Your answer of 4 was incorrect because you didn't count the steps. The problem asks you to count *forward* from 2, not to simply add 3.\n\nFor example, if the problem were \"count three steps forward from 2,\" you would start at 2 and count: 2, 3, 4, 5. The final number is 5."
+    }
+  ]
+}

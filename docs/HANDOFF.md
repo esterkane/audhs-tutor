@@ -1232,3 +1232,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 browser release gates: reproduced and repaired all three outstanding Home/visualizer failures from run37324111481. Suggestion-card reflow, visible global audio Stop test, and duplicate preview padding; no learning/audio behavior changes. Fifteen journeys, lint/types/build and review pass. See slices/browser-reflow-repair.md; latest-head full CI remains open.
+
+
+2026-10-05 context-allocation latency experiment: identical synthetic requests at32768 vs8192 yielded only~0.04s median first-text difference across four isolated samples. No runtime setting changed; larger-context support retained. Exact saved-answer reuse inspected, main-session automatic replay still requires its own learning-evidence contract. Next matched-model prefix/semantic evaluation; see slices/local-tutor-latency.md.

@@ -73,3 +73,19 @@ Next: gather representative new and repeated lesson timings using these records.
 ## Warm full-path follow-up after streaming — 2026-10-05
 
 Repeated the disposable-copy, local-only full tutor path: first visible text0.825s/3.261s, total5.153s/7.577s, retrieval0.262s/0.156s, generation began0.351s/0.297s. Both Gemma3:12b turns had three source references and ok transport outcomes. These are two warm samples that may benefit from prior prefix reuse, not a cold-start comparison, percentile, or quality verdict. The main Session surface already streamed; do not attribute these timings to the new Study Tutor transport. No live learner state or hosted inference was used. Source-heavy new prompts and cold starts remain open.
+
+
+## Context-allocation experiment — no runtime change
+
+2026-10-05. Saved-answer inspection confirms exact Study Tutor reuse already precedes generation when explicitly enabled and the request, supplied work, prompt version and source checks match. Semantic matches remain historical context rather than replacement answers. Main-session automatic answer replay would need a separate contract for teaching actions and current learner evidence; it is not enabled as an incidental speed change.
+
+An isolated Ollama0.33.3 server, existing Gemma3:12b weights, cloud disabled and no learner database compared context allocations in ABBA order. Before each sample, only the isolated model was unloaded and preloaded with that sample's context allocation. Same synthetic arithmetic messages, seed7, temperature0.2 and120-token cap as the preparation experiment:
+
+| Requested context allocation | First text (two samples) | Complete (two samples) |
+| --- | --- | --- |
+| 32,768 | 6.231s / 6.173s | 9.307s / 9.265s |
+| 8,192 | 6.170s / 6.152s | 9.190s / 9.224s |
+
+All four consumed1606 input tokens and produced identical82-token output. First-text medians differ by0.041s, insufficient evidence of a useful improvement. **Do not reduce the application context allocation**: larger notebooks/history need space, and frequent allocation changes can reload the runner. This sample is not a general model benchmark or quality verdict; the unchanged output retains the previously documented counting/addition reasoning flaw. The isolated server exited and its port was confirmed closed; owner services/state were not changed. Raw synthetic evidence:local-context-allocation-sample.json. The request options were recorded; effective runner allocation and memory use were not independently measured. Independent evidence review found no blocking issue; two samples per allocation do not establish equivalence.
+
+Next investigate the actual deployed model's prompt-prefix behavior with matched-model semantic evaluations. The earlier rejected ordering experiment used Gemma3:12b for latency but the evaluation default llama31-8b for its quality comparison; that was sufficient to withhold rollout, not sufficient to prove how the deployed model behaves. Keep the rejected candidate out of runtime unless both relevant quality and latency gates pass. Do not discard context or narrow the owner's notebook requirements to meet a time target.
