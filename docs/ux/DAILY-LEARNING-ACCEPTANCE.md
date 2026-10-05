@@ -143,3 +143,10 @@ Desktop and390px before-change browser journeys reproduced that revealing the an
 Public CI37358031506 failed two keyboard review-recovery journeys; other jobs passed. Both traces showed no request-state GET after focusing Check saved rating and pressing Enter. Three deterministic component tests reproduced replacement of the focused recovery button when a pending due query resolves to a card, empty queue or error. All three failed before the fix.
 
 A shared frame now keeps ReviewRecovery at the same React position across query states. This preserves its DOM identity, focus and local recovery state. The recovery panel consistently precedes the changing content; no rating, retry, scheduling or backend semantics changed.32 targeted Review/submission tests,8 desktop/narrow recovery/loading/help browser journeys, frontend lint and TypeScript/production build pass. A final narrow keyboard recovery journey with screenshot also passed; screenshot inspected. Independent review found no blockers. Existing build chunk warnings remain. Remote verification for the new revision is pending; this does not close broader daily-learning acceptance.
+
+
+## Repeated incorrect answers — bounded acceptance, 2026-10-05
+
+A new390px sandbox journey submits two incorrect answers to isolated deterministic practice. It verifies distinct attempts, feedback and concept-help availability, enabled revisit/continue choices, keyboard selection of another question, checked-feedback restoration after reload, exactly two assessment POSTs and keyboard Pause without another submission. The journey and targeted ESLint pass; screenshot inspected without horizontal overflow. It does not call a teaching model or touch learner data. No application change was needed.
+
+This covers two consecutive incorrect submissions and control availability, not semantic teaching quality, automatic error-pattern adaptation, owner comprehension, audio audibility or broader task diversity. Existing explanation/assistance quality and page-density findings remain open. Unchanged app build/unit results were reused rather than rerun for a test-only addition.

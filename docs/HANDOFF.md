@@ -1289,3 +1289,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 CI review-recovery failure reproduced as focus loss during query completion. Stable recovery frame fixes three deterministic cases;32 unit tests,8 browser journeys plus final narrow visual/keyboard check, lint/types/build and review pass. See ux/DAILY-LEARNING-ACCEPTANCE.md. New remote CI remains pending.
+
+
+2026-10-05 added repeated-errors browser regression: two distinct incorrect attempts retain feedback/help/revisit/continue; reload and keyboard Pause do not resubmit. Narrow journey, visual inspection and targeted lint pass. No app/model change; see ux/DAILY-LEARNING-ACCEPTANCE.md for scope.
