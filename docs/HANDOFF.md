@@ -1212,3 +1212,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 next performance slice: Study Tutor buffers ordinary replies until complete, unlike session SSE. Documented a single streaming vertical slice in slices/study-tutor-streaming-plan.md with unchanged prompts/routing, authoritative final checks, retained partial text and durable recovery. No runtime change yet; next implement and test that contract. Do not remove bounded history or enable saved reuse silently.
+
+
+2026-10-05 browser contract and Home text-size repair: streaming companion fixtures, disclosure/mobile navigation journeys aligned with actual UI; Home choices stack at narrow container sizes without changing learning behavior.16 affected browser checks plus final keyboard/text-size check passed; frontend517, lint/types/build passed. Initial Review recovery failure did not recur in unchanged focused/full reruns; cause remains unproven. Independent review clear. Full remote browser run remains open. See slices/browser-contract-and-home-text-size.md.

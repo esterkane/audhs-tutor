@@ -4,8 +4,9 @@ import { API_URL } from '../playwright.config'
 test('areas can be renamed and selected as a goal without activating lessons', async ({ page, request }) => {
   await page.goto('/areas')
   await expect(page.getByRole('heading', { name: 'Learning areas', exact: true })).toBeVisible()
-  const initialized = page.waitForResponse((response) =>
-    new URL(response.url()).pathname === '/api/areas/initialize' && response.request().method() === 'POST',
+  const initialized = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === '/api/areas/initialize' && response.request().method() === 'POST',
   )
   await page.getByRole('button', { name: 'Suggest areas from my material' }).click()
   expect((await initialized).ok()).toBe(true)
@@ -39,6 +40,7 @@ test('areas can be renamed and selected as a goal without activating lessons', a
   await expect(preference).toBeChecked()
   await preference.click()
   await page.goto('/')
+  await page.getByText('Change new-session topic', { exact: true }).click()
   await page.getByRole('combobox', { name: 'Knowledge area', exact: true }).selectOption(area.id)
   await expect(page.getByRole('combobox', { name: 'Goal', exact: true })).toHaveCount(0)
   await page.getByRole('combobox', { name: 'Knowledge area', exact: true }).selectOption('')

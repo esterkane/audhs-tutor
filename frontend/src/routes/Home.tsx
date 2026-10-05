@@ -404,6 +404,7 @@ function HomeOverview() {
           Optional: adjust pace, energy and teaching style for a new session.
         </p>
         <Choice<Mode>
+          stackOnNarrow
           label="State mode"
           options={(Object.keys(MODE_LABELS) as Mode[]).map((m) => ({
             value: m,
@@ -420,6 +421,7 @@ function HomeOverview() {
         )}
         <div className="mt-4">
           <Choice<number>
+            stackOnNarrow
             label="Energy (1 = running on empty, 5 = plenty)"
             options={[1, 2, 3, 4, 5].map((n) => ({
               value: n,
@@ -446,6 +448,7 @@ function HomeOverview() {
           </summary>
           <div className="mt-2">
             <Choice<'explicit' | 'socratic'>
+              stackOnNarrow
               label="Questioning style for this session"
               options={[
                 {
