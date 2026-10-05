@@ -1320,3 +1320,7 @@ Added two desktop/narrow full main-control Tab/Shift+Tab journeys, zero-write an
 
 ## 2026-10-05 — Task-based preference groups
 Grouped settings with named headings and readable labels while retaining all existing controls/values. Unknown editable keys retain a fallback. Ten browser checks, lint/types/build, visual and independent review passed; see ux/DAILY-LEARNING-ACCEPTANCE.md. AU-08 timing and human acceptance remain open.
+
+
+## 2026-10-05 — Preference timing audit
+Confirmed that the saved Socratic default is not consumed by fresh Home (one isolated browser probe); question preferences currently guide area drafting, and planner preview invalidation needs a separate repro. Recorded consumers, safe wording limits and the next coherent implementation in slices/preference-effect-timing.md. No runtime or teaching-policy change; broad acceptance remains open.
