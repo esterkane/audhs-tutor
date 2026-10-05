@@ -1259,3 +1259,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 assessment discussion now shows the saved question and displayed learner answer in an independent read-only panel.4 component tests,2 desktop/narrow keyboard journeys, types/lint and review pass; screenshot inspected. Another flat-context model sample rejected; no inference/prompt/routing change. See slices/assessment-followup-context.md. Longer-term attribution and expanded-panel density remain open.
+
+
+2026-10-05 live runtime refreshed after proving old API lacked shipped streaming/preparation endpoints. Current backend health and all three paths verified through live OpenAPI; both frontend addresses reach it. Startup applied existing migrations. See slices/local-tutor-preparation.md. No new speed benchmark or code change claimed; backend remains non-reloading and needs deliberate refresh after Python edits.
