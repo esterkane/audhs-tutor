@@ -33,6 +33,7 @@ from app.core.config import get_settings  # noqa: E402
 from app.db.migrate import upgrade_to_head  # noqa: E402
 from app.db.models import IngestRun  # noqa: E402
 from app.db.session import make_engine, make_session_factory  # noqa: E402
+from app.knowledge.ingest.recovery import reconcile_abandoned_runs  # noqa: E402
 from app.knowledge.ingest.runtime import capabilities, default_options  # noqa: E402
 from app.knowledge.ingest.service import (  # noqa: E402
     OUTCOMES,
@@ -97,6 +98,7 @@ async def main() -> int:
         upgrade_to_head(s.sync_database_url)
         engine = make_engine(s.database_url_resolved)
         try:
+            await reconcile_abandoned_runs(make_session_factory(engine))
             async with make_session_factory(engine)() as db:
                 rows = (
                     (
@@ -160,9 +162,8 @@ async def main() -> int:
     engine = make_engine(s.database_url_resolved)
     repo = None
     try:
+        await reconcile_abandoned_runs(make_session_factory(engine))
         async with make_session_factory(engine)() as db:
-            if not args.no_index:
-                repo = await build_repo(db, s)
             options = await default_options(
                 db,
                 s,
@@ -187,6 +188,7 @@ async def main() -> int:
                 args.trust = int(kept.get("trust_tier", args.trust))
                 args.type = kept.get("source_type", args.type)
                 args.course = prev.course
+                args.no_index = not bool(kept.get("index", not args.no_index))
                 options = await default_options(
                     db,
                     s,
@@ -199,6 +201,8 @@ async def main() -> int:
                     f"trust {args.trust})",
                     file=sys.stderr,
                 )
+            if not args.no_index:
+                repo = await build_repo(db, s)
             options.progress = None if args.quiet else _print_progress
             # Ctrl-C = clean stop after the current file (a task cancel could land inside an
             # aiosqlite commit); a second Ctrl-C falls back to the default and aborts

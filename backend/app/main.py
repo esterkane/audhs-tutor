@@ -28,6 +28,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if getattr(app.state, "providers", None) is None:
             app.state.providers = build_providers(settings)
         try:
+            from app.knowledge.ingest.recovery import reconcile_abandoned_runs
+
+            await reconcile_abandoned_runs(app.state.session_factory)
             yield
         finally:
             await app.state.notebook_lab.close()

@@ -1296,3 +1296,7 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 ## 2026-10-05 — Preferences enlarged-text reflow
 Preferences uses existing responsive choice stacking and bounded grid tracks to prevent narrow enlarged-text overflow. Eight browser checks, three final keyboard-save reflow checks, two API unit tests, lint and TypeScript/build pass; screenshot and bounded review clear. No learning logic changes. See docs/ux/DAILY-LEARNING-ACCEPTANCE.md. Actual browser zoom and human acceptance remain open.
+
+
+## 2026-10-05 — Local import crash recovery
+New recorded local imports hold verified POSIX ownership through durable writes. Startup/CLI reconciliation leaves live workers and unverifiable legacy rows alone; abandoned owned runs appear in the existing interrupted list for explicit Resume. Atomic continuation claim prevents duplicate resumptions. Saved CLI indexing options are restored before retrieval initialization. Full backend896 tests plus final five recovery tests, lint/mypy and two desktop/narrow keyboard browser journeys pass; screenshot and bounded review clear. See ADR-0018 and slices/ingest-restart-recovery-plan.md. Persistent job IDs, pre-run failures and other job types remain open.

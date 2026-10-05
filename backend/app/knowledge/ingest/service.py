@@ -20,11 +20,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import PROJECT_ROOT
-from app.db.base import utcnow_iso
+from app.db.base import new_id, utcnow_iso
 from app.db.models import (
     Chunk,
     ChunkProvenance,
@@ -53,6 +53,7 @@ from app.knowledge.ingest.media import (
     sidecar_transcript,
 )
 from app.knowledge.ingest.normalize import approx_tokens, norm_hash
+from app.knowledge.ingest.recovery import acquire_new_owner, owner_marker
 from app.knowledge.ingest.types import RuntimeCallFailed, SourceDoc, file_hash
 from app.knowledge.ingest.vision import (
     DEFAULT_VISION_HINT,
@@ -957,6 +958,43 @@ async def ingest_path(
     options: IngestOptions | None = None,
     resume_run_id: str | None = None,
 ) -> IngestReport:
+    """Hold local worker ownership through all commits, including cancellation/failure."""
+    opts = options or IngestOptions()
+    run_id = new_id()
+    owner = acquire_new_owner(db, run_id) if opts.record_run else None
+    try:
+        return await _ingest_path(
+            db,
+            src,
+            course=course,
+            source_type=source_type,
+            trust_tier=trust_tier,
+            skill_ids_by_slug=skill_ids_by_slug,
+            repo=repo,
+            options=opts,
+            resume_run_id=resume_run_id,
+            run_id=run_id,
+            ownership=owner_marker(owner),
+        )
+    finally:
+        if owner is not None:
+            owner.close()
+
+
+async def _ingest_path(
+    db: AsyncSession,
+    src: Path,
+    *,
+    course: str | None = None,
+    source_type: str | None = None,
+    trust_tier: int = 2,
+    skill_ids_by_slug: dict[str, str] | None = None,
+    repo: RetrievalRepository | None = None,
+    options: IngestOptions | None = None,
+    resume_run_id: str | None = None,
+    run_id: str,
+    ownership: dict[str, Any],
+) -> IngestReport:
     """Ingest one file or a directory tree. `src` itself is the root: `<src>/<Course>/<Section>/…`
     unless `course` is given, in which case `src` is the course folder. A single file is treated as
     `<Course>/<Section>/<file>` (root two levels up). Every failure is reported with an outcome
@@ -981,12 +1019,26 @@ async def ingest_path(
             if previous is None:
                 raise KeyError(f"ingest run {resume_run_id} not found")
             done = await _done_uris(db, resume_run_id)
+            if previous.status in ("running", "resumed"):
+                raise ValueError("The import is active or already has a continuation")
             if previous.status == "interrupted":
-                previous.status = "resumed"  # superseded as soon as the continuation starts
+                claim = await db.execute(
+                    update(IngestRun)
+                    .where(
+                        IngestRun.id == previous.id,
+                        IngestRun.status == "interrupted",
+                    )
+                    .values(status="resumed")
+                    .returning(IngestRun.id)
+                )
+                if claim.scalar_one_or_none() is None:
+                    raise ValueError("The import already has a continuation")
         row = IngestRun(
+            id=run_id,
             src=await asyncio.to_thread(_uri_of, src),
             course=course,
             options_json={
+                **ownership,
                 "trust_tier": trust_tier,
                 "source_type": source_type,
                 "media": opts.media,
