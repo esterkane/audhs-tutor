@@ -381,3 +381,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 result orientation: compact native jump links reach all five search-group headings, preserving query and focusing the target without reissuing searches. Original11 browser journeys and sanitized focused journey pass; lint/types pass, narrow screenshot inspected, review clear. This reduces forced scrolling but does not establish owner comprehension or close the broader search/accessibility phase. Next: integrated daily-learning journey and reproduced usability blockers; retain notes/notebook search exclusions.
+
+
+2026-10-05 daily-learning acceptance: initial17-test batch had one late review-next/pause failure; three isolated repetitions and full17-test rerun passed, plus6 recovery journeys. Failure remains open, not fixed. Desktop/narrow screenshots inspected; narrow explanation is below the first viewport (S2). No runtime changes. See ux/DAILY-LEARNING-ACCEPTANCE.md for evidence and remaining gates.
