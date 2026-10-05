@@ -15,6 +15,28 @@ type Spec = {
   description: string
 }
 
+const preferenceSections = [
+  { id: 'learning', title: 'Learning and explanations', prefixes: ['questions.', 'tutor.'], keys: ['session.socratic_default'] },
+  { id: 'planning', title: 'Session planning', prefixes: ['planner.', 'session.'], keys: [] },
+  { id: 'voice', title: 'Voice and recordings', prefixes: ['voice.'], keys: [] },
+  { id: 'display', title: 'Display and comfort', prefixes: ['ui.'], keys: [] },
+  { id: 'other', title: 'Additional preferences', prefixes: [], keys: [] },
+]
+
+function sectionFor(key: string) {
+  return preferenceSections.find(section => section.keys.includes(key) || section.prefixes.some(prefix => key.startsWith(prefix)))?.id ?? 'other'
+}
+
+function optionLabel(key: string, value: string) {
+  if (key === 'tutor.representation_default' && value === '') return 'No preferred format'
+  const labels: Record<string, string> = {
+    low_capacity: 'Low capacity',
+    worked_example: 'Worked example',
+    brown_noise: 'Brown noise',
+  }
+  return labels[value] ?? (value || '(none)')
+}
+
 const numericUnits: Record<string, string> = {
   'planner.new_material_min': 'min',
   'planner.review_min': 'min',
@@ -64,7 +86,13 @@ export function Preferences() {
           Everything here is explicit and reversible. The system never changes these silently.
         </p>
         <div className="grid grid-cols-1 gap-4">
-          {specs.map((s) => (
+          {preferenceSections.map(section => {
+            const sectionSpecs = specs.filter(s => ['bool', 'enum', 'int'].includes(s.type) && sectionFor(s.key) === section.id)
+            if (!sectionSpecs.length) return null
+            return (
+              <section key={section.id} aria-labelledby={`preferences-${section.id}`} className="grid grid-cols-1 gap-4">
+                <CardTitle as="h2" id={`preferences-${section.id}`} className="mb-0">{section.title}</CardTitle>
+                {sectionSpecs.map((s) => (
             <div key={s.key}>
               {s.type === 'bool' && (
                 <Choice<string>
@@ -88,7 +116,7 @@ export function Preferences() {
                 <Choice<string>
                   stackOnNarrow
                   label={s.description}
-                  options={(s.choices ?? []).map((c) => ({ value: c, label: c || '(none)' }))}
+                  options={(s.choices ?? []).map((c) => ({ value: c, label: optionLabel(s.key, c) }))}
                   value={(values[s.key] as string) ?? ''}
                   onChange={(v) => set.mutate({ key: s.key, value: v })}
                   columns={Math.min(4, (s.choices ?? []).length)}
@@ -110,7 +138,10 @@ export function Preferences() {
                 </label>
               )}
             </div>
-          ))}
+                ))}
+              </section>
+            )
+          })}
         </div>
         {set.isPending && <p role="status" className="text-sm text-muted mt-2">Saving preferences…</p>}
         {set.isError && (

@@ -1316,3 +1316,7 @@ Fixed a reproduced late refresh overwriting confirmed settings after navigating 
 
 ## 2026-10-05 — Preferences keyboard acceptance
 Added two desktop/narrow full main-control Tab/Shift+Tab journeys, zero-write and keyboard return checks. Both pass; targeted lint and screenshot inspected. No application code changed. See ux/DAILY-LEARNING-ACCEPTANCE.md for scope and open zoom/human gates.
+
+
+## 2026-10-05 — Task-based preference groups
+Grouped settings with named headings and readable labels while retaining all existing controls/values. Unknown editable keys retain a fallback. Ten browser checks, lint/types/build, visual and independent review passed; see ux/DAILY-LEARNING-ACCEPTANCE.md. AU-08 timing and human acceptance remain open.
