@@ -279,3 +279,46 @@ it('keeps unscoped question help ephemeral across different questions and sessio
   expect(streamTurn).toHaveBeenCalledTimes(3)
   expect(sessionStorage.length).toBe(0)
 })
+
+it.each(['ok', 'partial'])('restores completion identity only for a finished reply (%s)', async (outcome) => {
+  const done = {
+    turn_id: 'original-turn',
+    model_call_id: null,
+    tutor_trace_id: 'trace',
+    registry_id: null,
+    route: null,
+    outcome,
+    sentences: 1,
+    representation: null,
+    sources: [
+      {
+        chunk_id: 'source',
+        citation: 'Original source',
+        trust_tier: 1,
+        score: 0.5,
+        cited: true,
+        flagged: [],
+      },
+    ],
+    flagged: [],
+    dropped: [],
+    latency_ms: 1,
+    text: 'Exact reply.',
+  }
+  vi.mocked(streamTurn).mockImplementation(async (_req, h) => {
+    h.onToken?.('Exact reply.')
+    h.onDone?.(done)
+  })
+  const first = renderHook(() => useTutorStream(60000, 'completed-reentry'))
+  await act(async () => {
+    await first.result.current.run(request)
+  })
+  first.unmount()
+  const second = renderHook(() => useTutorStream(60000, 'completed-reentry'))
+  expect(second.result.current.text).toBe('Exact reply.')
+  expect(second.result.current.status).toBe(outcome === 'ok' ? 'complete' : 'partial')
+  expect(second.result.current.done).toEqual(outcome === 'ok' ? done : null)
+  expect(streamTurn).toHaveBeenCalledTimes(1)
+  expect(second.result.current.recovery.pending).toBeNull()
+  second.unmount()
+})

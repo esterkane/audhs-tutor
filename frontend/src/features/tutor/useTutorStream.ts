@@ -32,6 +32,7 @@ export function useTutorStream(idleMs = 60_000, scope?: string) {
           ...empty,
           restored: true,
           text: cached.value.text,
+          done: cached.value.done ?? null,
           status: cached.value.status === 'streaming' ? 'partial' : cached.value.status,
           previous: cached.value.previousText
             ? { text: cached.value.previousText, meta: null, done: null, status: 'stopped' }
@@ -49,11 +50,16 @@ export function useTutorStream(idleMs = 60_000, scope?: string) {
     storageTimer.current = undefined
     if (scope === undefined) return
     try {
-      writeTextCache(scope, {
+      const warning = writeTextCache(scope, {
         text: snapshot.current.text,
         previousText: snapshot.current.previous?.text ?? null,
         status: snapshot.current.status,
+        done:
+          snapshot.current.status === 'complete' && snapshot.current.done?.outcome === 'ok'
+            ? snapshot.current.done
+            : null,
       })
+      setStorageError(warning)
     } catch {
       setStorageError(cacheWarning)
     }

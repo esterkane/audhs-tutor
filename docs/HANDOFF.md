@@ -1160,3 +1160,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 long reading re-entry: two prepared browser baselines reproduce missing section reader and question continuation after completed-response reload. Text and archived notes survive. No runtime change. See slices/lesson-reading-reentry.md for bounded recovery plan and evidence limits.
+
+
+2026-10-05 completed lesson re-entry fixed: versioned optional completion metadata restores reader position, notes, sources and question action without regeneration. Legacy/partial/corrupt records remain honest; size fallback preserves text.39 unit/6 browser, lint/types/build pass; narrow visual and keyboard checked; independent review clear after bounds fix. See slices/lesson-reading-reentry.md. Next: integrated incorrect-answer feedback/help.

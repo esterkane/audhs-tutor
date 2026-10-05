@@ -621,7 +621,9 @@ function TeachPanel({
         {storageError && <p role="alert">{storageError}</p>}
         {restored && (
           <p role="status">
-            Restored text from this tab. No new generation or checks; open saved answers for source details.
+            {done
+              ? 'Restored the completed reply and its source details from this tab. No new generation or checks.'
+              : 'Restored text from this tab. No new generation or checks; open saved answers for source details.'}
           </p>
         )}
         {meta?.replayed && (
