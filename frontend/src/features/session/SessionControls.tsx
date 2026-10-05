@@ -6,7 +6,7 @@ import { usePreferences } from '../preferences/api'
 import { useNavigate } from 'react-router-dom'
 
 /** Ending a session is always available and never submits an assessment or a rating. */
-export function SessionControls({ sessionId, skillId, onPause }: { sessionId: string; skillId?: string | null; onPause?: () => void }) {
+export function SessionControls({ sessionId, skillId, onPause, compact = false }: { sessionId: string; skillId?: string | null; onPause?: () => void; compact?: boolean }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const prefs = usePreferences()
@@ -22,15 +22,7 @@ export function SessionControls({ sessionId, skillId, onPause }: { sessionId: st
       void qc.invalidateQueries({ queryKey: ['preferences'] })
     },
   })
-  return (
-    <section aria-label="Session controls" className="border border-line rounded-md p-3">
-      <div className="flex gap-2 flex-wrap">
-        <Button onClick={() => { onPause?.(); navigate('/') }} disabled={stop.isPending}>
-          Pause and return Home
-        </Button>
-        <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
-          End session
-        </Button>
+  const secondaryActions = <>
         <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
           Change topic
         </Button>
@@ -57,11 +49,27 @@ export function SessionControls({ sessionId, skillId, onPause }: { sessionId: st
             )}
           </>
         )}
+  </>
+  return (
+    <section aria-label="Session controls" className="border border-line rounded-md p-3">
+      <div className="flex gap-2 flex-wrap">
+        <Button onClick={() => { onPause?.(); navigate('/') }} disabled={stop.isPending}>
+          Pause and return Home
+        </Button>
+        <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
+          End session
+        </Button>
+        {!compact && secondaryActions}
       </div>
       <p className="text-xs text-muted mt-2">
-        Pause keeps this session available to resume from Home. End session or change topic finishes
-        it; completed work stays saved. No rating needed.
+        {compact ? 'Pause to resume later. End keeps completed work. No rating needed.' :
+          'Pause keeps this session available to resume from Home. End session or change topic finishes it; completed work stays saved. No rating needed.'}
       </p>
+      {compact && <details className="mt-2">
+        <summary className="cursor-pointer text-sm font-medium">Change topic or save for later</summary>
+        <p className="text-sm text-muted mt-2">Change topic ends this session so you can choose another. Labels save a reminder; they do not change assessed mastery.</p>
+        <div className="flex gap-2 flex-wrap mt-2">{secondaryActions}</div>
+      </details>}
       {skillId && marks[skillId] && (
         <p role="status" className="text-sm mt-2">
           {marks[skillId] === 'clear'

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, endOpenSession, expectOk } from './helpers'
+import { API, currentSession, endOpenSession, expectOk } from './helpers'
 
 for (const width of [320, 390, 1280]) test(`lesson leads before optional tools ${width}`, async ({ page, request }, info) => {
   await endOpenSession(request)
@@ -28,6 +28,27 @@ for (const width of [320, 390, 1280]) test(`lesson leads before optional tools $
     await expect(page.locator('summary').filter({ hasText: /^More ways to learn$/ })).toBeFocused()
     await page.keyboard.press('Tab')
     await expect(page.getByLabel('Ask about this lesson (optional)')).toBeFocused()
+    const controls = page.getByRole('region', { name: 'Session controls' })
+    await expect(controls.getByRole('button', { name: 'End session', exact: true })).toBeVisible()
+    await expect(controls.getByRole('button', { name: 'Change topic' })).not.toBeVisible()
+    const checkpoint = await currentSession(request)
+    const labels = controls.locator('summary').filter({ hasText: /^Change topic or save for later$/ })
+    await labels.focus()
+    await page.keyboard.press('Enter')
+    await expect(controls.getByRole('button', { name: 'Change topic' })).toBeVisible()
+    await controls.getByRole('button', { name: 'This is clear' }).click()
+    await expect(controls.getByRole('status')).toContainText('Saved as clear for you.')
+    await labels.focus()
+    await page.keyboard.press('Enter')
+    await expect(controls.getByRole('status')).toBeVisible()
+    await expect(controls.getByRole('button', { name: 'Undo label' })).not.toBeVisible()
+    await labels.focus()
+    await page.keyboard.press('Enter')
+    await controls.getByRole('button', { name: 'Undo label' }).click()
+    await expect(controls.getByRole('status')).toHaveCount(0)
+    await labels.focus()
+    await page.keyboard.press('Enter')
+    expect(await currentSession(request)).toEqual(checkpoint)
     await tools.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText('Keep this lesson open with a quiet work panel.', { exact: false })).toBeVisible()

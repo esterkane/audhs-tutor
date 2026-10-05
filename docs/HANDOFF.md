@@ -1148,3 +1148,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 reading order: topic heading precedes plan metadata; optional Alongside/coding follow lesson; repeated intro shortened. Start explanation moves~150px earlier at390px/~100px at1280px. Original10 unit,6 initial and6 final browser journeys, lint/types/build pass; keyboard320/390/1280 and narrow visual checked; independent review clear. No learning logic changes. docs/slices/lesson-reading-order.md records evidence and remaining control-stack/discoverability work; DL-02 stays partial.
+
+
+2026-10-05 compact lesson controls: Pause/End visible, topic/labels/Undo in named native disclosure, status/errors stay visible. Review default unchanged. Original12 unit,13 initial browser +2 opt-in re-entry pass; final label/layout checks pass, lint/types/build pass. Stale persona assertion updated to actual accessible next-step description, without dropping checkpoint/draft checks. See slices/compact-session-controls.md for measured mobile improvement/desktop row tradeoff and remaining first-viewport/assistive/human gates.

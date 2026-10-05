@@ -106,7 +106,7 @@ export function Session() {
           </Button>
         </Card>
       )}
-      <SessionControls sessionId={sessionId} skillId={st.skill_id} onPause={() => { navigationOwner.current.paused = true }} />
+      <SessionControls compact sessionId={sessionId} skillId={st.skill_id} onPause={() => { navigationOwner.current.paused = true }} />
       <SessionBody
         canNavigate={canNavigate}
         key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
