@@ -7,6 +7,7 @@ so `./data/dev.db` means `<repo>/data/dev.db` regardless of the current working 
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -19,6 +20,7 @@ class Settings(BaseSettings):
     database_url: str = "sqlite+aiosqlite:///./data/dev.db"
     auto_migrate: bool = True
     ollama_host: str = "http://localhost:11434"
+    ollama_keep_alive_s: int = Field(default=1800, ge=0, le=86400)
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     daily_budget_usd: float = 1.50

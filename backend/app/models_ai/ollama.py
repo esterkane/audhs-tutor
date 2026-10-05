@@ -29,9 +29,10 @@ litellm.suppress_debug_info = True
 class OllamaProvider:
     name = "ollama"
 
-    def __init__(self, host: str, timeout_s: float = 180.0) -> None:
+    def __init__(self, host: str, timeout_s: float = 180.0, *, keep_alive_s: int = 1800) -> None:
         self.host = host.rstrip("/")
         self.timeout_s = timeout_s
+        self.keep_alive_s = keep_alive_s
         self._instructor = cast(
             instructor.AsyncInstructor,
             instructor.from_litellm(litellm.acompletion, mode=instructor.Mode.JSON),
@@ -59,6 +60,7 @@ class OllamaProvider:
             max_tokens=max_tokens,
             temperature=temperature,
             timeout=self.timeout_s,
+            keep_alive=self.keep_alive_s,
         )
         try:
             if response_model is not None:
@@ -106,6 +108,7 @@ class OllamaProvider:
                 stream=True,
                 stream_options={"include_usage": True},
                 timeout=self.timeout_s,
+                keep_alive=self.keep_alive_s,
             )
             async for chunk in response:
                 if getattr(chunk, "usage", None) is not None:

@@ -420,3 +420,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 prolonged transitions: delayed status after15s explains uncertainty and Pause recovery; retries explicitly disabled. Practice Log/Skip reflect pending transition. Original28 unit/11 browser, lint/types/build pass; final narrow visual and keyboard checked, independent review clear. See slices/prolonged-transition-status.md. No learning-policy change; execution bounds and broader reliability/learning acceptance remain open.
+
+
+2026-10-05 local tutor latency: configurable30min model residency for local complete/stream reduces reloads after short study breaks.39 affected backend checks, Ruff/full mypy pass; real adapter confirms30min expiry. Models, prompts and learning policy unchanged. See slices/local-tutor-latency.md for measurements, memory tradeoff and open end-to-end performance work.

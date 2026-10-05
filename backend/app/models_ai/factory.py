@@ -18,7 +18,9 @@ from app.models_ai.routing import Router, load_profiles
 
 
 def build_providers(settings: Settings) -> dict[str, ModelProvider]:
-    providers: dict[str, ModelProvider] = {"ollama": OllamaProvider(settings.ollama_host)}
+    providers: dict[str, ModelProvider] = {
+        "ollama": OllamaProvider(settings.ollama_host, keep_alive_s=settings.ollama_keep_alive_s)
+    }
     if settings.anthropic_api_key:
         providers["anthropic"] = ClaudeProvider(settings.anthropic_api_key)
     if settings.openai_api_key:
