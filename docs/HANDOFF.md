@@ -1181,3 +1181,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 performance profiling: model processing dominates isolated17.38s/8.02s local turns. Prompt reorder speedup rejected after local quality fell4/5→1/5; candidate source/tests reverted. See slices/local-tutor-latency.md for limitations and an unrelated baseline parking409/400 test mismatch. No new runtime change.
+
+
+2026-10-05 first-text timing: actual lesson has null memory score; rounding rejected as irrelevant. Batch512/1024/2048 has~12.3s prefill throughout, so defaults retained. Stream records now distinguish first_token_ms from total time, without generation/accounting changes.53 backend checks plus final18 accounting checks pass; Ruff/mypy and independent review clear. Real isolated timing agrees with preparation+provider elapsed. See slices/local-tutor-latency.md; latency remains open.

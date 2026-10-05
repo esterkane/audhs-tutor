@@ -55,3 +55,16 @@ The candidate's47 core tests plus downstream consumer tests, lint and mypy were 
 Next: test a no-reordering approach, such as reducing insignificant floating-point churn in prompt-only memory summaries, with before/after quality and exact learning-state invariants. Do not change learning calculations, omit sources, shorten answers or promote another model to satisfy latency targets. Cold startup and source-heavy new prompts remain open.
 
 Downstream run:10 passed, one parking test expected400 but received409. Reproduced unchanged after reverting the candidate; recorded as an existing contract-test mismatch, not a performance regression. Independent code review found no deterministic data-boundary issue; the empirical quality gate still rejected the candidate.
+
+
+## Follow-up: avoid ineffective tuning; record time to first text
+
+The actual inspected lesson has no memory items and mean_retrievability=null. Prompt-only rounding cannot improve this case, so no rounding change was made.
+
+Native local batch-size comparison (same source-backed prompt and output budget, distinct short prefixes to avoid accidental prompt-cache hits):512/1024/2048 gave prompt-processing12.341/12.307/12.345s respectively. Wall times20.633/19.156/19.408s included different model reload costs and must not be interpreted as batch gains. Larger batches increased memory usage without a useful prefill gain. Default512 retained. [Ollama's options definition](https://github.com/ollama/ollama/blob/main/api/types.go) identifies num_batch as a runner setting. The experiment did not change application configuration.
+
+Accepted diagnostic change: streamed model-call metadata now stores first_token_ms for the first nonempty text chunk. Usage-only chunks do not count. It is measured per provider attempt after routing/reservation, before yielding text; it excludes preparation, previous failed attempts and browser rendering. It is persisted on completion/partial/cancellation by existing final logging. No text gives null in that path; blocked/error records outside it and older rows can lack the field. No schema migration, prompt, provider selection, token limit, output content or accounting changes.
+
+Verification:53 affected backend tests, targeted Ruff and full mypy passed. Final18 accounting tests additionally assert first-token bounds on canceled streams. Timed fake stream proves2000ms first text vs5000ms total and unchanged usage/cost; usage-only stream remains null. Independent review found no actionable issue. An isolated real local tutor turn recorded15782ms provider first text versus16217ms full-turn first text and433ms preparation, total20504ms. This run included returning from the experimental runner batch configuration; it is a compatibility check, not a steady-state performance result. Owner progress was not modified. UI unchanged, so no new visual/keyboard claims.
+
+Next: gather representative new and repeated lesson timings using these records. The measured first-turn bottleneck remains prompt evaluation. Do not declare the latency request complete; consider only targeted optimizations that pass tutoring-quality checks.

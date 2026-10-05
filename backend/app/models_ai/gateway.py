@@ -520,6 +520,7 @@ class ModelGateway:
             t0 = time.perf_counter()
             out_chars = 0
             started = False
+            first_token_ms: int | None = None
             usage: StreamUsage | None = None
             failure: str | None = None
             outcome = "ok"
@@ -530,6 +531,8 @@ class ModelGateway:
                     if isinstance(ev, StreamUsage):
                         usage = ev
                         continue
+                    if ev and first_token_ms is None:
+                        first_token_ms = int((time.perf_counter() - t0) * 1000)
                     started = True
                     out_chars += len(ev)
                     yield ev
@@ -601,7 +604,11 @@ class ModelGateway:
                         result,
                         learner_id,
                         session_id,
-                        {**meta, "estimated_tokens": usage is None},
+                        {
+                            **meta,
+                            "estimated_tokens": usage is None,
+                            "first_token_ms": first_token_ms,
+                        },
                         request_id=request_id,
                         attempt=attempt,
                         outcome=outcome,

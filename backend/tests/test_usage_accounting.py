@@ -187,6 +187,8 @@ async def test_stream_usage_reported_or_estimated_and_cancellation(seeded: Async
     cancelled = next(c for c in calls if c.outcome == "cancelled")
     assert cancelled.ok is False and cancelled.error == "cancelled by consumer"
     assert cancelled.metadata_json["estimated_tokens"] is True
+    for call in calls:
+        assert 0 <= call.metadata_json["first_token_ms"] <= call.latency_ms
 
 
 async def test_hosted_stream_without_usage_is_estimated_and_reconciled(
@@ -395,3 +397,50 @@ async def test_cost_view_and_actionable_routes(client: AsyncClient, seeded: Asyn
     assert rows["chat"]["problem"] is None
     unready = next(row for row in rows.values() if row["resolved"] is None)
     assert unready["problem"] and unready["action"]
+
+
+async def test_stream_records_first_text_separately_from_completion(seeded, monkeypatch):
+    from app.models_ai.provider import StreamUsage
+
+    clock = [10.0]
+    monkeypatch.setattr("app.models_ai.gateway.time.perf_counter", lambda: clock[0])
+
+    class TimedProvider(FakeProvider):
+        async def stream(self, *args, **kwargs):
+            clock[0] = 11.0
+            yield StreamUsage(tokens_in=40, tokens_out=2)
+            yield ""
+            clock[0] = 12.0
+            yield "First"
+            clock[0] = 15.0
+            yield " last"
+
+    handle = StreamHandle()
+    tokens = [
+        t
+        async for t in _gw(seeded, TimedProvider(), FakeProvider(), Budget(0)).stream(
+            TaskClass.CHAT, MSGS, handle=handle
+        )
+    ]
+    assert "".join(tokens) == "First last"
+    call = (await _calls(seeded))[0]
+    assert call.metadata_json["first_token_ms"] == 2000
+    assert call.latency_ms == 5000
+    assert call.tokens_in == 40 and call.tokens_out == 2 and call.cost_usd == 0
+
+
+async def test_usage_only_stream_does_not_claim_first_text(seeded):
+    from app.models_ai.provider import StreamUsage
+
+    class UsageOnly(FakeProvider):
+        async def stream(self, *args, **kwargs):
+            yield StreamUsage(tokens_in=40, tokens_out=0)
+
+    tokens = [
+        t
+        async for t in _gw(seeded, UsageOnly(), FakeProvider(), Budget(0)).stream(
+            TaskClass.CHAT, MSGS, handle=StreamHandle()
+        )
+    ]
+    assert tokens == []
+    assert (await _calls(seeded))[0].metadata_json["first_token_ms"] is None
