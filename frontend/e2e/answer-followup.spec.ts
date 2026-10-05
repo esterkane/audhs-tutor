@@ -160,3 +160,31 @@ for (const width of [1280, 390]) {
     expect(calls).toBe(1)
   })
 }
+
+test('unsaved follow-up can be recovered after refresh without a new request identity', async ({ page }, info) => {
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.route('**/api/sessions/current', route => route.fulfill({ json: { id: 'session' } }))
+  await page.route('**/api/answers/parent', route => route.fulfill({ json: { id: 'parent', text: 'Original explanation', request_text: 'Explain', request: {}, metadata: {}, created_at: '2026-10-01T10:00:00Z' } }))
+  await page.route('**/api/answers/*/feedback', route => route.fulfill({ json: { verdict: null, note: '', hidden: false, revision: 0 } }))
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], total: 0 } }))
+  const keys: (string | undefined)[] = []
+  await page.route('**/api/answers/parent/followup/stream', route => {
+    keys.push(route.request().headers()['idempotency-key'])
+    return route.fulfill({ contentType: 'text/event-stream', body: `event: done\ndata: ${JSON.stringify({ turn_id: 'unsaved', text: 'Keep this completed explanation.', save_error: 'Save unavailable', save_receipt: 'receipt' })}\n\n` })
+  })
+  await page.goto('/answers/parent')
+  await page.getByRole('textbox', { name: 'Your follow-up question' }).fill('Why?')
+  await page.getByRole('button', { name: 'Send follow-up', exact: true }).click()
+  await expect(page.getByText('Keep this completed explanation.', { exact: true })).toBeVisible()
+  await page.reload()
+  const retry = page.getByRole('button', { name: 'Retry previous request', exact: true })
+  await retry.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Keep this completed explanation.', { exact: true })).toBeVisible()
+  expect(keys).toHaveLength(2)
+  expect(keys[0]).toBeTruthy()
+  expect(keys[1]).toBe(keys[0])
+  await expect(page.getByRole('button', { name: 'Send follow-up', exact: true })).toBeDisabled()
+  await page.screenshot({ path: info.outputPath('unsaved-recovered.png'), fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})

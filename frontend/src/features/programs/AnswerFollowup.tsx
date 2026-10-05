@@ -246,7 +246,7 @@ function Conversation({
         reply.answer_id ?? originalParent,
         draft === pending.view.submitted ? 'followup' : purpose,
       )
-      recovery.accept(pending.key)
+      if (reply.answer_id) recovery.accept(pending.key)
       input.current?.focus()
     } catch (e) {
       if (request.current === ctl && !ctl.signal.aborted)
@@ -319,6 +319,7 @@ function Conversation({
               )
               setParentId(id)
               edit(draft, id)
+              if (recovery.pending) recovery.accept(recovery.pending.key)
             }}
           />
         </div>
@@ -411,14 +412,22 @@ function Conversation({
         {busy && <Button onClick={stop}>Stop</Button>}
       </div>
       {busy && <p role="status">Preparing a follow-up…</p>}
-      <RequestRecoveryControls
-        originalContext="parent answer and question"
-        recovery={recovery}
-        busy={busy}
-        retry={() => {
-          if (recovery.pending) void execute(recovery.pending)
-        }}
-      />
+      {!unsaved && (
+        <RequestRecoveryControls
+          originalContext="parent answer and question"
+          recovery={recovery}
+          busy={busy}
+          retry={() => {
+            if (recovery.pending) void execute(recovery.pending)
+          }}
+        />
+      )}
+      {unsaved && (
+        <p className="text-sm text-muted">
+          Keep this page open or use Retry previous request after returning to this discussion to recover the
+          completed reply. Save recovery may expire; keep a text copy.
+        </p>
+      )}
       {error && <p role="alert">{error}</p>}
       {storageError && <p role="alert">{storageError}</p>}
     </div>

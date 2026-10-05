@@ -318,3 +318,33 @@ it('stops on deactivation and ignores a late completed reply', async () => {
   expect(screen.getByLabelText('Your follow-up question')).toHaveValue('Explain')
   expect(screen.getByRole('alert')).toHaveTextContent('Stopped waiting')
 })
+
+it('retains the original retry identity across reload after a completed reply fails to save', async () => {
+  const fetcher = vi.fn(async (url: string) =>
+    url.endsWith('/recover-save')
+      ? jsonResponse({ answer_id: 'recovered' })
+      : completedReply({
+          text: 'Completed but unsaved',
+          answer_id: null,
+          save_error: 'Save unavailable',
+          save_receipt: 'receipt',
+        }),
+  )
+  vi.stubGlobal('fetch', fetcher)
+  const view = renderApp(<AnswerFollowup answerId="parent" />)
+  await waitFor(() => expect(screen.queryByText(/Checking feedback for/)).not.toBeInTheDocument())
+  fireEvent.change(screen.getByLabelText('Your follow-up question'), { target: { value: 'Why?' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Send follow-up' }))
+  await screen.findByText('Completed but unsaved')
+  const identity = (fetcher.mock.calls[0] as unknown as [string, RequestInit])[1].headers
+  expect(screen.queryByRole('button', { name: 'Discard retry and start new' })).not.toBeInTheDocument()
+  view.unmount()
+  renderApp(<AnswerFollowup answerId="parent" />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Retry previous request' }))
+  await screen.findByText('Completed but unsaved')
+  expect((fetcher.mock.calls[1] as unknown as [string, RequestInit])[1].headers).toEqual(identity)
+  expect(screen.getByRole('button', { name: 'Send follow-up' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Retry saving' }))
+  await screen.findByRole('link', { name: 'Open saved follow-up' })
+  expect(sessionStorage.getItem('tutor-request:v1:saved-answer-followup:v1:parent:session')).toBeNull()
+})
