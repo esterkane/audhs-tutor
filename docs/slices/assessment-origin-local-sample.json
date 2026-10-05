@@ -1,0 +1,129 @@
+{
+  "model": "llama3.1:8b",
+  "temperature": 0.3,
+  "max_output_tokens": 400,
+  "method": "Synthetic historical packets using actual playground messages; no learner DB, no hosted calls. Fixed output cap differs from application limit. Sequential samples have differing model warmth; not a paired latency benchmark.",
+  "results": [
+    {
+      "run": "assessment-origin-eval",
+      "case": "sum",
+      "variant": "before",
+      "text": "You're referring to your previous response. You answered that the learner should \"Try counting forward carefully, one number at a time.\" This advice was given in response to a request to explain a mistake.\n\nTo simplify, your original answer was suggesting that the learner should re-count the numbers carefully, one by one, to ensure accuracy. This reasoning is sound, as re-counting can help identify any errors or miscalculations.",
+      "elapsed_s": 8.232,
+      "latency_ms": 8232
+    },
+    {
+      "run": "assessment-origin-eval",
+      "case": "sum",
+      "variant": "after",
+      "text": "You originally answered \"4\" to the question \"What is 2 + 3?\" Your reasoning was that you were counting forward, one number at a time. However, this approach is not entirely sound because it doesn't consider the actual arithmetic operation involved in addition.",
+      "elapsed_s": 1.517,
+      "latency_ms": 1516
+    },
+    {
+      "run": "assessment-origin-eval",
+      "case": "reported_error",
+      "variant": "before",
+      "text": "You're referring to your previous answer. However, I don't have access to your previous answer or the context of the question you were trying to answer. The historical answer I have is a response to a request to explain a mistake, but it doesn't provide any information about your original answer.\n\nIf you'd like to share your original answer or the question you were trying to answer, I'd be happy to help you understand your reasoning and provide feedback.",
+      "elapsed_s": 2.193,
+      "latency_ms": 2192
+    },
+    {
+      "run": "assessment-origin-eval",
+      "case": "reported_error",
+      "variant": "after",
+      "text": "You answered \"5\" to the question \"What is 2 + 3?\" Your reasoning was that two plus three is indeed five. This is actually correct, not a mistake.",
+      "elapsed_s": 1.199,
+      "latency_ms": 1199
+    },
+    {
+      "run": "assessment-origin-eval-refined",
+      "case": "sum",
+      "variant": "after",
+      "text": "Your original question was \"What is 2 + 3?\" and your submitted answer was \"4\". \n\nYour reasoning was that you added 2 and 3 together, which is a correct process, but you made a calculation error. You should have counted forward carefully, one number at a time: 2, 3, 5.",
+      "elapsed_s": 1.907,
+      "latency_ms": 1907
+    },
+    {
+      "run": "assessment-origin-eval-refined",
+      "case": "reported_error",
+      "variant": "after",
+      "text": "You originally answered \"5\" to the question \"What is 2 + 3?\" Your reasoning was that two plus three is indeed five, which is correct.",
+      "elapsed_s": 1.111,
+      "latency_ms": 1111
+    },
+    {
+      "run": "assessment-origin-policy",
+      "model": "llama3.1:8b",
+      "case": "missing",
+      "variant": "after",
+      "text": "You originally answered \"2 + 3\". The feedback provided was to \"Try counting forward carefully, one number at a time.\" This suggests that the original answer was incorrect.",
+      "elapsed_s": 1.793,
+      "latency_ms": 1792
+    },
+    {
+      "run": "assessment-origin-policy",
+      "model": "llama3.1:8b",
+      "case": "reasoning",
+      "variant": "after",
+      "text": "Your original answer was \"I started at two and counted three more: three, four, five.\" This answer was correct, as it accurately counted forward from 2 to 5. The reasoning was sound, as it clearly explained the step-by-step process of counting.",
+      "elapsed_s": 1.569,
+      "latency_ms": 1569
+    },
+    {
+      "run": "assessment-origin-policy",
+      "model": "llama3.1:8b",
+      "case": "sum",
+      "variant": "after",
+      "text": "You originally answered \"4\" to the question \"What is 2 + 3?\" Your reasoning was to simply state the answer, without showing the calculation. This is not a sound reasoning process, as it doesn't demonstrate an understanding of the arithmetic operation. A correct approach would involve counting forward carefully, one number at a time, as I mentioned in my previous response.",
+      "elapsed_s": 1.97,
+      "latency_ms": 1969
+    },
+    {
+      "run": "assessment-origin-policy",
+      "model": "llama3.1:8b",
+      "case": "reported_error",
+      "variant": "after",
+      "text": "You originally answered \"5\" to the question \"What is 2 + 3?\" Your answer was incorrect, and the correct sum is indeed 5, not 4 as the feedback mentioned. The feedback's calculation was actually correct, but it incorrectly stated that your answer was wrong. Your original reasoning was sound, as you correctly counted forward one number at a time to arrive at the answer 5.",
+      "elapsed_s": 2.196,
+      "latency_ms": 2196
+    },
+    {
+      "run": "assessment-origin-gemma",
+      "model": "gemma3:12b",
+      "case": "missing",
+      "variant": "after",
+      "text": "You answered \"Try counting forward carefully, one number at a time.\" [historical_answer]. This was a suggestion for how to solve a problem, not an answer to the question \"What is 2 + 3?\".\n\nThe question asked for the *sum* of 2 and 3. The correct answer is 5. Your suggestion was a valid approach to finding that answer, but it wasn't the answer itself.",
+      "elapsed_s": 12.829,
+      "latency_ms": 12828
+    },
+    {
+      "run": "assessment-origin-gemma",
+      "model": "gemma3:12b",
+      "case": "reasoning",
+      "variant": "after",
+      "text": "You answered \"I started at two and counted three more: three, four, five\" to the question \"What is 2 + 3?\". [historical_answer]\n\nThat's a valid way to think about addition! You correctly identified that you could start with the first number (2) and then count up the number of times indicated by the second number (3). However, the counting sequence \"three, four, five\" is incorrect. Starting at 2 and counting three more should result in 3, 4, 5.",
+      "elapsed_s": 4.717,
+      "latency_ms": 4716
+    },
+    {
+      "run": "assessment-origin-gemma",
+      "model": "gemma3:12b",
+      "case": "sum",
+      "variant": "after",
+      "text": "You answered \"4\" to \"2 + 3\" [historical_answer]. The correct sum is 5 [historical_answer].\n\nYour reasoning is not sound because you did not add the numbers correctly. Try counting forward carefully, one number at a time [historical_answer].",
+      "elapsed_s": 2.676,
+      "latency_ms": 2675
+    },
+    {
+      "run": "assessment-origin-gemma",
+      "model": "gemma3:12b",
+      "case": "reported_error",
+      "variant": "after",
+      "text": "You answered \"5\" to the question \"What is 2 + 3?\". [historical_answer] The feedback incorrectly stated the answer was wrong and gave \"4\" as the correct sum. Two plus three is indeed five. Your reasoning was sound.",
+      "elapsed_s": 2.577,
+      "latency_ms": 2577
+    }
+  ],
+  "decision": "Rejected; no API/prompt/routing change shipped. Both local samples confuse tutor versus learner evidence or misjudge correct arithmetic."
+}

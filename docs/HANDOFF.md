@@ -1253,3 +1253,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 unsaved follow-up recovery retains the durable retry identity through failed save; explicit retry after same-tab/session refresh replays the completed server reply, and successful save clears the identity.12 frontend/11 backend tests,5 browser journeys, types/lint and review pass; narrow visual/keyboard checked. See slices/assessment-followup-context.md for retention/receipt limits. No automatic regeneration.
+
+
+2026-10-05 assessment-origin candidate rejected:18 structural tests passed, but14 synthetic local replies exposed learner/tutor attribution failures and incorrect arithmetic across Llama3.1:8b and Gemma3:12b. API/test candidate reverted; no routing/prompt change. Evidence and next flat-context comparison are in slices/assessment-followup-context.md and assessment-origin-local-sample.json. Original-answer continuity beyond the direct parent remains open.
