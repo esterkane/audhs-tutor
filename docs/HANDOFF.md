@@ -1346,3 +1346,7 @@ Added two real-child-exit tests for prepared/inference-started assessment record
 Reviewed same-host ownership reuse and backup/migration boundaries;21 existing compatibility tests pass. Concrete schema/lifecycle/explicit-continuation design is in slices/assessment-ownership-design.md. No application or live database change; implementation and new-schema acceptance remain pending.
 
 Architecture review found and documented a major restore-rollback hazard: surviving lock identity is not proof of no post-snapshot inference. Prepared recovery must stay disabled until restore invalidation/non-restored boundary evidence and its adversarial test are implemented.
+
+
+## 2026-10-05 — Assessment guard foundation
+Added a separate assessment guard with nonce and durable pre-inference seal; database rollback cannot unseal the retained file. Extracted the shared primitive without changing import lock namespaces.29 targeted tests, Ruff, strict mypy and bounded review pass. See slices/assessment-ownership-design.md. No grading caller or recovery endpoint is enabled yet; schema/lifecycle integration is next.
