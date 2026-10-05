@@ -30,3 +30,28 @@ No UI changed, so visual/keyboard/responsive checks from the preceding slice rem
 Measure end-to-end time to first text with representative source-heavy prompts and stage timings, including retrieval and current evidence preparation. Investigate safe reuse of unchanged work without stale sources or learner evidence. Cold first request after startup/expiry still pays load cost; new prompt processing remains. No claim of a universal sub-two-second tutor or completed performance stage.
 
 Independent read-only review found no blocker. Sanitized checkout also passed the same39 tests, Ruff and full mypy. The setting is documented in .env.example. Structured-output uses the same complete-call kwargs; the new test does not separately exercise Instructor structured validation.
+
+
+## Full-path profiling and rejected candidate — 2026-10-05
+
+A disposable SQLite copy plus read-only production retrieval was used to run two real local tutor turns. Only Ollama was registered as a provider and the hosted budget was zero. The temporary database was deleted afterwards; owner progress was not changed.
+
+| Stage | First turn | Second turn |
+| --- | ---: | ---: |
+| Current evidence preparation | 0.011 s | 0.006 s |
+| Retrieval | 0.342 s | 0.142 s |
+| Generation started after | 0.439 s | 0.669 s |
+| First text after | 13.022 s | 3.720 s |
+| Whole turn | 17.378 s | 8.022 s |
+
+Both used Gemma3:12b and returned three source references with an ok transport outcome. This is two observations, not a percentile benchmark or proof of correct source use. Model prompt processing dominates this sample; retrieval optimization is not the first priority.
+
+Candidate: move Session state and Current evidence after the longer retrieved/history prefix, keeping every field and the trust boundary. A controlled 3,364–3,370-token prompt changed only memory.mean_retrievability between turns. Current order: second first-text12.693s, total16.962s; candidate: first-text2.207s, total6.570s. Initial turns both~12.6s to first text. The synthetic test used120 output tokens for both variants; it does not establish complete answer quality.
+
+**Rejected, not shipped:** local tutoring evaluation fell from4/5 hard-check passes before to1/5 after. The baseline failed Socratic citation/mode. The candidate additionally failed explanation citations/length, hint citations and negated-solution length; Socratic solution/mode remained failing. These five single samples used the evaluation default llama31-8b, not the performance sample's Gemma3. Sampling and limited model coverage prevent causal certainty, but the evidence is inadequate for a quality-preserving rollout. Hosted rubric judging was disabled; no paid model ran. Existing checks also miss some truncated answers, so a hard pass is not full teaching approval.
+
+The candidate's47 core tests plus downstream consumer tests, lint and mypy were functional checks, not proof of pedagogical equivalence. The application and regression-test candidate were restored to the previously published version. The30-minute residency improvement remains.
+
+Next: test a no-reordering approach, such as reducing insignificant floating-point churn in prompt-only memory summaries, with before/after quality and exact learning-state invariants. Do not change learning calculations, omit sources, shorten answers or promote another model to satisfy latency targets. Cold startup and source-heavy new prompts remain open.
+
+Downstream run:10 passed, one parking test expected400 but received409. Reproduced unchanged after reverting the candidate; recorded as an existing contract-test mismatch, not a performance regression. Independent code review found no deterministic data-boundary issue; the empirical quality gate still rejected the candidate.

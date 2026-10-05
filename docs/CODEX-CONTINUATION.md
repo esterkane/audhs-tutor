@@ -423,3 +423,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 local tutor latency: configurable30min model residency for local complete/stream reduces reloads after short study breaks.39 affected backend checks, Ruff/full mypy pass; real adapter confirms30min expiry. Models, prompts and learning policy unchanged. See slices/local-tutor-latency.md for measurements, memory tradeoff and open end-to-end performance work.
+
+
+2026-10-05 performance profiling: model processing dominates isolated17.38s/8.02s local turns. Prompt reorder speedup rejected after local quality fell4/5→1/5; candidate source/tests reverted. See slices/local-tutor-latency.md for limitations and an unrelated baseline parking409/400 test mismatch. No new runtime change.
