@@ -114,3 +114,42 @@ for (const step of ['start', 'movement-next', 'review-next'] as const) {
     }
   })
 }
+
+for (const width of [390, 1280]) {
+  test(`lost committed transition response gives honest recovery ${width}`, async ({ page, request }, info) => {
+    await endOpenSession(request)
+    try {
+      const started = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
+      await expectOk(started)
+      const session = await started.json()
+      const index = session.plan.findIndex((block: { type: string }) => block.type === 'movement_primer')
+      expect(index).toBeGreaterThanOrEqual(0)
+      await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index } }))
+      await page.setViewportSize({ width, height: 900 })
+      await page.goto('/')
+      await page.getByRole('button', { name: 'Continue', exact: true }).click()
+      let transitions = 0
+      await page.route('**/api/plan/blocks/next', async (route) => {
+        transitions++
+        const committed = await route.fetch()
+        await expectOk(committed)
+        await route.abort('failed')
+      })
+      await page.getByRole('button', { name: 'Skip this block', exact: true }).click()
+      const notice = page.getByRole('alert')
+      await expect(notice).toBeVisible()
+      const committed = await currentSession(request)
+      expect(committed?.state?.block_index).not.toBe(index)
+      await expect(notice).not.toContainText('nothing was changed')
+      await expect(notice).toContainText('Pause and return Home')
+      await page.screenshot({ path: info.outputPath('uncertain-transition.png'), fullPage: true })
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+      await page.getByRole('button', { name: 'Pause and return Home', exact: true }).focus()
+      await page.keyboard.press('Enter')
+      await page.getByRole('button', { name: 'Continue', exact: true }).click()
+      await expect(page).toHaveURL(/\/review$/)
+      expect(await currentSession(request)).toEqual(committed)
+      expect(transitions).toBe(1)
+    } finally { await endOpenSession(request) }
+  })
+}

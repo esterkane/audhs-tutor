@@ -218,7 +218,7 @@ function StartCard({ sessionId, data, canNavigate }: { sessionId: string; data: 
       )}
       {transition.error && (
         <p role="alert" className="text-warn mt-2">
-          {transition.error.message}
+          {transition.error.message} — We could not confirm the latest session state. Use Pause and return Home, then Continue to load the current activity.
         </p>
       )}
     </Card>
@@ -286,7 +286,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
     try {
       await doFinish(reason)
     } catch {
-      /* transition.error is rendered; nothing changed on the server */
+      /* A lost response may follow a committed change; the recovery notice is rendered. */
     }
   }
 
@@ -392,7 +392,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
         )}
         {transition.error && (
           <p role="alert" className="text-sm text-warn mt-2">
-            {transition.error.message} — nothing was changed; try again.
+            {transition.error.message} — We could not confirm the latest session state. Use Pause and return Home, then Continue to load the current activity.
           </p>
         )}
       </Card>

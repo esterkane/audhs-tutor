@@ -1169,3 +1169,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 checked-question reload: activity-scoped pointer restores original server feedback via GET only, preserving question snapshot and historical-result semantics. Explicit next clears pointer; lookup/storage failures remain visible.36 unit/7 browser, full lint/types/build pass, narrow/keyboard checked, independent review clear. See slices/assessment-reload.md. Older no-pointer sessions and pre-delivery uncertainty use existing archive/recovery; broader races and repeated-error guidance remain.
+
+
+2026-10-05 transition outcome message: real lost-delivery tests proved server advancement despite the old nothing-changed notice. Errors now give an honest uncertainty message and existing Pause/Home/Continue recovery.23 unit/11 browser, lint/types pass; narrow visual/keyboard and read-only review clear. See slices/transition-outcome-message.md. No learning/routing change; prolonged request handling remains open.

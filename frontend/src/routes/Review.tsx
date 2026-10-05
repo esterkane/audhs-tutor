@@ -232,7 +232,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       if (!active.current || navigationIntent.current !== intent) return
       nav(next.plan_complete ? '/recap' : routeForPhase(next))
     } catch {
-      /* transition.error is rendered; the plan did not move */
+      /* A lost response may follow a committed change; the recovery notice is rendered. */
     }
   }
 
@@ -306,7 +306,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
         {stopError && <p role="alert">{stopError}</p>}
         {transition.error && (
           <p role="alert" className="text-warn mt-2">
-            {transition.error.message}
+            {transition.error.message} — We could not confirm the latest session state. Use Pause and return Home, then Continue to load the current activity.
           </p>
         )}
       </Card>
