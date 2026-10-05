@@ -27,6 +27,19 @@ for (const narrow of [false, true]) {
       if (await choices.count())
         await (narrow ? choices.getByRole('button').last() : choices.getByRole('button').first()).click()
       else await page.getByRole('textbox', { name: 'Your answer', exact: true }).fill(narrow ? '0' : '5')
+      let recoveredAnswerId = ''
+      if (narrow) {
+        await page.route('**/api/assess/attempt', async (route) => {
+          const response = await route.fetch()
+          const body = await response.json()
+          recoveredAnswerId = body.answer_id
+          await route.fulfill({ response, json: { ...body, answer_id: null, save_error: 'Simulated history save failure', save_receipt: 'browser-receipt' } })
+        })
+        await page.route('**/api/answers/recover-save', async (route) => {
+          expect(route.request().postDataJSON()).toEqual({ receipt: 'browser-receipt' })
+          await route.fulfill({ json: { answer_id: recoveredAnswerId } })
+        })
+      }
       const gradeResponse = page.waitForResponse(
         (response) =>
           response.url().endsWith('/api/assess/attempt') && response.request().method() === 'POST',
@@ -34,6 +47,12 @@ for (const narrow of [false, true]) {
       await page.getByRole('button', { name: 'Check my answer', exact: true }).click()
       const grade = await (await gradeResponse).json()
       expect(grade.correct).toBe(!narrow)
+      if (narrow) {
+        await expect(page.getByText('Discuss this feedback', { exact: true })).toHaveCount(0)
+        await page.getByRole('button', { name: 'Retry saving', exact: true }).click()
+        await expect(page.getByText('Discuss this feedback', { exact: true })).toBeVisible()
+        grade.answer_id = recoveredAnswerId
+      }
       const saved = page.getByRole('link', { name: 'Open saved feedback', exact: true })
       await expect(saved).toBeVisible()
       await expect(page.getByRole('button', { name: 'Explain the idea first', exact: true })).toHaveCount(0)

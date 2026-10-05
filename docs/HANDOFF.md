@@ -1247,3 +1247,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 checked-feedback discussion shipped: explicit collapsed entry uses immutable saved parent and bound session; close/phase exit stops streaming/media while preserving mounted replies and save receipts.13 focused component tests,2 sandbox desktop/narrow keyboard journeys, TypeScript/build/lint and independent review pass. See slices/assessment-followup-context.md for evidence and remaining receipt-recovery/whole-route persistence limits. No grading/model/prompt change.
+
+
+2026-10-05 assessment save recovery now enables in-session discussion immediately via existing saved-ID callback; no regrade/generation.17 component tests,2 desktop/narrow keyboard browser journeys, types/lint and review pass. See slices/assessment-followup-context.md. Whole-route unsaved-reply recovery remains outstanding.

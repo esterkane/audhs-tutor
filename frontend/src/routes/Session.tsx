@@ -1162,7 +1162,11 @@ function AssessPanel({
             </p>
           </details>
           <p className="mt-2">{result.feedback}</p>
-          <AssessmentSaveStatus key={result.attempt_id} result={result} />
+          <AssessmentSaveStatus
+            key={result.attempt_id}
+            result={result}
+            onSaved={(answerId) => setResult({ ...result, answer_id: answerId, save_error: null, save_receipt: null })}
+          />
           <p className="mt-1 text-sm">{result.next_step}</p>
           {result.misconception && (
             <p className="mt-1 text-sm text-warn">Possible misconception: {result.misconception}</p>
