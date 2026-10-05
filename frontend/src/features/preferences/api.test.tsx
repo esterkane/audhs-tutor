@@ -1,4 +1,4 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query'
 import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { afterEach, expect, it, vi } from 'vitest'
@@ -148,4 +148,38 @@ it('a refresh started during a save cannot overwrite the confirmed snapshot', as
     await new Promise(resolve => setTimeout(resolve, 0))
   })
   expect(result.current.read.data?.values['ui.font_scale']).toBe('large')
+})
+
+it.each(['planner.new_material_min', 'ui.font_scale'])('invalidates plan previews only for planning changes: %s', async key => {
+  vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(jsonResponse({ values: {}, specs: [] }))))
+  const { result } = setup()
+  await waitFor(() => expect(result.current.read.isSuccess).toBe(true))
+  const client = clients[0]
+  const previewKey = ['plan', 'preview', 'steady', 3]
+  client.setQueryData(previewKey, { blocks: [] })
+  client.setQueryData(['session', 'existing'], { plan: ['unchanged'] })
+  await act(async () => { await result.current.save.mutateAsync({ key, value: key.startsWith('planner.') ? 25 : 'large' }) })
+  expect(client.getQueryState(previewKey)?.isInvalidated).toBe(key.startsWith('planner.'))
+  expect(client.getQueryState(['session', 'existing'])?.isInvalidated).toBe(false)
+  expect(client.getQueryData(['session', 'existing'])).toEqual({ plan: ['unchanged'] })
+})
+
+
+it('refreshes an active plan preview after a successful planning save', async () => {
+  const client = new QueryClient()
+  clients.push(client)
+  let minutes = 20
+  const preview = vi.fn(async () => ({ minutes }))
+  vi.stubGlobal('fetch', vi.fn(() => {
+    minutes = 25
+    return Promise.resolve(jsonResponse({ values: { 'planner.new_material_min': minutes }, specs: [] }))
+  }))
+  const { result } = renderHook(() => ({
+    plan: useQuery({ queryKey: ['plan', 'preview', 'steady', 3], queryFn: preview, staleTime: Infinity }),
+    save: useSetPreference(),
+  }), { wrapper: ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider> })
+  await waitFor(() => expect(result.current.plan.data?.minutes).toBe(20))
+  await act(async () => { await result.current.save.mutateAsync({ key: 'planner.new_material_min', value: 25 }) })
+  await waitFor(() => expect(result.current.plan.data?.minutes).toBe(25))
+  expect(preview).toHaveBeenCalledTimes(2)
 })

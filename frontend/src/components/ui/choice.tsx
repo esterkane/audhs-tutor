@@ -15,6 +15,7 @@ export function Choice<T extends string | number>({
   onChange,
   columns = 3,
   stackOnNarrow = false,
+  describedBy,
 }: {
   label: string
   options: ChoiceOption<T>[]
@@ -22,9 +23,10 @@ export function Choice<T extends string | number>({
   onChange: (v: T) => void
   columns?: number
   stackOnNarrow?: boolean
+  describedBy?: string
 }) {
   return (
-    <fieldset className="border-0 p-0 m-0 min-w-0 @container">
+    <fieldset aria-describedby={describedBy} className="border-0 p-0 m-0 min-w-0 @container">
       <legend className="text-sm font-medium mb-2">{label}</legend>
       <div
         className={`grid gap-2 ${stackOnNarrow ? 'grid-cols-1 @sm:grid-cols-[repeat(var(--choice-columns),minmax(0,1fr))]' : ''}`}

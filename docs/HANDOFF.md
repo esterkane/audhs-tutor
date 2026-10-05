@@ -1324,3 +1324,7 @@ Grouped settings with named headings and readable labels while retaining all exi
 
 ## 2026-10-05 — Preference timing audit
 Confirmed that the saved Socratic default is not consumed by fresh Home (one isolated browser probe); question preferences currently guide area drafting, and planner preview invalidation needs a separate repro. Recorded consumers, safe wording limits and the next coherent implementation in slices/preference-effect-timing.md. No runtime or teaching-policy change; broad acceptance remains open.
+
+
+## 2026-10-05 — Preference scope and preview freshness
+Added verified effect descriptions with accessible associations; planner saves refresh plan previews only. Nine unit/eight browser checks, lint/types/build, screenshot and code/pedagogy review passed. See slices/preference-effect-timing.md. Saved Socratic-default activation remains unresolved and is now disclosed in the UI; no teaching-policy change.

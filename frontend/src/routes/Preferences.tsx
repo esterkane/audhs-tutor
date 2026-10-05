@@ -43,6 +43,15 @@ const numericUnits: Record<string, string> = {
   'voice.retention_days': 'days',
 }
 
+function effectHint(key: string): string | undefined {
+  if (key.startsWith('questions.')) return 'Guides newly drafted learning-area questions. Does not rewrite saved questions or change every live tutor reply.'
+  if (key.startsWith('planner.')) return 'Used when planning a new session. Saving this does not change the plan of a session already started.'
+  if (['ui.theme', 'ui.density', 'ui.font_scale', 'ui.reduced_motion'].includes(key)) return 'Updates the display after saving. Your learning progress is unchanged.'
+  if (key === 'tutor.representation_default') return 'A preference for new session-tutor explanations when this format is available. Explicit format choices take precedence; existing explanations stay unchanged.'
+  if (key === 'session.default_mode') return 'Preselection on Home for a new session; it does not change an active session.'
+  if (key === 'session.socratic_default') return 'This saved default is not applied automatically yet. Choose the questioning style in Home → Session options for each session.'
+}
+
 function numericValue(key: string, value: unknown) {
   return [String(value), numericUnits[key]].filter(Boolean).join(' ')
 }
@@ -97,6 +106,7 @@ export function Preferences() {
               {s.type === 'bool' && (
                 <Choice<string>
                   stackOnNarrow
+                  describedBy={effectHint(s.key) ? `effect-${s.key}` : undefined}
                   label={s.description}
                   options={[
                     { value: 'on', label: 'On' },
@@ -115,6 +125,7 @@ export function Preferences() {
               {s.type === 'enum' && (
                 <Choice<string>
                   stackOnNarrow
+                  describedBy={effectHint(s.key) ? `effect-${s.key}` : undefined}
                   label={s.description}
                   options={(s.choices ?? []).map((c) => ({ value: c, label: optionLabel(s.key, c) }))}
                   value={(values[s.key] as string) ?? ''}
@@ -133,10 +144,12 @@ export function Preferences() {
                     onChange={(e) => set.mutate({ key: s.key, value: Number(e.target.value) })}
                     className="block w-full"
                     aria-label={s.description}
+                    aria-describedby={effectHint(s.key) ? `effect-${s.key}` : undefined}
                     aria-valuetext={numericValue(s.key, values[s.key])}
                   />
                 </label>
               )}
+              {effectHint(s.key) && <p id={`effect-${s.key}`} className="text-sm text-muted mt-2">{effectHint(s.key)}</p>}
             </div>
                 ))}
               </section>

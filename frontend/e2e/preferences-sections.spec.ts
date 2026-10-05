@@ -8,6 +8,9 @@ for (const width of [390, 1280]) {
       await expect(page.getByRole('heading', { name, exact: true, level: 2 })).toBeVisible()
     }
     const learning = page.getByRole('region', { name: 'Learning and explanations', exact: true })
+    await expect(learning.getByRole('group', { name: 'Prefer application and debugging questions', exact: true })).toHaveAccessibleDescription(/newly drafted learning-area questions/)
+    await expect(learning.getByRole('group', { name: 'Preselect Socratic questioning', exact: true })).toHaveAccessibleDescription(/not applied automatically yet/)
+    await expect(page.getByRole('slider', { name: 'Planned minutes for new material', exact: true })).toHaveAccessibleDescription(/does not change the plan of a session already started/)
     const example = learning.getByRole('button', { name: 'Worked example', exact: true })
     await example.focus()
     const saved = page.waitForResponse(response => response.url().endsWith('/api/preferences') && response.request().method() === 'PUT')

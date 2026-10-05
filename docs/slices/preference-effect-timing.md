@@ -22,3 +22,11 @@ A disposable Chromium sandbox stored `session.socratic_default=true`, loaded fre
 4. Verify desktop/narrow keyboard return and saved values; retain prior grouping/recovery tests. Require bounded code/pedagogy review for any session-entry behavior change.
 
 No application code was changed by this audit. Actual browser zoom, screen reader and human comprehension remain separate open gates.
+
+
+## Verified implementation — 2026-10-05
+Added visible, accessible descriptions for audited display/planner/question/representation/default-mode settings. The Socratic control explicitly says its saved default is not currently applied and points to per-session selection; activation behavior is unchanged. Choice accepts an optional describedBy reference; existing callers are unchanged.
+
+A hook regression reproduced absent plan-preview invalidation after a planner save (one failed/seven passed before). Saves now invalidate only the plan-preview prefix; they neither invalidate nor rewrite existing session data. Nine hook tests pass, including active-preview refresh, non-planner isolation, unchanged cached session plan and prior save/read races. Eight Chromium checks pass across desktop/narrow plus double-root-text320/640/1280: accessible hints, keyboard traversal, exact values/reload, unknown keys and no overflow. Screenshot inspected, full frontend lint/types/build pass with existing chunk warning. Independent code/pedagogy review clear. Logs: /tmp/preference-scope-{before,unit,browser,lint,build}.log.
+
+This closes description/invalidation items1–2 at their stated scope; the existing-session invariant is checked at the client cache boundary and source-reviewed backend behavior, not a new end-to-end assessment of all replanning paths. Socratic contract item3, default-mode delayed-read ordering, physical/assistive acceptance and other track work remain open.

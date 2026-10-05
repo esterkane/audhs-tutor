@@ -26,6 +26,8 @@ export function useSetPreference() {
       // A remount/refocus can start a new read while the write is in flight.
       await qc.cancelQueries({ queryKey: ['preferences'] })
       qc.setQueryData(['preferences'], data)
+      if (variables.key.startsWith('planner.'))
+        void qc.invalidateQueries({ queryKey: ['plan', 'preview'] })
       if (variables.key.startsWith('goal.'))
         void qc.invalidateQueries({ predicate: (q) => q.queryKey[0] !== 'preferences' })
     },
