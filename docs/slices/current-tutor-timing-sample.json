@@ -1,0 +1,37 @@
+{
+  "method": "Current TutorTurn, real local Gemma3:12b, explicit mode, disposable per-case SQLite and synthetic attention passage, offline fake embeddings. Existing local Ollama server, sequential cases after empty preload. No live learner writes or hosted inference. Text is accumulated raw token stream, not final post-trim done.text; do not infer final UI truncation from raw tail.",
+  "samples": [
+    {
+      "operation": "preload",
+      "ready": true,
+      "elapsed_s": 2.6977827500086278
+    },
+    {
+      "case": "mask",
+      "question": "Why is the mask applied with minus infinity before the softmax instead of zeroing weights after?",
+      "first_text_s": 6.4422815419966355,
+      "total_s": 13.049193708997336,
+      "model": "gemma3:12b",
+      "mode": "explicit",
+      "raw_stream_text": "(analogy) Applying negative infinity before softmax is crucial for maintaining proper probability distribution and gradient flow [1]. Zeroing weights *after* softmax would alter the sum of probabilities, invalidating the normalization.\n\n## The idea\nSoftmax normalizes scores into probabilities that sum to one [1]. If you simply zero out probabilities *after* softmax, you're removing mass without re-normalizing, which breaks this property.\n\n## A worked example\nImagine two tokens with scores 2 and 3. Softmax would produce probabilities proportional to exp(2) and exp(3). If you zeroed the score of the first token *after* softmax, the second token's probability would become 1, not 1/2.\n\n## Try one step\nNow, consider a causal mask. What happens to the probabilities if you apply negative infinity *before* softmax to tokens you want to exclude?"
+    },
+    {
+      "case": "scale",
+      "question": "Why do we divide attention scores by sqrt(d_k)?",
+      "first_text_s": 2.0591494999971474,
+      "total_s": 7.638031583002885,
+      "model": "gemma3:12b",
+      "mode": "explicit",
+      "raw_stream_text": "(analogy) Dividing attention scores by the square root of the key dimension, `sqrt(d_k)`, helps stabilize training [1]. Without this scaling, larger scores can lead to very peaked softmax distributions, which can hinder gradient flow.\n\n## The idea\nThe dot product of queries and keys produces a score representing their similarity. This score is then used to weight the values.\n\n## A worked example\nImagine `d_k` is 100. Two queries might produce scores of 10 and 1000. The 1000 score would heavily influence the softmax, potentially making other scores near zero.\n\n## Try one step\nCalculate `sqrt(d_k)` for `d_k = 512`."
+    },
+    {
+      "case": "qkv",
+      "question": "How do queries, keys and values combine to produce an attention output?",
+      "first_text_s": 2.0353080829954706,
+      "total_s": 8.741767415995128,
+      "model": "gemma3:12b",
+      "mode": "explicit",
+      "raw_stream_text": "(analogy) Queries, keys, and values work together to focus on relevant parts of the input sequence. Queries represent what a token is looking for, keys represent what each candidate token offers, and values carry the information [1].\n\n## The idea\nThe query is compared to each key using a dot product to determine similarity [1]. These dot products are then scaled and passed through a softmax function to produce attention weights, which are used to weight the values [1].\n\n## A worked example\nImagine the sentence \"The cat sat on the mat.\" The query for \"cat\" might look for information about animals. The key for \"mat\" might offer information about surfaces. The dot product of these would be high, resulting in a large attention weight for \"mat\" when computing the output for \"cat.\"\n\n## Try one step\nNow, let's say we have two tokens: \"it\" and \"animal\". What"
+    }
+  ]
+}

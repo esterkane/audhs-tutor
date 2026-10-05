@@ -1262,3 +1262,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 live runtime refreshed after proving old API lacked shipped streaming/preparation endpoints. Current backend health and all three paths verified through live OpenAPI; both frontend addresses reach it. Startup applied existing migrations. See slices/local-tutor-preparation.md. No new speed benchmark or code change claimed; backend remains non-reloading and needs deliberate refresh after Python edits.
+
+
+2026-10-05 current local diagnostic:3 synthetic/disposable explicit TutorTurns first-text6.44/2.06/2.04s, total13.05/7.64/8.74s after2.70s preload. See slices/local-tutor-latency.md and current-tutor-timing-sample.json for warm-cache/retrieval/raw-preview limits. No runtime changes, no owner learning activity, no broad speed/quality claim.
