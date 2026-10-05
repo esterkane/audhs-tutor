@@ -1151,3 +1151,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 compact lesson controls: Pause/End visible, topic/labels/Undo in named native disclosure, status/errors stay visible. Review default unchanged. Original12 unit,13 initial browser +2 opt-in re-entry pass; final label/layout checks pass, lint/types/build pass. Stale persona assertion updated to actual accessible next-step description, without dropping checkpoint/draft checks. See slices/compact-session-controls.md for measured mobile improvement/desktop row tradeoff and remaining first-viewport/assistive/human gates.
+
+
+2026-10-05 explanation entry: action group follows its heading, with help text below; duplicate teaching-overview instruction removed. Goal still precedes action; all audio/learning logic unchanged. Original10 unit/6 browser, lint/types/build pass, independent review clear, narrow visual inspected. Button fits the390×900 empty fixture, not320 or arbitrary content. Next inspect prepared explanation→question→feedback as one journey; see slices/lesson-reading-order.md.

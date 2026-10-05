@@ -44,3 +44,29 @@ screen readers and owner comprehension. No whole-stage acceptance is claimed.
 
 Sanitized verification:10 Session unit tests,3 layout browser journeys, TypeScript
 and lint pass with identical layout measurements.
+
+
+## Explanation action placement — 2026-10-05 follow-up
+
+After compact controls, the explanation action still followed two helper paragraphs.
+The topic and learning goal already precede it. Place the action group immediately
+below Your explanation, retain helper text beneath it, and remove only the duplicated
+teaching instruction from the overview. Assessment/challenge/practice guidance,
+listening, generated content, hints and every action remain. No state/model/prompt
+logic changed. Tests assert the actual topic rather than the removed duplicate copy.
+
+Original10 Session unit and6 layout/recovery/clarity browser tests pass, as do
+lint/types/build. Existing build/jsdom warnings remain. Keyboard order and label/Undo,
+unchanged checkpoint, sources/hints and partial draft recovery checks are retained.
+Independent review found no blockers/majors;390px screenshot inspected.
+Start explanation top moves from1050 to852px at390px, from1187 to944px at320px, and
+from760 to646px at1280px. On the390×900 empty-lesson fixture the button now fits in
+the first viewport. This is not a promise for long titles/descriptions, zoom, active
+playback, errors, saved-status rows or every device. At320px scrolling remains needed.
+
+Next inspect the prepared explanation and question/feedback states as a continuous
+journey. Do not keep compressing reading size or remove context to force every state
+above the fold. Human comprehension, screen-reader/zoom and long-content gates remain.
+
+Sanitized follow-up verification:10 Session unit tests,3 layout journeys, lint/types
+passed; layout coordinates match the original fixture.

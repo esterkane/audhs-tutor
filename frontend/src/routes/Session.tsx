@@ -324,15 +324,13 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
           Activity {blockIndex + 1} of {plan.length} · {BLOCK_LABELS[currentBlock.type] ?? currentBlock.type}{' '}
           · about {timerMinutes} min
         </p>
-        <p className="text-sm mt-2">
-          {phase === 'teach'
-            ? 'Start with an explanation. Try a question when ready, or save this topic for later.'
-            : phase === 'assess'
-              ? 'Read the context, use a hint if helpful, and try an answer when ready.'
-              : phase === 'challenge'
-                ? 'Apply the idea to a challenge, then continue the plan.'
-                : 'Follow the activity below. When you finish or skip it, the next activity opens.'}
-        </p>
+        {phase !== 'teach' && <p className="text-sm mt-2">
+          {phase === 'assess'
+            ? 'Read the context, use a hint if helpful, and try an answer when ready.'
+            : phase === 'challenge'
+              ? 'Apply the idea to a challenge, then continue the plan.'
+              : 'Follow the activity below. When you finish or skip it, the next activity opens.'}
+        </p>}
         {data.experiment && (
           <p className="text-sm mt-2" role="status">
             Experiment "{String(data.experiment.name)}":{' '}
@@ -534,15 +532,6 @@ function TeachPanel({
     <>
       <Card>
         <CardTitle>Your explanation</CardTitle>
-        {!text && !busy && !error && status !== 'stopped' && (
-          <p className="mt-2">
-            No explanation has been prepared yet. Start with the idea and a worked example, or type a
-            specific question below.
-          </p>
-        )}
-        <p className="text-sm text-muted mt-2">
-          Read at your own pace or choose Listen when the explanation is ready. Audio never starts automatically.
-        </p>
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
             variant={done || alt ? 'secondary' : 'primary'}
@@ -595,6 +584,15 @@ function TeachPanel({
             </Button>
           )}
         </div>
+        {!text && !busy && !error && status !== 'stopped' && (
+          <p className="mt-2">
+            No explanation has been prepared yet. Start with the idea and a worked example, or type a
+            specific question below.
+          </p>
+        )}
+        <p className="text-sm text-muted mt-2">
+          Read at your own pace or choose Listen when the explanation is ready. Audio never starts automatically.
+        </p>
         <label htmlFor="ask" className="text-sm font-medium">
           Ask about this lesson (optional)
         </label>

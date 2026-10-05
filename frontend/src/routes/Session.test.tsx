@@ -273,11 +273,7 @@ it('guides explanation to a question with optional controls collapsed and access
     }),
   )
   const { container } = renderApp(<Session />, { route: '/session' })
-  expect(
-    await screen.findByText(
-      'Start with an explanation. Try a question when ready, or save this topic for later.',
-    ),
-  ).toBeVisible()
+  expect(await screen.findByRole('heading', { name: 'Learn: Dot product' })).toBeVisible()
   expect(screen.getByText('More ways to learn').closest('details')).not.toHaveAttribute('open')
   expect(screen.getByRole('button', { name: 'End session' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
