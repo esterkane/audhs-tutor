@@ -6,7 +6,7 @@ import { Card, CardTitle } from '../../components/ui/card'
 import { useSkills } from '../skills/api'
 import { api, apiFetch } from '../../lib/api'
 import { useMode } from '../../stores/mode'
-import { routeForPhase, useCurrentSession } from './api'
+import { prepareResumedTutor, routeForPhase, useCurrentSession } from './api'
 
 /** Explicit route intent, separate from the running session's authoritative topic. */
 export function SelectedLesson({ skillId }: { skillId: string }) {
@@ -83,6 +83,7 @@ export function SelectedLesson({ skillId }: { skillId: string }) {
             disabled={start.isPending}
             onClick={() => {
               const s = current.data!
+              prepareResumedTutor(s.id)
               setSession(s.id, s.state.skill_id)
               nav(routeForPhase(s.state), { replace: true })
             }}

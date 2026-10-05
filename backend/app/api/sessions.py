@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, Request, Response
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 
@@ -206,6 +206,29 @@ async def current(db: DB, learner: Learner) -> SessionOut | None:
     )
     s = (await db.execute(stmt)).scalar_one_or_none()
     return await _out(db, learner.id, s) if s else None
+
+
+@router.post(
+    "/{session_id}/prepare",
+    summary="Optionally prepare local tutor weights on explicit session resume",
+    status_code=204,
+)
+async def prepare_resume(
+    session_id: str,
+    db: DB,
+    learner: Learner,
+    request: Request,
+    background: BackgroundTasks,
+    settings: SettingsDep,
+) -> Response:
+    session = await db.get(Session, session_id)
+    if not session or session.learner_id != learner.id:
+        raise AppError("session_not_found", "Session not found.", http_status=404)
+    if session.ended_at:
+        raise AppError("session_ended", "This session has ended.", http_status=409)
+    schedule_preparation(request, background, settings, learner.id, session.id)
+    # Acknowledges the optional request, not model readiness. No checkpoint mutation.
+    return Response(status_code=204)
 
 
 class CheckpointIn(BaseModel):

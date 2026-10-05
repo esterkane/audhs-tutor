@@ -7,6 +7,11 @@ for (const width of [390, 1280]) {
     const state = { skill_id: 'old-skill', block_status: 'running', phase: 'teach', plan_complete: false }
     const original = { id: 'old', active_skill: { ...skill, id: 'old-skill', title: 'Original lesson' }, next_skill: skill, state, plan: [], due_reviews: 0 }
     const writes: string[] = []
+    const preparations: string[] = []
+    await page.route('**/api/sessions/old/prepare', route => {
+      preparations.push(route.request().method())
+      return route.abort('failed')
+    })
     await page.route('**/api/sessions/current', route => route.fulfill({ json: original }))
     await page.route('**/api/sessions/old', route => route.fulfill({ json: original }))
     await page.route('**/api/skills', route => route.fulfill({ json: { skills: [skill], next_skill_id: skill.id } }))
@@ -34,9 +39,11 @@ for (const width of [390, 1280]) {
     await expect(page).toHaveURL(/\?lesson=next$/)
     await expect(page.getByRole('button', { name: 'Keep current session' })).toBeVisible()
     expect(writes).toEqual([])
+    expect(preparations).toEqual([])
     await page.getByRole('button', { name: 'Keep current session' }).click()
     await expect(page).toHaveURL(/\/session$/)
     expect(writes).toEqual([])
+    await expect.poll(() => preparations).toEqual(['POST'])
     await page.goto('/')
     await disclosure.click()
     await page.getByRole('button', { name: 'Choose whether to switch' }).click()

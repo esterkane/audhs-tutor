@@ -1,6 +1,6 @@
 # Prepare the local tutor after session start
 
-2026-10-05. Bounded first slice; existing-session resume is not covered yet.
+2026-10-05. New-session preparation plus explicit saved-session resume.
 
 ## Evidence and implementation
 Ollama logs for the synthetic saved-answer sample show 6.03 s runner startup and 6.62 s prompt evaluation before a 13.05 s first-text observation. Earlier wording attributing most of that sample to prompt processing was incomplete. All 49 layers were on the GPU and flash attention was enabled; enabling these again would not help.
@@ -24,8 +24,14 @@ Sources: [Ollama preload contract](https://docs.ollama.com/faq#how-can-i-preload
 This moves weight-loading work earlier; it does not make computation disappear. Benefit depends on preparation finishing while the learner reads. It can retain roughly 8.3 GB for this model under the existing keep-alive policy. It neither warms prompts nor pre-generates answers. A new session selecting a hosted provider, unavailable model or remote Ollama endpoint skips this optional work.
 
 ## Remaining limits
-Existing-session resume, a later model switch and expiry after a long reading interval are not covered. Prompt evaluation still takes roughly 6 s in this controlled example. Do not claim a universal sub-two-second response. The identical model outputs contained an existing reasoning issue: contrasting counting forward with addition as if they were different operations, and inferring why the learner erred. Preserving identical output is not a teaching-quality pass; no prompt or model was changed in this slice.
+Direct URL re-entry/refresh, a later model switch and expiry after a long reading interval are not covered. Prompt evaluation still takes roughly 6 s in this controlled example. Do not claim a universal sub-two-second response. The identical model outputs contained an existing reasoning issue: contrasting counting forward with addition as if they were different operations, and inferring why the learner erred. Preserving identical output is not a teaching-quality pass; no prompt or model was changed in this slice.
 
 The preparation job can finish loading after the learner leaves; it makes no content/progress writes and residency expires normally. It is bounded to 30 s and logs its own model_preload operation (success/error) rather than an explanation or learning event. Separate remote browser UI failures remain tracked in saved-answer-streaming.md.
 
 CI follow-up: run37321419639 completed with226 passed,20 skipped and5 failed browser cases. Two failures were stale retry fixtures still intercepting the buffered endpoint. Those fixtures now intercept SSE with the explicit default purpose while retaining original-key/body and edited-draft assertions; both desktop/narrow cases pass locally. The three previously documented Home/visualizer failures remain. Full latest-head remote CI remains open.
+
+
+## Explicit resume follow-up
+Home Continue and the lesson-choice Keep current session now issue a non-blocking POST to the owned active session's `/prepare` endpoint. Ordinary reads, Home visits, preference changes and direct route navigation do not load models. The endpoint acknowledges receipt with 204, never claims readiness, and uses the same optional local-only background path. `OLLAMA_PREPARE_ON_SESSION_START` retains its existing name for compatibility and controls both explicit entry actions. Client transport is bounded to five seconds, without retries; a delayed/failed optional request never holds navigation. Server preparation retains the existing 30-second limit and per-learner coalescing. No learning/checkpoint changes, new dependencies or prompt/model changes.
+
+Verification: 20 preparation/residency and 27 session/domain checks passed; Ruff and mypy (200 files), frontend lint, types and build passed (existing bundle-size warning). Six isolated browser journeys at 390/800/1280px passed, including keyboard Continue, unchanged topic, delayed preparation and transport failure. Narrow screenshot inspected: saved topic, next step and Continue remain visible with no overflow. Independent read-only review found no blockers/majors. This extends when weights can be prepared; it is not a new latency benchmark or evidence that prompt processing is faster.

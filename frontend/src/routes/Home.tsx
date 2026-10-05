@@ -16,6 +16,7 @@ import { useSkills } from '../features/skills/api'
 import { usePlanPreview } from '../features/plan/api'
 import {
   REVIEW_BLOCK_TYPES,
+  prepareResumedTutor,
   firstIndex,
   routeForPhase,
   useBlockTransition,
@@ -284,11 +285,13 @@ function HomeOverview() {
               size="lg"
               aria-describedby="saved-session-topic saved-session-next"
               onClick={() => {
-                if (current.data)
+                if (current.data) {
+                  prepareResumedTutor(current.data.id)
                   setSession(
                     current.data.id,
                     current.data.state?.skill_id ?? current.data.next_skill?.id ?? null,
                   )
+                }
                 nav(routeForPhase(current.data?.state))
               }}
             >

@@ -12,6 +12,14 @@ for (const width of [390, 800, 1280]) {
         },
       }),
     )
+    const preparations: string[] = []
+    let releasePreparation!: () => void
+    const held = new Promise<void>(resolve => { releasePreparation = resolve })
+    await page.route('**/api/sessions/fixture/prepare', async route => {
+      preparations.push(route.request().method())
+      await held
+      await route.fulfill({ status: 503, body: 'unavailable' })
+    })
     await page.goto('/')
     const resume = page.getByRole('button', { name: /^Continue$/ })
     await expect(resume).toBeVisible()
@@ -29,9 +37,12 @@ for (const width of [390, 800, 1280]) {
     await page.keyboard.press('Enter')
     await expect(topic.locator('..')).not.toHaveAttribute('open')
     await page.screenshot({ path: info.outputPath('resume-home.png'), fullPage: true })
+    expect(preparations).toEqual([])
     await resume.focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/review$/)
+    await expect.poll(() => preparations).toEqual(['POST'])
+    releasePreparation()
   })
 }
 

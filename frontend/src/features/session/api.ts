@@ -19,6 +19,16 @@ export function routeForPhase(
   return '/session'
 }
 
+/** Only call on explicit resume. Navigation and learning never wait for readiness. */
+export function prepareResumedTutor(sessionId: string): void {
+  void fetch(`/api/sessions/${encodeURIComponent(sessionId)}/prepare`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(5000),
+  }).catch(() => {
+    // Optional optimization: normal tutor requests retain visible readiness/retry errors.
+  })
+}
+
 export function useSession(sessionId: string | null) {
   return useQuery({
     queryKey: ['session', sessionId],

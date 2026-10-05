@@ -1226,3 +1226,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 local tutor preparation: successful NEW-session delivery schedules optional empty local-model loading, with loopback/non-cloud guards, fresh DB, bounded job and distinct diagnostics. No prompt/model/learning change; existing-session resume is not covered. Full backend869, focused39, mypy200/Ruff and seven session browser checks pass; review lifecycle finding fixed and rechecked. Isolated fixed-prompt comparison: first text13.115s cold vs6.060s after preparation, identical output; preparation was done beforehand and this is not a quality verdict. Two stale follow-up retry browser fixtures corrected and both pass locally. Three pre-existing Home/visualizer CI failures remain. See slices/local-tutor-preparation.md.
+
+
+2026-10-05 explicit resume preparation: Home Continue and Keep current session now request optional local loading without waiting. Ordinary GET/navigation remains read-only; ownership/ended guards and unchanged saved state verified. 47 backend checks, six browser journeys, lint/types/build and independent review pass. Direct-route re-entry, prompt processing and the three earlier CI UI failures remain open. See slices/local-tutor-preparation.md.

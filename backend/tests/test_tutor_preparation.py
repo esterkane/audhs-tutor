@@ -189,3 +189,62 @@ async def test_failed_response_delivery_does_not_block_later_preparation(client,
     response = await client.post("/api/sessions", json={"mode": "steady", "energy": 3})
     assert response.status_code == 201
     provider.preload.assert_awaited_once()
+
+
+async def test_explicit_resume_prepares_without_changing_saved_session(client, db):
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b", "gemma3:12b"})
+    saved = (await client.post("/api/sessions", json={})).json()
+    app = client._transport.app
+    provider = OllamaProvider("http://localhost:11434")
+    delivered = False
+
+    async def load(spec):
+        assert delivered
+        return True
+
+    provider.preload = AsyncMock(side_effect=load)
+    app.state.providers["ollama"] = provider
+    before = (await client.get(f"/api/sessions/{saved['id']}")).json()
+    await client.get("/api/sessions/current")
+    provider.preload.assert_not_awaited()
+
+    async def observe(scope, receive, send):
+        async def record(message):
+            nonlocal delivered
+            if message["type"] == "http.response.body":
+                delivered = True
+            await send(message)
+
+        await app(scope, receive, record)
+
+    client._transport.app = observe
+    response = await client.post(f"/api/sessions/{saved['id']}/prepare")
+    assert response.status_code == 204 and not response.content
+    provider.preload.assert_awaited_once()
+    assert (await client.get(f"/api/sessions/{saved['id']}")).json() == before
+    for model in (AssessmentAttempt, CompetencyEvidence, TutorAnswer):
+        assert await db.scalar(select(func.count()).select_from(model)) == 0
+
+
+@pytest.mark.parametrize("scenario,status", [("missing", 404), ("other_owner", 404), ("ended", 409)])
+async def test_resume_rejects_invalid_session_without_loading(client, db, scenario, status):
+    from app.db.models import LearnerProfile, Session
+
+    saved = (await client.post("/api/sessions", json={})).json()
+    session_id = saved["id"]
+    if scenario == "missing":
+        session_id = "not-a-session"
+    elif scenario == "ended":
+        await client.post(f"/api/sessions/{session_id}/end", json={})
+    else:
+        other = LearnerProfile(display_name="Other learner")
+        db.add(other)
+        await db.flush()
+        session = await db.get(Session, session_id)
+        session.learner_id = other.id
+        await db.commit()
+    provider = OllamaProvider("http://localhost:11434")
+    provider.preload = AsyncMock(return_value=True)
+    client._transport.app.state.providers["ollama"] = provider
+    assert (await client.post(f"/api/sessions/{session_id}/prepare")).status_code == status
+    provider.preload.assert_not_awaited()
