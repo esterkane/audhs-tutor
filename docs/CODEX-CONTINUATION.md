@@ -408,3 +408,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 completed lesson re-entry fixed: versioned optional completion metadata restores reader position, notes, sources and question action without regeneration. Legacy/partial/corrupt records remain honest; size fallback preserves text.39 unit/6 browser, lint/types/build pass; narrow visual and keyboard checked; independent review clear after bounds fix. See slices/lesson-reading-reentry.md. Next: integrated incorrect-answer feedback/help.
+
+
+2026-10-05 assessment/explanation return: real wrong-answer tests reproduced feedback loss. Assessment now retained during in-page explanation visits, with hidden query/help/audio inactive and explicit Return to your question. No grading changes.29 unit/7 browser baseline, final29 unit/2 affected browser, lint/types pass; build before copy-only adjustment, visual/keyboard checked, review clear. See slices/assessment-explanation-return.md. Broader reload/pending-submission and repeated-error gates remain.

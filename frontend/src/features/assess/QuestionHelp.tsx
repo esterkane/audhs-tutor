@@ -7,6 +7,7 @@ import { useTutorStream } from '../tutor/useTutorStream'
 import { ReadAloud } from '../voice/ReadAloud'
 
 export function QuestionHelp({
+  active = true,
   sessionId,
   skillId,
   question,
@@ -16,8 +17,13 @@ export function QuestionHelp({
   skillId: string | null
   question: string
   onHint: () => void
+  active?: boolean
 }) {
   const tutor = useTutorStream()
+  const { stop } = tutor
+  useEffect(() => {
+    if (!active) stop()
+  }, [active, stop])
   const counted = useRef<string | null>(null)
   useEffect(() => {
     if (tutor.text && tutor.meta && counted.current !== tutor.meta.turn_id) {
@@ -61,7 +67,7 @@ export function QuestionHelp({
       {tutor.text && (
         <div className="mt-3">
           <Markdown text={tutor.text} />
-          {!tutor.busy && <ReadAloud key={tutor.text} text={tutor.text} />}
+          {active && !tutor.busy && <ReadAloud key={tutor.text} text={tutor.text} />}
         </div>
       )}
       {tutor.done && <TutorSources turn={tutor.done} />}

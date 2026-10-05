@@ -251,6 +251,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
       ? serverPhase
       : 'teach',
   )
+  const [assessmentEntered, setAssessmentEntered] = useState(phase === 'assess')
   const [hintCount, setHintCount] = useState(() => Math.max(0, Number(data.checkpoint?.hint_level) || 0))
   const [graspPassed, setGraspPassed] = useState(false)
   const [blockNote, setBlockNote] = useState<string | null>(null)
@@ -271,6 +272,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
   const timerMinutes = currentBlock.planned_min ?? SOFT_TIMER_MIN[mode]
 
   function changePhase(p: Phase) {
+    if (p === 'assess') setAssessmentEntered(true)
     setPhase(p)
     void checkpoint.mutateAsync({
       id: sessionId,
@@ -404,6 +406,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
               activeSkillId,
             ])}
             active={phase === 'teach'}
+            hasQuestion={assessmentEntered}
             sessionId={sessionId}
             skillId={activeSkillId}
             onCheck={() => changePhase('assess')}
@@ -412,19 +415,22 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
           />
         </div>
       )}
-      {phase === 'assess' && (
-        <AssessPanel
-          sessionId={sessionId}
-          skillId={activeSkillId}
-          hintCount={hintCount}
-          onBack={() => changePhase('teach')}
-          onGraded={(r) => {
-            setHintCount(0)
-            if (r.score >= 0.85) setGraspPassed(true)
-          }}
-          onFinishBlock={() => void finishBlock('finished')}
-          transitionPending={transition.pending}
-        />
+      {assessmentEntered && (phase === 'teach' || phase === 'assess') && (
+        <div hidden={phase !== 'assess'}>
+          <AssessPanel
+            active={phase === 'assess'}
+            sessionId={sessionId}
+            skillId={activeSkillId}
+            hintCount={hintCount}
+            onBack={() => changePhase('teach')}
+            onGraded={(r) => {
+              setHintCount(0)
+              if (r.score >= 0.85) setGraspPassed(true)
+            }}
+            onFinishBlock={() => void finishBlock('finished')}
+            transitionPending={transition.pending}
+          />
+        </div>
       )}
       {(phase === 'teach' || phase === 'assess') && activeSkillId && (
         <OptionalExercise sessionId={sessionId} skillId={activeSkillId} mastery={skill?.mastery ?? 0} />
@@ -469,6 +475,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
 function TeachPanel({
   recoveryScope,
   active,
+  hasQuestion,
   sessionId,
   skillId,
   onCheck,
@@ -476,6 +483,7 @@ function TeachPanel({
   onSwitchEarly,
 }: {
   recoveryScope: string
+  hasQuestion: boolean
   sessionId: string
   skillId: string | null
   onCheck: () => void
@@ -834,12 +842,14 @@ function TeachPanel({
           )}
         </Card>
       )}
-      {!busy && (done || alt) && (
+      {!busy && (done || alt || hasQuestion) && (
         <Card>
-          <p className="text-sm font-medium mb-2">Next: try one question about this idea.</p>
+          <p className="text-sm font-medium mb-2">
+            {hasQuestion ? 'Your current question and any checked feedback are kept.' : 'Next: try one question about this idea.'}
+          </p>
           <div className="flex gap-2 flex-wrap mb-3">
             <Button variant="primary" onClick={onCheck}>
-              Try a question
+              {hasQuestion ? 'Return to your question' : 'Try a question'}
             </Button>
           </div>
           <details>
@@ -885,6 +895,7 @@ function TeachPanel({
 }
 
 function AssessPanel({
+  active,
   sessionId,
   skillId,
   hintCount,
@@ -900,9 +911,10 @@ function AssessPanel({
   onGraded: (r: AttemptResult) => void
   onFinishBlock: () => void
   transitionPending: boolean
+  active: boolean
 }) {
   const [round, setRound] = useState(0)
-  const next = useNextItem(sessionId, skillId, round)
+  const next = useNextItem(sessionId, skillId, round, active)
   const attempt = useAttempt(sessionId)
   const [confidence, setConfidence] = useState<number | null>(null)
   const [answer, setAnswer] = useState('')
@@ -958,7 +970,7 @@ function AssessPanel({
     setRound((r) => r + 1)
   }
 
-  const recoveryPanel = (
+  const recoveryPanel = active && (
     <AssessmentRecovery
       recovery={attempt.recovery}
       onRefresh={async (signal) => {
@@ -1017,7 +1029,9 @@ function AssessPanel({
       {recoveryPanel}
       <Card>
         <p className="text-sm text-muted mb-2">
-          {item.kind === 'mcq'
+          {result
+            ? 'Question you answered'
+            : item.kind === 'mcq'
             ? 'Choose one answer below.'
             : item.kind === 'cloze'
               ? 'Fill in the missing word or phrase.'
@@ -1028,6 +1042,7 @@ function AssessPanel({
         <p className="text-base mb-3">{item.question}</p>
         {!result && (
           <QuestionHelp
+            active={active}
             key={`help:${item.id}`}
             sessionId={sessionId}
             skillId={skillId}
