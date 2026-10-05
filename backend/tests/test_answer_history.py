@@ -255,3 +255,60 @@ async def test_followup_lineage_is_direct_owned_paginated_and_read_only(client, 
     assert fake_local.calls == []
     for table in (ModelCall, LearningEvent):
         assert await db.scalar(select(func.count()).select_from(table)) == 0
+
+
+@pytest.mark.parametrize("raw", ["0", "Train on all examples"])
+@pytest.mark.parametrize(
+    "display", [None, "Use every row for both training and testing.", "x" * 8001]
+)
+async def test_assessment_followup_uses_saved_choice_label_not_current_question(
+    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider, display: str | None, raw: str
+) -> None:
+    from app.db.models import AssessmentAttempt
+    from app.models_ai.registry import seed_defaults
+
+    await seed_defaults(db, installed_ollama_tags={"llama3.1:8b"})
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    saved_request = {"text": "Which split should we use?", "learner_answer": raw}
+    if display is not None:
+        saved_request["learner_answer_display"] = display
+    db.add(
+        TutorAnswer(
+            id="graded-parent",
+            learner_id=owner,
+            turn_id="graded-parent",
+            surface="assessment",
+            request_json=saved_request,
+            text="This choice leaks test information into training.",
+            metadata_json={
+                "assessment_id": "no-current-question",
+                "assessment_question": {"kind": "mcq"},
+            },
+            fingerprint="graded-parent",
+        )
+    )
+    await db.commit()
+    before = await db.scalar(select(func.count()).select_from(AssessmentAttempt))
+    response = await client.post(
+        "/api/answers/graded-parent/followup",
+        json={
+            "session_id": session["id"],
+            "question": "Why is my choice a problem?",
+        },
+    )
+    assert response.status_code == 200, response.text
+    child = await db.get(TutorAnswer, response.json()["answer_id"])
+    assert child is not None
+    historical = child.request_json["historical_answer"]
+    assert historical["learner_answer"] == (display or "")[:8000]
+    parent = await db.get(TutorAnswer, "graded-parent")
+    assert parent is not None and parent.request_json["learner_answer"] == raw
+    if display is None:
+        assert "Do not infer" in historical["learner_answer_limitation"]
+    assert ("earlier displayed learner answer" in historical["truncated_fields"]) == bool(
+        display and len(display) > 8000
+    )
+    assert await db.scalar(select(func.count()).select_from(AssessmentAttempt)) == before
+    assert len(fake_local.calls) == 1
+    assert "zero-based option index" not in fake_local.calls[0].messages[1].content

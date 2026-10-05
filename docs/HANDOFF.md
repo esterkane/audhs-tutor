@@ -1,5 +1,10 @@
 # Local operational notes
 
+## 2026-10-05 — Correct saved assessment follow-up context
+
+Saved-answer follow-ups now receive immutable displayed answer text instead of mistaking MCQ indices for learner answers. Raw parent preserved; absent labels remain explicitly unavailable.16 tests, Ruff/mypy and independent review pass; two local synthetic before/after examples support the fix, not general accuracy. No UI or grading change. See docs/slices/assessment-followup-context.md for the next in-session dialogue/streaming boundary.
+
+
 ## 2026-10-05 — Help after checked feedback
 
 Reproduced disappearing question help after grading. Added optional concept explanation beside completed feedback, without another assessment or post-grade hint evidence.12 tests, lint/types/build and desktop-correct/narrow-incorrect keyboard browser journeys passed; review clear. Exact mistake-specific dialogue remains open pending immutable answer context. See docs/ux/DAILY-LEARNING-ACCEPTANCE.md DL-03. Prior CI backend/frontend/migrations/publication now pass; browser job still running at inspection.

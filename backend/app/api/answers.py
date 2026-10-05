@@ -238,6 +238,22 @@ async def followup(
         ),
         "truncated_fields": clipped,
     }
+    if row.surface == "assessment":
+        # The parent retains the raw submission. Models need the saved displayed answer,
+        # not an option index that could be mistaken for the learner's numerical answer.
+        displayed = old.get("learner_answer_display")
+        if isinstance(displayed, str) and displayed.strip():
+            historical["learner_answer"] = excerpt(
+                displayed, 8000, "earlier displayed learner answer"
+            )
+        else:
+            question_snapshot = row.metadata_json.get("assessment_question")
+            if isinstance(question_snapshot, dict) and question_snapshot.get("kind") == "mcq":
+                historical["learner_answer"] = ""
+                historical["learner_answer_limitation"] = (
+                    "The original selected option text was not saved. Do not infer the selected "
+                    "option from an index or the current question. Ask the learner to clarify."
+                )
     context = row.metadata_json.get("learning_context")
     workspace_request = PlaygroundRequest(
         session_id=body.session_id,
