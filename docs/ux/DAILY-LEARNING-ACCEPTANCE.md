@@ -93,3 +93,28 @@ rest of daily-learning acceptance remain open.
 
 Sanitized variant: the same13 Review unit tests,9 pause browser journeys, TypeScript
 and lint passed. Publication guard is required before its paired commit.
+
+
+## Session Pause follow-up — start and next-block transitions
+
+Two deterministic Session tests now expose the same mounted-route interval during
+start and next-block responses. Both failed before the fix by showing Review after
+Pause; both pass after the fix and verify cached committed state plus explicit resume.
+A delayed Home fixture models the scheduling interval, not a production lazy route.
+
+Session owns the pause guard above the block-keyed body. This matters because a late
+response updates the cache and can mount a new body whose review/recap redirect would
+otherwise bypass the old body's unmount check. Both async callbacks and that effect
+now check the parent guard. The callback also binds to the route entry key; explicit
+re-entry restores normal redirects without allowing an older entry's callback through.
+No server progress is rolled back and no new learning write or provider call is added.
+
+Original verification:10 Session unit tests,11 pause/Home browser journeys, lint,
+TypeScript and production build pass. Existing build warnings remain; jsdom also
+reports its existing unimplemented canvas context during the Session tests. The narrow
+resumed-teaching screenshot was inspected; keyboard/reload and no-overflow checks pass.
+Independent read-only review found no blockers/majors. General header/Back navigation
+and session-ending callbacks are outside this bounded explicit-Pause fix.
+
+Next: retain DL-02 as an open layout finding and continue the daily-learning matrix;
+no whole UX or accessibility phase is closed by these race fixes.

@@ -14,8 +14,8 @@ import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { OptionalConfidence } from '../components/OptionalConfidence'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
-import { useLayoutEffect, useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useCallback, useLayoutEffect, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -56,6 +56,14 @@ import { SOFT_TIMER_MIN, useMode } from '../stores/mode'
 type Phase = 'teach' | 'assess' | 'challenge' | 'practice'
 
 export function Session() {
+  const { key: locationKey } = useLocation()
+  // Pause takes effect before the route commits; block-cache updates may re-key the body meanwhile.
+  const navigationOwner = useRef({ key: locationKey, paused: false })
+  useLayoutEffect(() => {
+    navigationOwner.current = { key: locationKey, paused: false }
+  }, [locationKey])
+  const canNavigate = useCallback(() =>
+    navigationOwner.current.key === locationKey && !navigationOwner.current.paused, [locationKey])
   const { sessionId } = useMode()
   const nav = useNavigate()
   const session = useSession(sessionId)
@@ -98,7 +106,7 @@ export function Session() {
           </Button>
         </Card>
       )}
-      <SessionControls sessionId={sessionId} skillId={st.skill_id} />
+      <SessionControls sessionId={sessionId} skillId={st.skill_id} onPause={() => { navigationOwner.current.paused = true }} />
       <AlongsideMode sessionId={sessionId} />
       {st.skill_id && <details>
         <summary className="cursor-pointer text-sm font-medium">Try a coding experiment</summary>
@@ -106,6 +114,7 @@ export function Session() {
         <Link className="underline" to={`/playground?lesson_session=${encodeURIComponent(sessionId)}&lesson_skill=${encodeURIComponent(st.skill_id)}`}>Open lesson experiment</Link>
       </details>}
       <SessionBody
+        canNavigate={canNavigate}
         key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
         sessionId={sessionId}
         data={session.data}
@@ -114,7 +123,7 @@ export function Session() {
   )
 }
 
-function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut }) {
+function StartCard({ sessionId, data, canNavigate }: { sessionId: string; data: SessionOut; canNavigate: () => boolean }) {
   const nav = useNavigate()
   const active = useRef(false)
   useEffect(() => {
@@ -129,7 +138,7 @@ function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut })
   async function beginChecked(index: number) {
     if (transition.pending) return
     const state = await transition.start(index)
-    if (!active.current) return
+    if (!active.current || !canNavigate()) return
     if (!state.allowed) {
       setNote(state.message)
       return
@@ -139,7 +148,7 @@ function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut })
   async function continuePlan() {
     if (transition.pending || !data.state) return
     const state = await transition.next({ from_index: data.state.block_index ?? null, reason: 'finished' })
-    if (!active.current) return
+    if (!active.current || !canNavigate()) return
     if (!state.allowed) {
       setNote(state.message)
       return
@@ -215,7 +224,7 @@ function StartCard({ sessionId, data }: { sessionId: string; data: SessionOut })
   )
 }
 
-function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut }) {
+function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data: SessionOut; canNavigate: () => boolean }) {
   const active = useRef(false)
   useEffect(() => {
     active.current = true
@@ -254,10 +263,10 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
   }, [activeSkillId, skillId, setSkill])
   // a running review/recap block belongs to another screen
   useEffect(() => {
-    if (blockIndex != null && (serverPhase === 'review' || serverPhase === 'recap')) nav(routeForPhase(st))
-  }, [blockIndex, serverPhase, st, nav])
+    if (canNavigate() && blockIndex != null && (serverPhase === 'review' || serverPhase === 'recap')) nav(routeForPhase(st))
+  }, [blockIndex, serverPhase, st, nav, canNavigate])
 
-  if (blockIndex == null || !currentBlock) return <StartCard sessionId={sessionId} data={data} />
+  if (blockIndex == null || !currentBlock) return <StartCard sessionId={sessionId} data={data} canNavigate={canNavigate} />
 
   const timerMinutes = currentBlock.planned_min ?? SOFT_TIMER_MIN[mode]
 
@@ -285,7 +294,7 @@ function SessionBody({ sessionId, data }: { sessionId: string; data: SessionOut 
       return
     }
     const res = await transition.next({ from_index: blockIndex, reason, grasp_passed: graspPassed })
-    if (!active.current) return
+    if (!active.current || !canNavigate()) return
     if (!res.allowed) {
       setBlockNote(res.message)
       changePhase('assess')

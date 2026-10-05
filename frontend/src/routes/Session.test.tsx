@@ -1,7 +1,8 @@
+import { Suspense } from 'react'
 import { clearDraft } from '../features/assess/draft'
 import { act, render, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useMode } from '../stores/mode'
 import { jsonResponse, renderApp, sseResponse } from '../test/utils'
@@ -514,5 +515,58 @@ it('keeps an unsaved answer mounted when background session refresh fails', asyn
     mounted.unmount()
     qc.clear()
     vi.unstubAllGlobals()
+  }
+})
+
+
+describe('Pause before Session unmounts', () => {
+  afterEach(() => { vi.unstubAllGlobals(); sessionStorage.clear() })
+  for (const action of ['start', 'next'] as const) {
+    it(`preserves pause during delayed ${action} and resumes committed state explicitly`, async () => {
+      useMode.setState({ sessionId: 's1', skillId: 'k1', mode: 'steady' })
+      let saved = session(action === 'start' ? {} : {
+        block_index: 0, block: plan[0], block_id: 's1:0', block_status: 'running',
+        block_started_at: new Date().toISOString(), phase: 'practice',
+      })
+      let finish!: (response: Response) => void
+      let homeReady = false
+      let releaseHome!: () => void
+      const waiting = new Promise<void>(resolve => { releaseHome = resolve })
+      function DelayedHome() {
+        if (!homeReady) throw waiting
+        return <><h1>Paused Home</h1><Link to="/session">Resume saved session</Link></>
+      }
+      vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+        if (url === '/api/sessions/s1') return jsonResponse(saved)
+        if (url === '/api/practice/activities') return jsonResponse({ activities: { movement: ['Walk'], guitar: [] } })
+        if (url === `/api/plan/blocks/${action}`) return new Promise<Response>(resolve => { finish = resolve })
+        if (url.includes('/api/exercises/for-skill/')) return jsonResponse({}, 404)
+        return jsonResponse({ values: {}, skills: [] })
+      }))
+      const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      render(<QueryClientProvider client={qc}><MemoryRouter initialEntries={['/session']}>
+        <Suspense fallback={<p>Loading destination</p>}><Routes>
+          <Route path="/session" element={<Session />} />
+          <Route path="/" element={<DelayedHome />} />
+          <Route path="/review" element={<h1>Saved review block</h1>} />
+        </Routes></Suspense>
+      </MemoryRouter></QueryClientProvider>)
+      fireEvent.click(await screen.findByRole('button', { name: action === 'start' ? /Review first/ : 'Skip this block' }))
+      await waitFor(() => expect(finish).toBeDefined())
+      fireEvent.click(screen.getByRole('button', { name: 'Pause and return Home' }))
+      expect(screen.getByRole('button', { name: 'Pause and return Home' })).toBeInTheDocument()
+      saved = session({ block_index: 1, block: plan[1], block_id: 's1:1', block_status: 'running',
+        block_started_at: new Date().toISOString(), phase: 'review' })
+      await act(async () => {
+        finish(jsonResponse(saved.state))
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+      await act(async () => { homeReady = true; releaseHome() })
+      expect(await screen.findByRole('heading', { name: 'Paused Home' })).toBeInTheDocument()
+      expect(screen.queryByRole('heading', { name: 'Saved review block' })).not.toBeInTheDocument()
+      expect(qc.getQueryData(['session', 's1'])).toMatchObject({ state: { phase: 'review', block_index: 1 } })
+      fireEvent.click(screen.getByRole('link', { name: 'Resume saved session' }))
+      expect(await screen.findByRole('heading', { name: 'Saved review block' })).toBeInTheDocument()
+    })
   }
 })

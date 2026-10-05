@@ -1142,3 +1142,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 Review pause intent: deterministic delayed-Home regression failed before fix, passes after synchronous intent invalidation. Late block response preserves server progress but cannot reclaim navigation after explicit Pause. Original13 unit/10 browser checks, lint/types/build pass (inherited build warnings); keyboard/narrow screenshot inspected; independent review clear. See ux/DAILY-LEARNING-ACCEPTANCE.md. Other navigation exits and narrow lesson hierarchy remain open.
+
+
+2026-10-05 Session pause ownership: two delayed-destination tests failed before fix, pass after parent-owned guard covering async block responses and cache-driven review/recap redirects. Committed state survives and explicit resume works. Original10 unit/11 browser, lint/types/build pass; keyboard/narrow visual checked, independent review clear. See ux/DAILY-LEARNING-ACCEPTANCE.md. General non-Pause navigation remains unverified; crowded lesson layout remains open.
