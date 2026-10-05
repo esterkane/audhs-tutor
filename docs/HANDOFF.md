@@ -1,5 +1,10 @@
 # Local operational notes
 
+## 2026-10-05 — Help after checked feedback
+
+Reproduced disappearing question help after grading. Added optional concept explanation beside completed feedback, without another assessment or post-grade hint evidence.12 tests, lint/types/build and desktop-correct/narrow-incorrect keyboard browser journeys passed; review clear. Exact mistake-specific dialogue remains open pending immutable answer context. See docs/ux/DAILY-LEARNING-ACCEPTANCE.md DL-03. Prior CI backend/frontend/migrations/publication now pass; browser job still running at inspection.
+
+
 ## 2026-10-05 — Repair CI contract drift
 
 Test-only alignment for thought-action inventory, dropped-item409 conflict with unchanged state, save-request UUID and jsdom native-dialog methods. Full backend847/frontend516 passed locally; lint/types and nine real-browser keyboard/narrow/reminder journeys passed. Independent review clear. No runtime or learning change. See docs/slices/ci-contract-alignment.md; new remote CI must still finish.

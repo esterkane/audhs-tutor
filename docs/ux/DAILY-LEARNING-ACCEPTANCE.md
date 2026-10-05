@@ -118,3 +118,14 @@ and session-ending callbacks are outside this bounded explicit-Pause fix.
 
 Next: retain DL-02 as an open layout finding and continue the daily-learning matrix;
 no whole UX or accessibility phase is closed by these race fixes.
+
+
+## DL-03 — concept help after checked feedback, 2026-10-05
+
+Before-change desktop/narrow browser journeys reproduced that both hint and concept-help controls disappear after grading. Revisit explanation exists, but requires leaving the checked question/feedback. This adds context-switching at the point a learner may be confused (S3 assistance gap); this is observed interface behavior, not an owner comprehension result.
+
+A bounded fix now places optional “I don't understand yet — explain the idea” after feedback. It uses the same concept-and-similar-example prompt, skill and frozen question as pre-answer help. It does not claim to explain an individual mistake or regrade an answer. The new panel is outside the feedback live region, keyed by attempt, stops when inactive/unmounted, and does not count post-grade text as hints on the completed attempt. Continue, revisit and another-question actions remain.
+
+Verified:12 affected component/Session tests; frontend lint/types/build; desktop correct-answer and390px incorrect-answer browser journeys, keyboard activation, help text, unchanged displayed feedback, zero additional assessment submissions, saved-feedback navigation/reload and no overflow. Screenshots inspected. Tutor streaming is mocked; no hosted calls or owner database changes. An initial browser run used a custom sandbox path unsupported by the fixture, then the standard disposable sandbox was used successfully. Independent code/pedagogy review found no actionable issue. Existing canvas/build warnings remain.
+
+Remaining: this is concept help, not durable mistake-specific dialogue. Tailored feedback requires the original immutable submitted answer/criteria; current AttemptResult does not include that original answer and browser drafts are cleared after grading. Do not reconstruct it from a later draft. Review-card help after reveal, repeated-wrong-answer guidance, richer explanation controls, physical audio and owner comprehension remain open. DL-02 layout density remains visible in the narrow screenshot. No whole UX stage is complete.

@@ -1191,6 +1191,16 @@ function AssessPanel({
           </div>
         </Card>
       )}
+      {result && (
+        <QuestionHelp
+          key={`feedback-help:${result.attempt_id}`}
+          afterAnswer
+          active={active}
+          sessionId={sessionId}
+          skillId={skillId}
+          question={item.question}
+        />
+      )}
     </>
   )
 }

@@ -12,11 +12,13 @@ export function QuestionHelp({
   skillId,
   question,
   onHint,
+  afterAnswer = false,
 }: {
   sessionId: string
   skillId: string | null
   question: string
-  onHint: () => void
+  onHint?: () => void
+  afterAnswer?: boolean
   active?: boolean
 }) {
   const tutor = useTutorStream()
@@ -28,26 +30,32 @@ export function QuestionHelp({
   useEffect(() => {
     if (tutor.text && tutor.meta && counted.current !== tutor.meta.turn_id) {
       counted.current = tutor.meta.turn_id
-      onHint()
+      if (!afterAnswer) onHint?.()
     }
-  }, [tutor.text, tutor.meta, onHint])
+  }, [tutor.text, tutor.meta, onHint, afterAnswer])
   return (
     <div className="border border-line rounded-md p-3 my-3">
-      <p className="text-sm mb-2">You can learn before answering. Help keeps your answer in place.</p>
+      <p className="text-sm mb-2">
+        {afterAnswer
+          ? 'Still unclear? Review the idea here. Your recorded feedback stays unchanged.'
+          : 'You can learn before answering. Help keeps your answer in place.'}
+      </p>
       <div className="flex gap-2 flex-wrap">
-        <Button
-          disabled={tutor.busy}
-          onClick={() => {
-            void tutor.run({
-              session_id: sessionId,
-              skill_id: skillId,
-              action: 'hint',
-              text: `Give one small hint for this question, without revealing the answer: ${question}`,
-            })
-          }}
-        >
-          Give me a hint
-        </Button>
+        {!afterAnswer && (
+          <Button
+            disabled={tutor.busy}
+            onClick={() => {
+              void tutor.run({
+                session_id: sessionId,
+                skill_id: skillId,
+                action: 'hint',
+                text: `Give one small hint for this question, without revealing the answer: ${question}`,
+              })
+            }}
+          >
+            Give me a hint
+          </Button>
+        )}
         <Button
           disabled={tutor.busy}
           onClick={() => {
@@ -59,7 +67,7 @@ export function QuestionHelp({
             })
           }}
         >
-          Explain the idea first
+          {afterAnswer ? "I don't understand yet — explain the idea" : 'Explain the idea first'}
         </Button>
         {tutor.busy && <Button onClick={tutor.stop}>Stop explanation</Button>}
       </div>
