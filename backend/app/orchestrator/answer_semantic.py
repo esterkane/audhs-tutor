@@ -3,13 +3,13 @@
 import math
 import time
 
-from sqlalchemy import Select
+from sqlalchemy import Select, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.db import answer_vectors
 from app.db.answer_memory import candidates
-from app.db.models import TutorAnswer
+from app.db.models import TutorAnswer, TutorAnswerVector
 from app.db.traces import ModelCallRecord, write_model_call
 from app.models_ai.ollama import OllamaProvider
 from app.orchestrator.answer_index import identity
@@ -42,12 +42,20 @@ async def ranked(
     ]
     if not rows:
         return []
+    # No model lookup can help until an eligible answer has been indexed. Check locally
+    # before resolving the installed model digest (which contacts Ollama).
+    indexed = await db.scalar(
+        select(TutorAnswerVector.id)
+        .where(
+            TutorAnswerVector.learner_id == learner_id,
+            TutorAnswerVector.answer_id.in_([row.id for row in rows]),
+        )
+        .limit(1)
+    )
+    if indexed is None:
+        return []
     spec, key = await identity(db, settings, learner_id)
     # Only embed the query. Missing answer vectors require the separate indexing path.
-    from sqlalchemy import select
-
-    from app.db.models import TutorAnswerVector
-
     dims = await db.scalar(
         select(TutorAnswerVector.vector_json)
         .where(

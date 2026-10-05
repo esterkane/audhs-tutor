@@ -144,3 +144,37 @@ async def test_literal_answer_reported_during_semantic_lookup_is_excluded(client
     response = await client.post("/api/playground/tutor", json=body)
     assert response.status_code == 200, response.text
     assert response.json()["memory_answers"] == []
+
+
+async def test_unindexed_candidates_do_not_contact_model_service(client, db, monkeypatch):
+    """Other targets' vectors must not force an unnecessary model lookup."""
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    body = PlaygroundRequest(
+        session_id="s",
+        question="Explain proportions",
+        exercise="Task",
+        code="",
+        learning_context=PlaygroundContext(target_id="step"),
+    )
+    for identifier, target in [("unindexed", "step"), ("indexed-elsewhere", "other")]:
+        db.add(
+            TutorAnswer(
+                id=identifier,
+                learner_id=owner,
+                turn_id=identifier,
+                surface="playground",
+                text="Use the initial count as denominator",
+                request_json=body.model_dump(exclude={"session_id"}),
+                metadata_json={"learning_context": {"target_id": target}},
+                fingerprint=identifier,
+            )
+        )
+    await db.commit()
+    await put(db, owner, "indexed-elsewhere", "indexed-elsewhere", "key", [1.0, 0.0])
+
+    async def unexpected(*args):
+        raise AssertionError("Unindexed candidates must not contact Ollama")
+
+    monkeypatch.setattr(answer_semantic, "identity", unexpected)
+    monkeypatch.setattr(answer_semantic.OllamaProvider, "embed", unexpected)
+    assert await answer_semantic.retrieve(db, Settings(), owner, body) == []

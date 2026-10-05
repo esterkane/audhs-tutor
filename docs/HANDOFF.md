@@ -1274,3 +1274,6 @@ Final saved-answer streaming verification: full backend857 passed; sanitized sha
 
 
 2026-10-05 full verification:879 backend tests pass; public CI37337784627 at6925265 passed. Buffered termination handling requires a separate accounting/no-regeneration contract; documented in slices/local-tutor-latency.md. No runtime or learning-policy change. Latency and broader learning acceptance remain open.
+
+
+2026-10-05 semantic history precheck skips model discovery when eligible answers have no vectors, preserving indexed-candidate validation.28 backend tests,4 browser journeys, lint/format/full mypy and independent review pass. See slices/local-tutor-latency.md; generation latency remains open.
