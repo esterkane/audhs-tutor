@@ -81,6 +81,45 @@ describe('Review', () => {
     sessionStorage.clear()
   })
 
+  it('excludes explicitly, retains notes on refresh failure, and never rates the excluded card', async () => {
+    useMode.setState({ sessionId: 's1' })
+    sessionStorage.setItem('audhs-review:s1:i1', JSON.stringify({ answer: 'my recall notes', hints: 0 }))
+    let excluded = false
+    let failRefresh = true
+    let ratings = 0
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/skills')) return jsonResponse({ skills: [], next_skill_id: null })
+      if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
+      if (url.startsWith('/api/review/due')) {
+        if (excluded && failRefresh) return jsonResponse({ error: { message: 'offline' } }, 503)
+        return jsonResponse({ ...due, items: excluded ? [due.items[1]] : [{ ...due.items[0], assessment_id: 'a1' }, due.items[1]] })
+      }
+      if (url === '/api/questions/a1/practice') {
+        if (init?.method === 'POST') excluded = true
+        const status = { assessment_id: 'a1', state: excluded ? 'suspended' : 'active', revision: excluded ? 1 : 0, reason: null }
+        return jsonResponse(init?.method === 'POST' ? status : { status, affected_reviews: 1, question: 'question', skill_title: 'skill' })
+      }
+      if (url === '/api/review/i1') ratings++
+      return jsonResponse(null)
+    }))
+    renderApp(<Review />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Show answer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Question practice options' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Exclude this question' }))
+    await screen.findByText('Question choice changed. Your recall notes are kept. Refresh the queue before rating a card.')
+    expect(screen.getByRole('button', { name: /^Good/ })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh review queue' }))
+    await screen.findByText('Could not refresh the queue. Your card and notes are kept. Try again.')
+    expect(screen.getByText('b — largest dominates')).toBeVisible()
+    failRefresh = false
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh review queue' }))
+    await screen.findByText('softmax divides by the ___ of exponentials')
+    expect(screen.queryByRole('button', { name: 'Question practice options' })).not.toBeInTheDocument()
+    expect(JSON.parse(sessionStorage.getItem('audhs-review-queue:v1:s1')!).reviewed).toEqual([])
+    expect(sessionStorage.getItem('audhs-review:s1:i1')).toContain('my recall notes')
+    expect(ratings).toBe(0)
+  })
+
   it('waits for delayed session state before saving Stop and opening recap', async () => {
     useMode.setState({ sessionId: 's1' })
     let release!: (response: Response) => void

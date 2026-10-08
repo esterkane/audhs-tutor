@@ -18,6 +18,7 @@ router = APIRouter(prefix="/review", tags=["review"])
 class ReviewItemOut(BaseModel):
     content_version: str
     item_id: str
+    assessment_id: str | None = None
     skill_id: str
     skill_title: str
     item_type: str
@@ -53,6 +54,7 @@ async def item_view(db: DB, learner_id: str, item_id: str) -> ReviewItemOut:
         raise AppError("not_found", "Review item not found.", 404)
     return ReviewItemOut(
         item_id=content["id"],
+        assessment_id=content["assessment_id"],
         skill_id=content["skill_id"],
         skill_title=content["skill_title"] or "",
         item_type=content["item_type"],

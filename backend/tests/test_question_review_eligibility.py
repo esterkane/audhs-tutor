@@ -148,3 +148,13 @@ async def test_explicit_reference_takes_precedence_and_restore_keeps_disabled_ca
     await db.commit()
     await suspend(db, item, source, mode="restore", revision=1)
     assert await memory.due_items(db, item.learner_id) == []
+
+
+@pytest.mark.parametrize("assessment", [True, False])
+async def test_review_view_exposes_only_linked_assessment(client, db, assessment):
+    item, source, body, _ = await prepare(client, db, assessment=assessment)
+    response = await client.get(
+        f"/api/review/items/{item.id}", params={"session_id": body["session_id"]}
+    )
+    assert response.status_code == 200
+    assert response.json()["assessment_id"] == (source.id if assessment else None)

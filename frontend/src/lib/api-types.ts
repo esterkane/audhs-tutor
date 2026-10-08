@@ -4944,6 +4944,8 @@ export interface components {
       content_version: string
       /** Item Id */
       item_id: string
+      /** Assessment Id */
+      assessment_id?: string | null
       /** Skill Id */
       skill_id: string
       /** Skill Title */

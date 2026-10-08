@@ -1390,3 +1390,5 @@ Ordinary/challenge selection and session-end recall respect exclusions; canonica
 
 ## 2026-10-08 — Explicit question practice controls
 Ordinary lesson questions now offer impact preview and explicit exclusion/restoration, with paginated discovery in Preferences. Uncertain retries retain identity; stale choices require rereading; answers/history remain. Full backend969/frontend553, final13 UI checks, two real desktop/narrow keyboard/reload journeys, lint/types/build and review pass. Live migration6b53cfd352a8 and backend health verified after private backup; no live questions were excluded. See slices/question-practice-controls.md. Remaining R5: dedicated controls on other surfaces, correction inbox and reviewed replacement/publication; human accessibility acceptance stays open.
+
+2026-10-08: Review cards now offer explicit question exclusion/restoration, preserving notes and requiring queue refresh before rating. API19/UI20, desktop/narrow keyboard journeys, lint/types/build and bounded review passed. No scoring/scheduling changes. See docs/slices/review-question-controls.md. Dedicated activity controls and correction/replacement remain open.

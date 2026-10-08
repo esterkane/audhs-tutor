@@ -136,3 +136,5 @@ Library now offers Sources alongside Saved answers, reusing read-only retrieval 
 ## C5 companion context foundation — 2026-10-04
 
 Captured material, unapplied edits and one previous capture now survive route changes/reload; applying material explicitly separates conversation identities. Existing close/request/media cleanup remains intact. See slices/companion-context.md and persistent-tutor-contract.md for baseline, tests, reviews and limits. Next: implement desktop panel/narrow sheet using this state owner; footer placement is still temporary. Full C5 and human acceptance remain open.
+
+2026-10-08: Review cards now offer explicit question exclusion/restoration, preserving notes and requiring queue refresh before rating. API19/UI20, desktop/narrow keyboard journeys, lint/types/build and bounded review passed. No scoring/scheduling changes. See docs/slices/review-question-controls.md. Dedicated activity controls and correction/replacement remain open.

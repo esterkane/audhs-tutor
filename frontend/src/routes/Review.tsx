@@ -1,6 +1,7 @@
 import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
 import { apiFetch, type Schemas } from '../lib/api'
 import { ReviewRecovery } from '../features/review/ReviewRecovery'
+import { QuestionPractice } from '../features/questions/QuestionPractice'
 import { ReviewConceptHelp } from '../features/review/ReviewConceptHelp'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { ReadAloud } from '../features/voice/ReadAloud'
@@ -59,6 +60,7 @@ export function Review() {
 }
 
 function ReviewSession({ sessionId }: { sessionId: string | null }) {
+  const reviewPanel = useRef<HTMLDivElement>(null)
   const queueKey = `audhs-review-queue:v1:${sessionId}`
   const [queue, setQueue] = useState(() => restoreQueue(queueKey))
   const saving = useRef(false)
@@ -96,6 +98,9 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   const transition = useBlockTransition(sessionId)
   const nav = useNavigate()
 
+  const [practiceChanged, setPracticeChanged] = useState<string | null>(null)
+  const [refreshError, setRefreshError] = useState('')
+  const [refreshingPractice, setRefreshingPractice] = useState(false)
   const [shownAt, setShownAt] = useState(nowMs)
   const [frozen, setFrozen] = useState<Schemas['ReviewItemOut'] | null>(null)
   const candidates = (due.data?.items ?? []).filter(
@@ -163,7 +168,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   // Keep recovery controls at the same React position across query states so a
   // completed background read cannot replace a keyboard-focused retry button.
   const withRecovery = (content: ReactNode) => (
-    <div className="grid gap-4">
+    <div ref={reviewPanel} tabIndex={-1} aria-label="Review workspace" className="grid gap-4">
       {recoveryPanel}
       {content}
     </div>
@@ -320,7 +325,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
     )
 
   async function rateIt(rating: number) {
-    if (saving.current || ratingPending) return
+    if (saving.current || ratingPending || practiceChanged === item.item_id) return
     saving.current = true
     try {
       const completed = await rate.mutateAsync({
@@ -394,6 +399,32 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
             ))}
           </ol>
         )}
+        {item.assessment_id && !ratingPending && !rate.recovery.pending && !rate.recovery.error && (
+          <QuestionPractice assessmentId={item.assessment_id} onChanged={() => setPracticeChanged(item.item_id)} />
+        )}
+        {practiceChanged === item.item_id && <div className="mt-3 grid gap-2">
+          <p role="status">Question choice changed. Your recall notes are kept. Refresh the queue before rating a card.</p>
+          <Button disabled={refreshingPractice} onClick={async () => {
+            setRefreshingPractice(true)
+            setRefreshError('')
+            try {
+              const fresh = await due.refetch()
+              if (fresh.error) throw fresh.error
+              if (!active.current) return
+              setFrozen(null)
+              setQueue(q => ({ ...q, revealed: null, revealedVersion: null }))
+              setPracticeChanged(null)
+              setConfidence(null)
+              setShownAt(nowMs())
+              requestAnimationFrame(() => reviewPanel.current?.focus())
+            } catch {
+              setRefreshError('Could not refresh the queue. Your card and notes are kept. Try again.')
+            } finally {
+              setRefreshingPractice(false)
+            }
+          }}>{refreshingPractice ? 'Refreshing queue…' : 'Refresh review queue'}</Button>
+          {refreshError && <p role="alert">{refreshError}</p>}
+        </div>}
         {!revealed ? (
           <div className="mt-3">
             <OptionalConfidence value={confidence} onChange={setConfidence} />
@@ -422,7 +453,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
                 <Button
                   key={r.value}
                   onClick={() => void rateIt(r.value)}
-                  disabled={ratingPending || !!rate.recovery.pending || !!rate.recovery.error}
+                  disabled={practiceChanged === item.item_id || ratingPending || !!rate.recovery.pending || !!rate.recovery.error}
                   className="flex-col h-auto py-2"
                 >
                   <span>{r.label}</span>
