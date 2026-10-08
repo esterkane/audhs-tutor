@@ -71,7 +71,7 @@ def test_upgrade_from_previous_schema_keeps_data(tmp_path: Path, start: str) -> 
 
 def test_downgrade_one_step_and_back(tmp_path: Path) -> None:
     url = f"sqlite:///{tmp_path / 'updown.db'}"
-    upgrade_to_head(url)
+    command.upgrade(alembic_config(url), "924acd018f31")
     fill_all_tables(url)
     # Reflective fixture includes private ownership: downgrade must not make it shared.
     with pytest.raises(RuntimeError, match="private assessments"):
@@ -121,3 +121,16 @@ def test_assessment_ownership_upgrade_preserves_legacy_execution(tmp_path: Path)
         assert rows[0]["owner_json"] is None
         assert {key: rows[0][key] for key in before[0]} == before[0]
         command.downgrade(alembic_config(url), "e167bc2359df")
+
+
+def test_lineage_downgrade_requires_empty_history(tmp_path):
+    url = f"sqlite:///{tmp_path / 'lineage.db'}"
+    upgrade_to_head(url)
+    fill_all_tables(url)
+    with pytest.raises(RuntimeError, match="replacement lineage"):
+        command.downgrade(alembic_config(url), "-1")
+    with sqlite3.connect(tmp_path / "lineage.db") as conn:
+        assert conn.execute("SELECT count(*) FROM question_replacement").fetchone()[0] == 1
+        conn.execute("DELETE FROM question_replacement")
+    command.downgrade(alembic_config(url), "-1")
+    command.upgrade(alembic_config(url), "head")

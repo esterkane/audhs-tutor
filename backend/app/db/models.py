@@ -284,6 +284,19 @@ class QuestionTransition(LearnerScoped, Base):
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 
+class QuestionReplacement(LearnerScoped, Base):
+    """Future-practice lineage only; historical IDs and receipts never follow this link."""
+
+    __tablename__ = "question_replacement"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "replacement_id", name="uq_question_replacement_target"),
+    )
+    learner_id: Mapped[str] = mapped_column(ForeignKey("learner_profile.id"), primary_key=True)
+    original_id: Mapped[str] = mapped_column(ForeignKey("assessment.id"), primary_key=True)
+    replacement_id: Mapped[str] = mapped_column(ForeignKey("assessment.id"), index=True)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class QuestionCorrectionDraft(IdMixin, LearnerScoped, Base):
     """Private, unvalidated editing workspace; never selected as assessment content."""
 
