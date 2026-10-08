@@ -59,7 +59,12 @@ async def test_lost_response_replays_across_entrypoints_and_ended_session(
     second = await client.post("/api/challenge/submit", json=body, headers=HEADERS)
     assert second.status_code == 200 and second.json() == first.json()
     found = await client.get(lookup, params={"session_id": body["session_id"]})
-    assert found.json() == {"status": "completed", "result": first.json(), "saved_grade": None}
+    assert found.json() == {
+        "status": "completed",
+        "result": first.json(),
+        "saved_grade": None,
+        "local_worker_stopped": False,
+    }
     from app.orchestrator.assessment_requests import lookup
 
     async with session_factory() as reopened:
@@ -117,7 +122,12 @@ async def test_interruption_after_grading_recovers_completed_claim(client, db, m
     found = await client.get(
         f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
     )
-    assert found.json() == {"status": "completed", "result": retry.json(), "saved_grade": None}
+    assert found.json() == {
+        "status": "completed",
+        "result": retry.json(),
+        "saved_grade": None,
+        "local_worker_stopped": False,
+    }
     assert await counts(db) == before
     assert before[0] == 1
 

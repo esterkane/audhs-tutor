@@ -28,6 +28,7 @@ class AssessmentRequestState(BaseModel):
     status: Literal["not_found", "unresolved", "prepared_ready", "grade_ready", "completed"]
     result: AttemptResult | None = None
     saved_grade: GradeResult | None = None
+    local_worker_stopped: bool = False
 
 
 def request_key(identity: str) -> str:
@@ -122,7 +123,8 @@ async def lookup(
         try:
             guard, _ = await _acquire_prepared(db, learner_id, session_id, row)
         except (AppError, OwnershipUnavailable, OSError, ValueError):
-            return AssessmentRequestState(status="unresolved")
+            observed = await _observe_sealed(db, learner_id, row, recovery)
+            return observed or AssessmentRequestState(status="unresolved")
         else:
             guard.close()
             return AssessmentRequestState(status="prepared_ready")
@@ -130,6 +132,58 @@ async def lookup(
         status="completed",
         result=await recovered_result(db, learner_id, row.response_json, recovery),
     )
+
+
+async def _observe_sealed(
+    db: AsyncSession,
+    learner_id: str,
+    claim: WorkspaceRequest,
+    recovery: AnswerRecovery | None,
+) -> AssessmentRequestState | None:
+    """Read-only local-worker evidence; never authority to repeat provider work."""
+    await db.refresh(claim)  # Prepared validation may have rolled back and expired it.
+    execution = await assessment_executions.get_owned(db, learner_id, claim.id)
+    if (
+        execution is None
+        or execution.schema_version != 1
+        or execution.phase != "inference_started"
+        or not isinstance(execution.owner_json, dict)
+    ):
+        return None
+    receipt, claim_id = dict(execution.owner_json), claim.id
+    url = db.get_bind().engine.url
+    if (
+        url.get_backend_name() != "sqlite"
+        or not url.database
+        or url.database == ":memory:"
+        or url.query
+    ):
+        return None
+    await db.commit()
+    try:
+        guard = AssessmentGuard.acquire_sealed(Path(url.database), claim_id, receipt)
+    except (OwnershipUnavailable, OSError, ValueError):
+        return None
+    if guard is None:
+        return None
+    try:
+        await db.refresh(claim)
+        execution = await assessment_executions.get_owned(db, learner_id, claim_id)
+        if claim.response_json is not None:
+            return AssessmentRequestState(
+                status="completed",
+                result=await recovered_result(db, learner_id, claim.response_json, recovery),
+            )
+        if execution is None or execution.schema_version != 1 or execution.owner_json != receipt:
+            return None
+        if execution.phase == "grade_ready":
+            staged = StagedGrade.model_validate(execution.grade_json)
+            return AssessmentRequestState(status="grade_ready", saved_grade=staged.result)
+        if execution.phase == "inference_started":
+            return AssessmentRequestState(status="unresolved", local_worker_stopped=True)
+        return None
+    finally:
+        guard.close()
 
 
 async def recovered_result(

@@ -84,6 +84,7 @@ asyncio.run(main())
             await process.wait()
     state = await client.get(f"/api/assess/requests/{key}", params={"session_id": session["id"]})
     eligible = owned and phase == "prepared"
+    assert state.json()["local_worker_stopped"] is (owned and phase == "inference_started")
     assert state.status_code == 200
     assert state.json()["status"] == ("prepared_ready" if eligible else "unresolved")
     retry = await client.post("/api/assess/attempt", json=body, headers={"Idempotency-Key": key})

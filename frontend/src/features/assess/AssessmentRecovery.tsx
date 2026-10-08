@@ -149,7 +149,7 @@ export function AssessmentRecovery({
             </pre>
           </details>
           {!recovery.stale && (
-            <Button disabled={recovery.checking} onClick={() => void recovery.check()}>
+            <Button aria-disabled={recovery.checking} onClick={() => { if (!recovery.checking) void recovery.check() }}>
               {recovery.checking ? 'Checking…' : 'Check saved result'}
             </Button>
           )}
@@ -187,8 +187,9 @@ export function AssessmentRecovery({
           )}
           {lookup?.status === 'unresolved' && (
             <p role="status">
-              This submission is still running or was interrupted. It may already have changed your learning
-              record. Keep checking or stop this session; do not submit it again as a new attempt.
+              {lookup.local_worker_stopped
+                ? 'The local grading worker has stopped, and no grade is saved. The model may still have processed your answer. Your original answer is kept. You can stop or change topic; submitting it again could repeat grading.'
+                : 'This submission is still running or was interrupted. It may already have changed your learning record. Keep checking or stop this session; do not submit it again as a new attempt.'}
             </p>
           )}
           {!recovery.stale && lookup?.status === 'not_found' && (

@@ -50,6 +50,23 @@ class AssessmentGuard:
     def acquire_prepared(
         cls, database: Path, claim_id: str, receipt: dict[str, Any]
     ) -> "AssessmentGuard | None":
+        return cls._acquire(database, claim_id, receipt, sealed=False)
+
+    @classmethod
+    def acquire_sealed(
+        cls, database: Path, claim_id: str, receipt: dict[str, Any]
+    ) -> "AssessmentGuard | None":
+        """Observe released local ownership, never permission to repeat inference.
+
+        A provider may still be running after its local caller exits. Keep this guard
+        held while rechecking durable result state, then close it without mutation.
+        """
+        return cls._acquire(database, claim_id, receipt, sealed=True)
+
+    @classmethod
+    def _acquire(
+        cls, database: Path, claim_id: str, receipt: dict[str, Any], *, sealed: bool
+    ) -> "AssessmentGuard | None":
         if (
             type(receipt.get("version")) is not int
             or receipt["version"] != 1
@@ -70,7 +87,8 @@ class AssessmentGuard:
             return None
         guard = cls(owner, receipt["token"])
         try:
-            if os.pread(owner.descriptor, len(guard._prepared) + 2, 0) != guard._prepared:
+            expected = guard._prepared + (b"!" if sealed else b"")
+            if os.pread(owner.descriptor, len(guard._prepared) + 2, 0) != expected:
                 raise OwnershipUnavailable(
                     "Assessment may have entered inference; recovery is unknown"
                 )

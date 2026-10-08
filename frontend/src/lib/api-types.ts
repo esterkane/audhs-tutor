@@ -2783,6 +2783,11 @@ export interface components {
       status: 'not_found' | 'unresolved' | 'prepared_ready' | 'grade_ready' | 'completed'
       result?: components['schemas']['AttemptResult'] | null
       saved_grade?: components['schemas']['GradeResult'] | null
+      /**
+       * Local Worker Stopped
+       * @default false
+       */
+      local_worker_stopped: boolean
     }
     /** AssessmentView */
     AssessmentView: {

@@ -97,3 +97,46 @@ def test_failed_seal_sync_raises_and_does_not_restore_prepared(tmp_path: Path, m
     guard.close()
     with pytest.raises(OwnershipUnavailable):
         AssessmentGuard.acquire_prepared(database, claim, receipt)
+
+
+def test_sealed_observation_never_enables_continuation(tmp_path: Path):
+    database = tmp_path / "db.sqlite"
+    database.touch()
+    claim = new_id()
+    guard = AssessmentGuard.create(database, claim)
+    receipt = guard.receipt
+    guard.seal_inference()
+    assert AssessmentGuard.acquire_sealed(database, claim, receipt) is None
+    guard.close()
+    observed = AssessmentGuard.acquire_sealed(database, claim, receipt)
+    assert observed is not None
+    try:
+        assert AssessmentGuard.acquire_prepared(database, claim, receipt) is None
+    finally:
+        observed.close()
+    with pytest.raises(OwnershipUnavailable):
+        AssessmentGuard.acquire_prepared(database, claim, receipt)
+
+
+@pytest.mark.parametrize("damage", ["prepared", "token", "missing", "extra", "truncated"])
+def test_sealed_observation_requires_exact_marker(tmp_path: Path, damage: str):
+    database = tmp_path / "db.sqlite"
+    database.touch()
+    claim = new_id()
+    guard = AssessmentGuard.create(database, claim)
+    receipt = guard.receipt
+    if damage != "prepared":
+        guard.seal_inference()
+    guard.close()
+    marker = database.with_name(database.name + ".assessment-locks") / claim
+    if damage == "token":
+        receipt["token"] = "0" * 32
+    elif damage == "missing":
+        marker.unlink()
+    elif damage == "extra":
+        with marker.open("ab") as stream:
+            stream.write(b"!")
+    elif damage == "truncated":
+        marker.write_bytes(b"assessment-v1:")
+    with pytest.raises(OwnershipUnavailable):
+        AssessmentGuard.acquire_sealed(database, claim, receipt)

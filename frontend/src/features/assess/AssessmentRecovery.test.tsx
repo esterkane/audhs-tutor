@@ -91,7 +91,7 @@ it('offers explicit saving of a staged grade without a new submission', () => {
   const state = recovery()
   state.stale = false
   state.lookup = {
-    status: 'grade_ready',
+    status: 'grade_ready', local_worker_stopped: false,
     result: null,
     saved_grade: {
       criterion_results: [],
@@ -115,7 +115,7 @@ it('offers explicit saving of a staged grade without a new submission', () => {
 it('offers explicit continuation only for verified prepared work', () => {
   const state = recovery()
   state.stale = false
-  state.lookup = { status: 'prepared_ready', result: null }
+  state.lookup = { status: 'prepared_ready', local_worker_stopped: false, result: null }
   state.error = 'Request interrupted; check its result.'
   render(<AssessmentRecovery recovery={state} />)
   expect(screen.getByText(/your current edits will not be sent/)).toBeVisible()
@@ -123,4 +123,32 @@ it('offers explicit continuation only for verified prepared work', () => {
   expect(state.continuePrepared).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'Continue saved submission' }))
   expect(state.continuePrepared).toHaveBeenCalledTimes(1)
+})
+
+
+it('keeps an interrupted answer without offering another grading attempt', () => {
+  const state = recovery()
+  state.stale = false
+  state.lookup = { status: 'unresolved', local_worker_stopped: true }
+  render(<AssessmentRecovery recovery={state} />)
+  expect(screen.getByText(/The local grading worker has stopped/)).toBeInTheDocument()
+  expect(screen.getByText('My explanation')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Send the original answer' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Continue saved submission' })).not.toBeInTheDocument()
+  expect(state.resend).not.toHaveBeenCalled()
+  expect(state.continuePrepared).not.toHaveBeenCalled()
+})
+
+
+it('keeps result-check focus while busy and ignores repeated activation', () => {
+  const state = recovery()
+  state.stale = false
+  const view = render(<AssessmentRecovery recovery={state} />)
+  const button = screen.getByRole('button', { name: 'Check saved result' })
+  button.focus()
+  view.rerender(<AssessmentRecovery recovery={{ ...state, checking: true }} />)
+  expect(button).toHaveFocus()
+  expect(button).toHaveAttribute('aria-disabled', 'true')
+  fireEvent.click(button)
+  expect(state.check).not.toHaveBeenCalled()
 })

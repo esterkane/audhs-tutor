@@ -285,7 +285,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
       )
       if (result.assessment_id !== pending.body.assessment_id)
         throw new Error('Mismatched assessment result.')
-      setLookup({ status: 'completed', result })
+      setLookup({ status: 'completed', local_worker_stopped: false, result })
     } catch (cause) {
       recordContentRejection(cause, pending)
       if (activeKey.current === key) setError((cause as Error).message)
@@ -311,7 +311,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
       )
       if (result.assessment_id !== pending.body.assessment_id)
         throw new Error('The saved feedback belongs to another assessment.')
-      setLookup({ status: 'completed', result })
+      setLookup({ status: 'completed', local_worker_stopped: false, result })
     } catch (cause) {
       if (action === 'continue' && activeKey.current === key) setLookup(null)
       // Content changes here do not prove the answer was never graded. Retain
