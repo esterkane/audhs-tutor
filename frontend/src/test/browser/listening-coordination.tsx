@@ -13,7 +13,7 @@ createRoot(element).render(
       <header>
         <AudioControls />
       </header>
-      <ListeningPanel sessionId="fixture" documentId="clip" onDone={() => {}} />
+      <ListeningPanel sessionId={element.dataset.sessionId ?? "fixture"} documentId="clip" onDone={() => {}} />
       <ReadAloud text="Synthetic reading" label="Listen to fixture" />
     </MemoryRouter>
   </QueryClientProvider>,

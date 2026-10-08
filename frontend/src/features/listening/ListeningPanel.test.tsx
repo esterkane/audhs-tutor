@@ -4,6 +4,7 @@ import { axe } from 'vitest-axe'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { useMode } from '../../stores/mode'
 import { claimReading, updateReading, useReadingControls } from '../voice/readingOwner'
+import { clearDraft, readDraft } from '../assess/draft'
 import { ListeningPanel } from './ListeningPanel'
 
 const lesson = {
@@ -76,6 +77,9 @@ const graded = {
 
 describe('ListeningPanel', () => {
   beforeEach(() => {
+    sessionStorage.clear()
+    clearDraft('listening:s1:a1')
+    clearDraft('listening:s1:a1:choice')
     vi.spyOn(window.HTMLMediaElement.prototype, 'play').mockImplementation(() => Promise.resolve())
     vi.spyOn(window.HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined)
     useMode.setState({ mode: 'steady' })
@@ -363,4 +367,66 @@ describe('ListeningPanel playback errors and keyboard', () => {
     const go = screen.getByRole('button', { name: 'I have read it — go to the question' })
     expect(go.tagName).toBe('BUTTON')
   })
+  it.each([false, true])('preserves playback and safely restores the question (choices=%s)', async (choices) => {
+    let state = 'active'
+    let revision = 0
+    let failRefresh = false
+    const initial = { ...task.item, content_version: 'old', options: choices ? ['numbers', 'words'] : null }
+    const submissions: unknown[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/api/listening/lessons/d1')) return jsonResponse(lesson)
+      if (url.endsWith('/sections/0/task')) return jsonResponse({ ...task, item: initial })
+      if (url === '/api/questions/a1/practice') {
+        if (init?.method === 'POST') {
+          state = JSON.parse(String(init.body)).action === 'suspend' ? 'suspended' : 'active'
+          revision++
+        }
+        const status = { assessment_id: 'a1', state, revision, reason: null }
+        return jsonResponse(init?.method === 'POST' ? status : { status, affected_reviews: 0 })
+      }
+      if (url.startsWith('/api/assess/items/')) return failRefresh
+        ? jsonResponse({ error: { message: 'offline' } }, 503)
+        : jsonResponse({ ...initial, content_version: 'fresh', options: choices ? ['words', 'numbers'] : null })
+      if (url.endsWith('/api/assess/attempt')) { submissions.push(JSON.parse(String(init?.body))); return jsonResponse(graded) }
+      return jsonResponse({})
+    }))
+    let view = renderApp(<ListeningPanel sessionId="s1" documentId="d1" onDone={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Go to the question' }))
+    if (choices) fireEvent.click(await screen.findByRole('button', { name: 'words' }))
+    else fireEvent.change(await screen.findByLabelText('The missing word'), { target: { value: 'numbers' } })
+    view.unmount()
+    view = renderApp(<ListeningPanel sessionId="s1" documentId="d1" onDone={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Go to the question' }))
+    if (choices) {
+      await screen.findByText(/Previous choice: words/)
+      expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled()
+    } else expect(await screen.findByLabelText('The missing word')).toHaveValue('numbers')
+    const audio = view.container.querySelector('audio')!
+    audio.currentTime = 5
+    fireEvent.click(screen.getByRole('button', { name: 'Question practice options' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Exclude this question' }))
+    await screen.findByText('This question is excluded. Your answer and clip position are kept. Restore it before checking your answer.')
+    expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled()
+    expect(audio.currentTime).toBe(5)
+    fireEvent.click(screen.getByRole('button', { name: 'Restore this question' }))
+    failRefresh = true
+    fireEvent.click(await screen.findByRole('button', { name: 'Refresh restored question' }))
+    await screen.findByText('Could not refresh the question. Your answer and clip position are kept. Try again.')
+    failRefresh = false
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh restored question' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Refresh restored question' })).not.toBeInTheDocument())
+    expect(audio.currentTime).toBe(5)
+    if (choices) {
+      expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled()
+      expect(screen.getByText(/Previous choice: words/)).toBeVisible()
+      fireEvent.click(screen.getByRole('button', { name: 'words' }))
+    } else expect(screen.getByLabelText('The missing word')).toHaveValue('numbers')
+    expect(submissions).toEqual([])
+    fireEvent.click(screen.getByRole('button', { name: 'Check' }))
+    if (!choices) fireEvent.change(screen.getByLabelText('The missing word'), { target: { value: 'new edit during grading' } })
+    await screen.findByRole('button', { name: 'Next clip' })
+    if (!choices) expect(readDraft('listening:s1:a1').answer).toBe('new edit during grading')
+    await waitFor(() => expect(submissions).toEqual([expect.objectContaining({ content_version: 'fresh', answer: choices ? '0' : 'numbers' })]))
+  })
+
 })

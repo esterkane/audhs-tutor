@@ -1,3 +1,7 @@
+import { Link } from 'react-router-dom'
+import { QuestionPractice } from '../questions/QuestionPractice'
+import { readDraft, writeDraft, clearDraft } from '../assess/draft'
+import { boundedRead } from '../../lib/boundedRead'
 import { apiFetch, type AssessmentView } from '../../lib/api'
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
@@ -368,6 +372,7 @@ function ClipCard({
                 {(task.error as Error).message}
               </p>
               <div className="flex gap-2 mt-2">
+                <Link to="/preferences#excluded-questions">Manage excluded questions</Link>
                 {!last && (
                   <Button size="sm" onClick={onNext}>
                     Skip this clip
@@ -421,13 +426,22 @@ function TaskCard({
   canReplay: boolean
   hintCount: number
 }) {
+  const draftKey = `listening:${sessionId}:${task.item.id}`
+  const choiceKey = `${draftKey}:choice`
+  const [practiceChanged, setPracticeChanged] = useState(false)
+  const [practiceRestored, setPracticeRestored] = useState(false)
+  const [refreshingPractice, setRefreshingPractice] = useState(false)
+  const [practiceError, setPracticeError] = useState('')
+  const refreshRequest = useRef<AbortController | null>(null)
+  const practicePanel = useRef<HTMLDivElement>(null)
+  useEffect(() => () => refreshRequest.current?.abort(), [])
   const attempt = useAttempt(sessionId)
   const report = useReport()
   const validate = useValidateTask()
   const [reported, setReported] = useState(false)
   const [validated, setValidated] = useState(false)
   const [confidence, setConfidence] = useState<number | null>(null)
-  const [answer, setAnswer] = useState('')
+  const [answer, setAnswer] = useState(() => task.item.options ? '' : readDraft(draftKey).answer)
   const [result, setResult] = useState<AttemptResult | null>(null)
 
   async function sendReport() {
@@ -436,6 +450,7 @@ function TaskCard({
   }
 
   async function markChecked() {
+    if (practiceChanged) return
     await validate.mutateAsync({ assessmentId: item.id, validated: true })
     setValidated(true)
   }
@@ -443,14 +458,52 @@ function TaskCard({
   const [refreshedItem, setRefreshedItem] = useState<AssessmentView | null>(null)
   const [initialItem] = useState(task.item)
   const item = refreshedItem ?? initialItem
-  const [previousChoice, setPreviousChoice] = useState('')
+  const [previousChoice, setPreviousChoice] = useState(() => task.item.options ? readDraft(choiceKey).answer : '')
   const displayedItem = useRef(item)
+  const displayedAnswer = useRef(answer)
   useLayoutEffect(() => {
     displayedItem.current = item
-  }, [item])
+    displayedAnswer.current = answer
+  }, [item, answer])
+
+  function saveAnswer(value: string) {
+    setAnswer(value)
+    setPreviousChoice('')
+    writeDraft(item.options ? choiceKey : draftKey, { answer: item.options?.[Number(value)] ?? value })
+  }
+
+  async function refreshPractice() {
+    if (!practiceRestored || refreshRequest.current) return
+    const controller = new AbortController()
+    refreshRequest.current = controller
+    setRefreshingPractice(true)
+    setPracticeError('')
+    try {
+      const latest = await boundedRead<AssessmentView>(
+        `/api/assess/items/${encodeURIComponent(item.id)}?session_id=${encodeURIComponent(sessionId)}`,
+        controller.signal, 'Listening question',
+      )
+      if (controller.signal.aborted) return
+      if (latest.id !== item.id) throw new Error('Different question')
+      if ((item.options || latest.options) &&
+          (latest.question !== item.question || JSON.stringify(latest.options) !== JSON.stringify(item.options))) {
+        setPreviousChoice(answer !== '' ? item.options?.[Number(answer)] ?? answer : previousChoice)
+        setAnswer('')
+      }
+      setRefreshedItem(latest)
+      setPracticeChanged(false)
+      setPracticeRestored(false)
+      requestAnimationFrame(() => practicePanel.current?.focus())
+    } catch {
+      if (!controller.signal.aborted) setPracticeError('Could not refresh the question. Your answer and clip position are kept. Try again.')
+    } finally {
+      if (!controller.signal.aborted) setRefreshingPractice(false)
+      if (refreshRequest.current === controller) refreshRequest.current = null
+    }
+  }
 
   async function submit() {
-    if (!answer) return
+    if (!answer || practiceChanged) return
     try {
       const res = await attempt.mutateAsync({
         session_id: sessionId,
@@ -468,6 +521,10 @@ function TaskCard({
         displayedItem.current.content_version !== item.content_version
       )
         return
+      if (displayedAnswer.current === answer) {
+        clearDraft(draftKey)
+        clearDraft(choiceKey)
+      }
       setResult(res)
       onGraded(res)
     } catch {
@@ -491,7 +548,7 @@ function TaskCard({
           if (signal.aborted) throw new Error('Refresh cancelled.')
           if (latest.id !== item.id) throw new Error('The refreshed question does not match.')
           if (item.options) {
-            setPreviousChoice(item.options[Number(answer)] ?? answer)
+            setPreviousChoice(answer !== '' ? item.options[Number(answer)] ?? answer : previousChoice)
             setAnswer('')
           }
           setRefreshedItem(latest)
@@ -507,6 +564,8 @@ function TaskCard({
             body.content_version !== item.content_version
           )
             return false
+          clearDraft(draftKey)
+          clearDraft(choiceKey)
           setResult(saved)
           onGraded(saved)
           return true
@@ -514,10 +573,28 @@ function TaskCard({
       />
       {previousChoice && (
         <p role="status">
-          Previous choice: {previousChoice}. The question changed; choose an option again.
+          Previous choice: {previousChoice}. Review the question and answer again.
         </p>
       )}
       <p className="text-sm font-medium">{item.question}</p>
+      <div ref={practicePanel} tabIndex={-1} aria-label="Listening practice choices">
+        {!attempt.recovery.pending && !attempt.recovery.error && <fieldset disabled={attempt.isPending || refreshingPractice}>
+          <QuestionPractice assessmentId={item.id} onChanged={(_id, state) => {
+            setPracticeChanged(true)
+            setPracticeRestored(state.state === 'active')
+            setPracticeError('')
+          }} />
+        </fieldset>}
+        {practiceChanged && <div className="mt-2 grid gap-2 text-sm">
+          <p role="status">{practiceRestored
+            ? 'Question restored. Refresh it before checking your answer.'
+            : 'This question is excluded. Your answer and clip position are kept. Restore it before checking your answer.'}</p>
+          {practiceRestored && <Button disabled={refreshingPractice} onClick={() => void refreshPractice()}>
+            {refreshingPractice ? 'Refreshing question…' : 'Refresh restored question'}
+          </Button>}
+          {practiceError && <p role="alert">{practiceError}</p>}
+        </div>}
+      </div>
       <p className="text-xs text-muted mt-1">
         {task.origin === 'model'
           ? task.validated
@@ -531,7 +608,7 @@ function TaskCard({
       </p>
       <div className="flex flex-wrap gap-2 mt-1">
         {task.origin === 'model' && !task.validated && !validated && (
-          <Button size="sm" variant="ghost" disabled={validate.isPending} onClick={() => void markChecked()}>
+          <Button size="sm" variant="ghost" disabled={practiceChanged || validate.isPending} onClick={() => void markChecked()}>
             I checked this question against the clip
           </Button>
         )}
@@ -552,7 +629,7 @@ function TaskCard({
               label="Your answer"
               options={item.options.map((o, i) => ({ value: String(i), label: o }))}
               value={answer}
-              onChange={setAnswer}
+              onChange={saveAnswer}
               columns={1}
             />
           ) : (
@@ -563,7 +640,7 @@ function TaskCard({
               <Textarea
                 id="listening-answer"
                 value={answer}
-                onChange={(e) => setAnswer(e.target.value)}
+                onChange={(e) => saveAnswer(e.target.value)}
                 className="min-h-10"
               />
             </>
@@ -572,7 +649,7 @@ function TaskCard({
             <OptionalConfidence value={confidence} onChange={setConfidence} />
           </div>
           <div className="flex flex-wrap gap-2 mt-3">
-            <Button variant="primary" disabled={!answer || attempt.isPending} onClick={() => void submit()}>
+            <Button variant="primary" disabled={practiceChanged || !answer || attempt.isPending} onClick={() => void submit()}>
               Check
             </Button>
             {canReplay && (
