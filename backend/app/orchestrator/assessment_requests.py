@@ -45,7 +45,9 @@ async def submit(
     await get_owned(db, body.session_id, learner_id)
 
     async def validate() -> None:
-        await assessment_content.validate_new(db, body.assessment_id, body.content_version)
+        await assessment_content.validate_new(
+            db, body.assessment_id, body.content_version, learner_id
+        )
 
     payload = body.model_dump(mode="json")
     if body.content_version is None:
@@ -207,7 +209,8 @@ async def finish(
     body = AttemptRequest.model_validate(execution.request_json)
     if body.session_id != session_id:
         raise AppError("request_conflict", "The saved request belongs to another session.", 409)
-    content = await assessment_content.snapshot(db, body.assessment_id)
+    content = await assessment_content.snapshot(db, body.assessment_id, learner_id)
+    assessment_content.require_eligible(content)
     if assessment_content.recovery_fingerprint(content) != execution.content_fingerprint:
         raise AppError(
             "assessment_content_changed",
@@ -266,7 +269,8 @@ async def _acquire_prepared(
             raise AppError(
                 "request_unresolved", "This session has ended. Your original answer is kept.", 409
             )
-        content = await assessment_content.snapshot(db, body.assessment_id)
+        content = await assessment_content.snapshot(db, body.assessment_id, learner_id)
+        assessment_content.require_eligible(content)
         if assessment_content.recovery_fingerprint(content) != row.content_fingerprint:
             raise AppError(
                 "request_unresolved", "The question changed. Your original answer is kept.", 409

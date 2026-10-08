@@ -68,12 +68,13 @@ async def start(
         raise ValueError(f"unknown challenge mode {mode!r}")
     prior = await existing(db, session.learner_id, node, mode)
     if prior is not None:
-        content = await assessment_content.snapshot(db, prior.id)
+        content = await assessment_content.snapshot(db, prior.id, session.learner_id)
+        assessment_content.require_eligible(content)
         item = content["item_json"]
         return ChallengeView(
             assessment_id=prior.id,
             content_version=assessment_content.token(
-                await assessment_content.snapshot(db, prior.id)
+                await assessment_content.snapshot(db, prior.id, session.learner_id)
             ),
             skill_id=node.id,
             mode=mode,
@@ -136,7 +137,7 @@ async def start(
     )
     db.add(a)
     await db.commit()
-    content = await assessment_content.snapshot(db, a.id)
+    content = await assessment_content.snapshot(db, a.id, session.learner_id)
     return ChallengeView(
         assessment_id=a.id,
         content_version=assessment_content.token(content),

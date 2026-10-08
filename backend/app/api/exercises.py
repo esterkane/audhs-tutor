@@ -27,10 +27,11 @@ router = APIRouter(prefix="/exercises", tags=["exercises"])
 
 
 async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
-    content = await assessment_content.snapshot(db, a.id)
+    content = await assessment_content.snapshot(db, a.id, learner_id)
+    assessment_content.require_eligible(content)
     a = assessment_content.assessment(content)
     check_content = (
-        await assessment_content.snapshot(db, str(a.item_json["check_assessment_id"]))
+        await assessment_content.snapshot(db, str(a.item_json["check_assessment_id"]), learner_id)
         if a.item_json.get("check_assessment_id")
         else None
     )

@@ -86,8 +86,11 @@ def view(a: Assessment) -> AssessmentView:
     )
 
 
-async def versioned_view(db: AsyncSession, a: Assessment) -> AssessmentView:
-    content = await assessment_content.snapshot(db, a.id)
+async def versioned_view(
+    db: AsyncSession, a: Assessment, learner_id: str | None = None
+) -> AssessmentView:
+    content = await assessment_content.snapshot(db, a.id, learner_id)
+    assessment_content.require_eligible(content)
     result = view(assessment_content.assessment(content))
     return result.model_copy(update={"content_version": assessment_content.token(content)})
 
@@ -336,7 +339,8 @@ class Grader:
         a = await db.get(Assessment, req.assessment_id)
         if a is None:
             raise KeyError("assessment not found")
-        content = await assessment_content.snapshot(db, a.id)
+        content = await assessment_content.snapshot(db, a.id, learner_id)
+        assessment_content.require_eligible(content)
         if req.content_version is not None:
             if assessment_content.token(content) != req.content_version:
                 raise AppError(
@@ -552,7 +556,7 @@ class Grader:
         # Model/gateway accounting has finished before the first learning write. This
         # short transaction owns attempt, events, evidence, FSRS, checkpoint and mastery.
         try:
-            await assessment_content.guard_write(db, a.id, content)
+            await assessment_content.guard_write(db, a.id, content, learner_id)
             db.add(attempt)
             await db.flush()
 

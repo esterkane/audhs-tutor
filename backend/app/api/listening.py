@@ -143,7 +143,7 @@ async def task(
     )
     meta = (a.item_json or {}).get("listening") or {}
     return TaskOut(
-        item=await versioned_view(db, a),
+        item=await versioned_view(db, a, learner.id),
         origin=str(meta.get("origin") or "deterministic"),
         validated=bool(meta.get("validated")),
         problems=problems,
@@ -161,7 +161,7 @@ async def validate(assessment_id: str, body: ValidateIn, db: DB, learner: Learne
     a = await listening.validate_task(db, assessment_id, validated=body.validated)
     meta = (a.item_json or {}).get("listening") or {}
     return TaskOut(
-        item=await versioned_view(db, a),
+        item=await versioned_view(db, a, learner.id),
         origin=str(meta.get("origin") or "deterministic"),
         validated=bool(meta.get("validated")),
         problems=[],

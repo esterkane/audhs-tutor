@@ -44,7 +44,7 @@ async def next_item(
             raise KeyError("no skills")
         skill_id = nxt.id
     a = await Grader(db, gateway).next_item(learner.id, skill_id)
-    return NextItem(item=await versioned_view(db, a) if a else None, skill_id=skill_id)
+    return NextItem(item=await versioned_view(db, a, learner.id) if a else None, skill_id=skill_id)
 
 
 @router.post(
@@ -91,7 +91,7 @@ async def refresh_item(
     item = await db.get(Assessment, assessment_id)
     if item is None:
         raise AppError("not_found", "This assessment is unavailable.", 404)
-    return await versioned_view(db, item)
+    return await versioned_view(db, item, learner.id)
 
 
 @router.post("/requests/{request_id}/finish", response_model=AttemptResult)
