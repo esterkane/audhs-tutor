@@ -22,7 +22,7 @@ from app.db.models import (
     QuestionCorrectionDraft,
     QuestionFeedback,
 )
-from app.kernel import question_state
+from app.kernel import correction_sources, correction_validation, question_state
 from app.schemas.correction_drafts import (
     CorrectionDraftReceipt,
     CreateCorrectionDraft,
@@ -53,6 +53,7 @@ async def original(db: AsyncSession, assessment_id: str) -> dict[str, Any]:
             "rubric_id": a.rubric_id,
             "rubric_version": rubric.version if rubric else None,
             "rubric": rubric.criteria_json if rubric else None,
+            "source_evidence": await correction_sources.capture(db, a.item_json),
         }
     )
 
@@ -189,3 +190,27 @@ async def change(
     draft.revision += 1
     draft.updated_at = utcnow_iso()
     return await _record(db, learner_id, str(body.request_id), request, draft)
+
+
+async def inspect(db: AsyncSession, learner_id: str, draft_id: str) -> dict[str, Any]:
+    """Internal review state, not authorization or a publication-ready result."""
+    draft = await get(db, learner_id, draft_id)
+    current = await original(db, draft.assessment_id)
+    baseline = draft.original_json
+    state = await question_state.read(db, learner_id, draft.assessment_id)
+    source_baseline = baseline.get("source_evidence")
+    return {
+        "problems": correction_validation.review(baseline, draft.candidate_json),
+        "content_changed": {k: v for k, v in current.items() if k != "source_evidence"}
+        != {k: v for k, v in baseline.items() if k != "source_evidence"},
+        "question_state_changed": state.revision != draft.question_revision,
+        "source_status": "not_captured"
+        if source_baseline is None
+        else "changed"
+        if current["source_evidence"] != source_baseline
+        else "incomplete"
+        if not source_baseline.get("complete")
+        else "unchanged",
+        "draft_status": draft.status,
+        "publication_available": False,
+    }

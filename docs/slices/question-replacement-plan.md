@@ -37,3 +37,5 @@ Slice 1 read-only discovery is now implemented (see question-correction-inbox.md
 Bounded architecture review confirmed the listed code facts and added stable draft fingerprint and original-receipt identity requirements.
 
 Storage/command proposal: [ADR-0019](../adr/0019-learner-owned-question-corrections.md) specifies explicit assessment ownership, durable proposal fingerprints, repeat-safe draft commands and kind-specific adapters. Internal draft storage is implemented in correction-draft-foundation.md; replacement ownership and publication remain proposed and disabled.
+
+Internal core/challenge validation and source-identity capture are implemented in correction-validation-sources.md. Next expose owned draft commands/recovery and a typed editor; code execution review, listening revalidation and publication remain open.
