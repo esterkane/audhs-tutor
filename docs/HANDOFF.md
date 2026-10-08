@@ -1366,3 +1366,7 @@ Reproduced and fixed stale saves overwriting newer drafts. Save/activate/discard
 
 ## 2026-10-08 — Draft editor reload recovery
 Unfinished draft text now survives reload in the same tab, retains its reviewed revision and never saves/activates automatically. Storage failures preserve current text and give explicit recovery controls. Full frontend550 pass before final lifecycle/focus adjustments; final affected18 tests and four desktop/narrow browser journeys, lint/types/build and bounded review pass. See slices/draft-editor-reload.md. Tab closure, broader R4 and human accessibility acceptance remain open; learning logic unchanged.
+
+
+## 2026-10-08 — Question lifecycle reconciliation
+Confirmed publication remains additive and assessments lack eligibility state. Mapped selection, queued review, direct grading and recovery boundaries in slices/question-lifecycle-plan.md; proposed learner-scoped explicit suspension and later atomic replacement. Existing feedback/curriculum baseline:23 tests pass. No runtime/schema/UI change. Next: review and implement the complete suspend/restore vertical slice; R5 remains open.
