@@ -8,8 +8,9 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.models import Assessment, AssessmentRubric, MemoryState, Session, SkillNode
-from app.kernel import memory
+from app.kernel import memory, question_state
 from app.kernel import session as ksession
 from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway
@@ -38,7 +39,9 @@ async def existing(
     from app.db.models import AssessmentAttempt
 
     stmt = select(Assessment).where(
-        Assessment.skill_id == node.id, Assessment.kind == kind_for(mode)
+        Assessment.skill_id == node.id,
+        Assessment.kind == kind_for(mode),
+        question_state.eligible(learner_id),
     )
     for a in (await db.execute(stmt)).scalars():
         tried = (
@@ -82,6 +85,24 @@ async def start(
             criteria=item.get("criteria", []),
             cached=True,
             sources=item.get("sources", []),
+        )
+
+    # Do not turn exclusion into implicit replacement generation. Other eligible,
+    # unattempted questions were considered above; correction needs explicit review.
+    excluded = await db.scalar(
+        select(Assessment.id)
+        .where(
+            Assessment.skill_id == node.id,
+            Assessment.kind == kind_for(mode),
+            ~question_state.eligible(session.learner_id),
+        )
+        .limit(1)
+    )
+    if excluded is not None:
+        raise AppError(
+            "assessment_unavailable",
+            "No available question for this activity. Choose another activity or restore the excluded question.",
+            409,
         )
 
     result = await tools.retrieve(repo, f"{node.title}: {node.description}", skill_id=node.id, k=5)

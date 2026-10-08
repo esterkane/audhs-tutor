@@ -1382,3 +1382,7 @@ Suspended questions are excluded from due queues and available counts; queued/di
 
 ## 2026-10-08 — Assessment eligibility/recovery guards
 Learner state/revision now binds assessment views, new grading, prepared continuation, saved-grade finishing and the final learning commit. Completed replay and absent-state legacy fingerprints are preserved. Full backend961, Ruff/mypy and bounded review pass. See slices/question-assessment-eligibility.md. Next: selector/generation and ancillary exercise/listening eligibility before exposing suspend/restore. No live migration or suspension UI yet.
+
+
+## 2026-10-08 — Selection and canonical generation eligibility
+Ordinary/challenge selection and session-end recall respect exclusions; canonical code/listening items are not recreated. Hints/solutions/validation are guarded; excluded linked checks preserve code workspace access. Full backend967, focused21, Ruff/mypy and bounded review pass. See slices/question-selection-eligibility.md. Next: explicit suspend/restore API/UI with impact preview and accessible restoration discovery; live migration and browser acceptance remain pending.

@@ -57,6 +57,16 @@ async def read(db: AsyncSession, learner_id: str, assessment_id: str) -> Questio
     )
 
 
+async def require_active(db: AsyncSession, learner_id: str, assessment_id: str) -> None:
+    current = await read(db, learner_id, assessment_id)
+    if current.state != "active":
+        raise AppError(
+            "assessment_unavailable",
+            "This question is unavailable for practice. Choose another question or restore it.",
+            409,
+        )
+
+
 async def transition(
     db: AsyncSession, learner_id: str, assessment_id: str, body: QuestionTransitionIn
 ) -> QuestionStateOut:

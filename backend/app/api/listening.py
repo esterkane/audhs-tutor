@@ -158,7 +158,9 @@ async def task(
     response_model=TaskOut,
 )
 async def validate(assessment_id: str, body: ValidateIn, db: DB, learner: Learner) -> TaskOut:
-    a = await listening.validate_task(db, assessment_id, validated=body.validated)
+    a = await listening.validate_task(
+        db, assessment_id, validated=body.validated, learner_id=learner.id
+    )
     meta = (a.item_json or {}).get("listening") or {}
     return TaskOut(
         item=await versioned_view(db, a, learner.id),

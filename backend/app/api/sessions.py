@@ -11,7 +11,7 @@ from app.api.tutor_preparation import schedule_preparation
 from app.core.errors import AppError
 from app.db import models
 from app.db.models import Assessment, ReviewItem, Session
-from app.kernel import adaptation, blocks, experiments, memory, skill_graph
+from app.kernel import adaptation, blocks, experiments, memory, question_state, skill_graph
 from app.kernel import session as ksession
 from app.schemas.common import Mode
 from app.schemas.tutor import SkillView
@@ -352,7 +352,12 @@ async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, sessio
     has = (
         await db.execute(
             select(ReviewItem.id)
-            .where(ReviewItem.learner_id == learner_id, ReviewItem.skill_id == skill_id)
+            .where(
+                ReviewItem.learner_id == learner_id,
+                ReviewItem.skill_id == skill_id,
+                ReviewItem.active.is_(True),
+                question_state.review_eligible(learner_id),
+            )
             .limit(1)
         )
     ).first()
@@ -361,7 +366,11 @@ async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, sessio
     first = (
         await db.execute(
             select(Assessment)
-            .where(Assessment.skill_id == skill_id, Assessment.kind != "code")
+            .where(
+                Assessment.skill_id == skill_id,
+                Assessment.kind != "code",
+                question_state.eligible(learner_id),
+            )
             .order_by(Assessment.kind)
             .limit(1)
         )

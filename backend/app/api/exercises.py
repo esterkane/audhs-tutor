@@ -9,7 +9,7 @@ from app.api.deps import DB, Learner
 from app.core.errors import AppError
 from app.db.events import EventWriter, Verb
 from app.db.models import Assessment, AssessmentAttempt
-from app.kernel import exercises, skill_graph
+from app.kernel import exercises, question_state, skill_graph
 from app.kernel import session as ksession
 from app.orchestrator import assessment_content
 from app.schemas.common import ActivityType, ObjectType
@@ -35,6 +35,9 @@ async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
         if a.item_json.get("check_assessment_id")
         else None
     )
+    check_available = (
+        check_content is not None and check_content.get("_question_state", "active") == "active"
+    )
     item = exercises.public_item(a.item_json)
     node = await skill_graph.get_node(db, a.skill_id)
     node_slug = node.slug
@@ -51,7 +54,9 @@ async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
     return ExerciseView(
         assessment_id=a.id,
         content_version=assessment_content.token(content),
-        check_content_version=assessment_content.token(check_content) if check_content else None,
+        check_content_version=assessment_content.token(check_content)
+        if check_available and check_content is not None
+        else None,
         skill_id=a.skill_id,
         exercise_id=str(item["exercise_id"]),
         title=str(item["title"]),
@@ -66,8 +71,10 @@ async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
         runtime=str(item.get("runtime") or "pyodide-worker"),
         hints_available=len(a.item_json.get("hints") or []),
         attempts=attempts,
-        check_assessment_id=a.item_json.get("check_assessment_id"),
-        check_question=str(check_content["item_json"].get("prompt") or "")
+        check_assessment_id=a.item_json.get("check_assessment_id") if check_available else None,
+        check_question="This check question is unavailable for practice."
+        if check_content is not None and not check_available
+        else str(check_content["item_json"].get("prompt") or "")
         if check_content
         else str(a.item_json.get("check_question") or ""),
         policy=exercises.policy_for(ex) if (ex := exercises.for_slug(node_slug)) else {},
@@ -87,10 +94,11 @@ async def for_skill(skill_id: str, db: DB, learner: Learner) -> ExerciseView:
     return await _view(db, learner.id, a)
 
 
-async def _exercise(db: DB, assessment_id: str) -> Assessment:
+async def _exercise(db: DB, assessment_id: str, learner_id: str) -> Assessment:
     a = await db.get(Assessment, assessment_id)
     if a is None or a.kind != exercises.KIND:
         raise AppError("not_found", "no such exercise", http_status=404)
+    await question_state.require_active(db, learner_id, a.id)
     return a
 
 
@@ -100,7 +108,7 @@ async def _exercise(db: DB, assessment_id: str) -> Assessment:
     response_model=HintOut,
 )
 async def hint(assessment_id: str, body: HintIn, db: DB, learner: Learner) -> HintOut:
-    a = await _exercise(db, assessment_id)
+    a = await _exercise(db, assessment_id, learner.id)
     session = await ksession.get(db, body.session_id)
     if session.learner_id != learner.id:
         raise AppError("not_found", "no such session", http_status=404)
@@ -123,7 +131,7 @@ async def hint(assessment_id: str, body: HintIn, db: DB, learner: Learner) -> Hi
     response_model=SolutionOut,
 )
 async def solution(assessment_id: str, body: SolutionIn, db: DB, learner: Learner) -> SolutionOut:
-    a = await _exercise(db, assessment_id)
+    a = await _exercise(db, assessment_id, learner.id)
     session = await ksession.get(db, body.session_id)
     if session.learner_id != learner.id:
         raise AppError("not_found", "no such session", http_status=404)
@@ -140,7 +148,12 @@ async def solution(assessment_id: str, body: SolutionIn, db: DB, learner: Learne
         },
         representation="full_solution",
     )
+    check_text = str(a.item_json.get("check_question") or "")
+    if check_id := a.item_json.get("check_assessment_id"):
+        state = await question_state.read(db, learner.id, str(check_id))
+        if state.state != "active":
+            check_text = "This check question is unavailable for practice."
     return SolutionOut(
         solution=str(a.item_json.get("solution") or ""),
-        check_question=str(a.item_json.get("check_question") or ""),
+        check_question=check_text,
     )

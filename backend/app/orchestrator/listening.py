@@ -7,7 +7,7 @@ from typing import Any
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.kernel import listening
+from app.kernel import listening, question_state
 from app.kernel.curriculum import STOP_WORDS
 from app.models_ai.budget import BudgetExceeded
 from app.models_ai.gateway import GatewayError, ModelGateway
@@ -130,6 +130,7 @@ async def ensure_task(
     node = await listening.listening_node(db, lesson.language or "unknown")
     a = await listening.existing_task(db, node.id, section.chunk_id)
     if a is not None:
+        await question_state.require_active(db, learner_id, a.id)
         return a, []
     problems: list[str] = []
     proposal, call_id = None, None
@@ -173,5 +174,7 @@ async def ensure_task(
     if first is not None and first.id != a.id:
         await db.delete(a)
         await db.commit()
+        await question_state.require_active(db, learner_id, first.id)
         return first, problems
+    await question_state.require_active(db, learner_id, a.id)
     return a, problems

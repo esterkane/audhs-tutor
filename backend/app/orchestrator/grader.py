@@ -24,7 +24,7 @@ from app.db.models import (
     SkillNode,
     WorkspaceRequest,
 )
-from app.kernel import competency, memory
+from app.kernel import competency, memory, question_state
 from app.kernel import session as ksession
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
@@ -232,7 +232,9 @@ class Grader:
             (
                 await self.db.execute(
                     select(Assessment).where(
-                        Assessment.skill_id == skill_id, Assessment.kind != "code"
+                        Assessment.skill_id == skill_id,
+                        Assessment.kind != "code",
+                        question_state.eligible(learner_id),
                     )
                 )
             ).scalars()

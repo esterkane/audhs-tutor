@@ -26,6 +26,7 @@ from app.db.models import (
     DocumentVersion,
     SkillNode,
 )
+from app.kernel import question_state
 from app.kernel.curriculum import STOP_WORDS, WORD_RE, open_target
 from app.knowledge.ingest.loaders import _LANG_SUFFIX, SUFFIX_TYPES, clean_stem
 
@@ -382,10 +383,20 @@ async def existing_task(db: AsyncSession, node_id: str, chunk_id: str) -> Assess
     return (await db.execute(stmt)).scalars().first()
 
 
-async def validate_task(db: AsyncSession, assessment_id: str, *, validated: bool) -> Assessment:
+async def validate_task(
+    db: AsyncSession, assessment_id: str, *, validated: bool, learner_id: str | None = None
+) -> Assessment:
     """The review path for model-proposed questions: the learner marks a question as checked
     (full weight from then on) or leaves it unvalidated (half weight in the grader)."""
-    a = await db.get(Assessment, assessment_id)
+    if learner_id is not None:
+        # Validation changes later grading weight; lock before reading the payload.
+        from sqlalchemy import update
+
+        await db.execute(
+            update(Assessment).where(Assessment.id == assessment_id).values(kind=Assessment.kind)
+        )
+        await question_state.require_active(db, learner_id, assessment_id)
+    a = await db.get(Assessment, assessment_id, populate_existing=True)
     if a is None or not (a.item_json or {}).get("listening"):
         raise KeyError("no such listening task")
     item = dict(a.item_json)
