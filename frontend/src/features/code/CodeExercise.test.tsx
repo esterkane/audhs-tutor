@@ -1,4 +1,6 @@
-import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
+import { render, act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { jsonResponse, renderApp } from '../../test/utils'
@@ -310,4 +312,43 @@ describe('CodeExercise', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(/could not be loaded \(network unreachable\)/)
     expect(screen.getByLabelText(/Your code/)).toBeInTheDocument()
   })
+
+it('explains an unavailable exercise and retries without losing saved code', async () => {
+  localStorage.setItem('code-draft:a1', 'print("saved work")')
+  let fail = true
+  vi.stubGlobal('fetch', vi.fn(async () => fail
+    ? jsonResponse({ error: { code: 'assessment_unavailable', message: 'This question is excluded from practice.' } }, 409)
+    : jsonResponse(exercise)))
+  renderApp(<CodeExercise sessionId="s1" skillId="k1" runner={fakeRunner(() => ok)} />)
+  await screen.findByText('This question is excluded from practice.')
+  expect(screen.getByRole('link', { name: 'Manage excluded questions' })).toHaveAttribute('href', '/preferences#excluded-questions')
+  expect(localStorage.getItem('code-draft:a1')).toBe('print("saved work")')
+  fail = false
+  fireEvent.click(screen.getByRole('button', { name: 'Retry exercise' }))
+  await screen.findByText('Code exercise: Scaled dot-product attention in numpy')
+  expect(localStorage.getItem('code-draft:a1')).toBe('print("saved work")')
+})
+
+  it('retains the cached editor and retry focus after another failed read', async () => {
+    const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    qc.setQueryData(['exercise', 'k1'], exercise)
+    const fetcher = vi.fn(async () => jsonResponse({ error: { message: 'Backend unavailable' } }, 503))
+    vi.stubGlobal('fetch', fetcher)
+    render(<QueryClientProvider client={qc}><MemoryRouter>
+      <CodeExercise sessionId="s1" skillId="k1" runner={fakeRunner(() => ok)} />
+    </MemoryRouter></QueryClientProvider>)
+    await screen.findByText('Could not refresh the exercise. Your code is kept.')
+    const editor = screen.getByRole('textbox', { name: /Your code/ })
+    fireEvent.change(editor, { target: { value: 'print("retained")' } })
+    const retry = screen.getByRole('button', { name: 'Retry exercise' })
+    retry.focus()
+    fireEvent.click(retry)
+    await waitFor(() => expect(fetcher).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(retry).toBeEnabled())
+    expect(retry).toHaveFocus()
+    expect(editor).toHaveValue('print("retained")')
+    expect(screen.getByRole('textbox', { name: /Your code/ })).toBe(editor)
+    qc.clear()
+  })
+
 })

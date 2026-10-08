@@ -1,3 +1,4 @@
+import { boundedRead } from '../../lib/boundedRead'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { ApiError, apiFetch, type Schemas } from '../../lib/api'
 
@@ -9,9 +10,9 @@ export type SolutionOut = Schemas['SolutionOut']
 export function useExercise(skillId: string | null) {
   return useQuery({
     queryKey: ['exercise', skillId],
-    queryFn: async (): Promise<ExerciseView | null> => {
+    queryFn: async ({ signal }): Promise<ExerciseView | null> => {
       try {
-        return await apiFetch<ExerciseView>(`/api/exercises/for-skill/${skillId}`)
+        return await boundedRead<ExerciseView>(`/api/exercises/for-skill/${encodeURIComponent(skillId!)}`, signal, 'Code exercise')
       } catch (e) {
         if (e instanceof ApiError && e.status === 404) return null
         throw e
@@ -19,6 +20,7 @@ export function useExercise(skillId: string | null) {
     },
     enabled: !!skillId,
     retry: false,
+    retryOnMount: false,
   })
 }
 

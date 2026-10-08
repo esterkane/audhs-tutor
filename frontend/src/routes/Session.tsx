@@ -1238,12 +1238,12 @@ function OptionalExercise({
   mastery: number
 }) {
   const exercise = useExercise(skillId)
-  if (!exercise.data) return null
+  if (!exercise.data && !exercise.isError && !exercise.isFetching) return null
   return (
     <details className="mt-2">
       <summary className="cursor-pointer text-sm font-medium">
         Code exercise (optional{mastery < 0.6 ? ' — best after the worked example' : ''}):{' '}
-        {exercise.data.title}
+        {exercise.data?.title ?? (exercise.isFetching ? 'Loading exercise…' : 'Could not load exercise')}
       </summary>
       <div className="mt-2">
         <CodeExercise sessionId={sessionId} skillId={skillId} />

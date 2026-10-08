@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
@@ -30,21 +31,42 @@ export function CodeExercise({
   onGraded?: (r: AttemptResult) => void
 }) {
   const exercise = useExercise(skillId)
+  const panel = useRef<HTMLDivElement>(null)
+  const retryRequested = useRef(false)
+  useEffect(() => {
+    if (!exercise.isFetching && !exercise.isError && exercise.data && retryRequested.current) {
+      retryRequested.current = false
+      panel.current?.focus()
+    }
+  }, [exercise.isFetching, exercise.isError, exercise.data])
   if (exercise.isLoading)
     return (
       <p className="text-sm" role="status">
         Loading the exercise…
       </p>
     )
-  if (!exercise.data) return null
+  if (!exercise.data && !exercise.isError) return null
   return (
-    <Editor
+    <div ref={panel} tabIndex={-1} aria-label="Code exercise workspace">
+      {exercise.isError && <Card>
+        <p role="alert">{exercise.data ? 'Could not refresh the exercise. Your code is kept.' : 'Could not load the code exercise.'}</p>
+        <p className="text-sm mt-2">{exercise.error.message}</p>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <Button disabled={exercise.isFetching} onClick={() => {
+            retryRequested.current = true
+            void exercise.refetch()
+          }}>{exercise.isFetching ? 'Retrying…' : 'Retry exercise'}</Button>
+          <Link to="/preferences#excluded-questions">Manage excluded questions</Link>
+        </div>
+      </Card>}
+    {exercise.data && <Editor
       key={exercise.data.assessment_id}
       sessionId={sessionId}
       exercise={exercise.data}
       runner={runner}
       onGraded={onGraded}
-    />
+    />}
+    </div>
   )
 }
 
