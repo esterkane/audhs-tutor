@@ -28,7 +28,7 @@ export function CorrectionInbox() {
   }
   return <section id="question-reports" className="border border-line rounded p-4">
     <h2 ref={heading} tabIndex={-1} className="text-lg font-semibold">Reported questions</h2>
-    <p className="text-sm text-muted">Review questions you marked as needing improvement. This list does not change questions or grades. Editing and replacement are not available here yet.</p>
+    <p className="text-sm text-muted">Review questions you marked as needing improvement. This list does not change questions or grades. You can prepare a correction draft; replacement is not available yet.</p>
     <Button className="mt-2" aria-expanded={open} onClick={() => setOpen(!open)}>
       {open ? 'Hide question reports' : 'Show question reports'}
     </Button>
@@ -52,6 +52,7 @@ export function CorrectionInbox() {
           {item.content_status === 'changed' && item.current_question && <>
             <p className="mt-2 font-medium">Current wording</p><p>{item.current_question}</p>
           </>}
+          {item.assessment_id && item.content_status === 'unchanged' && <Link to={`/corrections?assessment=${encodeURIComponent(item.assessment_id)}&report=${encodeURIComponent(item.id)}`}>Prepare a correction draft</Link>}
           {item.content_status === 'changed' && !item.current_question && <p className="text-sm">The original question cannot be safely matched in the current draft.</p>}
         </article>)}
         {query.data.total > 0 && query.data.items.length === 0 && <p>This page is now empty. Return to the previous page or refresh.</p>}
@@ -60,6 +61,7 @@ export function CorrectionInbox() {
           {offset + query.data.items.length < query.data.total && <Button disabled={query.isFetching} onClick={() => page(offset + 20)}>More reports</Button>}
         </div>
       </>}
+      <Link to="/corrections">Open saved correction drafts</Link>
       <Link to="/preferences#excluded-questions">Manage question exclusions separately</Link>
     </div>}
   </section>

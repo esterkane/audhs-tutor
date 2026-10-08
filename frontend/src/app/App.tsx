@@ -1,3 +1,4 @@
+import { CorrectionEditor } from '../features/questions/CorrectionEditor'
 import { Brand } from '../components/Brand'
 import { QuickNavigation } from '../components/QuickNavigation'
 import { BrowseArea } from '../features/areas/BrowseArea'
@@ -48,6 +49,7 @@ const toolPages = navigationGroups.flatMap(group => group.pages).filter(([path])
 const pageTitles: Record<string, string> = {
   ...Object.fromEntries([...primaryPages, ...toolPages]),
   '/programs': 'Project study',
+  '/corrections': 'Correction drafts',
   '/session': 'Learning session',
   '/review': 'Review',
   '/recap': 'Session recap',
@@ -209,6 +211,7 @@ export default function App() {
             <Route path="/recap" element={<Recap />} />
             <Route path="/map" element={<Map />} />
             <Route path="/preferences" element={<Preferences />} />
+            <Route path="/corrections" element={<CorrectionEditor />} />
             <Route path="/corpus" element={<Corpus />} />
             <Route path="/areas" element={<Areas />} />
             <Route path="/programs" element={<Programs />} />
