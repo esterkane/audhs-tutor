@@ -2,6 +2,8 @@
 out the exercise, hints (one step at a time), the explicit full solution, and grades submissions
 through `/api/assess/attempt` (kind `code`)."""
 
+from typing import Any
+
 from fastapi import APIRouter
 from sqlalchemy import func, select
 
@@ -9,7 +11,7 @@ from app.api.deps import DB, Learner
 from app.core.errors import AppError
 from app.db.events import EventWriter, Verb
 from app.db.models import Assessment, AssessmentAttempt
-from app.kernel import exercises, question_state, skill_graph
+from app.kernel import exercises, question_replacements, question_state, skill_graph
 from app.kernel import session as ksession
 from app.orchestrator import assessment_content
 from app.schemas.common import ActivityType, ObjectType
@@ -26,18 +28,31 @@ from app.schemas.exercises import (
 router = APIRouter(prefix="/exercises", tags=["exercises"])
 
 
+async def _check_content(db: DB, learner_id: str, a: Assessment) -> dict[str, Any] | None:
+    check_id = a.item_json.get("check_assessment_id")
+    if not check_id:
+        return None
+    try:
+        check = await question_replacements.resolve(db, learner_id, str(check_id))
+        return await assessment_content.snapshot(db, check.id, learner_id)
+    except AppError as error:
+        if error.code not in {
+            "not_found",
+            "assessment_unavailable",
+            "question_replacement_invalid",
+        }:
+            raise
+        # An unavailable linked question must not remove the runnable code workspace.
+        return None
+
+
 async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
+    a = await question_replacements.resolve(db, learner_id, a.id)
     content = await assessment_content.snapshot(db, a.id, learner_id)
     assessment_content.require_eligible(content)
     a = assessment_content.assessment(content)
-    check_content = (
-        await assessment_content.snapshot(db, str(a.item_json["check_assessment_id"]), learner_id)
-        if a.item_json.get("check_assessment_id")
-        else None
-    )
-    check_available = (
-        check_content is not None and check_content.get("_question_state", "active") == "active"
-    )
+    check_content = await _check_content(db, learner_id, a)
+    check_available = check_content is not None
     item = exercises.public_item(a.item_json)
     node = await skill_graph.get_node(db, a.skill_id)
     node_slug = node.slug
@@ -71,9 +86,9 @@ async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
         runtime=str(item.get("runtime") or "pyodide-worker"),
         hints_available=len(a.item_json.get("hints") or []),
         attempts=attempts,
-        check_assessment_id=a.item_json.get("check_assessment_id") if check_available else None,
+        check_assessment_id=str(check_content["id"]) if check_content else None,
         check_question="This check question is unavailable for practice."
-        if check_content is not None and not check_available
+        if a.item_json.get("check_assessment_id") and not check_available
         else str(check_content["item_json"].get("prompt") or "")
         if check_content
         else str(a.item_json.get("check_question") or ""),
@@ -149,10 +164,13 @@ async def solution(assessment_id: str, body: SolutionIn, db: DB, learner: Learne
         representation="full_solution",
     )
     check_text = str(a.item_json.get("check_question") or "")
-    if check_id := a.item_json.get("check_assessment_id"):
-        state = await question_state.read(db, learner.id, str(check_id))
-        if state.state != "active":
-            check_text = "This check question is unavailable for practice."
+    if a.item_json.get("check_assessment_id"):
+        check = await _check_content(db, learner.id, a)
+        check_text = (
+            str(check["item_json"].get("prompt") or "")
+            if check
+            else "This check question is unavailable for practice."
+        )
     return SolutionOut(
         solution=str(a.item_json.get("solution") or ""),
         check_question=check_text,

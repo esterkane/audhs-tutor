@@ -40,5 +40,15 @@ async def resolve(db: AsyncSession, learner_id: str, assessment_id: str) -> Asse
             or target.kind != original.kind
         ):
             raise invalid()
+        for key in ("exercise_id", "listening"):
+            # These associations are immutable metadata, not editable question wording.
+            # Validated status is a separate listening operation; preserve clip identity only.
+            before, after = original.item_json.get(key), target.item_json.get(key)
+            if key == "listening" and isinstance(before, dict) and isinstance(after, dict):
+                identity = ("document_id", "chunk_id", "t_start", "t_end")
+                before = {field: before.get(field) for field in identity}
+                after = {field: after.get(field) for field in identity}
+            if before != after:
+                raise invalid()
         current = target
     raise invalid()
