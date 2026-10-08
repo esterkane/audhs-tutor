@@ -1370,3 +1370,7 @@ Unfinished draft text now survives reload in the same tab, retains its reviewed 
 
 ## 2026-10-08 — Question lifecycle reconciliation
 Confirmed publication remains additive and assessments lack eligibility state. Mapped selection, queued review, direct grading and recovery boundaries in slices/question-lifecycle-plan.md; proposed learner-scoped explicit suspension and later atomic replacement. Existing feedback/curriculum baseline:23 tests pass. No runtime/schema/UI change. Next: review and implement the complete suspend/restore vertical slice; R5 remains open.
+
+
+## 2026-10-08 — Question eligibility foundation
+Added learner-scoped state/revision and repeat-safe suspend/restore receipts without changing attempts, mastery or card activity. Full backend943 tests, final19 focused checks, Ruff/mypy, disposable migration and bounded review pass. See slices/question-state-foundation.md. No API/UI/selector enabled and no live migration: next integrate all selection/direct/review/recovery paths before exposing the action. R5 is incomplete.

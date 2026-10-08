@@ -10,6 +10,7 @@ from sqlalchemy import (
     DDL,
     JSON,
     Boolean,
+    CheckConstraint,
     Float,
     ForeignKey,
     Index,
@@ -246,6 +247,37 @@ class Assessment(IdMixin, Base):
     kind: Mapped[str] = mapped_column(Text)  # mcq | cloze | explain_back | code | transfer
     item_json: Mapped[JsonDict] = mapped_column(JSON)
     rubric_id: Mapped[str | None] = mapped_column(Text, ForeignKey("assessment_rubric.id"))
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class QuestionState(LearnerScoped, Base):
+    """Explicit learner eligibility; absence means active revision zero."""
+
+    __tablename__ = "question_state"
+    __table_args__ = (
+        CheckConstraint(
+            "state IN ('active', 'suspended', 'superseded', 'retired')",
+            name="ck_question_state_state",
+        ),
+        CheckConstraint("revision >= 1", name="ck_question_state_revision"),
+    )
+    learner_id: Mapped[str] = mapped_column(ForeignKey("learner_profile.id"), primary_key=True)
+    assessment_id: Mapped[str] = mapped_column(ForeignKey("assessment.id"), primary_key=True)
+    state: Mapped[str] = mapped_column(Text)
+    revision: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[str] = mapped_column(Text)
+
+
+class QuestionTransition(LearnerScoped, Base):
+    """Repeat-safe receipt and history, independent of attempts and mastery."""
+
+    __tablename__ = "question_transition"
+    learner_id: Mapped[str] = mapped_column(ForeignKey("learner_profile.id"), primary_key=True)
+    request_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    assessment_id: Mapped[str] = mapped_column(ForeignKey("assessment.id"), index=True)
+    request_json: Mapped[JsonDict] = mapped_column(JSON)
+    result_json: Mapped[JsonDict] = mapped_column(JSON)
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 

@@ -73,6 +73,8 @@ def _value(table: Table, col: Any, n: int, ids: dict[str, str]) -> Any:
     if isinstance(t, Float):
         return 0.5
     # text-ish: give a few well-known columns plausible values so data migrations run over them
+    if table.name == "question_state" and name == "state":
+        return "suspended"
     if name == "domain":
         return "ai_ml"
     if name == "status":

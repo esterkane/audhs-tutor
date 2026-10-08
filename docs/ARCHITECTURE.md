@@ -71,6 +71,8 @@ interpret request → identify skill → assemble ContextPacket → retrieve evi
 | Migration readiness | `learner_id` everywhere, ULIDs, repositories behind interfaces, no singletons; SQLite→Postgres and Qdrant local→Qdrant Cloud are adapter/config swaps | 0007 |
 
 ## 4. Data architecture (Phase 1 tables)
+
+Question eligibility foundation: `question_state{learner_id, assessment_id, state, revision, reason, updated_at}` and `question_transition{learner_id, request_id, assessment_id, request_json, result_json, created_at}` preserve explicit learner decisions separately from shared content, attempts and scheduling. Selector/API/UI integration is pending; see `slices/question-state-foundation.md`.
 Learner: `learner_profile`, `learner_preference{key, value_json, origin, confidence, reversible}`, `session{mode, energy, socratic, energy_after}`, `session_checkpoint{session_id, packet_json, ts}`.
 Curriculum: `skill_node{success_criteria, assessment_requirements, example_applications}`, `skill_edge`, `learning_object`, `representation{object_id, kind, content, model_call_id, cached}`.
 Competence & memory: `competency_evidence{skill_id, dimension, score, weight, source_attempt_id, ts}`, `competency_state` (materialized view refreshed by kernel), `review_item`, `memory_state` (FSRS), `review_log`.

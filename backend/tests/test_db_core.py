@@ -11,6 +11,8 @@ from app.db.base import Base
 from app.db.migrate import upgrade_to_head
 
 EXPECTED_TABLES = {
+    "question_state",
+    "question_transition",
     "knowledge_area",
     "question_feedback",
     "learner_profile",
