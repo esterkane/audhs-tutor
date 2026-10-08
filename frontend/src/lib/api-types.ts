@@ -3322,7 +3322,14 @@ export interface components {
     }
     /** DraftUpdate */
     DraftUpdate: {
+      /** Expected Version */
+      expected_version: number
       payload: components['schemas']['DraftPayload']
+    }
+    /** DraftVersion */
+    DraftVersion: {
+      /** Expected Version */
+      expected_version: number
     }
     /** DueList */
     DueList: {
@@ -9599,7 +9606,11 @@ export interface operations {
       }
       cookie?: never
     }
-    requestBody?: never
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DraftVersion']
+      }
+    }
     responses: {
       /** @description Successful Response */
       200: {
@@ -9630,7 +9641,11 @@ export interface operations {
       }
       cookie?: never
     }
-    requestBody?: never
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DraftVersion']
+      }
+    }
     responses: {
       /** @description Successful Response */
       200: {

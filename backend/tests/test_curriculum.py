@@ -186,7 +186,9 @@ async def test_reject_and_routes(
     assert r.status_code == 201, r.text
     d = r.json()
     assert d["status"] == "draft" and d["payload"]["skills"]
-    r = await client.post(f"/api/curriculum/drafts/{d['id']}/reject")
+    r = await client.post(
+        f"/api/curriculum/drafts/{d['id']}/reject", json={"expected_version": d["version"]}
+    )
     assert r.json()["status"] == "rejected"
     r = await client.get("/api/curriculum/drafts")
     assert any(x["id"] == d["id"] and x["status"] == "rejected" for x in r.json()["drafts"])

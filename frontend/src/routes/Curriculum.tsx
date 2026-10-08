@@ -1,3 +1,4 @@
+import { ApiError } from '../lib/api'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -336,7 +337,7 @@ export function DraftEditor({
   onDirtyChange: (dirty: boolean) => void
 }) {
   const actions = useDraftActions()
-  const draft = [actions.publish.data?.draft, actions.reject.data, actions.update.data, incoming]
+  const draft = [actions.publish.data?.draft, actions.reject.data, actions.update.data, actions.refresh.data, incoming]
     .filter((d): d is DraftOut => Boolean(d))
     .reduce((latest, d) =>
       d.version > latest.version ||
@@ -356,7 +357,10 @@ export function DraftEditor({
   }, [])
   const canonicalText = JSON.stringify(payload, null, 2)
   const dirty = text !== savedText
-  const conflict = dirty && canonicalText !== savedText
+  const serverConflict = [actions.update.error, actions.publish.error, actions.reject.error].some(
+    (error) => error instanceof ApiError && error.code === 'draft_conflict',
+  )
+  const conflict = serverConflict || (dirty && canonicalText !== savedText)
   // A refreshed server version may arrive while this section stays open.
   // Synchronize pristine editors; preserve dirty text until explicitly discarded.
   if (!dirty && canonicalText !== savedText) {
@@ -364,7 +368,7 @@ export function DraftEditor({
     setSavedText(canonicalText)
     setSource(null)
   }
-  const busy = actions.update.isPending || actions.publish.isPending || actions.reject.isPending
+  const busy = actions.update.isPending || actions.publish.isPending || actions.reject.isPending || actions.refresh.isPending
   const editable = draft.status === 'draft'
   const skills = payload.skills ?? []
   const objects = payload.learning_objects ?? []
@@ -379,7 +383,7 @@ export function DraftEditor({
       const next = JSON.parse(text) as DraftOut['payload']
       setParseError(null)
       actions.update.mutate(
-        { id: draft.id, payload: next },
+        { id: draft.id, payload: next, expected_version: draft.version },
         {
           onSuccess: (updated) => {
             const canonical = JSON.stringify(updated.payload, null, 2)
@@ -653,7 +657,7 @@ export function DraftEditor({
             Not valid JSON: {parseError}
           </p>
         )}
-        {conflict && (
+        {conflict && !serverConflict && (
           <p role="alert" className="text-sm text-warn mt-2">
             This draft changed elsewhere. Copy any edits you want to keep, then discard unsaved edits to load
             the latest version.
@@ -670,6 +674,18 @@ export function DraftEditor({
           </div>
         )}
       </details>
+      {serverConflict && (
+        <div className="mt-3 grid gap-2">
+          <p role="alert">
+            This draft changed elsewhere. {dirty && 'Your unsaved edits are kept above. '}
+            Load the latest saved version to review before continuing.
+          </p>
+          <Button disabled={busy} onClick={() => actions.refresh.mutate(draft.id)}>
+            {actions.refresh.isPending ? 'Loading latest draft…' : 'Load latest saved version'}
+          </Button>
+          {actions.refresh.error && <p role="alert">{actions.refresh.error.message}</p>}
+        </div>
+      )}
       {editable && (
         <div className="border-t border-line mt-5 pt-4">
           <p className="font-medium">Ready to study this section?</p>
@@ -685,8 +701,8 @@ export function DraftEditor({
           <Button
             className="mt-3"
             variant="primary"
-            disabled={errors.length > 0 || dirty || busy}
-            onClick={() => actions.publish.mutate(draft.id)}
+            disabled={errors.length > 0 || dirty || busy || conflict}
+            onClick={() => actions.publish.mutate({ id: draft.id, expected_version: draft.version })}
           >
             {actions.publish.isPending ? 'Activating…' : 'Activate lessons'}
           </Button>
@@ -701,7 +717,7 @@ export function DraftEditor({
             <p className="text-sm my-2">
               Keeps your imported files and any already active lessons. This draft becomes read-only.
             </p>
-            <Button size="sm" disabled={busy || dirty} onClick={() => actions.reject.mutate(draft.id)}>
+            <Button size="sm" disabled={busy || dirty || conflict} onClick={() => actions.reject.mutate({ id: draft.id, expected_version: draft.version })}>
               Discard draft
             </Button>
           </details>
@@ -723,7 +739,7 @@ export function DraftEditor({
           Draft discarded. Your source files and active lessons are unchanged.
         </p>
       )}
-      {(actions.publish.isError || actions.update.isError || actions.reject.isError) && (
+      {!serverConflict && (actions.publish.isError || actions.update.isError || actions.reject.isError) && (
         <p role="alert" className="text-sm text-warn mt-2">
           {(actions.publish.error ?? actions.update.error ?? actions.reject.error)?.message}
         </p>

@@ -1358,3 +1358,7 @@ New grading holds optional ownership and seals before inference; restores invali
 
 ## 2026-10-08 — Explicit prepared assessment continuation
 Verified pre-inference submissions can be continued explicitly with their original answer/identity; uncertain requests remain blocked.40 backend checks,24 UI tests,six desktop/narrow browser journeys, visual/keyboard/reflow, lint/types/build and review pass. Live backend gracefully restarted; health and migration verified. See slices/assessment-prepared-continuation.md. Post-inference uncertainty, human acceptance and broader R3/R4 remain open.
+
+
+## 2026-10-08 — Draft version conflicts
+Reproduced and fixed stale saves overwriting newer drafts. Save/activate/discard now require the reviewed revision and serialize under SQLite; editor conflicts preserve local text and offer explicit latest-version loading. 937 backend/541 frontend tests, seven browser journeys plus final focused recheck, lint/types/build and independent review pass. Live backend health/revision contract verified. See slices/draft-version-conflicts.md. Unsaved editor reload recovery remains next; broader R4 stays open.

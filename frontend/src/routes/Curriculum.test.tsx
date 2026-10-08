@@ -4,7 +4,7 @@ import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { jsonResponse, renderApp } from '../test/utils'
-import { Curriculum } from './Curriculum'
+import { Curriculum, DraftEditor } from './Curriculum'
 
 const material = {
   courses: [
@@ -317,4 +317,36 @@ it('reports course loading failures instead of showing an empty course list', as
   expect(await screen.findByRole('alert')).toHaveTextContent('Courses could not load')
   expect(screen.getByRole('button', { name: 'Retry courses' })).toBeEnabled()
   expect(screen.queryByText(/No course material yet/)).not.toBeInTheDocument()
+})
+
+
+it('preserves edits after a rejected stale save and a failed latest-version read', async () => {
+  let readFails = true
+  const latest = { ...draft, version: 2, payload: { ...draft.payload, domain: 'language' } }
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') {
+      expect(JSON.parse(String(init.body)).expected_version).toBe(1)
+      return jsonResponse({ error: { code: 'draft_conflict', message: 'This draft changed elsewhere.' } }, 409)
+    }
+    if (readFails) return jsonResponse({ error: { code: 'unavailable', message: 'Latest draft unavailable' } }, 503)
+    return jsonResponse(latest)
+  }))
+  renderApp(<DraftEditor draft={draft} onDirtyChange={vi.fn()} />)
+  fireEvent.click(screen.getByText('Advanced: edit draft data'))
+  const input = screen.getByLabelText('Draft JSON')
+  const edited = JSON.stringify({ ...draft.payload, domain: 'music' })
+  fireEvent.change(input, { target: { value: edited } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save changes' }))
+  const load = await screen.findByRole('button', { name: 'Load latest saved version' })
+  expect(input).toHaveValue(edited)
+  expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+  fireEvent.click(load)
+  await screen.findByText('Latest draft unavailable')
+  expect(input).toHaveValue(edited)
+  readFails = false
+  fireEvent.click(load)
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Load latest saved version' })).not.toBeInTheDocument())
+  expect(input).toHaveValue(edited)
+  fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits' }))
+  expect(input).toHaveValue(JSON.stringify(latest.payload, null, 2))
 })

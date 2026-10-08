@@ -50,23 +50,32 @@ export function useDraftActions() {
     onSuccess: invalidate,
   })
   const update = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: DraftOut['payload'] }) =>
+    mutationFn: ({ id, payload, expected_version }: { id: string; payload: DraftOut['payload']; expected_version: number }) =>
       apiFetch<DraftOut>(`/api/curriculum/drafts/${id}`, {
         method: 'PUT',
-        body: JSON.stringify({ payload }),
+        body: JSON.stringify({ payload, expected_version }),
       }),
     onSuccess: invalidate,
   })
   const publish = useMutation({
-    mutationFn: (id: string) =>
-      apiFetch<PublishOut>(`/api/curriculum/drafts/${id}/publish`, { method: 'POST' }),
+    mutationFn: ({ id, expected_version }: { id: string; expected_version: number }) =>
+      apiFetch<PublishOut>(`/api/curriculum/drafts/${id}/publish`, { method: 'POST', body: JSON.stringify({ expected_version }) }),
     onSuccess: invalidate,
   })
   const reject = useMutation({
-    mutationFn: (id: string) => apiFetch<DraftOut>(`/api/curriculum/drafts/${id}/reject`, { method: 'POST' }),
+    mutationFn: ({ id, expected_version }: { id: string; expected_version: number }) => apiFetch<DraftOut>(`/api/curriculum/drafts/${id}/reject`, { method: 'POST', body: JSON.stringify({ expected_version }) }),
     onSuccess: invalidate,
   })
-  return { create, update, publish, reject }
+  const refresh = useMutation({
+    mutationFn: (id: string) => boundedRead<DraftOut>(`/api/curriculum/drafts/${id}`, new AbortController().signal, 'Latest draft'),
+    onSuccess: () => {
+      update.reset()
+      publish.reset()
+      reject.reset()
+      invalidate()
+    },
+  })
+  return { create, update, publish, reject, refresh }
 }
 
 export function useChunk(chunkId: string | null) {

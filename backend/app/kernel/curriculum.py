@@ -16,9 +16,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, func, select
+from sqlalchemy import delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.base import utcnow_iso
 from app.db.models import (
     Assessment,
@@ -1050,10 +1051,46 @@ async def list_drafts(db: AsyncSession, learner_id: str) -> list[CurriculumDraft
     return list((await db.execute(stmt)).scalars())
 
 
-async def update_draft(
-    db: AsyncSession, learner_id: str, draft_id: str, payload: dict[str, Any]
+async def _locked_draft(
+    db: AsyncSession, learner_id: str, draft_id: str, expected_version: int | None
 ) -> CurriculumDraft:
-    d = await get_draft(db, learner_id, draft_id)
+    """Serialize draft mutations; callers perform only local validation/writes after this."""
+    await db.commit()
+    try:
+        await db.execute(
+            update(CurriculumDraft)
+            .where(CurriculumDraft.id == draft_id, CurriculumDraft.learner_id == learner_id)
+            .values(version=CurriculumDraft.version, updated_at=CurriculumDraft.updated_at)
+        )
+        row = await db.scalar(
+            select(CurriculumDraft)
+            .where(CurriculumDraft.id == draft_id, CurriculumDraft.learner_id == learner_id)
+            .execution_options(populate_existing=True)
+        )
+        if row is None:
+            raise KeyError("draft not found")
+        if expected_version is not None and row.version != expected_version:
+            raise AppError(
+                "draft_conflict",
+                "This draft changed elsewhere. Load its latest saved version before continuing. "
+                "Your edits have not been saved.",
+                409,
+            )
+        return row
+    except BaseException:
+        await db.rollback()
+        raise
+
+
+async def update_draft(
+    db: AsyncSession,
+    learner_id: str,
+    draft_id: str,
+    payload: dict[str, Any],
+    *,
+    expected_version: int | None = None,
+) -> CurriculumDraft:
+    d = await _locked_draft(db, learner_id, draft_id, expected_version)
     if d.status != "draft":
         raise ValueError(f"a {d.status} draft cannot be edited; create a new draft")
     d.payload_json = payload
@@ -1065,11 +1102,14 @@ async def update_draft(
     return d
 
 
-async def reject_draft(db: AsyncSession, learner_id: str, draft_id: str) -> CurriculumDraft:
-    d = await get_draft(db, learner_id, draft_id)
+async def reject_draft(
+    db: AsyncSession, learner_id: str, draft_id: str, *, expected_version: int | None = None
+) -> CurriculumDraft:
+    d = await _locked_draft(db, learner_id, draft_id, expected_version)
     if d.status == "published":
         raise ValueError("a published draft cannot be rejected; publish a corrected draft instead")
     d.status = "rejected"
+    d.version += 1
     await db.commit()
     return d
 
@@ -1083,13 +1123,17 @@ class PublishReport:
     new_object_versions: int = 0
 
 
-async def publish_draft(db: AsyncSession, learner_id: str, draft_id: str) -> PublishReport:
+async def publish_draft(
+    db: AsyncSession, learner_id: str, draft_id: str, *, expected_version: int | None = None
+) -> PublishReport:
     """Apply the payload: nodes upserted (course stamped), edges added, a **new** LearningObject
     version per skill (older versions stay — historical evidence keeps pointing at what was taught),
     assessments added when their content is new (existing rows untouched). Errors block."""
-    d = await get_draft(db, learner_id, draft_id)
+    d = await _locked_draft(db, learner_id, draft_id, expected_version)
     if d.status == "published":
         raise ValueError("already published")
+    if d.status != "draft":
+        raise ValueError("only a draft can be published; create a new draft")
     payload = d.payload_json
     problems = selection_problems(payload.get("selection")) + await validate_payload(db, payload)
     errors = [p for p in problems if p.level == "error"]
@@ -1223,6 +1267,7 @@ async def publish_draft(db: AsyncSession, learner_id: str, draft_id: str) -> Pub
         db.add(Assessment(skill_id=skill_id, kind=a["kind"], item_json=item, rubric_id=rubric_id))
         report.assessments += 1
     d.status = "published"
+    d.version += 1
     d.published_at = utcnow_iso()
     d.validation_json = problems_json(problems)
     await db.commit()

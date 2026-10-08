@@ -23,6 +23,7 @@ from app.schemas.curriculum import (
     DraftList,
     DraftOut,
     DraftUpdate,
+    DraftVersion,
     MaterialList,
     MaterialStatus,
     ProblemOut,
@@ -199,7 +200,13 @@ async def get_draft(draft_id: str, db: DB, learner: Learner) -> DraftOut:
 )
 async def update_draft(draft_id: str, body: DraftUpdate, db: DB, learner: Learner) -> DraftOut:
     return _draft_out(
-        await curriculum.update_draft(db, learner.id, draft_id, body.payload.model_dump())
+        await curriculum.update_draft(
+            db,
+            learner.id,
+            draft_id,
+            body.payload.model_dump(),
+            expected_version=body.expected_version,
+        )
     )
 
 
@@ -208,8 +215,10 @@ async def update_draft(draft_id: str, body: DraftUpdate, db: DB, learner: Learne
     summary="Publish: skills, prerequisites, a new learning-object version, assessments",
     response_model=PublishOut,
 )
-async def publish(draft_id: str, db: DB, learner: Learner) -> PublishOut:
-    rep = await curriculum.publish_draft(db, learner.id, draft_id)
+async def publish(draft_id: str, body: DraftVersion, db: DB, learner: Learner) -> PublishOut:
+    rep = await curriculum.publish_draft(
+        db, learner.id, draft_id, expected_version=body.expected_version
+    )
     d = await curriculum.get_draft(db, learner.id, draft_id)
     return PublishOut(
         draft=_draft_out(d),
@@ -226,8 +235,12 @@ async def publish(draft_id: str, db: DB, learner: Learner) -> PublishOut:
     summary="Reject a draft (kept for the record)",
     response_model=DraftOut,
 )
-async def reject(draft_id: str, db: DB, learner: Learner) -> DraftOut:
-    return _draft_out(await curriculum.reject_draft(db, learner.id, draft_id))
+async def reject(draft_id: str, body: DraftVersion, db: DB, learner: Learner) -> DraftOut:
+    return _draft_out(
+        await curriculum.reject_draft(
+            db, learner.id, draft_id, expected_version=body.expected_version
+        )
+    )
 
 
 # ----------------------------------------------------------------------------- source passages

@@ -336,14 +336,20 @@ async def test_model_draft_never_sees_excluded_or_supplemental_text(
     assert any("not used (excluded, owner)" in m and "sponsor boilerplate" in m for m in infos)
     assert d["payload"]["selection"]["built_on"]
     # an edit over HTTP round-trips the selection and keeps the notes (they are not re-typed)
-    r = await client.put(f"/api/curriculum/drafts/{d['id']}", json={"payload": d["payload"]})
+    r = await client.put(
+        f"/api/curriculum/drafts/{d['id']}",
+        json={"payload": d["payload"], "expected_version": d["version"]},
+    )
     assert r.status_code == 200, r.text
     infos2 = [p["message"] for p in r.json()["problems"] if p["level"] == "info"]
     assert infos2 == infos
     # a client that drops the selection loses the notes — and the UI keeps the payload whole
     stripped = dict(d["payload"])
     stripped.pop("selection")
-    r = await client.put(f"/api/curriculum/drafts/{d['id']}", json={"payload": stripped})
+    r = await client.put(
+        f"/api/curriculum/drafts/{d['id']}",
+        json={"payload": stripped, "expected_version": d["version"] + 1},
+    )
     assert r.status_code == 200
     assert not [p for p in r.json()["problems"] if p["level"] == "info"]
     # with everything excluded the model path is refused with the same review hint

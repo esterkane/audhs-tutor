@@ -157,7 +157,11 @@ class DraftPayload(BaseModel):
     )
 
 
-class DraftUpdate(BaseModel):
+class DraftVersion(BaseModel):
+    expected_version: int = Field(ge=1)
+
+
+class DraftUpdate(DraftVersion):
     payload: DraftPayload
 
 
