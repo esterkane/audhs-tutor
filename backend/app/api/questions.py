@@ -6,7 +6,8 @@ from sqlalchemy import func, select
 
 from app.api.deps import DB, Learner
 from app.db.models import Assessment, QuestionState, ReviewItem, SkillNode
-from app.kernel import question_state
+from app.kernel import question_corrections, question_state
+from app.schemas.question_corrections import CorrectionInbox
 from app.schemas.question_state import QuestionStateOut, QuestionTransitionIn
 
 router = APIRouter(prefix="/questions", tags=["questions"])
@@ -54,6 +55,13 @@ async def preview(db: DB, learner_id: str, assessment_id: str) -> QuestionPracti
     return QuestionPracticeView(
         status=state, skill_title=title, question=question[:2000], affected_reviews=int(count or 0)
     )
+
+
+@router.get("/corrections", response_model=CorrectionInbox, summary="Read your reported questions")
+async def corrections(
+    db: DB, learner: Learner, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=50)
+) -> CorrectionInbox:
+    return await question_corrections.inbox(db, learner.id, offset, limit)
 
 
 @router.get(

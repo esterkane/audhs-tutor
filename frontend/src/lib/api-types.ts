@@ -789,6 +789,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/questions/corrections': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read your reported questions */
+    get: operations['corrections_api_questions_corrections_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/questions/excluded': {
     parameters: {
       query?: never
@@ -3028,6 +3045,46 @@ export interface components {
        * @description live count from the retrieval index
        */
       index_count?: number | null
+    }
+    /** CorrectionInbox */
+    CorrectionInbox: {
+      /** Items */
+      items: components['schemas']['CorrectionReport'][]
+      /** Total */
+      total: number
+      /** Offset */
+      offset: number
+      /** Limit */
+      limit: number
+    }
+    /** CorrectionReport */
+    CorrectionReport: {
+      /** Id */
+      id: string
+      /**
+       * Target
+       * @enum {string}
+       */
+      target: 'assessment' | 'draft'
+      /** Assessment Id */
+      assessment_id: string | null
+      /** Draft Id */
+      draft_id: string | null
+      /** Reported Question */
+      reported_question: string
+      /** Current Question */
+      current_question: string | null
+      /**
+       * Content Status
+       * @enum {string}
+       */
+      content_status: 'unchanged' | 'changed' | 'unavailable'
+      /** Labels */
+      labels: string[]
+      /** Note */
+      note: string
+      /** Created At */
+      created_at: string
     }
     /** CostBucket */
     CostBucket: {
@@ -7167,6 +7224,38 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AttemptResult']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  corrections_api_questions_corrections_get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionInbox']
         }
       }
       /** @description Validation Error */

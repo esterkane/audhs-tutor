@@ -28,10 +28,10 @@ Publication must validate source/content/state/draft versions within a transacti
 
 ## Next bounded task
 
-Implement slice 1's paginated read-only inbox API and tests using existing report snapshots and ownership. First specify which existing report fields are safe to expose and how actionable latest reports are selected. Do not reuse the unbounded preference-summary calculation as pagination. Then add the minimal UI entry and browser verification before paired publication. No new library/provider is needed.
+Read-only inbox API/UI is implemented and verified in question-correction-inbox.md. Next specify the versioned proposal schema and replacement ownership ADR using the invariants above, then implement proposal editing/preview. Keep resolution explicit and do not introduce publication until learner-scoped visibility and original-receipt identity are enforced.
 
 ## Acceptance still open
 
-All five slices above are unfinished. The prior controls prove suspension/restoration only. Human comprehension, broader accessibility, real material provenance and approved replacement policy remain separate gates. No runtime changes or new test claims accompany this planning document; its evidence is targeted inspection of the listed implementation.
+Slice 1 read-only discovery is now implemented (see question-correction-inbox.md); its resolution lifecycle and slices 2–5 remain unfinished. The prior controls prove suspension/restoration only. Human comprehension, broader accessibility, real material provenance and approved replacement policy remain separate gates. No runtime changes or new test claims accompany this planning document; its evidence is targeted inspection of the listed implementation.
 
 Bounded architecture review confirmed the listed code facts and added stable draft fingerprint and original-receipt identity requirements.

@@ -1,3 +1,4 @@
+import { CorrectionInbox } from '../features/questions/CorrectionInbox'
 import { ExcludedQuestions } from '../features/questions/QuestionPractice'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
@@ -167,6 +168,7 @@ export function Preferences() {
           Back
         </Button>
       </Card>
+      <CorrectionInbox />
       <ExcludedQuestions />
       <AdaptationLog />
     </div>
