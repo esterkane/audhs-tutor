@@ -15,3 +15,8 @@ The editor disables publication for dirty/conflicting drafts, missing/changed so
 ## Remaining
 
 Broader end-to-end report/queued-review/history and linked-exercise acceptance remains, as does human comprehension, assistive technology and explicit reversal policy. Code/listening publication is intentionally unavailable pending dedicated verification. Complete/unchanged source identity is not proof of answer correctness. No paid calls or learning-algorithm changes.
+
+
+## Integrated publication acceptance — 2026-10-08
+
+Three additional real-API integration tests pass (test_correction_publication_integration.py). They report/edit/preview/publish, confirm the exact report leaves the actionable inbox, preserve completed assessment/review receipt replay, reject new work on old identities, exclude a genuinely due queued card, and return the new linked check while preserving the persisted code exercise and starter. Snapshots prove unchanged attempts, competency evidence/state, memory schedules, review items and review logs. Reporting intentionally records a preference event; this is not an all-events-unchanged claim. Ruff passes. Bounded review's tuple-access and ORM-refresh test findings were fixed before the final passing run. No application code changed; prior UI/type/build/browser evidence remains applicable. Human acceptance, reversal policy and code/listening publication gates remain open.

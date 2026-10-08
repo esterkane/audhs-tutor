@@ -185,3 +185,6 @@ Captured material, unapplied edits and one previous capture now survive route ch
 
 
 2026-10-08: Explicit correction publication now connects saved impact/source confirmation to the atomic service, with persisted same-command receipt recovery after lost response/reload.25 unique backend checks,12 UI tests and4 real desktop/narrow keyboard browser journeys pass; visual/lint/types/build and review clear. See slices/correction-publication-ui.md. Broader report/history/linked-surface acceptance and reversal policy remain.
+
+
+2026-10-08: Three real-API correction publication integration tests now verify report resolution, old-receipt replay, due-card exclusion, six learning tables retained and linked code-check redirection with persisted exercise unchanged. Final3 tests/Ruff pass; review findings fixed. See slices/correction-publication-ui.md. No runtime delta; human/reversal and unsupported-kind gates remain.
