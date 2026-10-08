@@ -35,3 +35,5 @@ Read-only inbox API/UI is implemented and verified in question-correction-inbox.
 Slice 1 read-only discovery is now implemented (see question-correction-inbox.md); its resolution lifecycle and slices 2–5 remain unfinished. The prior controls prove suspension/restoration only. Human comprehension, broader accessibility, real material provenance and approved replacement policy remain separate gates. No runtime changes or new test claims accompany this planning document; its evidence is targeted inspection of the listed implementation.
 
 Bounded architecture review confirmed the listed code facts and added stable draft fingerprint and original-receipt identity requirements.
+
+Storage/command proposal: [ADR-0019](../adr/0019-learner-owned-question-corrections.md) specifies explicit assessment ownership, durable proposal fingerprints, repeat-safe draft commands and kind-specific adapters. Status remains proposed; no schema or publication endpoint has been adopted.
