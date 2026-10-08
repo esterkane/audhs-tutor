@@ -1,7 +1,7 @@
 # 0019 — Learner-owned question corrections
 
 Date: 2026-10-08
-Status: Proposed implementation contract; no migration or runtime adoption yet
+Status: Internal draft storage foundation implemented; ownership/resolver/publication contract remains proposed
 
 ## Context
 
@@ -54,3 +54,5 @@ No publication endpoint is enabled until all current selection/direct-read paths
 This is a proposed contract, not a claim of implementation or an accepted change to grading policy. The next implementation slice is durable proposal create/read/save with revision/receipt tests and export/wipe coverage, followed by a typed preview/editor. Publication remains disabled until the ownership/resolver matrix is proven. Existing local-first routing and no-automatic-curriculum-publication policy remain unchanged.
 
 Review: bounded independent architecture review found no major omitted invariant or contradiction with the inspected implementation. This review does not constitute runtime acceptance.
+
+Implementation checkpoint: migration773f25ae3e92 and the internal correction_drafts service implement private original snapshots and repeat-safe create/save/discard only. No public editing API, typed adapter, source-version verification, replacement ownership or publication exists yet; see correction-draft-foundation in docs/slices.

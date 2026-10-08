@@ -281,6 +281,39 @@ class QuestionTransition(LearnerScoped, Base):
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 
+class QuestionCorrectionDraft(IdMixin, LearnerScoped, Base):
+    """Private, unvalidated editing workspace; never selected as assessment content."""
+
+    __tablename__ = "question_correction_draft"
+    __table_args__ = (
+        CheckConstraint("status IN ('draft', 'discarded')", name="ck_correction_draft_status"),
+        CheckConstraint("revision >= 1", name="ck_correction_draft_revision"),
+    )
+    assessment_id: Mapped[str] = mapped_column(ForeignKey("assessment.id"), index=True)
+    feedback_id: Mapped[str | None] = mapped_column(ForeignKey("question_feedback.id"))
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    status: Mapped[str] = mapped_column(Text, default="draft")
+    original_json: Mapped[JsonDict] = mapped_column(JSON)
+    original_fingerprint: Mapped[str] = mapped_column(Text)
+    question_revision: Mapped[int] = mapped_column(Integer)
+    candidate_json: Mapped[JsonDict] = mapped_column(JSON)
+    rationale: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class QuestionCorrectionCommand(LearnerScoped, Base):
+    """Immutable logical command receipt; replay never rewrites the current draft."""
+
+    __tablename__ = "question_correction_command"
+    learner_id: Mapped[str] = mapped_column(ForeignKey("learner_profile.id"), primary_key=True)
+    request_id: Mapped[str] = mapped_column(Text, primary_key=True)
+    draft_id: Mapped[str] = mapped_column(ForeignKey("question_correction_draft.id"), index=True)
+    request_json: Mapped[JsonDict] = mapped_column(JSON)
+    result_json: Mapped[JsonDict] = mapped_column(JSON)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class AssessmentAttempt(IdMixin, LearnerScoped, Base):
     __tablename__ = "assessment_attempt"
     assessment_id: Mapped[str] = mapped_column(Text, ForeignKey("assessment.id"), index=True)

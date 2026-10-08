@@ -28,7 +28,7 @@ Publication must validate source/content/state/draft versions within a transacti
 
 ## Next bounded task
 
-Read-only inbox API/UI is implemented and verified in question-correction-inbox.md. Next specify the versioned proposal schema and replacement ownership ADR using the invariants above, then implement proposal editing/preview. Keep resolution explicit and do not introduce publication until learner-scoped visibility and original-receipt identity are enforced.
+Read-only inbox API/UI is implemented and verified in question-correction-inbox.md. ADR-0019 and internal durable draft commands are prepared/implemented. Next add kind-specific validation and source-version snapshots before exposing proposal editing/preview. Keep resolution explicit and do not introduce publication until learner-scoped visibility and original-receipt identity are enforced.
 
 ## Acceptance still open
 
@@ -36,4 +36,4 @@ Slice 1 read-only discovery is now implemented (see question-correction-inbox.md
 
 Bounded architecture review confirmed the listed code facts and added stable draft fingerprint and original-receipt identity requirements.
 
-Storage/command proposal: [ADR-0019](../adr/0019-learner-owned-question-corrections.md) specifies explicit assessment ownership, durable proposal fingerprints, repeat-safe draft commands and kind-specific adapters. Status remains proposed; no schema or publication endpoint has been adopted.
+Storage/command proposal: [ADR-0019](../adr/0019-learner-owned-question-corrections.md) specifies explicit assessment ownership, durable proposal fingerprints, repeat-safe draft commands and kind-specific adapters. Internal draft storage is implemented in correction-draft-foundation.md; replacement ownership and publication remain proposed and disabled.

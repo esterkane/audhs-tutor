@@ -161,3 +161,5 @@ Representation provenance: representation.provenance_json preserves generation-t
 ### Durable assessment results
 
 `assessment_execution` is private learner-scoped staging keyed to a workspace claim: prepared → inference_started → grade_ready → completed. It holds the original learner request, a private content fingerprint, validated grade and original grading time. Short transactions preserve model accounting; a serialized finish applies learning evidence and completed outcome atomically without another model call. Unknown legacy/inference-only outcomes are never reclaimed. No source passages or hidden keys are copied into this table. See `slices/assessment-durable-result-plan.md`.
+
+Correction draft foundation: `question_correction_draft` stores learner-owned original snapshots, private stable fingerprints, eligibility revisions and unvalidated candidate work. `question_correction_command` stores learner/request-scoped immutable logical receipts. Kernel create/save/discard never modifies assessments or learning evidence; no public editing or publication API is enabled. See `slices/correction-draft-foundation.md`.

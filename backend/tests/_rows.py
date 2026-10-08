@@ -82,7 +82,7 @@ def _value(table: Table, col: Any, n: int, ids: dict[str, str]) -> Any:
             "ready"
             if table.name == "model_registry"
             else "draft"
-            if table.name == "curriculum_draft"
+            if table.name in {"curriculum_draft", "question_correction_draft"}
             else "open"
         )
     if name == "item_type":
