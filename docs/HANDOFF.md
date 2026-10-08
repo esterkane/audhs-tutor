@@ -1374,3 +1374,7 @@ Confirmed publication remains additive and assessments lack eligibility state. M
 
 ## 2026-10-08 — Question eligibility foundation
 Added learner-scoped state/revision and repeat-safe suspend/restore receipts without changing attempts, mastery or card activity. Full backend943 tests, final19 focused checks, Ruff/mypy, disposable migration and bounded review pass. See slices/question-state-foundation.md. No API/UI/selector enabled and no live migration: next integrate all selection/direct/review/recovery paths before exposing the action. R5 is incomplete.
+
+
+## 2026-10-08 — Review eligibility enforcement
+Suspended questions are excluded from due queues and available counts; queued/direct ratings are guarded, restore requires a fresh view, completed replay and historical memory remain intact. Full952 pass plus one error-contract regression corrected; final46 affected tests, Ruff/mypy and bounded review pass. See slices/question-review-eligibility.md. No UI action/live migration yet: assessment selection/direct/recovery integration remains next before exposing suspension.

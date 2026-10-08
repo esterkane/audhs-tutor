@@ -10,11 +10,13 @@ from fsrs import Card, Rating, Scheduler
 
 __all__ = ["Rating"]
 from fsrs.card import CardDict
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.events import EventWriter, Verb
 from app.db.models import MemoryState, ReviewItem, ReviewLog, SkillNode
+from app.kernel import question_state
 from app.schemas.common import ObjectType
 
 DESIRED_RETENTION = 0.9
@@ -132,6 +134,7 @@ async def due_items(
             ReviewItem.learner_id == learner_id,
             ReviewItem.active.is_(True),
             MemoryState.due <= _iso(now),
+            question_state.review_eligible(learner_id),
         )
         .order_by(MemoryState.due)
         .limit(cap)
@@ -159,6 +162,23 @@ async def review(
     commit: bool = True,
 ) -> ReviewLog:
     now = now or datetime.now(UTC)
+    # Serialize the eligibility check with suspension through the final FSRS write.
+    # Callers own rollback on error; commit=False keeps the enclosing write atomic.
+    await db.execute(
+        update(MemoryState)
+        .where(
+            MemoryState.review_item_id == review_item_id,
+            MemoryState.learner_id == learner_id,
+        )
+        .values(due=MemoryState.due)
+    )
+    allowed = await db.scalar(
+        select(ReviewItem.id).where(
+            ReviewItem.id == review_item_id,
+            ReviewItem.learner_id == learner_id,
+            question_state.review_eligible(learner_id),
+        )
+    )
     ms = (
         await db.execute(
             select(MemoryState).where(
@@ -169,6 +189,10 @@ async def review(
     item = await db.get(ReviewItem, review_item_id)
     if ms is None or item is None:
         raise KeyError(f"review item {review_item_id!r} not found")
+    if allowed is None:
+        raise AppError(
+            "review_unavailable", "This review is unavailable. No rating was saved.", 409
+        )
     sched = scheduler()
     card = Card.from_dict(cast(CardDict, ms.fsrs_card_json))
     retrievability = float(sched.get_card_retrievability(card, now))
@@ -254,6 +278,7 @@ async def skill_memory_summary(
             ReviewItem.learner_id == learner_id,
             ReviewItem.skill_id == skill_id,
             ReviewItem.active.is_(True),
+            question_state.review_eligible(learner_id),
         )
     )
     rows = list((await db.execute(stmt)).scalars())

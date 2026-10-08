@@ -4,13 +4,13 @@ The caller owns commit/rollback. A SQLite write lock serializes revision checks 
 receipts. No model calls, learning events, attempts or scheduling state are changed.
 """
 
-from sqlalchemy import exists, update
+from sqlalchemy import exists, func, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.errors import AppError
 from app.db.base import utcnow_iso
-from app.db.models import Assessment, QuestionState, QuestionTransition
+from app.db.models import Assessment, QuestionState, QuestionTransition, ReviewItem
 from app.schemas.question_state import QuestionStateOut, QuestionTransitionIn
 
 
@@ -21,6 +21,24 @@ def eligible(learner_id: str) -> ColumnElement[bool]:
         QuestionState.assessment_id == Assessment.id,
         QuestionState.state != "active",
     )
+
+
+def review_reference() -> ColumnElement[str]:
+    """Keep the same legacy ref fallback for filtering and displayed snapshots."""
+    return func.coalesce(
+        func.nullif(ReviewItem.prompt_json["assessment_id"].as_string(), ""),
+        ReviewItem.prompt_json["ref"].as_string(),
+    )
+
+
+def review_eligible(learner_id: str) -> ColumnElement[bool]:
+    """Vocabulary refs are not assessment IDs, even when their strings coincide."""
+    return ~exists().where(
+        QuestionState.learner_id == learner_id,
+        QuestionState.assessment_id == review_reference(),
+        QuestionState.state != "active",
+        func.coalesce(ReviewItem.prompt_json["type"].as_string(), "") != "vocab",
+    ).correlate(ReviewItem)
 
 
 async def read(db: AsyncSession, learner_id: str, assessment_id: str) -> QuestionStateOut:

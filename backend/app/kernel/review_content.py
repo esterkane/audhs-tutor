@@ -9,14 +9,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.content_versions import token
 from app.core.errors import AppError
-from app.db.models import Assessment, AssessmentRubric, MemoryState, ReviewItem, SkillNode
+from app.db.models import (
+    Assessment,
+    AssessmentRubric,
+    MemoryState,
+    QuestionState,
+    ReviewItem,
+    SkillNode,
+)
+from app.kernel import question_state
 
 
 async def snapshot(db: AsyncSession, learner_id: str, item_id: str) -> dict[str, Any]:
-    reference = func.coalesce(
-        func.nullif(ReviewItem.prompt_json["assessment_id"].as_string(), ""),
-        ReviewItem.prompt_json["ref"].as_string(),
-    )
+    reference = question_state.review_reference()
     row = (
         (
             await db.execute(
@@ -28,6 +33,8 @@ async def snapshot(db: AsyncSession, learner_id: str, item_id: str) -> dict[str,
                     ReviewItem.item_type,
                     ReviewItem.prompt_json,
                     ReviewItem.active,
+                    QuestionState.state.label("question_state"),
+                    QuestionState.revision.label("question_revision"),
                     SkillNode.title.label("skill_title"),
                     Assessment.id.label("assessment_id"),
                     Assessment.skill_id.label("assessment_skill_id"),
@@ -48,6 +55,13 @@ async def snapshot(db: AsyncSession, learner_id: str, item_id: str) -> dict[str,
                         func.coalesce(ReviewItem.prompt_json["type"].as_string(), "") != "vocab",
                     ),
                 )
+                .outerjoin(
+                    QuestionState,
+                    and_(
+                        QuestionState.assessment_id == Assessment.id,
+                        QuestionState.learner_id == learner_id,
+                    ),
+                )
                 .outerjoin(AssessmentRubric, AssessmentRubric.id == Assessment.rubric_id)
                 .outerjoin(
                     MemoryState,
@@ -65,6 +79,7 @@ async def snapshot(db: AsyncSession, learner_id: str, item_id: str) -> dict[str,
     if row is None:
         raise AppError("not_found", "Review item not found.", 404)
     result = copy.deepcopy(dict(row))
+    result["active"] = bool(result["active"]) and result["question_state"] in (None, "active")
     result["display"] = display(result)
     return result
 
