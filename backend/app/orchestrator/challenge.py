@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.db.models import Assessment, AssessmentRubric, MemoryState, Session, SkillNode
-from app.kernel import memory, question_state
+from app.kernel import memory, question_replacements, question_state
 from app.kernel import session as ksession
 from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway
@@ -56,7 +56,7 @@ async def existing(
             )
         ).first()
         if not tried:
-            return a
+            return await question_replacements.selected(db, learner_id, a)
     return None
 
 

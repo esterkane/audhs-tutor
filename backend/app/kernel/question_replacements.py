@@ -1,5 +1,6 @@
 """Resolve future practice only. Never use for submitted work or historical receipts."""
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -51,4 +52,32 @@ async def resolve(db: AsyncSession, learner_id: str, assessment_id: str) -> Asse
             if before != after:
                 raise invalid()
         current = target
+    raise invalid()
+
+
+async def selected(db: AsyncSession, learner_id: str, candidate: Assessment) -> Assessment:
+    """Validate an already ranked active candidate without redirecting its identity.
+
+    Follow incoming links to the root, then verify the whole forward chain. This
+    preserves the selector's skill/kind/attempt ordering and prevents a detached
+    terminal from bypassing compatibility or predecessor-state checks.
+    """
+    root_id = candidate.id
+    seen: set[str] = set()
+    for _ in range(MAX_CHAIN):
+        if root_id in seen:
+            raise invalid()
+        seen.add(root_id)
+        parent = await db.scalar(
+            select(QuestionReplacement.original_id).where(
+                QuestionReplacement.learner_id == learner_id,
+                QuestionReplacement.replacement_id == root_id,
+            )
+        )
+        if parent is None:
+            terminal = await resolve(db, learner_id, root_id)
+            if terminal.id != candidate.id:
+                raise invalid()
+            return terminal
+        root_id = parent
     raise invalid()

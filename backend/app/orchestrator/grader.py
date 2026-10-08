@@ -24,7 +24,7 @@ from app.db.models import (
     SkillNode,
     WorkspaceRequest,
 )
-from app.kernel import competency, memory, question_state
+from app.kernel import competency, memory, question_replacements, question_state
 from app.kernel import session as ksession
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
@@ -261,7 +261,7 @@ class Grader:
                 KIND_ORDER.index(i.kind) if i.kind in KIND_ORDER else 9,
             )
         )
-        return items[0]
+        return await question_replacements.selected(self.db, learner_id, items[0])
 
     async def _llm_grade(
         self,

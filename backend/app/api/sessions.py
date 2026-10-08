@@ -11,7 +11,15 @@ from app.api.tutor_preparation import schedule_preparation
 from app.core.errors import AppError
 from app.db import models
 from app.db.models import Assessment, ReviewItem, Session
-from app.kernel import adaptation, blocks, experiments, memory, question_state, skill_graph
+from app.kernel import (
+    adaptation,
+    blocks,
+    experiments,
+    memory,
+    question_replacements,
+    question_state,
+    skill_graph,
+)
 from app.kernel import session as ksession
 from app.schemas.common import Mode
 from app.schemas.tutor import SkillView
@@ -377,6 +385,17 @@ async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, sessio
         )
     ).scalar_one_or_none()
     if first is not None:
+        try:
+            first = await question_replacements.selected(db, learner_id, first)
+        except AppError as error:
+            if error.code not in {
+                "not_found",
+                "assessment_unavailable",
+                "question_replacement_invalid",
+            }:
+                raise
+            # Optional recall creation must never prevent the learner from stopping.
+            return
         await memory.ensure_item(
             db, learner_id, skill_id, first.kind, {"ref": first.id, "assessment_id": first.id}
         )

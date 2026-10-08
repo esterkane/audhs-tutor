@@ -129,3 +129,53 @@ async def test_ordinary_and_challenge_selection_use_replacement(db, learner):
     assert (
         await challenge.reusable(db, SimpleNamespace(learner_id=learner.id), node, "steelman")
     ).assessment_id == target.id
+
+
+@pytest.mark.parametrize("kind", ["mcq", "challenge_steelman"])
+async def test_selectors_reject_active_target_with_incompatible_incoming_link(db, learner, kind):
+    node = models.SkillNode(slug="broken-chain", title="Synthetic", domain="ai_ml")
+    db.add(node)
+    await db.flush()
+    original = models.Assessment(skill_id=node.id, kind=kind, item_json={"prompt": "Original"})
+    db.add(original)
+    await db.commit()
+    target = await replacement(db, learner.id, original, prompt="Target")
+    original.kind = "cloze"
+    await db.commit()
+    with pytest.raises(AppError) as error:
+        if kind == "mcq":
+            await Grader(db, None).next_item(learner.id, node.id)
+        else:
+            await challenge.reusable(db, SimpleNamespace(learner_id=learner.id), node, "steelman")
+    assert error.value.code == "question_replacement_invalid"
+    assert target.owner_learner_id == learner.id
+
+
+async def test_bad_replacement_does_not_block_stop_or_create_recall(client, db):
+    from app.api.sessions import ensure_recall_item_for_explained_skill
+    from app.db.events import EventWriter, Verb
+    from app.kernel import session as sessions
+    from app.schemas.common import ObjectType
+
+    node = models.SkillNode(slug="stop-chain", title="Synthetic", domain="ai_ml")
+    db.add(node)
+    await db.commit()
+    raw = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    session = await db.get(models.Session, raw["id"])
+    await sessions.save_checkpoint(db, session, {"skill_id": node.id})
+    await EventWriter(db, sessions.event_context(session)).emit(
+        Verb.EXPLAINED,
+        ObjectType.NODE,
+        node.id,
+        result={"sentences": 1, "cited_sources": []},
+        context={"node_id": node.id},
+    )
+    original = models.Assessment(skill_id=node.id, kind="mcq", item_json={"question": "Original"})
+    db.add(original)
+    await db.commit()
+    await replacement(db, session.learner_id, original, question="Target")
+    original.kind = "cloze"
+    await db.commit()
+    before = await db.scalar(select(func.count()).select_from(models.ReviewItem))
+    await ensure_recall_item_for_explained_skill(db, session.learner_id, session.id)
+    assert await db.scalar(select(func.count()).select_from(models.ReviewItem)) == before

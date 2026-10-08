@@ -48,6 +48,7 @@ async def test_owned_chain_and_original_snapshot_identity(db, learner):
     await db.commit()
     await link(db, learner.id, own, final)
     assert (await replacements.resolve(db, learner.id, original.id)).id == final.id
+    assert (await replacements.selected(db, learner.id, final)).id == final.id
     assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 0
     assert await db.scalar(select(func.count()).select_from(models.MemoryState)) == 0
 
@@ -90,6 +91,8 @@ async def test_broken_lineage_never_falls_back(db, learner, fault):
     await db.commit()
     with pytest.raises(AppError):
         await replacements.resolve(db, learner.id, original.id)
+    with pytest.raises(AppError):
+        await replacements.selected(db, learner.id, target)
 
 
 async def test_lineage_export_wipe_and_depth_limit(db, learner, db_path, monkeypatch):
