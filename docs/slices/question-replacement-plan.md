@@ -41,3 +41,5 @@ Storage/command proposal: [ADR-0019](../adr/0019-learner-owned-question-correcti
 Internal core/challenge validation and source-identity capture are implemented in correction-validation-sources.md. Next expose owned draft commands/recovery and a typed editor; code execution review, listening revalidation and publication remain open.
 
 Owned draft APIs and request-receipt recovery are implemented in correction-draft-api.md. Next: explicit authoring entry, typed editor and dirty-work recovery. Publication remains unavailable.
+
+Ownership implementation checklist: [replacement-visibility-matrix.md](replacement-visibility-matrix.md), based on current query/direct-read and portability inspection. Keep visibility separate from practice eligibility and canonical cache identity.
