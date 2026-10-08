@@ -110,6 +110,7 @@ describe('CodeExercise', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     localStorage.clear()
+    sessionStorage.clear()
   })
 
   it('mounts CodeMirror by default with an accessible name, syncs Reset into it and can switch to the plain editor', async () => {
@@ -349,6 +350,56 @@ it('explains an unavailable exercise and retries without losing saved code', asy
     expect(editor).toHaveValue('print("retained")')
     expect(screen.getByRole('textbox', { name: /Your code/ })).toBe(editor)
     qc.clear()
+  })
+
+  it('excludes and restores code practice without erasing code or treating old checks as fresh', async () => {
+    let state = 'active'
+    let revision = 0
+    let failRefresh = false
+    const posts: string[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/questions/a1/practice') {
+        if (init?.method === 'POST') {
+          state = JSON.parse(String(init.body)).action === 'suspend' ? 'suspended' : 'active'
+          revision++
+        }
+        const status = { assessment_id: 'a1', state, revision, reason: null }
+        return jsonResponse(init?.method === 'POST' ? status : { status, affected_reviews: 1 })
+      }
+      if (url.endsWith('/for-skill/k1')) return failRefresh
+        ? jsonResponse({ error: { message: 'offline' } }, 503)
+        : jsonResponse({ ...exercise, content_version: `v${revision}` })
+      if (init?.method === 'POST') posts.push(url)
+      if (url.endsWith('/hint')) return jsonResponse({ text: 'Remember the scale', level: 1 })
+      return jsonResponse(null)
+    }))
+    renderApp(<CodeExercise sessionId="s1" skillId="k1" runner={fakeRunner(() => ok)} />)
+    const editor = await screen.findByRole('textbox', { name: /Your code/ })
+    fireEvent.change(editor, { target: { value: 'print("keep me")' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    await screen.findByRole('button', { name: 'Submit this attempt' })
+    fireEvent.click(screen.getByRole('button', { name: 'Hint 1 of 3' }))
+    await screen.findByText('Remember the scale')
+    fireEvent.click(screen.getByRole('button', { name: 'Question practice options' }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Exclude this question' }))
+    await screen.findByText('This exercise is excluded. You can keep editing and running your code. Restore it before submitting another code attempt.')
+    expect(screen.getByRole('button', { name: 'Submit this attempt' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Hint 2 of 3' })).toBeDisabled()
+    expect(editor).toHaveValue('print("keep me")')
+    fireEvent.click(screen.getByRole('button', { name: 'Run' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Run' })).toBeEnabled())
+    fireEvent.click(screen.getByRole('button', { name: 'Restore this question' }))
+    failRefresh = true
+    fireEvent.click(await screen.findByRole('button', { name: 'Refresh restored exercise' }))
+    await screen.findByText('Could not refresh the exercise. Your code and previous results are kept. Try again.')
+    failRefresh = false
+    fireEvent.click(screen.getByRole('button', { name: 'Refresh restored exercise' }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Refresh restored exercise' })).not.toBeInTheDocument())
+    expect(editor).toHaveValue('print("keep me")')
+    expect(screen.queryByRole('button', { name: 'Submit this attempt' })).not.toBeInTheDocument()
+    expect(screen.getByText('Remember the scale')).toBeVisible()
+    expect(screen.getByRole('button', { name: 'Hint 2 of 3' })).toBeEnabled()
+    expect(posts).toEqual(['/api/exercises/a1/hint'])
   })
 
 })

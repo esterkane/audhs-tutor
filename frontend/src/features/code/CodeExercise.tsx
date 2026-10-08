@@ -1,3 +1,6 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { QuestionPractice } from '../questions/QuestionPractice'
+import { boundedRead } from '../../lib/boundedRead'
 import { Link } from 'react-router-dom'
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
 import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
@@ -85,6 +88,14 @@ function Editor({
   runner?: Runner
   onGraded?: (r: AttemptResult) => void
 }) {
+  const qc = useQueryClient()
+  const [practiceChanged, setPracticeChanged] = useState(false)
+  const [practiceRestored, setPracticeRestored] = useState(false)
+  const [refreshingPractice, setRefreshingPractice] = useState(false)
+  const [practiceError, setPracticeError] = useState('')
+  const refreshRequest = useRef<AbortController | null>(null)
+  const practicePanel = useRef<HTMLDivElement>(null)
+  useEffect(() => () => refreshRequest.current?.abort(), [])
   const [refreshedExercise, setRefreshedExercise] = useState<ExerciseView | null>(null)
   const [initialExercise] = useState(originalExercise)
   const exercise = refreshedExercise ?? initialExercise
@@ -188,7 +199,7 @@ function Editor({
       : null
 
   async function submit() {
-    if (!last || last.code !== code) return
+    if (practiceChanged || !last || last.code !== code) return
     const res = await attempt
       .mutateAsync({
         session_id: sessionId,
@@ -225,8 +236,40 @@ function Editor({
     setCheckResult(res)
   }
 
+  async function refreshPractice() {
+    if (refreshRequest.current || !practiceRestored) return
+    const controller = new AbortController()
+    refreshRequest.current = controller
+    setRefreshingPractice(true)
+    setPracticeError('')
+    try {
+      const latest = await boundedRead<ExerciseView>(
+        `/api/exercises/for-skill/${encodeURIComponent(exercise.skill_id)}`,
+        controller.signal, 'Code exercise',
+      )
+      if (controller.signal.aborted) return
+      if (latest.assessment_id !== exercise.assessment_id) throw new Error('Different exercise')
+      runGeneration.current++
+      runner.dispose()
+      setRuntime('idle')
+      setRunning(false)
+      setLast(null)
+      setRefreshedExercise(latest)
+      qc.setQueryData(['exercise', exercise.skill_id], latest)
+      setPracticeChanged(false)
+      setPracticeRestored(false)
+      // Keep code, explain-back draft and exposure to hints/solutions; restoration is not a fresh attempt.
+      requestAnimationFrame(() => practicePanel.current?.focus())
+    } catch {
+      if (!controller.signal.aborted) setPracticeError('Could not refresh the exercise. Your code and previous results are kept. Try again.')
+    } finally {
+      if (!controller.signal.aborted) setRefreshingPractice(false)
+      if (refreshRequest.current === controller) refreshRequest.current = null
+    }
+  }
+
   const stale = last != null && last.code !== code
-  const canSubmit = last != null && !stale && !attempt.isPending
+  const canSubmit = !practiceChanged && last != null && !stale && !attempt.isPending
 
   return (
     <Card>
@@ -284,6 +327,24 @@ function Editor({
       />
       <CardTitle>Code exercise: {exercise.title}</CardTitle>
       <p className="text-sm mt-1">{exercise.prompt}</p>
+      <div ref={practicePanel} tabIndex={-1} aria-label="Code practice choices">
+        {!attempt.recovery.pending && !attempt.recovery.error && <fieldset disabled={attempt.isPending || refreshingPractice}>
+          <QuestionPractice assessmentId={exercise.assessment_id} onChanged={(_id, state) => {
+            setPracticeChanged(true)
+            setPracticeRestored(state.state === 'active')
+            setPracticeError('')
+          }} />
+        </fieldset>}
+        {practiceChanged && <div className="mt-2 grid gap-2 text-sm">
+          <p role="status">{practiceRestored
+            ? 'Exercise restored. Refresh its content, then run your code again before submitting.'
+            : 'This exercise is excluded. You can keep editing and running your code. Restore it before submitting another code attempt.'}</p>
+          {practiceRestored && <Button disabled={refreshingPractice} onClick={() => void refreshPractice()}>
+            {refreshingPractice ? 'Refreshing exercise…' : 'Refresh restored exercise'}
+          </Button>}
+          {practiceError && <p role="alert">{practiceError}</p>}
+        </div>}
+      </div>
       <ul className="text-sm text-muted mt-2 list-disc pl-5" aria-label="Success criteria">
         {exercise.success_criteria.map((c) => (
           <li key={c}>{c}</li>
@@ -348,7 +409,7 @@ function Editor({
             if (runtime === 'failed') setRuntime('idle')
             void run()
           }}
-          disabled={running}
+          disabled={running || refreshingPractice}
         >
           {running
             ? runtime === 'loading'
@@ -358,12 +419,12 @@ function Editor({
               ? 'Try loading the runtime again'
               : 'Run'}
         </Button>
-        <Button variant="secondary" onClick={reset} disabled={running}>
+        <Button variant="secondary" onClick={reset} disabled={running || refreshingPractice}>
           Reset to starter code
         </Button>
         <Button
           variant="ghost"
-          disabled={hint.isPending || hints.length >= exercise.hints_available}
+          disabled={practiceChanged || hint.isPending || hints.length >= exercise.hints_available}
           onClick={() =>
             void hint
               .mutateAsync({ assessmentId: exercise.assessment_id, sessionId, level: hints.length + 1 })
@@ -485,7 +546,7 @@ function Editor({
         <div className="mt-4 border-t border-line pt-3">
           {!solution ? (
             !confirmSolution ? (
-              <Button variant="ghost" size="sm" onClick={() => setConfirmSolution(true)}>
+              <Button variant="ghost" size="sm" disabled={practiceChanged} onClick={() => setConfirmSolution(true)}>
                 Show the full solution
               </Button>
             ) : (
@@ -496,7 +557,7 @@ function Editor({
                 <Button
                   size="sm"
                   variant="primary"
-                  disabled={solve.isPending}
+                  disabled={practiceChanged || solve.isPending}
                   onClick={() =>
                     void solve
                       .mutateAsync({ assessmentId: exercise.assessment_id, sessionId })
