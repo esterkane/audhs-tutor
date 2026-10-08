@@ -50,7 +50,7 @@ Implemented [Preferences read recovery](slices/preferences-read-recovery.md): in
 | R2 | Partial | Remaining service/worker/stream/voice failure matrix |
 | R3 | Partial | Assessment/review versions and atomic review recovery implemented; caught pre-model failures recover; crash/inference outcome recovery remains |
 | R4 | Partial | Consistent draft/content conflict handling across surfaces |
-| R5 | Partial | Suspension/reuse guards and main activity controls implemented; linked explain-back controls, reviewed replacement and integrated acceptance remain |
+| R5 | Partial | Suspension/reuse guards and main activity controls implemented; reviewed replacement and integrated acceptance remain |
 | R6 | Partial | Structured curriculum editing and conflict preservation |
 | R7/Q5 | Partial | Complete keyboard/zoom/screen-reader/comfort matrix and owner comprehension |
 | R8/Q2/Q7 | Partial | Held-out semantic correctness, source support and delayed transfer; diagnostics are not learning-outcome proof |
@@ -148,3 +148,5 @@ Captured material, unapplied edits and one previous capture now survive route ch
 2026-10-08: Saved/excluded challenges now resolve before retrieval initialization.21 focused backend tests and two real-start desktop/narrow journeys pass; Ruff/mypy and bounded review clear. See docs/slices/challenge-cached-start.md. Generation misses still require configured services; linked explain-back/listening controls remain open.
 
 2026-10-08: Listening exclusion/restoration preserves answers and playback state, with safe MCQ reselection after changed content.13 focused tests, three browser journeys, lint/types/build and bounded review recorded in docs/slices/listening-question-controls.md. Physical audio remains separate; linked code explain-back and correction/replacement remain open.
+
+2026-10-08: Linked code explain-back exclusion/restoration now preserves code, run results and typed answers; explicit refresh updates only linked question fields.12 focused tests and four desktop/narrow browser journeys pass, lint/types/build and bounded review clear. See docs/slices/code-explain-practice-controls.md. R5 reviewed correction/replacement and integrated acceptance remain open.

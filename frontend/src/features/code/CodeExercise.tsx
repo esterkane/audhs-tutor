@@ -89,6 +89,10 @@ function Editor({
   onGraded?: (r: AttemptResult) => void
 }) {
   const qc = useQueryClient()
+  const [checkPracticeChanged, setCheckPracticeChanged] = useState(false)
+  const [checkPracticeRestored, setCheckPracticeRestored] = useState(false)
+  const [checkPracticeError, setCheckPracticeError] = useState('')
+  const checkPanel = useRef<HTMLDivElement>(null)
   const [practiceChanged, setPracticeChanged] = useState(false)
   const [practiceRestored, setPracticeRestored] = useState(false)
   const [refreshingPractice, setRefreshingPractice] = useState(false)
@@ -219,7 +223,7 @@ function Editor({
   }
 
   async function submitCheck() {
-    if (!exercise.check_assessment_id || !checkAnswer.trim()) return
+    if (checkPracticeChanged || refreshingPractice || !exercise.check_assessment_id || !checkAnswer.trim()) return
     const res = await attempt
       .mutateAsync({
         session_id: sessionId,
@@ -234,6 +238,38 @@ function Editor({
       .catch(() => null)
     if (!res || displayedExercise.current.check_content_version !== exercise.check_content_version) return
     setCheckResult(res)
+  }
+
+  async function refreshCheckPractice() {
+    if (refreshRequest.current || !checkPracticeRestored) return
+    const controller = new AbortController()
+    refreshRequest.current = controller
+    setRefreshingPractice(true)
+    setCheckPracticeError('')
+    try {
+      const latest = await boundedRead<ExerciseView>(
+        `/api/exercises/for-skill/${encodeURIComponent(exercise.skill_id)}`,
+        controller.signal, 'Explain-back question',
+      )
+      if (controller.signal.aborted) return
+      if (latest.assessment_id !== exercise.assessment_id ||
+          latest.check_assessment_id !== exercise.check_assessment_id || !latest.check_content_version)
+        throw new Error('Original check question unavailable')
+      // Refresh only the linked question: code, run results and exposure are unchanged.
+      setRefreshedExercise(current => ({ ...(current ?? exercise),
+        check_question: latest.check_question,
+        check_content_version: latest.check_content_version,
+      }))
+      setSolution(current => current ? { ...current, check_question: latest.check_question } : null)
+      setCheckPracticeChanged(false)
+      setCheckPracticeRestored(false)
+      requestAnimationFrame(() => checkPanel.current?.focus())
+    } catch {
+      if (!controller.signal.aborted) setCheckPracticeError('Could not refresh the explain-back question. Your code and answer are kept. Try again.')
+    } finally {
+      if (!controller.signal.aborted) setRefreshingPractice(false)
+      if (refreshRequest.current === controller) refreshRequest.current = null
+    }
   }
 
   async function refreshPractice() {
@@ -326,6 +362,25 @@ function Editor({
         }}
       />
       <CardTitle>Code exercise: {exercise.title}</CardTitle>
+      {exercise.check_assessment_id && !checkResult && (solution || graded?.correct === true) &&
+        <div ref={checkPanel} tabIndex={-1} aria-label="Explain-back practice choices">
+          <h3 className="text-sm font-medium">Explain-back question options</h3>
+          {!attempt.recovery.pending && !attempt.recovery.error && <fieldset disabled={attempt.isPending || refreshingPractice}>
+            <QuestionPractice assessmentId={exercise.check_assessment_id} onChanged={(_id, state) => {
+              setCheckPracticeChanged(true)
+              setCheckPracticeRestored(state.state === 'active')
+              setCheckPracticeError('')
+            }} />
+          </fieldset>}
+          {checkPracticeChanged && <div className="grid gap-2 text-sm">
+            <p role="status">{checkPracticeRestored
+              ? 'Explain-back question restored. Refresh it before checking your answer.'
+              : 'This explain-back question is excluded. Your code and answer are kept. Restore it to check another answer.'}</p>
+            {checkPracticeRestored && <Button disabled={refreshingPractice} onClick={() => void refreshCheckPractice()}>Refresh restored explain-back question</Button>}
+            {checkPracticeError && <p role="alert">{checkPracticeError}</p>}
+          </div>}
+        </div>}
+
       <p className="text-sm mt-1">{exercise.prompt}</p>
       <div ref={practicePanel} tabIndex={-1} aria-label="Code practice choices">
         {!attempt.recovery.pending && !attempt.recovery.error && <fieldset disabled={attempt.isPending || refreshingPractice}>
@@ -522,7 +577,7 @@ function Editor({
                 {graded.criterion_results.length} criteria{graded.confidence < 1 ? ', half weight' : ''}). A
                 review of this node is due in at least two days.
               </p>
-              {graded.correct === true && exercise.check_assessment_id && !checkResult && (
+              {!solution && graded.correct === true && exercise.check_assessment_id && !checkResult && (
                 <CheckQuestion
                   question={exercise.check_question}
                   answer={checkAnswer}
@@ -530,7 +585,7 @@ function Editor({
                   confidence={checkConfidence}
                   setConfidence={setCheckConfidence}
                   onSubmit={() => void submitCheck()}
-                  pending={attempt.isPending}
+                  pending={attempt.isPending || checkPracticeChanged || refreshingPractice}
                 />
               )}
               {checkResult && (
@@ -584,7 +639,7 @@ function Editor({
                   confidence={checkConfidence}
                   setConfidence={setCheckConfidence}
                   onSubmit={() => void submitCheck()}
-                  pending={attempt.isPending}
+                  pending={attempt.isPending || checkPracticeChanged || refreshingPractice}
                 />
               ) : (
                 <p className="text-sm mt-2" role="status">

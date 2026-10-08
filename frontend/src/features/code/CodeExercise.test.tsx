@@ -402,4 +402,56 @@ it('explains an unavailable exercise and retries without losing saved code', asy
     expect(posts).toEqual(['/api/exercises/a1/hint'])
   })
 
+  it('keeps code and explain-back text through exclusion and a failed restoration refresh', async () => {
+    let state = 'active'
+    let revision = 0
+    let failRefresh = false
+    const submissions: Record<string, unknown>[] = []
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url === '/api/questions/q1/practice') {
+        if (init?.method === 'POST') {
+          state = JSON.parse(String(init.body)).action === 'suspend' ? 'suspended' : 'active'
+          revision++
+        }
+        const status = { assessment_id: 'q1', state, revision, reason: null }
+        return jsonResponse(init?.method === 'POST' ? status : { status, affected_reviews: 0 })
+      }
+      if (url.endsWith('/for-skill/k1')) return failRefresh
+        ? jsonResponse({ error: { message: 'offline' } }, 503)
+        : jsonResponse({ ...exercise, check_content_version: revision ? 'restored-check' : 'check-version' })
+      if (url.endsWith('/assess/attempt')) {
+        const body = JSON.parse(String(init?.body))
+        submissions.push(body)
+        return jsonResponse({ ...graded, assessment_id: body.assessment_id })
+      }
+      return jsonResponse({})
+    }))
+    renderApp(<CodeExercise sessionId="s1" skillId="k1" runner={fakeRunner(() => ok)} />)
+    const editor = await screen.findByRole('textbox', { name: /Your code/ })
+    fireEvent.change(editor, { target: { value: 'print("retained")' } })
+    fireEvent.click(screen.getByRole('button', { name: /^Run$/ }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Submit this attempt' }))
+    const answer = await screen.findByRole('textbox', { name: exercise.check_question })
+    fireEvent.change(answer, { target: { value: 'Scaling keeps values comparable.' } })
+    const panel = screen.getByLabelText('Explain-back practice choices')
+    fireEvent.click(within(panel).getByRole('button', { name: 'Question practice options' }))
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Exclude this question' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Check my answer' })).toBeDisabled())
+    expect(screen.getByRole('button', { name: 'Submit this attempt' })).toBeEnabled()
+    fireEvent.click(within(panel).getByRole('button', { name: 'Restore this question' }))
+    failRefresh = true
+    fireEvent.click(await within(panel).findByRole('button', { name: 'Refresh restored explain-back question' }))
+    await within(panel).findByRole('alert')
+    expect(answer).toHaveValue('Scaling keeps values comparable.')
+    expect(editor).toHaveValue('print("retained")')
+    expect(submissions).toHaveLength(1)
+    failRefresh = false
+    fireEvent.click(within(panel).getByRole('button', { name: 'Refresh restored explain-back question' }))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Check my answer' })).toBeEnabled())
+    expect(screen.getByRole('button', { name: 'Submit this attempt' })).toBeEnabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
+    await waitFor(() => expect(submissions).toHaveLength(2))
+    expect(submissions[1]).toMatchObject({ assessment_id: 'q1', content_version: 'restored-check', answer: 'Scaling keeps values comparable.' })
+  })
+
 })
