@@ -9,12 +9,13 @@ from app.api.deps import DB, Learner
 from app.core.content_versions import token
 from app.core.errors import AppError
 from app.db.models import QuestionCorrectionCommand, QuestionCorrectionDraft
-from app.kernel import correction_drafts, question_state
+from app.kernel import correction_drafts, correction_impact, question_state
 from app.schemas.correction_drafts import (
     CorrectionDraftList,
     CorrectionDraftReceipt,
     CorrectionDraftSummary,
     CorrectionDraftView,
+    CorrectionImpact,
     CorrectionSource,
     CreateCorrectionDraftRequest,
     DiscardCorrectionDraft,
@@ -153,3 +154,8 @@ async def discard(
     except BaseException:
         await db.rollback()
         raise
+
+
+@router.get("/correction-drafts/{draft_id}/impact", response_model=CorrectionImpact)
+async def impact(draft_id: str, db: DB, learner: Learner) -> CorrectionImpact:
+    return await correction_impact.preview(db, learner.id, draft_id)

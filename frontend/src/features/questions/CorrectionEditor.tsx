@@ -8,6 +8,7 @@ import { boundedRead } from '../../lib/boundedRead'
 import { useDraftRecovery } from '../curriculum/useDraftRecovery'
 import { useCorrectionCommand } from './useCorrectionCommand'
 import { CorrectionComparison } from './CorrectionComparison'
+import { CorrectionImpact } from './CorrectionImpact'
 
 type Candidate = Schemas['SaveCorrectionDraft']['candidate']
 type View = Schemas['CorrectionDraftView']
@@ -185,6 +186,7 @@ function Editor({ initial }: { initial: View }) {
       <CorrectionComparison before={initial.original_candidate} after={candidate} beforeLabel="Original question" afterLabel="Proposed question" />
     </details>}
     <details><summary>Original question and reference answers</summary><pre className="whitespace-pre-wrap break-words text-sm">{JSON.stringify(initial.original_candidate, null, 2)}</pre></details>
+    <CorrectionImpact key={initial.id} id={initial.id} revision={recovery.baseVersion} dirty={recovery.dirty} />
     <section className="grid gap-2"><h3 className="font-semibold">Checks on the saved draft</h3>
       {(recovery.dirty || checksStale) && <p>These checks apply to the last loaded saved version. Save edits and compare with the saved version to refresh them.</p>}
       <p>Source status: {server.review.source_status.replaceAll('_', ' ')}. This does not prove the question is correct.</p>

@@ -176,3 +176,6 @@ Captured material, unapplied edits and one previous capture now survive route ch
 2026-10-08: Code/linked-check and listening future entry now resolve owned replacements; canonical rows and old submission identities remain intact.42 backend tests, six desktop/narrow keyboard regression journeys, Ruff/mypy215 and review pass. See docs/slices/replacement-practice-entry.md. Selector chain consistency, explicit UI transition and publication remain open.
 
 2026-10-08: Ordinary/challenge selection and optional recall now validate incoming replacement ancestry without changing ranked identity or history. Invalid optional recall cannot block Stop.33 backend tests, six desktop/narrow browser regressions, Ruff/mypy215 and review pass. See docs/slices/replacement-selector-validation.md. Explicit replacement UI and publication remain next.
+
+
+2026-10-08: Read-only correction impact preview shows saved-revision review/exercise counts and current source excerpts, with dirty/stale/missing/truncated evidence explicit.19 backend,9 frontend and2 desktop/narrow keyboard journeys pass; visual inspection, lint/types/build and bounded review clear. See slices/correction-impact-preview.md. No publication or learning writes; atomic publish and explicit confirmation remain next.

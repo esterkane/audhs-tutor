@@ -30,6 +30,7 @@ from app.schemas.correction_drafts import (
     DiscardCorrectionDraft,
     SaveCorrectionDraft,
 )
+from app.schemas.question_state import QuestionStateOut
 
 
 def fingerprint(content: dict[str, Any]) -> str:
@@ -206,8 +207,15 @@ async def inspect(db: AsyncSession, learner_id: str, draft_id: str) -> dict[str,
     """Internal review state, not authorization or a publication-ready result."""
     draft = await get(db, learner_id, draft_id)
     current = await original(db, draft.assessment_id, learner_id)
-    baseline = draft.original_json
     state = await question_state.read(db, learner_id, draft.assessment_id)
+    return review_snapshot(draft, current, state)
+
+
+def review_snapshot(
+    draft: QuestionCorrectionDraft, current: dict[str, Any], state: QuestionStateOut
+) -> dict[str, Any]:
+    """Review the same loaded values that an impact preview binds into its token."""
+    baseline = draft.original_json
     source_baseline = baseline.get("source_evidence")
     return {
         "problems": correction_validation.review(baseline, draft.candidate_json),

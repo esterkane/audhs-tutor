@@ -90,3 +90,22 @@ class CorrectionDraftList(BaseModel):
     total: int
     offset: int
     limit: int
+
+
+class CorrectionPassage(BaseModel):
+    reference: str
+    status: str
+    text: str | None = None
+    truncated: bool = False
+    document_version_id: str | None = None
+
+
+class CorrectionImpact(BaseModel):
+    draft_id: str
+    revision: int
+    preview_token: str
+    affected_reviews: int
+    linked_exercises: int
+    passages: list[CorrectionPassage]
+    review: CorrectionReview
+    publication_available: Literal[False] = False

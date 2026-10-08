@@ -928,6 +928,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/questions/correction-drafts/{draft_id}/impact': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Impact */
+    get: operations['impact_api_questions_correction_drafts__draft_id__impact_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/items/{item_id}': {
     parameters: {
       query?: never
@@ -3206,6 +3223,28 @@ export interface components {
        */
       contains_reference_answers: true
     }
+    /** CorrectionImpact */
+    CorrectionImpact: {
+      /** Draft Id */
+      draft_id: string
+      /** Revision */
+      revision: number
+      /** Preview Token */
+      preview_token: string
+      /** Affected Reviews */
+      affected_reviews: number
+      /** Linked Exercises */
+      linked_exercises: number
+      /** Passages */
+      passages: components['schemas']['CorrectionPassage'][]
+      review: components['schemas']['CorrectionReview']
+      /**
+       * Publication Available
+       * @default false
+       * @constant
+       */
+      publication_available: false
+    }
     /** CorrectionInbox */
     CorrectionInbox: {
       /** Items */
@@ -3216,6 +3255,22 @@ export interface components {
       offset: number
       /** Limit */
       limit: number
+    }
+    /** CorrectionPassage */
+    CorrectionPassage: {
+      /** Reference */
+      reference: string
+      /** Status */
+      status: string
+      /** Text */
+      text?: string | null
+      /**
+       * Truncated
+       * @default false
+       */
+      truncated: boolean
+      /** Document Version Id */
+      document_version_id?: string | null
     }
     /** CorrectionProblem */
     CorrectionProblem: {
@@ -7841,6 +7896,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['CorrectionDraftReceipt']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  impact_api_questions_correction_drafts__draft_id__impact_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionImpact']
         }
       }
       /** @description Validation Error */
