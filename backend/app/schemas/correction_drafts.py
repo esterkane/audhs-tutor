@@ -1,6 +1,7 @@
-"""Internal draft commands, not a grading-valid payload or public editing API."""
+"""Private authoring drafts; saving never validates or publishes an assessment."""
 
 import json
+from typing import Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, JsonValue, model_validator
@@ -15,6 +16,7 @@ class CreateCorrectionDraft(Command):
     assessment_id: str = Field(min_length=1, max_length=100)
     feedback_id: str | None = Field(default=None, min_length=1, max_length=100)
     expected_question_revision: int = Field(ge=0, strict=True)
+    expected_content_version: str | None = Field(default=None, pattern=r"^ac1\.[0-9a-f]{64}$")
 
 
 class SaveCorrectionDraft(Command):
@@ -37,3 +39,54 @@ class CorrectionDraftReceipt(BaseModel):
     draft_id: str
     revision: int
     status: str
+
+
+class CreateCorrectionDraftRequest(CreateCorrectionDraft):
+    expected_content_version: str = Field(pattern=r"^ac1\.[0-9a-f]{64}$")
+
+
+class CorrectionSource(BaseModel):
+    assessment_id: str
+    kind: str
+    candidate: dict[str, JsonValue]
+    question_revision: int
+    content_version: str
+    contains_reference_answers: Literal[True] = True
+
+
+class CorrectionProblem(BaseModel):
+    field: str
+    message: str
+
+
+class CorrectionReview(BaseModel):
+    problems: list[CorrectionProblem]
+    content_changed: bool
+    question_state_changed: bool
+    source_status: Literal["not_captured", "changed", "incomplete", "unchanged"]
+    draft_status: Literal["draft", "discarded"]
+    publication_available: Literal[False] = False
+
+
+class CorrectionDraftSummary(BaseModel):
+    id: str
+    assessment_id: str
+    revision: int
+    status: Literal["draft", "discarded"]
+    kind: str
+    updated_at: str
+
+
+class CorrectionDraftView(CorrectionDraftSummary):
+    candidate: dict[str, JsonValue]
+    original_candidate: dict[str, JsonValue]
+    rationale: str
+    review: CorrectionReview
+    contains_reference_answers: Literal[True] = True
+
+
+class CorrectionDraftList(BaseModel):
+    items: list[CorrectionDraftSummary]
+    total: int
+    offset: int
+    limit: int

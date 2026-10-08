@@ -6,12 +6,14 @@ revision checks even when two requests attempt to create their first draft.
 
 import copy
 import hashlib
+import hmac
 import json
 from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.content_versions import token
 from app.core.errors import AppError
 from app.db.base import utcnow_iso
 from app.db.models import (
@@ -124,6 +126,15 @@ async def create(
     state = await question_state.read(db, learner_id, body.assessment_id)
     if state.revision != body.expected_question_revision:
         raise AppError("question_state_conflict", "Question status changed. Reload it.", 409)
+    if body.expected_content_version is not None and not hmac.compare_digest(
+        token({"content": content, "question_revision": state.revision}),
+        body.expected_content_version,
+    ):
+        raise AppError(
+            "correction_content_conflict",
+            "Question content changed. Reload before creating a draft.",
+            409,
+        )
     if body.feedback_id:
         report = await db.get(QuestionFeedback, body.feedback_id, populate_existing=True)
         if (

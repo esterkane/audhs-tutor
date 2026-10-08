@@ -841,6 +841,93 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/questions/{assessment_id}/correction-source': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Enter question authoring: includes reference answers */
+    get: operations['source_api_questions__assessment_id__correction_source_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/questions/correction-drafts': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listing */
+    get: operations['listing_api_questions_correction_drafts_get']
+    put?: never
+    /** Create */
+    post: operations['create_api_questions_correction_drafts_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/questions/correction-drafts/{draft_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read your authoring draft, including reference answers */
+    get: operations['read_api_questions_correction_drafts__draft_id__get']
+    /** Save draft work, including incomplete work; does not publish */
+    put: operations['save_api_questions_correction_drafts__draft_id__put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/questions/correction-commands/{request_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Recover an acknowledged draft command without resending it */
+    get: operations['receipt_api_questions_correction_commands__request_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/questions/correction-drafts/{draft_id}/discard': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Discard */
+    post: operations['discard_api_questions_correction_drafts__draft_id__discard_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/items/{item_id}': {
     parameters: {
       query?: never
@@ -3046,6 +3133,79 @@ export interface components {
        */
       index_count?: number | null
     }
+    /** CorrectionDraftList */
+    CorrectionDraftList: {
+      /** Items */
+      items: components['schemas']['CorrectionDraftSummary'][]
+      /** Total */
+      total: number
+      /** Offset */
+      offset: number
+      /** Limit */
+      limit: number
+    }
+    /** CorrectionDraftReceipt */
+    CorrectionDraftReceipt: {
+      /** Draft Id */
+      draft_id: string
+      /** Revision */
+      revision: number
+      /** Status */
+      status: string
+    }
+    /** CorrectionDraftSummary */
+    CorrectionDraftSummary: {
+      /** Id */
+      id: string
+      /** Assessment Id */
+      assessment_id: string
+      /** Revision */
+      revision: number
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'draft' | 'discarded'
+      /** Kind */
+      kind: string
+      /** Updated At */
+      updated_at: string
+    }
+    /** CorrectionDraftView */
+    CorrectionDraftView: {
+      /** Id */
+      id: string
+      /** Assessment Id */
+      assessment_id: string
+      /** Revision */
+      revision: number
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'draft' | 'discarded'
+      /** Kind */
+      kind: string
+      /** Updated At */
+      updated_at: string
+      /** Candidate */
+      candidate: {
+        [key: string]: components['schemas']['JsonValue']
+      }
+      /** Original Candidate */
+      original_candidate: {
+        [key: string]: components['schemas']['JsonValue']
+      }
+      /** Rationale */
+      rationale: string
+      review: components['schemas']['CorrectionReview']
+      /**
+       * Contains Reference Answers
+       * @default true
+       * @constant
+       */
+      contains_reference_answers: true
+    }
     /** CorrectionInbox */
     CorrectionInbox: {
       /** Items */
@@ -3056,6 +3216,13 @@ export interface components {
       offset: number
       /** Limit */
       limit: number
+    }
+    /** CorrectionProblem */
+    CorrectionProblem: {
+      /** Field */
+      field: string
+      /** Message */
+      message: string
     }
     /** CorrectionReport */
     CorrectionReport: {
@@ -3085,6 +3252,52 @@ export interface components {
       note: string
       /** Created At */
       created_at: string
+    }
+    /** CorrectionReview */
+    CorrectionReview: {
+      /** Problems */
+      problems: components['schemas']['CorrectionProblem'][]
+      /** Content Changed */
+      content_changed: boolean
+      /** Question State Changed */
+      question_state_changed: boolean
+      /**
+       * Source Status
+       * @enum {string}
+       */
+      source_status: 'not_captured' | 'changed' | 'incomplete' | 'unchanged'
+      /**
+       * Draft Status
+       * @enum {string}
+       */
+      draft_status: 'draft' | 'discarded'
+      /**
+       * Publication Available
+       * @default false
+       * @constant
+       */
+      publication_available: false
+    }
+    /** CorrectionSource */
+    CorrectionSource: {
+      /** Assessment Id */
+      assessment_id: string
+      /** Kind */
+      kind: string
+      /** Candidate */
+      candidate: {
+        [key: string]: components['schemas']['JsonValue']
+      }
+      /** Question Revision */
+      question_revision: number
+      /** Content Version */
+      content_version: string
+      /**
+       * Contains Reference Answers
+       * @default true
+       * @constant
+       */
+      contains_reference_answers: true
     }
     /** CostBucket */
     CostBucket: {
@@ -3267,6 +3480,22 @@ export interface components {
       /** Trust Tiers */
       trust_tiers: number[]
     }
+    /** CreateCorrectionDraftRequest */
+    CreateCorrectionDraftRequest: {
+      /**
+       * Request Id
+       * Format: uuid
+       */
+      request_id: string
+      /** Assessment Id */
+      assessment_id: string
+      /** Feedback Id */
+      feedback_id?: string | null
+      /** Expected Question Revision */
+      expected_question_revision: number
+      /** Expected Content Version */
+      expected_content_version: string
+    }
     /** CriterionResult */
     CriterionResult: {
       /** Criterion */
@@ -3297,6 +3526,16 @@ export interface components {
       }[]
       /** Due Total */
       due_total: number
+    }
+    /** DiscardCorrectionDraft */
+    DiscardCorrectionDraft: {
+      /**
+       * Request Id
+       * Format: uuid
+       */
+      request_id: string
+      /** Expected Revision */
+      expected_revision: number
     }
     /** DocumentList */
     DocumentList: {
@@ -4080,6 +4319,7 @@ export interface components {
         [key: string]: unknown
       } | null
     }
+    JsonValue: unknown
     /** KindsOut */
     KindsOut: {
       /** Object Id */
@@ -5081,6 +5321,25 @@ export interface components {
       profile: string
       /** Routes */
       routes: components['schemas']['RouteRow'][]
+    }
+    /** SaveCorrectionDraft */
+    SaveCorrectionDraft: {
+      /**
+       * Request Id
+       * Format: uuid
+       */
+      request_id: string
+      /** Expected Revision */
+      expected_revision: number
+      /** Candidate */
+      candidate: {
+        [key: string]: components['schemas']['JsonValue']
+      }
+      /**
+       * Rationale
+       * @default
+       */
+      rationale: string
     }
     /** SavedSourceCheck */
     SavedSourceCheck: {
@@ -7354,6 +7613,234 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['QuestionStateOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  source_api_questions__assessment_id__correction_source_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        assessment_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionSource']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  listing_api_questions_correction_drafts_get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionDraftList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  create_api_questions_correction_drafts_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['CreateCorrectionDraftRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionDraftReceipt']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  read_api_questions_correction_drafts__draft_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionDraftView']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  save_api_questions_correction_drafts__draft_id__put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SaveCorrectionDraft']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionDraftReceipt']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  receipt_api_questions_correction_commands__request_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        request_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionDraftReceipt']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  discard_api_questions_correction_drafts__draft_id__discard_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['DiscardCorrectionDraft']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionDraftReceipt']
         }
       }
       /** @description Validation Error */
