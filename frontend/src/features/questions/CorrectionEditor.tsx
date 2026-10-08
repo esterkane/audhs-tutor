@@ -7,6 +7,7 @@ import type { Schemas } from '../../lib/api'
 import { boundedRead } from '../../lib/boundedRead'
 import { useDraftRecovery } from '../curriculum/useDraftRecovery'
 import { useCorrectionCommand } from './useCorrectionCommand'
+import { CorrectionComparison } from './CorrectionComparison'
 
 type Candidate = Schemas['SaveCorrectionDraft']['candidate']
 type View = Schemas['CorrectionDraftView']
@@ -174,9 +175,15 @@ function Editor({ initial }: { initial: View }) {
     <Retry command={command} />{readError && <p role="alert">{readError}</p>}
     {conflict && <div className="grid gap-2 border border-line rounded p-3">
       <p role="alert">Your edits started from version {recovery.baseVersion}; the server has version {server.revision}. Compare before choosing what to keep.</p>
-      <pre className="whitespace-pre-wrap break-words text-sm">{JSON.stringify({ candidate: server.candidate, rationale: server.rationale }, null, 2)}</pre>
+      {valid && <CorrectionComparison before={server.candidate} after={candidate} beforeLabel={`Saved version ${server.revision}`} afterLabel="Your current edits" />}
+      <p>Saved reason: {server.rationale || '(none)'}</p>
+      <p>Your reason: {rationale || '(none)'}</p>
       <Button disabled={!!command.pending || command.busy} onClick={() => { const kept = text.current; recovery.reset(encode(server.candidate, server.rationale), server.revision); recovery.edit(kept); setNotice('Your edits are kept against the displayed server version. Save explicitly to replace its draft content.') }}>Keep my edits against this saved version</Button>
     </div>}
+    {valid && <details><summary>Preview changes from the original question</summary>
+      <p>{recovery.dirty ? 'Preview includes your unsaved edits.' : `Preview of saved draft version ${recovery.baseVersion}.`} The original question and learning history remain unchanged.</p>
+      <CorrectionComparison before={initial.original_candidate} after={candidate} beforeLabel="Original question" afterLabel="Proposed question" />
+    </details>}
     <details><summary>Original question and reference answers</summary><pre className="whitespace-pre-wrap break-words text-sm">{JSON.stringify(initial.original_candidate, null, 2)}</pre></details>
     <section className="grid gap-2"><h3 className="font-semibold">Checks on the saved draft</h3>
       {(recovery.dirty || checksStale) && <p>These checks apply to the last loaded saved version. Save edits and compare with the saved version to refresh them.</p>}

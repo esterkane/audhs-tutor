@@ -1,0 +1,7 @@
+# Correction comparison — 2026-10-08
+
+The authoring editor previously required manual comparison of raw original JSON and current fields; conflict recovery likewise exposed only raw saved JSON. Added a collapsible changed-field comparison against the immutable original, and readable saved-versus-current comparison during conflicts. Current unsaved edits are labeled. Metadata removals and rubric changes remain visible; object key order is ignored, array order retained, malformed advanced item payloads shown explicitly. No library, API, model, grading or scheduling change.
+
+Verified: 10 focused comparison/editor tests including axe (no violations in the tested component); two real sandbox browser journeys at390/1280 including keyboard preview expansion, committed response-loss recovery, reload, Back and unchanged eligibility. Screenshots visually inspected: stacked mobile and paired desktop values, visible keyboard focus, no horizontal overflow. Initial browser assertion ambiguously matched textarea and preview; narrowed to preview and reran successfully. Lint/type checking/production build passed, existing bundle warning retained. Bounded code/pedagogy review: no blockers/majors.
+
+This is a draft content comparison, not the full publication preview: pending review impact, linked consumers, source passages, learner-owned visibility/resolution and atomic publication remain open. Complex rubrics/metadata retain formatted JSON within labeled fields. Human and screen-reader acceptance remain open. No actual coursework changed.

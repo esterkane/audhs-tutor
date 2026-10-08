@@ -28,7 +28,7 @@ Publication must validate source/content/state/draft versions within a transacti
 
 ## Next bounded task
 
-Read-only inbox API/UI is implemented and verified in question-correction-inbox.md. ADR-0019 and internal durable draft commands are prepared/implemented. Next add kind-specific validation and source-version snapshots before exposing proposal editing/preview. Keep resolution explicit and do not introduce publication until learner-scoped visibility and original-receipt identity are enforced.
+Inbox, durable draft commands, typed validation, source snapshots and the recoverable editor are implemented. A readable comparison now shows current edits against the immutable original and, on conflicts, the latest saved draft. This is not a publication-impact preview. Next inventory and implement learner-owned replacement visibility/resolution under ADR-0019 before exposing publication. Pending review counts, linked consumers and source-passage comparison remain part of the final publication preview.
 
 ## Acceptance still open
 
