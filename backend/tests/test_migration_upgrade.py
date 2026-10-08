@@ -125,12 +125,37 @@ def test_assessment_ownership_upgrade_preserves_legacy_execution(tmp_path: Path)
 
 def test_lineage_downgrade_requires_empty_history(tmp_path):
     url = f"sqlite:///{tmp_path / 'lineage.db'}"
-    upgrade_to_head(url)
+    command.upgrade(alembic_config(url), "a03d914ba627")
     fill_all_tables(url)
     with pytest.raises(RuntimeError, match="replacement lineage"):
         command.downgrade(alembic_config(url), "-1")
     with sqlite3.connect(tmp_path / "lineage.db") as conn:
         assert conn.execute("SELECT count(*) FROM question_replacement").fetchone()[0] == 1
         conn.execute("DELETE FROM question_replacement")
+    command.downgrade(alembic_config(url), "-1")
+    command.upgrade(alembic_config(url), "head")
+
+
+def test_published_draft_downgrade_refuses_data_loss(tmp_path):
+    path = tmp_path / "publication.db"
+    url = f"sqlite:///{path}"
+    command.upgrade(alembic_config(url), "a03d914ba627")
+    fill_all_tables(url)
+    before = dump_tables(url)
+    command.upgrade(alembic_config(url), "head")
+    after = dump_tables(url)
+    assert after["question_correction_command"] == before["question_correction_command"]
+    assert after["question_correction_draft"] == before["question_correction_draft"]
+    with sqlite3.connect(path) as conn:
+        conn.execute("UPDATE question_correction_draft SET status='published'")
+        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+    with pytest.raises(RuntimeError, match="published correction"):
+        command.downgrade(alembic_config(url), "-1")
+    with sqlite3.connect(path) as conn:
+        assert (
+            conn.execute("SELECT status FROM question_correction_draft").fetchone()[0]
+            == "published"
+        )
+        conn.execute("UPDATE question_correction_draft SET status='draft'")
     command.downgrade(alembic_config(url), "-1")
     command.upgrade(alembic_config(url), "head")

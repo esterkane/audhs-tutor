@@ -39,6 +39,7 @@ class CorrectionDraftReceipt(BaseModel):
     draft_id: str
     revision: int
     status: str
+    replacement_id: str | None = None
 
 
 class CreateCorrectionDraftRequest(CreateCorrectionDraft):
@@ -64,7 +65,7 @@ class CorrectionReview(BaseModel):
     content_changed: bool
     question_state_changed: bool
     source_status: Literal["not_captured", "changed", "incomplete", "unchanged"]
-    draft_status: Literal["draft", "discarded"]
+    draft_status: Literal["draft", "discarded", "published"]
     publication_available: Literal[False] = False
 
 
@@ -72,7 +73,7 @@ class CorrectionDraftSummary(BaseModel):
     id: str
     assessment_id: str
     revision: int
-    status: Literal["draft", "discarded"]
+    status: Literal["draft", "discarded", "published"]
     kind: str
     updated_at: str
 
@@ -109,3 +110,9 @@ class CorrectionImpact(BaseModel):
     passages: list[CorrectionPassage]
     review: CorrectionReview
     publication_available: Literal[False] = False
+
+
+class PublishCorrectionDraft(Command):
+    expected_revision: int = Field(ge=1, strict=True)
+    preview_token: str = Field(pattern=r"^ac1\.[0-9a-f]{64}$")
+    reviewed_sources: Literal[True]

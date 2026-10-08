@@ -3169,6 +3169,8 @@ export interface components {
       revision: number
       /** Status */
       status: string
+      /** Replacement Id */
+      replacement_id?: string | null
     }
     /** CorrectionDraftSummary */
     CorrectionDraftSummary: {
@@ -3182,7 +3184,7 @@ export interface components {
        * Status
        * @enum {string}
        */
-      status: 'draft' | 'discarded'
+      status: 'draft' | 'discarded' | 'published'
       /** Kind */
       kind: string
       /** Updated At */
@@ -3200,7 +3202,7 @@ export interface components {
        * Status
        * @enum {string}
        */
-      status: 'draft' | 'discarded'
+      status: 'draft' | 'discarded' | 'published'
       /** Kind */
       kind: string
       /** Updated At */
@@ -3325,7 +3327,7 @@ export interface components {
        * Draft Status
        * @enum {string}
        */
-      draft_status: 'draft' | 'discarded'
+      draft_status: 'draft' | 'discarded' | 'published'
       /**
        * Publication Available
        * @default false

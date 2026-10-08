@@ -179,3 +179,6 @@ Captured material, unapplied edits and one previous capture now survive route ch
 
 
 2026-10-08: Read-only correction impact preview shows saved-revision review/exercise counts and current source excerpts, with dirty/stale/missing/truncated evidence explicit.19 backend,9 frontend and2 desktop/narrow keyboard journeys pass; visual inspection, lint/types/build and bounded review clear. See slices/correction-impact-preview.md. No publication or learning writes; atomic publish and explicit confirmation remain next.
+
+
+2026-10-08: Internal correction publication transaction implemented with learner-owned identity, immutable receipts, exact-report resolution and unchanged learning history.37 backend tests, strict mypy217/Ruff, editor tests and2 desktop/narrow browser regressions pass; bounded review clear. See slices/correction-publication-transaction.md. No publish endpoint/UI or live publication; explicit confirmation/recovery and integrated acceptance remain next.

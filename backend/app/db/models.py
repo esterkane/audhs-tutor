@@ -302,7 +302,9 @@ class QuestionCorrectionDraft(IdMixin, LearnerScoped, Base):
 
     __tablename__ = "question_correction_draft"
     __table_args__ = (
-        CheckConstraint("status IN ('draft', 'discarded')", name="ck_correction_draft_status"),
+        CheckConstraint(
+            "status IN ('draft', 'discarded', 'published')", name="ck_correction_draft_status"
+        ),
         CheckConstraint("revision >= 1", name="ck_correction_draft_revision"),
     )
     assessment_id: Mapped[str] = mapped_column(ForeignKey("assessment.id"), index=True)

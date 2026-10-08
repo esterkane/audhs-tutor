@@ -2,10 +2,10 @@
 
 from typing import Any, Literal
 
-from sqlalchemy import func, select
+from sqlalchemy import exists, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Assessment, CurriculumDraft, QuestionFeedback
+from app.db.models import Assessment, CurriculumDraft, QuestionCorrectionDraft, QuestionFeedback
 from app.schemas.question_corrections import CorrectionInbox, CorrectionReport
 
 
@@ -41,7 +41,17 @@ async def inbox(db: AsyncSession, learner_id: str, offset: int, limit: int) -> C
     query = (
         select(QuestionFeedback)
         .join(ranked, ranked.c.id == QuestionFeedback.id)
-        .where(ranked.c.position == 1, QuestionFeedback.verdict == "bad")
+        .where(
+            ranked.c.position == 1,
+            QuestionFeedback.verdict == "bad",
+            # Publication resolves precisely its attached report, after ranking so an
+            # older report never reappears. The immutable report itself is retained.
+            ~exists().where(
+                QuestionCorrectionDraft.learner_id == learner_id,
+                QuestionCorrectionDraft.feedback_id == QuestionFeedback.id,
+                QuestionCorrectionDraft.status == "published",
+            ),
+        )
     )
     total = int(await db.scalar(select(func.count()).select_from(query.subquery())) or 0)
     rows = (

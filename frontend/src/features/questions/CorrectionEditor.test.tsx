@@ -124,3 +124,11 @@ it('does not send malformed recovered command bodies', async () => {
   expect(screen.getByRole('button', { name: 'Save correction draft' })).toBeDisabled()
   expect(writes).toHaveLength(0)
 })
+
+it('keeps a published correction read-only without calling it discarded', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ ...original, status: 'published', review: { ...original.review, draft_status: 'published' } })))
+  renderApp(<CorrectionEditor />, { route: '/corrections?draft=draft1' })
+  expect(await screen.findByText('This correction was published. Its draft is retained for reference.')).toBeVisible()
+  expect(screen.getByLabelText('Question wording')).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Save correction draft' })).toBeDisabled()
+})

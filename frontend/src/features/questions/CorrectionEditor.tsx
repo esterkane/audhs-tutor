@@ -140,7 +140,7 @@ function Editor({ initial }: { initial: View }) {
     <p role="status">{recovery.dirty ? 'Unsaved edits in this tab.' : `Saved draft version ${recovery.baseVersion}.`} {recovery.restored ? 'Recovered your tab edits.' : ''}</p>
     {recovery.error && <p role="alert">{recovery.error}</p>}
     {notice && <p role="status">{notice}</p>}
-    {!writable && <p role="status">This draft was discarded. Its content is retained for reference.</p>}
+    {!writable && <p role="status">{server.status === 'published' ? 'This correction was published. Its draft is retained for reference.' : 'This draft was discarded. Its content is retained for reference.'}</p>}
     <fieldset disabled={!writable} className="grid gap-3 min-w-0">
       {valid ? <>
         <Field label="Question wording"><Textarea value={String(item.question ?? item.text ?? item.prompt ?? '')} onChange={e => update(server.kind === 'mcq' ? 'question' : server.kind === 'cloze' ? 'text' : 'prompt', e.target.value)} /></Field>
