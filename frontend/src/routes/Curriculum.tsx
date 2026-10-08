@@ -1,4 +1,5 @@
 import { ApiError } from '../lib/api'
+import { useDraftRecovery } from '../features/curriculum/useDraftRecovery'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -347,27 +348,26 @@ export function DraftEditor({
     )
 
   const payload = draft.payload as Payload
-  const [text, setText] = useState(() => JSON.stringify(payload, null, 2))
-  const [savedText, setSavedText] = useState(text)
+  const canonicalText = JSON.stringify(payload, null, 2)
+  const recovery = useDraftRecovery(draft.id, draft.version, canonicalText)
+  const { text, baseText: savedText, dirty } = recovery
+  const advanced = useRef<HTMLDetailsElement>(null)
   const [parseError, setParseError] = useState<string | null>(null)
   const [source, setSource] = useState<{ id: string; label: string; skill: string } | null>(null)
   const heading = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
     heading.current?.focus()
   }, [])
-  const canonicalText = JSON.stringify(payload, null, 2)
-  const dirty = text !== savedText
+  useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange])
+  const [sourceBaseline, setSourceBaseline] = useState(canonicalText)
+  if (sourceBaseline !== canonicalText) {
+    setSourceBaseline(canonicalText)
+    setSource(null)
+  }
   const serverConflict = [actions.update.error, actions.publish.error, actions.reject.error].some(
     (error) => error instanceof ApiError && error.code === 'draft_conflict',
   )
-  const conflict = serverConflict || (dirty && canonicalText !== savedText)
-  // A refreshed server version may arrive while this section stays open.
-  // Synchronize pristine editors; preserve dirty text until explicitly discarded.
-  if (!dirty && canonicalText !== savedText) {
-    setText(canonicalText)
-    setSavedText(canonicalText)
-    setSource(null)
-  }
+  const conflict = serverConflict || (dirty && (canonicalText !== savedText || recovery.baseVersion !== draft.version))
   const busy = actions.update.isPending || actions.publish.isPending || actions.reject.isPending || actions.refresh.isPending
   const editable = draft.status === 'draft'
   const skills = payload.skills ?? []
@@ -387,8 +387,7 @@ export function DraftEditor({
         {
           onSuccess: (updated) => {
             const canonical = JSON.stringify(updated.payload, null, 2)
-            setText(canonical)
-            setSavedText(canonical)
+            recovery.reset(canonical, updated.version)
             setSource(null)
             onDirtyChange(false)
           },
@@ -399,8 +398,7 @@ export function DraftEditor({
     }
   }
   function discard() {
-    setText(canonicalText)
-    setSavedText(canonicalText)
+    recovery.reset(canonicalText, draft.version)
     setSource(null)
     setParseError(null)
     onDirtyChange(false)
@@ -415,6 +413,19 @@ export function DraftEditor({
       <p className="text-sm text-muted mt-2">
         {skills.length} lessons · {assessments.length} knowledge checks
       </p>
+      {(recovery.restored || recovery.error) && (
+        <div className="mt-3 grid gap-2">
+          {recovery.restored && <p role="status">Recovered draft text is available below. Review it before saving.</p>}
+          {recovery.error && <p role="alert">{recovery.error}</p>}
+          {recovery.restored && (
+            <Button onClick={() => {
+              if (advanced.current) advanced.current.open = true
+              advanced.current?.querySelector('textarea')?.focus()
+            }}>Show recovered edits</Button>
+          )}
+          {recovery.error && <Button onClick={recovery.saveRecovery}>Replace tab recovery with current text</Button>}
+        </div>
+      )}
       <p className="text-sm mt-2">
         Check the goals and practice below. Open a lesson to review its questions and source passages.
       </p>
@@ -631,7 +642,7 @@ export function DraftEditor({
           </ul>
         </details>
       )}
-      <details className="mt-4">
+      <details ref={advanced} className="mt-4">
         <summary className="cursor-pointer text-sm font-medium">
           Advanced: {editable ? 'edit draft data' : 'view draft data'}
         </summary>
@@ -648,10 +659,11 @@ export function DraftEditor({
           value={text}
           readOnly={!editable || busy}
           onChange={(e) => {
-            setText(e.target.value)
+            recovery.edit(e.target.value)
             onDirtyChange(e.target.value !== savedText)
           }}
         />
+        {dirty && !recovery.error && <p role="status" className="text-sm text-muted mt-2">Recovery copy kept in this tab. Save changes updates the app; closing the tab may lose unsaved edits.</p>}
         {parseError && (
           <p role="alert" className="text-sm text-warn">
             Not valid JSON: {parseError}

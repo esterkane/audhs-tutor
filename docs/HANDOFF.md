@@ -1362,3 +1362,7 @@ Verified pre-inference submissions can be continued explicitly with their origin
 
 ## 2026-10-08 — Draft version conflicts
 Reproduced and fixed stale saves overwriting newer drafts. Save/activate/discard now require the reviewed revision and serialize under SQLite; editor conflicts preserve local text and offer explicit latest-version loading. 937 backend/541 frontend tests, seven browser journeys plus final focused recheck, lint/types/build and independent review pass. Live backend health/revision contract verified. See slices/draft-version-conflicts.md. Unsaved editor reload recovery remains next; broader R4 stays open.
+
+
+## 2026-10-08 — Draft editor reload recovery
+Unfinished draft text now survives reload in the same tab, retains its reviewed revision and never saves/activates automatically. Storage failures preserve current text and give explicit recovery controls. Full frontend550 pass before final lifecycle/focus adjustments; final affected18 tests and four desktop/narrow browser journeys, lint/types/build and bounded review pass. See slices/draft-editor-reload.md. Tab closure, broader R4 and human accessibility acceptance remain open; learning logic unchanged.

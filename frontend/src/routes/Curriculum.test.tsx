@@ -1,7 +1,7 @@
 import type { DraftOut } from '../features/curriculum/api'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { axe } from 'vitest-axe'
 import { jsonResponse, renderApp } from '../test/utils'
 import { Curriculum, DraftEditor } from './Curriculum'
@@ -148,6 +148,7 @@ async function chooseCourse() {
   fireEvent.change(screen.getByLabelText('Course'), { target: { value: 'PyTorch Fundamentals' } })
 }
 
+beforeEach(() => sessionStorage.clear())
 afterEach(() => vi.unstubAllGlobals())
 
 describe('Curriculum', () => {
@@ -349,4 +350,39 @@ it('preserves edits after a rejected stale save and a failed latest-version read
   expect(input).toHaveValue(edited)
   fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits' }))
   expect(input).toHaveValue(JSON.stringify(latest.payload, null, 2))
+})
+
+
+it('restores edited draft text on remount without sending it to the server', () => {
+  sessionStorage.clear()
+  const fetcher = vi.fn()
+  vi.stubGlobal('fetch', fetcher)
+  const first = renderApp(<DraftEditor draft={draft} onDirtyChange={vi.fn()} />)
+  fireEvent.click(screen.getByText('Advanced: edit draft data'))
+  const edits = JSON.stringify({ ...draft.payload, domain: 'music' })
+  fireEvent.change(screen.getByLabelText('Draft JSON'), { target: { value: edits } })
+  first.unmount()
+  renderApp(<DraftEditor draft={draft} onDirtyChange={vi.fn()} />)
+  fireEvent.click(screen.getByText('Advanced: edit draft data'))
+  expect(screen.getByLabelText('Draft JSON')).toHaveValue(edits)
+  expect(fetcher).not.toHaveBeenCalled()
+})
+
+
+it('keeps restored edits blocked against a newer saved revision until explicitly discarded', () => {
+  const first = renderApp(<DraftEditor draft={draft} onDirtyChange={vi.fn()} />)
+  fireEvent.click(screen.getByText('Advanced: edit draft data'))
+  fireEvent.change(screen.getByLabelText('Draft JSON'), { target: { value: '{ incomplete edit' } })
+  first.unmount()
+  const latest = { ...draft, version: 2, payload: { ...draft.payload, domain: 'language' } }
+  const dirty = vi.fn()
+  renderApp(<DraftEditor draft={latest} onDirtyChange={dirty} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Show recovered edits' }))
+  expect(screen.getByLabelText('Draft JSON')).toHaveValue('{ incomplete edit')
+  expect(screen.getByLabelText('Draft JSON')).toHaveFocus()
+  expect(screen.getByRole('button', { name: 'Save changes' })).toBeDisabled()
+  expect(dirty).toHaveBeenCalledWith(true)
+  fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits' }))
+  expect(screen.getByLabelText('Draft JSON')).toHaveValue(JSON.stringify(latest.payload, null, 2))
+  expect(dirty).toHaveBeenLastCalledWith(false)
 })
