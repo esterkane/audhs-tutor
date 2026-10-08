@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Header, Request
 from pydantic import BaseModel
 
-from app.api.deps import DB, Gateway, Learner, Repo
+from app.api.deps import DB, Gateway, Learner, SettingsDep, get_repo
 from app.kernel import session as ksession
 from app.kernel import skill_graph
 from app.orchestrator import assessment_requests, challenge
@@ -41,7 +41,12 @@ async def modes() -> ModesOut:
     response_model=ChallengeView,
 )
 async def start(
-    body: ChallengeStart, db: DB, gateway: Gateway, repo: Repo, learner: Learner
+    body: ChallengeStart,
+    db: DB,
+    gateway: Gateway,
+    learner: Learner,
+    settings: SettingsDep,
+    request: Request,
 ) -> ChallengeView:
     s = await ksession.get_owned(db, body.session_id, learner.id)
     skill_id = body.skill_id or (await ksession.load_checkpoint(db, s.id) or {}).get("skill_id")
@@ -51,6 +56,10 @@ async def start(
             raise KeyError("no skills")
         skill_id = nxt.id
     node = await skill_graph.get_node(db, skill_id)
+    saved = await challenge.reusable(db, s, node, body.mode)
+    if saved is not None:
+        return saved
+    repo = await get_repo(request, db, settings)
     return await challenge.start(db, gateway, repo, s, node, body.mode)
 
 

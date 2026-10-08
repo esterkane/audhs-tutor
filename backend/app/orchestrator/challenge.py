@@ -59,14 +59,13 @@ async def existing(
     return None
 
 
-async def start(
+async def reusable(
     db: AsyncSession,
-    gateway: ModelGateway,
-    repo: RetrievalRepository,
     session: Session,
     node: SkillNode,
     mode: str,
-) -> ChallengeView:
+) -> ChallengeView | None:
+    """Return reusable content or reject exclusions before initializing retrieval."""
     if mode not in CHALLENGE_MODES:
         raise ValueError(f"unknown challenge mode {mode!r}")
     prior = await existing(db, session.learner_id, node, mode)
@@ -76,9 +75,7 @@ async def start(
         item = content["item_json"]
         return ChallengeView(
             assessment_id=prior.id,
-            content_version=assessment_content.token(
-                await assessment_content.snapshot(db, prior.id, session.learner_id)
-            ),
+            content_version=assessment_content.token(content),
             skill_id=node.id,
             mode=mode,
             prompt=item["prompt"],
@@ -104,6 +101,21 @@ async def start(
             "No available question for this activity. Choose another activity or restore the excluded question.",
             409,
         )
+
+    return None
+
+
+async def start(
+    db: AsyncSession,
+    gateway: ModelGateway,
+    repo: RetrievalRepository,
+    session: Session,
+    node: SkillNode,
+    mode: str,
+) -> ChallengeView:
+    prior = await reusable(db, session, node, mode)
+    if prior is not None:
+        return prior
 
     result = await tools.retrieve(repo, f"{node.title}: {node.description}", skill_id=node.id, k=5)
     packet = build_packet(

@@ -33,14 +33,6 @@ print(row[0])
       await expect(page.getByRole('heading', { name: /^Challenge:/ })).toBeVisible()
       await expectOk(await request.post(`${API}/api/sessions/${session.id}/checkpoint`, { data: { skill_id: skillId } }))
       await page.reload()
-      // Fixture the generation entry only; question state and refreshed content use real sandbox APIs.
-      await page.route('**/api/challenge/start', async route => {
-        const view = await request.get(`${API}/api/assess/items/${assessmentId}?session_id=${session.id}`)
-        await expectOk(view)
-        const latest = await view.json()
-        await route.fulfill({ json: { assessment_id: assessmentId, content_version: latest.content_version,
-          skill_id: skillId, mode: 'planted_error', prompt: latest.question, criteria: latest.criteria ?? [], cached: true, sources: [] } })
-      })
       await page.getByRole('button', { name: /planted error/ }).click()
       await page.getByLabel('Your answer').fill('Keep my reasoning here.')
       await page.getByRole('button', { name: 'Question practice options' }).focus()

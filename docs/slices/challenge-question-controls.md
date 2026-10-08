@@ -15,3 +15,5 @@ Two isolated desktop1280/narrow390 browser journeys cover keyboard controls/focu
 The unmocked browser start failed with `no_model_ready` for embedding even though a synthetic saved challenge existed. `api/challenge.py` eagerly resolves `Repo`; `api/deps.py:get_repo` initializes retrieval before `challenge.start` can reuse existing content. Follow-up: defer retrieval initialization until generation is actually needed, retaining learner eligibility, canonical content version and existing generation safeguards. Add an endpoint regression with an available saved challenge and no ready embedder. This is not fixed or claimed by this UI slice; the browser generation fixture must not be mistaken for end-to-end offline-start acceptance.
 
 Linked code explain-back and listening controls, broader correction/replacement and stronger durable draft recovery remain open.
+
+Update: the eager-retrieval limitation is resolved in challenge-cached-start.md; the browser now uses the real start endpoint with no generation-entry fixture.
