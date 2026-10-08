@@ -57,7 +57,7 @@ async def inbox(db: AsyncSession, learner_id: str, offset: int, limit: int) -> C
         status: Literal["unchanged", "changed", "unavailable"] = "unavailable"
         if row.assessment_id:
             assessment = await db.get(Assessment, row.assessment_id)
-            if assessment is not None:
+            if assessment is not None and assessment.owner_learner_id in (None, learner_id):
                 current = {
                     "kind": assessment.kind,
                     "item": assessment.item_json,

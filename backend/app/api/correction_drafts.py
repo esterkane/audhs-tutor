@@ -41,7 +41,7 @@ def summary(row: QuestionCorrectionDraft) -> CorrectionDraftSummary:
     summary="Enter question authoring: includes reference answers",
 )
 async def source(assessment_id: str, db: DB, learner: Learner) -> CorrectionSource:
-    content = await correction_drafts.original(db, assessment_id)
+    content = await correction_drafts.original(db, assessment_id, learner.id)
     state = await question_state.read(db, learner.id, assessment_id)
     return CorrectionSource(
         assessment_id=assessment_id,

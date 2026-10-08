@@ -38,6 +38,7 @@ async def snapshot(db: AsyncSession, learner_id: str, item_id: str) -> dict[str,
                     SkillNode.title.label("skill_title"),
                     Assessment.id.label("assessment_id"),
                     Assessment.skill_id.label("assessment_skill_id"),
+                    Assessment.owner_learner_id.label("_assessment_owner"),
                     Assessment.kind,
                     Assessment.item_json,
                     Assessment.rubric_id,
@@ -79,6 +80,9 @@ async def snapshot(db: AsyncSession, learner_id: str, item_id: str) -> dict[str,
     if row is None:
         raise AppError("not_found", "Review item not found.", 404)
     result = copy.deepcopy(dict(row))
+    owner = result.pop("_assessment_owner")
+    if owner is not None and owner != learner_id:
+        raise AppError("not_found", "Review item not found.", 404)
     result["active"] = bool(result["active"]) and result["question_state"] in (None, "active")
     result["display"] = display(result)
     return result

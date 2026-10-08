@@ -375,6 +375,7 @@ async def existing_task(db: AsyncSession, node_id: str, chunk_id: str) -> Assess
     stmt = (
         select(Assessment)
         .where(
+            Assessment.owner_learner_id.is_(None),
             Assessment.skill_id == node_id,
             Assessment.item_json["listening"]["chunk_id"].as_string() == chunk_id,
         )
@@ -396,7 +397,7 @@ async def validate_task(
             update(Assessment).where(Assessment.id == assessment_id).values(kind=Assessment.kind)
         )
         await question_state.require_active(db, learner_id, assessment_id)
-    a = await db.get(Assessment, assessment_id, populate_existing=True)
+    a = await question_state.require_visible(db, learner_id, assessment_id)
     if a is None or not (a.item_json or {}).get("listening"):
         raise KeyError("no such listening task")
     item = dict(a.item_json)

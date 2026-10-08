@@ -17,7 +17,6 @@ from app.core.content_versions import token
 from app.core.errors import AppError
 from app.db.base import utcnow_iso
 from app.db.models import (
-    Assessment,
     AssessmentRubric,
     LearnerProfile,
     QuestionCorrectionCommand,
@@ -39,10 +38,10 @@ def fingerprint(content: dict[str, Any]) -> str:
     return "correction-original-v1:" + hashlib.sha256(canonical.encode()).hexdigest()
 
 
-async def original(db: AsyncSession, assessment_id: str) -> dict[str, Any]:
-    a = await db.get(Assessment, assessment_id, populate_existing=True)
-    if a is None:
-        raise AppError("not_found", "This question is unavailable.", 404)
+async def original(
+    db: AsyncSession, assessment_id: str, learner_id: str | None = None
+) -> dict[str, Any]:
+    a = await question_state.require_visible(db, learner_id, assessment_id)
     rubric = (
         await db.get(AssessmentRubric, a.rubric_id, populate_existing=True) if a.rubric_id else None
     )
@@ -122,7 +121,7 @@ async def create(
     prior = await _begin(db, learner_id, str(body.request_id), request)
     if prior:
         return prior
-    content = await original(db, body.assessment_id)
+    content = await original(db, body.assessment_id, learner_id)
     state = await question_state.read(db, learner_id, body.assessment_id)
     if state.revision != body.expected_question_revision:
         raise AppError("question_state_conflict", "Question status changed. Reload it.", 409)
@@ -206,7 +205,7 @@ async def change(
 async def inspect(db: AsyncSession, learner_id: str, draft_id: str) -> dict[str, Any]:
     """Internal review state, not authorization or a publication-ready result."""
     draft = await get(db, learner_id, draft_id)
-    current = await original(db, draft.assessment_id)
+    current = await original(db, draft.assessment_id, learner_id)
     baseline = draft.original_json
     state = await question_state.read(db, learner_id, draft.assessment_id)
     source_baseline = baseline.get("source_evidence")

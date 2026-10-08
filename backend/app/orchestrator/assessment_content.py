@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.content_versions import token as token
 from app.core.errors import AppError
 from app.db.models import Assessment, AssessmentRubric, QuestionState
+from app.kernel import question_state
 
 
 def recovery_fingerprint(content: dict[str, Any]) -> str:
@@ -51,7 +52,7 @@ async def snapshot(
                     ),
                 )
                 .outerjoin(AssessmentRubric, Assessment.rubric_id == AssessmentRubric.id)
-                .where(Assessment.id == assessment_id)
+                .where(Assessment.id == assessment_id, question_state.visible(learner_id))
             )
         )
         .mappings()
@@ -101,7 +102,9 @@ async def guard_write(
 ) -> None:
     # SQLite's write lock serializes this check with all content writers until grading commits.
     await db.execute(
-        update(Assessment).where(Assessment.id == assessment_id).values(kind=Assessment.kind)
+        update(Assessment)
+        .where(Assessment.id == assessment_id, question_state.visible(learner_id))
+        .values(kind=Assessment.kind)
     )
     current = await snapshot(db, assessment_id, learner_id)
     if current != expected or current.get("_question_state", "active") != "active":

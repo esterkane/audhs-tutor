@@ -4,7 +4,7 @@ The caller owns commit/rollback. A SQLite write lock serializes revision checks 
 receipts. No model calls, learning events, attempts or scheduling state are changed.
 """
 
-from sqlalchemy import exists, func, update
+from sqlalchemy import exists, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -12,6 +12,25 @@ from app.core.errors import AppError
 from app.db.base import utcnow_iso
 from app.db.models import Assessment, QuestionState, QuestionTransition, ReviewItem
 from app.schemas.question_state import QuestionStateOut, QuestionTransitionIn
+
+
+def visible(learner_id: str | None) -> ColumnElement[bool]:
+    """Access is separate from practice eligibility and its negation."""
+    shared = Assessment.owner_learner_id.is_(None)
+    return shared if learner_id is None else or_(shared, Assessment.owner_learner_id == learner_id)
+
+
+async def require_visible(
+    db: AsyncSession, learner_id: str | None, assessment_id: str
+) -> Assessment:
+    row = await db.scalar(
+        select(Assessment)
+        .where(Assessment.id == assessment_id, visible(learner_id))
+        .execution_options(populate_existing=True)
+    )
+    if row is None:
+        raise AppError("not_found", "This question is unavailable.", 404)
+    return row
 
 
 def eligible(learner_id: str) -> ColumnElement[bool]:
@@ -33,7 +52,16 @@ def review_reference() -> ColumnElement[str]:
 
 def review_eligible(learner_id: str) -> ColumnElement[bool]:
     """Vocabulary refs are not assessment IDs, even when their strings coincide."""
-    return ~exists().where(
+    denied = (
+        exists()
+        .where(
+            Assessment.id == review_reference(),
+            ~visible(learner_id),
+            func.coalesce(ReviewItem.prompt_json["type"].as_string(), "") != "vocab",
+        )
+        .correlate(ReviewItem)
+    )
+    return ~denied & ~exists().where(
         QuestionState.learner_id == learner_id,
         QuestionState.assessment_id == review_reference(),
         QuestionState.state != "active",
@@ -42,8 +70,7 @@ def review_eligible(learner_id: str) -> ColumnElement[bool]:
 
 
 async def read(db: AsyncSession, learner_id: str, assessment_id: str) -> QuestionStateOut:
-    if await db.get(Assessment, assessment_id) is None:
-        raise AppError("not_found", "This question is unavailable.", 404)
+    await require_visible(db, learner_id, assessment_id)
     row = await db.get(QuestionState, (learner_id, assessment_id), populate_existing=True)
     if row is None:
         return QuestionStateOut(assessment_id=assessment_id, state="active", revision=0)

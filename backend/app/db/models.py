@@ -243,6 +243,9 @@ class AssessmentRubric(IdMixin, Base):
 
 class Assessment(IdMixin, Base):
     __tablename__ = "assessment"
+    owner_learner_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("learner_profile.id", ondelete="RESTRICT"), index=True
+    )
     skill_id: Mapped[str] = mapped_column(Text, ForeignKey("skill_node.id"), index=True)
     kind: Mapped[str] = mapped_column(Text)  # mcq | cloze | explain_back | code | transfer
     item_json: Mapped[JsonDict] = mapped_column(JSON)

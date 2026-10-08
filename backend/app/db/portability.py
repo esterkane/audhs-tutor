@@ -17,6 +17,18 @@ def export_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, list[
             f'SELECT * FROM "{table}" WHERE learner_id = ?', (learner_id,)
         ).fetchall()
         out[table] = [dict(r) for r in rows]
+    out["assessment"] = [
+        dict(r)
+        for r in conn.execute("SELECT * FROM assessment WHERE owner_learner_id = ?", (learner_id,))
+    ]
+    out["assessment_rubric"] = [
+        dict(r)
+        for r in conn.execute(
+            "SELECT * FROM assessment_rubric WHERE id IN "
+            "(SELECT rubric_id FROM assessment WHERE owner_learner_id = ?)",
+            (learner_id,),
+        )
+    ]
     out["learner_profile"] = [
         dict(r) for r in conn.execute("SELECT * FROM learner_profile WHERE id = ?", (learner_id,))
     ]
@@ -35,6 +47,24 @@ def wipe_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, int]:
         for table in reversed(tables):
             cur = conn.execute(f'DELETE FROM "{table}" WHERE learner_id = ?', (learner_id,))
             deleted[table] = cur.rowcount
+        rubric_ids = [
+            r[0]
+            for r in conn.execute(
+                "SELECT DISTINCT rubric_id FROM assessment WHERE owner_learner_id = ? "
+                "AND rubric_id IS NOT NULL",
+                (learner_id,),
+            )
+        ]
+        cur = conn.execute("DELETE FROM assessment WHERE owner_learner_id = ?", (learner_id,))
+        deleted["assessment"] = cur.rowcount
+        deleted["assessment_rubric"] = 0
+        for rubric_id in rubric_ids:
+            cur = conn.execute(
+                "DELETE FROM assessment_rubric WHERE id = ? AND NOT EXISTS "
+                "(SELECT 1 FROM assessment WHERE rubric_id = ?)",
+                (rubric_id, rubric_id),
+            )
+            deleted["assessment_rubric"] += cur.rowcount
         cur = conn.execute("DELETE FROM learner_profile WHERE id = ?", (learner_id,))
         deleted["learner_profile"] = cur.rowcount
         for ddl in LEARNING_EVENT_GUARDS.values():

@@ -1239,7 +1239,9 @@ async def publish_draft(
         for arow in (
             await db.execute(
                 select(Assessment).where(
-                    Assessment.skill_id == skill_id, Assessment.kind == a["kind"]
+                    Assessment.owner_learner_id.is_(None),
+                    Assessment.skill_id == skill_id,
+                    Assessment.kind == a["kind"],
                 )
             )
         ).scalars():

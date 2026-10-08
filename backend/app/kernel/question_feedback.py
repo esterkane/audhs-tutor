@@ -9,8 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import utcnow_iso
 from app.db.events import EventContext, EventWriter, Verb
-from app.db.models import Assessment, QuestionFeedback
-from app.kernel import curriculum, preferences
+from app.db.models import QuestionFeedback
+from app.kernel import curriculum, preferences, question_state
 from app.schemas.areas import FeedbackIn
 from app.schemas.common import Mode, ObjectType
 
@@ -50,9 +50,8 @@ async def record(db: AsyncSession, learner_id: str, body: FeedbackIn) -> Questio
         version = draft.version
         prefix = f"draft:{draft.id}:"
     else:
-        item = await db.get(Assessment, body.assessment_id)
-        if item is None:
-            raise KeyError("assessment not found")
+        assert body.assessment_id is not None
+        item = await question_state.require_visible(db, learner_id, body.assessment_id)
         snapshot = {"kind": item.kind, "item": item.item_json, "skill_id": item.skill_id}
         prefix = f"assessment:{item.id}:"
     digest = hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()[:24]

@@ -45,3 +45,5 @@ Then implement lineage/resolution and final publication impact preview (review c
 Inspected concrete Assessment queries/direct gets and snapshot callers under backend/app, plus canonical race rechecks and portability implementation. No runtime changes, model calls, live data mutations or test-pass claims. This is a reviewed inventory, not proof that future ownership enforcement is complete. Dynamic/raw SQL and new consumers must be rechecked with the migration diff; executable two-learner coverage is the release gate.
 
 Bounded architecture review found no concrete contradiction or major omitted blocker; enforcement remains unimplemented and requires the stated tests.
+
+Implementation checkpoint: ownership foundation is implemented and verified in [assessment-visibility.md](assessment-visibility.md). This inventory remains the resolver/publication checklist; lineage and publication are not implemented.

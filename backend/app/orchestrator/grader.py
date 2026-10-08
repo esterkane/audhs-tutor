@@ -234,6 +234,7 @@ class Grader:
                     select(Assessment).where(
                         Assessment.skill_id == skill_id,
                         Assessment.kind != "code",
+                        question_state.visible(learner_id),
                         question_state.eligible(learner_id),
                     )
                 )

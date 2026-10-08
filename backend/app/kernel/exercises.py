@@ -181,7 +181,9 @@ async def ensure_check_item(db: AsyncSession, node: SkillNode, ex: Exercise) -> 
     rows = (
         await db.execute(
             select(Assessment).where(
-                Assessment.skill_id == node.id, Assessment.kind == "explain_back"
+                Assessment.owner_learner_id.is_(None),
+                Assessment.skill_id == node.id,
+                Assessment.kind == "explain_back",
             )
         )
     ).scalars()
@@ -210,7 +212,11 @@ async def ensure_exercise(db: AsyncSession, node: SkillNode) -> Assessment | Non
         return None
     rows = (
         await db.execute(
-            select(Assessment).where(Assessment.skill_id == node.id, Assessment.kind == KIND)
+            select(Assessment).where(
+                Assessment.owner_learner_id.is_(None),
+                Assessment.skill_id == node.id,
+                Assessment.kind == KIND,
+            )
         )
     ).scalars()
     for a in rows:
@@ -228,7 +234,11 @@ async def ensure_exercise(db: AsyncSession, node: SkillNode) -> Assessment | Non
     rows = (
         await db.execute(
             select(Assessment)
-            .where(Assessment.skill_id == node.id, Assessment.kind == KIND)
+            .where(
+                Assessment.owner_learner_id.is_(None),
+                Assessment.skill_id == node.id,
+                Assessment.kind == KIND,
+            )
             .order_by(Assessment.id)
         )
     ).scalars()

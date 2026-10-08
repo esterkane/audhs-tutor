@@ -72,8 +72,14 @@ async def corrections(
 async def excluded(
     db: DB, learner: Learner, offset: int = Query(0, ge=0), limit: int = Query(20, ge=1, le=50)
 ) -> ExcludedQuestions:
-    stmt = select(QuestionState.assessment_id).where(
-        QuestionState.learner_id == learner.id, QuestionState.state != "active"
+    stmt = (
+        select(QuestionState.assessment_id)
+        .join(Assessment, Assessment.id == QuestionState.assessment_id)
+        .where(
+            question_state.visible(learner.id),
+            QuestionState.learner_id == learner.id,
+            QuestionState.state != "active",
+        )
     )
     total = int(await db.scalar(select(func.count()).select_from(stmt.subquery())) or 0)
     ids = list(

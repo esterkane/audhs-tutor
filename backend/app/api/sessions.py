@@ -369,6 +369,7 @@ async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, sessio
             .where(
                 Assessment.skill_id == skill_id,
                 Assessment.kind != "code",
+                question_state.visible(learner_id),
                 question_state.eligible(learner_id),
             )
             .order_by(Assessment.kind)

@@ -41,6 +41,7 @@ async def existing(
     stmt = select(Assessment).where(
         Assessment.skill_id == node.id,
         Assessment.kind == kind_for(mode),
+        question_state.visible(learner_id),
         question_state.eligible(learner_id),
     )
     for a in (await db.execute(stmt)).scalars():
@@ -91,6 +92,7 @@ async def reusable(
         .where(
             Assessment.skill_id == node.id,
             Assessment.kind == kind_for(mode),
+            question_state.visible(session.learner_id),
             ~question_state.eligible(session.learner_id),
         )
         .limit(1)

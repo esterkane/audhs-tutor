@@ -1,7 +1,7 @@
 # 0019 — Learner-owned question corrections
 
 Date: 2026-10-08
-Status: Internal draft storage foundation implemented; ownership/resolver/publication contract remains proposed
+Status: Draft storage and assessment visibility foundation implemented; lineage/resolver/publication contract remains proposed
 
 ## Context
 
@@ -56,3 +56,5 @@ This is a proposed contract, not a claim of implementation or an accepted change
 Review: bounded independent architecture review found no major omitted invariant or contradiction with the inspected implementation. This review does not constitute runtime acceptance.
 
 Implementation checkpoint: migration773f25ae3e92 and the internal correction_drafts service implement private original snapshots and repeat-safe create/save/discard only. No public editing API, typed adapter, source-version verification, replacement ownership or publication exists yet; see correction-draft-foundation in docs/slices.
+
+Implementation checkpoint 2026-10-08: nullable restrictive assessment owner column and visibility gates are implemented in migration924acd018f31; canonical caches remain shared-only, direct/review reads enforce ownership, export/wipe include private assessments and referenced rubrics. No lineage or replacement publication is enabled. See slices/assessment-visibility.md for verification and limits.

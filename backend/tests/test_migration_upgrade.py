@@ -73,6 +73,13 @@ def test_downgrade_one_step_and_back(tmp_path: Path) -> None:
     url = f"sqlite:///{tmp_path / 'updown.db'}"
     upgrade_to_head(url)
     fill_all_tables(url)
+    # Reflective fixture includes private ownership: downgrade must not make it shared.
+    with pytest.raises(RuntimeError, match="private assessments"):
+        command.downgrade(alembic_config(url), "-1")
+    with sqlite3.connect(tmp_path / "updown.db") as conn:
+        assert conn.execute("SELECT owner_learner_id FROM assessment").fetchone()[0]
+        # Explicitly make only this disposable fixture legacy shared content.
+        conn.execute("UPDATE assessment SET owner_learner_id=NULL")
     command.downgrade(alembic_config(url), "-1")
     command.upgrade(alembic_config(url), "head")
     after = dump_tables(url)

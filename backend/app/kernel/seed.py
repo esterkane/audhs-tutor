@@ -124,7 +124,11 @@ async def load_seed(db: AsyncSession, seed_dir: Path) -> SeedReport:
         item["seed_key"] = key
         existing = None
         for row in (
-            await db.execute(select(Assessment).where(Assessment.skill_id == skill_id))
+            await db.execute(
+                select(Assessment).where(
+                    Assessment.owner_learner_id.is_(None), Assessment.skill_id == skill_id
+                )
+            )
         ).scalars():
             if row.item_json.get("seed_key") == key:
                 existing = row
@@ -147,7 +151,14 @@ async def load_seed(db: AsyncSession, seed_dir: Path) -> SeedReport:
         _seed_key(a["skill"], a["kind"], dict(a["item"])) for a in data.get("assessments", [])
     }
     for row in (
-        (await db.execute(select(Assessment).where(Assessment.skill_id.in_(list(ids.values())))))
+        (
+            await db.execute(
+                select(Assessment).where(
+                    Assessment.owner_learner_id.is_(None),
+                    Assessment.skill_id.in_(list(ids.values())),
+                )
+            )
+        )
         .scalars()
         .all()
     ):
