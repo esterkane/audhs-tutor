@@ -1,9 +1,10 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { jsonResponse, renderApp } from '../../test/utils'
+import { clearDraft } from '../assess/draft'
 import { ChallengePanel } from './ChallengePanel'
 
-beforeEach(() => sessionStorage.clear())
+beforeEach(() => { sessionStorage.clear(); clearDraft('challenge:s1:a1') })
 
 const modes = {
   modes: [
@@ -172,4 +173,70 @@ it('cannot clear a rejected answer from another activity by refreshing the curre
   expect(JSON.parse(sessionStorage.getItem('assessment-request:v1:s1')!).id).toBe(pending.id)
   expect(screen.getByText('Keep original')).toBeInTheDocument()
   expect(fetcher.mock.calls.some(([url]) => url.includes('/api/assess/items/'))).toBe(false)
+})
+
+
+it('retains the answer through exclusion, failed refresh and explicit restoration', async () => {
+  let state = 'active'
+  let revision = 0
+  let failRefresh = false
+  let deferRefresh = false
+  let releaseRefresh!: () => void
+  const submits: unknown[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/modes')) return jsonResponse(modes)
+    if (url.endsWith('/start')) return jsonResponse(JSON.parse(String(init?.body)).mode === 'steelman'
+      ? { ...item, assessment_id: 'a2', mode: 'steelman', prompt: 'New challenge' }
+      : { ...item, content_version: revision ? 'fresh' : item.content_version })
+    if (url === '/api/questions/a1/practice') {
+      if (init?.method === 'POST') {
+        state = JSON.parse(String(init.body)).action === 'suspend' ? 'suspended' : 'active'
+        revision++
+      }
+      const status = { assessment_id: 'a1', state, revision, reason: null }
+      return jsonResponse(init?.method === 'POST' ? status : { status, affected_reviews: 0 })
+    }
+    if (url.startsWith('/api/assess/items/') && deferRefresh) await new Promise<void>(resolve => { releaseRefresh = resolve })
+    if (url.startsWith('/api/assess/items/')) return failRefresh
+      ? jsonResponse({ error: { message: 'offline' } }, 503)
+      : jsonResponse({ id: 'a1', question: item.prompt, criteria: item.criteria, content_version: 'fresh' })
+    if (url.endsWith('/submit')) { submits.push(JSON.parse(String(init?.body))); return jsonResponse(result) }
+    return jsonResponse(null)
+  }))
+  const view = renderApp(<ChallengePanel sessionId="s1" skillId="k1" onDone={() => {}} />)
+  fireEvent.click(await screen.findByRole('button', { name: /planted error/i }))
+  fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: 'my explanation' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Question practice options' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Exclude this question' }))
+  await screen.findByText('This challenge is excluded. Your answer is kept in this tab. Restore the question before submitting.')
+  expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Restore this question' }))
+  failRefresh = true
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh restored challenge' }))
+  await screen.findByText('Could not refresh the challenge. Your answer is kept. Try again.')
+  expect(screen.getByLabelText('Your answer')).toHaveValue('my explanation')
+  failRefresh = false
+  fireEvent.click(screen.getByRole('button', { name: 'Refresh restored challenge' }))
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled())
+  view.unmount()
+  renderApp(<ChallengePanel sessionId="s1" skillId="k1" onDone={() => {}} />)
+  fireEvent.click(await screen.findByRole('button', { name: /planted error/i }))
+  expect(await screen.findByLabelText('Your answer')).toHaveValue('my explanation')
+  expect(submits).toEqual([])
+  fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
+  await screen.findByText('Found it.')
+  expect(submits).toEqual([expect.objectContaining({ answer: 'my explanation', content_version: 'fresh' })])
+  fireEvent.click(screen.getByRole('button', { name: 'Question practice options' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Exclude this question' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Restore this question' }))
+  deferRefresh = true
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh restored challenge' }))
+  await waitFor(() => expect(releaseRefresh).toBeDefined())
+  fireEvent.click(screen.getByRole('button', { name: 'Another mode' }))
+  fireEvent.click(await screen.findByRole('button', { name: /steelman/i }))
+  await screen.findByText('New challenge')
+  fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: 'new answer' } })
+  await act(async () => { releaseRefresh() })
+  expect(screen.getByText('New challenge')).toBeVisible()
+  expect(screen.getByLabelText('Your answer')).toHaveValue('new answer')
 })
