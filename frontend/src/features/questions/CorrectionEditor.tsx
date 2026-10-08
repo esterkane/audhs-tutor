@@ -32,7 +32,7 @@ export function CorrectionEditor() {
   const report = params.get('report')
   return <div className="grid gap-4 max-w-3xl min-w-0">
     <h1 className="text-2xl font-semibold">Question correction drafts</h1>
-    <p>Drafts do not change practice questions or grades. Publication is not available yet.</p>
+    <p>Drafts do not change practice. Review the sources and impact before explicitly publishing a correction for future practice.</p>
     <Link to="/preferences#question-reports">Back to reported questions</Link>
     {draft ? <LoadDraft key={draft} id={draft} /> : assessment
       ? <StartDraft key={`${assessment}:${report}`} assessment={assessment} report={report} onOpen={id => setParams({ draft: id })} />
@@ -115,6 +115,12 @@ function Editor({ initial }: { initial: View }) {
     finally { if (!controller.signal.aborted) setReadingBusy(false); if (reading.current === controller) reading.current = null }
   }
   const command = useCorrectionCommand(`draft:${initial.id}`, initial.id, (receipt, sent) => {
+    if (sent.action === 'publish') {
+      setServer(current => ({ ...current, status: 'published', revision: receipt.revision }))
+      if (!recovery.dirty) recovery.reset(text.current, receipt.revision)
+      setNotice('Correction published for your future practice. Previous answers and grades are retained.')
+      void refresh(); heading.current?.focus(); return
+    }
     if (sent.action !== 'save') return
     const newer = text.current
     const saved = encode(sent.body.candidate, sent.body.rationale ?? '')
@@ -141,7 +147,7 @@ function Editor({ initial }: { initial: View }) {
     {recovery.error && <p role="alert">{recovery.error}</p>}
     {notice && <p role="status">{notice}</p>}
     {!writable && <p role="status">{server.status === 'published' ? 'This correction was published. Its draft is retained for reference.' : 'This draft was discarded. Its content is retained for reference.'}</p>}
-    <fieldset disabled={!writable} className="grid gap-3 min-w-0">
+    <fieldset disabled={!writable || command.pending?.action === 'publish'} className="grid gap-3 min-w-0">
       {valid ? <>
         <Field label="Question wording"><Textarea value={String(item.question ?? item.text ?? item.prompt ?? '')} onChange={e => update(server.kind === 'mcq' ? 'question' : server.kind === 'cloze' ? 'text' : 'prompt', e.target.value)} /></Field>
         {server.kind === 'mcq' && <>
@@ -186,7 +192,8 @@ function Editor({ initial }: { initial: View }) {
       <CorrectionComparison before={initial.original_candidate} after={candidate} beforeLabel="Original question" afterLabel="Proposed question" />
     </details>}
     <details><summary>Original question and reference answers</summary><pre className="whitespace-pre-wrap break-words text-sm">{JSON.stringify(initial.original_candidate, null, 2)}</pre></details>
-    <CorrectionImpact key={initial.id} id={initial.id} revision={recovery.baseVersion} dirty={recovery.dirty} />
+    <CorrectionImpact key={initial.id} id={initial.id} revision={recovery.baseVersion} dirty={recovery.dirty || conflict} disabled={!writable || command.busy || !!command.pending || command.blocked || readingBusy}
+      onPublish={preview => void command.send({ action: 'publish', body: { request_id: crypto.randomUUID(), expected_revision: preview.revision, preview_token: preview.preview_token, reviewed_sources: true } })} />
     <section className="grid gap-2"><h3 className="font-semibold">Checks on the saved draft</h3>
       {(recovery.dirty || checksStale) && <p>These checks apply to the last loaded saved version. Save edits and compare with the saved version to refresh them.</p>}
       <p>Source status: {server.review.source_status.replaceAll('_', ' ')}. This does not prove the question is correct.</p>

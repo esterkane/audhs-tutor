@@ -5,6 +5,7 @@ import { boundedRead } from '../../lib/boundedRead'
 export type CorrectionCommand =
   | { action: 'create'; body: Schemas['CreateCorrectionDraftRequest'] }
   | { action: 'save'; body: Schemas['SaveCorrectionDraft'] }
+  | { action: 'publish'; body: Schemas['PublishCorrectionDraft'] }
 export type Receipt = Schemas['CorrectionDraftReceipt']
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -15,6 +16,9 @@ function validCommand(value: unknown, scope: string, draftId: string | null): va
   if (!body || typeof body !== 'object' || Array.isArray(body) ||
       typeof body.request_id !== 'string' || !uuid.test(body.request_id)) return false
   if (draftId) {
+    if (command.action === 'publish') return Number.isSafeInteger(body.expected_revision) && Number(body.expected_revision) >= 1 &&
+      body.reviewed_sources === true && typeof body.preview_token === 'string' && /^ac1\.[0-9a-f]{64}$/.test(body.preview_token) &&
+      Object.keys(body).every(key => ['request_id', 'expected_revision', 'preview_token', 'reviewed_sources'].includes(key))
     return command.action === 'save' && Number.isSafeInteger(body.expected_revision) && Number(body.expected_revision) >= 1 &&
       !!body.candidate && typeof body.candidate === 'object' && !Array.isArray(body.candidate) &&
       new TextEncoder().encode(JSON.stringify(body.candidate)).length <= 100000 &&
@@ -69,14 +73,15 @@ export function useCorrectionCommand(scope: string, draftId: string | null,
     try {
       const path = lookup ? `/api/questions/correction-commands/${encodeURIComponent(frozen.body.request_id)}`
         : frozen.action === 'create' ? '/api/questions/correction-drafts'
-          : `/api/questions/correction-drafts/${encodeURIComponent(draftId!)}`
+          : `/api/questions/correction-drafts/${encodeURIComponent(draftId!)}${frozen.action === 'publish' ? '/publish' : ''}`
       const receipt = await boundedRead<Receipt>(path, controller.signal, 'Draft command', lookup ? undefined : {
-        method: frozen.action === 'create' ? 'POST' : 'PUT', body: JSON.stringify(frozen.body),
+        method: frozen.action === 'save' ? 'PUT' : 'POST', body: JSON.stringify(frozen.body),
       })
       if (!mounted.current || active.current !== controller) return
       if (!receipt || typeof receipt.draft_id !== 'string' || !receipt.draft_id ||
-          !Number.isSafeInteger(receipt.revision) || receipt.revision < 1 || receipt.status !== 'draft' ||
-          (frozen.action === 'save' && receipt.draft_id !== draftId)) {
+          !Number.isSafeInteger(receipt.revision) || receipt.revision < 1 || receipt.status !== (frozen.action === 'publish' ? 'published' : 'draft') ||
+          (frozen.action !== 'create' && (receipt.draft_id !== draftId || receipt.revision !== frozen.body.expected_revision + 1)) ||
+          (frozen.action === 'publish' && (typeof receipt.replacement_id !== 'string' || !receipt.replacement_id))) {
         throw new ApiError(409, 'correction_receipt_mismatch', 'The saved response does not match this draft. Retry details are kept.')
       }
       if (frozen.action === 'create') {
@@ -96,7 +101,8 @@ export function useCorrectionCommand(scope: string, draftId: string | null,
       if (!mounted.current || controller.signal.aborted || active.current !== controller) return
       // These server responses explicitly rejected this command without a write.
       if (!lookup && cause instanceof ApiError && (cause.status === 422 || ['correction_draft_conflict', 'correction_content_conflict',
-        'correction_report_conflict', 'question_state_conflict'].includes(cause.code))) {
+        'correction_report_conflict', 'question_state_conflict', 'correction_preview_conflict',
+        'correction_not_ready', 'correction_kind_unavailable', 'correction_state_unavailable', 'correction_unchanged'].includes(cause.code))) {
         try { sessionStorage.removeItem(key); current.current = null; setPending(null) }
         catch { /* retain exact command if its retry record cannot be cleared */ }
       }

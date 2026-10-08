@@ -945,6 +945,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/questions/correction-drafts/{draft_id}/publish': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Publish */
+    post: operations['publish_api_questions_correction_drafts__draft_id__publish_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/items/{item_id}': {
     parameters: {
       query?: never
@@ -3243,9 +3260,10 @@ export interface components {
       /**
        * Publication Available
        * @default false
-       * @constant
        */
-      publication_available: false
+      publication_available: boolean
+      /** Publication Blockers */
+      publication_blockers?: string[]
     }
     /** CorrectionInbox */
     CorrectionInbox: {
@@ -5032,6 +5050,23 @@ export interface components {
       proposed_at: string
       /** Reversible */
       reversible: boolean
+    }
+    /** PublishCorrectionDraft */
+    PublishCorrectionDraft: {
+      /**
+       * Request Id
+       * Format: uuid
+       */
+      request_id: string
+      /** Expected Revision */
+      expected_revision: number
+      /** Preview Token */
+      preview_token: string
+      /**
+       * Reviewed Sources
+       * @constant
+       */
+      reviewed_sources: true
     }
     /** PublishOut */
     PublishOut: {
@@ -7929,6 +7964,41 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['CorrectionImpact']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  publish_api_questions_correction_drafts__draft_id__publish_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['PublishCorrectionDraft']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionDraftReceipt']
         }
       }
       /** @description Validation Error */

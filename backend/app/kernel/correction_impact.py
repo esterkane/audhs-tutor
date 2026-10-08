@@ -1,5 +1,7 @@
 """Read-only impact preview; no publication authorization or learning writes."""
 
+from typing import Any
+
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -50,6 +52,9 @@ async def preview(db: AsyncSession, learner_id: str, draft_id: str) -> Correctio
                 document_version_id=source.get("document_version_id"),
             )
         )
+    blockers = publication_blockers(
+        draft.status, draft.original_json, draft.candidate_json, review, state.state
+    )
     return CorrectionImpact(
         draft_id=draft.id,
         revision=draft.revision,
@@ -70,5 +75,32 @@ async def preview(db: AsyncSession, learner_id: str, draft_id: str) -> Correctio
         affected_reviews=len(reviews),
         linked_exercises=len(exercises),
         passages=passages,
+        publication_available=not blockers,
+        publication_blockers=blockers,
         review=CorrectionReview.model_validate(review),
     )
+
+
+def publication_blockers(
+    status: str,
+    original: dict[str, Any],
+    candidate: dict[str, Any],
+    review: dict[str, Any],
+    state: str,
+) -> list[str]:
+    blockers = []
+    if status != "draft":
+        blockers.append("This draft is no longer editable.")
+    if original.get("kind") == "code" or "listening" in original.get("item", {}):
+        blockers.append("Code and listening corrections need additional verification.")
+    if review["problems"]:
+        blockers.append("Fix the question validation issues first.")
+    if review["content_changed"] or review["question_state_changed"]:
+        blockers.append("The original question or its practice status changed.")
+    if review["source_status"] != "unchanged":
+        blockers.append("Complete, unchanged source evidence is required.")
+    if state not in {"active", "suspended"}:
+        blockers.append("This question is already replaced or retired.")
+    if candidate == {"item": original["item"], "rubric": original["rubric"]}:
+        blockers.append("Save a question change before publishing.")
+    return blockers

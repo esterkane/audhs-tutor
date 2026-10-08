@@ -1,4 +1,4 @@
-"""Explicit private authoring reads and repeat-safe saves. No publication route."""
+"""Explicit private authoring, repeat-safe saves and reviewed publication."""
 
 from uuid import UUID
 
@@ -9,7 +9,7 @@ from app.api.deps import DB, Learner
 from app.core.content_versions import token
 from app.core.errors import AppError
 from app.db.models import QuestionCorrectionCommand, QuestionCorrectionDraft
-from app.kernel import correction_drafts, correction_impact, question_state
+from app.kernel import correction_drafts, correction_impact, correction_publication, question_state
 from app.schemas.correction_drafts import (
     CorrectionDraftList,
     CorrectionDraftReceipt,
@@ -19,6 +19,7 @@ from app.schemas.correction_drafts import (
     CorrectionSource,
     CreateCorrectionDraftRequest,
     DiscardCorrectionDraft,
+    PublishCorrectionDraft,
     SaveCorrectionDraft,
 )
 
@@ -159,3 +160,18 @@ async def discard(
 @router.get("/correction-drafts/{draft_id}/impact", response_model=CorrectionImpact)
 async def impact(draft_id: str, db: DB, learner: Learner) -> CorrectionImpact:
     return await correction_impact.preview(db, learner.id, draft_id)
+
+
+@router.post("/correction-drafts/{draft_id}/publish", response_model=CorrectionDraftReceipt)
+async def publish(
+    draft_id: str, body: PublishCorrectionDraft, db: DB, learner: Learner
+) -> CorrectionDraftReceipt:
+    learner_id = learner.id
+    await db.commit()
+    try:
+        result = await correction_publication.publish(db, learner_id, draft_id, body)
+        await db.commit()
+        return result
+    except BaseException:
+        await db.rollback()
+        raise

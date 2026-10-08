@@ -132,3 +132,27 @@ it('keeps a published correction read-only without calling it discarded', async 
   expect(screen.getByLabelText('Question wording')).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Save correction draft' })).toBeDisabled()
 })
+
+it('recovers publication after a lost response and reload without publishing twice', async () => {
+  let server = { ...original, revision: 2 }
+  let writes = 0
+  const receipt = { draft_id: 'draft1', revision: 3, status: 'published', replacement_id: 'replacement1' }
+  vi.stubGlobal('fetch', vi.fn(async (path: string, init?: RequestInit) => {
+    if (path.endsWith('/impact')) return jsonResponse({ draft_id: 'draft1', revision: 2, preview_token: 'ac1.' + 'a'.repeat(64), publication_available: true, publication_blockers: [], passages: [], affected_reviews: 0, linked_exercises: 0, review: original.review })
+    if (path.endsWith('/publish')) { writes++; server = { ...server, revision: 3, status: 'published' }; throw new Error('Lost response') }
+    if (path.includes('correction-commands')) return jsonResponse(receipt)
+    if (init?.method) throw new Error('Unexpected write')
+    return jsonResponse(server)
+  }))
+  const view = renderApp(<CorrectionEditor />, { route: '/corrections?draft=draft1' })
+  fireEvent.click(await screen.findByRole('button', { name: 'Load impact preview' }))
+  fireEvent.click(await screen.findByRole('checkbox'))
+  fireEvent.click(screen.getByRole('button', { name: 'Publish correction for my practice' }))
+  await screen.findByText(/The result is uncertain/)
+  view.unmount()
+  renderApp(<CorrectionEditor />, { route: '/corrections?draft=draft1' })
+  fireEvent.click(await screen.findByRole('button', { name: 'Check save status' }))
+  expect(await screen.findByText('Correction published for your future practice. Previous answers and grades are retained.')).toBeVisible()
+  expect(writes).toBe(1)
+  expect(screen.getByLabelText('Question wording')).toBeDisabled()
+})

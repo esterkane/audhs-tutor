@@ -318,3 +318,71 @@ async def test_report_resolution_is_atomic_and_keeps_history(db, learner, withdr
         assert (await question_corrections.inbox(db, learner.id, 0, 20)).total == 0
         kept = await db.get(models.QuestionFeedback, report.id)
         assert kept.note == "Needs correction" and kept.withdrawn_at is None
+
+
+async def test_publication_endpoint_confirm_recover_and_stale_retry(db, learner, client):
+    _, _, draft_id, body = await prepared(db, learner)
+    preview = (await client.get(f"/api/questions/correction-drafts/{draft_id}/impact")).json()
+    assert preview["publication_available"] and not preview["publication_blockers"]
+    path = f"/api/questions/correction-drafts/{draft_id}/publish"
+    payload = body.model_dump(mode="json")
+    assert (await client.post(path, json={**payload, "reviewed_sources": False})).status_code == 422
+    response = await client.post(path, json=payload)
+    assert response.status_code == 200, response.text
+    receipt = response.json()
+    assert receipt["status"] == "published" and receipt["replacement_id"]
+    assert (
+        await client.get(f"/api/questions/correction-commands/{body.request_id}")
+    ).json() == receipt
+    assert (await client.post(path, json=payload)).json() == receipt
+    assert (
+        await client.post(path, json={**payload, "request_id": str(uuid4())})
+    ).status_code == 409
+    view = (await client.get(f"/api/questions/correction-drafts/{draft_id}")).json()
+    assert view["status"] == "published"
+
+
+@pytest.mark.parametrize("blocked", ["missing_source", "listening", "code"])
+async def test_endpoint_blocks_unverified_content(db, learner, client, blocked):
+    q, _, _ = await sourced_question(db)
+    if blocked == "missing_source":
+        q.item_json = {key: value for key, value in q.item_json.items() if key != "source_chunk_id"}
+    elif blocked == "listening":
+        q.item_json = {**q.item_json, "listening": {"chunk_id": q.item_json["source_chunk_id"]}}
+    else:
+        q.kind = "code"
+    await db.commit()
+    draft = await drafts.create(
+        db,
+        learner.id,
+        CreateCorrectionDraft(
+            request_id=uuid4(),
+            assessment_id=q.id,
+            expected_question_revision=0,
+        ),
+    )
+    await drafts.change(
+        db,
+        learner.id,
+        draft.draft_id,
+        SaveCorrectionDraft(
+            request_id=uuid4(),
+            expected_revision=1,
+            candidate={"item": {**q.item_json, "question": "Corrected question?"}, "rubric": None},
+        ),
+    )
+    await db.commit()
+    path = f"/api/questions/correction-drafts/{draft.draft_id}"
+    preview = (await client.get(path + "/impact")).json()
+    assert not preview["publication_available"] and preview["publication_blockers"]
+    response = await client.post(
+        path + "/publish",
+        json={
+            "request_id": str(uuid4()),
+            "expected_revision": 2,
+            "preview_token": preview["preview_token"],
+            "reviewed_sources": True,
+        },
+    )
+    assert response.status_code == 409, response.text
+    assert await db.scalar(select(func.count()).select_from(models.QuestionReplacement)) == 0

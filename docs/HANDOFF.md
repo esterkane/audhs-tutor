@@ -1436,3 +1436,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-08: Internal correction publication transaction implemented with learner-owned identity, immutable receipts, exact-report resolution and unchanged learning history.37 backend tests, strict mypy217/Ruff, editor tests and2 desktop/narrow browser regressions pass; bounded review clear. See slices/correction-publication-transaction.md. No publish endpoint/UI or live publication; explicit confirmation/recovery and integrated acceptance remain next.
+
+
+2026-10-08: Explicit correction publication now connects saved impact/source confirmation to the atomic service, with persisted same-command receipt recovery after lost response/reload.25 unique backend checks,12 UI tests and4 real desktop/narrow keyboard browser journeys pass; visual/lint/types/build and review clear. See slices/correction-publication-ui.md. Broader report/history/linked-surface acceptance and reversal policy remain.

@@ -109,7 +109,8 @@ class CorrectionImpact(BaseModel):
     linked_exercises: int
     passages: list[CorrectionPassage]
     review: CorrectionReview
-    publication_available: Literal[False] = False
+    publication_available: bool = False
+    publication_blockers: list[str] = Field(default_factory=list)
 
 
 class PublishCorrectionDraft(Command):
