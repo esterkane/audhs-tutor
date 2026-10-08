@@ -8,6 +8,7 @@ from app.orchestrator.assessment_guard import AssessmentGuard
 @dataclass
 class AssessmentExecution:
     guard: AssessmentGuard | None = None
+    prepared_continuation: bool = False
     gateway_entered: bool = False
     learning_commit_started: bool = False
     result_persistence_started: bool = False

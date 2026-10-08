@@ -418,3 +418,34 @@ it('finishes a staged grade only explicitly and retains identity on content conf
   expect(hook.result.current.recovery.lookup?.status).toBe('completed')
   expect(hook.result.current.recovery.pending?.id).toBe(id)
 })
+
+it('continues only after checking, prevents duplicate sends, and rechecks after an uncertain outcome', async () => {
+  const id = crypto.randomUUID()
+  const original = JSON.stringify({ version: 1, id, endpoint: '/api/assess/attempt', body, question: 'Original' })
+  sessionStorage.setItem(assessmentRecoveryKey('session'), original)
+  let release!: () => void
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') {
+      expect(url).toBe(`/api/assess/requests/${id}/continue?session_id=session`)
+      expect(init.body).toBeUndefined()
+      await new Promise<void>((resolve) => { release = resolve })
+      return jsonResponse({ error: { code: 'request_unresolved', message: 'Check the saved result.' } }, 409)
+    }
+    return jsonResponse({ status: 'prepared_ready', result: null })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const hook = setup()
+  await act(async () => { await hook.result.current.recovery.continuePrepared() })
+  expect(fetcher).not.toHaveBeenCalled()
+  await act(async () => { await hook.result.current.recovery.check() })
+  let first!: Promise<void>
+  act(() => { first = hook.result.current.recovery.continuePrepared() })
+  await act(async () => { await hook.result.current.recovery.continuePrepared() })
+  expect(fetcher).toHaveBeenCalledTimes(2)
+  await act(async () => { release(); await first })
+  expect(hook.result.current.recovery.lookup).toBeNull()
+  expect(hook.result.current.recovery.stale).toBe(false)
+  expect(sessionStorage.getItem(assessmentRecoveryKey('session'))).toBe(original)
+  await act(async () => { await hook.result.current.recovery.continuePrepared() })
+  expect(fetcher).toHaveBeenCalledTimes(2)
+})

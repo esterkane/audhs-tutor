@@ -1354,3 +1354,7 @@ Added a separate assessment guard with nonce and durable pre-inference seal; dat
 
 ## 2026-10-05 — Assessment ownership lifecycle
 New grading holds optional ownership and seals before inference; restores invalidate receipts with checked WAL checkpoint/close. Migration, lifecycle and restore verification:63 targeted tests, Ruff, mypy and review pass. See slices/assessment-ownership-design.md. No recovery endpoint enabled; live backend restart/migration activation remains pending. Next: conservative classification and explicit prepared continuation.
+
+
+## 2026-10-08 — Explicit prepared assessment continuation
+Verified pre-inference submissions can be continued explicitly with their original answer/identity; uncertain requests remain blocked.40 backend checks,24 UI tests,six desktop/narrow browser journeys, visual/keyboard/reflow, lint/types/build and review pass. Live backend gracefully restarted; health and migration verified. See slices/assessment-prepared-continuation.md. Post-inference uncertainty, human acceptance and broader R3/R4 remain open.

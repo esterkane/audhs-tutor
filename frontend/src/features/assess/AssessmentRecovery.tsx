@@ -81,7 +81,7 @@ export function AssessmentRecovery({
       {recovery.error && (
         <>
           <p role="alert">{recovery.error}</p>
-          {!recovery.memoryOnly && (
+          {recovery.storageError && !recovery.memoryOnly && (
             <>
               <p>
                 If storage is blocked or damaged, earlier request identities may be unavailable. An earlier
@@ -152,6 +152,17 @@ export function AssessmentRecovery({
             <Button disabled={recovery.checking} onClick={() => void recovery.check()}>
               {recovery.checking ? 'Checking…' : 'Check saved result'}
             </Button>
+          )}
+          {lookup?.status === 'prepared_ready' && (
+            <>
+              <p role="status">
+                This submission stopped before a grade was saved. Continue grades your original answer;
+                your current edits will not be sent.
+              </p>
+              <Button disabled={recovery.checking} onClick={() => void recovery.continuePrepared()}>
+                {recovery.checking ? 'Continuing…' : 'Continue saved submission'}
+              </Button>
+            </>
           )}
           {lookup?.status === 'grade_ready' && (
             <>

@@ -15,6 +15,13 @@ from app.db.models import WorkspaceRequest
 from app.kernel.session import get_owned
 
 
+def request_fingerprint(payload: dict[str, Any]) -> str:
+    """Canonical immutable intent identity, shared by creation and explicit recovery."""
+    return hashlib.sha256(
+        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
+    ).hexdigest()
+
+
 async def claim(
     db: AsyncSession,
     learner_id: str,
@@ -77,9 +84,7 @@ async def _claim_locked(
         # The caller may have loaded this ORM object before another request ended
         # the session. Re-read it under the write lock, not from the identity map.
         await db.refresh(session)
-    fingerprint = hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
-    ).hexdigest()
+    fingerprint = request_fingerprint(payload)
     existing = await db.scalar(
         select(WorkspaceRequest).where(
             WorkspaceRequest.learner_id == learner_id, WorkspaceRequest.request_key == key

@@ -772,6 +772,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/assess/requests/{request_id}/continue': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Continue Request */
+    post: operations['continue_request_api_assess_requests__request_id__continue_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/items/{item_id}': {
     parameters: {
       query?: never
@@ -2590,7 +2607,7 @@ export interface components {
        * Status
        * @enum {string}
        */
-      status: 'not_found' | 'unresolved' | 'grade_ready' | 'completed'
+      status: 'not_found' | 'unresolved' | 'prepared_ready' | 'grade_ready' | 'completed'
       result?: components['schemas']['AttemptResult'] | null
       saved_grade?: components['schemas']['GradeResult'] | null
     }
@@ -6996,6 +7013,39 @@ export interface operations {
     }
   }
   finish_request_api_assess_requests__request_id__finish_post: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        request_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AttemptResult']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  continue_request_api_assess_requests__request_id__continue_post: {
     parameters: {
       query: {
         session_id: string

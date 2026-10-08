@@ -22,9 +22,11 @@ function recovery(): Recovery {
     lookup: null,
     checking: false,
     memoryOnly: false,
+    storageError: false,
     check: vi.fn(),
     resend: vi.fn(),
     finish: vi.fn(),
+    continuePrepared: vi.fn(),
     clear: vi.fn(),
     reload: vi.fn(),
     continueInMemory: vi.fn(),
@@ -107,4 +109,18 @@ it('offers explicit saving of a staged grade without a new submission', () => {
   expect(state.finish).toHaveBeenCalledOnce()
   expect(state.resend).not.toHaveBeenCalled()
   expect(state.clear).not.toHaveBeenCalled()
+})
+
+
+it('offers explicit continuation only for verified prepared work', () => {
+  const state = recovery()
+  state.stale = false
+  state.lookup = { status: 'prepared_ready', result: null }
+  state.error = 'Request interrupted; check its result.'
+  render(<AssessmentRecovery recovery={state} />)
+  expect(screen.getByText(/your current edits will not be sent/)).toBeVisible()
+  expect(screen.queryByText(/If storage is blocked/)).not.toBeInTheDocument()
+  expect(state.continuePrepared).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Continue saved submission' }))
+  expect(state.continuePrepared).toHaveBeenCalledTimes(1)
 })

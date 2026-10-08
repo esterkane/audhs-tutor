@@ -308,7 +308,7 @@ async def test_cleanup_failure_preserves_original_exception(client, db, monkeypa
     found = await client.get(
         f"/api/assess/requests/{KEY}", params={"session_id": body["session_id"]}
     )
-    assert found.json()["status"] == "unresolved"
+    assert found.json()["status"] == "prepared_ready"
 
 
 async def test_learning_commit_acknowledgement_loss_is_not_released(client, db, monkeypatch):

@@ -147,3 +147,24 @@ async def mark_completed(db: AsyncSession, learner_id: str, claim_id: str) -> No
     row.phase = "completed"
     row.updated_at = utcnow_iso()
     await db.flush()
+
+
+async def lock_prepared(
+    db: AsyncSession, learner_id: str, claim_id: str, owner_json: dict[str, Any]
+) -> tuple[WorkspaceRequest, AssessmentExecution]:
+    """Recheck under a short write lock while caller holds verified external ownership.
+
+    Caller validates session/request/content and commits or rolls back before inference.
+    This never changes execution phase or creates a missing claim.
+    """
+    claim = await _lock(db, learner_id, claim_id)
+    row = await get_owned(db, learner_id, claim_id)
+    if (
+        row is None
+        or row.schema_version != 1
+        or row.phase != "prepared"
+        or row.owner_json != owner_json
+        or claim.response_json is not None
+    ):
+        raise _conflict()
+    return claim, row

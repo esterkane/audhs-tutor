@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 
 class AssessmentRequestState(BaseModel):
-    status: Literal["not_found", "unresolved", "grade_ready", "completed"]
+    status: Literal["not_found", "unresolved", "prepared_ready", "grade_ready", "completed"]
     result: AttemptResult | None = None
     saved_grade: GradeResult | None = None
 
@@ -117,7 +117,13 @@ async def lookup(
         if execution and execution.phase == "grade_ready" and execution.schema_version == 1:
             staged = StagedGrade.model_validate(execution.grade_json)
             return AssessmentRequestState(status="grade_ready", saved_grade=staged.result)
-        return AssessmentRequestState(status="unresolved")
+        try:
+            guard, _ = await _acquire_prepared(db, learner_id, session_id, row)
+        except (AppError, OwnershipUnavailable, OSError, ValueError):
+            return AssessmentRequestState(status="unresolved")
+        else:
+            guard.close()
+            return AssessmentRequestState(status="prepared_ready")
     return AssessmentRequestState(
         status="completed",
         result=await recovered_result(db, learner_id, row.response_json, recovery),
@@ -217,3 +223,105 @@ async def finish(
         rubric_version=staged.rubric_version,
         now=staged.graded_at,
     )
+
+
+async def _acquire_prepared(
+    db: AsyncSession, learner_id: str, session_id: str, claim: WorkspaceRequest
+) -> tuple[AssessmentGuard, AttemptRequest]:
+    """Conservative preflight shared by lookup and explicit continuation; no inference."""
+    row = await assessment_executions.get_owned(db, learner_id, claim.id)
+    if (
+        row is None
+        or row.schema_version != 1
+        or row.phase != "prepared"
+        or not isinstance(row.owner_json, dict)
+    ):
+        raise OwnershipUnavailable("No prepared ownership proof")
+    receipt, claim_id = dict(row.owner_json), claim.id
+    url = db.get_bind().engine.url
+    if (
+        url.get_backend_name() != "sqlite"
+        or not url.database
+        or url.database == ":memory:"
+        or url.query
+    ):
+        raise OwnershipUnavailable("No local ownership proof")
+    await db.commit()  # No stale read snapshot or long transaction around lock acquisition.
+    guard = AssessmentGuard.acquire_prepared(Path(url.database), claim_id, receipt)
+    if guard is None:
+        raise OwnershipUnavailable("Submission is still owned")
+    try:
+        claim, row = await assessment_executions.lock_prepared(db, learner_id, claim_id, receipt)
+        body = AttemptRequest.model_validate(row.request_json)
+        if claim.session_id != session_id or body.session_id != session_id:
+            raise AppError("request_conflict", "The saved request belongs to another session.", 409)
+        payload = body.model_dump(mode="json")
+        if body.content_version is None:
+            payload.pop("content_version", None)
+        if workspace_requests.request_fingerprint(payload) != claim.fingerprint:
+            raise AppError("request_conflict", "The saved answer cannot be verified.", 409)
+        session = await get_owned(db, session_id, learner_id)
+        await db.refresh(session)
+        if session.ended_at:
+            raise AppError(
+                "request_unresolved", "This session has ended. Your original answer is kept.", 409
+            )
+        content = await assessment_content.snapshot(db, body.assessment_id)
+        if assessment_content.recovery_fingerprint(content) != row.content_fingerprint:
+            raise AppError(
+                "request_unresolved", "The question changed. Your original answer is kept.", 409
+            )
+        # Process-bound public tokens can rotate. Only verified stable private content
+        # permits refreshing the in-memory token; original durable intent is untouched.
+        body = body.model_copy(update={"content_version": assessment_content.token(content)})
+        await db.commit()
+        return guard, body
+    except BaseException:
+        try:
+            await db.rollback()
+        finally:
+            guard.close()
+        raise
+
+
+async def continue_prepared(
+    db: AsyncSession,
+    gateway: ModelGateway,
+    learner_id: str,
+    session_id: str,
+    identity: str,
+    recovery: AnswerRecovery,
+) -> AttemptResult:
+    """Explicit owner action; never resend ambiguous or already-started inference."""
+    await get_owned(db, session_id, learner_id)
+    claim = await db.scalar(
+        select(WorkspaceRequest).where(
+            WorkspaceRequest.learner_id == learner_id,
+            WorkspaceRequest.session_id == session_id,
+            WorkspaceRequest.request_key == request_key(identity),
+        )
+    )
+    if claim is None:
+        raise AppError("not_found", "Assessment request not found.", 404)
+    if claim.response_json is not None:
+        return await recovered_result(db, learner_id, claim.response_json, recovery)
+    try:
+        guard, body = await _acquire_prepared(db, learner_id, session_id, claim)
+    except (OwnershipUnavailable, OSError, ValueError) as error:
+        raise AppError(
+            "request_unresolved",
+            "This submission cannot safely continue. Check its saved result; your answer is kept.",
+            409,
+        ) from error
+    try:
+        return await Grader(
+            db,
+            gateway,
+            recovery=recovery,
+            request_claim_id=claim.id,
+            execution=AssessmentExecution(guard=guard, prepared_continuation=True),
+        ).grade(body)
+    finally:
+        # Even pre-inference failure retains the original claim and answer. Only an
+        # explicit later continuation may run it; normal submit still returns409.
+        guard.close()

@@ -294,9 +294,10 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
     }
   }
 
-  async function finish() {
+  async function finish(action: 'finish' | 'continue' = 'finish') {
     const pending = stored.pending
-    if (!pending || lookup?.status !== 'grade_ready' || operation.current) return
+    const expected = action === 'continue' ? 'prepared_ready' : 'grade_ready'
+    if (!pending || lookup?.status !== expected || operation.current) return
     setChecking(true)
     setError('')
     try {
@@ -304,7 +305,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
         throw new Error('Recovery information changed. Reload it before saving.')
       const result = await bounded((signal) =>
         apiFetch<AttemptResult>(
-          `/api/assess/requests/${pending.id}/finish?session_id=${encodeURIComponent(sessionId)}`,
+          `/api/assess/requests/${pending.id}/${action}?session_id=${encodeURIComponent(sessionId)}`,
           { method: 'POST', signal },
         ),
       )
@@ -312,6 +313,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
         throw new Error('The saved feedback belongs to another assessment.')
       setLookup({ status: 'completed', result })
     } catch (cause) {
+      if (action === 'continue' && activeKey.current === key) setLookup(null)
       // Content changes here do not prove the answer was never graded. Retain
       // the original identity and staged result rather than enabling regrading.
       if (activeKey.current === key) setError((cause as Error).message)
@@ -338,11 +340,13 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
       },
       stale: stored.pending?.rejectedContent === true,
       error: error || stored.error,
+      storageError: Boolean(stored.error),
       lookup,
       checking: checking || mutation.isPending,
       check,
       resend,
-      finish,
+      finish: () => finish(),
+      continuePrepared: () => finish('continue'),
       clear,
       reload: () => setStored(load(sessionId)),
       memoryOnly: pageMemory.has(sessionId),

@@ -350,7 +350,7 @@ class Grader:
         question_snapshot["content_version"] = assessment_content.token(content)
         # Close all reads before inference; gateway accounting owns its short transactions.
         await db.commit()
-        if self.request_claim_id is not None:
+        if self.request_claim_id is not None and not self.execution.prepared_continuation:
             await assessment_executions.prepare(
                 db,
                 learner_id,

@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 import { API, endOpenSession, expectOk, freshDeterministicSkill } from './helpers'
 
+for (const recoveryState of ['grade_ready', 'prepared_ready'] as const) {
 for (const narrow of [false, true]) {
-  test(`interrupted assessment recovery ${narrow ? 'narrow' : 'desktop'}`, async ({ page, request }) => {
+  test(`interrupted assessment ${recoveryState} recovery ${narrow ? 'narrow' : 'desktop'}`, async ({ page, request }) => {
     await endOpenSession(request)
     try {
       await request.put(`${API}/api/preferences`, { data: { key: 'goal.area', value: '' } })
@@ -37,19 +38,24 @@ for (const narrow of [false, true]) {
       await page.reload()
       const lookup = page.getByRole('button', { name: 'Check saved result', exact: true })
       await expect(lookup).toBeVisible()
-      // Exercise the staged-result UI using a simulated lookup. The real finish
-      // endpoint replays the already committed result; backend tests separately
-      // inject interruption before evidence writes and verify staged application.
+      // Exercise both recovery presentations using a simulated lookup. The real
+      // endpoint replays an already committed result; backend tests separately
+      // prove hard-exit eligibility and exact-once application on continuation.
       await page.route('**/api/assess/requests/**', async (route) => {
         if (route.request().method() === 'GET')
-          await route.fulfill({ json: { status: 'grade_ready', result: null } })
+          await route.fulfill({ json: { status: recoveryState, result: null } })
         else await route.continue()
       })
       await lookup.focus()
       await page.keyboard.press('Enter')
-      const finish = page.getByRole('button', { name: 'Finish saving this result', exact: true })
+      const finish = page.getByRole('button', { name: recoveryState === 'prepared_ready' ? 'Continue saved submission' : 'Finish saving this result', exact: true })
       await expect(finish).toBeVisible()
-      await finish.focus()
+      await page.keyboard.press('Tab')
+      await expect(finish).toBeFocused()
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true)
+      if (recoveryState === 'prepared_ready') {
+        await page.getByRole('region', { name: 'Submission recovery' }).screenshot({ path: `/tmp/assessment-continue-${narrow ? 'narrow' : 'desktop'}.png` })
+      }
       await page.keyboard.press('Enter')
       await expect(page.getByRole('heading', { name: 'Feedback on the original submission' })).toBeVisible()
       await expect(page.getByRole('link', { name: 'Open saved feedback', exact: true })).toBeVisible()
@@ -58,4 +64,6 @@ for (const narrow of [false, true]) {
       await endOpenSession(request)
     }
   })
+}
+
 }

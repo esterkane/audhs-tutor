@@ -111,3 +111,17 @@ async def finish_request(
         str(request_id),
         request.app.state.answer_recovery,
     )
+
+
+@router.post("/requests/{request_id}/continue", response_model=AttemptResult)
+async def continue_request(
+    request_id: UUID,
+    session_id: str,
+    db: DB,
+    gateway: Gateway,
+    learner: Learner,
+    request: Request,
+) -> AttemptResult:
+    return await assessment_requests.continue_prepared(
+        db, gateway, learner.id, session_id, str(request_id), request.app.state.answer_recovery
+    )
