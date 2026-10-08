@@ -1,3 +1,4 @@
+import { ExcludedQuestions } from '../features/questions/QuestionPractice'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -166,6 +167,7 @@ export function Preferences() {
           Back
         </Button>
       </Card>
+      <ExcludedQuestions />
       <AdaptationLog />
     </div>
   )

@@ -1,3 +1,4 @@
+import { QuestionPractice } from '../features/questions/QuestionPractice'
 import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
 import { useCheckedQuestion } from '../features/assess/useCheckedQuestion'
 import { RememberContext } from '../features/recent/RememberContext'
@@ -937,6 +938,7 @@ function AssessPanel({
   if (candidate && frozenItem?.round !== round) setFrozenItem({ round, item: candidate })
   const item = refreshedItem ?? (frozenItem?.round === round ? frozenItem.item : candidate)
   const [previousChoice, setPreviousChoice] = useState('')
+  const [practiceChanged, setPracticeChanged] = useState<string | null>(null)
   const displayedItem = useRef(item)
   useLayoutEffect(() => {
     displayedItem.current = item
@@ -985,6 +987,7 @@ function AssessPanel({
 
   function nextItem() {
     if (!checked.clear()) return
+    setPracticeChanged(null)
     setRefreshedItem(null)
     setPreviousChoice('')
     setStartedAt(Date.now())
@@ -1059,7 +1062,8 @@ function AssessPanel({
     return (
       <Card>
         {recoveryPanel}
-        <p>No assessment items for this skill yet.</p>
+        <p>No available questions for this skill.</p>
+        <p className="mt-2"><Link to="/preferences#excluded-questions">Manage excluded questions</Link></p>
         <Button onClick={onBack}>Back to explanation</Button>
       </Card>
     )
@@ -1098,6 +1102,11 @@ function AssessPanel({
           </p>
         )}
         <QuestionFeedback key={`feedback:${item.id}`} target={{ assessment_id: item.id }} />
+        <QuestionPractice assessmentId={item.id} onChanged={(id) => setPracticeChanged(id)} />
+        {!result && practiceChanged === item.id && <div className="mt-3">
+          <p role="status">Question choice changed. Your answer draft is kept. Choose another question to continue.</p>
+          <Button onClick={nextItem}>Choose another question</Button>
+        </div>}
         {!result && (
           <>
             {item.kind === 'mcq' && item.options ? (
@@ -1133,7 +1142,7 @@ function AssessPanel({
               <Button
                 variant="primary"
                 onClick={() => void submit()}
-                disabled={!currentAnswer.trim() || attempt.isPending}
+                disabled={!currentAnswer.trim() || attempt.isPending || practiceChanged === item.id}
               >
                 {attempt.isPending ? 'Checking your answer…' : 'Check my answer'}
               </Button>

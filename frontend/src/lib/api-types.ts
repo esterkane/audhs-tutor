@@ -789,6 +789,41 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/questions/excluded': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Your excluded questions and restoration options */
+    get: operations['excluded_api_questions_excluded_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/questions/{assessment_id}/practice': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Preview question eligibility and affected review cards */
+    get: operations['practice_api_questions__assessment_id__practice_get']
+    put?: never
+    /** Explicitly suspend or restore one question for yourself */
+    post: operations['change_api_questions__assessment_id__practice_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/items/{item_id}': {
     parameters: {
       query?: never
@@ -3342,6 +3377,17 @@ export interface components {
       /** As Of */
       as_of: string
     }
+    /** ExcludedQuestions */
+    ExcludedQuestions: {
+      /** Items */
+      items: components['schemas']['QuestionPracticeView'][]
+      /** Total */
+      total: number
+      /** Offset */
+      offset: number
+      /** Limit */
+      limit: number
+    }
     /** ExerciseView */
     ExerciseView: {
       /** Content Version */
@@ -4646,6 +4692,53 @@ export interface components {
       new_object_versions: number
       /** Assessments */
       assessments: number
+    }
+    /** QuestionPracticeView */
+    QuestionPracticeView: {
+      status: components['schemas']['QuestionStateOut']
+      /** Skill Title */
+      skill_title: string
+      /** Question */
+      question: string
+      /** Affected Reviews */
+      affected_reviews: number
+    }
+    /** QuestionStateOut */
+    QuestionStateOut: {
+      /** Assessment Id */
+      assessment_id: string
+      /**
+       * State
+       * @enum {string}
+       */
+      state: 'active' | 'suspended' | 'superseded' | 'retired'
+      /** Revision */
+      revision: number
+      /**
+       * Reason
+       * @default
+       */
+      reason: string
+    }
+    /** QuestionTransitionIn */
+    QuestionTransitionIn: {
+      /**
+       * Request Id
+       * Format: uuid
+       */
+      request_id: string
+      /** Expected Revision */
+      expected_revision: number
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: 'suspend' | 'restore'
+      /**
+       * Reason
+       * @default
+       */
+      reason: string
     }
     /** ReadinessOut */
     ReadinessOut: {
@@ -7072,6 +7165,104 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AttemptResult']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  excluded_api_questions_excluded_get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ExcludedQuestions']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  practice_api_questions__assessment_id__practice_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        assessment_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['QuestionPracticeView']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  change_api_questions__assessment_id__practice_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        assessment_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['QuestionTransitionIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['QuestionStateOut']
         }
       }
       /** @description Validation Error */

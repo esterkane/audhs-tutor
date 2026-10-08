@@ -1386,3 +1386,7 @@ Learner state/revision now binds assessment views, new grading, prepared continu
 
 ## 2026-10-08 — Selection and canonical generation eligibility
 Ordinary/challenge selection and session-end recall respect exclusions; canonical code/listening items are not recreated. Hints/solutions/validation are guarded; excluded linked checks preserve code workspace access. Full backend967, focused21, Ruff/mypy and bounded review pass. See slices/question-selection-eligibility.md. Next: explicit suspend/restore API/UI with impact preview and accessible restoration discovery; live migration and browser acceptance remain pending.
+
+
+## 2026-10-08 — Explicit question practice controls
+Ordinary lesson questions now offer impact preview and explicit exclusion/restoration, with paginated discovery in Preferences. Uncertain retries retain identity; stale choices require rereading; answers/history remain. Full backend969/frontend553, final13 UI checks, two real desktop/narrow keyboard/reload journeys, lint/types/build and review pass. Live migration6b53cfd352a8 and backend health verified after private backup; no live questions were excluded. See slices/question-practice-controls.md. Remaining R5: dedicated controls on other surfaces, correction inbox and reviewed replacement/publication; human accessibility acceptance stays open.
