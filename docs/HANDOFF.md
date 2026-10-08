@@ -1445,3 +1445,5 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-08: Reconciled stale task descriptions: C5 panel and R5 publication already implemented. Added2 long-result search keyboard/reflow journeys with320/1280px and200% root text; both pass, screenshots inspected and lint passes. See CURRENT-WORK.md and slices/recent-contexts.md. Actual browser zoom and human comprehension remain distinct open gates.
+
+2026-10-08: CI repair: import recovery now validates a random v2 ownership marker in addition to inode identity; legacy/missing/replaced proof stays unknown.60 ingest and32 focused checks,2 resume browser journeys, Ruff/mypy and review pass. Browser fixtures now remove synthetic publication content and restore prior Home defaults;12 ordered regression journeys and focused ESLint pass. No grading/mastery changes. See slices/import-ownership-marker.md. Remote full CI pending.

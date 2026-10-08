@@ -10,7 +10,7 @@ from app.db.base import utcnow_iso
 from app.db.models import IngestRun
 from app.knowledge.ingest.ownership import OwnershipUnavailable, RunOwnership
 
-OWNER_KEY = "_local_owner_v1"
+OWNER_KEY = "_local_owner_v2"
 
 
 def database_path(db: AsyncSession) -> Path:
@@ -34,7 +34,7 @@ def acquire_new_owner(db: AsyncSession, run_id: str) -> RunOwnership | None:
 
 
 def owner_marker(owner: RunOwnership | None) -> dict[str, Any]:
-    return {OWNER_KEY: list(owner.identity)} if owner is not None else {}
+    return {OWNER_KEY: [*owner.identity, owner.nonce]} if owner is not None else {}
 
 
 async def reconcile_abandoned_runs(factory: async_sessionmaker[AsyncSession]) -> int:
@@ -60,12 +60,15 @@ async def reconcile_abandoned_runs(factory: async_sessionmaker[AsyncSession]) ->
         marker = options.get(OWNER_KEY)
         if (
             not isinstance(marker, list)
-            or len(marker) != 2
-            or any(type(v) is not int for v in marker)
+            or len(marker) != 3
+            or any(type(v) is not int for v in marker[:2])
+            or not isinstance(marker[2], str)
         ):
             continue
         try:
-            owner = RunOwnership.acquire(path, run_id, expected=(marker[0], marker[1]))
+            owner = RunOwnership.acquire(
+                path, run_id, expected=(marker[0], marker[1]), expected_nonce=marker[2]
+            )
         except OwnershipUnavailable:
             continue
         if owner is None:

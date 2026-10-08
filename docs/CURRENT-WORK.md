@@ -194,3 +194,5 @@ Captured material, unapplied edits and one previous capture now survive route ch
 
 
 2026-10-08: Three real-API correction publication integration tests now verify report resolution, old-receipt replay, due-card exclusion, six learning tables retained and linked code-check redirection with persisted exercise unchanged. Final3 tests/Ruff pass; review findings fixed. See slices/correction-publication-ui.md. No runtime delta; human/reversal and unsupported-kind gates remain.
+
+2026-10-08: CI repair: import recovery now validates a random v2 ownership marker in addition to inode identity; legacy/missing/replaced proof stays unknown.60 ingest and32 focused checks,2 resume browser journeys, Ruff/mypy and review pass. Browser fixtures now remove synthetic publication content and restore prior Home defaults;12 ordered regression journeys and focused ESLint pass. No grading/mastery changes. See slices/import-ownership-marker.md. Remote full CI pending.

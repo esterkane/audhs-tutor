@@ -1,6 +1,19 @@
 import { expect, test } from '@playwright/test'
 import { API, endOpenSession } from './helpers'
 
+// Preferences live in the shared sandbox, not in Playwright's fresh browser context.
+let previousMode: string
+test.beforeEach(async ({ request }) => {
+  const response = await request.get(`${API}/api/preferences`)
+  expect(response.ok()).toBe(true)
+  previousMode = (await response.json()).values['session.default_mode']
+})
+test.afterEach(async ({ request }) => {
+  expect((await request.put(`${API}/api/preferences`, {
+    data: { key: 'session.default_mode', value: previousMode },
+  })).ok()).toBe(true)
+})
+
 for (const width of [390, 1280]) {
   test(`an explicit Home mode wins over delayed preferences at ${width}`, async ({ page, request }, info) => {
     await endOpenSession(request)

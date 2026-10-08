@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import os
 import re
+import secrets
 import stat
 from pathlib import Path
 from types import TracebackType
@@ -28,9 +29,10 @@ class OwnershipUnavailable(RuntimeError):
 class LocalOwnership:
     """Exclusive, nonblocking per-run lock. Use as a context manager; never delete its file."""
 
-    def __init__(self, fd: int, identity: tuple[int, int]) -> None:
+    def __init__(self, fd: int, identity: tuple[int, int], nonce: str | None = None) -> None:
         self._fd: int | None = fd
         self.identity = identity
+        self.nonce = nonce
 
     @classmethod
     def acquire(
@@ -41,6 +43,7 @@ class LocalOwnership:
         namespace: Literal["ingest", "assessment"] = "ingest",
         create: bool = False,
         expected: tuple[int, int] | None = None,
+        expected_nonce: str | None = None,
     ) -> LocalOwnership | None:
         """Return a held lock, None if busy, or raise when proof is unavailable.
 
@@ -58,6 +61,15 @@ class LocalOwnership:
             raise OwnershipUnavailable("Invalid operation identity")
         if (create and expected is not None) or (not create and expected is None):
             raise OwnershipUnavailable("Recovery requires the original lock identity")
+        if (
+            namespace == "ingest"
+            and not create
+            and (
+                not isinstance(expected_nonce, str)
+                or re.fullmatch(r"[0-9a-f]{32}", expected_nonce) is None
+            )
+        ):
+            raise OwnershipUnavailable("Recovery requires the original import marker")
         directory_fd: int | None = None
         file_fd: int | None = None
         try:
@@ -97,7 +109,18 @@ class LocalOwnership:
             current = os.stat(run_id, dir_fd=directory_fd, follow_symlinks=False)
             if (current.st_dev, current.st_ino) != (metadata.st_dev, metadata.st_ino):
                 raise OwnershipUnavailable("Operation lock identity changed")
-            owned = cls(file_fd, identity)
+            nonce = None
+            if namespace == "ingest":
+                nonce = secrets.token_hex(16) if create else expected_nonce
+                assert nonce is not None
+                marker = b"ingest-v2:" + nonce.encode("ascii") + b"\n"
+                if create:
+                    if os.write(file_fd, marker) != len(marker):
+                        raise OwnershipUnavailable("Incomplete import ownership marker")
+                    os.fsync(file_fd)
+                elif os.pread(file_fd, len(marker) + 1, 0) != marker:
+                    raise OwnershipUnavailable("Import ownership marker was replaced")
+            owned = cls(file_fd, identity, nonce)
             file_fd = None  # ownership passes to the context manager
             return owned
         except OSError as error:

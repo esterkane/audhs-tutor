@@ -114,7 +114,13 @@ async def test_legacy_and_malformed_ownership_remain_unknown(
     db: AsyncSession,
     session_factory: async_sessionmaker[AsyncSession],
 ) -> None:
-    for options in ({}, {OWNER_KEY: [True, 1]}, {OWNER_KEY: [1]}, {OWNER_KEY: [1, 2]}):
+    for options in (
+        {},
+        {"_local_owner_v1": [1, 2]},
+        {OWNER_KEY: [True, 1]},
+        {OWNER_KEY: [1]},
+        {OWNER_KEY: [1, 2]},
+    ):
         db.add(IngestRun(src="/synthetic", status="running", options_json=options))
     await db.commit()
     assert await reconcile_abandoned_runs(session_factory) == 0
@@ -126,7 +132,7 @@ async def test_legacy_and_malformed_ownership_remain_unknown(
                 IngestRun.status == "running",
             )
         )
-    ).scalar_one() == 4
+    ).scalar_one() == 5
 
 
 async def test_two_resumes_create_only_one_continuation(
