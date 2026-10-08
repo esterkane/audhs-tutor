@@ -1442,3 +1442,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-08: Three real-API correction publication integration tests now verify report resolution, old-receipt replay, due-card exclusion, six learning tables retained and linked code-check redirection with persisted exercise unchanged. Final3 tests/Ruff pass; review findings fixed. See slices/correction-publication-ui.md. No runtime delta; human/reversal and unsupported-kind gates remain.
+
+
+2026-10-08: Reconciled stale task descriptions: C5 panel and R5 publication already implemented. Added2 long-result search keyboard/reflow journeys with320/1280px and200% root text; both pass, screenshots inspected and lint passes. See CURRENT-WORK.md and slices/recent-contexts.md. Actual browser zoom and human comprehension remain distinct open gates.

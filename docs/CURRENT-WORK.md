@@ -1,5 +1,11 @@
 # Current work and next acceptance gates
 
+## Verified status reconciliation — 2026-10-08
+
+Read this before older next-step notes. Persistent desktop tutor panel and narrow modal sheet are implemented (slices/companion-panel.md); skill search and category links also exist in routes/Search.tsx. Do not schedule their implementation again. R5 report inbox, correction editor, source/impact preview and explicit publication/recovery are implemented, with preserved-history integration evidence in slices/correction-publication-ui.md. Remaining R5: human acceptance, explicit reversal policy and independently verified code/listening correction support.
+
+The next UX acceptance work is actual browser zoom/assistive-technology and human re-entry/comprehension. Search long-result keyboard/reflow acceptance now has a bounded 320/1280px, 200% root-text check; that is not browser zoom or proof of low cognitive effort. Notes/notebook indexing requires its privacy/version contract first. Existing latency and material-coverage gaps remain active. Earlier “persistent tutor not built” and “correction publication unavailable” statements are historical.
+
 ## Current execution checklist — 2026-10-05
 
 This checklist supersedes older “next” instructions below; those paragraphs are dated history, not parallel work orders. The broad goal remains active. Keep the original archive private and the sanitized repository public (owner update2026-10-05) and preserve the independent acquisition worktree delta.

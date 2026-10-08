@@ -191,3 +191,39 @@ test('result group links move keyboard focus without repeating searches', async 
   expect(reads).toBe(before)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+for (const width of [320, 1280]) test(`long search results remain navigable with enlarged text ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  const writes: string[] = []
+  page.on('request', request => {
+    if (request.url().includes('/api/') && !['GET', 'OPTIONS'].includes(request.method()) && !request.url().endsWith('/corpus/search')) writes.push(request.url())
+  })
+  await page.route('**/api/answers?*', route => route.fulfill({ json: {
+    items: Array.from({ length: 8 }, (_, i) => ({ id: `long-${i}`, request_text: `Explanation ${i + 1}: ${'A long readable material title '.repeat(8)}`, preview: 'A detailed explanation with context. '.repeat(20) })), next_cursor: 'more',
+  } }))
+  await page.route('**/api/corpus/search', route => route.fulfill({ json: { hits: Array.from({ length: 8 }, (_, i) => ({
+    chunk_id: `long-source-${i}`, citation: `Source ${i + 1}: ${'evidence-'.repeat(30)}`, source_type: 'text', text: 'Source detail. '.repeat(40), flagged: [], quarantined: false,
+  })) } }))
+  await page.route('**/api/curriculum/chunks/long-source-0', route => route.fulfill({ json: {
+    chunk_id: 'long-source-0', citation: 'Long search source', text: 'The original source passage.', document_title: 'Synthetic source', source_type: 'text', trust_tier: 2, uri: 'synthetic.txt', open_url: null,
+  } }))
+  await page.goto('/search?q=evidence')
+  await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+  await expect(page.getByRole('link', { name: /^Explanation 8:/ })).toBeVisible()
+  const groups = page.getByRole('navigation', { name: 'Search result groups' })
+  await groups.getByRole('link', { name: 'Indexed sources' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'Indexed sources', exact: true })).toBeFocused()
+  await page.keyboard.press('Tab')
+  const source = page.getByRole('link', { name: /^Source 1:/ })
+  await expect(source).toBeFocused()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  await page.screenshot({ path: `/tmp/search-long-${width}.png`, fullPage: false })
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('The original source passage.')).toBeVisible()
+  await page.goBack()
+  await expect(page.getByRole('searchbox', { name: 'Search phrase' })).toHaveValue('evidence')
+  await expect(page.getByRole('heading', { name: 'Indexed sources', exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
+  expect(writes).toEqual([])
+})
