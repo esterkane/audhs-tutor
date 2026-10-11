@@ -28,6 +28,14 @@ for (const width of [320, 390, 1280]) test(`lesson leads before optional tools $
     const start = page.getByRole('button', { name: 'Start explanation', exact: true })
     const tools = page.locator('summary').filter({ hasText: /^Work alongside$/ })
     let startBox = await start.boundingBox()
+    const planSettings = page.locator('summary').filter({ hasText: /^Session plan and energy settings$/ })
+    expect((await planSettings.boundingBox())!.y).toBeGreaterThan(startBox!.y)
+    await planSettings.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Energy 3', exact: true })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Energy 3', exact: true })).not.toBeVisible()
+
     expect(startBox!.height).toBeGreaterThanOrEqual(44)
     const standardVisual = await start.evaluate(el => {
       const style = getComputedStyle(el, '::before')

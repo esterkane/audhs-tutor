@@ -388,3 +388,15 @@ cases, focused lint/types and bounded reviews pass; compositor screenshots inspe
 No runtime/learning changes. Full-platform zoom, human/AT acceptance remain open;
 DL-02 orientation density remains visible at narrow width. See
 docs/ux/DAILY-LEARNING-ACCEPTANCE.md (Real Chromium browser zoom). Both repos private.
+
+
+2026-10-11 DL-02 bounded ordering improvement: Session plan and energy settings
+now follows the active activity rather than preceding the explanation. Existing
+controls, handlers, Focus visibility and learning owners remain unchanged; Pause,
+End and Focus stay above the activity. Six baseline and eight final browser journeys
+(320/390/1280, light/dark plus Focus) pass, including keyboard disclosure access.
+Ten Session tests, lint, types/production build and both reviews pass. Narrow
+390px screenshot inspected. Existing bundle warning remains. The initial narrow
+view still has substantial orientation content; DL-02 and human comprehension
+remain open. No pixel improvement claim is drawn from logs affected by focus
+scrolling. Logs: /tmp/lesson-order-{before,after,unit,build}.log.

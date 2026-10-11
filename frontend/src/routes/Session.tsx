@@ -358,36 +358,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             .
           </p>
         )}
-        <Disclosure data-focus-secondary className="mt-3" label="Session plan and energy settings">
-          <div className="mt-3">
-            <PlanStrip blocks={plan} current={blockIndex} firstStarted={st?.first_started_index} />
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
-              <span id="energy-now">Energy now:</span>
-              <div role="group" aria-labelledby="energy-now" className="flex gap-1">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <Button
-                    key={n}
-                    size="sm"
-                    pressed={data.energy === n}
-                    disabled={replan.isPending}
-                    aria-label={`Energy ${n}`}
-                    onClick={() => {
-                      if (n === data.energy) return
-                      setEnergy(n)
-                      void replan.mutateAsync({ session_id: sessionId, energy: n, from_index: blockIndex })
-                    }}
-                  >
-                    {n}
-                  </Button>
-                ))}
-              </div>
-              <span className="text-muted">
-                A change re-plans the remaining blocks as a suggestion, never silently; the review cap follows
-                your energy at once (undo: "Show all" on the review screen).
-              </span>
-            </div>
-          </div>
-        </Disclosure>
+
         {skill && phase === 'assess' && (
           <div className="mt-2 text-sm">
             <ReadAloud
@@ -472,6 +443,36 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
           onSkip={() => void finishBlock('skipped')}
         />
       )}
+        <Disclosure data-focus-secondary className="mt-3" label="Session plan and energy settings">
+          <div className="mt-3">
+            <PlanStrip blocks={plan} current={blockIndex} firstStarted={st?.first_started_index} />
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+              <span id="energy-now">Energy now:</span>
+              <div role="group" aria-labelledby="energy-now" className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <Button
+                    key={n}
+                    size="sm"
+                    pressed={data.energy === n}
+                    disabled={replan.isPending}
+                    aria-label={`Energy ${n}`}
+                    onClick={() => {
+                      if (n === data.energy) return
+                      setEnergy(n)
+                      void replan.mutateAsync({ session_id: sessionId, energy: n, from_index: blockIndex })
+                    }}
+                  >
+                    {n}
+                  </Button>
+                ))}
+              </div>
+              <span className="text-muted">
+                A change re-plans the remaining blocks as a suggestion, never silently; the review cap follows
+                your energy at once (undo: "Show all" on the review screen).
+              </span>
+            </div>
+          </div>
+        </Disclosure>
       {st?.block_started_at && (
         <SoftTimer
           key={st.block_id ?? String(blockIndex)}
