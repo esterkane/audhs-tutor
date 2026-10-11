@@ -1,3 +1,5 @@
+> Design authority update2026-10-11: follow [Complete design alignment](design/COMPLETE-DESIGN-ALIGNMENT.md). The new owner-supplied PDF consolidates the target; older conflicting prototype/rejection notes are historical. Pending lesson consolidation is partial adoption only.
+
 # Current work and next acceptance gates
 
 ## Verified status reconciliation — 2026-10-08

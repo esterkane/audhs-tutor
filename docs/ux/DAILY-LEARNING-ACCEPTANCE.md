@@ -194,3 +194,23 @@ AU-08 remains partial: effect timing, contextual return and owner comprehension 
 Two new390/1280 browser cases reproduced raw history.back leaving the app from direct Preferences entry. Preferences now uses router navigation to the previous in-app index when available, otherwise replaces the direct route with Home. No preferences/learning logic changes. Four direct-entry and existing keyboard-traversal journeys pass, including in-app return, no overflow and no preference writes in existing traversal. Focused ESLint passes; production build, visual evidence/review and paired publication remain to finalize. Logs:/tmp/preferences-direct-{before,after,build}.log.
 
 Final verification: production build passed;390/1280 screenshots inspected with readable controls/focus, bounded review clear. No layout change. Human comprehension and actual browser zoom remain separate open gates.
+
+## DL-02 current rendered baseline — 2026-10-11
+
+Read-only sandbox probe at390×900, seeded lesson with no model generation: Start
+explanation occupies y851.8–891.8px. Screenshot inspected: global header/navigation,
+visible session exits, learning goal and its idle audio controls precede explanation.
+This is a different fixture from the earlier1050px measurement, not evidence of a new
+runtime improvement. The first paragraph still starts below the viewport. Existing
+compact controls and disclosed plan remain; do not implement those again.
+
+Probe:/tmp/lesson-orientation-scratch.spec.ts; log:/tmp/lesson-orientation.log.
+No live learner data, audio, model or learning changes. Initial direct-route probe
+lacked the browser session store; final probe enters through Home Continue as a user
+would. One final journey passed. Temporary repository probe removed.
+
+Next bounded design decision: consolidate goal/orientation with the explanation entry
+while keeping Pause/End, learning objective, opt-in goal narration, accessible playback
+controls and the complete current explanation workflow. Inspect320/390/1280 using the
+same fixture before/after; verify keyboard focus/order, narration and session checkpoint.
+Do not claim usability improvement from pixels alone or hide active audio controls.

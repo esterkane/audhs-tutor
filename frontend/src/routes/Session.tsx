@@ -378,7 +378,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             </div>
           </div>
         </details>
-        {skill && (phase === 'teach' || phase === 'assess') && (
+        {skill && phase === 'assess' && (
           <div className="mt-2 text-sm">
             <h3 className="font-medium">Learning goal</h3>
             <p className="mt-1">{skill.description || skill.title}</p>
@@ -415,6 +415,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             hasQuestion={assessmentEntered}
             sessionId={sessionId}
             skillId={activeSkillId}
+            learningGoal={skill ? skill.description || skill.title : undefined}
             onCheck={() => changePhase('assess')}
             onHintLevel={setHintCount}
             onSwitchEarly={() => void finishBlock('switch_early')}
@@ -487,6 +488,7 @@ function TeachPanel({
   hasQuestion,
   sessionId,
   skillId,
+  learningGoal,
   onCheck,
   onHintLevel,
   onSwitchEarly,
@@ -495,6 +497,7 @@ function TeachPanel({
   hasQuestion: boolean
   sessionId: string
   skillId: string | null
+  learningGoal?: string
   onCheck: () => void
   onHintLevel: (n: number) => void
   onSwitchEarly: () => void
@@ -549,6 +552,10 @@ function TeachPanel({
     <>
       <Card>
         <CardTitle>Your explanation</CardTitle>
+        {learningGoal && <div className="text-sm mt-2">
+          <h3 className="font-medium">Learning goal</h3>
+          <p className="mt-1">{learningGoal}</p>
+        </div>}
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
             variant={done || alt ? 'secondary' : 'primary'}
@@ -625,6 +632,7 @@ function TeachPanel({
             Your draft is preserved. Shorten it to 4,000 characters before sending ({input.length} currently).
           </p>
         )}
+        {active && learningGoal && <ReadAloud key={skillId} text={learningGoal} label="Listen to learning goal" />}
         <TutorResponseStatus status={status} startedAt={startedAt} />
         {active && (
           <RequestRecoveryControls

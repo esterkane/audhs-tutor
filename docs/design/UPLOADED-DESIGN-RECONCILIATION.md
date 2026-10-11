@@ -1,3 +1,5 @@
+> Current authority (2026-10-11): the owner-supplied complete design-system PDF is the consolidated target. See [COMPLETE-DESIGN-ALIGNMENT.md](COMPLETE-DESIGN-ALIGNMENT.md) for inspected alignment, gaps and precedence over historical recommendations below.
+
 > Owner decision,2026-10-04: the uploaded design package is the authoritative design system. Prior prototype/defer language below is historical assessment, not authority to substitute the old appearance. See [source/README.md](source/README.md). Implement its visual/component direction in bounded slices, documenting specific accessibility, learning-state and offline-provenance conflicts.
 
 # Uploaded design kit reconciliation — 2026-10-04
