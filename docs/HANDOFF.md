@@ -1699,3 +1699,23 @@ nav height. A320x568 enlarged-text check confirms scrolled content remains above
 fixed bar; screenshot inspected alongside narrow layout. Lint/types/build and both
 reviews pass. Root text is not browser zoom; actual zoom, screen-reader and human
 acceptance remain open. Existing bundle-size warning remains.
+
+
+2026-10-11: Home Explore and Choose another topic now use learner/explore rather
+than preparation/areas; empty-area preparation links remain unchanged. Baseline
+Home journey reproduced a second defect: a delayed Quick review session response
+redirected to/review after clicking Explore. Browser entry identity and popstate guard
+now prevent completion overriding later navigation, including Back, before React
+necessarily unmounts Home. No kernel, grading or server lifecycle change. Already
+started requests may still finish server-side; the fix prevents unwanted navigation.
+Fifteen integrated Home/Explore/preparation browser checks and eight final Home checks
+pass, including keyboard320/1280, saved-lesson preservation, error/retry, duplicate
+start, delayed navigation and Back. Narrow screenshot inspected. Lint/types/build and
+code/pedagogy reviews pass. Remaining shared
+controls, actual browser zoom and human/AT acceptance stay open. Existing bundle-size
+warning remains. Public CI latest head remains queued behind an older browser run;
+not treated as a passing latest-head gate.
+
+2026-10-11 owner visibility update: both repositories verified PRIVATE via GitHub.
+Keep the sanitized and original variants separate, with all sanitation guards intact.
+Do not restore public visibility without a new explicit owner request.

@@ -56,6 +56,14 @@ function HomeOverview() {
 
   async function quickReview() {
     if (quickReviewPending.current || start.isPending || prefs.isPending || prefs.isError || setPref.isPending || skills.isFetching || skills.isError) return
+    // Browser history changes before React necessarily unmounts the previous route.
+    // A late completion must not override a newer navigation (including away and back).
+    const entryKey = window.history.state?.key
+    const entryUrl = window.location.href
+    let historyMoved = false
+    const onHistoryMove = () => { historyMoved = true }
+    window.addEventListener('popstate', onHistoryMove)
+    const stillHere = () => !historyMoved && homeActive.current && window.history.state?.key === entryKey && window.location.href === entryUrl
     quickReviewPending.current = true
     setQuickReviewBusy(true)
     setQuickReviewError('')
@@ -63,14 +71,15 @@ function HomeOverview() {
       const controller = new AbortController()
       quickReviewRead.current = controller
       const fresh = await boundedRead<SessionOut | null>('/api/sessions/current', controller.signal, 'Saved session')
-      if (!homeActive.current) return
+      if (!stillHere()) return
       const saved = fresh ?? await start.mutateAsync({ mode, energy, socratic })
-      if (!homeActive.current) return
+      if (!stillHere()) return
       setSession(saved.id, saved.state?.skill_id ?? null)
       nav('/review')
     } catch (error) {
       if (homeActive.current) setQuickReviewError(error instanceof Error ? error.message : 'Please try again.')
     } finally {
+      window.removeEventListener('popstate', onHistoryMove)
       quickReviewRead.current = null
       quickReviewPending.current = false
       if (homeActive.current) setQuickReviewBusy(false)
@@ -286,7 +295,7 @@ function HomeOverview() {
           </p>
         )}
         <p className="mt-3">
-          <Link to="/areas">Choose another topic</Link> ·{' '}
+          <Link to="/explore">Choose another topic</Link> ·{' '}
           <Link to="/programs">Return to project notebooks</Link>
         </p>
       </Card>
@@ -348,8 +357,8 @@ function HomeOverview() {
           <p className="text-sm text-muted mt-2">Choose a different concept. Review the choice before switching your saved session.</p>
         </Card>
         <Card>
-          <Button asChild><Link to="/areas">Explore</Link></Button>
-          <p className="text-sm text-muted mt-2">Browse knowledge areas and sources without starting a session.</p>
+          <Button asChild><Link to="/explore">Explore</Link></Button>
+          <p className="text-sm text-muted mt-2">Browse knowledge areas and available lessons without starting a session.</p>
         </Card>
       </section>
       {quickReviewError && <p role="alert">Could not open quick review: {quickReviewError} Your saved session has not been ended. Try Quick review again.</p>}

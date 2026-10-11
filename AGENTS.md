@@ -9,7 +9,7 @@ Before continuing, read the current checklist in `docs/CURRENT-WORK.md`, relevan
 For each bounded implementation slice, test it, record exact verification and outstanding work in the shared handoff/slice docs, and distinguish the new delta from inherited changes. Follow existing manual-only commit/ADR conventions. Do not mark a whole stage complete from a partial review.
 
 ## Owner visibility policy — 2026-10-01
-Owner update 2026-10-05: this sanitized repository is PUBLIC again. The separate original archive must remain PRIVATE. This supersedes earlier both-private instructions: preserve all publication guards and exclusions for databases, acquired materials, acquisition scripts, private configuration and credentials. Keep the separate private archive and its history distinct.
+Owner update 2026-10-11: this sanitized repository and the separate original archive must both remain PRIVATE for now. Only an explicit new owner request may make this repository public. This supersedes the earlier public-visibility instruction: preserve all publication guards and exclusions for databases, acquired materials, acquisition scripts, private configuration and credentials. Keep the separate private archive and its history distinct.
 
 
 ## Efficient execution — owner request 2026-10-05
