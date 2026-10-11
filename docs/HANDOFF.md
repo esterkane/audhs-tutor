@@ -1779,3 +1779,10 @@ inspected. Existing bundle-size warning remains. This reduces secondary controls
 before the activity but does not close DL-02: initial content density and human
 discoverability of End under Session options remain to assess. No learning changes.
 Logs: /tmp/session-options-{browser,unit,build}.log.
+
+
+2026-10-11: DL-02 consolidated orientation is specified in
+docs/design/LESSON-ORIENTATION-CONTRACT.md. Current duplication spans distinct
+state owners; no speculative remount/refactor was made. Next prototype the
+presentational composition against its draft/focus/mutation acceptance gates.
+This contract is not implementation or a human-usability pass.

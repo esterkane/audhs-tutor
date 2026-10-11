@@ -297,3 +297,10 @@ cases, focused lint/types and bounded reviews pass; compositor screenshots inspe
 No runtime/learning changes. Full-platform zoom, human/AT acceptance remain open;
 DL-02 orientation density remains visible at narrow width. See
 docs/ux/DAILY-LEARNING-ACCEPTANCE.md (Real Chromium browser zoom). Both repos private.
+
+
+2026-10-11: DL-02 consolidated orientation is specified in
+docs/design/LESSON-ORIENTATION-CONTRACT.md. Current duplication spans distinct
+state owners; no speculative remount/refactor was made. Next prototype the
+presentational composition against its draft/focus/mutation acceptance gates.
+This contract is not implementation or a human-usability pass.
