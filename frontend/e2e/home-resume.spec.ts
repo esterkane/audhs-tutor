@@ -8,7 +8,8 @@ for (const width of [390, 800, 1280]) {
         json: {
           id: 'fixture',
           active_skill: { id: 'topic', title: 'Comparing groups' },
-          state: { skill_id: 'topic', block_status: 'running', phase: 'review', plan_complete: false },
+          plan: [{ type: 'retrieval', planned_min: 10 }],
+          state: { block_index: 0, skill_id: 'topic', block_status: 'running', phase: 'review', plan_complete: false },
         },
       }),
     )
@@ -23,6 +24,9 @@ for (const width of [390, 800, 1280]) {
     await page.goto('/')
     const resume = page.getByRole('button', { name: /^Continue$/ })
     await expect(resume).toBeVisible()
+    await expect(page.getByText('Saved activity: Warm-up review · Review.')).toBeVisible()
+    await expect(page.getByText('Planned activity: about 10 min. This is the original plan, not time remaining.')).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
     await expect(page.getByText('Next: continue your saved review.')).toBeVisible()
     const options = page.getByText('Session options', { exact: true })
     await expect(options.locator('..')).not.toHaveAttribute('open')

@@ -1,3 +1,4 @@
+import { Disclosure } from '../../components/ui/disclosure'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { useMode } from '../../stores/mode'
@@ -15,13 +16,13 @@ const CHOICES: Array<{ decision: Decision; label: string; hint: string }> = [
 ]
 
 /** Proposal cards. The system never applies these on its own: one of four explicit choices. */
-export function AdaptationCards({ origin }: { origin?: 'planner' | 'observed_pattern' } = {}) {
+export function AdaptationCards({ origin, collapsed = false }: { origin?: 'planner' | 'observed_pattern'; collapsed?: boolean } = {}) {
   const pending = usePendingAdaptations()
   const { decide } = useAdaptationLog()
   const { sessionId } = useMode()
   const cards = (pending.data?.proposals ?? []).filter((c) => !origin || c.origin === origin)
   if (cards.length === 0) return null
-  return (
+  const content = (
     <div className="grid min-w-0 grid-cols-1 gap-3 [overflow-wrap:anywhere]" aria-label="Suggested adaptations">
       {cards.map((c) => (
         <Card key={c.id} className="min-w-0 border-accent">
@@ -57,6 +58,7 @@ export function AdaptationCards({ origin }: { origin?: 'planner' | 'observed_pat
       ))}
     </div>
   )
+  return collapsed ? <Disclosure label={`Optional learning adjustments (${cards.length})`}>{content}</Disclosure> : content
 }
 
 /** The log with undo, shown under Preferences. */

@@ -238,7 +238,7 @@ it('puts the actual running topic and next action before optional setup', async 
   expect(resume.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.getByText('Next: continue your saved review.')).toBeVisible()
   expect(setup.parentElement).not.toHaveAttribute('open')
-  expect(screen.getByRole('heading', { level: 1, name: 'Your next step' })).toBeVisible()
+  expect(screen.getByRole('heading', { level: 1, name: 'Home' })).toBeVisible()
 })
 
 it('does not offer a stale local session as a verified resume after a server failure', async () => {

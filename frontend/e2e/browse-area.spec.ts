@@ -26,7 +26,7 @@ for (const width of [390, 1280]) {
     await page.goto('/areas?area=python')
     await expect(page.getByText('Browse area · python', { exact: true })).toBeVisible()
     await page.getByRole('link', { name: 'Home', exact: true }).click()
-    await expect(page.getByRole('heading', { name: 'Your next step' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Home' })).toBeVisible()
     await page.getByText('Browse area · python', { exact: true }).focus()
     await page.keyboard.press('Enter')
     await page.getByRole('link', { name: 'Open this area', exact: true }).click()

@@ -1,3 +1,4 @@
+import { ResumeContext } from '../features/session/ResumeContext'
 import { RecentContexts } from '../features/recent/RecentContexts'
 import { HomeTopicPreparation } from '../features/areas/HomeTopicPreparation'
 import { SelectedLesson } from '../features/session/SelectedLesson'
@@ -257,11 +258,12 @@ function HomeOverview() {
   )
   return (
     <div className="grid grid-cols-1 min-w-0 gap-4">
-      <h1 className="text-2xl font-semibold">Your next step</h1>
+      <h1 className="text-page-title font-semibold">Home</h1>
       {resumable && <Card lift aria-label="Saved session">
         <CardTitle>Continue where you left off</CardTitle>
           <>
-            <p id="saved-session-topic" className="font-medium mt-2">{current.data?.active_skill?.title ?? 'Your saved session'}</p>
+            <p id="saved-session-topic" className="font-medium mt-2"><span className="text-muted">Last time: </span><span>{current.data?.active_skill && current.data.active_skill.id === current.data.state?.skill_id ? current.data?.active_skill?.title : 'Your saved session'}</span></p>
+            {current.data && <ResumeContext session={current.data} />}
             <p id="saved-session-next">
               {current.data?.state?.plan_complete
                 ? 'Next: review your session recap.'
@@ -304,7 +306,7 @@ function HomeOverview() {
         {newSessionCard}
       </details> : newSessionCard}
       <RecentContexts />
-      <AdaptationCards />
+      <AdaptationCards collapsed />
       <PromotedReminders />
       <details className="border border-line rounded-md p-3">
         <summary className="cursor-pointer">Saved material · clear / ask me later</summary>
@@ -396,7 +398,7 @@ function HomeOverview() {
         {nextSkill && (
           <p className="text-sm mt-2">
             Next up: <span className="font-medium">{nextSkill.title}</span>
-            {` — mastery ${Math.round((nextSkill.mastery ?? 0) * 100)}%, prerequisites met`}
+            {' — prerequisites met'}
             {scaffold ? ` · ${scaffold}` : ''}
           </p>
         )}
