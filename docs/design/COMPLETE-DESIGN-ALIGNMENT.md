@@ -144,3 +144,28 @@ resize/navigation; focus mode must retain its explicit exit. Verify idle/running
 failed stop, label undo, assessment drafts and stream continuity before publication.
 Activity index is not an invented lesson-step count. The current inline context
 remains until this complete responsive contract is implemented and verified.
+
+
+## Responsive context implementation — 2026-10-11
+
+The previous layout contract now has a bounded implementation: compact persisted
+concept/activity context stays with existing Pause/End/Focus/label controls. A single
+read-only full context panel occupies the desktop side column (80rem breakpoint),
+or an explicitly opened native flyout on narrow screens/in Focus. Unsupported
+popover browsers receive inline context. No duplicate mutation owners, remounted
+lesson/assessment owner, invented step count or new dependency. Semantic color,
+border/radius and existing navigation-width tokens are reused.
+
+Resize closes the flyout and moves focus to the visible title/trigger only when
+context held focus; Focus-mode restoration uses its effective layout. Escape and
+Close return focus. Tests retain an unsent question through multiple breakpoints
+and through open-flyout resizing in Focus mode. Compact/full regions have distinct
+accessible labels. The context stays sourced from the recorded active skill.
+
+Evidence:10 final layout/typography browser checks pass across320/390/1280,light/dark
+and enlarged text, plus6 earlier Focus/recovery checks.14 Session/context component
+tests, lint/type/build and reviews pass. Desktop/sidebar, narrow and dark-flyout
+screenshots inspected. The review's hidden-focus resize issue was fixed and tested.
+Remaining: actual screen-reader/browser-zoom/human acceptance and broader design
+inventory; the flyout is nonmodal, with native light dismissal. Unsupported-browser
+inline fallback has source/unit evidence, not a separate real-browser run.

@@ -1563,3 +1563,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Tutor composer places input before Send and consolidates Hint/Summary after content.12 relevant browser cases,10 Session tests, lint/build and reviews pass. Responsive context ownership contract documented before structural work in docs/design/COMPLETE-DESIGN-ALIGNMENT.md.
+
+
+2026-10-11 — Read-only responsive lesson context: desktop side column, narrow/Focus flyout, compact current activity with unchanged session controls. Resize focus/draft retention verified;10 final layout/typography+6 Focus/recovery browser cases,14 component tests, lint/build/reviews pass. Evidence/limits: docs/design/COMPLETE-DESIGN-ALIGNMENT.md.

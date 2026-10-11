@@ -416,3 +416,15 @@ body {
 .shell-focus .shell-navigation-container,
 .shell-focus .shell-browse-context { display: none; }
 .shell-focus .shell-workspace { display: block; }
+
+/* One mounted read-only context owner; content keeps its state across breakpoints. */
+.lesson-learning-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+.lesson-context-panel { background: var(--color-card); color: var(--color-fg); border: 1px solid var(--color-line); border-radius: var(--radius-panel); padding: 1rem; }
+.lesson-context-panel[popover] { position: fixed; inset: 1rem; margin: auto; width: min(32rem, calc(100% - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; }
+@media (min-width: 80rem) {
+  .lesson-learning-grid { grid-template-columns: minmax(0, 1fr) var(--spacing-nav-width); align-items: start; }
+  .lesson-context-column { grid-column: 2; grid-row: 1; }
+  .lesson-current-content { grid-column: 1; grid-row: 1; }
+}
+.shell-focus .lesson-learning-grid { grid-template-columns: minmax(0, 1fr); }
+.shell-focus .lesson-context-column, .shell-focus .lesson-current-content { grid-column: auto; grid-row: auto; }

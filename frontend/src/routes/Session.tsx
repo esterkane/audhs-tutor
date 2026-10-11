@@ -1,3 +1,4 @@
+import { LessonContextPanel } from '../features/session/LessonContextPanel'
 import { SessionContext } from '../features/session/SessionContext'
 import { QuestionPractice } from '../features/questions/QuestionPractice'
 import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
@@ -115,14 +116,19 @@ export function Session() {
         </Card>
       )}
       <SessionControls compact sessionId={sessionId} skillId={st.skill_id} onPause={() => { navigationOwner.current.paused = true }}>
-        <SessionContext data={session.data} />
+        <SessionContext data={session.data} compact />
       </SessionControls>
+      <div className="lesson-learning-grid">
+      <LessonContextPanel data={session.data} />
+      <div className="lesson-current-content min-w-0">
       <SessionBody
         canNavigate={canNavigate}
         key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
         sessionId={sessionId}
         data={session.data}
       />
+      </div>
+      </div>
       <AlongsideMode sessionId={sessionId} />
       {st.skill_id && <Disclosure label="Try a coding experiment">
         <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson. Code and chat stay separate from your assessed answers; no code runs automatically.</p>
