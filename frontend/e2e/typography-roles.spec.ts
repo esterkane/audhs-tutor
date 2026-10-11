@@ -25,6 +25,16 @@ for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
       await expect(page.locator('main h1')).toHaveCount(1)
       const prose = page.getByRole('region', { name: 'Explanation reader' }).locator('.prose').first()
       await expect(prose).toContainText('Compare each group')
+      const composer = page.getByLabel('Ask about this lesson (optional)')
+      expect(await prose.evaluate(el => Boolean(el.compareDocumentPosition(document.getElementById('ask')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true)
+      await composer.fill('Keep my question about the groups.')
+      await page.getByText('Think deeper about this explanation', { exact: true }).click()
+      await page.getByRole('button', { name: 'Why does it work?', exact: true }).focus()
+      await page.keyboard.press('Enter')
+      await expect(composer).toBeFocused()
+      await expect(composer).toContainText('Keep my question about the groups.')
+      await expect(composer).toContainText('Cleaning data')
+
       await expect(prose.getByRole('heading', { level: 4, name: 'Cleaning data' })).toBeVisible()
       await expect(prose.getByRole('heading', { level: 5, name: 'Inspect the groups' })).toBeVisible()
       const sizes = () => prose.evaluate(element => {

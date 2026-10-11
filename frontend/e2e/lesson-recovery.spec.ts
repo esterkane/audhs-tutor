@@ -77,3 +77,38 @@ test('a length-limited lesson stays visibly partial', async ({ page, request }, 
   await page.screenshot({ path: info.outputPath('limited-lesson.png'), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+test('long streaming content keeps Stop before the response on narrow screens', async ({ page, request }) => {
+  await page.setViewportSize({ width: 320, height: 900 })
+  const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
+  await expectOk(response)
+  const session = await response.json()
+  await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: {
+    session_id: session.id, index: session.plan.findIndex((block: { type: string }) => block.type === 'new_material'),
+  } }))
+  await page.addInitScript(() => {
+    const original = window.fetch
+    window.fetch = async (...args) => {
+      if (String(args[0]).includes('/api/tutor/stream')) {
+        const encoder = new TextEncoder()
+        return new Response(new ReadableStream({ start(controller) {
+          controller.enqueue(encoder.encode(`event: token\ndata: ${JSON.stringify({ text: 'Streaming example.\n\n'.repeat(80) })}\n\n`))
+          args[1]?.signal?.addEventListener('abort', () => controller.error(new DOMException('Stopped', 'AbortError')), { once: true })
+        } }), { headers: { 'Content-Type': 'text/event-stream' } })
+      }
+      return original(...args)
+    }
+  })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await page.getByLabel('Ask about this lesson (optional)').fill('Keep this question')
+  await page.getByRole('button', { name: 'Send lesson question', exact: true }).click()
+  const stop = page.getByRole('button', { name: 'Stop explanation', exact: true })
+  await expect(page.getByText('Streaming example.', { exact: true })).toHaveCount(80)
+  expect(await stop.evaluate(el => Boolean(el.compareDocumentPosition(document.querySelector('[aria-busy="true"]')!) & Node.DOCUMENT_POSITION_FOLLOWING))).toBe(true)
+  await stop.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Explanation stopped. Received text is kept.', { exact: true })).toBeVisible()
+  await expect(page.getByLabel('Ask about this lesson (optional)')).toHaveValue('Keep this question')
+  await expect(page.getByText('Streaming example.', { exact: true })).toHaveCount(80)
+})

@@ -477,3 +477,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — Named context/conversation regions and bounded keyboard-scrollable Models table resolve DA-01–03. Four final browser checks,14 affected component checks, lint/build and code/pedagogy reviews pass; narrow screenshot inspected. See docs/ux/ADVERSARIAL-USABILITY-REPORT.md. Full Learn blueprint and human/AT acceptance remain open.
+
+
+2026-10-11 — Learn current content precedes the composer and collapsed history; streaming Stop/status stay above growing text.10 browser/10 unit checks, lint/build and code/pedagogy review pass. Evidence and incomplete p9 requirements: docs/design/COMPLETE-DESIGN-ALIGNMENT.md.

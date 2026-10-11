@@ -548,132 +548,11 @@ function TeachPanel({
 
   return (
     <>
-      <Card>
-        <CardTitle>Your explanation</CardTitle>
-        <div className="flex gap-2 flex-wrap mt-2">
-          <Button
-            variant={done || alt ? 'secondary' : 'primary'}
-            disabled={busy || input.length > 4000}
-            onClick={() =>
-              void run({
-                ...base,
-                text:
-                  input.trim() ||
-                  'Explain the next idea for this skill in three short sections with Markdown headings: The idea, A worked example, and Try one step. Give enough context to attempt that step. Keep code blocks complete. Do not require a confidence rating.',
-                action: 'explain',
-              })
-            }
-          >
-            {busy
-              ? 'Preparing explanation…'
-              : input.trim()
-                ? 'Send lesson question'
-                : text
-                  ? 'Explain again'
-                  : 'Start explanation'}
-          </Button>
-          <Disclosure label="More ways to learn">
-            <div className="flex gap-2 flex-wrap mt-2">
-              <Button
-                disabled={busy || input.length > 4000}
-                onClick={() => void run({ ...base, text: input.trim() || 'I am stuck.', action: 'hint' })}
-              >
-                Hint
-              </Button>
-              <Button
-                disabled={busy || input.length > 4000}
-                onClick={() =>
-                  void run({ ...base, text: input.trim() || 'Recap this skill.', action: 'summarize' })
-                }
-              >
-                Summary of this skill
-              </Button>
-            </div>
-          </Disclosure>
-          {busy && (
-            <Button variant="ghost" onClick={stop}>
-              Stop explanation
-            </Button>
-          )}
-          {voiceOn && !talking && (
-            <Button variant="ghost" onClick={() => setTalking(true)}>
-              Talk instead
-            </Button>
-          )}
-        </div>
-        {!text && !busy && !error && status !== 'stopped' && (
-          <p className="mt-2">
-            No explanation has been prepared yet. Start with the idea and a worked example, or type a
-            specific question below.
-          </p>
-        )}
-        <p className="text-sm text-muted mt-2">
-          Read at your own pace or choose Listen when the explanation is ready. Audio never starts automatically.
-        </p>
-        <label htmlFor="ask" className="text-sm font-medium">
-          Ask about this lesson (optional)
-        </label>
-        <Textarea
-          id="ask"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Leave empty to start with an explanation."
-          aria-describedby={input.length > 4000 ? 'lesson-question-limit' : undefined}
-        />
-        {input.length > 4000 && (
-          <p id="lesson-question-limit" role="alert">
-            Your draft is preserved. Shorten it to 4,000 characters before sending ({input.length} currently).
-          </p>
-        )}
-        {active && learningGoal && <ReadAloud key={skillId} text={learningGoal} label="Listen to learning goal" />}
-        <TutorResponseStatus status={status} startedAt={startedAt} />
-        {active && (
-          <RequestRecoveryControls
-            recovery={recovery}
-            busy={busy}
-            retry={() => void retry()}
-            originalContext="lesson and question"
-          />
-        )}
-        {draftError && <p role="alert">{draftError}</p>}
-        {storageError && <p role="alert">{storageError}</p>}
-        {restored && (
-          <p role="status">
-            {done
-              ? 'Restored the completed reply and its source details from this tab. No new generation or checks.'
-              : 'Restored text from this tab. No new generation or checks; open saved answers for source details.'}
-          </p>
-        )}
-        {meta?.replayed && (
-          <p role="status">Recovered the original reply. No new generation or learning progress.</p>
-        )}
-      </Card>
-      {active && voiceOn && talking && (
-        <VoicePanel sessionId={sessionId} skillId={skillId} onClose={() => setTalking(false)} />
-      )}
-      <SavedLessonNotes sessionId={sessionId} />
-      {previous && (
-        <Disclosure label={`Previous answer · ${previous.status}`}>
-          <Markdown text={previous.text} />
-          {previous.done?.sources.map((source, index) => (
-            <p className="text-sm" key={index}>
-              {source.citation}
-              {!source.cited && ' (not cited)'}
-              {(source.flagged ?? []).length > 0 && (
-                <span className="text-warn"> (flagged: {(source.flagged ?? []).join(', ')})</span>
-              )}
-            </p>
-          ))}
-          {previous.done && previous.done.sources.length === 0 && (
-            <p className="text-sm">No course source for this previous answer.</p>
-          )}
-          {previous.done && withheldCount(previous.done.dropped) > 0 && (
-            <p className="text-sm">Some sources were withheld as flagged or untrusted.</p>
-          )}
-          {!previous.done && (
-            <p className="text-sm">This response did not finish; source references may be incomplete.</p>
-          )}
-        </Disclosure>
+      {busy && (
+        <Card role="region" aria-label="Explanation in progress">
+          <TutorResponseStatus status={status} startedAt={startedAt} />
+          <Button variant="ghost" onClick={stop}>Stop explanation</Button>
+        </Card>
       )}
       {(text || busy || error || status === 'stopped') && (
         <Card aria-busy={busy}>
@@ -704,7 +583,7 @@ function TeachPanel({
           {active && status === 'complete' && done && (
             <Disclosure className="mt-4" label="Think deeper about this explanation">
               <p className="text-sm mt-2">
-                Choose a direction to add to your question above. Your existing draft is kept. Edit it, then
+                Choose a direction to add to your question below. Your existing draft is kept. Edit it, then
                 send it. This is optional practice, not a graded assessment.
               </p>
               <div className="flex flex-wrap gap-2 mt-3">
@@ -848,6 +727,128 @@ function TeachPanel({
             </div>
           )}
         </Card>
+      )}
+      <Card>
+        <CardTitle>Your explanation</CardTitle>
+        <div className="flex gap-2 flex-wrap mt-2">
+          <Button
+            variant={done || alt ? 'secondary' : 'primary'}
+            disabled={busy || input.length > 4000}
+            onClick={() =>
+              void run({
+                ...base,
+                text:
+                  input.trim() ||
+                  'Explain the next idea for this skill in three short sections with Markdown headings: The idea, A worked example, and Try one step. Give enough context to attempt that step. Keep code blocks complete. Do not require a confidence rating.',
+                action: 'explain',
+              })
+            }
+          >
+            {busy
+              ? 'Preparing explanation…'
+              : input.trim()
+                ? 'Send lesson question'
+                : text
+                  ? 'Explain again'
+                  : 'Start explanation'}
+          </Button>
+          <Disclosure label="More ways to learn">
+            <div className="flex gap-2 flex-wrap mt-2">
+              <Button
+                disabled={busy || input.length > 4000}
+                onClick={() => void run({ ...base, text: input.trim() || 'I am stuck.', action: 'hint' })}
+              >
+                Hint
+              </Button>
+              <Button
+                disabled={busy || input.length > 4000}
+                onClick={() =>
+                  void run({ ...base, text: input.trim() || 'Recap this skill.', action: 'summarize' })
+                }
+              >
+                Summary of this skill
+              </Button>
+            </div>
+          </Disclosure>
+          {voiceOn && !talking && (
+            <Button variant="ghost" onClick={() => setTalking(true)}>
+              Talk instead
+            </Button>
+          )}
+        </div>
+        {!text && !busy && !error && status !== 'stopped' && (
+          <p className="mt-2">
+            No explanation has been prepared yet. Start with the idea and a worked example, or type a
+            specific question below.
+          </p>
+        )}
+        <p className="text-sm text-muted mt-2">
+          Read at your own pace or choose Listen when the explanation is ready. Audio never starts automatically.
+        </p>
+        <label htmlFor="ask" className="text-sm font-medium">
+          Ask about this lesson (optional)
+        </label>
+        <Textarea
+          id="ask"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Leave empty to start with an explanation."
+          aria-describedby={input.length > 4000 ? 'lesson-question-limit' : undefined}
+        />
+        {input.length > 4000 && (
+          <p id="lesson-question-limit" role="alert">
+            Your draft is preserved. Shorten it to 4,000 characters before sending ({input.length} currently).
+          </p>
+        )}
+        {active && learningGoal && <ReadAloud key={skillId} text={learningGoal} label="Listen to learning goal" />}
+        {!busy && <TutorResponseStatus status={status} startedAt={startedAt} />}
+        {active && (
+          <RequestRecoveryControls
+            recovery={recovery}
+            busy={busy}
+            retry={() => void retry()}
+            originalContext="lesson and question"
+          />
+        )}
+        {draftError && <p role="alert">{draftError}</p>}
+        {storageError && <p role="alert">{storageError}</p>}
+        {restored && (
+          <p role="status">
+            {done
+              ? 'Restored the completed reply and its source details from this tab. No new generation or checks.'
+              : 'Restored text from this tab. No new generation or checks; open saved answers for source details.'}
+          </p>
+        )}
+        {meta?.replayed && (
+          <p role="status">Recovered the original reply. No new generation or learning progress.</p>
+        )}
+      </Card>
+      {active && voiceOn && talking && (
+        <VoicePanel sessionId={sessionId} skillId={skillId} onClose={() => setTalking(false)} />
+      )}
+      <SavedLessonNotes sessionId={sessionId} />
+      {previous && (
+        <Disclosure label={`Previous answer · ${previous.status}`}>
+          <Markdown text={previous.text} />
+          {previous.done?.sources.map((source, index) => (
+            <p className="text-sm" key={index}>
+              {source.citation}
+              {!source.cited && ' (not cited)'}
+              {(source.flagged ?? []).length > 0 && (
+                <span className="text-warn"> (flagged: {(source.flagged ?? []).join(', ')})</span>
+              )}
+            </p>
+          ))}
+          {previous.done && previous.done.sources.length === 0 && (
+            <p className="text-sm">No course source for this previous answer.</p>
+          )}
+          {previous.done && withheldCount(previous.done.dropped) > 0 && (
+            <p className="text-sm">Some sources were withheld as flagged or untrusted.</p>
+          )}
+          {!previous.done && (
+            <p className="text-sm">This response did not finish; source references may be incomplete.</p>
+          )}
+        </Disclosure>
       )}
       {!busy && (done || alt || hasQuestion) && (
         <Card>

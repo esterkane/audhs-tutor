@@ -52,3 +52,23 @@ Navigation implementation contract: [five-destination route map](SHELL-ROUTE-CON
 Practice, dated Progress evidence and state-aware Learn routes are implemented.
 Five-destination navigation and the compact global header are verified in bounded
 journeys; Learn ContextBar and Focus remain next. See HEADER-CONTEXT-CONTRACT.md.
+
+
+## Learn content-first slice — 2026-10-11
+
+PDF p9 requires current content before TutorInput. Browser regression confirmed
+the completed explanation followed the composer. Move the existing response and
+alternative content before the composer/history, without changing prompts, handlers,
+state ownership or assessment transitions. Keep initial Start explanation, received
+partial text, explicit Stop/retry, narration and saved drafts. Deeper-question copy
+must point down to the composer. The three-action row and contextual side column
+remain separate incomplete requirements; this ordering change does not complete p9.
+
+Verified:10 isolated browser checks (320/1280, light/dark, root-text enlargement,
+keyboard deeper-prompt focus with draft retention, retry/reload, partial answer,
+Focus). A long pending stream confirms Stop precedes growing text and keyboard
+abort retains80 paragraphs and the draft.10 Session component tests, lint and
+production build pass (existing large-chunk warning). Narrow/light and desktop/dark
+screenshots inspected. Code/pedagogy reviews passed after fixing Stop placement.
+Streaming status/Stop remain above content; composer stays below. Physical audio,
+screen-reader and owner comprehension are not established by these checks.
