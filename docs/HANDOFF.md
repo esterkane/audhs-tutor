@@ -1856,3 +1856,14 @@ keyboard and geometry. Two existing import component tests, lint/types/build and
 reviews pass; narrow screenshot inspected. Existing bundle warning remains.
 No learning-policy changes; reload drafts/import-control targets remain separate.
 Logs:/tmp/vocab-read-{before,final,unit,build}.log.
+
+
+2026-10-11 AU-LISTEN-01 fixed: unavailable recordings no longer appear as an empty
+corpus. Bounded reads, Retry, cached-list status and saved-choice availability guard
+preserve vocabulary drafts and existing preference-write ordering. Native selector
+uses44px tokens and local width constraints after reproduced320px overflow. Four
+browser journeys and ten listening component tests pass; lint/types/build and reviews
+pass; narrow screenshot inspected. Keyboard retry/focus verified, native select-menu
+keyboard automation inconclusive (selection/save verified with selectOption); human/AT
+acceptance remains open. Existing bundle warning remains. No learning-policy changes.
+Evidence:ux/ADVERSARIAL-USABILITY-REPORT.md AU-LISTEN-01; /tmp/listening-*.log.

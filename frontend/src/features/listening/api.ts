@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, type Schemas } from '../../lib/api'
+import { boundedRead } from '../../lib/boundedRead'
 
 export type LessonSummary = Schemas['LessonSummary']
 export type LessonOut = Schemas['LessonOut']
@@ -8,7 +9,8 @@ export type TaskOut = Schemas['TaskOut']
 export function useListeningLessons() {
   return useQuery({
     queryKey: ['listening', 'lessons'],
-    queryFn: () => apiFetch<Schemas['LessonList']>('/api/listening/lessons'),
+    queryFn: ({ signal }) => boundedRead<Schemas['LessonList']>('/api/listening/lessons', signal, 'Listening lessons'),
+    retry: false,
   })
 }
 

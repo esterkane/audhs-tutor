@@ -160,3 +160,39 @@ manual retry and no form remount. Longer-term acceptance: full offline/re-entry
 journey. Risk: conflating cached emptiness with current server state or losing draft
 on retry. Verify503→retry→success and failed background refresh with known decks.
 Baseline:/tmp/vocab-read-before.log; vocabulary-entry.spec.ts.
+
+
+## AU-LISTEN-01 — Unavailable recordings look like an empty corpus (S3, fixed)
+
+2026-10-11: reproduced in isolated Chromium on `/vocab`, with both listening-list
+requests (initial plus configured retry) returning503. The page still states
+“No timed transcripts in the corpus yet” and exposes neither the failure nor a
+list retry. Evidence: `/tmp/listening-read-probe.log` (one reproduction passed).
+This is a failure reproduction, not a successful recovery test.
+
+Expected: distinguish loading, unavailable, successful empty and stale cached lists;
+offer a keyboard-reachable retry while keeping other vocabulary work mounted.
+Actual: the learner is directed toward ingestion without evidence the corpus is empty.
+Uncertainty: whether material is missing or the service is unavailable. Unnecessary
+decision: reimport material. Missing feedback: request failure and recovery.
+
+Minimal fix: bounded cancellable listening-list reads and explicit read states in
+`frontend/src/features/listening/api.ts` and `ListeningLessons.tsx`, following the
+existing vocabulary recovery pattern. Verify preference-read availability before
+allowing a selection; preserve existing serialized preference writes.
+Longer-term: consistent shared read-state presentation, only after more than one
+flow demonstrates a stable contract. Risk: stale preference/list responses must not
+reset selection or imply that a recording was removed. No learning/assessment rules
+need to change. Test503→manual retry, successful empty, cached refresh failure,
+320/1280 widths and keyboard; inspect screenshots and retained vocabulary inputs.
+Implemented: bounded cancellable list read, explicit loading/error/cached states,
+manual retry, preference-read guard, known missing selection option and44px selector.
+Browser evidence also exposed intrinsic-select overflow; local width constraints fix it.
+Four browser journeys pass at320/1280, including loading→empty,503→retry, stale list,
+retained card draft and preference recovery/save. Ten listening component tests,
+lint, production/test types and build pass; code/pedagogy reviews clear. Final narrow
+screenshot inspected. Logs:/tmp/listening-{final,unit,build}.log.
+Keyboard Retry/Enter and selector focus pass; native select keyboard-menu automation
+was inconclusive in headless Chromium, so selection/save uses selectOption. Physical
+keyboard/assistive-technology acceptance remains open. Existing bundle warning remains.
+No learning-policy changes. Temporary reproduction spec removed after the baseline run.
