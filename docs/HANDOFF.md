@@ -1487,3 +1487,5 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 2026-10-11: Complete design PDF consolidated as target with explicit gaps. Goal/explanation entry consolidated while preserving narration and exits.12 unit/4 browser checks,lint/types/build and review pass. See slices/lesson-goal-entry.md and design/COMPLETE-DESIGN-ALIGNMENT.md. Full design adoption remains open.
 
 2026-10-11: Shared Disclosure adopted for two lesson controls.7 light/dark responsive keyboard journeys,12 unit tests,lint/types/build and review pass. See slices/shared-disclosure.md. Broader adoption remains open.
+
+2026-10-11: Shared Button44px physical targets with inset standard/compact surfaces.593 unit tests,21 browser checks plus expanded320px check,lint/types/build and review pass. See slices/button-target-plan.md. Raw controls remain separately queued.

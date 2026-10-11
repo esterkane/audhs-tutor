@@ -31,7 +31,7 @@ for (const theme of ['light', 'dark', 'system-light', 'system-dark']) {
         await expect(send).toBeDisabled()
         const disabledStyle = await send.evaluate(el => {
           const style = getComputedStyle(el)
-          return { opacity: style.opacity, background: style.backgroundColor }
+          return { opacity: style.opacity, background: getComputedStyle(el, '::before').backgroundColor }
         })
         expect(disabledStyle.opacity).toBe('1')
         expect(disabledStyle.background).toBe(theme.endsWith('dark') ? 'rgb(22, 23, 28)' : 'rgb(238, 241, 247)')
@@ -42,7 +42,7 @@ for (const theme of ['light', 'dark', 'system-light', 'system-dark']) {
         await send.focus()
         await expect(send).toBeFocused()
         const buttonBoundary = await send.evaluate(el => {
-          const s = getComputedStyle(el)
+          const s = getComputedStyle(el, '::before')
           const root = getComputedStyle(document.documentElement)
           return { border: s.borderTopColor, control: root.getPropertyValue('--color-control').trim() }
         })

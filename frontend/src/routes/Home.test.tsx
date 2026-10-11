@@ -98,7 +98,7 @@ describe('Home', () => {
     // due reviews -> an explained offer, never an auto-route; low energy recommends the capped review
     expect(await screen.findByText(/which first\?/i)).toBeInTheDocument()
     const review = screen.getByRole('button', { name: /review \(3 of 3 due\)/i })
-    expect(review).toHaveClass('bg-accent')
+    expect(review).toHaveClass('before:bg-accent')
     fireEvent.click(review)
     expect(await screen.findByText('REVIEW SCREEN')).toBeInTheDocument()
     expect(useMode.getState().sessionId).toBe('s1')

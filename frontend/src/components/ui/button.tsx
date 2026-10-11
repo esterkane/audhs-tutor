@@ -4,16 +4,20 @@ import * as React from 'react'
 import { cn } from '../../lib/utils'
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 rounded-md text-sm font-medium disabled:bg-sunken disabled:text-faint disabled:opacity-100 disabled:pointer-events-none select-none',
+  'relative isolate inline-flex min-w-control-target items-center justify-center gap-2 rounded-md text-sm font-medium before:pointer-events-none before:absolute before:inset-x-0 before:inset-y-[var(--button-inset)] before:-z-10 before:rounded-md disabled:before:bg-sunken disabled:text-faint disabled:opacity-100 disabled:pointer-events-none select-none',
   {
     variants: {
       variant: {
-        primary: 'bg-accent text-accent-fg hover:bg-accent-hover',
-        secondary: 'bg-card border border-control hover:bg-bg',
-        ghost: 'text-accent hover:bg-line/50',
-        outline: 'border border-control bg-transparent hover:bg-card',
+        primary: 'before:bg-accent text-accent-fg hover:before:bg-accent-hover',
+        secondary: 'before:bg-card before:border before:border-control hover:before:bg-bg',
+        ghost: 'text-accent hover:before:bg-line/50',
+        outline: 'before:border before:border-control hover:before:bg-card',
       },
-      size: { sm: 'min-h-8 px-3 py-1', md: 'min-h-10 px-4 py-2', lg: 'min-h-12 px-5 py-2 text-base' },
+      size: {
+        sm: 'button-compact min-h-control-target px-3 py-2.5',
+        md: 'button-standard min-h-control-target px-4 py-2.5',
+        lg: '[--button-inset:0px] min-h-12 px-5 py-2 text-base',
+      },
     },
     defaultVariants: { variant: 'secondary', size: 'md' },
   },

@@ -31,6 +31,9 @@
   --color-ok: #0f7a5a;
   --color-warn: #9a5f00;
   --spacing-nav-width: 15rem;
+  --spacing-control-target: 2.75rem;
+  --spacing-control-standard: 2.5rem;
+  --spacing-control-compact: 2rem;
   --radius-panel: 0.375rem;
   --text-panel-heading: 1rem;
   --text-panel-heading--line-height: 1.5rem;
@@ -350,4 +353,12 @@ body {
   }
   .companion { position: sticky; min-width: 0; }
   .companion-selection-help { display: none; }
+}
+
+/* Visual surfaces stay inside the real layout footprint; hit areas never overlap. */
+.button-standard {
+  --button-inset: calc((var(--spacing-control-target) - var(--spacing-control-standard)) / 2);
+}
+.button-compact {
+  --button-inset: calc((var(--spacing-control-target) - var(--spacing-control-compact)) / 2);
 }
