@@ -567,3 +567,12 @@ session preserved during selection), types/lint/build and reviews pass. Light320
 dark1280 screenshots inspected. No learning-policy changes. Existing chunk warning
 and broad human/AT acceptance remain; this does not complete the entire design system.
 See docs/design/EXPLORE-LEARNER-CONTRACT.md.
+
+
+2026-10-11: Global Browse area now uses the shared44px DisclosureSummary without
+changing its native details owner/navigation.2 keyboard/responsive browser checks,
+types/lint/build and code/pedagogy reviews pass; narrow open-state screenshot inspected.
+5 preceding shell/header checks passed. Existing chunk warning remains. Screenshot
+uses fixture area IDs without real concepts and honestly shows its loading-error
+recovery; real concept/error flows were separately checked in the Explore slice.
+Broader shared-control adoption and human/AT acceptance remain open.

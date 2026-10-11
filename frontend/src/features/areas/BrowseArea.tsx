@@ -1,5 +1,6 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
+import { DisclosureSummary } from '../../components/ui/disclosure'
 import { useAreas } from './api'
 import { useBrowseAreas } from './browseState'
 
@@ -12,8 +13,8 @@ export function BrowseArea() {
   const catalog = areas.data?.areas ?? []
   const selected = catalog.find(area => area.id === current)
   const recentAreas = recent.flatMap(id => catalog.filter(area => area.id === id))
-  return <details className="min-w-0">
-    <summary className="cursor-pointer text-sm">Browse area{selected ? ` · ${selected.title}` : ''}</summary>
+  return <details className="min-w-0 [&[open]>summary>svg]:rotate-90">
+    <DisclosureSummary>Browse area{selected ? ` · ${selected.title}` : ''}</DisclosureSummary>
     <div className="grid gap-2 mt-2 max-w-md">
       <p className="text-sm text-muted">Browse material without changing your learning session.</p>
       {areas.isPending && <p role="status">Loading areas…</p>}

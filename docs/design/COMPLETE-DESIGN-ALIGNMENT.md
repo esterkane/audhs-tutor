@@ -278,3 +278,20 @@ pass (390/1280), confirming browsing is separate from learning selection. Record
 route/data/dirty-edit invariants in EXPLORE-LEARNER-CONTRACT.md before structural
 changes. Next inspect exact activated-concept membership and implement the learner
 entry without replacing the authoring workflow. No runtime changes in this step.
+
+2026-10-11 follow-up: five shell/header navigation checks pass after the Explore route
+change. Global Browse area still had a small native summary target; switched only
+that summary to the existing DisclosureSummary primitive, retaining its details owner,
+open state, browse store and authoring-specific destination. Two updated390/1280
+browser checks pass with measured >=44px row and keyboard opening/navigation. Lint
+and TypeScript pass. Final visual/build/review/publication remain for this small
+shared-component adoption; no learning logic changes.
+
+
+2026-10-11: Global Browse area now uses the shared44px DisclosureSummary without
+changing its native details owner/navigation.2 keyboard/responsive browser checks,
+types/lint/build and code/pedagogy reviews pass; narrow open-state screenshot inspected.
+5 preceding shell/header checks passed. Existing chunk warning remains. Screenshot
+uses fixture area IDs without real concepts and honestly shows its loading-error
+recovery; real concept/error flows were separately checked in the Explore slice.
+Broader shared-control adoption and human/AT acceptance remain open.
