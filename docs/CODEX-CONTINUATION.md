@@ -450,3 +450,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — Boolean Preferences switches verified with keyboard, full-row targets, save recovery and retained confirmed state. See docs/design/PREFERENCES-CONTROL-ALIGNMENT.md. Learning policy unchanged; broader design acceptance remains open.
+
+
+2026-10-11 — Preferences enum choices use an opt-in segmented visual group. Existing selection/save semantics retained; light/dark, narrow/desktop, keyboard and reflow evidence in docs/design/PREFERENCES-CONTROL-ALIGNMENT.md. Broader typography/disclosure adoption remains open.

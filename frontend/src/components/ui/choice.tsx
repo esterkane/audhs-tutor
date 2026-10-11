@@ -16,6 +16,7 @@ export function Choice<T extends string | number>({
   columns = 3,
   stackOnNarrow = false,
   describedBy,
+  segmented = false,
 }: {
   label: string
   options: ChoiceOption<T>[]
@@ -24,12 +25,13 @@ export function Choice<T extends string | number>({
   columns?: number
   stackOnNarrow?: boolean
   describedBy?: string
+  segmented?: boolean
 }) {
   return (
     <fieldset aria-describedby={describedBy} className="border-0 p-0 m-0 min-w-0 @container">
       <legend className="text-sm font-medium mb-2">{label}</legend>
       <div
-        className={`grid gap-2 ${stackOnNarrow ? 'grid-cols-1 @sm:grid-cols-[repeat(var(--choice-columns),minmax(0,1fr))]' : ''}`}
+        className={`grid ${segmented ? 'gap-1 rounded-panel border border-control bg-sunken p-1' : 'gap-2'} ${stackOnNarrow ? 'grid-cols-1 @sm:grid-cols-[repeat(var(--choice-columns),minmax(0,1fr))]' : ''}`}
         style={
           stackOnNarrow
             ? ({ '--choice-columns': columns } as CSSProperties)
@@ -39,10 +41,10 @@ export function Choice<T extends string | number>({
         {options.map((o) => (
           <Button
             key={String(o.value)}
-            variant={value === o.value ? 'primary' : 'secondary'}
+            variant={segmented ? 'ghost' : value === o.value ? 'primary' : 'secondary'}
             pressed={value === o.value}
             onClick={() => onChange(o.value)}
-            className="flex-col h-auto py-2 items-start text-left min-w-0 max-w-full"
+            className={`flex-col h-auto py-2 items-start text-left min-w-0 max-w-full ${segmented ? `text-fg ${value === o.value ? 'before:bg-card hover:before:bg-card' : 'hover:before:bg-card'}` : ''}`}
           >
             <span className="max-w-full [overflow-wrap:anywhere]">{o.label}</span>
             {o.hint && (

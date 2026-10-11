@@ -127,6 +127,7 @@ export function Preferences() {
               )}
               {s.type === 'enum' && (
                 <Choice<string>
+                  segmented
                   stackOnNarrow
                   describedBy={effectHint(s.key) ? `effect-${s.key}` : undefined}
                   label={s.description}
