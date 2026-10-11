@@ -122,3 +122,15 @@ The narrow screenshot was inspected: panels fit, the focused table scrolls local
 and all existing rows/actions remain. This is not whole-app accessibility certification.
 Remaining: Models title remains below cost/voice panels; wider content organization,
 actual assistive-technology testing and human comprehension remain open.
+
+
+### Follow-up inventory — 2026-10-11
+The same17-route audit at390/1280 reported zero automated violations and zero page
+overflows at both widths after the recent fixes. Each inventory still reports18
+incomplete checks requiring manual interpretation. These mostly initial/empty route
+states are not proof of all25 adversarial scenarios, human usability or conformance.
+Runtime JSON is retained locally under /tmp/ux-audit-screen-inventory-<width>px-chromium-followup.json.
+
+Design comparison still showed optional workspace panels competing with the current
+lesson in Focus. The next bounded fix hides them without unmounting their state;
+hidden ambient playback must stop rather than leave its controls inaccessible.

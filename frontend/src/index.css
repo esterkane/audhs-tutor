@@ -428,3 +428,5 @@ body {
 }
 .shell-focus .lesson-learning-grid { grid-template-columns: minmax(0, 1fr); }
 .shell-focus .lesson-context-column, .shell-focus .lesson-current-content { grid-column: auto; grid-row: auto; }
+
+.shell-focus [data-focus-secondary] { display: none; }

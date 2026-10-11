@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { act, fireEvent, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -93,6 +94,21 @@ describe('Together audio ownership', () => {
     )
     return instances
   }
+  it('stops pending ambient sound when hidden and does not autoplay on return', async () => {
+    const instances = setup()
+    function Harness() {
+      const [active, setActive] = useState(true)
+      return <><button onClick={() => setActive(value => !value)}>Toggle visibility</button><Together active={active} /></>
+    }
+    renderApp(<Harness />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Play brown noise' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle visibility' }))
+    expect(instances[0].close).toHaveBeenCalledTimes(1)
+    await act(async () => instances[0].resolve())
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle visibility' }))
+    expect(instances).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Play brown noise' })).toBeVisible()
+  })
   it('claims only on play, stops for replacement and resumes only by explicit play', async () => {
     const instances = setup()
     renderApp(<Together />)

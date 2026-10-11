@@ -89,7 +89,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       main.current?.focus()
     }
   }, [pathname, title])
-  const wide = ['/playground', '/programs', '/session'].some((path) => pathname.startsWith(path))
+  const wide = !focused && ['/playground', '/programs', '/session'].some((path) => pathname.startsWith(path))
   return (
     <LessonFocusContext.Provider value={pathname === '/session' ? { active: focused, setActive: setFocused } : null}>
     <div className={`min-h-screen ${focused ? 'shell-focus' : ''}`}>

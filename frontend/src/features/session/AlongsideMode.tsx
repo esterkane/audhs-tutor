@@ -13,11 +13,11 @@ function restore(sessionId: string) {
 }
 
 /** Only presentation is recovered. Audio and the presence timer remain owned by Together. */
-export function AlongsideMode({ sessionId }: { sessionId: string }) {
-  return <SessionAlongside key={sessionId} sessionId={sessionId} />
+export function AlongsideMode({ sessionId, active = true }: { sessionId: string; active?: boolean }) {
+  return <SessionAlongside key={sessionId} sessionId={sessionId} active={active} />
 }
 
-function SessionAlongside({ sessionId }: { sessionId: string }) {
+function SessionAlongside({ sessionId, active = true }: { sessionId: string; active?: boolean }) {
   const [state, setState] = useState(() => restore(sessionId))
   return <div>
     <Disclosure label="Work alongside" open={state.open} onToggle={event => {
@@ -30,7 +30,7 @@ function SessionAlongside({ sessionId }: { sessionId: string }) {
       setState({ open, available })
     }}>
       <p className="text-sm text-muted my-2">Keep this lesson open with a quiet work panel. Closing it keeps your answer here. This tab remembers the panel for this session; sound stays off when you return. The panel’s timer restarts when reopened.</p>
-      {state.open && <Together embedded />}
+      {state.open && <Together embedded active={active} />}
     </Disclosure>
     {!state.available && <p role="status" className="text-sm text-muted">The panel works here, but this tab cannot remember it after you leave.</p>}
   </div>

@@ -22,7 +22,7 @@ function nowMs() {
 
 /** Body-doubling: a presence screen. It shows the one thing you are doing and stays quiet.
  *  Optional ambient sound is opt-in (preference) and starts only on a click. No tracking. */
-export function Together({ embedded = false }: { embedded?: boolean }) {
+export function Together({ embedded = false, active = true }: { embedded?: boolean; active?: boolean }) {
   const session = useCurrentSession()
   const { mode } = useMode()
   const { ambient } = useSensory()
@@ -39,11 +39,11 @@ export function Together({ embedded = false }: { embedded?: boolean }) {
 
   useEffect(() => () => stopSound(), [])
   useEffect(() => {
-    if (ambient === 'off' && audio.current) stopSound() // preference switched off while playing
-  }, [ambient])
+    if ((!active || ambient === 'off') && audio.current) stopSound() // preference switched off while playing
+  }, [ambient, active])
 
   function startSound() {
-    if (audio.current) return
+    if (!active || audio.current) return
     if (typeof AudioContext === 'undefined') {
       setNotice('Ambient sound is unavailable in this browser.')
       return

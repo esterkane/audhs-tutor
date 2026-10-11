@@ -169,3 +169,21 @@ screenshots inspected. The review's hidden-focus resize issue was fixed and test
 Remaining: actual screen-reader/browser-zoom/human acceptance and broader design
 inventory; the flyout is nonmodal, with native light dismissal. Unsupported-browser
 inline fallback has source/unit evidence, not a separate real-browser run.
+
+
+## Focus secondary panels — 2026-10-11
+
+PDF p11: Focus hides plan/energy controls, planner proposals, saved-history panels,
+previous reply, Work alongside and coding-workspace launchers without unmounting
+them. Current content/notes, help, sources, composer and exits remain available.
+The embedded ambient owner stops pending/playing audio while hidden; returning never
+autoplays. Its optional timer/state remain mounted. Focus uses the existing896px
+reading measure rather than the wider desktop context-grid measure.
+
+Evidence:4 Focus/Alongside browser cases pass, with both Focus cases rerun after
+adding the width assertion. They cover retained open panel/draft, Escape/dialog
+focus, saving, audio stop, reload/Back, enlarged text and reduced motion.15 component
+tests include pending audio stopped during hiding and silent return. Lint/type/build
+and code/pedagogy reviews pass. Desktop/narrow Focus screenshots inspected.
+The17-route audit found no automated violations/overflow, but incomplete checks and
+human/assistive-technology acceptance remain; see the adversarial report.

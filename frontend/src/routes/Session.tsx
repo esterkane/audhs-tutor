@@ -1,3 +1,4 @@
+import { LessonFocusContext } from '../features/session/focusContext'
 import { LessonContextPanel } from '../features/session/LessonContextPanel'
 import { SessionContext } from '../features/session/SessionContext'
 import { QuestionPractice } from '../features/questions/QuestionPractice'
@@ -20,7 +21,7 @@ import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { OptionalConfidence } from '../components/OptionalConfidence'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
-import { useCallback, useLayoutEffect, useEffect, useRef, useState } from 'react'
+import { useContext, useCallback, useLayoutEffect, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
@@ -63,6 +64,7 @@ import { SOFT_TIMER_MIN, useMode } from '../stores/mode'
 type Phase = 'teach' | 'assess' | 'challenge' | 'practice'
 
 export function Session() {
+  const focus = useContext(LessonFocusContext)
   const { key: locationKey } = useLocation()
   // Pause takes effect before the route commits; block-cache updates may re-key the body meanwhile.
   const navigationOwner = useRef({ key: locationKey, paused: false })
@@ -129,8 +131,8 @@ export function Session() {
       />
       </div>
       </div>
-      <AlongsideMode sessionId={sessionId} />
-      {st.skill_id && <Disclosure label="Try a coding experiment">
+      <div data-focus-secondary><AlongsideMode sessionId={sessionId} active={!focus?.active} /></div>
+      {st.skill_id && <Disclosure data-focus-secondary label="Try a coding experiment">
         <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson. Code and chat stay separate from your assessed answers; no code runs automatically.</p>
         <Link className="underline" to={`/playground?lesson_session=${encodeURIComponent(sessionId)}&lesson_skill=${encodeURIComponent(st.skill_id)}`}>Open lesson experiment</Link>
       </Disclosure>}
@@ -330,7 +332,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      <AdaptationCards origin="planner" />
+      <div data-focus-secondary><AdaptationCards origin="planner" /></div>
       {stopSession.error && <p role="alert">{stopSession.error.message}</p>}
       <Card>
         <CardTitle as="h1" className="mb-2">
@@ -354,7 +356,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             .
           </p>
         )}
-        <Disclosure className="mt-3" label="Session plan and energy settings">
+        <Disclosure data-focus-secondary className="mt-3" label="Session plan and energy settings">
           <div className="mt-3">
             <PlanStrip blocks={plan} current={blockIndex} firstStarted={st?.first_started_index} />
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -933,9 +935,9 @@ function TeachPanel({
       {active && voiceOn && talking && (
         <VoicePanel sessionId={sessionId} skillId={skillId} onClose={() => setTalking(false)} />
       )}
-      <SavedLessonNotes sessionId={sessionId} />
+      <div data-focus-secondary><SavedLessonNotes sessionId={sessionId} /></div>
       {previous && (
-        <Disclosure label={`Previous answer · ${previous.status}`}>
+        <Disclosure data-focus-secondary label={`Previous answer · ${previous.status}`}>
           <Markdown text={previous.text} />
           {previous.done?.sources.map((source, index) => (
             <p className="text-sm" key={index}>

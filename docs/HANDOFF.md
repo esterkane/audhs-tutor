@@ -1566,3 +1566,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Read-only responsive lesson context: desktop side column, narrow/Focus flyout, compact current activity with unchanged session controls. Resize focus/draft retention verified;10 final layout/typography+6 Focus/recovery browser cases,14 component tests, lint/build/reviews pass. Evidence/limits: docs/design/COMPLETE-DESIGN-ALIGNMENT.md.
+
+
+2026-10-11 — Focus hides mounted secondary panels, stops their ambient sound and retains896px reading measure.4 browser cases/15 component tests, lint/build/reviews pass; final Focus width rerun passes. Fresh17-route inventory has no automated violations/overflow but manual/incomplete gates remain. See docs/design/COMPLETE-DESIGN-ALIGNMENT.md.
