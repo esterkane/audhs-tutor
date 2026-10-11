@@ -73,6 +73,24 @@ for (const width of [1280, 390]) {
     await expect(page.getByText(/Share within entered groups: increased/).last()).toBeVisible()
     await expect(page.getByText(/Share within entered groups: decreased/).last()).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    if (width === 390) {
+      const calculation = page.getByLabel('Tutor response', { exact: true }).locator('pre')
+      await expect(calculation).toHaveCount(1)
+      await page.getByRole('button', { name: 'Check my answer', exact: true }).focus()
+      let reached = false
+      for (let step = 0; step < 30; step++) {
+        await page.keyboard.press('Tab')
+        if (await calculation.evaluate(el => el === document.activeElement)) {
+          reached = true
+          break
+        }
+      }
+      expect(reached, 'Calculation is reachable with Tab').toBe(true)
+      await page.keyboard.press('ArrowRight')
+      await expect.poll(() => calculation.evaluate(el => el.scrollLeft)).toBeGreaterThan(0)
+      await page.keyboard.press('Tab')
+      await expect(calculation).not.toBeFocused()
+    }
     await page.screenshot({ path: info.outputPath('count-direction.png'), fullPage: true })
   })
 }

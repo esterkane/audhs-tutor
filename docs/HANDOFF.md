@@ -1481,3 +1481,5 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 2026-10-11: Conservative Markdown-only CI reuse implemented; code/PR/unknown cases run all gates and publication checks always run.15 tests, Ruff and bounded review pass. See slices/ci-gates.md. New remote workflow remains to verify.
 
 2026-10-11: Exact representation directions and narrow reply containment verified:44 backend/36 UI/2 browser checks, lint/types/build and review pass. See slices/structured-counts-tutor-plan.md. Model interpretation remains unverified.
+
+2026-10-11: Calculation keyboard scroll/escape verified with2 browser journeys, ESLint and review. Final local-model sample still fails interpretation; no quality claim or runtime change. See slices/structured-counts-tutor-plan.md.

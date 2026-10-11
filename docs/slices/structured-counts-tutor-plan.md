@@ -129,3 +129,22 @@ scroll region. Two desktop/narrow journeys pass after a reproduced narrow failur
 Compare/Attach/table scrolling retained, narrow screenshot inspected.36 component tests,
 frontend lint/build and backend types pass. Bounded follow-up review clear. This supplies
 clearer deterministic evidence, not a validated model fix.
+
+## Final-evidence sample — 2026-10-11
+
+One production-path local Gemma3-12b sample with counts.v2, temporary SQLite, no
+retrieval and hosted keys/budget disabled still fails semantic acceptance: its hypothetical
+inverts the supplied removal direction and omits B representation loss. Deterministic
+directions in the preamble do not validate generated interpretation. First callback10.726s,
+total12.994s; residency was not measured, so this does not isolate cold-start cost.
+Raw/manual review:/tmp/audhs-counts-v2-eval.json. No prompt experiment or repeat run.
+Preparation inspection confirms explicit start/resume already targets EXPLAIN_SIMPLE,
+the same task used by Study Tutor explanation. No routing mismatch found. No automatic
+model load on reading and no speculative preparation change. Next return to remaining
+UX acceptance; resolving reasoning quality needs representative evaluation beyond this case.
+
+Keyboard follow-up: actual Tab traversal reaches the overflowing calculation in Chromium
+at390px; ArrowRight scrolls that exact pre element and Tab exits it. Both desktop/narrow
+journeys and focused ESLint pass; bounded review clear. No renderer change was needed.
+This is Chromium evidence, not screen-reader or other-browser acceptance. Existing visual,
+application type/build and backend evidence reused because runtime is unchanged.
