@@ -1,6 +1,6 @@
 import { CorrectionInbox } from '../features/questions/CorrectionInbox'
 import { ExcludedQuestions } from '../features/questions/QuestionPractice'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { Choice } from '../components/ui/choice'
@@ -59,6 +59,12 @@ function numericValue(key: string, value: unknown) {
 }
 
 export function Preferences() {
+  const navigate = useNavigate()
+  function returnToApp() {
+    const index = window.history.state?.idx
+    if (typeof index === 'number' && index > 0) navigate(-1)
+    else navigate('/', { replace: true })
+  }
   const prefs = usePreferences()
   const set = useSetPreference()
   const readRecovery = prefs.isError && (
@@ -164,7 +170,7 @@ export function Preferences() {
             {(set.error as Error).message}
           </p>
         )}
-        <Button className="mt-4" onClick={() => history.back()}>
+        <Button className="mt-4" onClick={returnToApp}>
           Back
         </Button>
       </Card>
