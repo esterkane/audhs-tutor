@@ -44,6 +44,7 @@ from app.orchestrator.workspace_checks import (
     disclose_bins,
     summary,
 )
+from app.orchestrator.workspace_counts import count_summary
 from app.orchestrator.workspace_provenance import disclose
 from app.schemas.common import ActivityType, ObjectType
 from app.schemas.feedback_selection import bound_selection, build_passages, to_quoted
@@ -126,6 +127,9 @@ def messages(
         workspace["previous_answers"] = [
             {key: value for key, value in item.items() if key != "answer_id"} for item in memory
         ]
+    counts = count_summary(body)
+    if counts:
+        workspace["conditional_group_observations"] = counts
     arithmetic = checks_for(body)
     bins = bin_checks_for(body)
     if bins:
@@ -282,6 +286,8 @@ async def respond(
         await validate_lesson_origin(db, learner_id, body)
     evidence_identity = evidence.identity() if evidence else None
     prompt_version = VERSION + ".lesson.v2" if evidence is not None else VERSION
+    if body.group_counts is not None:
+        prompt_version += ".counts.v1"
     if body.intent == "starter":
         prompt_version += "." + STARTER_VERSION
     source_status: Literal["supplied", "empty", "unavailable", "not_requested"] = (
@@ -474,6 +480,9 @@ async def respond(
     response_text = disclose_arithmetic(response_text, arithmetic)
     bins = bin_checks_for(body)
     response_text = disclose_bins(response_text, bins)
+    counts = count_summary(body)
+    if counts:
+        response_text = counts + "\n\nModel explanation (may contain errors):\n\n" + response_text
     if body.output_stale:
         response_text = (
             "Output context: the supplied output is marked outdated and does not verify "

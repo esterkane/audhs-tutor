@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [1280, 390]) {
-  test(`group counts stay local and survive reload at ${width}px`, async ({ page }) => {
+  test(`group counts stay local and survive reload at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     await page.route('**/api/sessions/current', (route) => route.fulfill({ json: { id: 'fixture-session' } }))
     await page.route('**/local-learning/program.json', (route) =>
@@ -33,7 +33,7 @@ for (const width of [1280, 390]) {
       }),
     )
     let modelRequests = 0
-    await page.route('**/api/playground/tutor', (route) => {
+    await page.route('**/api/playground/tutor**', (route) => {
       modelRequests++
       return route.fulfill({ status: 500, json: { detail: 'No model should be called' } })
     })
@@ -53,7 +53,28 @@ for (const width of [1280, 390]) {
     await expect(table).toContainText('10')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     expect(modelRequests).toBe(0)
+    const attach = page.getByRole('button', { name: 'Attach counts to tutor', exact: true })
+    await attach.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByText(/Counts included in tutor messages until removed or edited/)).toContainText(
+      'A: 80 → 72',
+    )
+    expect(modelRequests).toBe(0)
+    await page.screenshot({ path: info.outputPath('count-attachment.png'), fullPage: true })
+    const results = page.getByRole('region', { name: 'Group comparison results' })
+    await results.screenshot({ path: info.outputPath('comparison-table.png') })
+    if (width === 390) {
+      await results.focus()
+      await page.keyboard.press('ArrowRight')
+      await expect.poll(() => results.evaluate((el) => el.scrollLeft)).toBeGreaterThan(0)
+    }
+    const remove = page.getByRole('button', { name: 'Remove count attachment' })
+    await remove.focus()
+    await page.keyboard.press('Enter')
+    await expect(remove).toHaveCount(0)
+    await attach.click()
     await page.getByLabel('Group 2 after count', { exact: true }).fill('10')
+    await expect(remove).toHaveCount(0)
     await expect(table).toHaveCount(0)
     await page.reload()
     await page.getByRole('button', { name: 'Think deeper', exact: true }).click()

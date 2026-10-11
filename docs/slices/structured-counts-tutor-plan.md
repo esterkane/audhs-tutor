@@ -1,6 +1,6 @@
 # Explicit group-count evidence for Study Tutor
 
-Status: proposed implementation contract, 2026-10-11. No runtime change or quality pass.
+Status: explicit attachment implemented, 2026-10-11. Semantic quality remains unresolved; see evidence below.
 
 ## Concrete problem and inspected implementation
 
@@ -80,3 +80,37 @@ whereas `exact_saved` uses the serialized request. Adding an API field alone wou
 history eligible across different counts. Next add the optional input with compatible serialization
 and update candidate eligibility, request replay and saved context before exposing attachment.
 Old replies remain history, not verified arithmetic. No speed or model-quality improvement claimed.
+
+## Explicit attachment implementation — 2026-10-11
+
+Study Tutor now offers Compare → Attach counts, shows persistent attachment state and permits
+removal. Editing counts detaches them; conversation restoration validates the stored snapshot.
+Attaching/comparing makes no model call. Request snapshots include counts, invalidate old current
+feedback and preserve original retry identity. The optional API field is omitted when absent,
+preserving old fingerprints. Both lexical and semantic candidate selection require matching counts;
+exact reuse now handles JSON integers. Source/learning state and grading policy are unchanged.
+
+Backend computes conditional fractions and supplies them inside escaped workspace data, never
+as system instructions. Final replies show local calculations separately from model explanation;
+hints receive no computed solution disclosure. Saved requests retain the attached input. The
+narrow comparison table now scrolls inside its keyboard-accessible region instead of crushing
+headings into vertical letters. No new dependency.
+
+Evidence: full backend1101 tests pass (3 existing dependency warnings); final12 focused tests after
+compact calculation presentation pass.45 UI tests,7 desktop/narrow browser journeys including
+keyboard attach/remove/horizontal table scrolling and existing request recovery pass. Narrow
+table screenshot inspected. Lint, production build and mypy219 pass. Bounded code/pedagogy
+review found no blocker/major; persistence wording clarified from its minor finding.
+
+One local synthetic production-path sample with attached counts completed in5.779s, first text
+3.328s. It STILL inverted the missingness direction in its explanation. Correct calculations do
+not validate the model's interpretation. Raw sample:/tmp/audhs-retention-with-counts.json; this
+used the initial verbose JSON summary, subsequently formatted as compact labeled fractions.
+No model-quality pass for either presentation, no measured speed improvement, no further prompt
+experiment. Runner accepts optional group_counts; the new fixture preserves the same acceptance
+criteria. No paid provider or live learning write.
+
+Remaining: contextual correction of contradictory explanations; broader representative model
+evaluation; human comprehension. Latest prior public CI38128472700 finished with292 browser
+passes and2 failures in parking-lesson-context (original-material context not visible). Its other
+jobs passed. These failures predate count attachment; investigate the route/context timing next.

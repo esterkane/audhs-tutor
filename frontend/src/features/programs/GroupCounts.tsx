@@ -1,6 +1,8 @@
 import { useState } from 'react'
+import type { CountAttachment } from './countAttachment'
 import { Button } from '../../components/ui/button'
 
+type Props = { storageKey: string; onAttach?: (counts: CountAttachment) => void; onDetach?: () => void }
 type Row = { label: string; before: string; after: string }
 const initial = (): Row[] => [
   { label: 'A', before: '', after: '' },
@@ -52,10 +54,10 @@ function fraction(numerator: number, denominator: number): string {
     ? 'Not defined (zero total)'
     : `${numerator}/${denominator} = ${((100 * numerator) / denominator).toFixed(2)}%`
 }
-export function GroupCounts({ storageKey }: { storageKey: string }) {
-  return <Counts key={storageKey} storageKey={storageKey} />
+export function GroupCounts(props: Props) {
+  return <Counts key={props.storageKey} {...props} />
 }
-function Counts({ storageKey }: { storageKey: string }) {
+function Counts({ storageKey, onAttach, onDetach }: Props) {
   const [saved] = useState(() => restore(storageKey))
   const [rows, setRows] = useState(saved.rows)
   const [warning, setWarning] = useState(saved.warning)
@@ -64,6 +66,7 @@ function Counts({ storageKey }: { storageKey: string }) {
   const [error, setError] = useState('')
   function change(next: Row[]) {
     setRows(next)
+    onDetach?.()
     if (compared) setEdited(true)
     setCompared(null)
     setError('')
@@ -88,7 +91,8 @@ function Counts({ storageKey }: { storageKey: string }) {
         Use nonoverlapping groups counted in the same unit before and after, with unchanged group membership.
         This comparison assumes rows were removed, not added or reassigned. Representation is the share within
         the groups entered here, not necessarily the entire dataset. Percentages are rounded to two decimal
-        places. Counts are not automatically sent to the tutor.
+        places. Counts are not automatically sent to the tutor. Compare, then choose Attach counts to tutor to
+        include them in your next message.
       </p>
       {!warning && (
         <p className="text-sm text-muted">
@@ -104,7 +108,9 @@ function Counts({ storageKey }: { storageKey: string }) {
                 {field === 'label' ? 'Group name' : field === 'before' ? 'Before count' : 'After count'}
                 <input
                   className="block w-full min-w-0 border border-line rounded px-2 py-1"
-                  aria-label={field === 'label' ? `Group name ${index + 1}` : `Group ${index + 1} ${field} count`}
+                  aria-label={
+                    field === 'label' ? `Group name ${index + 1}` : `Group ${index + 1} ${field} count`
+                  }
                   type="text"
                   inputMode={field === 'label' ? 'text' : 'numeric'}
                   maxLength={field === 'label' ? 80 : 32}
@@ -147,6 +153,21 @@ function Counts({ storageKey }: { storageKey: string }) {
           Compare counts
         </Button>
       </div>
+      {compared && onAttach && (
+        <Button
+          onClick={() =>
+            onAttach({
+              groups: compared.map((row) => ({
+                label: row.label.trim(),
+                before: Number(row.before),
+                after: Number(row.after),
+              })),
+            })
+          }
+        >
+          Attach counts to tutor
+        </Button>
+      )}
       {warning && <p role="status">{warning}</p>}
       {error && <p role="alert">{error}</p>}
       {edited && !compared && (
@@ -159,7 +180,7 @@ function Counts({ storageKey }: { storageKey: string }) {
           role="region"
           aria-label="Group comparison results"
         >
-          <table className="text-sm">
+          <table className="min-w-max text-sm">
             <caption>User-entered group comparison — not a fairness assessment</caption>
             <thead>
               <tr>

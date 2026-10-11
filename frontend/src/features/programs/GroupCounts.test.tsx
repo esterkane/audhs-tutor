@@ -1,6 +1,7 @@
 import { fireEvent, render, screen, within, cleanup } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { GroupCounts } from './GroupCounts'
+import { readCountAttachment } from './countAttachment'
 
 beforeEach(() => localStorage.clear())
 afterEach(() => {
@@ -97,4 +98,18 @@ it('retains editable entries when storage cannot be read', () => {
   render(<GroupCounts storageKey="denied" />)
   expect(screen.getByText(/could not be loaded/)).toBeVisible()
   expect(screen.getByLabelText('Group 1 before count')).toHaveValue('')
+})
+
+it('restores only valid numeric count attachments without coercion', () => {
+  const valid = {
+    groups: [
+      { label: ' A ', before: 100, after: 90 },
+      { label: 'B', before: 50, after: 30 },
+    ],
+  }
+  expect(readCountAttachment(valid)?.groups[0].label).toBe('A')
+  for (const after of [true, '90', 100.5, -1, 101])
+    expect(readCountAttachment({ groups: [{ ...valid.groups[0], after }, valid.groups[1]] })).toBeNull()
+  expect(readCountAttachment({ groups: [valid.groups[0], { ...valid.groups[1], label: 'A' }] })).toBeNull()
+  expect(readCountAttachment(null)).toBeNull()
 })

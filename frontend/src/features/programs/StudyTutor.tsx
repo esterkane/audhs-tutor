@@ -3,6 +3,7 @@ import { useRequestRecovery, type PendingTutorRequest } from '../playground/useR
 import { RequestRecoveryControls } from '../playground/RequestRecoveryControls'
 import { AnswerSaveStatus } from './AnswerSaveStatus'
 import { GroupCounts } from './GroupCounts'
+import { readCountAttachment, type CountAttachment } from './countAttachment'
 import { useQueryClient } from '@tanstack/react-query'
 import { SavedContextAnswers } from './SavedContextAnswers'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -80,10 +81,10 @@ function Conversation({
 }: Props & { sessionId: string }) {
   const queryClient = useQueryClient()
   const storageKey = `study-tutor:v1:${sessionId}:${identity ?? context}`
-  const snapshot = JSON.stringify([context, code, answer, output, checkCode])
   const recovery = useRequestRecovery(storageKey)
   const [restored] = useState(() => {
     const fresh = {
+      attachedCounts: null as CountAttachment | null,
       question: '',
       preferSaved: false,
       reply: null as TutorReply | null,
@@ -117,6 +118,11 @@ function Conversation({
         throw new Error('Invalid saved reply')
       return {
         ...fresh,
+        attachedCounts: readCountAttachment(value.attachedCounts),
+        error:
+          value.attachedCounts && !readCountAttachment(value.attachedCounts)
+            ? 'Saved count attachment could not be restored. Compare and attach counts again.'
+            : '',
         question: value.question.slice(0, 2000),
         preferSaved: value.preferSaved === true,
         reply: value.reply as TutorReply | null,
@@ -146,6 +152,15 @@ function Conversation({
       }
     }
   })
+  const [attachedCounts, setAttachedCounts] = useState<CountAttachment | null>(restored.attachedCounts)
+  const snapshot = JSON.stringify([
+    context,
+    code,
+    answer,
+    output,
+    checkCode,
+    ...(attachedCounts ? [attachedCounts] : []),
+  ])
   const previewKey = `study-preview:${storageKey}`
   const [initialPreview] = useState(() => readTextCache(previewKey))
   const [preview, setPreview] = useState(initialPreview.value?.text ?? '')
@@ -204,14 +219,23 @@ function Conversation({
     try {
       localStorage.setItem(
         storageKey,
-        JSON.stringify({ question, reply, history, conversation, replySnapshot, mode, preferSaved }),
+        JSON.stringify({
+          question,
+          reply,
+          history,
+          conversation,
+          replySnapshot,
+          mode,
+          preferSaved,
+          attachedCounts,
+        }),
       )
     } catch {
       // Storage is external state: surface a failed write without losing the in-memory draft.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setStorageError('Tutor conversation could not be saved. Copy your message before leaving.')
     }
-  }, [storageKey, question, reply, history, conversation, replySnapshot, mode, preferSaved])
+  }, [storageKey, question, reply, history, conversation, replySnapshot, mode, preferSaved, attachedCounts])
   useEffect(() => {
     focusGeneration.current++
     if (operation.current) {
@@ -219,7 +243,7 @@ function Conversation({
       operation.current = null
       setBusy(false)
       setError(
-        'Your code, answer or output changed. The previous request was stopped; ask again for current feedback.',
+        'Your code, answer, output or attached counts changed. The previous request was stopped; ask again for current feedback.',
       )
     }
   }, [snapshot])
@@ -297,6 +321,7 @@ function Conversation({
     try {
       const pending = recovery.prepare(
         {
+          ...(attachedCounts && action !== 'bins' ? { group_counts: attachedCounts } : {}),
           session_id: sessionId,
           prefer_saved: preferSaved,
           questioning_style:
@@ -469,9 +494,22 @@ function Conversation({
           </Button>
         </details>
       )}
+      {attachedCounts && (
+        <div role="status" className="mt-3 text-sm">
+          Counts included in tutor messages until removed or edited:{' '}
+          {attachedCounts.groups.map((row) => `${row.label}: ${row.before} → ${row.after}`).join('; ')}. These
+          are your entries, not verified dataset results.
+          <Button onClick={() => setAttachedCounts(null)}>Remove count attachment</Button>
+        </div>
+      )}
       <details className="mt-3">
         <summary className="cursor-pointer text-sm">Compare group counts locally</summary>
-        <GroupCounts key={storageKey} storageKey={`${storageKey}:group-counts`} />
+        <GroupCounts
+          key={storageKey}
+          storageKey={`${storageKey}:group-counts`}
+          onAttach={setAttachedCounts}
+          onDetach={() => setAttachedCounts(null)}
+        />
       </details>
       <TutorResponseStatus
         status={busy ? 'streaming' : ready && replySnapshot === snapshot ? 'complete' : 'idle'}

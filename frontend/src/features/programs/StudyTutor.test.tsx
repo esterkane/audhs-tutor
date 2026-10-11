@@ -703,3 +703,41 @@ it.each([undefined, 'true'])('does not opt in from a legacy or malformed saved c
   expect(screen.getByRole('checkbox', { name: /Use a saved answer/ })).not.toBeChecked()
   expect(askTutor).not.toHaveBeenCalled()
 })
+
+it('attaches only on request, restores counts and invalidates attachment on edit', async () => {
+  active()
+  vi.mocked(askTutor).mockResolvedValue(reply)
+  const view = renderApp(<StudyTutor context="Compare counts" />)
+  fireEvent.click(screen.getByText('Compare group counts locally'))
+  for (const [label, value] of [
+    ['Group 1 before count', '100'],
+    ['Group 1 after count', '90'],
+    ['Group 2 before count', '50'],
+    ['Group 2 after count', '30'],
+  ])
+    fireEvent.change(screen.getByLabelText(label), { target: { value } })
+  fireEvent.click(screen.getByRole('button', { name: 'Compare counts' }))
+  expect(askTutor).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: 'Attach counts to tutor' }))
+  expect(askTutor).not.toHaveBeenCalled()
+  view.unmount()
+  renderApp(<StudyTutor context="Compare counts" />)
+  expect(screen.getByText(/Counts included in tutor messages until removed or edited/)).toHaveTextContent(
+    'A: 100 → 90',
+  )
+  fireEvent.click(screen.getByRole('button', { name: 'Explain this step' }))
+  await waitFor(() => expect(askTutor).toHaveBeenCalledOnce())
+  expect(vi.mocked(askTutor).mock.calls[0][0].group_counts).toEqual({
+    groups: [
+      { label: 'A', before: 100, after: 90 },
+      { label: 'B', before: 50, after: 30 },
+    ],
+  })
+  await screen.findByText(reply.text)
+  fireEvent.click(screen.getByText('Compare group counts locally'))
+  fireEvent.change(screen.getByLabelText('Group 1 after count'), { target: { value: '80' } })
+  expect(screen.queryByRole('button', { name: 'Remove count attachment' })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Explain this step' }))
+  await waitFor(() => expect(askTutor).toHaveBeenCalledTimes(2))
+  expect(vi.mocked(askTutor).mock.calls[1][0].group_counts).toBeUndefined()
+})

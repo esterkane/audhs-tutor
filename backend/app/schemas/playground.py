@@ -10,6 +10,8 @@ from pydantic import (
     model_validator,
 )
 
+from app.kernel.group_counts import GroupCountInput
+
 
 class PlaygroundMessage(BaseModel):
     role: Literal["user", "assistant"]
@@ -30,6 +32,7 @@ class LessonOrigin(BaseModel):
 
 
 class PlaygroundRequest(BaseModel):
+    group_counts: GroupCountInput | None = None
     lesson_origin: LessonOrigin | None = None
     session_id: str
     prefer_saved: bool = False
@@ -53,6 +56,10 @@ class PlaygroundRequest(BaseModel):
         # Preserve historical request fingerprints and exact reuse for existing callers.
         if self.lesson_origin is None:
             data.pop("lesson_origin", None)
+        if self.group_counts is None:
+            data.pop("group_counts", None)
+        elif "group_counts" in data:
+            data["group_counts"] = self.group_counts.model_dump(mode="json")
         return data
 
     @model_validator(mode="after")

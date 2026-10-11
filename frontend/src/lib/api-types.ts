@@ -3986,6 +3986,20 @@ export interface components {
       /** Next Step */
       next_step: string
     }
+    /** GroupCount */
+    GroupCount: {
+      /** Label */
+      label: string
+      /** Before */
+      before: number
+      /** After */
+      after: number
+    }
+    /** GroupCountInput */
+    GroupCountInput: {
+      /** Groups */
+      groups: components['schemas']['GroupCount'][]
+    }
     /** HTTPValidationError */
     HTTPValidationError: {
       /** Detail */
@@ -4871,6 +4885,7 @@ export interface components {
     }
     /** PlaygroundRequest */
     PlaygroundRequest: {
+      group_counts?: components['schemas']['GroupCountInput'] | null
       lesson_origin?: components['schemas']['LessonOrigin'] | null
       /** Session Id */
       session_id: string

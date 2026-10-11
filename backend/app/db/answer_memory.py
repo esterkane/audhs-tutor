@@ -43,6 +43,19 @@ def candidates(learner_id: str, body: PlaygroundRequest) -> Select[tuple[TutorAn
             (field.as_boolean() if key == "output_stale" else field.as_string())
             == getattr(body, key)
         )
+    counts = body.group_counts
+    stored = TutorAnswer.request_json["group_counts"]
+    if counts is None:
+        stmt = stmt.where(stored.as_string().is_(None))
+    else:
+        groups = stored["groups"]
+        stmt = stmt.where(func.json_array_length(groups) == len(counts.groups))
+        for index, group in enumerate(counts.groups):
+            stmt = stmt.where(
+                groups[index]["label"].as_string() == group.label,
+                groups[index]["before"].as_integer() == group.before,
+                groups[index]["after"].as_integer() == group.after,
+            )
     return stmt
 
 
@@ -116,6 +129,8 @@ async def exact_saved(
             return [kind == "null"]
         if isinstance(value, bool):
             return [kind == ("true" if value else "false")]
+        if isinstance(value, int):
+            return [kind == "integer", field == value]
         return [kind == "text", field == value]
 
     for key, value in expected.items():
