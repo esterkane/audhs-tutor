@@ -83,7 +83,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
             <QuickNavigation pages={[...primaryPages, ...toolPages]} />
           </div>
           <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
-            <div ref={setTutorEntry} className="min-w-0 max-w-full" />
             <AudioControls compact />
             <ParkingLotButton />
           </div>
@@ -99,6 +98,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <div className="shell-workspace">
         <MainNavigation />
       <div className="tutor-workspace min-w-0">
+      <div className="min-w-0">
+      <div ref={setTutorEntry} className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto px-4 pt-4 flex flex-wrap justify-end gap-2 min-w-0`} />
       <main
         id="main-content"
         ref={main}
@@ -107,6 +108,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
       >
         {children}
       </main>
+      </div>
       <LearningCompanion entryRoot={tutorEntry} />
       </div>
       </div>

@@ -213,3 +213,5 @@ acceptance remain. The current change delivers navigation taxonomy and
 responsive destinations without redesigning unrelated screens.
 
 Final Tools resize/route journey passed. Project-study fixture is empty to isolate shell history from automatic project-selection query changes. Total affected browser checks:28.
+
+Next layout phase: [header/context ownership contract](HEADER-CONTEXT-CONTRACT.md). Keep audio, capture and session lifecycle ownership intact when compacting the shell.
