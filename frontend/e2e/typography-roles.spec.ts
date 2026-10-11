@@ -43,7 +43,7 @@ for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
         return [getComputedStyle(document.body).fontSize, paragraph.fontSize, paragraph.lineHeight, code.fontSize, code.lineHeight].map(parseFloat)
       })
       expect(await sizes()).toEqual([14, 16, 26, 13, 20])
-      const button = page.getByRole('button', { name: /^(Try a question|Return to your question)$/ })
+      const button = page.getByRole('button', { name: /^(Let me try|Return to your question)$/ })
       await button.focus()
       await expect(button).toBeFocused()
       await prose.scrollIntoViewIfNeeded()

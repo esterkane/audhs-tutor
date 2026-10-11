@@ -33,7 +33,7 @@ test('completed explanation sections preserve notes, focus and optional follow-u
     await page.goto('/')
     await page.getByRole('button', { name: /^Continue$/ }).click()
     await expect(page.getByRole('button', { name: 'Listen to learning goal', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Try a question', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Let me try', exact: true })).toHaveCount(0)
     expect(calls).toBe(0)
     await page.getByRole('button', { name: 'Start explanation', exact: true }).click()
     await expect(page.getByRole('status', { name: 'Tutor response status' })).toContainText('preparing')

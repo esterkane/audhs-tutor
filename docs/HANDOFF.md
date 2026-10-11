@@ -1554,3 +1554,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Learn current content precedes the composer and collapsed history; streaming Stop/status stay above growing text.10 browser/10 unit checks, lint/build and code/pedagogy review pass. Evidence and incomplete p9 requirements: docs/design/COMPLETE-DESIGN-ALIGNMENT.md.
+
+
+2026-10-11 — Learn three-action row aligned with PDFp9, using existing representation/assessment handlers. Duplicate example requests blocked; failure retains content/drafts and pending examples do not block assessment.11 browser cases,10 Session tests, lint/build and reviews pass. Remaining design scope: docs/design/COMPLETE-DESIGN-ALIGNMENT.md.

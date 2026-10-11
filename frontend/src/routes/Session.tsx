@@ -526,6 +526,8 @@ function TeachPanel({
   const prefer = usePrefer()
   const [alt, setAlt] = useState<RenderOut | null>(null)
   const [prevAlt, setPrevAlt] = useState<RenderOut | null>(null)
+  const representationLock = useRef(false)
+  const [waysOpen, setWaysOpen] = useState(false)
   const reportTurn = useReport()
   const prefs = usePreferences()
   const voiceOn = (prefs.data?.values as Record<string, unknown> | undefined)?.['voice.enabled'] === true
@@ -540,10 +542,17 @@ function TeachPanel({
     reportTurn.isSuccess && done != null && reportTurn.variables?.turn_id === done.turn_id
 
   async function showDifferently(kind: string) {
-    if (!skillId) return
-    const out = await render.mutateAsync({ skillId, kind, sessionId })
-    setPrevAlt(alt)
-    setAlt(out)
+    if (!skillId || representationLock.current || busy) return
+    representationLock.current = true
+    try {
+      const out = await render.mutateAsync({ skillId, kind, sessionId })
+      setPrevAlt(alt)
+      setAlt(out)
+    } catch {
+      // The mutation exposes the error beside the controls; keep current content.
+    } finally {
+      representationLock.current = false
+    }
   }
 
   return (
@@ -728,6 +737,69 @@ function TeachPanel({
           )}
         </Card>
       )}
+      {!busy && (done || alt || hasQuestion) && (
+        <Card>
+          <p className="text-sm font-medium mb-2">
+            {hasQuestion ? 'Your current question and any checked feedback are kept.' : 'Next: try one question about this idea.'}
+          </p>
+          <div className="flex gap-2 flex-wrap mb-3">
+            <Button
+              aria-expanded={waysOpen}
+              aria-controls="lesson-explanation-choices"
+              onClick={() => setWaysOpen(value => !value)}
+            >
+              Explain differently
+            </Button>
+            <Button
+              disabled={render.isPending || !kinds.data?.kinds?.some(k => k.kind === 'worked_example' && k.allowed)}
+              onClick={() => void showDifferently('worked_example')}
+            >
+              Give me an example
+            </Button>
+            <Button variant="primary" onClick={onCheck}>
+              {hasQuestion ? 'Return to your question' : 'Let me try'}
+            </Button>
+          </div>
+          {render.isPending && <p role="status">Preparing another explanation… Your current content is kept.</p>}
+          {render.isError && <p role="alert">{(render.error as Error).message}</p>}
+          {kinds.isPending && <p role="status">Loading explanation choices…</p>}
+          {kinds.isSuccess && !kinds.data.kinds?.some(k => k.kind === 'worked_example' && k.allowed) && (
+            <p className="text-sm text-muted">A worked example is not available for this concept.</p>
+          )}
+          {kinds.isError && <p role="alert">Explanation choices are unavailable. <Button onClick={() => void kinds.refetch()}>Retry choices</Button></p>}
+          <Disclosure
+            id="lesson-explanation-choices"
+            label="More ways to explain"
+            open={waysOpen}
+            onToggle={event => setWaysOpen(event.currentTarget.open)}
+          >
+            <Choice<string>
+              label="Show it differently"
+              options={(kinds.data?.kinds ?? [])
+                .filter((k) => k.allowed)
+                .map((k) => ({
+                  value: k.kind as string,
+                  label: k.label as string,
+                  hint: k.cached ? 'cached' : undefined,
+                }))}
+              value={alt?.kind ?? null}
+              onChange={(k) => void showDifferently(k)}
+              columns={3}
+            />
+            <Button className="mt-3" variant="ghost" onClick={onSwitchEarly}>
+              Request another activity (a check may be required)
+            </Button>
+          </Disclosure>
+          <Disclosure className="mt-3" label="Full solution (explicit request, logged)">
+            <Button
+              className="mt-2"
+              onClick={() => void run({ ...base, text: 'show the full solution', action: 'full_solution' })}
+            >
+              Show the full solution
+            </Button>
+          </Disclosure>
+        </Card>
+      )}
       <Card>
         <CardTitle>Your explanation</CardTitle>
         <div className="flex gap-2 flex-wrap mt-2">
@@ -850,50 +922,7 @@ function TeachPanel({
           )}
         </Disclosure>
       )}
-      {!busy && (done || alt || hasQuestion) && (
-        <Card>
-          <p className="text-sm font-medium mb-2">
-            {hasQuestion ? 'Your current question and any checked feedback are kept.' : 'Next: try one question about this idea.'}
-          </p>
-          <div className="flex gap-2 flex-wrap mb-3">
-            <Button variant="primary" onClick={onCheck}>
-              {hasQuestion ? 'Return to your question' : 'Try a question'}
-            </Button>
-          </div>
-          <Disclosure label="Need another explanation or a different activity?">
-            <Choice<string>
-              label="Show it differently"
-              options={(kinds.data?.kinds ?? [])
-                .filter((k) => k.allowed)
-                .map((k) => ({
-                  value: k.kind as string,
-                  label: k.label as string,
-                  hint: k.cached ? 'cached' : undefined,
-                }))}
-              value={alt?.kind ?? null}
-              onChange={(k) => void showDifferently(k)}
-              columns={3}
-            />
-            {render.isPending && <p className="text-sm text-muted mt-2">Rendering…</p>}
-            {render.isError && (
-              <p role="alert" className="text-warn mt-2">
-                {(render.error as Error).message}
-              </p>
-            )}
-            <Button className="mt-3" variant="ghost" onClick={onSwitchEarly}>
-              Request another activity (a check may be required)
-            </Button>
-          </Disclosure>
-          <Disclosure className="mt-3" label="Full solution (explicit request, logged)">
-            <Button
-              className="mt-2"
-              onClick={() => void run({ ...base, text: 'show the full solution', action: 'full_solution' })}
-            >
-              Show the full solution
-            </Button>
-          </Disclosure>
-        </Card>
-      )}
+
     </>
   )
 }

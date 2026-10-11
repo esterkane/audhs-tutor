@@ -72,3 +72,26 @@ production build pass (existing large-chunk warning). Narrow/light and desktop/d
 screenshots inspected. Code/pedagogy reviews passed after fixing Stop placement.
 Streaming status/Stop remain above content; composer stays below. Physical audio,
 screen-reader and owner comprehension are not established by these checks.
+
+
+## Learn tutoring actions — 2026-10-11
+
+PDF p9: current content now leads into Explain differently, Give me an example,
+and Let me try (Return to your question when one exists), before the composer.
+The first opens existing representation choices; the second uses the allowed
+worked-example representation; the third preserves the assessment handler.
+More ways to explain keeps all original representations/activity switching, and
+full solutions remain a separate explicit action. Loading/unavailable/error states
+are visible. A synchronous request lock rejects accidental duplicate representation
+requests; failures keep content and drafts. Assessment stays available during a
+stalled optional render (review finding resolved).
+
+Evidence: prior representation flow passed before edits;11 relevant browser cases
+passed, with the two representation cases rerun after expanded failure→retry→success
+and duplicate-request coverage.10 Session tests pass including an indefinitely held
+example that does not block assessment. Lint/build pass; narrow action screenshot
+inspected; code/pedagogy reviews clear. No backend, prompt or grading changes.
+Remaining: in-place replacement versus appended representations, contextual desktop
+column/mobile sheet, composer/secondary-action consolidation and human acceptance.
+Existing representation requests have no cancellation/deadline; this slice keeps
+assessment navigation available rather than expanding the networking architecture.

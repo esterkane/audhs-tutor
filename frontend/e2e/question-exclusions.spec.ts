@@ -19,7 +19,7 @@ for (const width of [390, 1280]) {
       await page.goto('/')
       await page.getByRole('button', { name: 'Continue', exact: true }).click()
       await page.getByRole('button', { name: 'Start explanation', exact: true }).click()
-      await page.getByRole('button', { name: /^(Try a question|Return to your question)$/ }).click()
+      await page.getByRole('button', { name: /^(Let me try|Return to your question)$/ }).click()
       const options = page.getByRole('button', { name: 'Question practice options' })
       await options.focus()
       await page.keyboard.press('Enter')

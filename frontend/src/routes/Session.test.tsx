@@ -248,6 +248,8 @@ it('guides explanation to a question with optional controls collapsed and access
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
+      if (url.endsWith('/representations/worked_example')) return new Promise<Response>(() => {})
+      if (url.endsWith('/representations')) return jsonResponse({ kinds: [{ kind: 'worked_example', label: 'Worked example', allowed: true, cached: false }] })
       if (url.includes('/api/exercises/'))
         return jsonResponse({ error: { code: 'not_found', message: 'No exercise' } }, 404)
       if (url.endsWith('/api/sessions/s1')) return jsonResponse(session(state))
@@ -279,7 +281,7 @@ it('guides explanation to a question with optional controls collapsed and access
   expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Listen to explanation' })).not.toBeInTheDocument()
   expect(screen.getByText(/No explanation has been prepared yet/)).toBeVisible()
-  expect(screen.queryByRole('button', { name: 'Try a question' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Let me try' })).not.toBeInTheDocument()
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/tutor/stream'))).toBe(false)
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/voice/speak'))).toBe(false)
   fireEvent.click(screen.getByRole('button', { name: 'Start explanation' }))
@@ -301,7 +303,10 @@ it('guides explanation to a question with optional controls collapsed and access
     'A dot product combines matching components.',
   )
   expect(screen.getByRole('button', { name: 'Send lesson question' })).toBeEnabled()
-  fireEvent.click(await screen.findByRole('button', { name: 'Try a question' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Give me an example' }))
+  await screen.findByText('Preparing another explanation… Your current content is kept.')
+  expect(screen.getByRole('button', { name: 'Let me try' })).toBeEnabled()
+  fireEvent.click(await screen.findByRole('button', { name: 'Let me try' }))
   expect(await screen.findByLabelText('Your answer')).toBeVisible()
   expect(screen.getByRole('button', { name: 'Check my answer' })).toBeDisabled()
   expect(await axe(container)).toHaveNoViolations()
@@ -442,7 +447,7 @@ it('does not apply recovered hint metadata to the current assessment and keeps t
   fireEvent.click(screen.getByRole('button', { name: 'Send lesson question' }))
   await screen.findByText('Recovered explanation.')
   expect(screen.getByText(/Recovered the original reply/)).toBeVisible()
-  fireEvent.click(screen.getByRole('button', { name: 'Try a question' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Let me try' }))
   fireEvent.change(await screen.findByLabelText('Your answer'), { target: { value: 'My reasoning' } })
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await waitFor(() => expect(submitted).toMatchObject({ hint_count: 2 }))

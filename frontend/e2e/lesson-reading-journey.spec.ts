@@ -47,7 +47,7 @@ for (const width of [390, 1280]) {
       await page
         .getByLabel('Your notes for this section (optional)')
         .fill('Check how magnitude changes the result.')
-      const question = page.getByRole('button', { name: /^(Try a question|Return to your question)$/ })
+      const question = page.getByRole('button', { name: /^(Let me try|Return to your question)$/ })
       await question.focus()
       await page.keyboard.press('Enter')
       await expect(page.getByRole('button', { name: 'Check my answer', exact: true })).toBeVisible()
