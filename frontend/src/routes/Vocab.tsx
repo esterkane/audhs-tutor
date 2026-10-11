@@ -1,3 +1,4 @@
+import { DisclosureSummary } from '../components/ui/disclosure'
 import { Card, CardTitle } from '../components/ui/card'
 import { useVocabDecks } from '../features/practice/api'
 import { QuickAdd } from '../features/practice/VocabPanel'
@@ -27,13 +28,13 @@ export function Vocab() {
             ))}
           </ul>
         )}
-        <details className="mt-3">
-          <summary className="cursor-pointer text-sm font-medium">Add one card</summary>
+        <details className="mt-3 [&[open]>summary>svg]:rotate-90">
+          <DisclosureSummary>Add one card</DisclosureSummary>
           <QuickAdd />
         </details>
       </Card>
-      <details>
-        <summary className="cursor-pointer text-sm font-medium">Import a CSV list</summary>
+      <details className="[&[open]>summary>svg]:rotate-90">
+        <DisclosureSummary>Import a CSV list</DisclosureSummary>
         <VocabImport />
       </details>
     </div>

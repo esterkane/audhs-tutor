@@ -1832,3 +1832,15 @@ timeout is now40 minutes; no tests/retries/workers changed. Hosted-run completio
 remains unverified until the latest-head workflow finishes. Existing bundle warning
 remains. Logs:/tmp/project-history-{before,final,unit,build}.log and
 /tmp/ci-38150157321-journeys.log.
+
+
+2026-10-11 AU-VOCAB-01 fixed: failed Add card previously erased word/translation
+without feedback (reproduced503 at320px). Inputs now clear only after a confirmed
+success with unchanged draft revision; newer edits remain intact. Synchronous guard
+prevents immediate duplicate submit. Failure reports an unconfirmed save and manual
+retry; no server idempotency/durable reload claim. Add/import summaries now use the
+shared44px primitive without changing native owners. Two320/1280 browser cases
+verify503, heldsuccess/neweredit, duplicate click, successful clear, keyboard toggle
+and containment. Focused lint, test types, production types/build and reviews pass;
+narrow screenshot inspected. Existing bundle warning remains. Other form-control
+targets and durable draft recovery are outside this slice. Logs:/tmp/vocab-entry-*.log.

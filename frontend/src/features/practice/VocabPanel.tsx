@@ -1,6 +1,6 @@
 import { apiFetch, type Schemas } from '../../lib/api'
 import { ReviewRecovery } from '../review/ReviewRecovery'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { useRate } from '../review/api'
@@ -158,14 +158,25 @@ export function QuickAdd() {
   const [lang, setLang] = useState('de')
   const [word, setWord] = useState('')
   const [translation, setTranslation] = useState('')
+  const submitting = useRef(false)
+  const draftRevision = useRef(0)
   return (
     <form
       className="mt-4 flex flex-wrap gap-2 items-end"
       onSubmit={(e) => {
         e.preventDefault()
-        add.mutate({ lang, word, translation, example: null })
-        setWord('')
-        setTranslation('')
+        if (submitting.current || !word || !translation) return
+        submitting.current = true
+        const submittedRevision = draftRevision.current
+        add.mutate({ lang, word, translation, example: null }, {
+          onSuccess: () => {
+            if (draftRevision.current === submittedRevision) {
+              setWord('')
+              setTranslation('')
+            }
+          },
+          onSettled: () => { submitting.current = false },
+        })
       }}
     >
       <label className="text-sm font-medium">
@@ -173,7 +184,7 @@ export function QuickAdd() {
         <input
           className="block w-16 border border-line rounded-md px-2 py-1 mt-1"
           value={lang}
-          onChange={(e) => setLang(e.target.value)}
+          onChange={(e) => { draftRevision.current++; setLang(e.target.value) }}
         />
       </label>
       <label className="text-sm font-medium grow">
@@ -181,7 +192,7 @@ export function QuickAdd() {
         <input
           className="block w-full border border-line rounded-md px-2 py-1 mt-1"
           value={word}
-          onChange={(e) => setWord(e.target.value)}
+          onChange={(e) => { draftRevision.current++; setWord(e.target.value) }}
         />
       </label>
       <label className="text-sm font-medium grow">
@@ -189,15 +200,16 @@ export function QuickAdd() {
         <input
           className="block w-full border border-line rounded-md px-2 py-1 mt-1"
           value={translation}
-          onChange={(e) => setTranslation(e.target.value)}
+          onChange={(e) => { draftRevision.current++; setTranslation(e.target.value) }}
         />
       </label>
       <Button type="submit" size="sm" disabled={!word || !translation || add.isPending}>
         Add card
       </Button>
+      {add.isError && <p role="alert">Could not confirm the card was saved. {add.error.message} Your inputs are kept; you can try again.</p>}
       {add.isSuccess && (
         <span role="status" className="text-sm text-muted">
-          Added.
+          Submitted card saved.
         </span>
       )}
     </form>

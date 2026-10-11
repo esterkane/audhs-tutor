@@ -134,3 +134,17 @@ Runtime JSON is retained locally under /tmp/ux-audit-screen-inventory-<width>px-
 Design comparison still showed optional workspace panels competing with the current
 lesson in Focus. The next bounded fix hides them without unmounting their state;
 hidden ambient playback must stop rather than leave its controls inaccessible.
+
+
+## AU-VOCAB-01 — failed card save discards entered work (S3, 2026-10-11)
+
+Reproduced in isolated320px Chromium: fill Word/Translation, respond503 to POST
+/api/vocab, then inspect fields. Expected retained inputs and failure feedback;
+actual word is empty (expected example, received empty), with no error message.
+The learner must remember/re-enter both fields and cannot tell whether saving failed.
+Baseline: /tmp/vocab-entry-before.log; vocabulary-entry.spec.ts.
+Minimal fix: clear inputs only after confirmed success, retain edits during pending
+requests, show failure with manual retry, preserve keyboard and native disclosures.
+Longer term: durable draft recovery and server idempotency for ambiguous delivery.
+Risk: late success erasing newer edits; test changed drafts and held requests.
+This finding concerns local authoring, not assessed learning evidence.
