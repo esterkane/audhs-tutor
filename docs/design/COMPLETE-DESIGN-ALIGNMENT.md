@@ -24,24 +24,32 @@ Read all extracted pages and visually inspected typography/layout/component page
 | 14px UI /16px prose,13px code, p5 | Shared UI/prose/code role tokens in index.css | Foundation aligned with118% preference; representative evidence and remaining per-screen acceptance in TYPOGRAPHY-ALIGNMENT.md |
 | 48px header,240/48px navigation, five mobile destinations + Tools, p6 | Five-destination sidebar/rail/bottom navigation and compact header implemented | Bounded browser evidence in HEADER-CONTEXT-CONTRACT.md; full human/assistive-technology acceptance remains open |
 | Sole Home ResumeCard, p6 | Duplicate header/menu links removed | Shell aligned; Home and contextual recovery retained, see ../slices/single-shell-resume.md |
-| Shared44px Disclosure,40px visual controls/44px targets, pp5–7 | Shared Disclosure in two lesson controls; existing Button | Partial: see ../slices/shared-disclosure.md; remaining disclosure/raw-control adoption open; shared Button sizing verified in ../slices/button-target-plan.md |
-| ContextBar, goal→concept→step,Pause/Focus and anchored tutor, pp6/9 | Existing session cards, persistent tutor and pending goal/explanation consolidation | Partial; pending layout is an incremental reading-order fix, not completed Learn blueprint |
+| Shared44px Disclosure,40px visual controls/44px targets, pp5–7 | Shared Disclosure across lesson, saved-history and saved-answer controls; existing Button | Partial: see ../slices/shared-disclosure.md; remaining disclosure/raw-control adoption open; shared Button sizing verified in ../slices/button-target-plan.md |
+| ContextBar, goal→concept→step,Pause/Focus and anchored tutor, pp6/9 | Single concept heading, activity summary, Pause/Focus, responsive context and content before composer | Implemented in bounded journeys; initial composer/first-action hierarchy and human acceptance remain open |
 | Evidence labels rather than false precision, pp8/10 | Existing learning evidence and mixed progress views | Map words to real evidence; never infer demonstrated understanding from exposure or bookmarks |
-| Reversible adaptation and explicit Focus exit, p11 | Existing preferences and session controls | Verify complete journey before claiming alignment |
+| Reversible adaptation and explicit Focus exit, p11 | Explicit adaptation choices/Undo and Focus escape implemented | Keyboard, preserved drafts and audio-stop journeys pass; human/AT acceptance remains open |
 | Motion/shadow/spacing values marked unknown, p13 | Existing tokens/source files | Do not invent source values or present recommendations as recovered specification |
 
 ## Execution order and change gates
 
-1. Finish the pending lesson reading-order slice with retained goal,narration,Pause/End,
-   keyboard and320/390/1280 layout checks. Do not call this complete design adoption.
-2. Reconcile shared Button/Disclosure/Panel and typography role tokens with pp5–8.
-3. Implement the shell/navigation/ContextBar direction from p6, including sole Home
-   resume entry, all existing destinations and focus-mode escape. Preserve saved context.
-4. Continue Home,Preferences,terminology and evidence presentation in the PDF's p12
-   order; reuse implemented behavior rather than duplicate it.
-5. Every affected screen needs light/dark,large-text,reduced-motion,keyboard,responsive,
-   error/loading/saved-state checks. Human comprehension and screen-reader acceptance
-   remain separate gates. No new learning-policy or provider changes follow from styling.
+Current order (reconciled after implementation; dated entries below remain history):
+
+1. Verify latest-head CI, including the full browser suite with its measured runner
+   allowance. Earlier347-pass local evidence predates recent slices; it is not a
+   latest-head hosted result. Do not repeat delivered reading-order/Focus/navigation work.
+2. Complete the remaining empty lesson-entry/composer hierarchy from
+   LESSON-ORIENTATION-CONTRACT.md using a concrete rendered baseline. The single
+   heading, secondary session controls and below-activity plan settings are delivered.
+3. Audit remaining shared-control/token adoption by concrete screen/finding, without
+   redesigning unrelated views. Shell, local fonts, palette and five destinations exist.
+4. Progress evidence levels require an explicit provenance/learning-policy contract;
+   visual labels must not manufacture independent application from scores or absent hints.
+5. Extend acceptance beyond the bounded actual200% Chromium lesson checks (light320,
+   dark640): other affected flows/themes, screen-reader use and owner re-entry remain
+   unverified. Root-font enlargement and screenshots are not substitutes.
+
+Preserve the broader R/Q/V/A/E/S queues in CURRENT-WORK.md. This ordering does not
+close them or replace their requirements with the design work already completed.
 
 All new visual work should cite the relevant PDF page/section in its slice record and
 list outstanding deviations. Use semantic tokens and existing components; introduce no

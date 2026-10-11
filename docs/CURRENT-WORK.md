@@ -14,11 +14,14 @@ Do not schedule already delivered design slices again. Bounded implementation no
 - Quick review rejects late redirects after navigation or Back. Server-side creation already started may still finish; browsing does not cancel learning records.
 
 Evidence and remaining per-screen gaps: [complete design alignment](design/COMPLETE-DESIGN-ALIGNMENT.md).
-The next acceptance gate is integrated browser regression verification, followed by actual browser zoom,
-assistive technology and human re-entry/comprehension. Root-font enlargement, screenshot inspection
-and automated accessibility checks do not close those latter gates. Broader shared-control adoption,
-semantic quality, material coverage and the dependent queues below remain open. Both remotes are
-private; sanitation remains mandatory for the separately maintained release variant.
+Integrated local browser regression verification passed347 tests with20 intentional
+opt-in skips before the latest bounded slices. Actual200% Chromium lesson checks now
+cover light320/dark640 CSS pixels, sequential keyboard navigation, drafts and return.
+Latest-head hosted CI, other-flow zoom, assistive technology and human re-entry remain
+open. Next design work is the empty lesson-entry/composer hierarchy; do not reimplement
+completed heading/Focus/navigation/reading-order changes. Both remotes remain private.
+See the reconciled execution order in design/COMPLETE-DESIGN-ALIGNMENT.md. Broader
+semantic quality, material coverage and dependent queues below remain active.
 
 ## Verified status reconciliation — 2026-10-08
 
