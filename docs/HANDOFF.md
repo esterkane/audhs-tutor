@@ -1461,3 +1461,5 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 2026-10-11: Added a local-only synthetic workspace evaluator and retention-consistency case. One production-path sample reproduced a semantic count/rate failure; no quality-pass or speed improvement claimed. Three preflight guard tests, Ruff and bounded review pass. No tutor runtime changes. See evals/workspace/README.md.
 
 2026-10-11: Preferences Back now stays within the app on direct entry while retaining in-app history return. Two before-change failures, four final desktop/narrow keyboard journeys, visual inspection, lint/build and bounded review pass. No learning/preference logic change. See ux/DAILY-LEARNING-ACCEPTANCE.md.
+
+2026-10-11: Correction inbox no longer falsely says replacement is unavailable. Guidance now explains drafting, source/impact review, eligibility and explicit publication for future practice with historical answers retained. Existing2 component and2 desktop/narrow keyboard recovery journeys plus lint pass; narrow visual inspected. Copy-only change; unchanged build/type evidence reused.

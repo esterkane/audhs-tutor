@@ -28,7 +28,7 @@ export function CorrectionInbox() {
   }
   return <section id="question-reports" className="border border-line rounded p-4">
     <h2 ref={heading} tabIndex={-1} className="text-lg font-semibold">Reported questions</h2>
-    <p className="text-sm text-muted">Review questions you marked as needing improvement. This list does not change questions or grades. You can prepare a correction draft; replacement is not available yet.</p>
+    <p className="text-sm text-muted">Review questions you marked as needing improvement. This list does not change questions or grades. Prepare a correction draft, review its sources and impact, then explicitly confirm publication when the draft is eligible. Published corrections apply to future practice; past answers remain in your history.</p>
     <Button className="mt-2" aria-expanded={open} onClick={() => setOpen(!open)}>
       {open ? 'Hide question reports' : 'Show question reports'}
     </Button>
