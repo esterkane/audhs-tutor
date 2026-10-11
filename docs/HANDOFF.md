@@ -1521,3 +1521,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Home alternatives and bounded Quick review verified; saved-session, timeout, duplicate-click and settings readiness contracts documented in docs/design/HOME-RESUME-ALIGNMENT.md.
+
+
+2026-10-11 — Boolean Preferences switches verified with keyboard, full-row targets, save recovery and retained confirmed state. See docs/design/PREFERENCES-CONTROL-ALIGNMENT.md. Learning policy unchanged; broader design acceptance remains open.

@@ -1,3 +1,4 @@
+import { SwitchField } from '../components/ui/switch-field'
 import { CorrectionInbox } from '../features/questions/CorrectionInbox'
 import { ExcludedQuestions } from '../features/questions/QuestionPractice'
 import { Link, useNavigate } from 'react-router-dom'
@@ -112,22 +113,16 @@ export function Preferences() {
                 {sectionSpecs.map((s) => (
             <div key={s.key}>
               {s.type === 'bool' && (
-                <Choice<string>
-                  stackOnNarrow
+                <SwitchField
                   describedBy={effectHint(s.key) ? `effect-${s.key}` : undefined}
                   label={s.description}
-                  options={[
-                    { value: 'on', label: 'On' },
-                    { value: 'off', label: 'Off' },
-                  ]}
-                  value={values[s.key] ? 'on' : 'off'}
-                  onChange={(v) => {
-                    const on = v === 'on'
+                  checked={Boolean(values[s.key])}
+                  disabled={set.isPending}
+                  onChange={(on) => {
                     if (on && s.key === 'ui.notifications' && typeof Notification !== 'undefined')
                       void Notification.requestPermission()
                     set.mutate({ key: s.key, value: on })
                   }}
-                  columns={2}
                 />
               )}
               {s.type === 'enum' && (
