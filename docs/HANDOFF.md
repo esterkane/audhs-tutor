@@ -1533,3 +1533,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Shared UI/prose/code typography aligned; enlarged lesson code no longer widens its grid.610 unit/14 browser checks, lint/build and reviews pass. See docs/design/TYPOGRAPHY-ALIGNMENT.md for limits and remaining acceptance.
+
+
+2026-10-11 — Lesson optional sections now use shared disclosures; explicit full-solution action and saved context retained.12 browser/10 unit checks plus lint/build/reviews pass. See docs/design/HEADER-CONTEXT-CONTRACT.md; child-component disclosures and heading adoption remain.

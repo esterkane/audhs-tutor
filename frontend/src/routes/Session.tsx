@@ -122,11 +122,10 @@ export function Session() {
         data={session.data}
       />
       <AlongsideMode sessionId={sessionId} />
-      {st.skill_id && <details>
-        <summary className="cursor-pointer text-sm font-medium">Try a coding experiment</summary>
+      {st.skill_id && <Disclosure label="Try a coding experiment">
         <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson. Code and chat stay separate from your assessed answers; no code runs automatically.</p>
         <Link className="underline" to={`/playground?lesson_session=${encodeURIComponent(sessionId)}&lesson_skill=${encodeURIComponent(st.skill_id)}`}>Open lesson experiment</Link>
-      </details>}
+      </Disclosure>}
     </div>
   )
 }
@@ -652,8 +651,7 @@ function TeachPanel({
       )}
       <SavedLessonNotes sessionId={sessionId} />
       {previous && (
-        <details className="border border-line rounded-md p-3">
-          <summary>Previous answer · {previous.status}</summary>
+        <Disclosure label={`Previous answer · ${previous.status}`}>
           <Markdown text={previous.text} />
           {previous.done?.sources.map((source, index) => (
             <p className="text-sm" key={index}>
@@ -673,7 +671,7 @@ function TeachPanel({
           {!previous.done && (
             <p className="text-sm">This response did not finish; source references may be incomplete.</p>
           )}
-        </details>
+        </Disclosure>
       )}
       {(text || busy || error || status === 'stopped') && (
         <Card aria-busy={busy}>
@@ -702,8 +700,7 @@ function TeachPanel({
             <Markdown text={text || (busy ? '…' : '')} />
           )}
           {active && status === 'complete' && done && (
-            <details className="mt-4 border-t border-line pt-3">
-              <summary className="cursor-pointer font-semibold">Think deeper about this explanation</summary>
+            <Disclosure className="mt-4" label="Think deeper about this explanation">
               <p className="text-sm mt-2">
                 Choose a direction to add to your question above. Your existing draft is kept. Edit it, then
                 send it. This is optional practice, not a graded assessment.
@@ -743,7 +740,7 @@ function TeachPanel({
                   want to discuss if it is later in the explanation.
                 </p>
               )}
-            </details>
+            </Disclosure>
           )}
           {status === 'stopped' && <p role="status">Explanation stopped. Received text is kept.</p>}
           {status === 'complete' && (
@@ -765,11 +762,10 @@ function TeachPanel({
             </p>
           )}
           {done && done.registry_id && (
-            <details className="text-xs text-muted mt-1">
-              <summary className="cursor-pointer">About this answer</summary>
+            <Disclosure className="text-xs text-muted mt-1" label="About this answer">
               Model {done.registry_id} ({done.route ?? 'primary'})
               {done.usage_source === 'estimated' ? ' · token usage estimated' : ''}
-            </details>
+            </Disclosure>
           )}
           {done && <TutorSources turn={done} />}
           {done && (
@@ -861,10 +857,7 @@ function TeachPanel({
               {hasQuestion ? 'Return to your question' : 'Try a question'}
             </Button>
           </div>
-          <details>
-            <summary className="cursor-pointer text-sm">
-              Need another explanation or a different activity?
-            </summary>
+          <Disclosure label="Need another explanation or a different activity?">
             <Choice<string>
               label="Show it differently"
               options={(kinds.data?.kinds ?? [])
@@ -887,16 +880,15 @@ function TeachPanel({
             <Button className="mt-3" variant="ghost" onClick={onSwitchEarly}>
               Request another activity (a check may be required)
             </Button>
-          </details>
-          <details className="mt-3">
-            <summary className="cursor-pointer text-sm">Full solution (explicit request, logged)</summary>
+          </Disclosure>
+          <Disclosure className="mt-3" label="Full solution (explicit request, logged)">
             <Button
               className="mt-2"
               onClick={() => void run({ ...base, text: 'show the full solution', action: 'full_solution' })}
             >
               Show the full solution
             </Button>
-          </details>
+          </Disclosure>
         </Card>
       )}
     </>
@@ -1161,15 +1153,14 @@ function AssessPanel({
       {result && (
         <Card role="status" className={result.score >= 0.85 ? 'border-ok' : 'border-warn'}>
           <h3 className="font-medium">Feedback on your answer</h3>
-          <details className="text-sm text-muted mt-2">
-            <summary className="cursor-pointer">Score and grading details</summary>
+          <Disclosure className="text-sm text-muted mt-2" label="Score and grading details">
             <p>
               Score {(result.score * 100).toFixed(0)}% · graded by {result.grader_level} · confidence{' '}
               {result.confidence_pre == null
                 ? 'not supplied'
                 : `${result.confidence_pre}/5: ${result.calibration}`}
             </p>
-          </details>
+          </Disclosure>
           <p className="mt-2">{result.feedback}</p>
           <AssessmentSaveStatus
             key={result.attempt_id}
@@ -1240,14 +1231,10 @@ function OptionalExercise({
   const exercise = useExercise(skillId)
   if (!exercise.data && !exercise.isError && !exercise.isFetching) return null
   return (
-    <details className="mt-2">
-      <summary className="cursor-pointer text-sm font-medium">
-        Code exercise (optional{mastery < 0.6 ? ' — best after the worked example' : ''}):{' '}
-        {exercise.data?.title ?? (exercise.isFetching ? 'Loading exercise…' : 'Could not load exercise')}
-      </summary>
+    <Disclosure className="mt-2" label={`Code exercise (optional${mastery < 0.6 ? ' — best after the worked example' : ''}): ${exercise.data?.title ?? (exercise.isFetching ? 'Loading exercise…' : 'Could not load exercise')}`}>
       <div className="mt-2">
         <CodeExercise sessionId={sessionId} skillId={skillId} />
       </div>
-    </details>
+    </Disclosure>
   )
 }

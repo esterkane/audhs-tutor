@@ -75,6 +75,14 @@ test('completed explanation sections preserve notes, focus and optional follow-u
       await page.getByRole('textbox', { name: 'Ask about this lesson (optional)' }).inputValue(),
     ).toContain('Compare matching components.')
     expect(calls).toBe(1)
+    const solution = page.locator('summary').filter({ hasText: 'Full solution (explicit request, logged)' })
+    expect((await solution.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await solution.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Show the full solution', exact: true })).toBeVisible()
+    expect(calls).toBe(1) // Opening the choice is not a request for the answer.
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Show the full solution', exact: true })).not.toBeVisible()
     await page.getByRole('button', { name: 'End session', exact: true }).click()
   } finally {
     await endOpenSession(request)

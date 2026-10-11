@@ -193,3 +193,10 @@ area-goal provenance gap remains. Optional lesson tools are retained as collapse
 disclosures, not removed. Complete PDF compliance remains open. Next follow the
 PDF page12 Home/Preferences sequence and reconcile remaining layout gaps before
 changing unrelated learning behavior.
+
+
+## Lesson disclosures — 2026-10-11
+
+Complete Design System p7: the eight remaining bare disclosure wrappers in Session.tsx now use shared Disclosure. Previous response/status, deeper prompts, answer metadata, alternate explanations, full solution, score details and both code entry disclosures retain labels, children and handlers. Native details keeps children mounted. Full-solution generation still requires the separate explicit logged button.
+
+Two pre-change explanation/clarity journeys passed. Final12 browser checks cover explanation notes/sections, keyboard full-solution expansion without generation, lesson light/dark320/390/1280 layouts, contextual code return and reading/question/feedback recovery. Ten Session unit tests, targeted lint and production type/build passed; code/pedagogy reviews found no blockers or majors. Inspected narrow reading and desktop dark screenshots. Shared disclosures do not add audio or alter learning policy. Remaining: disclosure adoption in extracted child components (audio, notes, alongside and session controls), per-page h1 semantics, assistive-technology and human acceptance.
