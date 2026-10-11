@@ -150,7 +150,7 @@ it('keeps course switching secondary and returns from full notebook tools to the
   const fetcher = vi.fn(async (url: string) =>
     jsonResponse(
       url === '/api/notebooks/status'
-        ? { status: 'idle', message: 'Ready to prepare', course_id: '' }
+        ? { service_id: '11111111-1111-4111-8111-111111111111', status: 'idle', message: 'Ready to prepare', course_id: '' }
         : fixture,
     ),
   )
