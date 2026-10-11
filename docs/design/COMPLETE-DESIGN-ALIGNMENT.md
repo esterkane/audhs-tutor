@@ -117,3 +117,30 @@ inspected. Physical audio and assistive-technology checks remain unverified.
 Only the current alternative is offered in this local view switch; older saved
 versions remain in answer history. This is not a new version archive. Context-column/
 mobile-sheet layout and consolidation of composer/secondary controls remain open.
+
+
+## Tutor composer consolidation — 2026-10-11
+
+Question field precedes Send in DOM/keyboard order. Once content exists the panel
+is labelled Ask the tutor rather than Your explanation. Hint/Summary retain their
+handlers but share More ways to explain with representations; the initial empty
+state retains its help disclosure. The two placements are mutually exclusive.
+No prompt, learning-state or narration changes.
+
+Evidence:6 layout journeys pass at320/390/1280 light/dark, including revised input→
+Send keyboard order;6 representation/recovery journeys also pass.10 Session tests
+verify one help location, retained handlers and draft recovery. Lint/type/build and
+code/pedagogy reviews pass. Narrow initial screenshot inspected. Existing large-bundle
+warning remains. These checks do not establish human comprehension or full PDF fidelity.
+
+### Next layout contract (not implemented)
+The p9 desktop context column/mobile sheet crosses the stateful SessionControls and
+SessionBody boundary. Do not duplicate either owner into responsive variants: that
+would create two stop/mark mutations and risk losing drafts on resize. Keep lesson
+and assessment owners mounted, show compact goal/concept/activity context, keep Pause
+and Focus directly reachable, and expose supplementary controls in one responsive
+container. A mobile sheet must return focus, close with Escape and preserve state on
+resize/navigation; focus mode must retain its explicit exit. Verify idle/running/
+failed stop, label undo, assessment drafts and stream continuity before publication.
+Activity index is not an invented lesson-step count. The current inline context
+remains until this complete responsive contract is implemented and verified.

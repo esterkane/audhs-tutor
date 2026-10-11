@@ -486,3 +486,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — In-place original/alternate explanation view preserves notes and draft, deactivates hidden narration, and respects newer selection over late responses.6 browser cases (view race rerun),29 component tests, lint/build and reviews pass. See docs/design/COMPLETE-DESIGN-ALIGNMENT.md for limits and remaining layout.
+
+
+2026-10-11 — Tutor composer places input before Send and consolidates Hint/Summary after content.12 relevant browser cases,10 Session tests, lint/build and reviews pass. Responsive context ownership contract documented before structural work in docs/design/COMPLETE-DESIGN-ALIGNMENT.md.

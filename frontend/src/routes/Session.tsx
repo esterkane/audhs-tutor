@@ -569,6 +569,22 @@ function TeachPanel({
     }
   }
 
+  const helpActions = (
+    <div className="flex gap-2 flex-wrap mt-2">
+      <Button
+        disabled={busy || input.length > 4000}
+        onClick={() => void run({ ...base, text: input.trim() || 'I am stuck.', action: 'hint' })}
+      >
+        Hint
+      </Button>
+      <Button
+        disabled={busy || input.length > 4000}
+        onClick={() => void run({ ...base, text: input.trim() || 'Recap this skill.', action: 'summarize' })}
+      >
+        Summary of this skill
+      </Button>
+    </div>
+  )
   return (
     <>
       {busy && (
@@ -802,6 +818,7 @@ function TeachPanel({
             open={waysOpen}
             onToggle={event => setWaysOpen(event.currentTarget.open)}
           >
+            {helpActions}
             <Choice<string>
               label="Show it differently"
               options={(kinds.data?.kinds ?? [])
@@ -830,7 +847,22 @@ function TeachPanel({
         </Card>
       )}
       <Card>
-        <CardTitle>Your explanation</CardTitle>
+        <CardTitle>{text || alt ? 'Ask the tutor' : 'Your explanation'}</CardTitle>
+        <label htmlFor="ask" className="text-sm font-medium">
+          Ask about this lesson (optional)
+        </label>
+        <Textarea
+          id="ask"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Leave empty to start with an explanation."
+          aria-describedby={input.length > 4000 ? 'lesson-question-limit' : undefined}
+        />
+        {input.length > 4000 && (
+          <p id="lesson-question-limit" role="alert">
+            Your draft is preserved. Shorten it to 4,000 characters before sending ({input.length} currently).
+          </p>
+        )}
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
             variant={done || alt ? 'secondary' : 'primary'}
@@ -853,24 +885,7 @@ function TeachPanel({
                   ? 'Explain again'
                   : 'Start explanation'}
           </Button>
-          <Disclosure label="More ways to learn">
-            <div className="flex gap-2 flex-wrap mt-2">
-              <Button
-                disabled={busy || input.length > 4000}
-                onClick={() => void run({ ...base, text: input.trim() || 'I am stuck.', action: 'hint' })}
-              >
-                Hint
-              </Button>
-              <Button
-                disabled={busy || input.length > 4000}
-                onClick={() =>
-                  void run({ ...base, text: input.trim() || 'Recap this skill.', action: 'summarize' })
-                }
-              >
-                Summary of this skill
-              </Button>
-            </div>
-          </Disclosure>
+          {!(done || alt || hasQuestion) && <Disclosure label="More ways to learn">{helpActions}</Disclosure>}
           {voiceOn && !talking && (
             <Button variant="ghost" onClick={() => setTalking(true)}>
               Talk instead
@@ -880,27 +895,12 @@ function TeachPanel({
         {!text && !busy && !error && status !== 'stopped' && (
           <p className="mt-2">
             No explanation has been prepared yet. Start with the idea and a worked example, or type a
-            specific question below.
+            specific question above.
           </p>
         )}
         <p className="text-sm text-muted mt-2">
           Read at your own pace or choose Listen when the explanation is ready. Audio never starts automatically.
         </p>
-        <label htmlFor="ask" className="text-sm font-medium">
-          Ask about this lesson (optional)
-        </label>
-        <Textarea
-          id="ask"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Leave empty to start with an explanation."
-          aria-describedby={input.length > 4000 ? 'lesson-question-limit' : undefined}
-        />
-        {input.length > 4000 && (
-          <p id="lesson-question-limit" role="alert">
-            Your draft is preserved. Shorten it to 4,000 characters before sending ({input.length} currently).
-          </p>
-        )}
         {active && learningGoal && <ReadAloud key={skillId} text={learningGoal} label="Listen to learning goal" />}
         {!busy && <TutorResponseStatus status={status} startedAt={startedAt} />}
         {active && (

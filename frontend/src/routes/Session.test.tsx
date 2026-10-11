@@ -303,6 +303,13 @@ it('guides explanation to a question with optional controls collapsed and access
     'A dot product combines matching components.',
   )
   expect(screen.getByRole('button', { name: 'Send lesson question' })).toBeEnabled()
+  expect(screen.queryByText('More ways to learn')).not.toBeInTheDocument()
+  const composer = screen.getByLabelText('Ask about this lesson (optional)')
+  expect(composer.compareDocumentPosition(screen.getByRole('button', { name: 'Send lesson question' })) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Explain differently' }))
+  expect(screen.getByRole('button', { name: 'Hint' })).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Summary of this skill' })).toBeVisible()
+
   fireEvent.click(screen.getByRole('button', { name: 'Give me an example' }))
   await screen.findByText('Preparing another explanation… Your current content is kept.')
   expect(screen.getByRole('button', { name: 'Let me try' })).toBeEnabled()
