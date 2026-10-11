@@ -102,3 +102,41 @@ visually inspected; desktop recovery covered by browser assertions. Review
 identified unbounded reads; fixed with existing boundedRead and timeout/body/
 cancellation regression tests. Remaining: full shell, Practice/Progress, dark/
 large-text shell acceptance and human comprehension.
+
+## Practice entry implemented
+
+`/practice` now offers lesson/session practice, coding experiments, language
+activities and project study through existing routes. It explains admission
+without starting sessions or writing completion. Current review requires a
+session, so the lesson entry resolves via `/learn`, not a dead standalone
+`/review` link. This is the navigation entry, not completion of page10's
+exercise/feedback blueprint. Shell destination exposure remains pending.
+
+Two isolated browser journeys passed at320/1280px: explicit link targets,
+44px controls, keyboard activation, focus after navigation, Back and zero API
+writes on entry. Narrow screenshot visually inspected; targeted ESLint and
+production build passed. Bounded code/copy review found no actionable issues.
+
+## Progress API gap and next slice
+
+PDF page10 requires Understanding, Practice and Independent application rows
+with level/date and an expandable explanation of underlying evidence. The
+current `/api/skills/map` returns dimension score/count/confidence and memory
+counts, without evidence dates or records. Do not use that payload alone as
+the completed Progress view.
+
+Existing `CompetencyEvidence` stores dimension, score, weight, grader level,
+source attempt and timestamp; `CompetencyState` stores last_evidence_ts. The
+next bounded vertical slice should expose learner-scoped, read-only evidence
+with source attempt details and dates through typed API schemas, then render
+the three design rows and a separate recall/memory summary. Preserve existing
+competency aggregation; do not infer independent work from transfer evidence
+without inspecting whether the attempt records help/solution exposure.
+
+Before implementing display levels, inspect the assessment rubric and evidence
+provenance. No evidence must read as not yet checked, not failure. Distinguish
+model judgement, observed attempts and self-report; show unavailable provenance
+explicitly. Verify learner isolation, absent/partial evidence, stale/loading/error
+states, chronology and no mutation. Generated client types must come from the
+OpenAPI schema. The skill map stays a secondary view; no new progress scores,
+thresholds or invented dates.

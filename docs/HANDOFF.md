@@ -1494,3 +1494,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Read-only Learn entry with bounded current-session resolution; see docs/design/SHELL-ROUTE-CONTRACT.md. No lifecycle/model writes. Targeted unit/browser/lint/build verification; full shell migration remains open.
+
+
+2026-10-11 — Practice entry links existing activities without completion writes; browser keyboard/mobile/Back, lint/build and review passed. Progress evidence contract and outstanding shell migration: docs/design/SHELL-ROUTE-CONTRACT.md.
