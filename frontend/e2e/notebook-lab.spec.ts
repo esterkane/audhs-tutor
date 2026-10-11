@@ -38,3 +38,36 @@ test('prepares a notebook from the app without a terminal or automatic cell exec
   )
   expect(requests).toBe(1)
 })
+
+for (const width of [390, 1280]) {
+  test(`stalled notebook status has keyboard recovery ${width}`, async ({ page }) => {
+    await page.setViewportSize({ width, height: 844 })
+    await page.route('**/local-learning/program.json', route => route.fulfill({ json: {
+      title: 'Local practice', courses: [{ id: 'fixture', title: 'Example', project: 'Study', status: 'Fixture', sections: [] }],
+    } }))
+    let reads = 0
+    let recovered = false
+    let starts = 0
+    await page.route('**/api/notebooks/status', route => {
+      reads++
+      if (!recovered) return // Reproduce a transport that never answers, including remounts.
+      return route.fulfill({ json: { status: 'idle', message: 'Ready after retry', url: null, course_id: '' } })
+    })
+    await page.route('**/api/notebooks/start', route => { starts++; return route.abort() })
+    await page.goto('/programs')
+    await page.getByText('Full course notebook and files', { exact: true }).click()
+    await page.getByRole('button', { name: 'Open full course notebook tools', exact: true }).click()
+    await expect(page.getByText('Checking local notebook setup…')).toBeVisible()
+    const retry = page.getByRole('button', { name: 'Retry status' })
+    await expect(retry).toBeVisible({ timeout: 20000 })
+    const beforeRetry = reads
+    recovered = true
+    await retry.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Ready after retry')).toBeVisible()
+    expect(starts).toBe(0)
+    expect(reads).toBe(beforeRetry + 1)
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+    await page.getByRole('region', { name: 'Complete local notebook' }).screenshot({ path: `/tmp/notebook-status-${width}.png` })
+  })
+}

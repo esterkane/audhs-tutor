@@ -1,8 +1,8 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { renderApp, jsonResponse } from '../../test/utils'
 import { LocalNotebookLab } from './LocalNotebookLab'
-afterEach(() => vi.unstubAllGlobals())
+afterEach(() => { vi.unstubAllGlobals(); vi.useRealTimers() })
 it('offers explicit setup and opens only the prepared course', async () => {
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
     if (url.endsWith('/status'))
@@ -33,4 +33,33 @@ it('offers explicit setup and opens only the prepared course', async () => {
       expect.stringContaining('/test/task.ipynb'),
     ),
   )
+})
+
+it('bounds a stalled status read and retries without starting or installing anything', async () => {
+  vi.useFakeTimers()
+  const fetcher = vi.fn().mockImplementationOnce(() => new Promise(() => {}))
+    .mockResolvedValue(jsonResponse({ status: 'idle', message: 'Ready after retry', url: null, course_id: '' }))
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<LocalNotebookLab courseId="test" />)
+  await act(async () => { await vi.advanceTimersByTimeAsync(15001) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+  const retry = screen.getByRole('button', { name: 'Retry status' })
+  fireEvent.click(retry)
+  await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+  expect(screen.getByText('Ready after retry')).toBeInTheDocument()
+  expect(fetcher.mock.calls.every(([url]) => url.endsWith('/status'))).toBe(true)
+})
+
+it('stops background polling after a failed setup status read', async () => {
+  vi.useFakeTimers()
+  const fetcher = vi.fn().mockResolvedValueOnce(jsonResponse({ status: 'starting', message: 'Starting', url: null, course_id: 'test' }))
+    .mockRejectedValue(new Error('Offline'))
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<LocalNotebookLab courseId="test" />)
+  await act(async () => { await vi.advanceTimersByTimeAsync(1002) })
+  await act(async () => { await vi.advanceTimersByTimeAsync(1) })
+  expect(screen.getByRole('button', { name: 'Retry status' })).toBeInTheDocument()
+  const calls = fetcher.mock.calls.length
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000) })
+  expect(fetcher).toHaveBeenCalledTimes(calls)
 })

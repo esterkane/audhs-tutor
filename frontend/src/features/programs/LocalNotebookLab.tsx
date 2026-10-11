@@ -1,14 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, type Schemas } from '../../lib/api'
+import { boundedRead } from '../../lib/boundedRead'
 import { Button } from '../../components/ui/button'
 
 export function LocalNotebookLab({ courseId }: { courseId: string }) {
   const cache = useQueryClient()
   const state = useQuery({
     queryKey: ['notebook-lab'],
-    queryFn: () => apiFetch<Schemas['NotebookStatus']>('/api/notebooks/status'),
+    queryFn: ({ signal }) => boundedRead<Schemas['NotebookStatus']>('/api/notebooks/status', signal, 'Notebook setup'),
+    retry: false,
     refetchInterval: (query) =>
-      ['preparing', 'installing', 'starting'].includes(query.state.data?.status ?? '') ? 1000 : false,
+      !query.state.error && ['preparing', 'installing', 'starting'].includes(query.state.data?.status ?? '') ? 1000 : false,
   })
   const start = useMutation({
     mutationFn: (install: boolean) =>
@@ -31,6 +33,7 @@ export function LocalNotebookLab({ courseId }: { courseId: string }) {
       <Button disabled={busy} onClick={() => start.mutate(false)}>
         Prepare and start notebook lab
       </Button>
+      {state.isPending && <p role="status">Checking local notebook setup…</p>}
       {state.isError && (
         <p role="alert">
           Cannot reach notebook setup. <Button onClick={() => void state.refetch()}>Retry status</Button>

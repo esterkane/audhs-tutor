@@ -200,3 +200,5 @@ Captured material, unapplied edits and one previous capture now survive route ch
 2026-10-08: Read-only assessment recovery distinguishes a released local grading worker with exact sealed proof from unknown/live ownership, without permitting repeat inference.49 backend,26 UI and6 desktop/narrow keyboard journeys pass; Ruff/mypy/types/lint/build and bounded review clear. Result-check focus is preserved while busy. See slices/assessment-unknown-outcome-plan.md; provider outcomes and explicit re-grading remain separate open work.
 
 2026-10-11: Two external reference folders recovered privately;26 documents imported and52 canonical index entries verified. Four images and notebook execution remain open. Full CI eeba6b9 passed. See slices/material-subtree-recovery.md.
+
+2026-10-11: Notebook status reads now time out visibly and offer explicit Retry; failed background polling stops.3 UI and3 desktop/narrow keyboard journeys, lint/types/build and review pass. Setup writes and learning logic unchanged. See slices/notebook-status-recovery.md.
