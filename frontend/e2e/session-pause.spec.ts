@@ -48,6 +48,10 @@ for (const width of [1280, 390]) {
         if (phase === 'teach') await expect(page.getByLabel('Ask about this lesson (optional)')).toHaveValue('Keep this unfinished question.')
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
         await page.screenshot({ path: info.outputPath('resumed.png'), fullPage: true })
+        if (phase !== 'review') {
+          await page.locator('summary').filter({ hasText: /^Session options$/ }).focus()
+          await page.keyboard.press('Enter')
+        }
         await page.getByRole('button', { name: 'End session', exact: true }).click()
         await expect(page).toHaveURL(/\/$/)
         expect(await currentSession(request)).toBeNull()

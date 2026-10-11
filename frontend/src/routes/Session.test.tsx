@@ -277,6 +277,7 @@ it('guides explanation to a question with optional controls collapsed and access
   const { container } = renderApp(<Session />, { route: '/session' })
   expect(await screen.findByRole('heading', { name: 'Learn: Dot product' })).toBeVisible()
   expect(screen.getByText('More ways to learn').closest('details')).not.toHaveAttribute('open')
+  fireEvent.click(screen.getByText('Session options'))
   expect(screen.getByRole('button', { name: 'End session' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Listen to explanation' })).not.toBeInTheDocument()

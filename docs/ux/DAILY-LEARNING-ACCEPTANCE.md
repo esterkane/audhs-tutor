@@ -250,3 +250,15 @@ Ten Session tests, lint, types/production build and both reviews pass. Narrow
 view still has substantial orientation content; DL-02 and human comprehension
 remain open. No pixel improvement claim is drawn from logs affected by focus
 scrolling. Logs: /tmp/lesson-order-{before,after,unit,build}.log.
+
+
+2026-10-11 DL-02 compact session controls: Pause and Focus remain visible; End
+now joins Change topic and saved labels in Session options, with effects explained
+inside. Saved-label status and errors remain visible outside; Review is unchanged.
+Twenty-four browser checks pass (layout320/390/1280 light/dark, Focus, actual200%
+zoom, loading recovery, pause/refresh/end and late-transition races);12 unit tests,
+lint/types/build and bounded code/pedagogy reviews pass. Narrow390 screenshot
+inspected. Existing bundle-size warning remains. This reduces secondary controls
+before the activity but does not close DL-02: initial content density and human
+discoverability of End under Session options remain to assess. No learning changes.
+Logs: /tmp/session-options-{browser,unit,build}.log.

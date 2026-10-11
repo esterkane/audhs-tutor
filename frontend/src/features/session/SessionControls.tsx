@@ -60,19 +60,20 @@ export function SessionControls({ sessionId, skillId, onPause, compact = false, 
         <Button onClick={() => { onPause?.(); navigate('/') }} disabled={stop.isPending}>
           Pause and return Home
         </Button>
-        <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
+        {!compact && <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
           End session
-        </Button>
+        </Button>}
         <LessonFocusControls />
         {!compact && secondaryActions}
       </div>
-      <p className="text-xs text-muted mt-2">
-        {compact ? 'Pause to resume later. End keeps completed work. No rating needed.' :
-          'Pause keeps this session available to resume from Home. End session or change topic finishes it; completed work stays saved. No rating needed.'}
-      </p>
-      {compact && <Disclosure className="mt-2" label="Change topic or save for later">
-        <p className="text-sm text-muted mt-2">Change topic ends this session so you can choose another. Labels save a reminder; they do not change assessed mastery.</p>
-        <div className="flex gap-2 flex-wrap mt-2">{secondaryActions}</div>
+      {!compact && <p className="text-xs text-muted mt-2">
+        Pause keeps this session available to resume from Home. End session or change topic finishes it; completed work stays saved. No rating needed.
+      </p>}
+      {compact && <Disclosure className="mt-2" label="Session options">
+        <p className="text-sm text-muted mt-2">Pause keeps this session available from Home. End or change topic finishes it; completed work stays saved. No rating needed. Labels save a reminder; they do not change assessed mastery.</p>
+        <div className="flex gap-2 flex-wrap mt-2"><Button onClick={() => stop.mutate()} disabled={stop.isPending}>
+          End session
+        </Button>{secondaryActions}</div>
       </Disclosure>}
       {skillId && marks[skillId] && (
         <p role="status" className="text-sm mt-2">
