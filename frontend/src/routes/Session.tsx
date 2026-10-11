@@ -535,6 +535,17 @@ function TeachPanel({
   const kinds = useKinds(skillId)
   const render = useRender()
   const prefer = usePrefer()
+  const preferenceLock = useRef(false)
+  const matchesPreference = (a: string, b: string) => prefer.variables &&
+    ((prefer.variables.chosenId === a && prefer.variables.rejectedId === b) ||
+      (prefer.variables.chosenId === b && prefer.variables.rejectedId === a))
+  function savePreference(chosenId: string, rejectedId: string) {
+    if (!skillId || preferenceLock.current || (prefer.isSuccess && matchesPreference(chosenId, rejectedId))) return
+    preferenceLock.current = true
+    prefer.mutate({ skillId, sessionId, chosenId, rejectedId }, {
+      onSettled: () => { preferenceLock.current = false },
+    })
+  }
   const [alt, setAlt] = useState<RenderOut | null>(null)
   const [prevAlt, setPrevAlt] = useState<RenderOut | null>(null)
   const representationLock = useRef(false)
@@ -757,38 +768,22 @@ function TeachPanel({
           {prevAlt && prevAlt.representation_id !== alt.representation_id && (
             <div className="mt-3">
               <p className="text-sm font-medium mb-1">Which explanation worked better?</p>
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (skillId)
-                      prefer.mutate({
-                        skillId,
-                        sessionId,
-                        chosenId: alt.representation_id,
-                        rejectedId: prevAlt.representation_id,
-                      })
-                    setPrevAlt(null)
-                  }}
-                >
+              <p className="text-sm text-muted">Optional feedback, not a learning score.</p>
+              <div className="flex gap-2 flex-wrap">
+                <Button size="sm" aria-disabled={prefer.isPending || (prefer.isSuccess && !!matchesPreference(alt.representation_id, prevAlt.representation_id))} aria-busy={prefer.isPending}
+                  onClick={() => savePreference(alt.representation_id, prevAlt.representation_id)}>
                   This one ({alt.kind.replace('_', ' ')})
                 </Button>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    if (skillId)
-                      prefer.mutate({
-                        skillId,
-                        sessionId,
-                        chosenId: prevAlt.representation_id,
-                        rejectedId: alt.representation_id,
-                      })
-                    setPrevAlt(null)
-                  }}
-                >
+                <Button size="sm" aria-disabled={prefer.isPending || (prefer.isSuccess && !!matchesPreference(alt.representation_id, prevAlt.representation_id))} aria-busy={prefer.isPending}
+                  onClick={() => savePreference(prevAlt.representation_id, alt.representation_id)}>
                   The previous one ({prevAlt.kind.replace('_', ' ')})
                 </Button>
               </div>
+              {matchesPreference(alt.representation_id, prevAlt.representation_id) && <>
+                  {prefer.isPending && <p role="status">Saving your explanation preference…</p>}
+                  {prefer.isError && <p role="alert">{prefer.error.message}</p>}
+                  {prefer.isSuccess && <p role="status">Preference saved.</p>}
+                </>}
             </div>
           )}
         </Card>

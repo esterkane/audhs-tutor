@@ -39,6 +39,8 @@ export function usePrefer() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId, chosen_id: chosenId, rejected_id: rejectedId }),
+      }).then(response => {
+        if (!response.ok) throw new Error('Could not confirm that your explanation preference was saved. Choose again to retry.')
       }),
   })
 }

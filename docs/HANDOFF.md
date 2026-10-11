@@ -1804,3 +1804,16 @@ human/AT acceptance remain open. Logs:/tmp/lesson-heading-{browser,unit,build}.l
 
 2026-10-11: Added real-zoom sequential keyboard/dark-theme acceptance; details in
 docs/ux/DAILY-LEARNING-ACCEPTANCE.md. Two cases/lint/types/review pass. Runtime unchanged.
+
+
+2026-10-11: Explanation-preference save recovery fixed. Non2xx responses now
+reject rather than silently dismissing the comparison. Both choices/draft remain,
+with pair-scoped pending/error/saved status and retained keyboard focus. Successful
+current pairs reject repeated submission; no claim of replacing append-only events
+or server-side deduplication after ambiguous network failure. Two desktop/narrow
+browser journeys verify503→manual retry→204 and duplicate activation;10 Session
+tests, lint/types/build and reviews pass. Narrow saved-status screenshot inspected.
+Existing bundle warning remains. Logs:/tmp/preference-save-{browser,unit,build}.log.
+CI run38150157321 timed out at its25-minute limit after reaching browser test292;
+backend/frontend/migrations passed. Latest-head browser success remains unproven.
+Next: adjust job time allowance using this measured runner evidence, keeping tests.
