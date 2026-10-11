@@ -76,6 +76,7 @@ export function Session() {
   if (!sessionId) {
     return (
       <Card>
+        <CardTitle as="h1">Learning session</CardTitle>
         <p>No session running.</p>
         <Button variant="primary" onClick={() => nav('/')}>
           Go to Home
@@ -86,6 +87,7 @@ export function Session() {
   if (!session.data)
     return (
       <Card>
+        <CardTitle as="h1">Learning session</CardTitle>
         {session.isError ? (
           <>
             <p role="alert">Could not load this session. {session.error.message}</p>
@@ -165,7 +167,7 @@ function StartCard({ sessionId, data, canNavigate }: { sessionId: string; data: 
   if (data.state?.plan_complete)
     return (
       <Card>
-        <CardTitle>Plan complete</CardTitle>
+        <CardTitle as="h1">Plan complete</CardTitle>
         <p className="text-sm text-muted">Every planned block is done. Finish with the recap.</p>
         <Button variant="primary" className="mt-3" onClick={() => nav('/recap')}>
           Recap
@@ -177,7 +179,7 @@ function StartCard({ sessionId, data, canNavigate }: { sessionId: string; data: 
     const nextBlock = plan[data.state.next_index]
     return (
       <Card>
-        <CardTitle>Continue the plan?</CardTitle>
+        <CardTitle as="h1">Continue the plan?</CardTitle>
         <PlanStrip blocks={plan} current={-1} firstStarted={data.state.first_started_index} />
         <div className="flex gap-2 flex-wrap mt-3">
           <Button variant="primary" onClick={() => void continuePlan()} disabled={transition.pending}>
@@ -195,7 +197,7 @@ function StartCard({ sessionId, data, canNavigate }: { sessionId: string; data: 
   }
   return (
     <Card>
-      <CardTitle>Choose where to begin</CardTitle>
+      <CardTitle as="h1">Choose where to begin</CardTitle>
       <p className="text-sm text-muted mb-3">
         Follow the plan one activity at a time. You can stop and recap at any point.
       </p>
@@ -325,7 +327,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
       <AdaptationCards origin="planner" />
       {stopSession.error && <p role="alert">{stopSession.error.message}</p>}
       <Card>
-        <CardTitle className="mb-2">
+        <CardTitle as="h1" className="mb-2">
           {phase === 'practice'
             ? `${currentBlock.domain === 'language' ? 'Language' : currentBlock.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
             : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}

@@ -177,6 +177,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   if (!sessionId)
     return (
       <Card>
+        <CardTitle as="h1">Review</CardTitle>
         <p>No session running.</p>
         <Button variant="primary" onClick={() => nav('/')}>
           Go to Home
@@ -186,6 +187,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   if (due.isError && !due.data)
     return withRecovery(
       <Card>
+        <CardTitle as="h1">Review</CardTitle>
         <p role="alert">Could not load review cards. Your saved ratings are retained.</p>
         <Button disabled={due.isFetching} onClick={() => void due.refetch()}>
           Retry
@@ -197,6 +199,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
   if (due.isLoading || !due.data)
     return withRecovery(
       <Card>
+        <CardTitle as="h1">Review</CardTitle>
         <p role="status">Loading review…</p>
         <Button onClick={() => nav('/')}>Go to Home</Button>
       </Card>
@@ -291,7 +294,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       <Card>
         <SessionControls onPause={pause} sessionId={sessionId} />
         {refreshWarning}
-        <CardTitle>Review done</CardTitle>
+        <CardTitle as="h1">Review done</CardTitle>
         <p>
           {due.data.total_due === 0
             ? 'Nothing is due right now.'
@@ -365,7 +368,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
         </p>
       )}
       <Card>
-        <CardTitle>Recall what you learned</CardTitle>
+        <CardTitle as="h1">Recall what you learned</CardTitle>
         <p className="text-sm text-muted mb-3">
           {revealed
             ? 'Compare with your answer, then choose how easily you recalled it. Your rating opens the next card.'

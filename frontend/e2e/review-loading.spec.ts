@@ -16,13 +16,14 @@ for (const width of [390, 1280]) {
       await page.getByRole('button', { name: /^Continue$/ }).click()
       await page.goto('/review')
       await expect(page.getByRole('alert')).toContainText('Could not load review cards')
-      await expect(page.getByRole('heading', { name: 'Review done' })).toHaveCount(0)
+      await expect(page.getByRole('heading', { level: 1, name: 'Review done' })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'End session', exact: true })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Go to Home', exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: 'Review', exact: true })).toBeVisible()
       fail = false
       await page.getByRole('button', { name: 'Retry', exact: true }).focus()
       await page.keyboard.press('Enter')
-      await expect(page.getByRole('heading', { name: 'Review done' })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: 'Review done' })).toBeVisible()
       await expect(page.getByText('Nothing is due right now.')).toBeVisible()
     } finally {
       await endOpenSession(request)

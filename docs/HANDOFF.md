@@ -1539,3 +1539,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Lesson child disclosures aligned, preserving audio focus, alongside state and nested saved notes/sources.15 browser/24 component checks, lint/build/reviews pass. Evidence and next heading work: docs/design/HEADER-CONTEXT-CONTRACT.md.
+
+
+2026-10-11 — Session/Review/Recap page-heading semantics aligned across activity and recovery states.8 browser/27 unit checks plus lint/build/reviews pass; docs/design/TYPOGRAPHY-ALIGNMENT.md records remaining scope.

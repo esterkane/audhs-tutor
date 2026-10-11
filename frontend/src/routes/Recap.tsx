@@ -21,6 +21,7 @@ export function Recap() {
   if (!sessionId && !summary)
     return (
       <Card>
+        <CardTitle as="h1">Session recap</CardTitle>
         <p>No session to recap.</p>
         <Button variant="primary" onClick={() => nav('/')}>
           Go to Home
@@ -45,7 +46,7 @@ export function Recap() {
   if (summary)
     return (
       <Card>
-        <CardTitle>Session saved</CardTitle>
+        <CardTitle as="h1">Session saved</CardTitle>
         <p>
           Next skill on the map: {summary.next_skill?.title ?? '—'} (
           {((summary.next_skill?.mastery ?? 0) * 100).toFixed(0)}% mastery). {summary.due_reviews} items due
@@ -60,7 +61,7 @@ export function Recap() {
   return (
     <Card>
       {sessionId && <SessionControls sessionId={sessionId} />}
-      <CardTitle>Finish your session</CardTitle>
+      <CardTitle as="h1">Finish your session</CardTitle>
       <p className="text-sm text-muted mb-3">
         Ratings and notes are optional. You can save immediately. These ratings describe this session; they
         are not a test score.

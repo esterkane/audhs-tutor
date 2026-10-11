@@ -22,11 +22,12 @@ for (const width of [390, 1280]) {
       await page.getByRole('button', { name: /^Continue$/ }).click()
       await expect(page.getByRole('alert')).toContainText('Could not load this session')
       await expect(page.getByRole('button', { name: 'Go to Home', exact: true })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: 'Learning session', exact: true })).toBeVisible()
       fail = false
       const retry = page.getByRole('button', { name: 'Retry loading session' })
       await retry.focus()
       await page.keyboard.press('Enter')
-      await expect(page.getByRole('heading', { name: 'Choose where to begin' })).toBeVisible()
+      await expect(page.getByRole('heading', { level: 1, name: 'Choose where to begin' })).toBeVisible()
       await expect(page.getByRole('button', { name: 'End session', exact: true })).toBeVisible()
     } finally {
       await endOpenSession(request)
