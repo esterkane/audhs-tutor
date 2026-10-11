@@ -125,3 +125,34 @@ adoption and human acceptance. No Focus implementation or complete design-system
 conformance is claimed. The production build retains its existing large-chunk
 warning. Next inspect session goal provenance and consolidate existing controls
 without introducing a second lifecycle owner.
+
+
+## Persisted lesson context — 2026-10-11
+
+The running session now places its recorded concept objective, matching active
+concept and planned activity count with the existing Pause/End controls. The
+lesson body no longer repeats the objective/count; goal narration remains.
+SessionControls stays mounted in its original parent, so block-key changes do
+not reset its pending stop or label actions. No lifecycle or learning-policy
+handlers changed. Non-academic practice does not inherit an academic objective;
+a missing/mismatched active concept is shown as unavailable, never replaced by
+the next recommendation.
+
+Provenance limitation discovered before implementation: session creation records
+scope_skill_ids and the active concept, not the original area/course goal title.
+The ContextBar therefore shows the concept objective, not an invented historical
+area goal from current preferences. Persisting a named session goal would need a
+separate backend contract/migration decision; this slice does not add one.
+
+Evidence: baseline desktop lesson passed;17 affected browser journeys pass
+(light/dark320/390/1280 layouts, keyboard disclosure/labels, Pause/resume/reload,
+retained drafts, delayed and lost transition responses). Four provenance unit
+checks pass. Affected lint and production build pass after fixing a removed
+import still used by the start card and the partial test fixture typing. Desktop
+light and narrow dark screenshots inspected. Code and pedagogy review: no
+blockers/majors. Full browser zoom, screen-reader and human comprehension remain
+open. No new API, model calls or dependencies.
+
+Next: add temporary Focus with visible exit and active-audio Stop, without
+remounting global state owners or hiding modal focus. The full PDF ContextBar
+is still incomplete until Focus and its recovery journeys are verified.

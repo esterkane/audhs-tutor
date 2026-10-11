@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { useStopSession } from './useStopSession'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../components/ui/button'
@@ -6,7 +7,7 @@ import { usePreferences } from '../preferences/api'
 import { useNavigate } from 'react-router-dom'
 
 /** Ending a session is always available and never submits an assessment or a rating. */
-export function SessionControls({ sessionId, skillId, onPause, compact = false }: { sessionId: string; skillId?: string | null; onPause?: () => void; compact?: boolean }) {
+export function SessionControls({ sessionId, skillId, onPause, compact = false, children }: { children?: ReactNode; sessionId: string; skillId?: string | null; onPause?: () => void; compact?: boolean }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const prefs = usePreferences()
@@ -52,6 +53,7 @@ export function SessionControls({ sessionId, skillId, onPause, compact = false }
   </>
   return (
     <section aria-label="Session controls" className="border border-line rounded-md p-3">
+      {children}
       <div className="flex gap-2 flex-wrap">
         <Button onClick={() => { onPause?.(); navigate('/') }} disabled={stop.isPending}>
           Pause and return Home

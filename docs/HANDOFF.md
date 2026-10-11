@@ -1509,3 +1509,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Compact global header verified with retained audio controls, saved drafts and page-level context. See docs/design/HEADER-CONTEXT-CONTRACT.md for checks and remaining ContextBar/Focus work.
+
+
+2026-10-11 — Persisted concept context consolidated with existing session controls. Verified17 browser/four provenance checks, lint/build and code/pedagogy review. Remaining named-goal provenance and Focus: docs/design/HEADER-CONTEXT-CONTRACT.md.

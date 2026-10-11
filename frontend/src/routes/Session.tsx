@@ -1,3 +1,4 @@
+import { SessionContext } from '../features/session/SessionContext'
 import { QuestionPractice } from '../features/questions/QuestionPractice'
 import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
 import { useCheckedQuestion } from '../features/assess/useCheckedQuestion'
@@ -111,7 +112,9 @@ export function Session() {
           </Button>
         </Card>
       )}
-      <SessionControls compact sessionId={sessionId} skillId={st.skill_id} onPause={() => { navigationOwner.current.paused = true }} />
+      <SessionControls compact sessionId={sessionId} skillId={st.skill_id} onPause={() => { navigationOwner.current.paused = true }}>
+        <SessionContext data={session.data} />
+      </SessionControls>
       <SessionBody
         canNavigate={canNavigate}
         key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
@@ -328,10 +331,6 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             ? `${currentBlock.domain === 'language' ? 'Language' : currentBlock.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
             : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}
         </CardTitle>
-        <p className="text-sm text-muted">
-          Activity {blockIndex + 1} of {plan.length} · {BLOCK_LABELS[currentBlock.type] ?? currentBlock.type}{' '}
-          · about {timerMinutes} min
-        </p>
         {phase !== 'teach' && <p className="text-sm mt-2">
           {phase === 'assess'
             ? 'Read the context, use a hint if helpful, and try an answer when ready.'
@@ -380,8 +379,6 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
         </Disclosure>
         {skill && phase === 'assess' && (
           <div className="mt-2 text-sm">
-            <h3 className="font-medium">Learning goal</h3>
-            <p className="mt-1">{skill.description || skill.title}</p>
             <ReadAloud
               key={skill.id}
               text={skill.description || skill.title}
@@ -552,10 +549,6 @@ function TeachPanel({
     <>
       <Card>
         <CardTitle>Your explanation</CardTitle>
-        {learningGoal && <div className="text-sm mt-2">
-          <h3 className="font-medium">Learning goal</h3>
-          <p className="mt-1">{learningGoal}</p>
-        </div>}
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
             variant={done || alt ? 'secondary' : 'primary'}
