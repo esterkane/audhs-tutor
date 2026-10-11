@@ -1223,6 +1223,7 @@ function AssessPanel({
       {result && (
         <Card role="status" className={result.score >= 0.85 ? 'border-ok' : 'border-warn'}>
           <h3 className="font-medium">Feedback on your answer</h3>
+          {result.revision_of_attempt_id && <p className="mt-2 text-sm">Revised practice after feedback. This does not add independent learning evidence.</p>}
           <AssessmentEvidence result={result} />
           <AssessmentSaveStatus
             key={result.attempt_id}
@@ -1239,7 +1240,7 @@ function AssessPanel({
             <p>Mastery estimate after this attempt {(result.mastery * 100).toFixed(0)}%</p>
           </Disclosure>
           <p className="mt-2 text-sm text-muted">
-            Review scheduled after this attempt {new Date(result.review.due as string).toLocaleString()}
+            {result.review_updated === false ? 'Existing review schedule unchanged: ' : 'Review scheduled after this attempt '}{new Date(result.review.due as string).toLocaleString()}
           </p>
           <div className="flex gap-2 flex-wrap mt-3">
             <Button variant="primary" onClick={onFinishBlock} disabled={transitionPending}>

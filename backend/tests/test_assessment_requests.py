@@ -362,7 +362,9 @@ async def test_legacy_uncertain_claim_is_not_released(client, db, monkeypatch):
         session.learner_id,
         session.id,
         "assessment:" + KEY,
-        AttemptRequest.model_validate(body).model_dump(mode="json"),
+        AttemptRequest.model_validate(body).model_dump(
+            mode="json", exclude={"revision_of_attempt_id"}
+        ),
     )
 
     async def never_grade(*args, **kwargs):

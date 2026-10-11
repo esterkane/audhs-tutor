@@ -19,10 +19,11 @@ async def validate_root(
     session_id: str,
     assessment_id: str,
     root_attempt_id: str,
+    allow_ended: bool = False,
 ) -> AssessmentAttempt:
     session = await get_owned(db, session_id, learner_id)
     await db.refresh(session, attribute_names=["ended_at"])
-    if session.ended_at is not None:
+    if session.ended_at is not None and not allow_ended:
         raise AppError("revision_session_ended", "Start a new session for further practice.", 409)
     root = await db.get(AssessmentAttempt, root_attempt_id, populate_existing=True)
     if (

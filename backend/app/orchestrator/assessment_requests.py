@@ -15,7 +15,7 @@ from app.db import assessment_executions, workspace_requests
 from app.db.models import TutorAnswer, WorkspaceRequest
 from app.kernel.session import get_owned
 from app.models_ai.gateway import ModelGateway
-from app.orchestrator import assessment_content
+from app.orchestrator import assessment_content, assessment_revisions
 from app.orchestrator.assessment_execution import AssessmentExecution
 from app.orchestrator.assessment_guard import AssessmentGuard
 from app.orchestrator.grader import Grader
@@ -50,7 +50,18 @@ async def submit(
             db, body.assessment_id, body.content_version, learner_id
         )
 
+        if body.revision_of_attempt_id is not None:
+            await assessment_revisions.validate_root(
+                db,
+                learner_id=learner_id,
+                session_id=body.session_id,
+                assessment_id=body.assessment_id,
+                root_attempt_id=body.revision_of_attempt_id,
+            )
+
     payload = body.model_dump(mode="json")
+    if body.revision_of_attempt_id is None:
+        payload.pop("revision_of_attempt_id", None)  # Preserve legacy request fingerprints.
     if body.content_version is None:
         payload.pop("content_version", None)  # Preserve pre-version completed claim fingerprints.
     claim_id = None
@@ -313,6 +324,8 @@ async def _acquire_prepared(
         if claim.session_id != session_id or body.session_id != session_id:
             raise AppError("request_conflict", "The saved request belongs to another session.", 409)
         payload = body.model_dump(mode="json")
+        if body.revision_of_attempt_id is None:
+            payload.pop("revision_of_attempt_id", None)
         if body.content_version is None:
             payload.pop("content_version", None)
         if workspace_requests.request_fingerprint(payload) != claim.fingerprint:

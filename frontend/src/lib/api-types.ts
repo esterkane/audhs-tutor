@@ -2855,6 +2855,8 @@ export interface components {
     }
     /** AttemptRequest */
     AttemptRequest: {
+      /** Revision Of Attempt Id */
+      revision_of_attempt_id?: string | null
       /** Content Version */
       content_version?: string | null
       /** Session Id */
@@ -2875,6 +2877,13 @@ export interface components {
     }
     /** AttemptResult */
     AttemptResult: {
+      /** Revision Of Attempt Id */
+      revision_of_attempt_id?: string | null
+      /**
+       * Review Updated
+       * @default true
+       */
+      review_updated: boolean
       /** Answer Id */
       answer_id?: string | null
       /** Save Error */

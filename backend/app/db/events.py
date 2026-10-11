@@ -85,11 +85,19 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
     ),
     Verb.ATTEMPTED: (
         _R({"correct", "confidence_pre", "latency_ms", "hint_count", "answer_len"}),
-        _R({"item_type", "node_id"}),
+        _R({"item_type", "node_id", "attempt_id", "revision_of_attempt_id"}),
     ),
     Verb.GRADED: (
         _R({"criterion_results", "score", "misconception", "confidence", "feedback_len"}),
-        _R({"grader_level", "prompt_version", "rubric_version"}),
+        _R(
+            {
+                "grader_level",
+                "prompt_version",
+                "rubric_version",
+                "attempt_id",
+                "revision_of_attempt_id",
+            }
+        ),
     ),
     Verb.EVIDENCED: (_R({"skill_id", "dimension", "score", "weight"}), _R({"attempt_id"})),
     Verb.PROPOSED: (_R({"decision"}), _R({"what", "why", "origin"})),

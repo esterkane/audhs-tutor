@@ -17,6 +17,7 @@ for (const width of [390, 1280]) test(`evidence-first assessment feedback ${widt
     await page.route('**/api/assess/attempt', route => {
       submissions++
       return route.fulfill({ json: {
+        revision_of_attempt_id: width === 390 ? 'original-attempt' : null, review_updated: width !== 390,
         assessment_id: route.request().postDataJSON().assessment_id, attempt_id: 'fixture-attempt', score: 0.5, mastery: 0.4,
         feedback: 'The denominator changes the proportion.', next_step: 'Compare the proportions next.',
         grader_level: 'deterministic', confidence_pre: null, review: { due: '2026-10-12T12:00:00Z' },
@@ -45,6 +46,11 @@ for (const width of [390, 1280]) test(`evidence-first assessment feedback ${widt
     await expect(page.getByText('Mastery estimate after this attempt 40%')).toBeVisible()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('button', { name: 'Continue the plan', exact: true })).toBeEnabled()
+    if (width === 390) {
+      await expect(page.getByText(/Revised practice after feedback/)).toBeVisible()
+      await expect(page.getByText(/Existing review schedule unchanged/)).toBeVisible()
+      await expect(page.getByText(/Review scheduled after this attempt/)).toHaveCount(0)
+    }
     expect(submissions).toBe(1)
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await page.getByRole('heading', { name: 'Feedback on your answer' }).scrollIntoViewIfNeeded()

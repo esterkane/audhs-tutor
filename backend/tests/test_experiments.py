@@ -106,6 +106,25 @@ async def test_outcomes_are_read_from_events_per_arm(
     assert recall.ci95 is not None and recall.ci95[0] < recall.ci95[1]  # never zero-width
     assert "not evidence for either arm" in recall.reading  # 2 units per arm: no "supported"
     assert recall.difference and recall.difference > 0 and "socratic" in recall.reading
+    # After-feedback revisions must not improve/worsen the independent comparison.
+    for node in nodes[:4]:
+        await ev.emit(
+            Verb.ATTEMPTED,
+            ObjectType.ITEM,
+            "revision-" + node.id,
+            result={"correct": False, "latency_ms": 999999},
+            context={
+                "item_type": "mcq",
+                "node_id": node.id,
+                "attempt_id": "revision",
+                "revision_of_attempt_id": "original",
+            },
+        )
+    revised = await experiments.results(db, learner.id, exp.id, record=False)
+    for metric in ["error_rate", "latency_ms"]:
+        assert next(m for m in revised.metrics if m.metric == metric) == next(
+            m for m in res.metrics if m.metric == metric
+        )
     error = next(m for m in res.metrics if m.metric == "error_rate")
     assert error.lower_is_better and {a.name: a.mean for a in error.arms}["socratic"] == 0.0
     transfer = next(m for m in res.metrics if m.metric == "transfer")

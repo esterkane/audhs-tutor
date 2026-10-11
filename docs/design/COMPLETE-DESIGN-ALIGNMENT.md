@@ -234,3 +234,6 @@ and enlarged-text acceptance for this presentation remain open.
 
 
 2026-10-11: Revision provenance foundation implemented (ADR0020): new attempts record stable content identity; nullable original-attempt relationship and read-only root validator added.32 migration/recovery/root and19 backup tests pass; mypy/Ruff and reviews clear. Legacy provenance stays null. No revision endpoint/UI or changed evidence policy yet; next connect serialized application and replay before exposing controls.
+
+
+2026-10-11: Explicit revision application saves immutable linked attempts/feedback without a new competency/FSRS update; replay and failed-commit recovery covered, experiment metrics exclude flagged revisions.57 backend,13 component,2 browser checks and types/lint/build/reviews pass. Missing-parent classification and retry UI remain; details in docs/design/PRACTICE-RETRY-CONTRACT.md.

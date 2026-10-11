@@ -36,3 +36,33 @@ and encryption tests; strict mypy on the3 changed modules and targeted Ruff pass
 Code review identified stale identity-map reads; explicit refresh and a two-connection
 regression resolved it. Bounded code/pedagogy reviews are clear. No UI change, no live
 model calls, and no claim that the retry interaction is complete.
+
+
+## Explicit revision application — 2026-10-11
+
+The existing assessment request accepts an optional original-attempt ID. The explicit
+path validates the root before inference and again under the serialized content-write
+transaction; it saves a new attempt, events and searchable feedback but skips competency
+record/refresh and FSRS updates. Results identify the root and whether review was updated.
+Saved text and Session result copy label revised practice and unchanged scheduling.
+Replayed and already-graded requests retain their original identity even after session
+end; newly submitted revisions require an active session. Legacy null-field fingerprints
+remain compatible in submission and prepared-request recovery.
+
+Attempted/graded events carry attempt and revision identity. Experiment error/latency
+comparisons exclude flagged revisions. Reviewer-found metric contamination was fixed
+with a regression. Tests cover repeated explicit revisions, immutable original answers,
+exact replay, parent rejection, failed commit rollback and once-only finish after end.
+
+Evidence:57 backend revision/request/finish/prepared/experiment checks pass with a clean
+process exit;13 UI component and2 keyboard/responsive browser checks pass. API types
+regenerated, targeted mypy/Ruff/ESLint and production build pass; desktop/narrow screenshots
+inspected and code/pedagogy reviews clear. One earlier test process crashed in native
+teardown after printing passes; the later combined57-test process exited0.
+
+Remaining: missing-parent classification across existing callers, original-answer retrieval,
+durable revision draft and Try again/Next UI. Ordinary submissions without a revision ID
+still use existing semantics; this is NOT the complete retry policy or a finished user flow.
+No new paid-model usage; deterministic fixtures verified these paths.
+
+Additional regression evidence:23 grading-atomicity/database-core checks pass.

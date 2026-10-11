@@ -87,3 +87,132 @@ async def test_revalidation_observes_external_session_end(client, db, session_fa
     with pytest.raises(AppError) as exc:
         await validate_root(db, **args)
     assert exc.value.code == "revision_session_ended"
+
+
+async def learning_rows(db):
+    from sqlalchemy import text
+
+    return {
+        table: list((await db.execute(text(f"SELECT * FROM {table} ORDER BY id"))).all())
+        for table in ["competency_evidence", "competency_state", "memory_state", "review_item"]
+    }
+
+
+async def test_revision_records_new_answer_without_reapplying_learning(client, db, fake_local):
+    from uuid import uuid4
+
+    from sqlalchemy import select
+
+    from app.db.models import TutorAnswer
+
+    root, args = await original(client, db)
+    before = await learning_rows(db)
+    original_answer = root.answer
+    # Next may rotate, so derive this exact root's current view without altering it.
+    from app.orchestrator.grader import versioned_view
+
+    original_item = await db.get(Assessment, root.assessment_id)
+    item = await versioned_view(db, original_item, root.learner_id)
+    body = dict(
+        session_id=args["session_id"],
+        assessment_id=root.assessment_id,
+        content_version=item.content_version,
+        answer="1",
+        revision_of_attempt_id=root.id,
+    )
+    headers = {"Idempotency-Key": str(uuid4())}
+    response = await client.post("/api/assess/attempt", json=body, headers=headers)
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["revision_of_attempt_id"] == root.id
+    assert result["review_updated"] is False
+    assert result["attempt_id"] != root.id
+    assert await learning_rows(db) == before
+    revision = await db.get(AssessmentAttempt, result["attempt_id"])
+    assert revision.answer == "1" and revision.revision_of_attempt_id == root.id
+    await db.refresh(root)
+    assert root.answer == original_answer and root.revision_of_attempt_id is None
+    saved = await db.scalar(select(TutorAnswer).where(TutorAnswer.id == result["answer_id"]))
+    assert "Revised practice after feedback" in saved.text
+    totals = await counts(db)
+    replay = await client.post("/api/assess/attempt", json=body, headers=headers)
+    assert replay.json() == result
+    assert await counts(db) == totals
+    assert await learning_rows(db) == before
+    # A further revision uses the original root; a revision cannot become a root.
+    invalid = await client.post(
+        "/api/assess/attempt",
+        json={**body, "revision_of_attempt_id": revision.id},
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert invalid.status_code == 409
+    assert await counts(db) == totals
+    again = await client.post(
+        "/api/assess/attempt",
+        json={**body, "answer": "0"},
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert again.status_code == 200, again.text
+    assert await learning_rows(db) == before
+    session = await db.get(Session, root.session_id)
+    session.ended_at = "2026-10-11T00:00:00Z"
+    await db.commit()
+    replay = await client.post("/api/assess/attempt", json=body, headers=headers)
+    assert replay.json() == result
+    rejected = await client.post(
+        "/api/assess/attempt", json=body, headers={"Idempotency-Key": str(uuid4())}
+    )
+    assert rejected.status_code >= 400
+    assert await learning_rows(db) == before
+    assert fake_local.calls == []
+
+
+async def test_revision_commit_failure_finishes_once_after_session_end(client, db, monkeypatch):
+    from uuid import uuid4
+
+    from app.db import workspace_requests
+    from app.orchestrator.grader import versioned_view
+
+    root, args = await original(client, db)
+    item = await versioned_view(db, await db.get(Assessment, root.assessment_id), root.learner_id)
+    body = dict(
+        session_id=args["session_id"],
+        assessment_id=root.assessment_id,
+        content_version=item.content_version,
+        answer="1",
+        revision_of_attempt_id=root.id,
+    )
+    identity = str(uuid4())
+    before = await learning_rows(db)
+    totals = await counts(db)
+    complete = workspace_requests.complete
+
+    async def fail(*args, **kwargs):
+        await complete(*args, **kwargs)
+        raise RuntimeError("revision commit interrupted")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(workspace_requests, "complete", fail)
+        with pytest.raises(RuntimeError, match="revision commit interrupted"):
+            await client.post(
+                "/api/assess/attempt", json=body, headers={"Idempotency-Key": identity}
+            )
+    assert await counts(db) == totals
+    assert await learning_rows(db) == before
+    session = await db.get(Session, args["session_id"])
+    session.ended_at = "2026-10-11T00:00:00Z"
+    await db.commit()
+    path = f"/api/assess/requests/{identity}"
+    assert (await client.get(path, params={"session_id": session.id})).json()[
+        "status"
+    ] == "grade_ready"
+    finished = await client.post(path + "/finish", params={"session_id": session.id})
+    assert finished.status_code == 200, finished.text
+    assert finished.json()["revision_of_attempt_id"] == root.id
+    assert finished.json()["review_updated"] is False
+    assert await learning_rows(db) == before
+    after = await counts(db)
+    replay = await client.post(path + "/finish", params={"session_id": session.id})
+    assert replay.json() == finished.json()
+    assert await counts(db) == after
+    assert await learning_rows(db) == before

@@ -72,3 +72,10 @@ Session clarity (2026-09-24): `attempted.confidence_pre` and `reviewed.confidenc
 `thought_changed` (NOTE): context keys action_id, action, revision, undo_of; no result keys. Records reminder removal/undo atomically with its state and receipt, never competency evidence. Promotion retains its existing promoted event.
 
 Correction draft storage emits no learning events: create/save/discard have their own `question_correction_command` receipts and do not record an assessment attempt, competency evidence or review scheduling. Candidate content is not a published question.
+
+
+Assessment revisions (2026-10-11): attempted and graded context may include
+`attempt_id` and nullable `revision_of_attempt_id`. Revisions preserve activity and
+feedback history but do not emit new evidenced/reviewed events. Experiment error-rate
+and latency comparisons exclude attempts marked as revisions. Original events remain
+valid without these optional context fields.

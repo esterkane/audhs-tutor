@@ -39,7 +39,12 @@ def feedback_snapshot(
             "learner_answer": request.answer,
             "learner_answer_display": answer_display,
         },
-        text=f"{result.feedback}\n\n{result.next_step}",
+        text=(
+            "Revised practice after feedback. Learning evidence and review schedule unchanged.\n\n"
+            if result.revision_of_attempt_id
+            else ""
+        )
+        + f"{result.feedback}\n\n{result.next_step}",
         metadata={
             "assessment_attempt_id": result.attempt_id,
             "assessment_id": result.assessment_id,

@@ -1,8 +1,9 @@
 """Hierarchical grader (ADR-0009): deterministic → rubric checks → local LLM → hosted.
 
-Every attempt produces: an assessment_attempt row, `attempted` + `graded` events, one
+Every ordinary attempt produces: an assessment_attempt row, `attempted` + `graded` events, one
 competency_evidence row (via the kernel, which emits `evidenced`), a competency refresh, and an
-FSRS review of the item (via the kernel, which emits `reviewed`). Feedback is literal and specific.
+FSRS review of the item (via the kernel, which emits `reviewed`). Explicit revisions retain
+attempts and feedback without another competency or FSRS update. Feedback is literal and specific.
 """
 
 import re
@@ -20,6 +21,7 @@ from app.db.models import (
     Assessment,
     AssessmentAttempt,
     MemoryState,
+    ReviewItem,
     Session,
     SkillNode,
     WorkspaceRequest,
@@ -29,7 +31,7 @@ from app.kernel import session as ksession
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import NoModelReady
-from app.orchestrator import assessment_content, prompts
+from app.orchestrator import assessment_content, assessment_revisions, prompts
 from app.orchestrator.assessment_answers import feedback_snapshot, save_feedback
 from app.orchestrator.assessment_execution import AssessmentExecution
 from app.orchestrator.context import escape_data, learner_answer_block
@@ -339,6 +341,14 @@ class Grader:
         now = now or datetime.now(UTC)
         session: Session = await ksession.get(db, req.session_id)
         learner_id = session.learner_id
+        if req.revision_of_attempt_id is not None:
+            await assessment_revisions.validate_root(
+                db,
+                learner_id=learner_id,
+                session_id=req.session_id,
+                assessment_id=req.assessment_id,
+                root_attempt_id=req.revision_of_attempt_id,
+            )
         a = await db.get(Assessment, req.assessment_id)
         if a is None:
             raise KeyError("assessment not found")
@@ -542,6 +552,7 @@ class Grader:
             result.confidence = min(result.confidence, 0.5)
         score = result.score
         attempt = AssessmentAttempt(
+            revision_of_attempt_id=req.revision_of_attempt_id,
             content_fingerprint=assessment_content.recovery_fingerprint(content),
             learner_id=learner_id,
             assessment_id=a.id,
@@ -561,6 +572,15 @@ class Grader:
         # short transaction owns attempt, events, evidence, FSRS, checkpoint and mastery.
         try:
             await assessment_content.guard_write(db, a.id, content, learner_id)
+            if req.revision_of_attempt_id is not None:
+                await assessment_revisions.validate_root(
+                    db,
+                    learner_id=learner_id,
+                    session_id=req.session_id,
+                    assessment_id=req.assessment_id,
+                    root_attempt_id=req.revision_of_attempt_id,
+                    allow_ended=self.request_claim_id is not None,
+                )
             db.add(attempt)
             await db.flush()
 
@@ -584,7 +604,12 @@ class Grader:
                     "hint_count": req.hint_count,
                     "answer_len": len(req.answer),
                 },
-                context={"item_type": a.kind, "node_id": a.skill_id},
+                context={
+                    "item_type": a.kind,
+                    "node_id": a.skill_id,
+                    "attempt_id": attempt.id,
+                    "revision_of_attempt_id": req.revision_of_attempt_id,
+                },
                 commit=False,
             )
             await events.emit(
@@ -602,6 +627,8 @@ class Grader:
                     "feedback_len": len(result.feedback),
                 },
                 context={
+                    "attempt_id": attempt.id,
+                    "revision_of_attempt_id": req.revision_of_attempt_id,
                     "grader_level": route_label,
                     "prompt_version": prompts.GRADER_VERSION
                     if level in ("local", "hosted")
@@ -611,61 +638,79 @@ class Grader:
                 commit=False,
             )
             dimension = DIMENSION_FOR_KIND.get(a.kind, "recall")
-            await competency.record_evidence(
-                db,
-                learner_id,
-                a.skill_id,
-                dimension,
-                score,
-                grader_level=level,
-                confidence=result.confidence,
-                attempt_id=attempt.id,
-                events=events,
-                commit=False,
-            )
-            review_item, _ = await memory.ensure_item(
-                db,
-                learner_id,
-                a.skill_id,
-                a.kind,
-                {"ref": a.id, "assessment_id": a.id},
-                now=now,
-                commit=False,
-            )
-            rating = memory.rating_from_score(score, hint_count=req.hint_count)
-            if (
-                level == "rubric"
-                or (listening_meta is not None and listening_meta.get("validated") is False)
-                or (a.kind == "code" and result.confidence < 1.0)
-            ):  # keyword overlap / unchecked item / code after the solution: never the longest interval
-                rating = min(rating, memory.Rating.Good)
-            await memory.review(
-                db,
-                learner_id,
-                review_item.id,
-                int(rating),
-                now=now,
-                latency_ms=req.latency_ms,
-                events=events,
-                commit=False,
-            )
-            if a.kind.startswith("challenge_") or a.kind == "code":
-                # every challenge / code exercise ends with a delayed item (ADR-0003): ≥ +2 days
-                from datetime import timedelta
+            if req.revision_of_attempt_id is None:
+                await competency.record_evidence(
+                    db,
+                    learner_id,
+                    a.skill_id,
+                    dimension,
+                    score,
+                    grader_level=level,
+                    confidence=result.confidence,
+                    attempt_id=attempt.id,
+                    events=events,
+                    commit=False,
+                )
+                review_item, _ = await memory.ensure_item(
+                    db,
+                    learner_id,
+                    a.skill_id,
+                    a.kind,
+                    {"ref": a.id, "assessment_id": a.id},
+                    now=now,
+                    commit=False,
+                )
+                rating = memory.rating_from_score(score, hint_count=req.hint_count)
+                if (
+                    level == "rubric"
+                    or (listening_meta is not None and listening_meta.get("validated") is False)
+                    or (a.kind == "code" and result.confidence < 1.0)
+                ):  # keyword overlap / unchecked item / code after the solution: never the longest interval
+                    rating = min(rating, memory.Rating.Good)
+                await memory.review(
+                    db,
+                    learner_id,
+                    review_item.id,
+                    int(rating),
+                    now=now,
+                    latency_ms=req.latency_ms,
+                    events=events,
+                    commit=False,
+                )
+                if a.kind.startswith("challenge_") or a.kind == "code":
+                    # every challenge / code exercise ends with a delayed item (ADR-0003): ≥ +2 days
+                    from datetime import timedelta
 
-                ms_row = (
-                    await db.execute(
-                        select(MemoryState).where(MemoryState.review_item_id == review_item.id)
+                    ms_row = (
+                        await db.execute(
+                            select(MemoryState).where(MemoryState.review_item_id == review_item.id)
+                        )
+                    ).scalar_one()
+                    delayed = (now + timedelta(days=2)).isoformat(timespec="milliseconds")
+                    if ms_row.due < delayed:
+                        ms_row.due = delayed
+                        await db.flush()
+            else:
+                existing_review = await db.scalar(
+                    select(ReviewItem).where(
+                        ReviewItem.learner_id == learner_id,
+                        ReviewItem.skill_id == a.skill_id,
+                        ReviewItem.item_type == a.kind,
+                        ReviewItem.prompt_json["ref"].as_string() == a.id,
                     )
-                ).scalar_one()
-                delayed = (now + timedelta(days=2)).isoformat(timespec="milliseconds")
-                if ms_row.due < delayed:
-                    ms_row.due = delayed
-                    await db.flush()
+                )
+                if existing_review is None:
+                    raise AppError(
+                        "revision_review_unavailable",
+                        "The original review schedule is unavailable.",
+                        409,
+                    )
+                review_item = existing_review
             cp = await ksession.load_checkpoint(db, session.id) or {}
             if cp.get("skill_id") == a.skill_id and cp.get("hint_level"):
                 await ksession.save_checkpoint(db, session, {**cp, "hint_level": 0}, commit=False)
-            await competency.refresh(db, learner_id, a.skill_id, now=now, commit=False)
+            if req.revision_of_attempt_id is None:
+                await competency.refresh(db, learner_id, a.skill_id, now=now, commit=False)
             mastery = await competency.mastery(db, learner_id, a.skill_id)
             ms = (
                 await db.execute(
@@ -674,6 +719,8 @@ class Grader:
             ).scalar_one()
             calibration = _calibration(req.confidence_pre, score)
             completed = AttemptResult(
+                revision_of_attempt_id=req.revision_of_attempt_id,
+                review_updated=req.revision_of_attempt_id is None,
                 attempt_id=attempt.id,
                 assessment_id=a.id,
                 skill_id=a.skill_id,

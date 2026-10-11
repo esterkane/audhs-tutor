@@ -37,6 +37,7 @@ class AssessmentView(BaseModel):
 
 
 class AttemptRequest(BaseModel):
+    revision_of_attempt_id: str | None = Field(default=None, min_length=1, max_length=100)
     content_version: str | None = Field(default=None, max_length=100)
     session_id: str
     assessment_id: str
@@ -47,6 +48,8 @@ class AttemptRequest(BaseModel):
 
 
 class AttemptResult(BaseModel):
+    revision_of_attempt_id: str | None = None
+    review_updated: bool = True
     answer_id: str | None = None
     save_error: str | None = None
     save_receipt: str | None = None

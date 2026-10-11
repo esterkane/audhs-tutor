@@ -525,6 +525,8 @@ async def unit_outcomes(
             if float(r.get("days_since_learned") or 0.0) >= 1.0:
                 unit.add("delayed_recall", 1.0 if int(r["rating"]) >= 3 else 0.0)
         elif e.verb == "attempted":
+            if c.get("revision_of_attempt_id") is not None:
+                continue  # after-feedback practice is not an independent experiment outcome
             if r.get("correct") is not None:
                 unit.add("error_rate", 0.0 if r["correct"] else 1.0)
             if r.get("latency_ms") is not None:
