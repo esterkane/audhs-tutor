@@ -249,3 +249,25 @@ light/1280 dark, with keyboard/edit/reload/cancel/submission checks; screenshots
 inspected.10 Session tests, lint/type/build and code/pedagogy reviews pass. Existing
 large-chunk warning remains. Full secondary feedback-help controls and broader
 Practice/Progress design acceptance remain open; grading is unchanged.
+
+## Progress inspectability in progress — 2026-10-11
+
+PDF p10 evidence inspection: records previously said Linked assessment attempt with
+no route to inspect it. A learner-scoped read-only join now exposes an optional saved
+answer ID, and Progress links to its existing saved-assessment page. Missing records
+are explicitly unavailable; no level, independence or competency policy changes.
+Three backend tests and two320/1280 browser journeys pass, covering owner isolation,
+cardinality, keyboard-focusable link, missing records, pagination error/retry and
+concept Back navigation. Backend/frontend types and lint pass; code review clear.
+Still pending: destination navigation verification, visual inspection/build and final
+pedagogy review/publication. Inherited acquisition changes remain outside this slice.
+
+
+2026-10-11: Progress evidence now links to owned saved assessment feedback; unavailable
+records are explicit. Read-only learner-scoped joins preserve pagination/counts.3
+backend tests,4 final browser checks (Progress320/1280 plus assessment history),
+types/lint/build and reviews pass. Keyboard link navigation opens saved feedback;
+browser Back returns to the selected concept. Narrow full-page screenshot inspected.
+Existing large-chunk warning remains. Historical help-selector test updated to the
+new Explain the difficult part label. No competency or independence interpretation
+changed. Broader human/AT and Progress evidence-level design acceptance remain open.

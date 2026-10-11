@@ -77,7 +77,7 @@ for (const narrow of [false, true]) {
         })
       })
       const help = page.getByRole('button', {
-        name: "I don't understand yet — explain the idea",
+        name: "Explain the difficult part",
         exact: true,
       })
       await expect(help).toBeVisible()

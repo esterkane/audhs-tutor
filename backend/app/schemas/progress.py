@@ -12,6 +12,7 @@ class ProgressEvidence(BaseModel):
     score: float
     weight: float
     grader_level: str
+    answer_id: str | None = None
     attempt_id: str | None
     reported_hint_count: int | None
     independence: Literal["not_verified"] = "not_verified"

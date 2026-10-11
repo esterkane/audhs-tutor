@@ -118,3 +118,25 @@ async def test_hint_provenance_never_certifies_independence(
     assert items["bad-reference"].reported_hint_count is None
     empty = await evidence_page(db, learner.id, "hints", offset=20, limit=20)
     assert empty.total == 2 and empty.items == []
+
+
+async def test_saved_assessment_link_is_owned_and_does_not_duplicate_evidence(client, db):
+    from app.db.models import TutorAnswer
+    from tests.test_assessment_revisions import original
+
+    root, _ = await original(client, db)
+    saved = await db.scalar(
+        select(TutorAnswer).where(TutorAnswer.turn_id == f"assessment:{root.id}")
+    )
+    skill_id = saved.metadata_json["skill_id"]
+    page = await evidence_page(db, root.learner_id, skill_id, offset=0, limit=20)
+    assert len(page.items) == page.total == 1
+    assert page.items[0].answer_id == saved.id
+    other = LearnerProfile(display_name="Other")
+    db.add(other)
+    await db.flush()
+    saved.learner_id = other.id
+    await db.commit()
+    hidden = await evidence_page(db, root.learner_id, skill_id, offset=0, limit=20)
+    assert hidden.total == 1
+    assert hidden.items[0].answer_id is None

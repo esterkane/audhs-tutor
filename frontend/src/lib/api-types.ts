@@ -5110,6 +5110,8 @@ export interface components {
       weight: number
       /** Grader Level */
       grader_level: string
+      /** Answer Id */
+      answer_id?: string | null
       /** Attempt Id */
       attempt_id: string | null
       /** Reported Hint Count */

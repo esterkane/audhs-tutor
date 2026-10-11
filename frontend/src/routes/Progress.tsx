@@ -87,7 +87,7 @@ function ConceptEvidence({ skillId, title }: { skillId: string; title: string })
     </Card>
     <Disclosure label="Why does the tutor think this?">
       {evidence.isFetching && <p role="status">Updating records…</p>}
-      <p className="mb-3">These are the recorded checks behind this summary. They may include model judgements. Original question text and rubric details are not available in this view.</p>
+      <p className="mb-3">These are the recorded checks behind this summary. They may include model judgements. Open a saved assessment to inspect its recorded question, answer and feedback when available.</p>
       {!data.total ? <p>No assessment evidence recorded yet.</p> : <>
         <p className="text-sm text-muted">Records {data.items.length ? data.offset + 1 : 0}–{data.offset + data.items.length} of {data.total}, newest first.</p>
         <ol className="grid gap-3 mt-3">
@@ -96,6 +96,7 @@ function ConceptEvidence({ skillId, title }: { skillId: string; title: string })
             <p>Recorded result: {item.score === 1 ? 'full credit' : item.score === 0 ? 'no credit' : 'partial credit'}.</p>
             <p className="text-sm text-muted">Checked by: {item.grader_level === 'local' ? 'local model' : item.grader_level === 'hosted' ? 'hosted model' : item.grader_level}.</p>
             <p className="text-sm text-muted">{item.reported_hint_count === null ? 'Hint history unavailable.' : `Reported hints: ${item.reported_hint_count}.`} {item.attempt_id ? 'Linked assessment attempt.' : 'Original attempt unavailable.'}</p>
+            {item.answer_id ? <Link className="inline-flex min-h-11 items-center underline" to={`/answers/${encodeURIComponent(item.answer_id)}`}>Open saved assessment</Link> : <p className="text-sm text-muted">Saved question and feedback unavailable.</p>}
           </li>)}
         </ol>
         <div className="flex flex-wrap gap-2 mt-3">

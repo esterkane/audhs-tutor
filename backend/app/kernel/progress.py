@@ -3,7 +3,7 @@
 from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import AssessmentAttempt, CompetencyEvidence
+from app.db.models import AssessmentAttempt, CompetencyEvidence, TutorAnswer
 from app.schemas.progress import ProgressDimension, ProgressEvidence, ProgressEvidencePage
 
 
@@ -22,12 +22,20 @@ async def evidence_page(
         .order_by(CompetencyEvidence.dimension)
     )
     rows = await db.execute(
-        select(CompetencyEvidence, AssessmentAttempt)
+        select(CompetencyEvidence, AssessmentAttempt, TutorAnswer.id)
         .outerjoin(
             AssessmentAttempt,
             and_(
                 AssessmentAttempt.id == CompetencyEvidence.source_attempt_id,
                 AssessmentAttempt.learner_id == learner_id,
+            ),
+        )
+        .outerjoin(
+            TutorAnswer,
+            and_(
+                TutorAnswer.turn_id == "assessment:" + AssessmentAttempt.id,
+                TutorAnswer.learner_id == learner_id,
+                TutorAnswer.surface == "assessment",
             ),
         )
         .where(*scope)
@@ -47,6 +55,7 @@ async def evidence_page(
         items=[
             ProgressEvidence(
                 id=evidence.id,
+                answer_id=answer_id,
                 dimension=evidence.dimension,
                 recorded_at=evidence.ts,
                 score=evidence.score,
@@ -55,6 +64,6 @@ async def evidence_page(
                 attempt_id=attempt.id if attempt else None,
                 reported_hint_count=attempt.hint_count if attempt else None,
             )
-            for evidence, attempt in rows
+            for evidence, attempt, answer_id in rows
         ],
     )

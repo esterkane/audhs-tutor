@@ -237,3 +237,13 @@ the selected expression from the correct option; its recipe analogy was less dir
 than ideal. This is limited sampling, not evidence of general teaching quality or
 learning gains. Broader local-model evaluation, human/AT acceptance and remaining
 Progress/Explore design alignment remain open. See ASSESSMENT-HELP-CONTEXT.md.
+
+
+2026-10-11: Progress evidence now links to owned saved assessment feedback; unavailable
+records are explicit. Read-only learner-scoped joins preserve pagination/counts.3
+backend tests,4 final browser checks (Progress320/1280 plus assessment history),
+types/lint/build and reviews pass. Keyboard link navigation opens saved feedback;
+browser Back returns to the selected concept. Narrow full-page screenshot inspected.
+Existing large-chunk warning remains. Historical help-selector test updated to the
+new Explain the difficult part label. No competency or independence interpretation
+changed. Broader human/AT and Progress evidence-level design acceptance remain open.
