@@ -193,7 +193,7 @@ describe('Home', () => {
       </Routes>,
     )
     // only courses with published skills can be a goal; the duration preview names the blocks
-    fireEvent.click(screen.getByText('Change new-session topic', { selector: 'summary' }))
+    fireEvent.click(screen.getByText('Change new-session topic').closest('summary')!)
     const goal = (await screen.findByLabelText('Goal')) as HTMLSelectElement
     await screen.findByRole('option', { name: 'LLM Evaluation (3 skills)' })
     expect(Array.from(goal.options).map((o) => o.textContent)).toEqual([
@@ -207,7 +207,7 @@ describe('Home', () => {
     await waitFor(() => expect(puts).toEqual([{ key: 'goal.course', value: 'LLM Evaluation' }]))
     // the questioning style is an explicit opt-in behind "More options", default explicit
     fireEvent.click(
-      screen.getByText(/More options · questioning style: Explicit \(default\)/, { selector: 'summary' }),
+      screen.getByText(/More options · questioning style: Explicit \(default\)/).closest('summary')!,
     )
     expect(screen.getByRole('button', { name: /explicit \(default\)/i })).toHaveAttribute(
       'aria-pressed',
@@ -234,7 +234,7 @@ it('puts the actual running topic and next action before optional setup', async 
   )
   renderApp(<Home />)
   const resume = await screen.findByRole('button', { name: /^Continue$/ })
-  const setup = screen.getByText('Session options', { selector: 'summary' })
+  const setup = screen.getByText('Session options').closest('summary')!
   expect(resume.compareDocumentPosition(setup) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   expect(screen.getByText('Next: continue your saved review.')).toBeVisible()
   expect(setup.parentElement).not.toHaveAttribute('open')

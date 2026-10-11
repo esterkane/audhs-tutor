@@ -83,3 +83,10 @@ are still open; full design acceptance is not claimed.
 
 Next: Preferences switches/segmented-control alignment, plus remaining Home
 heading/disclosure consistency and shared cross-theme acceptance.
+
+
+## Shared disclosures — 2026-10-11
+
+Complete Design System p7: Home now uses the existing shared Disclosure for alternate session, saved material, new-session topic, session options and nested questioning style. This replaces bare summary rows with consistent chevrons and at least 44px targets. Native details behavior, initially collapsed state, mounted children, labels and handlers are retained. No session policy or learning logic changed.
+
+Before: six resume/session-intent browser checks passed. After: twelve affected browser journeys (resume, session intent, late defaults and recent context) and twelve Home unit tests passed, with lint and production type/build checks. Keyboard opening/closing and retained explicit session decisions tested;320/800/1280 layouts covered and320/1280 screenshots inspected. Code and pedagogy reviews found no blockers or majors. Existing build chunk-size warning remains. This does not prove dark-theme, browser-zoom, assistive-technology or human-comprehension acceptance for the whole Home flow. Remaining design work includes semantic typography adoption and disclosures on other screens.

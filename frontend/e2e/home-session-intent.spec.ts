@@ -34,7 +34,7 @@ for (const width of [390, 1280]) {
     await expect(page.getByLabel('Saved session').getByText('Original lesson', { exact: true })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Choose whether to switch' })).not.toBeVisible()
     await page.screenshot({ path: info.outputPath('resume-card.png'), fullPage: true })
-    const disclosure = page.getByText('Start a different session', { exact: true })
+    const disclosure = page.locator('summary').filter({ hasText: 'Start a different session' })
     await disclosure.focus()
     await page.keyboard.press('Enter')
     await page.getByRole('button', { name: 'Choose whether to switch' }).click()

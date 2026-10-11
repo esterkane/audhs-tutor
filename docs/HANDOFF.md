@@ -1527,3 +1527,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Preferences enum choices use an opt-in segmented visual group. Existing selection/save semantics retained; light/dark, narrow/desktop, keyboard and reflow evidence in docs/design/PREFERENCES-CONTROL-ALIGNMENT.md. Broader typography/disclosure adoption remains open.
+
+
+2026-10-11 — Home optional sections use shared native disclosures with44px targets, retaining session decisions and mounted state. Twelve browser/twelve unit checks, lint/build and reviews pass. See docs/design/HOME-RESUME-ALIGNMENT.md; broader design acceptance remains open.

@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-for (const width of [390, 800, 1280]) {
+for (const width of [320, 800, 1280]) {
   test(`Home puts the saved topic first at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     await page.route('**/api/sessions/current', (route) =>
@@ -28,13 +28,14 @@ for (const width of [390, 800, 1280]) {
     await expect(page.getByText('Planned activity: about 10 min. This is the original plan, not time remaining.')).toBeVisible()
     await expect(page.getByRole('heading', { name: 'Home', exact: true })).toBeVisible()
     await expect(page.getByText('Next: continue your saved review.')).toBeVisible()
-    const options = page.getByText('Session options', { exact: true })
+    const options = page.locator('summary').filter({ hasText: 'Session options' })
     await expect(options.locator('..')).not.toHaveAttribute('open')
     const box = await resume.boundingBox()
     expect(box!.y).toBeLessThan((await options.boundingBox())!.y)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    const topic = page.getByText('Change new-session topic', { exact: true })
+    const topic = page.locator('summary').filter({ hasText: 'Change new-session topic' })
     await expect(topic.locator('..')).not.toHaveAttribute('open')
+    expect((await topic.boundingBox())!.height).toBeGreaterThanOrEqual(44)
     await topic.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('combobox', { name: 'Knowledge area' })).toBeVisible()

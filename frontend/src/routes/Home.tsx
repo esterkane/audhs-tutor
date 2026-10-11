@@ -1,3 +1,4 @@
+import { Disclosure } from '../components/ui/disclosure'
 import { boundedRead } from '../lib/boundedRead'
 import { ResumeContext } from '../features/session/ResumeContext'
 import { RecentContexts } from '../features/recent/RecentContexts'
@@ -352,16 +353,14 @@ function HomeOverview() {
         </Card>
       </section>
       {quickReviewError && <p role="alert">Could not open quick review: {quickReviewError} Your saved session has not been ended. Try Quick review again.</p>}
-      {resumable ? <details className="border border-line rounded-md p-3">
-        <summary className="cursor-pointer font-medium">Start a different session</summary>
+      {resumable ? <Disclosure label="Start a different session">
         <p className="text-sm text-muted my-2">Review the selected lesson before deciding whether to end your current session. Opening this does not change your saved work.</p>
         {newSessionCard}
-      </details> : null}
+      </Disclosure> : null}
       <RecentContexts />
       <AdaptationCards collapsed />
       <PromotedReminders />
-      <details className="border border-line rounded-md p-3">
-        <summary className="cursor-pointer">Saved material · clear / ask me later</summary>
+      <Disclosure label="Saved material · clear / ask me later">
         <p className="text-sm text-muted">
           Your labels are reminders, separate from assessed mastery and scheduled reviews.
         </p>
@@ -376,9 +375,8 @@ function HomeOverview() {
             </Button>
           </p>
         ))}
-      </details>
-      <details className="border border-line rounded-md p-3">
-        <summary className="cursor-pointer font-medium">Change new-session topic</summary>
+      </Disclosure>
+      <Disclosure label="Change new-session topic">
         <p className="text-sm text-muted mt-2">Changing this selection affects the next session you start. Resuming keeps your saved topic and place.</p>
         <label className="block min-w-0 text-sm font-medium mt-2">
           Knowledge area
@@ -454,9 +452,8 @@ function HomeOverview() {
             {scaffold ? ` · ${scaffold}` : ''}
           </p>
         )}
-      </details>
-      <details className="border border-line rounded-md p-3">
-        <summary className="cursor-pointer font-medium">Session options</summary>
+      </Disclosure>
+      <Disclosure label="Session options">
         <fieldset disabled={quickReviewBusy}>
         <p className="text-sm text-muted my-2">
           Optional: adjust pace, energy and teaching style for a new session.
@@ -503,11 +500,7 @@ function HomeOverview() {
                 .join(' → ')} · about ${preview.data.total_min} min in total.`
             : 'Planning…'}
         </p>
-        <details className="mt-3">
-          <summary className="cursor-pointer text-sm font-medium">
-            More options · questioning style:{' '}
-            {socratic ? 'Socratic (chosen for this session)' : 'Explicit (default)'}
-          </summary>
+        <Disclosure className="mt-3" label={`More options · questioning style: ${socratic ? 'Socratic (chosen for this session)' : 'Explicit (default)'}`}>
           <div className="mt-2">
             <Choice<'explicit' | 'socratic'>
               stackOnNarrow
@@ -538,9 +531,9 @@ function HomeOverview() {
               </p>
             )}
           </div>
-        </details>
+        </Disclosure>
         </fieldset>
-      </details>
+      </Disclosure>
     </div>
   )
 }
