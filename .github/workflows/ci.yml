@@ -134,7 +134,8 @@ jobs:
     if: needs.scope.outputs.runtime == 'true'
     name: browser journeys · playwright on the sandbox stack
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    # Measured Linux run reached test292 at25min; retain the complete serial suite.
+    timeout-minutes: 40
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6

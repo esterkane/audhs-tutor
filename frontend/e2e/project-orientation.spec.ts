@@ -138,6 +138,9 @@ test('project links and browser history preserve the selected step', async ({ pa
   await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('project-study-location:v1') ?? 'null')?.sectionId)).toBe('second')
   await page.goForward()
   await expect(page.getByRole('heading', { name: 'Inspect the data', exact: true })).toBeVisible()
+  await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('project-study-location:v1') ?? 'null')?.sectionId)).toBe('first')
+  await page.goto('/programs')
+  await expect(page.getByRole('heading', { name: 'Inspect the data', exact: true })).toBeVisible()
 })
 
 

@@ -1,5 +1,5 @@
 import { RememberContext } from '../features/recent/RememberContext'
-import { useSearchParams } from 'react-router-dom'
+import { useLocation, useSearchParams } from 'react-router-dom'
 import { SavedContextAnswers } from '../features/programs/SavedContextAnswers'
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { LocalNotebookLab } from '../features/programs/LocalNotebookLab'
@@ -137,6 +137,7 @@ export function Programs() {
   const [error, setError] = useState('')
   const [restored] = useState(restoreLocation)
   const [params, setParams] = useSearchParams()
+  const { key: navigationKey } = useLocation()
   const linked = params.has('course') || params.has('step') || params.has('view')
   const location = useMemo(() => linked ? {
     version: 1 as const,
@@ -198,7 +199,8 @@ export function Programs() {
       else query.delete('view')
       return query
     })
-    setPlaceStatus(rememberLocation({ version: 1, courseId, sectionId, notebook }))
+    // Persist only the committed, resolved route in the effect below. A click
+    // can be superseded by Back before React commits its destination.
   }
   const resolvedCourseId = course?.id
   const resolvedSectionId = section?.id ?? ''
@@ -213,7 +215,7 @@ export function Programs() {
     // Report the result of synchronizing browser history with external saved-place storage.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setPlaceStatus(rememberLocation(next))
-  }, [resolvedCourseId, resolvedSectionId, notebookView, staleLocation])
+  }, [resolvedCourseId, resolvedSectionId, notebookView, staleLocation, navigationKey])
 
   function focusStep() {
     focusRequested.current = true

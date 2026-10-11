@@ -1817,3 +1817,18 @@ Existing bundle warning remains. Logs:/tmp/preference-save-{browser,unit,build}.
 CI run38150157321 timed out at its25-minute limit after reaching browser test292;
 backend/frontend/migrations passed. Latest-head browser success remains unproven.
 Next: adjust job time allowance using this measured runner evidence, keeping tests.
+
+
+2026-10-11 CI/project history recovery: run38150157321 showed the Back-selected
+step correctly but retained the other saved step. Programs now has one persistence
+writer following the committed resolved route and navigation key; superseded clicks
+do not save a different destination. Same-step selection still retries storage.
+Four local baseline history repeats did not reproduce the CI timing; four final
+project browser journeys and eight unit tests pass, including Back/Forward/re-entry,
+notebook return and denied storage. Lint/types/build pass; narrow screenshot checked.
+No learning-content or grading changes.
+The same Linux CI run reached test292 before its25-minute job limit. Browser-job
+timeout is now40 minutes; no tests/retries/workers changed. Hosted-run completion
+remains unverified until the latest-head workflow finishes. Existing bundle warning
+remains. Logs:/tmp/project-history-{before,final,unit,build}.log and
+/tmp/ci-38150157321-journeys.log.
