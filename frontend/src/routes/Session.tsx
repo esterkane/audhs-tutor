@@ -854,6 +854,18 @@ function TeachPanel({
       )}
       <Card>
         <CardTitle>{text || alt ? 'Ask the tutor' : 'Your explanation'}</CardTitle>
+        <p className="text-sm mb-2">Start with the idea and a worked example. No question is required.</p>
+        <div className="flex gap-2 flex-wrap mb-2">
+          <Button
+            variant={done || alt || input.trim() ? 'secondary' : 'primary'}
+            disabled={busy}
+            onClick={() => void run({ ...base, text: 'Explain the next idea for this skill in three short sections with Markdown headings: The idea, A worked example, and Try one step. Give enough context to attempt that step. Keep code blocks complete. Do not require a confidence rating.', action: 'explain' })}
+          >
+            {busy ? 'Preparing explanation…' : text ? 'Explain again' : 'Start explanation'}
+          </Button>
+          {!(done || alt || hasQuestion) && <Disclosure label="More ways to learn">{helpActions}</Disclosure>}
+        </div>
+        {input.trim() && <p className="text-sm mb-2">Starting an explanation keeps your draft below without sending it. Use Send lesson question to ask it.</p>}
         <label htmlFor="ask" className="text-sm font-medium">
           Ask about this lesson (optional)
         </label>
@@ -861,7 +873,7 @@ function TeachPanel({
           id="ask"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder="Leave empty to start with an explanation."
+          placeholder="What would you like explained about this lesson?"
           aria-describedby={input.length > 4000 ? 'lesson-question-limit' : undefined}
         />
         {input.length > 4000 && (
@@ -871,27 +883,12 @@ function TeachPanel({
         )}
         <div className="flex gap-2 flex-wrap mt-2">
           <Button
-            variant={done || alt ? 'secondary' : 'primary'}
-            disabled={busy || input.length > 4000}
-            onClick={() =>
-              void run({
-                ...base,
-                text:
-                  input.trim() ||
-                  'Explain the next idea for this skill in three short sections with Markdown headings: The idea, A worked example, and Try one step. Give enough context to attempt that step. Keep code blocks complete. Do not require a confidence rating.',
-                action: 'explain',
-              })
-            }
+            variant={!done && !alt && input.trim() ? 'primary' : 'secondary'}
+            disabled={busy || !input.trim() || input.length > 4000}
+            onClick={() => void run({ ...base, text: input.trim(), action: 'explain' })}
           >
-            {busy
-              ? 'Preparing explanation…'
-              : input.trim()
-                ? 'Send lesson question'
-                : text
-                  ? 'Explain again'
-                  : 'Start explanation'}
+            Send lesson question
           </Button>
-          {!(done || alt || hasQuestion) && <Disclosure label="More ways to learn">{helpActions}</Disclosure>}
           {voiceOn && !talking && (
             <Button variant="ghost" onClick={() => setTalking(true)}>
               Talk instead
@@ -899,10 +896,7 @@ function TeachPanel({
           )}
         </div>
         {!text && !busy && !error && status !== 'stopped' && (
-          <p className="mt-2">
-            No explanation has been prepared yet. Start with the idea and a worked example, or type a
-            specific question above.
-          </p>
+          <p className="mt-2">No explanation has been prepared yet.</p>
         )}
         <p className="text-sm text-muted mt-2">
           Read at your own pace or choose Listen when the explanation is ready. Audio never starts automatically.

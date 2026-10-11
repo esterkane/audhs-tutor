@@ -1,6 +1,6 @@
 # Consolidated lesson orientation — implementation contract
 
-Status: proposed bounded follow-up to DL-02; not implemented or usability-validated.
+Status: bounded heading and initial-entry changes implemented; human usability acceptance remains open.
 Authority: Complete Design System, Learn workspace (page 9) and progressive disclosure
 (page 2). Current evidence: DAILY-LEARNING-ACCEPTANCE.md and lesson-layout journeys.
 
@@ -73,3 +73,27 @@ the bottom navigation. Explanation heading document top is658/608/383px at
 320/390/1280 respectively, identical in light/dark; not a human comprehension result.
 Existing bundle-size warning remains. Empty-entry/composer hierarchy and broader
 human/AT acceptance remain open. Logs:/tmp/lesson-heading-{browser,unit,build}.log.
+
+
+2026-10-11 initial-entry follow-up, before implementation:390px baseline verifies
+Start explanation follows the optional composer (lesson-entry-before.log). Use two
+explicit intentions: a stable general-explanation action before the input, and Send
+lesson question after it. The first uses the unchanged default explanation prompt;
+it preserves any draft and states that it does not send it. The second sends only
+nonempty input. Only one is primary: general explanation with an empty draft, question
+with a draft, and neither after completed content (Let me try remains primary).
+Keep both controls at stable DOM positions through typing/streaming; do not hide the
+composer, move its owner, change request identity or auto-generate. This is a bounded
+presentation/intent clarification, not a learning-kernel or prompt-policy change.
+Likely files:Session.tsx, lesson-layout browser checks and targeted entry coverage.
+
+Verification:17 browser journeys pass:320/390/1280 light/dark layout, actual200%
+Chromium zoom, keyboard traversal, plan/context/Focus, pause/resume, partial-stream
+stop/retry/reload, restored-question preservation with inspected request payload,
+reading-to-assessment return and alternate representations. Ten Session component
+tests, lint, test/production types and build pass. Code/pedagogy reviews clear;
+390px screenshot inspected with Start explanation above the optional input.
+No new library, shared token or learning-policy change. Existing large-chunk warning
+remains. Owner comprehension, physical audio and assistive-technology acceptance
+remain open; hosted CI is still running an earlier commit. Logs:
+/tmp/lesson-entry-{before,browser,final,unit,build}.log.

@@ -18,8 +18,9 @@ Integrated local browser regression verification passed347 tests with20 intentio
 opt-in skips before the latest bounded slices. Actual200% Chromium lesson checks now
 cover light320/dark640 CSS pixels, sequential keyboard navigation, drafts and return.
 Latest-head hosted CI, other-flow zoom, assistive technology and human re-entry remain
-open. Next design work is the empty lesson-entry/composer hierarchy; do not reimplement
-completed heading/Focus/navigation/reading-order changes. Both remotes remain private.
+open. Initial lesson-entry/composer hierarchy is now implemented in a bounded slice;
+see design/LESSON-ORIENTATION-CONTRACT.md for evidence and human acceptance. Do not
+reimplement completed heading/Focus/navigation/reading-order changes. Both remotes remain private.
 See the reconciled execution order in design/COMPLETE-DESIGN-ALIGNMENT.md. Broader
 semantic quality, material coverage and dependent queues below remain active.
 

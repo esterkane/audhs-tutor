@@ -37,9 +37,10 @@ Current order (reconciled after implementation; dated entries below remain histo
 1. Verify latest-head CI, including the full browser suite with its measured runner
    allowance. Earlier347-pass local evidence predates recent slices; it is not a
    latest-head hosted result. Do not repeat delivered reading-order/Focus/navigation work.
-2. Complete the remaining empty lesson-entry/composer hierarchy from
-   LESSON-ORIENTATION-CONTRACT.md using a concrete rendered baseline. The single
-   heading, secondary session controls and below-activity plan settings are delivered.
+2. Initial lesson-entry action now precedes the optional composer; general explanation
+   and question submission are explicit, with preserved drafts. See
+   LESSON-ORIENTATION-CONTRACT.md for17 browser checks and remaining human acceptance.
+   Do not reimplement the delivered heading, controls or below-activity settings.
 3. Audit remaining shared-control/token adoption by concrete screen/finding, without
    redesigning unrelated views. Shell, local fonts, palette and five destinations exist.
 4. Progress evidence levels require an explicit provenance/learning-policy contract;

@@ -1867,3 +1867,12 @@ pass; narrow screenshot inspected. Keyboard retry/focus verified, native select-
 keyboard automation inconclusive (selection/save verified with selectOption); human/AT
 acceptance remains open. Existing bundle warning remains. No learning-policy changes.
 Evidence:ux/ADVERSARIAL-USABILITY-REPORT.md AU-LISTEN-01; /tmp/listening-*.log.
+
+
+2026-10-11 lesson entry: general Start explanation precedes the optional composer;
+Send lesson question remains below it. The unchanged general prompt preserves but
+does not send drafts, with explicit notice; the question action sends only the draft.
+Controls retain owners/positions; no auto-generation or learning-policy changes.
+Seventeen browser checks, ten Session tests, lint/types/build and reviews pass;
+390px screenshot inspected. Human/AT/physical-audio acceptance and latest-head CI
+remain open. See design/LESSON-ORIENTATION-CONTRACT.md; /tmp/lesson-entry-*.log.
