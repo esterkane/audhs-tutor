@@ -16,6 +16,7 @@ import { Areas } from '../routes/Areas'
 import { Curriculum } from '../routes/Curriculum'
 import { Experiments } from '../routes/Experiments'
 import { Home } from '../routes/Home'
+import { Learn } from '../routes/Learn'
 import { Map } from '../routes/Map'
 import { Models } from '../routes/Models'
 import { Together } from '../routes/Together'
@@ -50,6 +51,7 @@ const pageTitles: Record<string, string> = {
   ...Object.fromEntries([...primaryPages, ...toolPages]),
   '/programs': 'Project study',
   '/corrections': 'Correction drafts',
+  '/learn': 'Learn',
   '/session': 'Learning session',
   '/review': 'Review',
   '/recap': 'Session recap',
@@ -200,6 +202,7 @@ export default function App() {
             <Route path="/sources" element={<Sources />} />
             <Route path="/answers" element={<Answers />} />
             <Route path="/answers/:answerId" element={<Answers />} />
+            <Route path="/learn" element={<Learn />} />
             <Route path="/session" element={<Session />} />
             <Route path="/playground" element={<Playground />} />
             <Route path="/playground/visualizer" element={<Visualizer />} />

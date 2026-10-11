@@ -47,3 +47,8 @@ All new visual work should cite the relevant PDF page/section in its slice recor
 list outstanding deviations. Use semantic tokens and existing components; introduce no
 new design library merely to imitate the reference. Keep one dominant primary action,
 plain factual copy,opt-in audio and visible learner exits.
+
+Navigation implementation contract: [five-destination route map](SHELL-ROUTE-CONTRACT.md).
+The current application lacks dedicated Practice/Progress entries; implement
+the documented state-aware routes before replacing shell labels. Home baseline
+passed at390/1280px. No new shell behavior is claimed yet.
