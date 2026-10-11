@@ -144,7 +144,7 @@ function Reader({ text, identity, active, sources }: Props) {
         This is your reading position, not a completion or mastery score. Read freely and revisit any section
         before answering.
       </p>
-      <Markdown text={visibleText} />
+      <Markdown headingLevel={4} text={visibleText} />
       {active && <ReadAloud key={`${reading.full}:${reading.selected}`} text={visibleText} />}
       {!reading.full && sections.length > 1 && (
         <nav aria-label="Explanation sections" className="flex flex-wrap gap-2">

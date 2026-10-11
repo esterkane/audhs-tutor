@@ -203,23 +203,15 @@ body {
 .prose > * + * {
   margin-top: 1rem;
 }
-.prose h1,
-.prose h2,
-.prose h3,
-.prose h4 {
-  font-weight: 650;
-  line-height: 1.3;
+.prose [data-content-heading] {
+  font-size: var(--text-ui);
+  font-weight: 600;
+  line-height: 1.5;
   margin-top: 1.6em;
   margin-bottom: 0.6em;
 }
-.prose h1 {
-  font-size: 1.65em;
-}
-.prose h2 {
-  font-size: 1.35em;
-}
-.prose h3 {
-  font-size: 1.15em;
+.prose [data-content-heading='0'] {
+  font-size: var(--text-panel-heading);
 }
 .prose > :first-child {
   margin-top: 0;

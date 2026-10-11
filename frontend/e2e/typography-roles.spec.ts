@@ -14,15 +14,19 @@ for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
       await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: {
         session_id: session.id, index: session.plan.findIndex((block: { type: string }) => block.type === 'new_material'),
       } }))
-      const text = 'Compare each group before removing missing values.\n\nUse `groupby` to inspect the counts.\n\n```python\ncounts = data.groupby("group").size()\nprint(counts)\n```'
+      const text = '# Cleaning data\n\nCompare each group before removing missing values.\n\n## Inspect the groups\n\nUse `groupby` to inspect the counts.\n\n```python\ncounts = data.groupby("group").size()\nprint(counts)\n```'
       await page.route('**/api/tutor/stream', route => route.fulfill({ contentType: 'text/event-stream', body:
         `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ text, outcome: 'ok', sources: [], turn_id: 'type-fixture' })}\n\n`,
       }))
       await page.goto('/')
       await page.getByRole('button', { name: 'Continue', exact: true }).click()
       await page.getByRole('button', { name: 'Start explanation', exact: true }).click()
+      await page.getByRole('radio', { name: 'Full explanation', exact: true }).check()
+      await expect(page.locator('main h1')).toHaveCount(1)
       const prose = page.getByRole('region', { name: 'Explanation reader' }).locator('.prose').first()
       await expect(prose).toContainText('Compare each group')
+      await expect(prose.getByRole('heading', { level: 4, name: 'Cleaning data' })).toBeVisible()
+      await expect(prose.getByRole('heading', { level: 5, name: 'Inspect the groups' })).toBeVisible()
       const sizes = () => prose.evaluate(element => {
         const paragraph = getComputedStyle(element.querySelector('p')!)
         const code = getComputedStyle(element.querySelector('pre code')!)

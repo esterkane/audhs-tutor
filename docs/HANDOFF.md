@@ -1545,3 +1545,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Twelve secondary route titles aligned, with embedded Together retaining h2.12-route/two-width browser checks, alongside recovery,77 unit tests and lint/build/reviews pass. See docs/design/TYPOGRAPHY-ALIGNMENT.md for acceptance limits.
+
+
+2026-10-11 — Generated Markdown headings are relative to their container; source text/narration unchanged.612 unit/9 browser checks, lint/build/reviews pass. See docs/design/TYPOGRAPHY-ALIGNMENT.md; human/AT and remaining per-container acceptance stay open.
