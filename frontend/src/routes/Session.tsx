@@ -102,7 +102,7 @@ export function Session() {
   // keyed by the server's block id: a new block (or a resumed session) starts with fresh UI state
   const st = session.data.state
   return (
-    <div className="grid gap-4" data-capture-label={session.data.active_skill?.title} data-capture-query={st.block_status === "running" && st.skill_id && st.block_started_at && session.data.active_skill?.id === st.skill_id ? new URLSearchParams({ capture_session: sessionId, capture_skill: st.skill_id, capture_block: String(st.block_index), capture_started: st.block_started_at }).toString() : ""}>
+    <div className="grid grid-cols-1 gap-4" data-capture-label={session.data.active_skill?.title} data-capture-query={st.block_status === "running" && st.skill_id && st.block_started_at && session.data.active_skill?.id === st.skill_id ? new URLSearchParams({ capture_session: sessionId, capture_skill: st.skill_id, capture_block: String(st.block_index), capture_started: st.block_started_at }).toString() : ""}>
       {!session.isError && typeof st.block_index === 'number' && st.block_status === 'running' && st.skill_id && st.block_started_at && session.data.active_skill?.id === st.skill_id && <RememberContext context={{ version: 1, kind: 'lesson', session_id: sessionId, skill_id: st.skill_id, block_index: st.block_index, block_started_at: st.block_started_at, label: session.data.active_skill.title.slice(0, 200) }} />}
       {session.isError && (
         <Card>
@@ -322,7 +322,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
   }
 
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <AdaptationCards origin="planner" />
       {stopSession.error && <p role="alert">{stopSession.error.message}</p>}
       <Card>

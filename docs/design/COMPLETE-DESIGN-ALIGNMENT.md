@@ -21,7 +21,7 @@ Read all extracted pages and visually inspected typography/layout/component page
 | Light/dark semantic palette, pp3–4 | frontend/src/index.css and brand foundation | Core palette/supporting tokens implemented; per-component use and contrast still require checks |
 | Inter / Roboto Mono, p5 | Local font-face assets and provenance | Implemented; retain local delivery |
 | 22px page title,16px panel title,896px page measure,2px focus, pp5–8 | Existing shared CSS tokens,56rem page bound,focus rule | Foundations exist; audit adoption, not just token existence |
-| 14px UI /16px prose,13px code, p5 | Existing body inherits browser16px, prose line-height1.75 | Not exact: migrate semantic role tokens deliberately; preserve118% preference and do not globally shrink reading |
+| 14px UI /16px prose,13px code, p5 | Shared UI/prose/code role tokens in index.css | Foundation aligned with118% preference; representative evidence and remaining per-screen acceptance in TYPOGRAPHY-ALIGNMENT.md |
 | 48px header,240/48px navigation, five mobile destinations + Tools, p6 | Five-destination sidebar/rail/bottom navigation and compact header implemented | Bounded browser evidence in HEADER-CONTEXT-CONTRACT.md; full human/assistive-technology acceptance remains open |
 | Sole Home ResumeCard, p6 | Duplicate header/menu links removed | Shell aligned; Home and contextual recovery retained, see ../slices/single-shell-resume.md |
 | Shared44px Disclosure,40px visual controls/44px targets, pp5–7 | Shared Disclosure in two lesson controls; existing Button | Partial: see ../slices/shared-disclosure.md; remaining disclosure/raw-control adoption open; shared Button sizing verified in ../slices/button-target-plan.md |

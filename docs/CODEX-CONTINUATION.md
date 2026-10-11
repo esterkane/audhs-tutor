@@ -456,3 +456,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — Home optional sections use shared native disclosures with44px targets, retaining session decisions and mounted state. Twelve browser/twelve unit checks, lint/build and reviews pass. See docs/design/HOME-RESUME-ALIGNMENT.md; broader design acceptance remains open.
+
+
+2026-10-11 — Shared UI/prose/code typography aligned; enlarged lesson code no longer widens its grid.610 unit/14 browser checks, lint/build and reviews pass. See docs/design/TYPOGRAPHY-ALIGNMENT.md for limits and remaining acceptance.
