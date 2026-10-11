@@ -95,3 +95,25 @@ Remaining: in-place replacement versus appended representations, contextual desk
 column/mobile sheet, composer/secondary-action consolidation and human acceptance.
 Existing representation requests have no cancellation/deadline; this slice keeps
 assessment navigation available rather than expanding the networking architecture.
+
+
+## In-place explanation view — 2026-10-11
+
+PDF p9: alternate representation now occupies the reading area instead of stacking
+beneath the original. Native labelled radios switch between original and current
+alternative. Both content owners stay mounted; original reading position/notes and
+composer drafts survive. Hidden narration is unmounted/inactive. New tutor requests
+and retries show the original response view; an intent counter prevents a late
+representation from overriding a newer view/request choice. Sources, saved-answer
+links and existing explicit preference comparison remain.
+
+Evidence:6 browser cases pass for source/recovery flows; the two view cases rerun
+with a held-response/manual-selection race at390/desktop and pass. Keyboard radio
+switching restores notes/drafts, only one explanation is exposed, errors retain
+content, and late responses retain the selected original view.29 component tests
+(Session, LessonReader, ReadAloud), lint/type/build and reviews pass. Narrow screenshot
+inspected. Physical audio and assistive-technology checks remain unverified.
+
+Only the current alternative is offered in this local view switch; older saved
+versions remain in answer history. This is not a new version archive. Context-column/
+mobile-sheet layout and consolidation of composer/secondary controls remain open.

@@ -483,3 +483,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — Learn three-action row aligned with PDFp9, using existing representation/assessment handlers. Duplicate example requests blocked; failure retains content/drafts and pending examples do not block assessment.11 browser cases,10 Session tests, lint/build and reviews pass. Remaining design scope: docs/design/COMPLETE-DESIGN-ALIGNMENT.md.
+
+
+2026-10-11 — In-place original/alternate explanation view preserves notes and draft, deactivates hidden narration, and respects newer selection over late responses.6 browser cases (view race rerun),29 component tests, lint/build and reviews pass. See docs/design/COMPLETE-DESIGN-ALIGNMENT.md for limits and remaining layout.

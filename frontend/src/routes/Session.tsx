@@ -508,9 +508,9 @@ function TeachPanel({
     done,
     error,
     busy,
-    run,
+    run: runReply,
     stop,
-    retry,
+    retry: retryReply,
     status,
     previous,
     startedAt,
@@ -528,6 +528,18 @@ function TeachPanel({
   const [prevAlt, setPrevAlt] = useState<RenderOut | null>(null)
   const representationLock = useRef(false)
   const [waysOpen, setWaysOpen] = useState(false)
+  const [viewingAlt, setViewingAlt] = useState(false)
+  const viewIntent = useRef(0)
+  const run: typeof runReply = request => {
+    viewIntent.current += 1
+    setViewingAlt(false)
+    return runReply(request)
+  }
+  const retry: typeof retryReply = () => {
+    viewIntent.current += 1
+    setViewingAlt(false)
+    return retryReply()
+  }
   const reportTurn = useReport()
   const prefs = usePreferences()
   const voiceOn = (prefs.data?.values as Record<string, unknown> | undefined)?.['voice.enabled'] === true
@@ -544,10 +556,12 @@ function TeachPanel({
   async function showDifferently(kind: string) {
     if (!skillId || representationLock.current || busy) return
     representationLock.current = true
+    const intent = ++viewIntent.current
     try {
       const out = await render.mutateAsync({ skillId, kind, sessionId })
       setPrevAlt(alt)
       setAlt(out)
+      if (viewIntent.current === intent) setViewingAlt(true)
     } catch {
       // The mutation exposes the error beside the controls; keep current content.
     } finally {
@@ -563,8 +577,23 @@ function TeachPanel({
           <Button variant="ghost" onClick={stop}>Stop explanation</Button>
         </Card>
       )}
+      {alt && (
+        <fieldset className="flex flex-wrap gap-3 border-0 p-0">
+          <legend className="text-sm font-medium mb-2">Explanation to read</legend>
+          {[
+            { alternate: false, label: 'Original explanation' },
+            { alternate: true, label: String((kinds.data?.kinds ?? []).find(k => k.kind === alt.kind)?.label ?? alt.kind.replaceAll('_', ' ')) },
+          ].map(option => (
+            <label key={String(option.alternate)} className="flex items-center gap-2 min-h-control-target text-sm">
+              <input type="radio" name="lesson-explanation-view" checked={viewingAlt === option.alternate}
+                onChange={() => { viewIntent.current += 1; setViewingAlt(option.alternate) }} />
+              {option.label}
+            </label>
+          ))}
+        </fieldset>
+      )}
       {(text || busy || error || status === 'stopped') && (
-        <Card aria-busy={busy}>
+        <Card aria-busy={busy} hidden={viewingAlt}>
           {meta && (
             <p className="text-xs text-muted mb-2">
               {meta.action}
@@ -584,7 +613,7 @@ function TeachPanel({
               identity={`${sessionId}:${done.turn_id}`}
               text={text}
               sources={done.sources}
-              active={active}
+              active={active && !viewingAlt}
             />
           ) : (
             <Markdown text={text || (busy ? '…' : '')} />
@@ -684,7 +713,7 @@ function TeachPanel({
         </Card>
       )}
       {alt && (
-        <Card>
+        <Card hidden={!viewingAlt} role="region" aria-label="Alternative explanation">
           <p className="text-xs text-muted mb-2">
             {alt.kind.replace('_', ' ')} · same learning object{alt.cached ? ' · from cache' : ''}
           </p>
@@ -697,7 +726,7 @@ function TeachPanel({
             text={alt.content}
           />
           <RepresentationSources key={`sources-${alt.representation_id}`} value={alt} />
-          {active && <ReadAloud key={alt.representation_id} text={alt.content} />}
+          {active && viewingAlt && <ReadAloud key={alt.representation_id} text={alt.content} />}
           {prevAlt && prevAlt.representation_id !== alt.representation_id && (
             <div className="mt-3">
               <p className="text-sm font-medium mb-1">Which explanation worked better?</p>
