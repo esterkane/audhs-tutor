@@ -6036,6 +6036,8 @@ export interface components {
     }
     /** TurnRequest */
     TurnRequest: {
+      /** Assessment Answer Id */
+      assessment_answer_id?: string | null
       /** Session Id */
       session_id: string
       /** Text */

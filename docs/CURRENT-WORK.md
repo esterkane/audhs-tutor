@@ -224,3 +224,16 @@ light/1280 dark, with keyboard/edit/reload/cancel/submission checks; screenshots
 inspected.10 Session tests, lint/type/build and code/pedagogy reviews pass. Existing
 large-chunk warning remains. Full secondary feedback-help controls and broader
 Practice/Progress design acceptance remain open; grading is unchanged.
+
+
+2026-10-11: Four post-feedback help actions now use owned immutable saved assessment
+context, including options, submitted work and criteria. Dedicated escaped context
+rejects oversized/incomplete records; contract identity separates saved assessments;
+legacy retry payloads remain compatible. No grading changes.31 backend tests,17 UI
+tests,2 keyboard/responsive browser journeys, types/lint/build and code/pedagogy reviews
+pass. Narrow help screenshot inspected; existing build chunk warning remains. One
+synthetic local gemma3:12b sample (11.1s total, no hosted call) correctly distinguished
+the selected expression from the correct option; its recipe analogy was less direct
+than ideal. This is limited sampling, not evidence of general teaching quality or
+learning gains. Broader local-model evaluation, human/AT acceptance and remaining
+Progress/Explore design alignment remain open. See ASSESSMENT-HELP-CONTEXT.md.

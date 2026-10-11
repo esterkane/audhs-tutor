@@ -55,6 +55,7 @@ class RetrievedChunk(BaseModel):
 
 
 class ContextPacket(BaseModel):
+    checked_assessment: dict[str, Any] | None = None
     policy: str
     historical: list[dict[str, str]] = Field(default_factory=list)
     preferences: dict[str, Any] = Field(default_factory=dict)
@@ -168,6 +169,7 @@ def build_packet(
     request: str,
     prompt_version: str,
     historical: list[dict[str, str]] | None = None,
+    checked_assessment: dict[str, Any] | None = None,
     preferences: dict[str, Any] | None = None,
     session_state: dict[str, Any] | None = None,
     learning_contract: dict[str, Any] | None = None,
@@ -177,6 +179,9 @@ def build_packet(
     budget: SectionBudget = DEFAULT_BUDGET,
     quarantine_below_trust: int = QUARANTINE_BELOW_TRUST,
 ) -> ContextPacket:
+    from app.orchestrator.assessment_help import context_block
+
+    checked_block = context_block(checked_assessment) if checked_assessment is not None else ""
     dropped: list[str] = []
     prefs = _fit_dict("preferences", preferences or {}, budget.preferences, dropped)
     state = _fit_dict("session_state", session_state or {}, budget.session_state, dropped)
@@ -200,6 +205,7 @@ def build_packet(
         dropped.append("historical:" + history[-1].get("answer_id", "unknown"))
         history.pop()
     packet = ContextPacket(
+        checked_assessment=checked_assessment,
         policy=policy,
         historical=history,
         preferences=prefs,
@@ -213,6 +219,7 @@ def build_packet(
         dropped=dropped,
     )
     packet.section_tokens = {
+        "checked_assessment": approx_tokens(checked_block) if checked_block else 0,
         "policy": approx_tokens(policy),
         "historical": approx_tokens(history_block(history)) if history else 0,
         "preferences": approx_tokens(json.dumps(prefs)),
@@ -247,6 +254,8 @@ def render_messages(packet: ContextPacket) -> list[Message]:
     def j(d: dict[str, Any]) -> str:
         return json.dumps(d, ensure_ascii=False)
 
+    from app.orchestrator.assessment_help import context_block
+
     user = "\n\n".join(
         [
             f"## Learner preferences\n{j(packet.preferences)}",
@@ -255,6 +264,11 @@ def render_messages(packet: ContextPacket) -> list[Message]:
             f"## Current evidence\n{j(packet.evidence)}",
             f"## Retrieved knowledge\n{data_block(packet.retrieved)}",
             *([history_block(packet.historical)] if packet.historical else []),
+            *(
+                [context_block(packet.checked_assessment)]
+                if packet.checked_assessment is not None
+                else []
+            ),
             f"## Request\n{packet.request}",
             f"## Output contract\n{j(packet.output_contract)}",
         ]

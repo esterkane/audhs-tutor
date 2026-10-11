@@ -9,6 +9,7 @@ from fastapi.responses import StreamingResponse
 from app.api.answer_jobs import schedule_index
 from app.api.deps import DB, Gateway, Learner, Repo, SettingsDep
 from app.api.sse import sse
+from app.core.errors import AppError
 from app.db import workspace_requests
 from app.kernel import session as ksession
 from app.orchestrator.tutor import TutorTurn
@@ -44,7 +45,15 @@ async def stream(
             learner_id,
             body.session_id,
             str(idempotency_key),
-            {"surface": "lesson_turn", **body.model_dump(mode="json")},
+            {
+                "surface": "lesson_turn",
+                **body.model_dump(
+                    mode="json",
+                    exclude={"assessment_answer_id"}
+                    if body.assessment_answer_id is None
+                    else set(),
+                ),
+            },
         )
     turn = TutorTurn(
         db,
@@ -83,6 +92,8 @@ async def stream(
                 if kind == "done" and data.get("answer_id"):
                     schedule_index(request, background, settings, learner_id)
                 yield sse(kind, data)
+        except AppError as e:
+            yield sse("error", {"code": e.code, "message": e.message})
         except (KeyError, ValueError) as e:
             yield sse("error", {"code": "bad_request", "message": str(e)})
         except Exception:  # never leave the stream hanging; detail goes to the log, not the learner
@@ -123,7 +134,15 @@ async def turn(
             learner_id,
             body.session_id,
             str(idempotency_key),
-            {"surface": "lesson_turn", **body.model_dump(mode="json")},
+            {
+                "surface": "lesson_turn",
+                **body.model_dump(
+                    mode="json",
+                    exclude={"assessment_answer_id"}
+                    if body.assessment_answer_id is None
+                    else set(),
+                ),
+            },
         )
         if saved is not None:
             return TurnDone.model_validate(saved["done"])

@@ -63,3 +63,31 @@ it('offers concept help after feedback without changing hint evidence or grading
   )
   expect(onHint).not.toHaveBeenCalled()
 })
+
+it.each([
+  ['Show a hint', 'hint'],
+  ['Explain the difficult part', 'explain'],
+  ['Show another example', 'explain'],
+  ['See full solution', 'full_solution'],
+])('requests %s only deliberately and retains recorded feedback context', async (label, action) => {
+  const onHint = vi.fn()
+  vi.mocked(streamTurn).mockImplementation(async (_request, handlers) => {
+    handlers.onMeta?.({ turn_id: 'help' } as Parameters<NonNullable<StreamHandlers['onMeta']>>[0])
+    handlers.onToken?.('Requested help, separate from grading.')
+  })
+  render(<QuestionHelp afterAnswer assessmentAnswerId="saved-assessment" sessionId="s" skillId="k" question="Compare these quantities." onHint={onHint} />)
+  expect(streamTurn).not.toHaveBeenCalled()
+  fireEvent.click(screen.getByRole('button', { name: label }))
+  expect(await screen.findByText('Requested help, separate from grading.')).toBeVisible()
+  expect(streamTurn).toHaveBeenCalledWith(expect.objectContaining({
+    action, assessment_answer_id: 'saved-assessment',
+  }), expect.any(Object), expect.any(AbortSignal), undefined)
+  expect(onHint).not.toHaveBeenCalled()
+})
+
+it('keeps contextual help disabled until the checked feedback has been saved', () => {
+  render(<QuestionHelp afterAnswer assessmentAnswerId={null} sessionId="s" skillId="k" question="Question" />)
+  expect(screen.getByRole('button', { name: 'See full solution' })).toBeDisabled()
+  expect(screen.getByText(/Save your feedback using the retry control/)).toBeVisible()
+  expect(streamTurn).not.toHaveBeenCalled()
+})

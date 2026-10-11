@@ -14,6 +14,7 @@ export function QuestionHelp({
   onHint,
   afterAnswer = false,
   afterAnswerNote,
+  assessmentAnswerId,
 }: {
   sessionId: string
   skillId: string | null
@@ -21,6 +22,7 @@ export function QuestionHelp({
   onHint?: () => void
   afterAnswer?: boolean
   afterAnswerNote?: string
+  assessmentAnswerId?: string | null
   active?: boolean
 }) {
   const tutor = useTutorStream()
@@ -42,7 +44,32 @@ export function QuestionHelp({
           ? afterAnswerNote ?? 'Still unclear? Review the idea here. Your recorded feedback stays unchanged.'
           : 'You can learn before answering. Help keeps your answer in place.'}
       </p>
+      {afterAnswer && assessmentAnswerId !== undefined && <p className="text-sm text-muted mb-2">
+        {assessmentAnswerId
+          ? 'Uses your saved question and answer. New explanations and solutions are tutor-generated, not verified answers.'
+          : 'Save your feedback using the retry control above to enable help with this exact answer.'}
+      </p>}
       <div className="flex gap-2 flex-wrap">
+        {afterAnswer && assessmentAnswerId !== undefined ? (
+          <>
+            {([
+              ['Show a hint', 'hint', 'Give one small hint for reconsidering this question without revealing its solution.'],
+              ['Explain the difficult part', 'explain', 'Explain the concepts behind the gaps in the recorded feedback. Do not assume anything about the learner beyond this feedback.'],
+              ['Show another example', 'explain', 'Give a worked example with different details that teaches the same concept, without solving this question.'],
+              ['See full solution', 'full_solution', 'Show the full solution step by step, explaining why each step is needed. Then offer one short check question.'],
+            ] as const).map(([label, action, instruction]) => (
+              <Button key={action + label} disabled={tutor.busy || !active || !assessmentAnswerId} onClick={() => {
+                void tutor.run({
+                  session_id: sessionId,
+                  skill_id: skillId,
+                  action,
+                  assessment_answer_id: assessmentAnswerId,
+                  text: instruction,
+                })
+              }}>{label}</Button>
+            ))}
+          </>
+        ) : <>
         {!afterAnswer && (
           <Button
             disabled={tutor.busy || !active}
@@ -71,6 +98,7 @@ export function QuestionHelp({
         >
           {afterAnswer ? "I don't understand yet — explain the idea" : 'Explain the idea first'}
         </Button>
+        </>}
         {tutor.busy && <Button onClick={tutor.stop}>Stop explanation</Button>}
       </div>
       <TutorResponseStatus status={tutor.status} startedAt={tutor.startedAt} />

@@ -207,3 +207,27 @@ build pass. Desktop/narrow screenshots inspected; code/pedagogy reviews clear.
 Existing large-chunk warning remains. Full Practice design, shared choice styling,
 physical assistive-technology and human comprehension acceptance remain open.
 See docs/design/PRACTICE-RETRY-CONTRACT.md.
+
+### Feedback help implementation in progress — 2026-10-11
+
+Four post-feedback actions are wired experimentally to the existing stream owner:
+Show a hint, Explain the difficult part, Show another example, See full solution.
+16 component tests and2 keyboard browser journeys at390/1280 pass; lint/types pass.
+These verify action dispatch, retained feedback and no second grading request only.
+They do not establish question-specific tutoring correctness. No publication yet.
+
+Pedagogy review found a substantive context gap: the existing help interface carries
+only the question stem. Option-dependent MCQs cannot be solved from the stem alone;
+recorded feedback is also not a complete learner-work/criterion context. Before this
+slice can ship, pass the exact checked question/version, all options, submitted work
+and criterion evidence through an explicit context contract. Do not describe model-
+generated solutions as verified answers absent authoritative solution evidence.
+Add an option-dependent regression. Existing saved-assessment discussion already
+loads the recorded answer; inspect that server context boundary before creating a
+second source of truth. This is the next task, not an accepted limitation.
+
+The concrete server/UI boundary and acceptance gates are now recorded in
+ASSESSMENT-HELP-CONTEXT.md. Investigation also found that simply appending the missing
+options would be unsafe: normal tutor request context is clipped to400 approximate
+tokens. Pending controls must not ship until their dedicated context survives budget
+handling and response reuse. No additional runtime changes were made for this finding.

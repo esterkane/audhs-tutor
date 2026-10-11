@@ -32,7 +32,7 @@ from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import GatewayError, ModelGateway, StreamHandle
 from app.models_ai.provider import ProviderError, TaskClass
 from app.models_ai.routing import NoModelReady
-from app.orchestrator import actions, lesson_semantic, prompts, tools
+from app.orchestrator import actions, assessment_help, lesson_semantic, prompts, tools
 from app.orchestrator.context import QUARANTINE_BELOW_TRUST, build_packet, render_messages
 from app.schemas.common import ActivityType, Actor, Domain, ObjectType
 from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
@@ -177,6 +177,17 @@ class TutorTurn:
             if nxt is None:
                 raise ValueError("no skills seeded")
             node = nxt
+        checked_assessment = None
+        if req.assessment_answer_id is not None:
+            if conversation:
+                raise ValueError("Assessment help is unavailable in conversation mode")
+            checked_assessment = await assessment_help.load_context(
+                db,
+                answer_id=req.assessment_answer_id,
+                learner_id=learner_id,
+                session_id=session.id,
+                skill_id=node.id,
+            )
         prev_hint = (
             int(checkpoint.get("hint_level", 0)) if checkpoint.get("skill_id") == node.id else 0
         )
@@ -274,6 +285,11 @@ class TutorTurn:
             block_type=block_type,
             mastery=mastery,
         )
+        if checked_assessment is not None:
+            teaching_contract = {
+                **teaching_contract,
+                "checked_assessment_answer_id": req.assessment_answer_id,
+            }
         contract_key = hashlib.sha256(
             json.dumps([prompts.PROMPT_VERSION, teaching_contract], sort_keys=True).encode()
         ).hexdigest()
@@ -343,6 +359,7 @@ class TutorTurn:
         packet = build_packet(
             policy=prompts.base_policy(),
             historical=historical,
+            checked_assessment=checked_assessment,
             request=req.text,
             prompt_version=prompts.PROMPT_VERSION,
             preferences=prefs,

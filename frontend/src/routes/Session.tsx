@@ -1292,7 +1292,8 @@ function AssessPanel({
         <QuestionHelp
           key={`feedback-help:${result.attempt_id}`}
           afterAnswer
-          active={active}
+          assessmentAnswerId={result.answer_id ?? null}
+          active={active && !transitionPending}
           sessionId={sessionId}
           skillId={skillId}
           question={item.question}
