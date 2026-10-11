@@ -473,7 +473,7 @@ export function Corpus() {
   return (
     <div className="grid gap-4">
       <Card>
-        <CardTitle>Corpus</CardTitle>
+        <CardTitle as="h1">Corpus</CardTitle>
         {stats.isLoading && <p>Loading…</p>}
         {stats.data && (
           <>

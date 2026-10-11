@@ -166,7 +166,7 @@ export default function App() {
               path="*"
               element={
                 <div>
-                  <h1 className="text-2xl font-semibold">Page not found</h1>
+                  <h1 className="text-page-title font-semibold">Page not found</h1>
                   <p>This address does not match a learning page.</p>
                   <Link to="/" className="underline">
                     Return Home

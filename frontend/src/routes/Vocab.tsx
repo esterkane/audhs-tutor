@@ -11,7 +11,7 @@ export function Vocab() {
     <div className="grid gap-4">
       <ListeningLessons />
       <Card>
-        <CardTitle>Vocabulary decks</CardTitle>
+        <CardTitle as="h1">Vocabulary decks</CardTitle>
         <p className="text-sm text-muted mb-2">
           Cards are spaced like everything else. They appear only in the language block of a session (switch
           on "Plan a language block" under Preferences).

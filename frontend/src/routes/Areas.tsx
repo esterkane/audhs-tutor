@@ -64,7 +64,7 @@ export function Areas() {
   return (
     <div className="grid gap-4" data-capture-query={area ? new URLSearchParams({ area: area.id }).toString() : ""}>
       <Card>
-        <CardTitle>Learning areas</CardTitle>
+        <CardTitle as="h1">Learning areas</CardTitle>
         {locationChanged && (dirty || areaDirty) && <div role="alert" className="mt-2">
           Your edits are still open. Save them to open the requested location, or keep editing here.
           <Button onClick={() => browse(selected, draftId, true)}>Keep editing here</Button>

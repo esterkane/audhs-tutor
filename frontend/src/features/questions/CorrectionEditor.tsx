@@ -31,7 +31,7 @@ export function CorrectionEditor() {
   const assessment = params.get('assessment')
   const report = params.get('report')
   return <div className="grid gap-4 max-w-3xl min-w-0">
-    <h1 className="text-2xl font-semibold">Question correction drafts</h1>
+    <h1 className="text-page-title font-semibold">Question correction drafts</h1>
     <p>Drafts do not change practice. Review the sources and impact before explicitly publishing a correction for future practice.</p>
     <Link to="/preferences#question-reports">Back to reported questions</Link>
     {draft ? <LoadDraft key={draft} id={draft} /> : assessment

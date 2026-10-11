@@ -638,7 +638,7 @@ export function Visualizer() {
       <div>
         {!projectLinked && <Link to={returnTo}>{originWorkspace ? `← Return to coding workspace: ${originWorkspace.title}` : '← Coding playground'}</Link>}
         {!projectLinked && requestedWorkspace && !originWorkspace && <p role="status" className="text-sm text-muted">The linked coding workspace is unavailable. You can choose another in the playground; saved drafts are unchanged.</p>}
-        <h1 className="text-xl font-semibold mt-2">Audio visualizer lab</h1>
+        <h1 className="text-page-title font-semibold mt-2">Audio visualizer lab</h1>
         <p className="text-sm text-muted">
           Explore how sound changes a picture. Start with a silent demo or open your own audio.
         </p>

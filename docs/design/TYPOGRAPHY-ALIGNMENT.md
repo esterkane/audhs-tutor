@@ -14,3 +14,10 @@ Remaining: per-screen semantic heading adoption, custom editors/visual labels, u
 Session, Review and Recap lifecycle/activity titles now render as h1 through the existing22px page-title token. Empty session/recap and session/review loading/error states also identify the page. Child panel headings remain subordinate. Conditional branches are mutually exclusive; no lifecycle/assessment handlers changed.
 
 Four baseline load-recovery browser checks passed. Final8 journeys cover empty routes, active lesson title/count/22px size, keyboard recap save, review assistance and session/review error retry.27 Session/Review unit tests, targeted lint and production type/build passed; code and pedagogy reviews found no blockers or majors. Inspected320/1280 lesson title wrapping, without horizontal overflow. Remaining: other routes, source-generated Markdown heading hierarchy, actual browser zoom/screen-reader acceptance and overall reading-order/human-comprehension checks.
+
+
+## Secondary route headings — 2026-10-11
+
+Page-title semantics/22px token applied to Areas, Programs, Curriculum, Corpus, Models, Experiments, Vocabulary, standalone Together, Playground, Visualizer, correction drafts and not-found. Together retains h2 when embedded in a lesson. Existing labels and all handlers are unchanged.
+
+Baseline:11 routes visited at320/1280 in two browser checks. Final:12 routes at both widths assert one main h1,22px font, visible heading within viewport bounds and keyboard focus entry. Two unchanged alongside journeys also pass.77 affected unit tests across11 files, lint and production type/build pass; code/pedagogy review found no blockers or majors. Inspected narrow Areas and desktop Programs screenshots. Tests establish headings, not full route functionality or full-page reflow. Generated Markdown heading hierarchy, custom content headings, actual browser zoom and assistive-technology/human acceptance remain open.

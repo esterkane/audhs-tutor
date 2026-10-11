@@ -95,7 +95,7 @@ export function Playground({ runnerFactory = createPyodideRunner }: { runnerFact
     <div className="grid gap-4" data-capture-query={new URLSearchParams({ workspace: selected }).toString()}>
       {(!requested || requested === selected) && <RememberContext context={{ version: 1, kind: 'workspace', workspace_id: selected, label: activity.title }} />}
       <div>
-        <h1 className="text-xl font-semibold">Coding playground</h1>
+        <h1 className="text-page-title font-semibold">Coding playground</h1>
         <Link to={`/playground/visualizer?workspace=${encodeURIComponent(selected)}`}>Open audio visualizer lab →</Link>
         <p className="text-sm text-muted mt-1">
           Experiment with Python. Ask the tutor about your code. Practice here does not change mastery scores.

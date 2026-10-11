@@ -1542,3 +1542,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Session/Review/Recap page-heading semantics aligned across activity and recovery states.8 browser/27 unit checks plus lint/build/reviews pass; docs/design/TYPOGRAPHY-ALIGNMENT.md records remaining scope.
+
+
+2026-10-11 — Twelve secondary route titles aligned, with embedded Together retaining h2.12-route/two-width browser checks, alongside recovery,77 unit tests and lint/build/reviews pass. See docs/design/TYPOGRAPHY-ALIGNMENT.md for acceptance limits.

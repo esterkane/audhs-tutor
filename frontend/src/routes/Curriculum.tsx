@@ -65,7 +65,7 @@ export function Curriculum() {
   return (
     <div className="grid gap-4">
       <Card>
-        <CardTitle>Turn course material into lessons</CardTitle>
+        <CardTitle as="h1">Turn course material into lessons</CardTitle>
         <p className="text-sm text-muted mt-2">
           Your imported files are already searchable. Here you review lesson drafts and activate the sections
           you want to study.

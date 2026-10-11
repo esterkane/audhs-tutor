@@ -444,7 +444,7 @@ export function Models() {
       <CostCard />
       <VoiceSetup />
       <Card>
-        <CardTitle>Models</CardTitle>
+        <CardTitle as="h1">Models</CardTitle>
         <p className="text-sm text-muted">
           OpenAI uses OPENAI_API_KEY; Claude uses ANTHROPIC_API_KEY in your local .env. Restart the backend
           after saving a key. Ready means a key is configured, not that access or tutoring quality has been

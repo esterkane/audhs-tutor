@@ -120,7 +120,7 @@ export function Together({ embedded = false }: { embedded?: boolean }) {
     <div className="grid gap-4">
       <Card>
         {!embedded && <AudioControls />}
-        <CardTitle>Working alongside</CardTitle>
+        <CardTitle as={embedded ? 'h2' : 'h1'}>Working alongside</CardTitle>
         <p className={embedded ? "text-sm mt-2" : "text-2xl mt-2"}>
           {task ? `Now: ${task}` : session.data ? 'Current session' : 'No session running.'}
         </p>

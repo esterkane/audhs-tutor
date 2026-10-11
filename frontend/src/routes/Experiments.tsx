@@ -139,7 +139,7 @@ export function Experiments() {
   return (
     <div className="grid gap-4">
       <Card>
-        <CardTitle>Experiments (n-of-1)</CardTitle>
+        <CardTitle as="h1">Experiments (n-of-1)</CardTitle>
         <p className="text-sm text-muted mb-3">
           Compare two ways of learning on matched skills or sessions. You start it, you stop it, and you read
           the result. While one runs, the session screen says which arm is active.
