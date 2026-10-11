@@ -93,3 +93,32 @@ Verification: baseline 24 browser checks; first post-change regression run 15/15
 Recommended next step: Phase 2 structured UX audit, beginning with G1's local-model explanation/remediation sample and AU-02's readiness recovery. Do not start the design-system/prototype phases or install the proposed runtime extensions from this report.
 
 Sanitized-checkout verification: 23 focused unit tests and the combined 12-test session-journey/pause browser suite passed, including the prior due-card fixture interaction. Publication guard passed.
+
+
+## Design acceptance recheck — 2026-10-11
+
+Before further application edits, the existing read-only axe inventory visited17 routes at390/1280 against the disposable sandbox, with private program manifests replaced by an empty fixture. These observations do not cover an active lesson or certify usability.
+
+- DA-01, serious automated accessibility finding: Playground tutor conversation is a generic div with aria-label, which has no supported naming role. Minimal fix: named region, retaining conversation behavior; verify accessible name/role and no invalid ARIA. Longer-term: evaluate chat announcement policy with assistive technology; avoid silently making streaming tokens an assertive live log.
+- DA-02, moderate: shared browse/mode/energy context lies outside a landmark on every visited route. Minimal fix: name its existing container as a region; retain layout, Focus behavior and tutor portal. Verify landmark presence and shared focus journeys.
+- DA-03, narrow overflow: Models produces712px document width at390px. Requires targeted inspection of the offending controls/table before changing layout. Test390/1280, keyboard and response states; do not hide model actions to make the test pass.
+
+DA-01 is addressed first; DA-02 and DA-03 remain open until independently verified. No learning policy change is implied.
+
+
+### DA-01–03 verified delta — 2026-10-11
+
+DA-01 and DA-02 now use named regions on the existing conversation and context/tools
+containers. DA-03 uses a bounded single-column Models grid and a named, focusable
+table scroll region. The region is positioned so the absolute screen-reader-only
+Actions label stays inside its scrolling container; without this, page width still
+reached547px after the grid fix (original712px at390). No model selection, learning
+state, handlers or content changed.
+
+Evidence: four isolated browser checks pass at390/1280, including document bounds,
+ArrowRight table scrolling and targeted axe region/aria-prohibited-attr checks.
+Four earlier landmark/lesson-focus checks and14 affected component tests passed.
+The narrow screenshot was inspected: panels fit, the focused table scrolls locally,
+and all existing rows/actions remain. This is not whole-app accessibility certification.
+Remaining: Models title remains below cost/voice panels; wider content organization,
+actual assistive-technology testing and human comprehension remain open.

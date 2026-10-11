@@ -568,7 +568,7 @@ function Workspace({
                   </Link>
                 </p>
               )}
-              <div className="grid gap-3 mt-4 max-h-[30rem] overflow-auto" aria-label="Tutor conversation">
+              <div className="grid gap-3 mt-4 max-h-[30rem] overflow-auto" role="region" aria-label="Tutor conversation">
                 {draft.chat.map((m, i) => (
                   <div key={i} className="min-w-0 border-b border-line pb-2">
                     <p className="text-xs font-medium">{m.role === 'user' ? 'You' : 'Tutor'}</p>

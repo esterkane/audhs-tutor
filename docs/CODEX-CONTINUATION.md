@@ -474,3 +474,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — Generated Markdown headings are relative to their container; source text/narration unchanged.612 unit/9 browser checks, lint/build/reviews pass. See docs/design/TYPOGRAPHY-ALIGNMENT.md; human/AT and remaining per-container acceptance stay open.
+
+
+2026-10-11 — Named context/conversation regions and bounded keyboard-scrollable Models table resolve DA-01–03. Four final browser checks,14 affected component checks, lint/build and code/pedagogy reviews pass; narrow screenshot inspected. See docs/ux/ADVERSARIAL-USABILITY-REPORT.md. Full Learn blueprint and human/AT acceptance remain open.

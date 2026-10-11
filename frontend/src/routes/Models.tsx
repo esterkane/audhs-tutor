@@ -440,7 +440,7 @@ export function Models() {
   const running = (jobs.data?.jobs ?? []).filter((j) => j.status === 'running')
   const busy = running.length > 0
   return (
-    <div className="grid gap-4">
+    <div className="grid grid-cols-1 gap-4">
       <CostCard />
       <VoiceSetup />
       <Card>
@@ -457,7 +457,7 @@ export function Models() {
         </p>
         {models.isLoading && <p>Loading…</p>}
         {models.data && (
-          <div className="overflow-x-auto">
+          <div className="relative overflow-x-auto" role="region" aria-label="Available models" tabIndex={0}>
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-left text-muted">

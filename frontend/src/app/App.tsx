@@ -108,7 +108,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         <MainNavigation />
       <div className="tutor-workspace min-w-0">
       <div className="min-w-0">
-      <div className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto px-4 pt-4 flex flex-wrap items-center justify-between gap-2 min-w-0`}>
+      <div role="region" aria-label="Learning context and tools" className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto px-4 pt-4 flex flex-wrap items-center justify-between gap-2 min-w-0`}>
         <div className="shell-browse-context min-w-0">
           <BrowseArea />
           <p className="text-xs text-muted">{MODE_LABELS[mode].title} · energy {energy}</p>
