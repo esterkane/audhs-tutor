@@ -156,3 +156,40 @@ open. No new API, model calls or dependencies.
 Next: add temporary Focus with visible exit and active-audio Stop, without
 remounting global state owners or hiding modal focus. The full PDF ContextBar
 is still incomplete until Focus and its recovery journeys are verified.
+
+
+## Temporary lesson Focus — 2026-10-11
+
+Implemented Focus on /session (PDF pp6/11). Context controls retain Pause/End
+and expose Focus on lesson / Leave focus · Esc. CSS hides header/navigation/area
+browsing without unmounting their owners or the lesson. Route-key changes and
+reload restore normal presentation; no preference or learning-state write.
+The tutor remains available. A focused save action opens the existing saved
+thought dialog and preserves unfinished drafts; save status now appears in the
+page action area, outside both hidden header and captured main content. Active
+audio exposes Stop through the existing reading owner; no new playback owner.
+Global search shortcut is disabled while its trigger is hidden.
+
+Escape is deferred until nested handling finishes. Open dialogs and CodeMirror
+get first handling; surviving text fields retain focus. Review found that the
+focus-only Save/Stop controls could disappear under keyboard focus: fixed by
+restoring the persistent toggle before hiding them, with dialog Escape then
+second Escape regression. Code re-review and pedagogy review found no remaining
+blockers/majors.
+
+Evidence:18 existing parking/session-pause browser regressions passed; two new
+Focus journeys at320/1280 passed after scoping the audio selector to session
+controls (the existing reader also has a Stop audio button). Six companion
+context journeys passed. Final Focus rerun adds light/dark, reduced motion,
+200% root-text reflow and retained input focus on Escape. Screenshots inspected;
+eight affected unit tests, ESLint and production build pass (existing large
+bundle warning remains). Checks include saved-draft/dialog focus, visible save
+confirmation, Stop during held audio preparation, unchanged session checkpoint,
+Pause, browser Back and reload. No live models used.
+
+Remaining acceptance: actual browser zoom, screen-reader and owner comprehension;
+Focus is not yet provided on separate review/recap routes. The original named
+area-goal provenance gap remains. Optional lesson tools are retained as collapsed
+disclosures, not removed. Complete PDF compliance remains open. Next follow the
+PDF page12 Home/Preferences sequence and reconcile remaining layout gaps before
+changing unrelated learning behavior.

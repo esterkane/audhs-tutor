@@ -407,3 +407,9 @@ body {
     white-space: normal;
   }
 }
+
+/* Focus is transient presentation. Stateful owners stay mounted, including dialogs. */
+.shell-focus > .shell-header,
+.shell-focus .shell-navigation-container,
+.shell-focus .shell-browse-context { display: none; }
+.shell-focus .shell-workspace { display: block; }

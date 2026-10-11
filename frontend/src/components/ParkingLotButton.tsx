@@ -1,3 +1,4 @@
+import { createPortal } from 'react-dom'
 import { Bookmark } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { CAPTURE_REQUEST } from '../features/parking/requestCapture'
@@ -14,7 +15,7 @@ import { Button } from './ui/button'
 import { Textarea } from './ui/textarea'
 
 /** Always available in the shell header. Capture in ≤ 2 interactions: open, type + Enter. */
-export function ParkingLotButton() {
+export function ParkingLotButton({ statusRoot }: { statusRoot?: HTMLElement | null }) {
   const { sessionId, skillId } = useMode()
   const location = useLocation()
   const [requestedContext, setRequestedContext] = useState<ThoughtContext>()
@@ -34,9 +35,9 @@ export function ParkingLotButton() {
   useEffect(() => {
     const receive = (event: Event) => {
       const detail = (event as CustomEvent).detail
-      if (!validThoughtContext(detail?.context)) return
+      if (detail?.general !== true && !validThoughtContext(detail?.context)) return
       sourceTrigger.current = detail.trigger instanceof HTMLElement ? detail.trigger : null
-      setRequestedContext(detail.context)
+      setRequestedContext(detail.general === true ? undefined : detail.context)
       setCaptureNotice(text ? 'Your unfinished thought and its original material are kept. Save it first, then choose Save a thought about this passage again for a new thought.' : '')
       setOpen(true)
     }
@@ -74,6 +75,7 @@ export function ParkingLotButton() {
     }
   }
 
+  const statusNotice = status && <p role="status" className="max-w-sm rounded-md bg-card border border-line px-3 py-2 text-sm">{status}</p>
   return (
     <div className="grid gap-2 min-w-0 max-w-full">
     <Dialog.Root open={open} onOpenChange={next => { setOpen(next); if (next) { setRequestedContext(undefined); setCaptureNotice(''); sourceTrigger.current = null } }}>
@@ -145,14 +147,7 @@ export function ParkingLotButton() {
           </details>
         </Dialog.Content>
       </Dialog.Portal>
-      {status && (
-        <p
-          role="status"
-          className="max-w-sm rounded-md bg-card border border-line px-3 py-2 text-sm"
-        >
-          {status}
-        </p>
-      )}
+      {statusRoot ? createPortal(statusNotice, statusRoot) : statusNotice}
     </Dialog.Root>
     </div>
   )

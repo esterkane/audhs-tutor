@@ -438,3 +438,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — Persisted concept context consolidated with existing session controls. Verified17 browser/four provenance checks, lint/build and code/pedagogy review. Remaining named-goal provenance and Focus: docs/design/HEADER-CONTEXT-CONTRACT.md.
+
+
+2026-10-11 — Temporary lesson Focus preserves drafts, nested-dialog Escape, audio Stop and visible save feedback. Bounded verification and remaining design acceptance: docs/design/HEADER-CONTEXT-CONTRACT.md.

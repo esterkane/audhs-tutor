@@ -1,3 +1,4 @@
+import { LessonFocusControls } from './LessonFocus'
 import type { ReactNode } from 'react'
 import { useStopSession } from './useStopSession'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
@@ -61,6 +62,7 @@ export function SessionControls({ sessionId, skillId, onPause, compact = false, 
         <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
           End session
         </Button>
+        <LessonFocusControls />
         {!compact && secondaryActions}
       </div>
       <p className="text-xs text-muted mt-2">

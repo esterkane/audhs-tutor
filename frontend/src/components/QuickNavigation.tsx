@@ -4,7 +4,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from './ui/button'
 
 /** Navigation only: opening this dialog never changes a learning checkpoint. */
-export function QuickNavigation({ pages }: { pages: ReadonlyArray<readonly [string, string]> }) {
+export function QuickNavigation({ pages, enabled = true }: { enabled?: boolean; pages: ReadonlyArray<readonly [string, string]> }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const previousFocus = useRef<HTMLElement | null>(null)
@@ -24,6 +24,7 @@ export function QuickNavigation({ pages }: { pages: ReadonlyArray<readonly [stri
   }
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
+      if (!enabled) return
       if (event.defaultPrevented || event.isComposing || event.repeat || event.altKey || event.shiftKey || !(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 'k') return
       const target = event.target instanceof HTMLElement ? event.target : null
       // Leave editor/input shortcuts and other modal work alone.
@@ -34,7 +35,7 @@ export function QuickNavigation({ pages }: { pages: ReadonlyArray<readonly [stri
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [])
+  }, [enabled])
   useEffect(() => { dialog.current?.close() }, [location.key])
   const phrase = query.trim()
   const matching = pages.filter(([, title]) => title.toLocaleLowerCase().includes(phrase.toLocaleLowerCase()))
