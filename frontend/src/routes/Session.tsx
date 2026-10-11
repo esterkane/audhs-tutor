@@ -3,6 +3,7 @@ import { LessonContextPanel } from '../features/session/LessonContextPanel'
 import { SessionContext } from '../features/session/SessionContext'
 import { QuestionPractice } from '../features/questions/QuestionPractice'
 import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
+import { useAssessmentRevision } from '../features/assess/useAssessmentRevision'
 import { useCheckedQuestion } from '../features/assess/useCheckedQuestion'
 import { RememberContext } from '../features/recent/RememberContext'
 import { AlongsideMode } from '../features/session/AlongsideMode'
@@ -992,13 +993,15 @@ function AssessPanel({
   const [confidence, setConfidence] = useState<number | null>(null)
   const [answer, setAnswer] = useState('')
   const [localResult, setResult] = useState<AttemptResult | null>(null)
-  const result = localResult ?? checked.result.data ?? null
+  const savedResult = localResult ?? checked.result.data ?? null
+  const revision = useAssessmentRevision(recoveryScope, sessionId, savedResult?.attempt_id ?? null, active)
+  const result = revision.editing ? null : savedResult
   const [startedAt, setStartedAt] = useState(() => Date.now())
   const [refreshedItem, setRefreshedItem] = useState<AssessmentView | null>(null)
   const [frozenItem, setFrozenItem] = useState<{ round: number; item: AssessmentView } | null>(null)
   const candidate = checked.saved?.item ?? next.data?.item
   if (candidate && frozenItem?.round !== round) setFrozenItem({ round, item: candidate })
-  const item = refreshedItem ?? (frozenItem?.round === round ? frozenItem.item : candidate)
+  const item = revision.data?.item ?? refreshedItem ?? (frozenItem?.round === round ? frozenItem.item : candidate)
   const [previousChoice, setPreviousChoice] = useState('')
   const [practiceChanged, setPracticeChanged] = useState<string | null>(null)
   const displayedItem = useRef(item)
@@ -1018,12 +1021,18 @@ function AssessPanel({
   }, [checked.result.data, onGraded])
   const answerKey = `audhs-answer:${sessionId}:${item?.id ?? ''}`
   const savedAnswer = item ? readDraft(answerKey).answer : ''
-  const currentAnswer = answer || savedAnswer
+  const currentAnswer = revision.editing ? revision.answer : answer || savedAnswer
+  const answerControls = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!revision.data || !active) return
+    answerControls.current?.querySelector<HTMLElement>('textarea, button')?.focus()
+  }, [revision.data, active])
 
   async function submit() {
-    if (!item) return
+    if (!item || (revision.editing && !revision.data)) return
     try {
       const res = await attempt.mutateAsync({
+        ...(revision.editing ? { revision_of_attempt_id: revision.data!.root_attempt_id } : {}),
         session_id: sessionId,
         assessment_id: item.id,
         content_version: item.content_version,
@@ -1040,6 +1049,7 @@ function AssessPanel({
       )
         return
       clearDraft(answerKey)
+      revision.clear(true)
       setResult(res)
       onGraded(res)
     } catch {
@@ -1048,7 +1058,7 @@ function AssessPanel({
   }
 
   function nextItem() {
-    if (!checked.clear()) return
+    if (!revision.clear() || !checked.clear()) return
     setPracticeChanged(null)
     setRefreshedItem(null)
     setPreviousChoice('')
@@ -1091,6 +1101,7 @@ function AssessPanel({
         )
           return false
         if (attempt.recovery.pending && item) checked.remember(attempt.recovery.pending, saved, item)
+        revision.clear(true)
         setResult(saved)
         onGraded(saved)
         clearDraft(answerKey)
@@ -1098,7 +1109,7 @@ function AssessPanel({
       }}
     />
   )
-  if (!result && (checked.saved || checked.error))
+  if (!savedResult && (checked.saved || checked.error))
     return (
       <Card>
         <p role={checked.error || checked.result.isError ? 'alert' : 'status'}>
@@ -1169,16 +1180,26 @@ function AssessPanel({
           <p role="status">Question choice changed. Your answer draft is kept. Choose another question to continue.</p>
           <Button onClick={nextItem}>Choose another question</Button>
         </div>}
+        {revision.storageError && <p role="alert">{revision.storageError}</p>}
+        {revision.editing && <section aria-label="Revise your answer" className="grid gap-2 mt-3">
+          <h3 className="font-medium">Try this question again</h3>
+          <p>Your previous answer and feedback are kept. This is practice; it will not add independent learning evidence or change the review schedule.</p>
+          {revision.source.isFetching && <p role="status">Loading your submitted answer…</p>}
+          {revision.source.isError && <p role="alert">{(revision.source.error as Error).message} <Button onClick={() => void revision.source.refetch()}>Retry loading answer</Button></p>}
+          <Button onClick={() => { if (revision.clear()) setTimeout(() => document.getElementById('retry-assessment')?.focus(), 0) }} disabled={attempt.isPending || !!attempt.recovery.pending}>Cancel revision</Button>
+          {savedResult && <Disclosure label="Previous feedback"><AssessmentEvidence result={savedResult} /></Disclosure>}
+        </section>}
         {!result && (
           <>
+            <div ref={answerControls}>
             {item.kind === 'mcq' && item.options ? (
               <Choice<string>
                 label="Your answer"
                 options={item.options.map((o, i) => ({ value: String(i), label: o }))}
                 value={currentAnswer || null}
                 onChange={(value) => {
-                  setAnswer(value)
-                  writeDraft(answerKey, { answer: value })
+                  if (revision.editing) revision.edit(value)
+                  else { setAnswer(value); writeDraft(answerKey, { answer: value }) }
                 }}
                 columns={1}
               />
@@ -1191,12 +1212,13 @@ function AssessPanel({
                   id="answer"
                   value={currentAnswer}
                   onChange={(e) => {
-                    setAnswer(e.target.value)
-                    writeDraft(answerKey, { answer: e.target.value })
+                    if (revision.editing) revision.edit(e.target.value)
+                    else { setAnswer(e.target.value); writeDraft(answerKey, { answer: e.target.value }) }
                   }}
                 />
               </>
             )}
+            </div>
             <div className="mt-3">
               <OptionalConfidence value={confidence} onChange={setConfidence} />
             </div>
@@ -1204,7 +1226,7 @@ function AssessPanel({
               <Button
                 variant="primary"
                 onClick={() => void submit()}
-                disabled={!currentAnswer.trim() || attempt.isPending || practiceChanged === item.id}
+                disabled={!currentAnswer.trim() || attempt.isPending || practiceChanged === item.id || (revision.editing && !revision.data)}
               >
                 {attempt.isPending ? 'Checking your answer…' : 'Check my answer'}
               </Button>
@@ -1242,8 +1264,11 @@ function AssessPanel({
             {result.review_updated === false ? 'Existing review schedule unchanged: ' : 'Review scheduled after this attempt '}{new Date(result.review.due as string).toLocaleString()}
           </p>
           <div className="flex gap-2 flex-wrap mt-3">
-            <Button variant="primary" onClick={onFinishBlock} disabled={transitionPending}>
-              {transitionPending ? 'Opening next activity…' : 'Continue the plan'}
+            <Button id="retry-assessment" variant={result.score < 0.85 ? 'primary' : 'secondary'} onClick={() => { revision.start(); setConfidence(null); setStartedAt(Date.now()) }} disabled={transitionPending || attempt.isPending}>
+              Try again
+            </Button>
+            <Button variant={result.score >= 0.85 ? 'primary' : 'secondary'} onClick={onFinishBlock} disabled={transitionPending}>
+              {transitionPending ? 'Opening next activity…' : 'Next'}
             </Button>
             <Button onClick={onBack} disabled={transitionPending}>
               Revisit the explanation

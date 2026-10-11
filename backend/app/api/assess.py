@@ -6,10 +6,10 @@ from pydantic import BaseModel
 
 from app.api.deps import DB, Gateway, Learner
 from app.core.errors import AppError
-from app.db.models import Assessment
+from app.db.models import Assessment, AssessmentAttempt
 from app.kernel import session as ksession
-from app.orchestrator import assessment_requests
-from app.orchestrator.grader import Grader, versioned_view
+from app.orchestrator import assessment_content, assessment_requests, assessment_revisions
+from app.orchestrator.grader import Grader, versioned_view, view
 from app.schemas.grading import AssessmentView, AttemptRequest, AttemptResult
 
 router = APIRouter(prefix="/assess", tags=["assess"])
@@ -124,4 +124,53 @@ async def continue_request(
 ) -> AttemptResult:
     return await assessment_requests.continue_prepared(
         db, gateway, learner.id, session_id, str(request_id), request.app.state.answer_recovery
+    )
+
+
+class AssessmentRevisionSource(BaseModel):
+    attempt_id: str
+    root_attempt_id: str
+    answer: str
+    item: AssessmentView
+
+
+@router.get("/attempts/{attempt_id}/revision", response_model=AssessmentRevisionSource)
+async def revision_source(
+    attempt_id: str, session_id: str, db: DB, learner: Learner
+) -> AssessmentRevisionSource:
+    """Read the learner's submitted answer for deliberate revision; never grade."""
+    await ksession.get_owned(db, session_id, learner.id)
+    attempt = await db.get(AssessmentAttempt, attempt_id)
+    if attempt is None or attempt.learner_id != learner.id or attempt.session_id != session_id:
+        raise AppError("revision_original_unavailable", "The submitted answer is unavailable.", 404)
+    root_id = attempt.revision_of_attempt_id or attempt.id
+    root = await assessment_revisions.validate_root(
+        db,
+        learner_id=learner.id,
+        session_id=session_id,
+        assessment_id=attempt.assessment_id,
+        root_attempt_id=root_id,
+    )
+    if attempt.content_fingerprint != root.content_fingerprint:
+        raise AppError(
+            "revision_content_changed",
+            "The submitted answer belongs to another question version.",
+            409,
+        )
+    content = await assessment_content.snapshot(db, attempt.assessment_id, learner.id)
+    assessment_content.require_eligible(content)
+    if assessment_content.recovery_fingerprint(content) != root.content_fingerprint:
+        raise AppError(
+            "revision_content_changed",
+            "The question changed. Return to your checked feedback.",
+            409,
+        )
+    item = view(assessment_content.assessment(content)).model_copy(
+        update={"content_version": assessment_content.token(content)}
+    )
+    return AssessmentRevisionSource(
+        attempt_id=attempt.id,
+        root_attempt_id=root.id,
+        answer=attempt.answer,
+        item=item,
     )

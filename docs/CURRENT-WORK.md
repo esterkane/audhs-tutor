@@ -204,3 +204,14 @@ Captured material, unapplied edits and one previous capture now survive route ch
 2026-10-11: Two external reference folders recovered privately;26 documents imported and52 canonical index entries verified. Four images and notebook execution remain open. Full CI eeba6b9 passed. See slices/material-subtree-recovery.md.
 
 2026-10-11: Notebook status reads now time out visibly and offer explicit Retry; failed background polling stops.3 UI and3 desktop/narrow keyboard journeys, lint/types/build and review pass. Setup writes and learning logic unchanged. See slices/notebook-status-recovery.md.
+
+
+2026-10-11: Owned revision retrieval and Try again/Next are implemented. Original
+feedback remains available; deliberate revisions retain drafts across refresh and
+use the existing submission/recovery owner. Cancel restores feedback/focus; source
+version races return409. Final4 sandbox browser tests at390/1280,10 Session and6
+revision-hook tests pass;18 final revision backend tests, types/lint and production
+build pass. Desktop/narrow screenshots inspected; code/pedagogy reviews clear.
+Existing large-chunk warning remains. Full Practice design, shared choice styling,
+physical assistive-technology and human comprehension acceptance remain open.
+See docs/design/PRACTICE-RETRY-CONTRACT.md.

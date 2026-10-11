@@ -381,7 +381,7 @@ it('offers continuing the plan after feedback without requiring another question
   expect(screen.getByRole('heading', { name: 'Feedback on your answer' })).toBeVisible()
   expect(screen.getByText('The components match.')).toBeVisible()
   expect(vi.mocked(fetch).mock.calls.filter(([url]) => String(url).endsWith('/api/assess/attempt'))).toHaveLength(1)
-  fireEvent.click(screen.getByRole('button', { name: 'Continue the plan' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }))
   expect(await screen.findByText('RECAP SCREEN')).toBeVisible()
   expect(nextCalls).toEqual([{ session_id: 's1', from_index: 2, reason: 'finished', grasp_passed: true }])
   vi.unstubAllGlobals()

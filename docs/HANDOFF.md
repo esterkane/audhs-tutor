@@ -1587,3 +1587,14 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11: Omitted-parent repeats now classify server-side under the write lock; concurrent requests create one original and one revision, preserving raw recovery identity.1141 backend tests pass; shared notices across result surfaces, component/browser/type/lint/build/review gates pass. Retry editing/actions remain next. See docs/design/PRACTICE-RETRY-CONTRACT.md.
+
+
+2026-10-11: Owned revision retrieval and Try again/Next are implemented. Original
+feedback remains available; deliberate revisions retain drafts across refresh and
+use the existing submission/recovery owner. Cancel restores feedback/focus; source
+version races return409. Final4 sandbox browser tests at390/1280,10 Session and6
+revision-hook tests pass;18 final revision backend tests, types/lint and production
+build pass. Desktop/narrow screenshots inspected; code/pedagogy reviews clear.
+Existing large-chunk warning remains. Full Practice design, shared choice styling,
+physical assistive-technology and human comprehension acceptance remain open.
+See docs/design/PRACTICE-RETRY-CONTRACT.md.

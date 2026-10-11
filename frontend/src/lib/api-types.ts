@@ -809,6 +809,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/assess/attempts/{attempt_id}/revision': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Revision Source
+     * @description Read the learner's submitted answer for deliberate revision; never grade.
+     */
+    get: operations['revision_source_api_assess_attempts__attempt_id__revision_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/questions/corrections': {
     parameters: {
       query?: never
@@ -2825,6 +2845,16 @@ export interface components {
        * @default false
        */
       local_worker_stopped: boolean
+    }
+    /** AssessmentRevisionSource */
+    AssessmentRevisionSource: {
+      /** Attempt Id */
+      attempt_id: string
+      /** Root Attempt Id */
+      root_attempt_id: string
+      /** Answer */
+      answer: string
+      item: components['schemas']['AssessmentView']
     }
     /** AssessmentView */
     AssessmentView: {
@@ -7732,6 +7762,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AttemptResult']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  revision_source_api_assess_attempts__attempt_id__revision_get: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        attempt_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AssessmentRevisionSource']
         }
       }
       /** @description Validation Error */

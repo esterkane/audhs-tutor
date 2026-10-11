@@ -167,3 +167,43 @@ session while preserving prior memory rows. No model calls or live learner attem
 Remaining: owned original-answer retrieval, durable edit/cancel/reload revision state,
 and Try again/Next actions. The backend repeat policy is active; the full PDF Practice
 interaction and human/assistive-technology acceptance are not complete.
+
+
+### Revision UI verification in progress — 2026-10-11
+
+The uncommitted revision UI now targets its own answer-control container for keyboard
+focus. The previous selector incorrectly required an explicit ARIA group on a native
+fieldset, leaving focus outside the reopened answer. No learning-policy change.
+
+Verified after this fix: two real sandbox API browser journeys at390/1280 pass,
+covering keyboard opening, edit/reload retention, Cancel focus restoration, no
+submission during editing/cancel and deliberate linked repeated-practice submission.
+Ten Session component tests, ESLint and TypeScript pass. Narrow screenshot inspected;
+answer controls and exits fit without horizontal overflow.
+
+Still unverified for this entire slice: storage-failure and stale-source coverage,
+final code/pedagogy reviews and publication. Selected MCQ options still use filled
+blue alongside the submit action; reconcile that existing shared-choice presentation
+with the one-primary-action design requirement before claiming complete alignment.
+This slice is not yet committed or published.
+
+Recovery follow-up: six revision-hook tests now cover edit/reload, GET-only retrieval,
+failed storage writes, failed clear, ignored stale completion, corrupt/older drafts,
+and failed source lookup followed by explicit retry. TypeScript/ESLint pass.
+Code review identified a two-snapshot question-version race. Revision retrieval now
+compares the final snapshot fingerprint to the original and constructs both visible
+question and token from that same snapshot. An interleaved correction regression
+returns409 without an answer.18 revision backend tests, mypy and Ruff pass.
+Pedagogy review found no blockers/majors; code fix re-review and final browser/build/
+publication gates remain pending. No paid model calls were used.
+
+
+2026-10-11: Owned revision retrieval and Try again/Next are implemented. Original
+feedback remains available; deliberate revisions retain drafts across refresh and
+use the existing submission/recovery owner. Cancel restores feedback/focus; source
+version races return409. Final4 sandbox browser tests at390/1280,10 Session and6
+revision-hook tests pass;18 final revision backend tests, types/lint and production
+build pass. Desktop/narrow screenshots inspected; code/pedagogy reviews clear.
+Existing large-chunk warning remains. Full Practice design, shared choice styling,
+physical assistive-technology and human comprehension acceptance remain open.
+See docs/design/PRACTICE-RETRY-CONTRACT.md.

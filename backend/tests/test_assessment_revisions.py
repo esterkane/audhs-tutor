@@ -293,3 +293,49 @@ async def test_concurrent_new_identities_share_one_original(client, db, monkeypa
     assert (await counts(db))[1] == 1
     attempts = list((await db.scalars(select(AssessmentAttempt))).all())
     assert len(attempts) == 2
+
+
+async def test_revision_source_returns_owned_answer_without_writes(client, db):
+    root, args = await original(client, db)
+    before = await counts(db)
+    response = await client.get(
+        f"/api/assess/attempts/{root.id}/revision", params={"session_id": root.session_id}
+    )
+    assert response.status_code == 200, response.text
+    source = response.json()
+    assert source["answer"] == root.answer
+    assert source["root_attempt_id"] == root.id
+    assert source["item"]["id"] == root.assessment_id
+    assert source["item"]["content_version"]
+    assert await counts(db) == before
+    other = LearnerProfile(display_name="Other")
+    db.add(other)
+    await db.flush()
+    root.learner_id = other.id
+    await db.commit()
+    response = await client.get(
+        f"/api/assess/attempts/{root.id}/revision", params={"session_id": args["session_id"]}
+    )
+    assert response.status_code == 404
+    assert "answer" not in response.json()
+
+
+async def test_revision_source_rechecks_the_returned_question_snapshot(client, db, monkeypatch):
+    from app.orchestrator import assessment_revisions
+
+    root, _ = await original(client, db)
+    validate = assessment_revisions.validate_root
+
+    async def correct_after_validation(*args, **kwargs):
+        validated = await validate(*args, **kwargs)
+        question = await db.get(Assessment, root.assessment_id)
+        question.item_json = {**question.item_json, "question": "A corrected different question"}
+        await db.commit()
+        return validated
+
+    monkeypatch.setattr(assessment_revisions, "validate_root", correct_after_validation)
+    response = await client.get(
+        f"/api/assess/attempts/{root.id}/revision", params={"session_id": root.session_id}
+    )
+    assert response.status_code == 409, response.text
+    assert "answer" not in response.json()
