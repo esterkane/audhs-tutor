@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { openMainMenu } from './helpers'
 
 for (const width of [390, 1280]) {
   test(`preferences can be traversed and exited by keyboard at ${width}`, async ({ page }, info) => {
@@ -9,8 +8,6 @@ for (const width of [390, 1280]) {
       if (request.url().endsWith('/api/preferences') && request.method() === 'PUT') writes.push(request.postData() ?? '')
     })
     await page.goto('/')
-    await openMainMenu(page)
-    await page.getByText('Manage', { exact: true }).click()
     const preferences = page.getByRole('link', { name: 'Preferences', exact: true })
     await preferences.focus()
     await page.keyboard.press('Enter')

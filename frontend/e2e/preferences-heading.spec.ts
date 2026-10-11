@@ -1,4 +1,3 @@
-import { openMainMenu } from './helpers'
 import { expect, test } from '@playwright/test'
 
 for (const width of [390, 1280]) {
@@ -17,8 +16,6 @@ for (const width of [390, 1280]) {
       ] } })
     })
     await page.goto('/')
-    await openMainMenu(page)
-    await page.getByText('Manage', { exact: true }).click()
     await page.getByRole('link', { name: 'Preferences', exact: true }).click()
     await expect(page.getByRole('button', { name: 'Back', exact: true })).toBeVisible()
     await page.screenshot({ path: info.outputPath('preferences.png'), fullPage: true })

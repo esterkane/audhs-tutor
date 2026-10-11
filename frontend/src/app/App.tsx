@@ -1,3 +1,5 @@
+import { MainNavigation } from '../components/MainNavigation'
+import { primaryPages, toolPages } from './navigation'
 import { CorrectionEditor } from '../features/questions/CorrectionEditor'
 import { Brand } from '../components/Brand'
 import { QuickNavigation } from '../components/QuickNavigation'
@@ -6,7 +8,7 @@ import { AudioControls } from '../features/audio/AudioControls'
 import { LearningCompanion } from '../features/programs/LearningCompanion'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useLayoutEffect, useRef, useState } from 'react'
-import { BrowserRouter, Link, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { BrowserRouter, Link, Route, Routes, useLocation } from 'react-router-dom'
 import { ParkingLotButton } from '../components/ParkingLotButton'
 import { Corpus } from '../routes/Corpus'
 import { Search } from '../routes/Search'
@@ -37,21 +39,10 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, refetchOnWindowFocus: false } },
 })
 
-const primaryPages = [
-  ['/', 'Home'],
-  ['/programs', 'Project study'],
-] as const
-const navigationGroups: ReadonlyArray<{ label: string; pages: ReadonlyArray<readonly [string, string]> }> = [
-  { label: 'Learn', pages: [['/review', 'Review'], ['/vocab', 'Vocabulary'], ['/together', 'Work alongside']] },
-  { label: 'Explore', pages: [['/areas', 'Learning areas'], ['/map', 'Skill map']] },
-  { label: 'Library', pages: [['/search', 'Search material'], ['/answers', 'Saved answers'], ['/sources', 'Sources']] },
-  { label: 'Tools', pages: [['/playground', 'Playground'], ['/playground/visualizer', 'Audio visualizer']] },
-  { label: 'Manage', pages: [['/corpus', 'Materials'], ['/curriculum', 'Lesson drafts'], ['/models', 'Models'], ['/experiments', 'Experiments'], ['/preferences', 'Preferences']] },
-] as const
-const toolPages = navigationGroups.flatMap(group => group.pages).filter(([path]) => path !== '/')
 const pageTitles: Record<string, string> = {
   ...Object.fromEntries([...primaryPages, ...toolPages]),
   '/programs': 'Project study',
+  '/areas': 'Learning areas',
   '/corrections': 'Correction drafts',
   '/learn': 'Learn',
   '/practice': 'Practice',
@@ -78,8 +69,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
     }
   }, [pathname, title])
   const wide = ['/playground', '/programs'].some((path) => pathname.startsWith(path))
-  const navClass = ({ isActive }: { isActive: boolean }) =>
-    `rounded px-2 py-1 ${isActive ? 'bg-accent text-accent-fg font-semibold' : 'underline-offset-4 hover:underline'}`
   return (
     <div className="min-h-screen">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:block focus:p-3 focus:bg-card">
@@ -108,31 +97,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
       <div className="shell-workspace">
-        <ResponsiveNavigation key={pathname} title={title}>
-          <NavLink to="/" end className={navClass}>Home</NavLink>
-          {navigationGroups.map((group, index) => {
-            const selected = group.pages.find(([path]) => path !== '/' &&
-              (routePath === path || (path === '/answers' && routePath.startsWith('/answers/'))))
-            const currentLabel = selected?.[1] ?? (group.label === 'Learn' && ['/session', '/recap'].includes(routePath) ? title : null)
-            return (
-              <div key={group.label} className="contents">
-                {index === 2 && <NavLink to="/programs" end className={navClass}>Projects</NavLink>}
-                <details key={`${pathname}:${group.label}`} className="min-w-0 max-w-full">
-                  <summary className={`cursor-pointer rounded px-2 py-1 ${currentLabel ? 'bg-accent text-accent-fg font-semibold' : ''}`}>
-                    {group.label}{currentLabel ? ` · ${currentLabel}` : ''}
-                  </summary>
-                  <div className="grid gap-2 p-3 mt-2 rounded-lg border border-line bg-card">
-                    {group.pages.map(([path, label]) => (
-                      <NavLink key={path} to={path} end={path !== '/answers'} className={navClass}>
-                        {label}
-                      </NavLink>
-                    ))}
-                  </div>
-                </details>
-              </div>
-            )
-          })}
-        </ResponsiveNavigation>
+        <MainNavigation />
       <div className="tutor-workspace min-w-0">
       <main
         id="main-content"
@@ -147,52 +112,6 @@ export function Shell({ children }: { children: React.ReactNode }) {
       </div>
     </div>
   )
-}
-
-function ResponsiveNavigation({ title, children }: { title: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false)
-  const trigger = useRef<HTMLButtonElement>(null)
-  const nav = useRef<HTMLElement>(null)
-  const lastNavigationFocus = useRef<Element | null>(null)
-  useLayoutEffect(() => {
-    const desktop = window.matchMedia('(min-width: 64rem)')
-    const trackFocus = () => {
-      const active = document.activeElement
-      lastNavigationFocus.current = active === trigger.current || nav.current?.contains(active) ? active : null
-    }
-    const restoreVisibleFocus = () => {
-      // CSS can blur a newly hidden control before the media-query event arrives.
-      const active = document.activeElement === document.body ? lastNavigationFocus.current : document.activeElement
-      if (!desktop.matches && !open && nav.current?.contains(active)) trigger.current?.focus()
-      if (desktop.matches && active === trigger.current) nav.current?.querySelector<HTMLAnchorElement>('a')?.focus()
-    }
-    document.addEventListener('focusin', trackFocus)
-    desktop.addEventListener('change', restoreVisibleFocus)
-    return () => {
-      desktop.removeEventListener('change', restoreVisibleFocus)
-      document.removeEventListener('focusin', trackFocus)
-    }
-  }, [open])
-  return <div className="shell-navigation-container">
-    <button ref={trigger} type="button" className="shell-menu-toggle" aria-expanded={open}
-      aria-controls="main-navigation" onClick={() => setOpen(!open)}>
-      {open ? 'Close menu' : 'Menu'} · {title}
-    </button>
-    <nav ref={nav} id="main-navigation" aria-label="Main navigation" data-open={open}
-      className="shell-navigation flex flex-wrap gap-2 text-sm items-start"
-      onKeyDown={event => {
-        if (event.key === 'Escape' && open) { setOpen(false); trigger.current?.focus() }
-      }}
-      onClick={event => {
-        const link = (event.target as HTMLElement).closest('a')
-        if (link && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) {
-          setOpen(false)
-          document.getElementById('main-content')?.focus()
-        }
-      }}>
-      {children}
-    </nav>
-  </div>
 }
 
 export default function App() {

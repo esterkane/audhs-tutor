@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test'
-import { openMainMenu } from './helpers'
 
 const hit = { chunk_id: 'passage-one', citation: 'Fixture source · section one', source_type: 'text', text: 'Compare representation before cleaning.', flagged: [], quarantined: false }
 for (const width of [390, 1280]) {
@@ -18,11 +17,9 @@ for (const width of [390, 1280]) {
     await page.goto('/sources')
     await expect(page.getByRole('heading', { name: 'Sources', exact: true })).toBeVisible()
     expect(searches).toEqual([])
-    await openMainMenu(page)
-    if (!(await page.getByRole('link', { name: 'Sources', exact: true }).isVisible())) await page.locator('summary').filter({ hasText: /^Library/ }).click()
+    await page.getByRole('button', { name: 'Tools', exact: true }).click()
     await expect(page.getByRole('link', { name: 'Sources', exact: true })).toBeVisible()
-    const menu = page.getByRole('button', { name: /^Menu ·/ })
-    if (await menu.isVisible()) await page.keyboard.press('Escape')
+    await page.keyboard.press('Escape')
     await page.getByRole('searchbox', { name: 'Search source material' }).fill('representation')
     await page.getByRole('searchbox', { name: 'Search source material' }).press('Enter')
     const read = page.getByRole('button', { name: `Read passage: ${hit.citation}` })

@@ -183,3 +183,33 @@ rows honestly report evidence availability instead of inventing levels. The
 next-useful-evidence link reuses the learning session rather than introducing
 a separate recommendation engine. Full PDF page10 and human comprehension
 acceptance remain open. Shell destination exposure is next.
+
+## Five-destination navigation implemented — 2026-10-11
+
+Primary navigation is Home/Learn/Practice/Progress/Explore. Desktop uses the
+240px sidebar with a48px collapsed rail; below768px it becomes a persistent
+five-item bottom bar. Tools opens a native modal sheet/dialog; Preferences
+remains in the footer. All former routes remain in Tools or primary navigation
+and quick search. Source search/map and active session routes keep explicit
+parent navigation, while page titles preserve their actual identity.
+
+No session or preference mutations were introduced. Native dialog Escape
+restores the Tools trigger; choosing a page closes the dialog and focuses main.
+A reviewed resize regression was fixed: when the rail toggle is hidden at a
+breakpoint, focus moves to a visible primary link. Lesson/model/assessment
+logic remains unchanged. Existing menu journeys were updated to the new
+visible primary links and Tools surface without dropping their recovery tests.
+
+Initial verification:601 frontend unit tests, targeted ESLint and production
+build; three shell journeys at320/390/1280 including keyboard, Back/Forward,
+rail resize,200% text overflow and axe;24 affected journeys covering source
+search, map recovery, Preferences and saved thoughts. Narrow shell screenshot
+visually inspected. Additional Tools resize/navigation verification is tracked
+in the final slice handoff. Code review focus finding addressed and confirmed.
+
+Not full PDF completion: compact48px global header, Learn ContextBar/Focus,
+context-panel breakpoints, cross-theme shell checks and human/screen-reader
+acceptance remain. The current change delivers navigation taxonomy and
+responsive destinations without redesigning unrelated screens.
+
+Final Tools resize/route journey passed. Project-study fixture is empty to isolate shell history from automatic project-selection query changes. Total affected browser checks:28.

@@ -269,50 +269,36 @@ body {
 }
 
 /* The desktop rail and workspace share one DOM order; zoom/narrow view stays in flow. */
-.shell-workspace {
-  min-width: 0;
+/* Five primary destinations; secondary tools remain in one modal surface. */
+:root { --spacing-nav-rail: 3rem; --spacing-bottom-nav: 5.5rem; }
+.shell-workspace { min-width: 0; }
+.shell-navigation-container { min-width: 0; background: var(--color-card); }
+.shell-primary-navigation { display: flex; flex-direction: column; gap: 0.25rem; }
+.shell-primary-link { display: flex; align-items: center; gap: 0.75rem; min-height: var(--spacing-control-target); padding: 0.5rem; border-radius: var(--radius-panel); }
+.shell-primary-link svg { flex-shrink: 0; }
+.shell-primary-link[aria-current='page'] { background: var(--color-accent-tint); font-weight: 600; }
+.shell-primary-link:hover { background: var(--color-sunken); }
+.shell-navigation-footer { display: grid; gap: 0.5rem; margin-top: auto; }
+.shell-preferences-link { gap: 0.75rem; display: flex; align-items: center; min-height: var(--spacing-control-target); padding: 0.5rem; text-decoration: underline; overflow-wrap: anywhere; }
+.shell-rail-toggle { min-height: var(--spacing-control-target); display: flex; align-items: center; justify-content: center; }
+.shell-tools-dialog { margin: auto; padding: 0; width: min(100%, 32rem); max-height: 85dvh; overflow-y: auto; color: var(--color-fg); background: var(--color-card); border: 1px solid var(--color-line); border-radius: var(--radius-panel); }
+.shell-tools-dialog::backdrop { background: var(--color-scrim); }
+@media (min-width: 48rem) {
+  .shell-workspace { display: grid; grid-template-columns: var(--spacing-nav-width) minmax(0, 1fr); min-height: 80vh; }
+  .shell-navigation-container { display: flex; flex-direction: column; gap: 1rem; padding: 0.25rem; border-right: 1px solid var(--color-line); }
+  .shell-workspace:has(.shell-navigation-container[data-collapsed='true']) { grid-template-columns: var(--spacing-nav-rail) minmax(0, 1fr); }
+  .shell-navigation-container[data-collapsed='true'] .shell-primary-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .shell-navigation-container[data-collapsed='true'] .shell-primary-link { justify-content: center; padding-inline: 0; }
+  .shell-navigation-container[data-collapsed='true'] .shell-navigation-footer { font-size: var(--text-xs); }
+  .shell-navigation-container[data-collapsed='true'] .shell-navigation-footer button { padding-inline: 0; }
 }
-.shell-navigation {
-  padding: 1rem;
-  border-bottom: 1px solid var(--color-line);
-  background: var(--color-sunken);
-}
-@media (min-width: 64rem) {
-  .shell-workspace {
-    display: grid;
-    grid-template-columns: var(--spacing-nav-width) minmax(0, 1fr);
-    min-height: 80vh;
-  }
-  .shell-navigation {
-    flex-direction: column;
-    align-items: stretch;
-    align-content: start;
-    justify-content: flex-start;
-    border-bottom: 0;
-    border-right: 1px solid var(--color-line);
-  }
-  .shell-navigation summary, .shell-navigation a {
-    overflow-wrap: anywhere;
-  }
-}
-
-.shell-menu-toggle {
-  display: block;
-  width: 100%;
-  min-height: 2.75rem;
-  padding: 0.75rem 1rem;
-  text-align: left;
-  overflow-wrap: anywhere;
-  background: var(--color-sunken);
-  border-bottom: 1px solid var(--color-line);
-}
-@media (max-width: 63.999rem) {
-  .shell-navigation[data-open='false'] { display: none; }
-}
-@media (min-width: 64rem) {
-  .shell-menu-toggle { display: none; }
-  .shell-navigation-container { min-width: 0; background: var(--color-sunken); }
-  .shell-navigation { min-height: 100%; }
+@media (max-width: 47.999rem) {
+  .shell-rail-toggle { display: none; }
+  .shell-primary-navigation { position: fixed; bottom: 0; inset-inline: 0; z-index: 20; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0; padding: 0.25rem 0.25rem max(0.25rem, env(safe-area-inset-bottom)); background: var(--color-card); border-top: 1px solid var(--color-line); }
+  .shell-primary-link { flex-direction: column; justify-content: center; gap: 0.25rem; padding: 0.5rem 0; font-size: var(--text-xs); overflow-wrap: anywhere; min-width: 0; text-align: center; }
+  .shell-navigation-footer { display: flex; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; border-bottom: 1px solid var(--color-line); }
+  #main-content { padding-bottom: calc(var(--spacing-bottom-nav) + env(safe-area-inset-bottom)); }
+  .shell-tools-dialog { margin: auto 0 0; width: 100%; max-width: none; }
 }
 
 /* One tutor instance: nonmodal beside the desktop workspace, modal on narrow screens. */

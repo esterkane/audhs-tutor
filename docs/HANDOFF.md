@@ -1500,3 +1500,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Dated Progress evidence API/view verified with isolation, pagination recovery, keyboard/narrow checks, lint/types/build and review. No mastery or independence inference. Remaining design gaps: docs/design/SHELL-ROUTE-CONTRACT.md.
+
+
+2026-10-11 — Five-destination navigation implemented: desktop sidebar/rail, mobile bottom bar, Tools dialog and Preferences footer.601 unit and28 affected browser checks, lint/build and reviewed focus recovery. Header/ContextBar and full design acceptance remain open; docs/design/SHELL-ROUTE-CONTRACT.md.

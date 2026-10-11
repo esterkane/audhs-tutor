@@ -1,4 +1,3 @@
-import { openMainMenu } from './helpers'
 import { expect, test } from '@playwright/test'
 for (const width of [390, 1280]) {
   test(`browse area is independent of learning ${width}`, async ({ page }, info) => {
@@ -26,7 +25,6 @@ for (const width of [390, 1280]) {
     )
     await page.goto('/areas?area=python')
     await expect(page.getByText('Browse area · python', { exact: true })).toBeVisible()
-    await openMainMenu(page)
     await page.getByRole('link', { name: 'Home', exact: true }).click()
     await expect(page.getByRole('heading', { name: 'Your next step' })).toBeVisible()
     await page.getByText('Browse area · python', { exact: true }).focus()

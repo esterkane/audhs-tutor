@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, openMainMenu } from './helpers'
+import { API } from './helpers'
 
 for (const width of [390, 1280]) {
   test(`returning during a save preserves the confirmed preference at ${width}`, async ({ page, request }, info) => {
@@ -33,10 +33,7 @@ for (const width of [390, 1280]) {
       await large.focus()
       await page.keyboard.press('Enter')
       await expect.poll(() => saving).toBe(true)
-      await openMainMenu(page)
       await page.getByRole('link', { name: 'Home', exact: true }).click()
-      await openMainMenu(page)
-      await page.getByText('Manage', { exact: true }).click()
       await page.getByRole('link', { name: 'Preferences', exact: true }).click()
       await expect.poll(() => staleRead).toBe(true)
       releaseSave()
