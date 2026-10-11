@@ -501,3 +501,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11: Session feedback now follows recorded strengths → gaps → explanation (PDF p10), with mastery estimate in optional grading details.13 component and2 final browser checks, lint/type/build, screenshots and reviews pass;2 baseline recovery checks passed. Retry/progression contract and remaining acceptance are recorded in docs/design/COMPLETE-DESIGN-ALIGNMENT.md. No learning-policy change.
+
+
+2026-10-11: Same-question retry requires an explicit assisted-practice contract: current new attempts update competency and FSRS, and hint count alone does not change competency weighting. Runtime unchanged; next implementation boundary and recovery/evidence gates documented in docs/design/PRACTICE-RETRY-CONTRACT.md. Two backend replay/concurrency tests pass (local deterministic fixtures, no model calls).

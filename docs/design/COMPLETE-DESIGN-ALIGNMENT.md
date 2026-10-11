@@ -228,3 +228,6 @@ change learning evidence. Next inspect assessment retry/idempotency semantics be
 implementing that interaction. Source citations and other grading surfaces also remain
 to reconcile; this slice does not claim the whole Practice blueprint. Human/AT, dark
 and enlarged-text acceptance for this presentation remain open.
+
+
+2026-10-11: Same-question retry requires an explicit assisted-practice contract: current new attempts update competency and FSRS, and hint count alone does not change competency weighting. Runtime unchanged; next implementation boundary and recovery/evidence gates documented in docs/design/PRACTICE-RETRY-CONTRACT.md. Two backend replay/concurrency tests pass (local deterministic fixtures, no model calls).
