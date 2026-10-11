@@ -47,7 +47,7 @@ for (const width of [390, 1280]) test(`evidence-first assessment feedback ${widt
     await page.keyboard.press('Enter')
     await expect(page.getByRole('button', { name: 'Continue the plan', exact: true })).toBeEnabled()
     if (width === 390) {
-      await expect(page.getByText(/Revised practice after feedback/)).toBeVisible()
+      await expect(page.getByText(/Repeated practice on a previously checked question/)).toBeVisible()
       await expect(page.getByText(/Existing review schedule unchanged/)).toBeVisible()
       await expect(page.getByText(/Review scheduled after this attempt/)).toHaveCount(0)
     }

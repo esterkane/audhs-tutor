@@ -272,7 +272,7 @@ export function ChallengePanel({
             ))}
           </ul>
           <p className="text-sm text-muted mt-2">
-            A delayed review of this challenge is scheduled for{' '}
+            {result.review_updated === false ? 'Existing review schedule unchanged: ' : 'A delayed review of this challenge is scheduled for '}
             {new Date(result.review.due as string).toLocaleDateString()}.
           </p>
           <div className="flex gap-2 mt-3">

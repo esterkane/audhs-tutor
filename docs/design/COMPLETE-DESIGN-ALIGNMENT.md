@@ -237,3 +237,6 @@ and enlarged-text acceptance for this presentation remain open.
 
 
 2026-10-11: Explicit revision application saves immutable linked attempts/feedback without a new competency/FSRS update; replay and failed-commit recovery covered, experiment metrics exclude flagged revisions.57 backend,13 component,2 browser checks and types/lint/build/reviews pass. Missing-parent classification and retry UI remain; details in docs/design/PRACTICE-RETRY-CONTRACT.md.
+
+
+2026-10-11: Omitted-parent repeats now classify server-side under the write lock; concurrent requests create one original and one revision, preserving raw recovery identity.1141 backend tests pass; shared notices across result surfaces, component/browser/type/lint/build/review gates pass. Retry editing/actions remain next. See docs/design/PRACTICE-RETRY-CONTRACT.md.

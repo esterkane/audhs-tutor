@@ -68,7 +68,7 @@ async def test_missing_token_rejected_but_completed_legacy_replay_survives_chang
     # Simulate a completed pre-token claim using its original canonical payload shape.
     req = AttemptRequest(**body)
     result = await Grader(db, None).grade(req)
-    payload = req.model_dump(mode="json")
+    payload = req.model_dump(mode="json", exclude={"revision_of_attempt_id"})
     payload.pop("content_version")
     session = await db.get(models.Session, body["session_id"])
     db.add(

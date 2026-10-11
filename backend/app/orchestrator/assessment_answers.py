@@ -40,7 +40,7 @@ def feedback_snapshot(
             "learner_answer_display": answer_display,
         },
         text=(
-            "Revised practice after feedback. Learning evidence and review schedule unchanged.\n\n"
+            "Repeated practice on a previously checked question. Learning evidence and review schedule unchanged.\n\n"
             if result.revision_of_attempt_id
             else ""
         )

@@ -165,6 +165,7 @@ async def test_lesson_sections_fallback_and_resume(
         },
     )
     assert r.status_code == 200 and r.json()["correct"] is False
+    first_result = r.json()
     r = await client.post(
         "/api/assess/attempt",
         json={
@@ -176,7 +177,10 @@ async def test_lesson_sections_fallback_and_resume(
         },
     )
     assert r.status_code == 200 and r.json()["correct"] is True
-    # evidence + FSRS scheduling on the language listening node; events in the language domain
+    assert r.json()["revision_of_attempt_id"] == first_result["attempt_id"]
+    assert r.json()["review_updated"] is False
+    assert r.json()["review"] == first_result["review"]
+    # Both answers are retained, but immediate practice is not a second independent observation.
     node = (
         await db.execute(
             select(models.SkillNode).where(models.SkillNode.slug == "lang-en-listening")
@@ -184,7 +188,7 @@ async def test_lesson_sections_fallback_and_resume(
     ).scalar_one()
     assert not skill_graph.teachable(node)  # never a tutor lesson
     ev = (await db.execute(select(models.CompetencyEvidence))).scalars().all()
-    assert len(ev) == 2 and all(e.skill_id == node.id for e in ev)
+    assert len(ev) == 1 and all(e.skill_id == node.id for e in ev)
     ms = (await db.execute(select(models.MemoryState))).scalars().all()
     assert len(ms) == 1  # one card for the clip's task, scheduled by the grader
     events = (await db.execute(select(models.LearningEvent))).scalars().all()

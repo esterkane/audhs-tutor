@@ -98,7 +98,10 @@ async def learning_rows(db):
     }
 
 
-async def test_revision_records_new_answer_without_reapplying_learning(client, db, fake_local):
+@pytest.mark.parametrize("explicit", [True, False])
+async def test_revision_records_new_answer_without_reapplying_learning(
+    client, db, fake_local, explicit
+):
     from uuid import uuid4
 
     from sqlalchemy import select
@@ -120,6 +123,8 @@ async def test_revision_records_new_answer_without_reapplying_learning(client, d
         answer="1",
         revision_of_attempt_id=root.id,
     )
+    if not explicit:
+        body.pop("revision_of_attempt_id")
     headers = {"Idempotency-Key": str(uuid4())}
     response = await client.post("/api/assess/attempt", json=body, headers=headers)
     assert response.status_code == 200, response.text
@@ -133,7 +138,7 @@ async def test_revision_records_new_answer_without_reapplying_learning(client, d
     await db.refresh(root)
     assert root.answer == original_answer and root.revision_of_attempt_id is None
     saved = await db.scalar(select(TutorAnswer).where(TutorAnswer.id == result["answer_id"]))
-    assert "Revised practice after feedback" in saved.text
+    assert "Repeated practice on a previously checked question" in saved.text
     totals = await counts(db)
     replay = await client.post("/api/assess/attempt", json=body, headers=headers)
     assert replay.json() == result
@@ -167,7 +172,10 @@ async def test_revision_records_new_answer_without_reapplying_learning(client, d
     assert fake_local.calls == []
 
 
-async def test_revision_commit_failure_finishes_once_after_session_end(client, db, monkeypatch):
+@pytest.mark.parametrize("explicit", [True, False])
+async def test_revision_commit_failure_finishes_once_after_session_end(
+    client, db, monkeypatch, explicit
+):
     from uuid import uuid4
 
     from app.db import workspace_requests
@@ -182,6 +190,8 @@ async def test_revision_commit_failure_finishes_once_after_session_end(client, d
         answer="1",
         revision_of_attempt_id=root.id,
     )
+    if not explicit:
+        body.pop("revision_of_attempt_id")
     identity = str(uuid4())
     before = await learning_rows(db)
     totals = await counts(db)
@@ -216,3 +226,70 @@ async def test_revision_commit_failure_finishes_once_after_session_end(client, d
     assert replay.json() == finished.json()
     assert await counts(db) == after
     assert await learning_rows(db) == before
+
+
+async def test_later_session_is_an_ordinary_attempt(client, db):
+    from uuid import uuid4
+
+    from app.orchestrator.grader import versioned_view
+
+    root, args = await original(client, db)
+    old = await db.get(Session, args["session_id"])
+    old.ended_at = "2026-10-11T00:00:00Z"
+    await db.commit()
+    new = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    item = await versioned_view(db, await db.get(Assessment, root.assessment_id), root.learner_id)
+    before = await counts(db)
+    response = await client.post(
+        "/api/assess/attempt",
+        json={
+            "session_id": new["id"],
+            "assessment_id": root.assessment_id,
+            "content_version": item.content_version,
+            "answer": "0",
+        },
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["revision_of_attempt_id"] is None
+    assert response.json()["review_updated"] is True
+    assert (await counts(db))[1] == before[1] + 1
+
+
+async def test_concurrent_new_identities_share_one_original(client, db, monkeypatch):
+    import asyncio
+    from uuid import uuid4
+
+    from sqlalchemy import select
+
+    from app.orchestrator.grader import Grader
+
+    body = await prepare(client, db)
+    apply = Grader.apply_result
+    entered = 0
+    ready = asyncio.Event()
+
+    async def together(self, *args, **kwargs):
+        nonlocal entered
+        entered += 1
+        if entered == 2:
+            ready.set()
+        await asyncio.wait_for(ready.wait(), 5)
+        return await apply(self, *args, **kwargs)
+
+    monkeypatch.setattr(Grader, "apply_result", together)
+    responses = await asyncio.gather(
+        *[
+            client.post("/api/assess/attempt", json=body, headers={"Idempotency-Key": str(uuid4())})
+            for _ in range(2)
+        ]
+    )
+    assert all(r.status_code == 200 for r in responses), [r.text for r in responses]
+    results = [r.json() for r in responses]
+    original_result = next(r for r in results if r["revision_of_attempt_id"] is None)
+    revision = next(r for r in results if r["revision_of_attempt_id"] is not None)
+    assert revision["revision_of_attempt_id"] == original_result["attempt_id"]
+    assert revision["review_updated"] is False
+    assert (await counts(db))[1] == 1
+    attempts = list((await db.scalars(select(AssessmentAttempt))).all())
+    assert len(attempts) == 2

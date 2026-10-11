@@ -1223,7 +1223,6 @@ function AssessPanel({
       {result && (
         <Card role="status" className={result.score >= 0.85 ? 'border-ok' : 'border-warn'}>
           <h3 className="font-medium">Feedback on your answer</h3>
-          {result.revision_of_attempt_id && <p className="mt-2 text-sm">Revised practice after feedback. This does not add independent learning evidence.</p>}
           <AssessmentEvidence result={result} />
           <AssessmentSaveStatus
             key={result.attempt_id}

@@ -6,6 +6,8 @@ export function AssessmentSaveStatus({ result, onSaved }: {
   onSaved?: (answerId: string) => void
 }) {
   return (
+    <>
+    <AssessmentPracticeNotice result={result} />
     <AnswerSaveStatus
       answerId={result.answer_id}
       error={result.save_error}
@@ -14,5 +16,10 @@ export function AssessmentSaveStatus({ result, onSaved }: {
       linkLabel="Open saved feedback"
       onSaved={onSaved}
     />
+    </>
   )
+}
+
+export function AssessmentPracticeNotice({ result }: { result: Pick<AttemptResult, 'revision_of_attempt_id'> }) {
+  return result.revision_of_attempt_id ? <p className="mt-2 text-sm">Repeated practice on a previously checked question. This does not add independent learning evidence or change your review schedule.</p> : null
 }

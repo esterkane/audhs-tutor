@@ -4,6 +4,7 @@ Call before inference and again inside the eventual write transaction. This modu
 alone does not enable revision submissions or alter evidence policy.
 """
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -52,3 +53,59 @@ async def validate_root(
             409,
         )
     return root
+
+
+async def resolve_root(
+    db: AsyncSession,
+    *,
+    learner_id: str,
+    session_id: str,
+    assessment_id: str,
+    content_fingerprint: str,
+    supplied_root: str | None,
+    allow_ended: bool = False,
+) -> str | None:
+    """Classify repeats in this session; caller owns the final serialized write lock.
+
+    Never mutate the raw request/claim identity: a root can appear while another
+    request is grading. Re-resolve at application time and record the effective root.
+    """
+    root_id = supplied_root
+    if root_id is None:
+        roots = list(
+            (
+                await db.scalars(
+                    select(AssessmentAttempt)
+                    .where(
+                        AssessmentAttempt.learner_id == learner_id,
+                        AssessmentAttempt.session_id == session_id,
+                        AssessmentAttempt.assessment_id == assessment_id,
+                        AssessmentAttempt.revision_of_attempt_id.is_(None),
+                    )
+                    .order_by(AssessmentAttempt.ts, AssessmentAttempt.id)
+                    .execution_options(populate_existing=True)
+                )
+            ).all()
+        )
+        matching = next(
+            (root for root in roots if root.content_fingerprint == content_fingerprint), None
+        )
+        if matching is not None:
+            root_id = matching.id
+        elif any(root.content_fingerprint is None for root in roots):
+            raise AppError(
+                "revision_original_unverified",
+                "An earlier attempt in this session has no verified question version. "
+                "Your answer is retained; use a new session for further practice.",
+                409,
+            )
+    if root_id is not None:
+        await validate_root(
+            db,
+            learner_id=learner_id,
+            session_id=session_id,
+            assessment_id=assessment_id,
+            root_attempt_id=root_id,
+            allow_ended=allow_ended,
+        )
+    return root_id

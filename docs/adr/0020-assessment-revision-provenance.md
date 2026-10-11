@@ -66,3 +66,33 @@ still use existing semantics; this is NOT the complete retry policy or a finishe
 No new paid-model usage; deterministic fixtures verified these paths.
 
 Additional regression evidence:23 grading-atomicity/database-core checks pass.
+
+
+## Automatic repeated-practice classification — 2026-10-11
+
+The grader now resolves omitted revision parents from the earliest owned ordinary
+attempt with the same session, assessment and stable content fingerprint. Resolution
+runs before inference and again under the content-write lock. The effective parent
+is applied only to the committed attempt/result/history; raw claim and staged-request
+identities remain unchanged, preserving recovery/replay. Two concurrent distinct
+request IDs produce one original and one revision. Later sessions remain ordinary
+attempts; this boundary is not proof of independent recall. Unknown legacy roots fail
+closed with a retained-answer/new-session message rather than inferred provenance.
+
+All result surfaces using AssessmentSaveStatus now share the repeated-practice notice;
+code explain-back also includes it. Challenge scheduling copy reflects review_updated.
+Wording describes a previously checked question without claiming the learner read
+feedback. No save handler or learning progression action was changed.
+
+Evidence: full backend1141 tests pass with clean exit.41 existing surface component
+checks pass;11 focused notice/code checks pass after the final shared-notice extraction
+(two are new notice checks). Two final keyboard/responsive browser checks and screenshot
+inspection, mypy/Ruff/ESLint/build and code/pedagogy reviews pass. Initial full-suite
+failures exposed legacy payload fixtures that included a new absent field, plus listening
+expectations for duplicate evidence. Fixed historical shapes and asserted listening keeps
+two attempts with one evidence/schedule update. Ordinary rollback tests now use a later
+session while preserving prior memory rows. No model calls or live learner attempts.
+
+Remaining: owned original-answer retrieval, durable edit/cancel/reload revision state,
+and Try again/Next actions. The backend repeat policy is active; the full PDF Practice
+interaction and human/assistive-technology acceptance are not complete.

@@ -72,6 +72,11 @@ async def test_learning_writes_rollback_together(
             },
         )
         assert first.status_code == 200
+        # Keep existing review state, but exercise an ordinary later-session attempt.
+        previous = await db.get(models.Session, started["id"])
+        previous.ended_at = "2026-10-11T00:00:00Z"
+        await db.commit()
+        started = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
     session = await db.get(models.Session, started["id"])
     await ksession.save_checkpoint(db, session, {"skill_id": item["skill_id"], "hint_level": 2})
     before = await snapshot(session_factory)

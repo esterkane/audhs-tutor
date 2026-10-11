@@ -341,19 +341,19 @@ class Grader:
         now = now or datetime.now(UTC)
         session: Session = await ksession.get(db, req.session_id)
         learner_id = session.learner_id
-        if req.revision_of_attempt_id is not None:
-            await assessment_revisions.validate_root(
-                db,
-                learner_id=learner_id,
-                session_id=req.session_id,
-                assessment_id=req.assessment_id,
-                root_attempt_id=req.revision_of_attempt_id,
-            )
         a = await db.get(Assessment, req.assessment_id)
         if a is None:
             raise KeyError("assessment not found")
         content = await assessment_content.snapshot(db, a.id, learner_id)
         assessment_content.require_eligible(content)
+        await assessment_revisions.resolve_root(
+            db,
+            learner_id=learner_id,
+            session_id=req.session_id,
+            assessment_id=req.assessment_id,
+            content_fingerprint=assessment_content.recovery_fingerprint(content),
+            supplied_root=req.revision_of_attempt_id,
+        )
         if req.content_version is not None:
             if assessment_content.token(content) != req.content_version:
                 raise AppError(
@@ -572,15 +572,17 @@ class Grader:
         # short transaction owns attempt, events, evidence, FSRS, checkpoint and mastery.
         try:
             await assessment_content.guard_write(db, a.id, content, learner_id)
-            if req.revision_of_attempt_id is not None:
-                await assessment_revisions.validate_root(
-                    db,
-                    learner_id=learner_id,
-                    session_id=req.session_id,
-                    assessment_id=req.assessment_id,
-                    root_attempt_id=req.revision_of_attempt_id,
-                    allow_ended=self.request_claim_id is not None,
-                )
+            root_id = await assessment_revisions.resolve_root(
+                db,
+                learner_id=learner_id,
+                session_id=req.session_id,
+                assessment_id=req.assessment_id,
+                content_fingerprint=assessment_content.recovery_fingerprint(content),
+                supplied_root=req.revision_of_attempt_id,
+                allow_ended=self.request_claim_id is not None,
+            )
+            req = req.model_copy(update={"revision_of_attempt_id": root_id})
+            attempt.revision_of_attempt_id = root_id
             db.add(attempt)
             await db.flush()
 

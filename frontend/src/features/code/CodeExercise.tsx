@@ -3,7 +3,7 @@ import { QuestionPractice } from '../questions/QuestionPractice'
 import { boundedRead } from '../../lib/boundedRead'
 import { Link } from 'react-router-dom'
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
-import { AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
+import { AssessmentPracticeNotice, AssessmentSaveStatus } from '../programs/AssessmentSaveStatus'
 import { OptionalConfidence } from '../../components/OptionalConfidence'
 import { useLayoutEffect, useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -589,9 +589,10 @@ function Editor({
                 />
               )}
               {checkResult && (
-                <p className="text-sm mt-2" role="status">
-                  {checkResult.feedback} {checkResult.next_step}
-                </p>
+                <div className="text-sm mt-2" role="status">
+                  <p>{checkResult.feedback} {checkResult.next_step}</p>
+                  <AssessmentPracticeNotice result={checkResult} />
+                </div>
               )}
             </div>
           )}
