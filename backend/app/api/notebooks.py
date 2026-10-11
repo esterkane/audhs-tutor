@@ -1,6 +1,7 @@
 """Local notebook setup, available only from the local application."""
 
 from urllib.parse import urlsplit
+from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -13,6 +14,8 @@ router = APIRouter(prefix="/notebooks", tags=["notebooks"])
 class StartNotebook(BaseModel):
     course_id: str = Field(min_length=1, max_length=100, pattern=r"^[a-zA-Z0-9_-]+$")
     install: bool = False
+    request_id: UUID | None = None
+    service_id: UUID | None = None
 
 
 class NotebookStatus(BaseModel):
@@ -20,6 +23,8 @@ class NotebookStatus(BaseModel):
     message: str
     url: str | None
     course_id: str
+    request_id: str | None = None
+    service_id: str | None = None
 
 
 def local(request: Request) -> NotebookLab:
@@ -38,11 +43,15 @@ def local(request: Request) -> NotebookLab:
 async def status(request: Request, response: Response) -> NotebookStatus:
     lab = local(request)
     response.headers["Cache-Control"] = "no-store"
-    if lab.status == "ready" and lab.process and lab.process.returncode is not None:
-        lab.status, lab.url, lab.message = "error", None, "The notebook lab stopped. Open it again."
-    return NotebookStatus(
-        status=lab.status, message=lab.message, url=lab.url, course_id=lab.course_id
-    )
+    return NotebookStatus.model_validate(lab.snapshot())
+
+
+@router.get("/requests/{request_id}", response_model=NotebookStatus)
+async def request_status(
+    request_id: UUID, service_id: UUID, request: Request, response: Response
+) -> NotebookStatus:
+    response.headers["Cache-Control"] = "no-store"
+    return NotebookStatus.model_validate(local(request).lookup(str(service_id), str(request_id)))
 
 
 @router.post(
@@ -54,5 +63,14 @@ async def start(body: StartNotebook, request: Request, response: Response) -> No
     lab = local(request)
     if request.headers.get("x-notebook-action") != "start":
         raise HTTPException(403, "Use the notebook setup button in the local app.")
+    if (body.request_id is None) != (body.service_id is None):
+        raise HTTPException(422, "Both request and backend identities are required.")
+    if body.request_id is not None and body.service_id is not None:
+        response.headers["Cache-Control"] = "no-store"
+        return NotebookStatus.model_validate(
+            lab.start_command(
+                str(body.service_id), str(body.request_id), body.course_id, body.install
+            )
+        )
     lab.start(body.course_id, body.install)
     return await status(request, response)

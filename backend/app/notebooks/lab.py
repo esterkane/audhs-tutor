@@ -7,11 +7,13 @@ import secrets
 import shutil
 import tempfile
 import urllib.parse
+import uuid
 from pathlib import Path
 
 import httpx
 
 from app.core.config import Settings
+from app.core.errors import AppError
 
 PACKAGES = [
     "pip==26.2.1",
@@ -94,15 +96,95 @@ class NotebookLab:
         self.installer: asyncio.subprocess.Process | None = None
         self.token = secrets.token_urlsafe(32)
         self.course_id = ""
+        self.service_id = str(uuid.uuid4())
+        self.command_id: str | None = None
+        self.commands: dict[str, tuple[tuple[str, bool], dict[str, str | None]]] = {}
         self.env = {
             k: v
             for k, v in os.environ.items()
             if not any(s in k.upper() for s in ("KEY", "TOKEN", "SECRET", "PASSWORD"))
         }
 
+    def snapshot(self) -> dict[str, str | None]:
+        if self.status == "ready" and self.process and self.process.returncode is not None:
+            self.status, self.url, self.message = (
+                "error",
+                None,
+                "The notebook lab stopped. Open it again.",
+            )
+        return {
+            "status": self.status,
+            "message": self.message,
+            "url": self.url,
+            "course_id": self.course_id,
+            "service_id": self.service_id,
+            "request_id": self.command_id,
+        }
+
+    def lookup(self, service_id: str, request_id: str) -> dict[str, str | None]:
+        if service_id != self.service_id or request_id not in self.commands:
+            raise AppError(
+                "notebook_outcome_unknown",
+                "This setup request is not known by the current backend. Do not automatically restart it.",
+                409,
+            )
+        if request_id == self.command_id:
+            return self.snapshot()
+        saved = dict(self.commands[request_id][1])
+        if saved["status"] == "ready" and (
+            self.process is None or self.process.returncode is not None
+        ):
+            return {
+                **saved,
+                "status": "error",
+                "url": None,
+                "message": "The notebook lab stopped. Your prepared files are kept.",
+            }
+        return saved
+
+    def start_command(
+        self, service_id: str, request_id: str, course_id: str, install: bool
+    ) -> dict[str, str | None]:
+        if service_id != self.service_id:
+            raise AppError(
+                "notebook_outcome_unknown",
+                "The notebook backend restarted. Check setup status before starting again.",
+                409,
+            )
+        previous = self.commands.get(request_id)
+        if previous is not None:
+            if previous[0] != (course_id, install):
+                raise AppError(
+                    "notebook_request_conflict",
+                    "This request already belongs to different setup options.",
+                    409,
+                )
+            return self.lookup(service_id, request_id)
+        if self.task and not self.task.done():
+            raise AppError(
+                "notebook_busy",
+                "Another notebook setup is running. Check its status before starting this one.",
+                409,
+            )
+        # Never evict identities and accidentally permit an old request to run again.
+        if len(self.commands) >= 128:
+            raise AppError(
+                "notebook_receipts_full",
+                "Setup history is full for this backend instance. Existing requests can still be checked.",
+                409,
+            )
+        self.start(course_id, install)
+        self.command_id = request_id
+        self.commands[request_id] = ((course_id, install), self.snapshot())
+        return self.snapshot()
+
     def start(self, course_id: str, install: bool) -> None:
         if self.task and not self.task.done():
             return
+        if self.command_id is not None:
+            payload, _ = self.commands[self.command_id]
+            self.commands[self.command_id] = (payload, self.snapshot())
+        self.command_id = None
         self.course_id = course_id
         self.url = None
         self.status = "preparing"

@@ -1047,6 +1047,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/notebooks/requests/{request_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Request Status */
+    get: operations['request_status_api_notebooks_requests__request_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/notebooks/start': {
     parameters: {
       query?: never
@@ -4710,6 +4727,10 @@ export interface components {
       url: string | null
       /** Course Id */
       course_id: string
+      /** Request Id */
+      request_id?: string | null
+      /** Service Id */
+      service_id?: string | null
     }
     /** ParkIn */
     ParkIn: {
@@ -5769,6 +5790,10 @@ export interface components {
        * @default false
        */
       install: boolean
+      /** Request Id */
+      request_id?: string | null
+      /** Service Id */
+      service_id?: string | null
     }
     /** TaskIn */
     TaskIn: {
@@ -8175,6 +8200,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['NotebookStatus']
+        }
+      }
+    }
+  }
+  request_status_api_notebooks_requests__request_id__get: {
+    parameters: {
+      query: {
+        service_id: string
+      }
+      header?: never
+      path: {
+        request_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NotebookStatus']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
         }
       }
     }

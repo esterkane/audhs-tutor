@@ -1453,3 +1453,5 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 2026-10-11: Two external reference folders recovered privately;26 documents imported and52 canonical index entries verified. Four images and notebook execution remain open. Full CI eeba6b9 passed. See slices/material-subtree-recovery.md.
 
 2026-10-11: Notebook status reads now time out visibly and offer explicit Retry; failed background polling stops.3 UI and3 desktop/narrow keyboard journeys, lint/types/build and review pass. Setup writes and learning logic unchanged. See slices/notebook-status-recovery.md.
+
+2026-10-11: Notebook setup now retains immutable request identity across lost acknowledgement/reload, uses read-only recovery and separates historical results from active setup. Storage failures offer explicit memory-only recovery; backend restart remains unknown.14 backend/12 frontend/5 desktop+narrow keyboard browser checks, visual inspection, lint/types/build/mypy217 and bounded review pass. See slices/notebook-start-recovery-plan.md. No cell execution or learning changes.
