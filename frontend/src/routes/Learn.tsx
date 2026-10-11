@@ -33,8 +33,9 @@ export function Learn() {
     <h1 className="text-page-title font-semibold">Learn</h1>
     {current.isError && !current.isFetching ? <>
       <p role="alert" className="mt-3">Could not check your saved session. No new session has been started.</p>
-      <Button className="mt-3" onClick={() => void current.refetch()}>Retry</Button>
     </> : <p role="status" className="mt-3">Checking your saved session…</p>}
+    <Button className="mt-3" aria-disabled={current.isFetching} aria-busy={current.isFetching}
+      onClick={() => { if (!current.isFetching) void current.refetch() }}>Retry</Button>
     <Link to="/" className="mt-4 block underline">Return Home</Link>
   </Card>
 }

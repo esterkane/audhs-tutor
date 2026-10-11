@@ -111,7 +111,7 @@ test('review offers optional confidence before revealing, then the plan continue
 
   await finishReview(page) // one card is ours; earlier journeys may have left more
   await expect(page.getByText(/Nothing is due right now|cards reviewed in this session/)).toBeVisible()
-  await page.getByRole('button', { name: 'Next' }).click()
+  await page.getByRole('button', { name: 'Continue the plan', exact: true }).click()
   await expect(page.getByRole('heading', { name: /^Learn: / })).toBeVisible()
   await expectServerBlock(request, { type: 'new_material', phase: 'teach' })
 })

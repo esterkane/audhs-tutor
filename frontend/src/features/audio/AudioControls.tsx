@@ -147,9 +147,10 @@ export function AudioControls({ compact = false, header = false }: { compact?: b
         <div className={header ? undefined : "px-3 pb-3"}>
         {!compact && activity}
         <div className="flex flex-wrap items-center gap-3 mt-2">
-          <label>
+          <label className="min-w-0 max-w-full">
             Volume {Math.round(volume * 100)}%{' '}
             <input
+              className="block min-w-0 max-w-full"
               aria-label="Audio volume"
               type="range"
               min="0"

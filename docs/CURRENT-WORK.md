@@ -1,6 +1,24 @@
-> Design authority update2026-10-11: follow [Complete design alignment](design/COMPLETE-DESIGN-ALIGNMENT.md). The new owner-supplied PDF consolidates the target; older conflicting prototype/rejection notes are historical. Pending lesson consolidation is partial adoption only.
+> Design authority update2026-10-11: follow [Complete design alignment](design/COMPLETE-DESIGN-ALIGNMENT.md). The new owner-supplied PDF consolidates the target; older conflicting prototype/rejection notes are historical. Implementation is partial design adoption; use the current reconciliation below before older next-step notes.
 
 # Current work and next acceptance gates
+
+## Current design reconciliation — 2026-10-11
+
+Do not schedule already delivered design slices again. Bounded implementation now includes:
+
+- Content-first Learn, three tutoring actions, in-place alternative explanations, one composer, responsive context and explicit Focus exit.
+- Assessment revision with retained original feedback; repeated attempts do not duplicate competency/FSRS evidence. Grounded feedback help reads the saved assessment context.
+- Learner Explore at `/explore`, distinct from preparation at `/areas`; Home browsing uses Explore and does not silently change the saved session.
+- Progress links to owned saved assessment feedback, without inventing independent-application evidence.
+- Shared saved-answer disclosures, enlarged-text reflow, whole-label mobile navigation with measured bottom spacing.
+- Quick review rejects late redirects after navigation or Back. Server-side creation already started may still finish; browsing does not cancel learning records.
+
+Evidence and remaining per-screen gaps: [complete design alignment](design/COMPLETE-DESIGN-ALIGNMENT.md).
+The next acceptance gate is integrated browser regression verification, followed by actual browser zoom,
+assistive technology and human re-entry/comprehension. Root-font enlargement, screenshot inspection
+and automated accessibility checks do not close those latter gates. Broader shared-control adoption,
+semantic quality, material coverage and the dependent queues below remain open. Both remotes are
+private; sanitation remains mandatory for the separately maintained release variant.
 
 ## Verified status reconciliation — 2026-10-08
 
@@ -10,7 +28,7 @@ The next UX acceptance work is actual browser zoom/assistive-technology and huma
 
 ## Current execution checklist — 2026-10-05
 
-This checklist supersedes older “next” instructions below; those paragraphs are dated history, not parallel work orders. The broad goal remains active. Keep the original archive private and the sanitized repository public (owner update2026-10-05) and preserve the independent acquisition worktree delta.
+This checklist supersedes older “next” instructions below; those paragraphs are dated history, not parallel work orders. The broad goal remains active. Keep BOTH repositories private (owner update2026-10-11), retaining the separate sanitized variant and preserve the independent acquisition worktree delta.
 
 Recently delivered: authoritative palette/components, local Inter and Roboto Mono, original logo/favicon, grouped desktop/narrow shell, persistent companion context, contextual capture/return and reminder Undo, tab-local recent contexts, keyboard quick navigation, search for areas/project guides/saved explanations/source passages. Skill search and result-group keyboard jump links are published in both private variants. These capabilities do not close whole-stage human or accessibility acceptance.
 
@@ -267,3 +285,7 @@ types/lint/build and code/pedagogy reviews pass; narrow open-state screenshot in
 uses fixture area IDs without real concepts and honestly shows its loading-error
 recovery; real concept/error flows were separately checked in the Explore slice.
 Broader shared-control adoption and human/AT acceptance remain open.
+
+2026-10-11 integrated design browser validation:347 passed,20 intentional opt-in skips.
+Learn retry focus and narrow audio reflow corrected; see complete design alignment.
+Actual browser zoom, human/AT acceptance and newest-head CI remain open.

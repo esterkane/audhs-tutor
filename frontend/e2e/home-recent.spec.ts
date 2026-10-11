@@ -151,7 +151,7 @@ test('recent area lookup failure offers retry without inventing reviews or stale
   await page.keyboard.press('Enter')
   const suggestions = page.getByLabel('Suggested adaptations')
   await expect(suggestions.getByRole('button')).toHaveCount(3)
-  const decline = suggestions.getByRole('button', { name: 'No', exact: true })
+  const decline = suggestions.getByRole('button', { name: 'Not now', exact: true })
   await decline.focus()
   await expect(decline).toBeFocused()
   await suggestions.screenshot({ path: info.outputPath('adaptation-zoom.png') })

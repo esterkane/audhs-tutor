@@ -27,7 +27,7 @@ for (const width of [390, 1280]) {
       await page.getByRole('button', { name: /^Continue$/ }).click()
       const input = page.getByLabel('Ask about this lesson (optional)')
       await input.fill('Keep my lesson question')
-      await page.getByRole('main').getByText('Work alongside', { exact: true }).focus()
+      await page.getByRole('main').locator('summary').filter({ hasText: /^Work alongside$/ }).focus()
       await page.keyboard.press('Space')
       await expect(page.getByRole('heading', { name: 'Working alongside', exact: true })).toBeVisible()
       await page.getByText('Try a coding experiment', { exact: true }).click()

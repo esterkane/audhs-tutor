@@ -1719,3 +1719,19 @@ not treated as a passing latest-head gate.
 2026-10-11 owner visibility update: both repositories verified PRIVATE via GitHub.
 Keep the sanitized and original variants separate, with all sanitation guards intact.
 Do not restore public visibility without a new explicit owner request.
+
+
+2026-10-11 integrated browser gate: baseline367 scenarios produced340 passes,
+20 intentional opt-in skips and seven failures. Two runtime defects corrected:
+Learn Retry no longer unmounts while its read is pending (focus retained, repeated
+activation guarded, Return Home available); audio volume label/range fit narrow
+notebook containers. Five remaining failures were obsolete button labels or focus
+selectors after reviewed design changes; tests now use current labels/native summaries.
+Fourteen affected journeys, three held-retry checks and seven audio component tests
+pass. Final complete Chromium suite:347 passed,20 skipped, zero failures (9.0min).
+Lint/TypeScript/build and code/pedagogy reviews pass. Narrow Learn and notebook
+screenshots inspected. No grading, routing-provider or learning-policy changes.
+Current-work checklist reconciled with delivered design work and both-private policy.
+Skipped opt-in audit/design cases, real browser zoom, screen-reader/human acceptance,
+physical audio and newest-head GitHub CI remain separate unverified gates. Existing
+production bundle-size warning remains. Logs retained locally in /tmp/design-integrated-browser-final.log.

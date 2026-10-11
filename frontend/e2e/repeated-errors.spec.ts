@@ -39,7 +39,7 @@ test('two incorrect answers retain feedback, help and explicit pause', async ({ 
         expect(grade.correct).toBe(false)
         attempts.push(grade.attempt_id)
         await expect(page.getByRole('heading', { name: 'Feedback on your answer', exact: true })).toBeVisible()
-        await expect(page.getByRole('button', { name: "I don't understand yet — explain the idea", exact: true })).toBeVisible()
+        await expect(page.getByRole('button', { name: "Explain the difficult part", exact: true })).toBeVisible()
         await expect(page.getByRole('button', { name: 'Revisit the explanation', exact: true })).toBeEnabled()
         await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeEnabled()
         expect(submitted).toBe(turn + 1)
