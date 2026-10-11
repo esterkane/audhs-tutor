@@ -18,6 +18,7 @@ import { Experiments } from '../routes/Experiments'
 import { Home } from '../routes/Home'
 import { Learn } from '../routes/Learn'
 import { Practice } from '../routes/Practice'
+import { Progress } from '../routes/Progress'
 import { Map } from '../routes/Map'
 import { Models } from '../routes/Models'
 import { Together } from '../routes/Together'
@@ -54,6 +55,7 @@ const pageTitles: Record<string, string> = {
   '/corrections': 'Correction drafts',
   '/learn': 'Learn',
   '/practice': 'Practice',
+  '/progress': 'Progress',
   '/session': 'Learning session',
   '/review': 'Review',
   '/recap': 'Session recap',
@@ -206,6 +208,7 @@ export default function App() {
             <Route path="/answers/:answerId" element={<Answers />} />
             <Route path="/learn" element={<Learn />} />
             <Route path="/practice" element={<Practice />} />
+            <Route path="/progress" element={<Progress />} />
             <Route path="/session" element={<Session />} />
             <Route path="/playground" element={<Playground />} />
             <Route path="/playground/visualizer" element={<Visualizer />} />

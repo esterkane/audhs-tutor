@@ -1497,3 +1497,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Practice entry links existing activities without completion writes; browser keyboard/mobile/Back, lint/build and review passed. Progress evidence contract and outstanding shell migration: docs/design/SHELL-ROUTE-CONTRACT.md.
+
+
+2026-10-11 — Dated Progress evidence API/view verified with isolation, pagination recovery, keyboard/narrow checks, lint/types/build and review. No mastery or independence inference. Remaining design gaps: docs/design/SHELL-ROUTE-CONTRACT.md.

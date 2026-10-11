@@ -1,12 +1,13 @@
 from typing import Any, Literal
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Query, Request
 from pydantic import BaseModel
 
 from app.api.deps import DB, Learner
 from app.api.plan import session_lock
 from app.db.models import SkillNode
-from app.kernel import areas, competency, preferences, skill_graph
+from app.kernel import areas, competency, preferences, progress, skill_graph
+from app.schemas.progress import ProgressEvidencePage
 from app.schemas.tutor import SkillView
 
 router = APIRouter(prefix="/skills", tags=["skills"])
@@ -100,3 +101,16 @@ async def mark_material(
             marks[skill_id] = body.status
         await preferences.set_pref(db, learner.id, "learning.material_marks", marks)
     return MaterialMarkOut(skill_id=skill_id, status=body.status)
+
+
+@router.get("/{skill_id}/evidence", response_model=ProgressEvidencePage)
+async def skill_evidence(
+    skill_id: str,
+    db: DB,
+    learner: Learner,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=20, ge=1, le=100),
+) -> ProgressEvidencePage:
+    """Dated evidence, not an independent-work certification or a new mastery score."""
+    await skill_graph.get_node(db, skill_id)
+    return await progress.evidence_page(db, learner.id, skill_id, offset=offset, limit=limit)

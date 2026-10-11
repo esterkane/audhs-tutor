@@ -244,6 +244,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/skills/{skill_id}/evidence': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Skill Evidence
+     * @description Dated evidence, not an independent-work certification or a new mastery score.
+     */
+    get: operations['skill_evidence_api_skills__skill_id__evidence_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/sessions/selection/{skill_id}': {
     parameters: {
       query?: never
@@ -5028,6 +5048,55 @@ export interface components {
       /** Message */
       message: string
     }
+    /** ProgressDimension */
+    ProgressDimension: {
+      /** Dimension */
+      dimension: string
+      /** Count */
+      count: number
+      /** Last Recorded At */
+      last_recorded_at: string
+    }
+    /** ProgressEvidence */
+    ProgressEvidence: {
+      /** Id */
+      id: string
+      /** Dimension */
+      dimension: string
+      /** Recorded At */
+      recorded_at: string
+      /** Score */
+      score: number
+      /** Weight */
+      weight: number
+      /** Grader Level */
+      grader_level: string
+      /** Attempt Id */
+      attempt_id: string | null
+      /** Reported Hint Count */
+      reported_hint_count: number | null
+      /**
+       * Independence
+       * @default not_verified
+       * @constant
+       */
+      independence: 'not_verified'
+    }
+    /** ProgressEvidencePage */
+    ProgressEvidencePage: {
+      /** Skill Id */
+      skill_id: string
+      /** Total */
+      total: number
+      /** Offset */
+      offset: number
+      /** Limit */
+      limit: number
+      /** Items */
+      items: components['schemas']['ProgressEvidence'][]
+      /** Dimensions */
+      dimensions: components['schemas']['ProgressDimension'][]
+    }
     /** ProjectCapture */
     ProjectCapture: {
       /**
@@ -6565,6 +6634,40 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['MaterialMarkOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  skill_evidence_api_skills__skill_id__evidence_get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path: {
+        skill_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ProgressEvidencePage']
         }
       }
       /** @description Validation Error */

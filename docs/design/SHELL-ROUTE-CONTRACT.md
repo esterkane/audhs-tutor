@@ -140,3 +140,46 @@ explicitly. Verify learner isolation, absent/partial evidence, stale/loading/err
 states, chronology and no mutation. Generated client types must come from the
 OpenAPI schema. The skill map stays a secondary view; no new progress scores,
 thresholds or invented dates.
+
+### Progress evidence API implementation in progress
+
+A typed, read-only `/api/skills/{skill_id}/evidence` endpoint now exposes dated
+records with dimension, recorded score/weight, grader source and the linked
+attempt's reported hint count. It is learner-scoped, paginated (maximum100),
+ordered by timestamp/ID, and does not refresh/write competency. Missing or
+cross-learner attempt provenance stays null. Independent work is explicitly
+`not_verified`: hint_count is client-reported and does not cover all exposure.
+
+Three focused backend tests pass, covering dates, pagination, missing skill,
+input bounds, learner isolation including corrupt cross-learner attempt links,
+no competency-state creation and no independence claim from zero hints. Ruff
+passes; OpenAPI/client types regenerated. This is unfinished local work: UI,
+full type checking, review and publication remain. Do not treat the raw score
+as a UI mastery percentage or these records as a complete explanation of the
+original question/rubric; detailed immutable attempt provenance still needs
+inspection before the explanation panel can claim it.
+
+### Progress evidence view verified — 2026-10-11
+
+`/progress` now offers concept selection, dated Understanding/Practice/Recall
+evidence and explicitly unverified Independent application. Paginated records
+show grading provenance and reported hints; no mastery percentage or independent
+work inference. Counts/latest dates aggregate the full evidence set, not just
+the visible page. Selecting a lesson uses the existing Home confirmation flow.
+
+Three backend checks, Ruff, full backend mypy (221 files), frontend ESLint and
+production build pass. Two320/1280 browser journeys cover keyboard disclosure/
+pagination, page-failure retention/retry, empty evidence, concept switching,
+Back, no horizontal overflow and no POST requests. Narrow rendered page
+visually inspected. Review caught pagination-error loss of loaded records;
+retained-page recovery implemented and re-reviewed. An initial browser run
+exposed an ambiguous concept label; explicit label/id now verified. One
+overlapping rerun was rejected by the sandbox's occupied-port guard; the final
+isolated run passed.
+
+Limitations: rubric/question snapshots and meaningful proficiency levels are
+not yet surfaced; no independent-work verification exists. Current design
+rows honestly report evidence availability instead of inventing levels. The
+next-useful-evidence link reuses the learning session rather than introducing
+a separate recommendation engine. Full PDF page10 and human comprehension
+acceptance remain open. Shell destination exposure is next.
