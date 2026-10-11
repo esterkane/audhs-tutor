@@ -1457,3 +1457,5 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 2026-10-11: Notebook setup now retains immutable request identity across lost acknowledgement/reload, uses read-only recovery and separates historical results from active setup. Storage failures offer explicit memory-only recovery; backend restart remains unknown.14 backend/12 frontend/5 desktop+narrow keyboard browser checks, visual inspection, lint/types/build/mypy217 and bounded review pass. See slices/notebook-start-recovery-plan.md. No cell execution or learning changes.
 
 2026-10-11: CI exposed an outdated notebook status fixture in the Programs return-to-notes test. Added the service identity now returned by the API. All20 Programs/notebook tests and focused ESLint pass; no runtime change.
+
+2026-10-11: Added a local-only synthetic workspace evaluator and retention-consistency case. One production-path sample reproduced a semantic count/rate failure; no quality-pass or speed improvement claimed. Three preflight guard tests, Ruff and bounded review pass. No tutor runtime changes. See evals/workspace/README.md.

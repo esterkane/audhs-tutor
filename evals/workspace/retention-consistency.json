@@ -1,0 +1,24 @@
+{
+  "id": "retention-consistency",
+  "surface": "Study Tutor",
+  "intent": "explain",
+  "questioning_style": "explicit",
+  "exercise": "Group A starts with 100 rows and retains 90; group B starts with 50 and retains 30. Rows not retained were removed because they were incomplete.",
+  "question": "How could dropping incomplete rows bias this comparison?",
+  "reference": {
+    "A": {"original": 100, "retained": 90, "removed": 10, "retention_rate": 0.9, "removal_rate": 0.1},
+    "B": {"original": 50, "retained": 30, "removed": 20, "retention_rate": 0.6, "removal_rate": 0.4},
+    "B_share_before": 0.3333333333333333,
+    "B_share_after": 0.25
+  },
+  "manual_acceptance": [
+    "Keep group identities and denominators intact: B loses more rows both absolutely and proportionally.",
+    "Explain that B becomes less represented after cleaning; do not invert the observed direction.",
+    "Distinguish observed representation change from hypotheses about why data is missing.",
+    "Do not claim that model accuracy or fairness improved or worsened without downstream evaluation.",
+    "Explain before asking a question; no mastery claim or automatic learning-state update."
+  ],
+  "negative_example": "Group A has more incomplete rows than group B, so dropping them disproportionately reduces group A.",
+  "status": "Known production-path counterexample; not an automated semantic pass/fail oracle.",
+  "evaluation_contract": "Use the production respond path on disposable SQLite with hosted keys disabled. Record raw answer, model, prompt version, first-text and total timing. Review meaning against all criteria; merely mentioning the correct numbers does not pass. This fixture is separate from attention-session YAML cases."
+}
