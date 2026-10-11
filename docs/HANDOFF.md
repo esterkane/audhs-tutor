@@ -1650,3 +1650,11 @@ types/lint/build and code/pedagogy reviews pass; narrow open-state screenshot in
 uses fixture area IDs without real concepts and honestly shows its loading-error
 recovery; real concept/error flows were separately checked in the Explore slice.
 Broader shared-control adoption and human/AT acceptance remain open.
+
+
+2026-10-11: Fixed CI Ruff E501 in the crash-recovery test's embedded child script
+by wrapping its unchanged claim arguments. Full backend lint and format checks pass;
+all four real-process crash-recovery cases pass. Prior integrated validation passed
+1156 backend tests and 630 frontend tests; this whitespace-only test correction does
+not change application or learning behavior. Latest remote CI remains unverified
+until the new published head completes. Full design-system acceptance remains open.

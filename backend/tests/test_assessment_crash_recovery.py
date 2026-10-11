@@ -49,7 +49,8 @@ async def main():
     async with make_session_factory(engine)() as db:
         body = AttemptRequest.model_validate(json.loads(sys.argv[3]))
         claim, saved = await workspace_requests.claim(
-            db, sys.argv[2], body.session_id, 'assessment:' + sys.argv[4], body.model_dump(mode='json', exclude={'revision_of_attempt_id'})
+            db, sys.argv[2], body.session_id, 'assessment:' + sys.argv[4],
+            body.model_dump(mode='json', exclude={'revision_of_attempt_id'})
         )
         assert saved is None
         guard = AssessmentGuard.create(Path(sys.argv[1]), claim) if sys.argv[6] == "yes" else None
