@@ -22,7 +22,7 @@ async function setZoom(context: BrowserContext, page: Page, factor: number) {
   expect(actual).toBe(factor)
 }
 
-for (const width of [640, 1280]) test(`real 200% browser zoom preserves learning at ${width / 2} CSS pixels`, async ({ request, baseURL }, info) => {
+for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, theme: 'dark' }]) test(`real 200% browser zoom preserves learning at ${width / 2} CSS pixels in ${theme}`, async ({ request, baseURL }, info) => {
   const extension = info.outputPath('zoom-extension')
   await mkdir(extension, { recursive: true })
   await writeFile(join(extension, 'manifest.json'), JSON.stringify({
@@ -38,6 +38,7 @@ for (const width of [640, 1280]) test(`real 200% browser zoom preserves learning
   })
   try {
     await endOpenSession(request)
+    await expectOk(await request.put(`${API}/api/preferences`, { data: { key: 'ui.theme', value: theme } }))
     for (const key of ['goal.area', 'goal.course']) await expectOk(await request.put(`${API}/api/preferences`, { data: { key, value: '' } }))
     const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
     await expectOk(response)
@@ -59,6 +60,25 @@ for (const width of [640, 1280]) test(`real 200% browser zoom preserves learning
     await page.keyboard.press('Enter')
     const draft = page.getByLabel('Ask about this lesson (optional)')
     await draft.fill('Keep my question through real browser zoom')
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(theme === 'dark' ? 'rgb(29, 30, 36)' : 'rgb(247, 248, 252)')
+    const pause = page.getByRole('button', { name: 'Pause and return Home', exact: true })
+    await pause.focus()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Focus on lesson', exact: true })).toBeFocused()
+    await page.keyboard.press('Tab')
+    const options = page.locator('summary').filter({ hasText: /^Session options$/ })
+    await expect(options).toBeFocused()
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'End session', exact: true })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Change topic', exact: true })).toBeFocused()
+    await page.keyboard.press('Shift+Tab')
+    await page.keyboard.press('Shift+Tab')
+    await expect(options).toBeFocused()
+    await page.keyboard.press('Enter')
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('button', { name: 'Learning context', exact: true })).toBeFocused()
     const contextButton = page.getByRole('button', { name: 'Learning context', exact: true })
     await contextButton.focus()
     await page.keyboard.press('Enter')
@@ -96,5 +116,6 @@ for (const width of [640, 1280]) test(`real 200% browser zoom preserves learning
   } finally {
     await context.close()
     await endOpenSession(request)
+    await expectOk(await request.put(`${API}/api/preferences`, { data: { key: 'ui.theme', value: 'light' } }))
   }
 })

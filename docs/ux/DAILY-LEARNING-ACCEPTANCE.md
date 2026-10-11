@@ -277,3 +277,12 @@ the bottom navigation. Explanation heading document top is658/608/383px at
 320/390/1280 respectively, identical in light/dark; not a human comprehension result.
 Existing bundle-size warning remains. Empty-entry/composer hierarchy and broader
 human/AT acceptance remain open. Logs:/tmp/lesson-heading-{browser,unit,build}.log.
+
+
+2026-10-11: Actual200% zoom coverage now includes sequential Tab/Shift+Tab through
+Pause, Focus, Session options, End, Change topic and context; opening/closing options
+keeps the expected focus order. Two cases pass: light320 and dark640 CSS pixels.
+Theme is verified and reset; dark compositor screenshot inspected. Focused lint,
+standalone test types and code review pass. Runtime/build unchanged. This is not
+both themes at both widths or screen-reader/human acceptance. Log:
+/tmp/zoom-keyboard-theme.log.

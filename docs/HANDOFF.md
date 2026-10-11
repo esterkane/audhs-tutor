@@ -1801,3 +1801,6 @@ the bottom navigation. Explanation heading document top is658/608/383px at
 320/390/1280 respectively, identical in light/dark; not a human comprehension result.
 Existing bundle-size warning remains. Empty-entry/composer hierarchy and broader
 human/AT acceptance remain open. Logs:/tmp/lesson-heading-{browser,unit,build}.log.
+
+2026-10-11: Added real-zoom sequential keyboard/dark-theme acceptance; details in
+docs/ux/DAILY-LEARNING-ACCEPTANCE.md. Two cases/lint/types/review pass. Runtime unchanged.
