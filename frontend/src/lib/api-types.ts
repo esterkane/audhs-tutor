@@ -1536,6 +1536,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/areas/{area_id}/concepts': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Concepts
+     * @description Exact activated membership, not source-title matching or learning evidence.
+     */
+    get: operations['concepts_api_areas__area_id__concepts_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/adaptations': {
     parameters: {
       query?: never
@@ -2656,6 +2676,24 @@ export interface components {
       kind: 'area'
       /** Area Id */
       area_id: string
+    }
+    /** AreaConcept */
+    AreaConcept: {
+      /** Id */
+      id: string
+      /** Title */
+      title: string
+      /** Description */
+      description: string
+      /** Success Criteria */
+      success_criteria: string[]
+    }
+    /** AreaConcepts */
+    AreaConcepts: {
+      /** Area Id */
+      area_id: string
+      /** Concepts */
+      concepts: components['schemas']['AreaConcept'][]
     }
     /** AreaEdit */
     AreaEdit: {
@@ -9241,6 +9279,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['FeedbackList']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  concepts_api_areas__area_id__concepts_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        area_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AreaConcepts']
         }
       }
       /** @description Validation Error */

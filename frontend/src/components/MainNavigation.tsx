@@ -35,7 +35,7 @@ export function MainNavigation() {
   useEffect(() => { dialog.current?.close() }, [location.key])
   const primary = ['/session', '/recap', '/review'].includes(path) ? '/learn'
     : path === '/map' ? '/progress'
-      : ['/search', '/sources'].includes(path) ? '/areas' : path
+      : ['/search', '/sources', '/areas'].includes(path) ? '/explore' : path
   function close() { dialog.current?.close(); trigger.current?.focus() }
   return <aside className="shell-navigation-container" data-collapsed={collapsed}>
     <button ref={railToggle} className="shell-rail-toggle" aria-label={collapsed ? 'Expand navigation' : 'Collapse navigation'}

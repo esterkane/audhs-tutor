@@ -15,6 +15,7 @@ import { Corpus } from '../routes/Corpus'
 import { Search } from '../routes/Search'
 import { Sources } from '../routes/Sources'
 import { Answers } from '../routes/Answers'
+import { Explore } from '../routes/Explore'
 import { Areas } from '../routes/Areas'
 import { Curriculum } from '../routes/Curriculum'
 import { Experiments } from '../routes/Experiments'
@@ -44,6 +45,7 @@ const pageTitles: Record<string, string> = {
   ...Object.fromEntries([...primaryPages, ...toolPages]),
   '/programs': 'Project study',
   '/areas': 'Learning areas',
+  '/explore': 'Explore',
   '/corrections': 'Correction drafts',
   '/learn': 'Learn',
   '/practice': 'Practice',
@@ -155,6 +157,7 @@ export default function App() {
             <Route path="/preferences" element={<Preferences />} />
             <Route path="/corrections" element={<CorrectionEditor />} />
             <Route path="/corpus" element={<Corpus />} />
+            <Route path="/explore" element={<Explore />} />
             <Route path="/areas" element={<Areas />} />
             <Route path="/programs" element={<Programs />} />
             <Route path="/curriculum" element={<Curriculum />} />

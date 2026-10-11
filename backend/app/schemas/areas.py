@@ -93,3 +93,15 @@ class FeedbackList(BaseModel):
 class FeedbackPreference(BaseModel):
     key: Literal["questions.applied", "questions.connections", "questions.step_by_step"]
     enabled: bool
+
+
+class AreaConcept(BaseModel):
+    id: str
+    title: str
+    description: str
+    success_criteria: list[str]
+
+
+class AreaConcepts(BaseModel):
+    area_id: str
+    concepts: list[AreaConcept]

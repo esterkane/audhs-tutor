@@ -271,3 +271,10 @@ browser Back returns to the selected concept. Narrow full-page screenshot inspec
 Existing large-chunk warning remains. Historical help-selector test updated to the
 new Explain the difficult part label. No competency or independence interpretation
 changed. Broader human/AT and Progress evidence-level design acceptance remain open.
+
+2026-10-11 Explore inspection: current /areas is authoring-first, conflicting with
+PDF p10's concept/outcome-first learner navigation. Two baseline browse-area journeys
+pass (390/1280), confirming browsing is separate from learning selection. Recorded
+route/data/dirty-edit invariants in EXPLORE-LEARNER-CONTRACT.md before structural
+changes. Next inspect exact activated-concept membership and implement the learner
+entry without replacing the authoring workflow. No runtime changes in this step.

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { useAreas } from './api'
 import { useBrowseAreas } from './browseState'
@@ -7,6 +7,8 @@ export function BrowseArea() {
   const areas = useAreas()
   const { current, recent, storageError } = useBrowseAreas()
   const navigate = useNavigate()
+  const location = useLocation()
+  const destination = location.pathname === '/areas' ? '/areas' : '/explore'
   const catalog = areas.data?.areas ?? []
   const selected = catalog.find(area => area.id === current)
   const recentAreas = recent.flatMap(id => catalog.filter(area => area.id === id))
@@ -22,13 +24,13 @@ export function BrowseArea() {
       {areas.data && <label className="text-sm">
         Area to browse
         <select className="block w-full min-w-0 max-w-full border border-line bg-card rounded p-2" value={selected?.id ?? ''}
-          onChange={event => navigate(event.target.value ? `/areas?area=${encodeURIComponent(event.target.value)}` : '/areas')}>
+          onChange={event => navigate(event.target.value ? `${destination}?area=${encodeURIComponent(event.target.value)}` : destination)}>
           <option value="">All learning areas</option>
           {!!recentAreas.length && <optgroup label="Recent in this tab">{recentAreas.map(area => <option key={area.id} value={area.id}>{area.title}</option>)}</optgroup>}
           <optgroup label="All areas">{catalog.filter(area => !recent.includes(area.id)).map(area => <option key={area.id} value={area.id}>{area.title}</option>)}</optgroup>
         </select>
       </label>}
-      <Link className="underline text-sm" to={selected ? `/areas?area=${encodeURIComponent(selected.id)}` : '/areas'}>{selected ? 'Open this area' : 'Open all learning areas'}</Link>
+      <Link className="underline text-sm" to={selected ? `${destination}?area=${encodeURIComponent(selected.id)}` : destination}>{selected ? 'Open this area' : 'Open all learning areas'}</Link>
       {selected && <Link className="underline text-sm" to={`/map?area=${encodeURIComponent(selected.id)}`}>View this area’s skill map</Link>}
       {areas.isSuccess && !catalog.length && <p className="text-sm">No areas yet. Open Learning areas to prepare them.</p>}
       {areas.isSuccess && current && !selected && <p className="text-sm">The previously browsed area is unavailable. Choose another area.</p>}

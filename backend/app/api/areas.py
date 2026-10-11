@@ -7,9 +7,11 @@ from pydantic import BaseModel
 
 from app.api.deps import DB, Learner, SettingsDep
 from app.core.errors import AppError
-from app.kernel import areas, question_feedback
+from app.kernel import areas, question_feedback, skill_graph
 from app.orchestrator import area_drafting
 from app.schemas.areas import (
+    AreaConcept,
+    AreaConcepts,
     AreaEdit,
     AreaList,
     AreaSources,
@@ -200,3 +202,22 @@ async def withdraw(feedback_id: str, db: DB, learner: Learner) -> FeedbackList:
 async def feedback_preference(body: FeedbackPreference, db: DB, learner: Learner) -> FeedbackList:
     await question_feedback.set_guidance(db, learner.id, body.key, body.enabled)
     return await feedback_list(db, learner)
+
+
+@router.get("/{area_id}/concepts", response_model=AreaConcepts)
+async def concepts(area_id: str, db: DB, learner: Learner) -> AreaConcepts:
+    """Exact activated membership, not source-title matching or learning evidence."""
+    await areas.get(db, area_id)
+    return AreaConcepts(
+        area_id=area_id,
+        concepts=[
+            AreaConcept(
+                id=node.id,
+                title=node.title,
+                description=node.description,
+                success_criteria=[str(value) for value in node.success_criteria_json or []],
+            )
+            for node in await skill_graph.all_nodes(db)
+            if node.area_id == area_id and skill_graph.teachable(node)
+        ],
+    )

@@ -1630,3 +1630,14 @@ browser Back returns to the selected concept. Narrow full-page screenshot inspec
 Existing large-chunk warning remains. Historical help-selector test updated to the
 new Explain the difficult part label. No competency or independence interpretation
 changed. Broader human/AT and Progress evidence-level design acceptance remain open.
+
+
+2026-10-11: Learner Explore now leads with areas and exact activated concepts, existing
+descriptions/criteria, and explicit Home lesson selection. Preparation stays at/areas
+with its existing edit guards; browse navigation/history are separate from learning.
+Empty areas never substitute unrelated lessons. One backend membership/no-write test,
+six navigation/browser checks plus final three Explore checks (including a real active
+session preserved during selection), types/lint/build and reviews pass. Light320 and
+dark1280 screenshots inspected. No learning-policy changes. Existing chunk warning
+and broad human/AT acceptance remain; this does not complete the entire design system.
+See docs/design/EXPLORE-LEARNER-CONTRACT.md.
