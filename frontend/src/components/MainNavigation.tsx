@@ -16,6 +16,24 @@ export function MainNavigation() {
   const railToggle = useRef<HTMLButtonElement>(null)
   const primaryNav = useRef<HTMLElement>(null)
   useEffect(() => {
+    const nav = primaryNav.current
+    if (!nav || typeof ResizeObserver === 'undefined') return
+    const root = document.documentElement
+    const measure = () => {
+      const height = getComputedStyle(nav).position === 'fixed' ? nav.getBoundingClientRect().height : 0
+      root.style.setProperty('--shell-bottom-nav-height', `${height}px`)
+    }
+    const observer = new ResizeObserver(measure)
+    observer.observe(nav)
+    window.addEventListener('resize', measure)
+    measure()
+    return () => {
+      observer.disconnect()
+      window.removeEventListener('resize', measure)
+      root.style.removeProperty('--shell-bottom-nav-height')
+    }
+  }, [])
+  useEffect(() => {
     const desktop = window.matchMedia('(min-width: 48rem)')
     let toggleHadFocus = false
     const trackFocus = () => { toggleHadFocus = document.activeElement === railToggle.current }

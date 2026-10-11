@@ -1685,3 +1685,17 @@ and320px/200% root-text screenshots inspected; saved-answer dark390/1280 checks 
 Root-text testing is not actual browser zoom. Enlarged bottom-navigation labels remain
 cramped at320px; record this as the next shell readability issue, not a conformance pass.
 Human/AT acceptance and the existing bundle-size warning remain open.
+
+
+2026-10-11: Shell enlarged-text readability (PDF pp6–8): mobile navigation wraps
+whole destination labels into rows instead of breaking words in five fixed columns.
+Tools/Preferences also wrap without fragmenting labels. A cleaned-up ResizeObserver
+reserves measured fixed-navigation height plus spacing; scroll padding protects content
+from its variable height. Same five links/order/current state, no learning logic changes.
+Three baseline shell journeys, eight integrated shell/saved-followup journeys and three
+final shell checks pass (320/390/1280, keyboard, Back/Forward, Tools/Escape,200% root
+text, size restoration). All labels stay single-line with >=44px targets; padding covers
+nav height. A320x568 enlarged-text check confirms scrolled content remains above the
+fixed bar; screenshot inspected alongside narrow layout. Lint/types/build and both
+reviews pass. Root text is not browser zoom; actual zoom, screen-reader and human
+acceptance remain open. Existing bundle-size warning remains.
