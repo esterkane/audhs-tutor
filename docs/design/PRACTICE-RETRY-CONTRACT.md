@@ -104,3 +104,6 @@ concept explanation or different exercise as a same-question retry/full solution
 
 Do not declare the PDF Practice blueprint complete from the preceding feedback-order
 slice. This contract is the next implementation boundary, not a completed feature.
+
+
+2026-10-11: Revision provenance foundation implemented (ADR0020): new attempts record stable content identity; nullable original-attempt relationship and read-only root validator added.32 migration/recovery/root and19 backup tests pass; mypy/Ruff and reviews clear. Legacy provenance stays null. No revision endpoint/UI or changed evidence policy yet; next connect serialized application and replay before exposing controls.

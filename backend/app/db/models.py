@@ -334,6 +334,10 @@ class QuestionCorrectionCommand(LearnerScoped, Base):
 
 class AssessmentAttempt(IdMixin, LearnerScoped, Base):
     __tablename__ = "assessment_attempt"
+    content_fingerprint: Mapped[str | None] = mapped_column(Text)
+    revision_of_attempt_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("assessment_attempt.id"), index=True
+    )
     assessment_id: Mapped[str] = mapped_column(Text, ForeignKey("assessment.id"), index=True)
     session_id: Mapped[str | None] = mapped_column(Text, ForeignKey("session.id"))
     answer: Mapped[str] = mapped_column(Text)

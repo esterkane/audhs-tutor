@@ -142,7 +142,7 @@ def test_published_draft_downgrade_refuses_data_loss(tmp_path):
     command.upgrade(alembic_config(url), "a03d914ba627")
     fill_all_tables(url)
     before = dump_tables(url)
-    command.upgrade(alembic_config(url), "head")
+    command.upgrade(alembic_config(url), "c146f830ad92")
     after = dump_tables(url)
     assert after["question_correction_command"] == before["question_correction_command"]
     assert after["question_correction_draft"] == before["question_correction_draft"]
@@ -158,4 +158,29 @@ def test_published_draft_downgrade_refuses_data_loss(tmp_path):
         )
         conn.execute("UPDATE question_correction_draft SET status='draft'")
     command.downgrade(alembic_config(url), "-1")
+    command.upgrade(alembic_config(url), "head")
+
+
+def test_revision_provenance_migration_preserves_legacy_and_guards_downgrade(tmp_path):
+    path = tmp_path / "revision.db"
+    url = f"sqlite:///{path}"
+    command.upgrade(alembic_config(url), "c146f830ad92")
+    fill_all_tables(url)
+    before = dump_rows(url)["assessment_attempt"]
+    command.upgrade(alembic_config(url), "head")
+    after = dump_rows(url)["assessment_attempt"]
+    assert [{k: row[k] for k in before[0]} for row in after] == before
+    assert all(row["content_fingerprint"] is None for row in after)
+    assert all(row["revision_of_attempt_id"] is None for row in after)
+    with sqlite3.connect(path) as conn:
+        conn.execute("PRAGMA foreign_keys=ON")
+        with pytest.raises(sqlite3.IntegrityError):
+            conn.execute("UPDATE assessment_attempt SET revision_of_attempt_id='missing'")
+        conn.execute("UPDATE assessment_attempt SET revision_of_attempt_id=id")
+        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+    with pytest.raises(RuntimeError, match="revision relationships"):
+        command.downgrade(alembic_config(url), "c146f830ad92")
+    with sqlite3.connect(path) as conn:
+        conn.execute("UPDATE assessment_attempt SET revision_of_attempt_id=NULL")
+    command.downgrade(alembic_config(url), "c146f830ad92")
     command.upgrade(alembic_config(url), "head")

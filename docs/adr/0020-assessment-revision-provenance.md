@@ -1,0 +1,38 @@
+# 0020 — Durable provenance for revised assessment practice
+
+Status: provenance foundation implemented; revised-practice evidence policy and
+endpoint/UI remain pending. Context: owner-requested complete design system p10
+and `docs/design/PRACTICE-RETRY-CONTRACT.md`.
+
+## Decision implemented
+
+Record the existing stable server-only assessment recovery fingerprint on new
+assessment attempts. Add a nullable original-attempt foreign key for the forthcoming
+revision relationship. Existing attempts retain null rather than invented historical
+content identity. These values are not exposed as answer-derived public content tokens.
+
+Validate roots against learner, active session, assessment, original-versus-revised
+status and current eligible content. Unknown legacy provenance is not safe evidence
+of an unchanged question. Read fresh session/root state on revalidation; final runtime
+integration must invoke validation under the existing serialized content-write guard.
+The helper does not acquire that write lock or enable revision submission itself.
+
+The migration adds nullable columns without rewriting historical attempts. Foreign-key
+integrity is tested; downgrade refuses to discard populated revision relationships.
+No grade, competency, FSRS, routing or UI behavior changes in this foundation.
+
+## Pending policy and integration
+
+The proposed distinction between immediate assisted revisions and later independent
+attempts remains in the retry contract. Implement transactional application and
+idempotency checks before exposing new request fields or UI actions. Keep original
+attempts immutable, retain revised work in history, and explicitly label scheduling
+and evidence effects. Do not use a hint count as a substitute for this distinction.
+
+## Evidence
+
+32 revision-root, existing request-recovery and migration tests;19 backup/restore
+and encryption tests; strict mypy on the3 changed modules and targeted Ruff pass.
+Code review identified stale identity-map reads; explicit refresh and a two-connection
+regression resolved it. Bounded code/pedagogy reviews are clear. No UI change, no live
+model calls, and no claim that the retry interaction is complete.

@@ -542,6 +542,7 @@ class Grader:
             result.confidence = min(result.confidence, 0.5)
         score = result.score
         attempt = AssessmentAttempt(
+            content_fingerprint=assessment_content.recovery_fingerprint(content),
             learner_id=learner_id,
             assessment_id=a.id,
             session_id=session.id,

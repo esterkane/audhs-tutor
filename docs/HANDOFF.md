@@ -1578,3 +1578,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11: Same-question retry requires an explicit assisted-practice contract: current new attempts update competency and FSRS, and hint count alone does not change competency weighting. Runtime unchanged; next implementation boundary and recovery/evidence gates documented in docs/design/PRACTICE-RETRY-CONTRACT.md. Two backend replay/concurrency tests pass (local deterministic fixtures, no model calls).
+
+
+2026-10-11: Revision provenance foundation implemented (ADR0020): new attempts record stable content identity; nullable original-attempt relationship and read-only root validator added.32 migration/recovery/root and19 backup tests pass; mypy/Ruff and reviews clear. Legacy provenance stays null. No revision endpoint/UI or changed evidence policy yet; next connect serialized application and replay before exposing controls.
