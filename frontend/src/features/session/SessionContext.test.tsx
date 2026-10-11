@@ -11,6 +11,11 @@ const session = {
 } as unknown as SessionOut
 
 describe('persisted learning context', () => {
+  it('uses one concept heading in the compact session orientation', () => {
+    render(<SessionContext data={session} compact />)
+    expect(screen.getByRole('heading', { level: 1, name: 'Learn: Current concept' })).toBeVisible()
+    expect(screen.queryByText('Concept:')).not.toBeInTheDocument()
+  })
   it('uses the active concept rather than the next recommendation', () => {
     render(<SessionContext data={session} />)
     expect(screen.getByText('Explain the current idea.')).toBeVisible()

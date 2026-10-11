@@ -58,3 +58,18 @@ review gates. Human comprehension/discoverability remains an explicit separate g
 Likely files: routes/Session.tsx, features/session/SessionControls.tsx,
 SessionContext.tsx, LessonContextPanel.tsx, existing lesson layout/focus/recovery
 browser tests. Avoid shell-wide changes and unrelated screens in this slice.
+
+
+2026-10-11 DL-02 single concept heading implemented: compact session orientation
+now owns the one concept h1 above Pause/Focus. Teach no longer repeats the heading
+in an otherwise empty card; experiment/error/wait notices retain that card when
+needed. Assessment/challenge retain h2 activity headings; movement retains h1.
+No ownership, keys, draft, audio or learning logic moved. Unit fixture corrected to
+include API active_skill rather than rely on the next recommendation for the title.
+Twenty browser journeys pass (layout, Focus, headings, challenge, reading/assessment
+return, stream recovery and actual zoom);15 unit tests, lint/types/build and both
+reviews pass.390px initial screenshot inspected: Start explanation is visible above
+the bottom navigation. Explanation heading document top is658/608/383px at
+320/390/1280 respectively, identical in light/dark; not a human comprehension result.
+Existing bundle-size warning remains. Empty-entry/composer hierarchy and broader
+human/AT acceptance remain open. Logs:/tmp/lesson-heading-{browser,unit,build}.log.

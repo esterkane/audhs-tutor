@@ -336,12 +336,12 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
     <div className="grid grid-cols-1 gap-4">
       <div data-focus-secondary><AdaptationCards origin="planner" /></div>
       {stopSession.error && <p role="alert">{stopSession.error.message}</p>}
-      <Card>
-        <CardTitle as="h1" className="mb-2">
+      <Card hidden={phase === 'teach' && !data.experiment && !blockNote && !transition.waitingLong && !transition.error}>
+        {phase !== 'teach' && <CardTitle as={phase === 'practice' ? 'h1' : 'h2'} className="mb-2">
           {phase === 'practice'
             ? `${currentBlock.domain === 'language' ? 'Language' : currentBlock.domain === 'guitar' ? 'Guitar' : 'Movement'} block`
-            : `${phase === 'teach' ? 'Learn' : phase === 'assess' ? 'Check yourself' : 'Challenge'}: ${skill?.title ?? '…'}`}
-        </CardTitle>
+            : phase === 'assess' ? 'Check yourself' : 'Challenge'}
+        </CardTitle>}
         {phase !== 'teach' && <p className="text-sm mt-2">
           {phase === 'assess'
             ? 'Read the context, use a hint if helpful, and try an answer when ready.'

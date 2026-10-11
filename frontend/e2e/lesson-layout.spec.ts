@@ -18,6 +18,11 @@ for (const width of [320, 390, 1280]) test(`lesson leads before optional tools $
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
     const explanation = page.getByRole('heading', { name: 'Your explanation' })
     await expect(explanation).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
+    const topic = page.getByRole('heading', { level: 1 })
+    const pause = page.getByRole('button', { name: 'Pause and return Home' })
+    expect((await topic.boundingBox())!.y).toBeLessThan((await pause.boundingBox())!.y)
+    console.log(JSON.stringify({ width, theme, explanationDocumentTop: await explanation.evaluate(el => el.getBoundingClientRect().top + scrollY) }))
     await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(theme === 'dark' ? 'rgb(29, 30, 36)' : 'rgb(247, 248, 252)')
     for (const label of ['Session plan and energy settings', 'More ways to learn']) {
       const disclosure = page.locator('summary').filter({ hasText: label })

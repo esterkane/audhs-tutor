@@ -22,7 +22,7 @@ const plan = [
 ]
 
 function session(state: Record<string, unknown>) {
-  return {
+  const result = {
     id: 's1',
     mode: 'steady',
     energy: 3,
@@ -65,6 +65,7 @@ function session(state: Record<string, unknown>) {
       ...state,
     },
   }
+  return { ...result, active_skill: state.skill_id === 'k1' ? result.next_skill : null }
 }
 
 const running0 = {

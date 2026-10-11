@@ -16,7 +16,8 @@ export function SessionContext({ data, compact = false }: { data: SessionOut; co
         <h3 className="text-xs text-muted">Learning goal</h3>
         <p className="text-sm">{skill?.description || 'No learning objective is recorded for this concept.'}</p>
       </div>}
-      <p className="text-sm"><span className="text-muted">Concept: </span><strong>{skill?.title || 'Concept unavailable'}</strong></p>
+      {compact ? <h1 className="text-page-title font-semibold">Learn: {skill?.title || 'Concept unavailable'}</h1>
+        : <p className="text-sm"><span className="text-muted">Concept: </span><strong>{skill?.title || 'Concept unavailable'}</strong></p>}
     </>}
     <p className="text-sm text-muted">Activity {index + 1} of {plan.length} · {BLOCK_LABELS[block.type] ?? block.type}
       {block.planned_min != null && <> · about {block.planned_min} min</>}
