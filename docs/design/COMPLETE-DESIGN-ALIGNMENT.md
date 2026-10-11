@@ -43,8 +43,10 @@ Current order (reconciled after implementation; dated entries below remain histo
    Do not reimplement the delivered heading, controls or below-activity settings.
 3. Audit remaining shared-control/token adoption by concrete screen/finding, without
    redesigning unrelated views. Shell, local fonts, palette and five destinations exist.
-4. Progress evidence levels require an explicit provenance/learning-policy contract;
-   visual labels must not manufacture independent application from scores or absent hints.
+4. Progress evidence policy and staged implementation are documented in
+   PROGRESS-EVIDENCE-CONTRACT.md. The proposal is not an accepted ADR; retain current
+   factual records until attainment semantics are resolved. Never manufacture
+   independent application from scores or absent hints.
 5. Extend acceptance beyond the bounded actual200% Chromium lesson checks (light320,
    dark640): other affected flows/themes, screen-reader use and owner re-entry remain
    unverified. Root-font enlargement and screenshots are not substitutes.

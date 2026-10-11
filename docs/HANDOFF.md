@@ -1876,3 +1876,13 @@ Controls retain owners/positions; no auto-generation or learning-policy changes.
 Seventeen browser checks, ten Session tests, lint/types/build and reviews pass;
 390px screenshot inspected. Human/AT/physical-audio acceptance and latest-head CI
 remain open. See design/LESSON-ORIENTATION-CONTRACT.md; /tmp/lesson-entry-*.log.
+
+
+2026-10-11 Progress design dependency documented in
+ design/PROGRESS-EVIDENCE-CONTRACT.md: current records cannot establish the proposed
+attainment labels or independent work. Inspected evidence/attempt schema, grader,
+read model, current UI, accepted ADRs and existing regression assertions. Proposed
+semantics, required decisions, four bounded implementation slices and acceptance
+matrix are now explicit; no ADR accepted and no runtime/kernel change. Pedagogy
+review found no major omissions. Runtime checks reused unchanged; diff check passed.
+Continue independent design/reliability work while the policy is unresolved.
