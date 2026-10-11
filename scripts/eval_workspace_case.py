@@ -53,7 +53,7 @@ async def run(case_path: Path, output: Path) -> None:
         "case": case["id"],
         "case_sha256": hashlib.sha256(raw).hexdigest(),
         "synthetic": True,
-        "prompt_version": VERSION + (".counts.v1" if body.group_counts is not None else ""),
+        "prompt_version": VERSION + (".counts.v2" if body.group_counts is not None else ""),
         "scope": "One production respond call, no browser timing or automatic semantic grade",
         "manual_acceptance": case["manual_acceptance"],
         "reference": case["reference"],

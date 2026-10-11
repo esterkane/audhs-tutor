@@ -114,3 +114,18 @@ Remaining: contextual correction of contradictory explanations; broader represen
 evaluation; human comprehension. Latest prior public CI38128472700 finished with292 browser
 passes and2 failures in parking-lesson-context (original-material context not visible). Its other
 jobs passed. These failures predate count attachment; investigate the route/context timing next.
+
+## 2026-10-11 — Explicit representation direction
+
+The conditional calculation now spells out increased/decreased/unchanged representation,
+using exact fractions rather than absolute losses or rounded percentages. Zero overall
+before/after totals remain undefined. Renamed/reordered groups and equal proportional
+removal are covered. Counts prompt metadata advances to v2 to prevent exact old-answer reuse.
+44 focused tests, Ruff and bounded code/pedagogy review pass. No model sample has been
+rerun; the earlier contradictory interpretation remains unresolved. No mastery/grading change.
+Rendered acceptance found document overflow at390px: conversation grid tracks used intrinsic
+code width. Explicit single flexible columns now contain preformatted text in its existing
+scroll region. Two desktop/narrow journeys pass after a reproduced narrow failure; keyboard
+Compare/Attach/table scrolling retained, narrow screenshot inspected.36 component tests,
+frontend lint/build and backend types pass. Bounded follow-up review clear. This supplies
+clearer deterministic evidence, not a validated model fix.

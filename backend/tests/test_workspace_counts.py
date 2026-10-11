@@ -98,7 +98,7 @@ async def test_api_preserves_snapshot_replays_without_model_and_rejects_changed_
     assert "Retained: 3/5" in first.json()["text"]
     saved = await db.get(TutorAnswer, first.json()["answer_id"])
     assert saved.request_json["group_counts"] == raw["group_counts"]
-    assert saved.metadata_json["prompt_version"].endswith(".counts.v1")
+    assert saved.metadata_json["prompt_version"].endswith(".counts.v2")
     replay = await client.post("/api/playground/tutor", json=raw, headers=headers)
     assert replay.status_code == 200
     assert replay.json()["text"] == first.json()["text"]
@@ -116,3 +116,28 @@ async def test_invalid_counts_rejected_before_inference(client, fake_local, valu
     response = await client.post("/api/playground/tutor", json=raw)
     assert response.status_code == 422
     assert not fake_local.calls
+
+
+@pytest.mark.parametrize(
+    "rows,expected",
+    [
+        ([("X", 100, 90), ("Y", 50, 30)], ["increased", "decreased"]),
+        ([("Y", 50, 30), ("X", 100, 90)], ["decreased", "increased"]),
+        ([("X", 100, 50), ("Y", 50, 25)], ["unchanged", "unchanged"]),
+        ([("X", 1, 0), ("Y", 1, 0)], ["undefined (zero total before or after)"] * 2),
+        ([("X", 0, 0), ("Y", 1, 1)], ["unchanged", "unchanged"]),
+        ([("X", 0, 0), ("Y", 0, 0)], ["undefined (zero total before or after)"] * 2),
+    ],
+)
+def test_direction_uses_exact_share_not_absolute_losses(rows, expected):
+    raw = payload()
+    raw["group_counts"]["groups"] = [
+        {"label": label, "before": before, "after": after} for label, before, after in rows
+    ]
+    summary = count_summary(PlaygroundRequest.model_validate(raw))
+    actual = [
+        line.split(": ", 1)[1]
+        for line in summary.splitlines()
+        if "Share within entered groups:" in line
+    ]
+    assert actual == expected

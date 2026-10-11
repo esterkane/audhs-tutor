@@ -556,11 +556,11 @@ function Conversation({
         </p>
       </details>
       {reply && (
-        <div className="mt-3 grid gap-3" aria-label="Tutor conversation">
+        <div className="mt-3 grid grid-cols-1 gap-3" aria-label="Tutor conversation">
           {conversation.length > 2 && (
             <details>
               <summary>Earlier messages ({conversation.length - 2})</summary>
-              <ol className="grid gap-3 mt-2">
+              <ol className="grid grid-cols-1 gap-3 mt-2">
                 {conversation.slice(0, -2).map((message, index) => (
                   <li key={index} className="border-l-2 border-line pl-3">
                     <p className="font-semibold">{message.role === 'user' ? 'You' : 'Tutor'}</p>

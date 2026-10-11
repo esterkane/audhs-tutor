@@ -19,6 +19,16 @@ def count_summary(body: PlaygroundRequest) -> str:
     result = compare_groups(body.group_counts)
     lines = [f"Total: {result.before_total} before → {result.after_total} after"]
     for row in result.groups:
+        before, after = row.representation_before, row.representation_after
+        direction = (
+            "undefined (zero total before or after)"
+            if before is None or after is None
+            else "increased"
+            if after > before
+            else "decreased"
+            if after < before
+            else "unchanged"
+        )
         # JSON quoting escapes line breaks and keeps labels literal in the code block.
         lines.extend(
             [
@@ -29,6 +39,7 @@ def count_summary(body: PlaygroundRequest) -> str:
                 f"{row.representation_before if row.representation_before is not None else 'undefined'}"
                 " → "
                 f"{row.representation_after if row.representation_after is not None else 'undefined'}",
+                f"  Share within entered groups: {direction}",
             ]
         )
     # Indented code keeps user-controlled labels literal in the rendered calculation.

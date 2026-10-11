@@ -287,7 +287,7 @@ async def respond(
     evidence_identity = evidence.identity() if evidence else None
     prompt_version = VERSION + ".lesson.v2" if evidence is not None else VERSION
     if body.group_counts is not None:
-        prompt_version += ".counts.v1"
+        prompt_version += ".counts.v2"
     if body.intent == "starter":
         prompt_version += "." + STARTER_VERSION
     source_status: Literal["supplied", "empty", "unavailable", "not_requested"] = (

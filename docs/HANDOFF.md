@@ -1479,3 +1479,5 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 2026-10-11: Recovered8 Markdown reference files from a pinned repository whose full archive exceeded the acquisition limit. Downloaded file bytes match the exact Git blob identities; all8 documents ingested with hosted budget0/no-media and60 canonical chunks match Qdrant text/identity. Selected paths, source receipt and incomplete scope remain private. Examples/shaders/assets/execution and whole-repository coverage are NOT completed; original full-source failure remains in the ledger. No application code changed.
 
 2026-10-11: Conservative Markdown-only CI reuse implemented; code/PR/unknown cases run all gates and publication checks always run.15 tests, Ruff and bounded review pass. See slices/ci-gates.md. New remote workflow remains to verify.
+
+2026-10-11: Exact representation directions and narrow reply containment verified:44 backend/36 UI/2 browser checks, lint/types/build and review pass. See slices/structured-counts-tutor-plan.md. Model interpretation remains unverified.
