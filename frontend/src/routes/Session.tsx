@@ -7,6 +7,7 @@ import { useCheckedQuestion } from '../features/assess/useCheckedQuestion'
 import { RememberContext } from '../features/recent/RememberContext'
 import { AlongsideMode } from '../features/session/AlongsideMode'
 import { AssessmentRecovery } from '../features/assess/AssessmentRecovery'
+import { AssessmentEvidence } from '../features/assess/AssessmentEvidence'
 import { AssessmentDiscussion } from '../features/assess/AssessmentDiscussion'
 import { AssessmentSaveStatus } from '../features/programs/AssessmentSaveStatus'
 import { AnswerSaveStatus } from '../features/programs/AnswerSaveStatus'
@@ -1222,6 +1223,12 @@ function AssessPanel({
       {result && (
         <Card role="status" className={result.score >= 0.85 ? 'border-ok' : 'border-warn'}>
           <h3 className="font-medium">Feedback on your answer</h3>
+          <AssessmentEvidence result={result} />
+          <AssessmentSaveStatus
+            key={result.attempt_id}
+            result={result}
+            onSaved={(answerId) => setResult({ ...result, answer_id: answerId, save_error: null, save_receipt: null })}
+          />
           <Disclosure className="text-sm text-muted mt-2" label="Score and grading details">
             <p>
               Score {(result.score * 100).toFixed(0)}% · graded by {result.grader_level} · confidence{' '}
@@ -1229,28 +1236,10 @@ function AssessPanel({
                 ? 'not supplied'
                 : `${result.confidence_pre}/5: ${result.calibration}`}
             </p>
+            <p>Mastery estimate after this attempt {(result.mastery * 100).toFixed(0)}%</p>
           </Disclosure>
-          <p className="mt-2">{result.feedback}</p>
-          <AssessmentSaveStatus
-            key={result.attempt_id}
-            result={result}
-            onSaved={(answerId) => setResult({ ...result, answer_id: answerId, save_error: null, save_receipt: null })}
-          />
-          <p className="mt-1 text-sm">{result.next_step}</p>
-          {result.misconception && (
-            <p className="mt-1 text-sm text-warn">Possible misconception: {result.misconception}</p>
-          )}
-          <ul className="mt-2 text-sm list-disc ml-5">
-            {result.criterion_results.map((c) => (
-              <li key={c.criterion}>
-                {c.passed ? '✓' : '✗'} {c.criterion}
-                {c.evidence ? ` — ${c.evidence}` : ''}
-              </li>
-            ))}
-          </ul>
           <p className="mt-2 text-sm text-muted">
-            Mastery after this attempt {(result.mastery * 100).toFixed(0)}% · review scheduled after this
-            attempt {new Date(result.review.due as string).toLocaleString()}
+            Review scheduled after this attempt {new Date(result.review.due as string).toLocaleString()}
           </p>
           <div className="flex gap-2 flex-wrap mt-3">
             <Button variant="primary" onClick={onFinishBlock} disabled={transitionPending}>

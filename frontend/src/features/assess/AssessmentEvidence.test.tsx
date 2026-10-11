@@ -1,0 +1,26 @@
+import { render, screen, within } from '@testing-library/react'
+import { expect, it } from 'vitest'
+import { AssessmentEvidence } from './AssessmentEvidence'
+
+const result = { feedback: 'Compare the retained proportions.', next_step: 'Reconsider the denominator.', misconception: null }
+it('orders recorded strengths before gaps and preserves evidence exactly', () => {
+  render(<AssessmentEvidence result={{ ...result, criterion_results: [
+    { criterion: 'Compare proportions', passed: false, evidence: 'Only totals were compared.' },
+    { criterion: 'Identify groups', passed: true, evidence: 'Both groups were named.' },
+  ] }} />)
+  expect(screen.getAllByRole('heading').map(h => h.textContent)).toEqual(['What was right', 'What to reconsider', 'Why'])
+  expect(within(screen.getByRole('region', { name: 'What was right' })).getByText('Identify groups — Both groups were named.')).toBeVisible()
+  expect(within(screen.getByRole('region', { name: 'What to reconsider' })).getByText('Compare proportions — Only totals were compared.')).toBeVisible()
+})
+it('does not invent strengths or gaps when criteria are absent', () => {
+  render(<AssessmentEvidence result={{ ...result, criterion_results: [] }} />)
+  expect(screen.getByText(/did not provide a criterion-by-criterion/)).toBeVisible()
+  expect(screen.queryByRole('heading', { name: 'What was right' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('heading', { name: 'What to reconsider' })).not.toBeInTheDocument()
+  expect(screen.getByText(result.feedback)).toBeVisible()
+})
+it('does not invent a failed criterion for a fully satisfied rubric', () => {
+  render(<AssessmentEvidence result={{ ...result, criterion_results: [{ criterion: 'Identify groups', passed: true, evidence: '' }] }} />)
+  expect(screen.getByRole('heading', { name: 'What was right' })).toBeVisible()
+  expect(screen.queryByRole('heading', { name: 'What to reconsider' })).not.toBeInTheDocument()
+})

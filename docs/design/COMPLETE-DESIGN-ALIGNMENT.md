@@ -204,3 +204,27 @@ The initial browser locator targeted the summary label span; fixed to focus the 
 summary and reran successfully. No learning-policy change or new dependency.
 Remaining: complete adaptation-dialog blueprint, dark/large-text acceptance for this
 slice, human comprehension and assistive-technology review; not full PDF conformance.
+
+
+## Practice feedback evidence order — 2026-10-11
+
+PDF p10: Session assessment feedback now groups existing passed criteria under What
+was right, then unmet criteria under What to reconsider, then the existing explanation
+and qualified misconception under Why. Empty groups are omitted rather than inferred;
+absent criteria receive an explicit no-breakdown notice. Grader evidence stays verbatim.
+The mastery estimate moves into the existing collapsed grading-details disclosure;
+review date stays visible. No grading, scheduling, save/recovery or progression changes.
+
+Evidence:2 baseline recovery journeys and2 final390/1280 keyboard/responsive journeys
+pass;13 Session/evidence component tests, targeted ESLint and production/type build pass.
+Desktop/narrow screenshots inspected; code/pedagogy reviews found no blockers/majors.
+Synthetic browser grading checks presentation only; the mismatched fixture assessment
+ID was rejected by the existing guard, corrected, and the journeys rerun.
+
+Remaining: PDF outcome-based Try again/Next and the full secondary help choices require
+an explicit retry contract: currently Continue advances a block and Try another question
+fetches a different item. Do not relabel those as retrying the same answer or silently
+change learning evidence. Next inspect assessment retry/idempotency semantics before
+implementing that interaction. Source citations and other grading surfaces also remain
+to reconcile; this slice does not claim the whole Practice blueprint. Human/AT, dark
+and enlarged-text acceptance for this presentation remain open.

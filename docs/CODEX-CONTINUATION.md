@@ -498,3 +498,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11: Adaptation choices/history aligned with PDF pp11–12; clear decisions, collapsed technical details and honest loading/undo recovery.3 component and2 keyboard/responsive browser tests, lint/type/build and bounded reviews pass. Remaining acceptance in docs/design/COMPLETE-DESIGN-ALIGNMENT.md. Learning policy unchanged.
+
+
+2026-10-11: Session feedback now follows recorded strengths → gaps → explanation (PDF p10), with mastery estimate in optional grading details.13 component and2 final browser checks, lint/type/build, screenshots and reviews pass;2 baseline recovery checks passed. Retry/progression contract and remaining acceptance are recorded in docs/design/COMPLETE-DESIGN-ALIGNMENT.md. No learning-policy change.
