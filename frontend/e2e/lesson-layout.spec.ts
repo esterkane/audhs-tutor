@@ -1,9 +1,11 @@
 import { expect, test } from '@playwright/test'
 import { API, currentSession, endOpenSession, expectOk } from './helpers'
 
-for (const width of [320, 390, 1280]) test(`lesson leads before optional tools ${width}`, async ({ page, request }, info) => {
+for (const theme of ['light', 'dark'])
+for (const width of [320, 390, 1280]) test(`lesson leads before optional tools ${width} ${theme}`, async ({ page, request }, info) => {
   await endOpenSession(request)
   try {
+    await expectOk(await request.put(`${API}/api/preferences`, { data: { key: 'ui.theme', value: theme } }))
     for (const key of ['goal.area', 'goal.course'])
       await request.put(`${API}/api/preferences`, { data: { key, value: '' } })
     const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
@@ -16,6 +18,12 @@ for (const width of [320, 390, 1280]) test(`lesson leads before optional tools $
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
     const explanation = page.getByRole('heading', { name: 'Your explanation' })
     await expect(explanation).toBeVisible()
+    await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe(theme === 'dark' ? 'rgb(29, 30, 36)' : 'rgb(247, 248, 252)')
+    for (const label of ['Session plan and energy settings', 'More ways to learn']) {
+      const disclosure = page.locator('summary').filter({ hasText: label })
+      const box = await disclosure.boundingBox()
+      expect(box!.height, `${label} touch target`).toBeGreaterThanOrEqual(44)
+    }
     await page.screenshot({ path: info.outputPath('lesson.png'), fullPage: true })
     const start = page.getByRole('button', { name: 'Start explanation', exact: true })
     const tools = page.locator('summary').filter({ hasText: /^Work alongside$/ })
@@ -30,6 +38,10 @@ for (const width of [320, 390, 1280]) test(`lesson leads before optional tools $
     await start.focus()
     await page.keyboard.press('Tab')
     await expect(page.locator('summary').filter({ hasText: /^More ways to learn$/ })).toBeFocused()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Hint', exact: true })).toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'Hint', exact: true })).not.toBeVisible()
     await page.keyboard.press('Tab')
     await expect(page.getByLabel('Ask about this lesson (optional)')).toBeFocused()
     const controls = page.getByRole('region', { name: 'Session controls' })
@@ -67,5 +79,8 @@ for (const width of [320, 390, 1280]) test(`lesson leads before optional tools $
     await page.getByRole('button', { name: 'Pause and return Home' }).focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible()
-  } finally { await endOpenSession(request) }
+  } finally {
+    await endOpenSession(request)
+    await request.put(`${API}/api/preferences`, { data: { key: 'ui.theme', value: 'light' } })
+  }
 })

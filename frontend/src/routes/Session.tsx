@@ -22,6 +22,7 @@ import { useCallback, useLayoutEffect, useEffect, useRef, useState } from 'react
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
+import { Disclosure } from '../components/ui/disclosure'
 import { Card, CardTitle } from '../components/ui/card'
 import { Choice } from '../components/ui/choice'
 import { Textarea } from '../components/ui/textarea'
@@ -347,8 +348,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             .
           </p>
         )}
-        <details className="mt-3">
-          <summary className="cursor-pointer text-sm">Session plan and energy settings</summary>
+        <Disclosure className="mt-3" label="Session plan and energy settings">
           <div className="mt-3">
             <PlanStrip blocks={plan} current={blockIndex} firstStarted={st?.first_started_index} />
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
@@ -377,7 +377,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
               </span>
             </div>
           </div>
-        </details>
+        </Disclosure>
         {skill && phase === 'assess' && (
           <div className="mt-2 text-sm">
             <h3 className="font-medium">Learning goal</h3>
@@ -578,8 +578,7 @@ function TeachPanel({
                   ? 'Explain again'
                   : 'Start explanation'}
           </Button>
-          <details>
-            <summary className="cursor-pointer text-sm py-2">More ways to learn</summary>
+          <Disclosure label="More ways to learn">
             <div className="flex gap-2 flex-wrap mt-2">
               <Button
                 disabled={busy || input.length > 4000}
@@ -596,7 +595,7 @@ function TeachPanel({
                 Summary of this skill
               </Button>
             </div>
-          </details>
+          </Disclosure>
           {busy && (
             <Button variant="ghost" onClick={stop}>
               Stop explanation
