@@ -1,3 +1,4 @@
+import { DisclosureSummary } from '../../components/ui/disclosure'
 import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -14,8 +15,8 @@ export function AnswerChildren({ answerId }: { answerId: string }) {
     enabled: open,
   })
   return (
-    <details onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary>Later replies to this answer</summary>
+    <details className="[&[open]>summary>svg]:rotate-90" onToggle={(event) => setOpen(event.currentTarget.open)}>
+      <DisclosureSummary>Later replies to this answer</DisclosureSummary>
       <p className="text-sm text-muted my-2">
         Direct follow-ups, newest first. A later reply is not automatically a correction or a verified
         replacement. Reported and hidden replies remain in this history; open one to review its feedback.

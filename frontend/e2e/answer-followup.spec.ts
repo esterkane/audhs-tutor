@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 
-for (const width of [1280, 390]) {
+for (const width of [1280, 390, 320]) {
   test(`saved follow-up sends explicitly and retains lineage (${width}px)`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 })
     await page.addInitScript(() => {
@@ -128,7 +128,10 @@ for (const width of [1280, 390]) {
       '/answers/parent',
     )
     await expect(page.getByText(/This is a proposed correction, not a verified replacement/)).toBeVisible()
-    await page.getByText('Review this correction as your preferred reply', { exact: true }).click()
+    const correction = page.locator('summary').filter({ hasText: 'Review this correction as your preferred reply' })
+    expect((await correction.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await correction.focus()
+    await page.keyboard.press('Enter')
     const prefer = page.getByRole('button', { name: 'Prefer this correction', exact: true })
     await expect(prefer).toBeDisabled()
     await page
@@ -150,13 +153,24 @@ for (const width of [1280, 390]) {
       '/answers/child',
     )
     expect(historyReads).toBe(0)
-    await page.getByText('Later replies to this answer', { exact: true }).focus()
+    if (width === 320) await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+    const history = page.locator('summary').filter({ hasText: 'Later replies to this answer' })
+    expect((await history.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+    await history.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByRole('link', { name: 'Show a small example.', exact: true })).toHaveAttribute(
       'href',
       '/answers/child',
     )
     expect(historyReads).toBe(1)
+    await history.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('link', { name: 'Show a small example.', exact: true })).not.toBeVisible()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('link', { name: 'Show a small example.', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await history.scrollIntoViewIfNeeded()
+    await page.screenshot({ path: info.outputPath('history-controls.png') })
     expect(calls).toBe(1)
   })
 }

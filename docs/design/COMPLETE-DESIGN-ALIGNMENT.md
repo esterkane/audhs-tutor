@@ -308,3 +308,17 @@ fixed before passing build; pedagogy review clear. Existing bundle-size warning 
 fixture feedback-loading error remain explicit. Other feature-owned disclosures,
 real browser zoom, screen-reader and human acceptance remain open. No learning-policy
 or model changes.
+
+
+2026-10-11: Completed shared disclosure adoption for saved-answer correction,
+reply lineage and unfinished-reply controls (PDF pp5–7). Same native owners/lazy reads,
+explicit correction preference and recovery state retained. Enlarged-text test found
+an actual320px page overflow: auto grid tracks and the request-type select imposed
+intrinsic width. Explicit single-column tracks and a bounded select fix reflow without
+clipping content. Four baseline journeys, seven final browser checks and17 component
+tests pass; lint/types/build and code/pedagogy reviews pass. Keyboard open/reopen,
+correction/undo, lazy reads, refresh recovery and request identity checked. Desktop
+and320px/200% root-text screenshots inspected; saved-answer dark390/1280 checks retained.
+Root-text testing is not actual browser zoom. Enlarged bottom-navigation labels remain
+cramped at320px; record this as the next shell readability issue, not a conformance pass.
+Human/AT acceptance and the existing bundle-size warning remain open.

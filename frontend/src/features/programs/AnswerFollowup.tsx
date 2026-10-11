@@ -1,3 +1,4 @@
+import { DisclosureSummary } from '../../components/ui/disclosure'
 import {
   useFollowupRequestRecovery,
   type PendingTutorRequest,
@@ -264,7 +265,7 @@ function Conversation({
   }
   const unsaved = replies.some(({ reply }) => !reply.answer_id)
   return (
-    <div className="grid gap-3">
+    <div className="grid grid-cols-1 gap-3 min-w-0">
       {parentId !== answerId && (
         <p className="text-sm">
           Continuing from your{' '}
@@ -335,8 +336,8 @@ function Conversation({
         </section>
       )}
       {previousPreview && (
-        <details>
-          <summary>Earlier unfinished follow-ups · questions may have changed</summary>
+        <details className="[&[open]>summary>svg]:rotate-90">
+          <DisclosureSummary>Earlier unfinished follow-ups · questions may have changed</DisclosureSummary>
           <Markdown text={previousPreview} />
         </details>
       )}
@@ -349,7 +350,7 @@ function Conversation({
       <label>
         Request type
         <select
-          className="block"
+          className="block w-full min-w-0 max-w-full"
           value={purpose}
           disabled={busy || unsaved}
           onChange={(event) => edit(draft, parentId, event.target.value as 'followup' | 'correction')}

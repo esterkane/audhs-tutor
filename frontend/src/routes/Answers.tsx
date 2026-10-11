@@ -221,7 +221,7 @@ function Answer({ id }: { id: string }) {
         .slice(-6)
     : []
   return (
-    <div className="grid gap-4 min-w-0 break-words">
+    <div className="grid grid-cols-1 gap-4 min-w-0 break-words">
       <Link to={`/answers?${params}`}>Back to saved answers</Link>
       <h1 ref={heading} tabIndex={-1} className="text-page-title font-semibold">
         Saved answer

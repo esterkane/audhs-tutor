@@ -1,3 +1,4 @@
+import { DisclosureSummary } from '../../components/ui/disclosure'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
@@ -50,8 +51,8 @@ export function AnswerReplacement({ answerId, candidateId }: { answerId: string;
       if (alive.current && active.current === attempt) setError('The choice could not be confirmed. Retry the same choice, or review the latest saved choice before changing it. No answer text was removed.')
     } finally { if (alive.current && active.current === attempt) { active.current = null; setBusy(false) } }
   }
-  return <details onToggle={(event) => setOpen(event.currentTarget.open)}>
-    <summary>{candidateId ? 'Review this correction as your preferred reply' : 'Preferred correction for this answer'}</summary>
+  return <details className="[&[open]>summary>svg]:rotate-90" onToggle={(event) => setOpen(event.currentTarget.open)}>
+    <DisclosureSummary>{candidateId ? 'Review this correction as your preferred reply' : 'Preferred correction for this answer'}</DisclosureSummary>
     <p className="text-sm my-2">Choosing a correction excludes the original from automatic suggestions and reuse. Both remain readable. This is your preference, not verified correctness or a learning score. It does not bypass source, context or feedback checks for the correction.</p>
     {candidateId && <p><Link className="underline" to={`/answers/${encodeURIComponent(answerId)}`}>Compare with the original answer</Link> before choosing.</p>}
     {open && (query.isPending ? <p role="status">Loading preferred correction…</p>
