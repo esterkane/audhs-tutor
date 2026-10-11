@@ -1747,3 +1747,11 @@ Progress screenshot inspected. Evidence semantics unchanged: transfer checks do 
 establish independent work. Full evidence levels still need a justified learning-policy
 contract; do not derive mastery or independence from these visual changes. Actual
 browser zoom, human/AT acceptance and newest-head CI remain open. Both repos private.
+
+
+2026-10-11: Actual Chromium 200% zoom now verified for lesson draft/context,
+Preferences return, pause/resume and refresh at320/640 CSS pixels. Two browser
+cases, focused lint/types and bounded reviews pass; compositor screenshots inspected.
+No runtime/learning changes. Full-platform zoom, human/AT acceptance remain open;
+DL-02 orientation density remains visible at narrow width. See
+docs/ux/DAILY-LEARNING-ACCEPTANCE.md (Real Chromium browser zoom). Both repos private.

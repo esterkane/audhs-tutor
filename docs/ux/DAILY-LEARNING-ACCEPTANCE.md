@@ -214,3 +214,27 @@ while keeping Pause/End, learning objective, opt-in goal narration, accessible p
 controls and the complete current explanation workflow. Inspect320/390/1280 using the
 same fixture before/after; verify keyboard focus/order, narration and session checkpoint.
 Do not claim usability improvement from pixels alone or hide active audio controls.
+
+
+## Real Chromium browser zoom — 2026-10-11
+
+Two isolated browser journeys pass at actual 200% tab zoom (320/640 CSS-pixel
+viewports). A temporary extension sets and reads Chromium tab zoom; viewport width,
+devicePixelRatio and unchanged root font size independently distinguish this from
+font enlargement. Disposable browser profiles and sandbox data only; no user browser
+or model calls. Keyboard activation/Escape, context focus restoration, Preferences
+return, pause/resume and reload retain the lesson draft. Server session is unchanged;
+no observed browser API writes except the deliberately excluded prepare endpoint.
+
+Direct compositor screenshots inspected: controls and navigation wrap without
+horizontal clipping. Playwright full-page screenshots cropped the zoomed surface,
+so the test uses CDP capture at scroll zero. The narrow initial view still gives
+substantial space to orientation before lesson content: DL-02 remains open.
+
+Focused ESLint and standalone TypeScript check pass. Code/pedagogy reviews found
+no blockers or majors. Runtime code is unchanged; previous production build and
+347-pass/20-opt-in-skip integrated run are reused, not claimed rerun. Evidence:
+frontend/e2e/browser-zoom.spec.ts; local log /tmp/real-browser-zoom-final.log.
+This covers one Chromium lesson flow in light theme, not whole-app accessibility.
+Sequential Tab traversal, other browsers/themes at actual zoom, screen readers,
+physical audio and human comprehension remain separate gates.

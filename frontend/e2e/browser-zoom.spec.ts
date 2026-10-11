@@ -1,0 +1,100 @@
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { chromium, expect, test, type BrowserContext, type Page } from '@playwright/test'
+import { API, currentSession, endOpenSession, expectOk } from './helpers'
+
+type ZoomTabs = {
+  query(options: Record<string, never>): Promise<Array<{ id?: number; url?: string }>>
+  setZoom(id: number, factor: number): Promise<void>
+  getZoom(id: number): Promise<number>
+}
+
+/** Real Chromium tab zoom, not CSS font-size or device-metrics emulation. */
+async function setZoom(context: BrowserContext, page: Page, factor: number) {
+  const worker = context.serviceWorkers()[0] ?? await context.waitForEvent('serviceworker')
+  const actual = await worker.evaluate(async ({ url, factor }) => {
+    const tabs = (globalThis as unknown as { chrome: { tabs: ZoomTabs } }).chrome.tabs
+    const tab = (await tabs.query({})).find(item => item.url === url)
+    if (tab?.id === undefined) throw new Error('Isolated test tab unavailable')
+    await tabs.setZoom(tab.id, factor)
+    return tabs.getZoom(tab.id)
+  }, { url: page.url(), factor })
+  expect(actual).toBe(factor)
+}
+
+for (const width of [640, 1280]) test(`real 200% browser zoom preserves learning at ${width / 2} CSS pixels`, async ({ request, baseURL }, info) => {
+  const extension = info.outputPath('zoom-extension')
+  await mkdir(extension, { recursive: true })
+  await writeFile(join(extension, 'manifest.json'), JSON.stringify({
+    manifest_version: 3, name: 'Isolated browser zoom check', version: '1.0',
+    permissions: ['tabs'], background: { service_worker: 'worker.js' },
+  }))
+  await writeFile(join(extension, 'worker.js'), 'chrome.runtime.onInstalled.addListener(() => {});')
+  // Empty userDataDir creates a disposable profile; never connect to the owner's browser.
+  const context = await chromium.launchPersistentContext('', {
+    channel: 'chromium', headless: true, baseURL,
+    viewport: { width, height: 1800 }, reducedMotion: 'reduce',
+    args: [`--disable-extensions-except=${extension}`, `--load-extension=${extension}`],
+  })
+  try {
+    await endOpenSession(request)
+    for (const key of ['goal.area', 'goal.course']) await expectOk(await request.put(`${API}/api/preferences`, { data: { key, value: '' } }))
+    const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
+    await expectOk(response)
+    const session = await response.json()
+    const index = session.plan.findIndex((block: { type: string }) => block.type === 'new_material')
+    await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index } }))
+    const before = await currentSession(request)
+    const page = await context.newPage()
+    const writes: string[] = []
+    page.on('request', r => { if (r.url().includes('/api/') && r.method() !== 'GET' && !r.url().endsWith('/prepare')) writes.push(r.url()) })
+    await page.goto('/')
+    const rootSize = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
+    await setZoom(context, page, 2)
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width / 2)
+    expect(await page.evaluate(() => devicePixelRatio)).toBe(2)
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)).toBe(rootSize)
+    const resume = page.getByRole('button', { name: 'Continue', exact: true })
+    await resume.focus()
+    await page.keyboard.press('Enter')
+    const draft = page.getByLabel('Ask about this lesson (optional)')
+    await draft.fill('Keep my question through real browser zoom')
+    const contextButton = page.getByRole('button', { name: 'Learning context', exact: true })
+    await contextButton.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: 'Learning goal', exact: true })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(contextButton).toBeFocused()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await expect.poll(() => page.evaluate(() => scrollY)).toBe(0)
+    // Capture the compositor surface directly: Playwright full-page capture clips
+    // to CSS dimensions when extension-driven browser zoom changes devicePixelRatio.
+    const cdp = await context.newCDPSession(page)
+    const capture = await cdp.send('Page.captureScreenshot', { format: 'png' })
+    await writeFile(info.outputPath('lesson-200-percent.png'), Buffer.from(capture.data, 'base64'))
+    await cdp.detach()
+    await page.getByRole('link', { name: 'Preferences', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('button', { name: 'large', exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.getByRole('button', { name: 'Back', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(draft).toHaveValue('Keep my question through real browser zoom')
+    await page.getByRole('button', { name: 'Pause and return Home', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await resume.focus()
+    await page.keyboard.press('Enter')
+    await expect(draft).toHaveValue('Keep my question through real browser zoom')
+    await page.reload()
+    await expect(draft).toHaveValue('Keep my question through real browser zoom')
+    await setZoom(context, page, 1)
+    await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width)
+    await expect(draft).toHaveValue('Keep my question through real browser zoom')
+    expect(await currentSession(request)).toEqual(before)
+    expect(writes).toEqual([])
+  } finally {
+    await context.close()
+    await endOpenSession(request)
+  }
+})

@@ -289,3 +289,11 @@ Broader shared-control adoption and human/AT acceptance remain open.
 2026-10-11 integrated design browser validation:347 passed,20 intentional opt-in skips.
 Learn retry focus and narrow audio reflow corrected; see complete design alignment.
 Actual browser zoom, human/AT acceptance and newest-head CI remain open.
+
+
+2026-10-11: Actual Chromium 200% zoom now verified for lesson draft/context,
+Preferences return, pause/resume and refresh at320/640 CSS pixels. Two browser
+cases, focused lint/types and bounded reviews pass; compositor screenshots inspected.
+No runtime/learning changes. Full-platform zoom, human/AT acceptance remain open;
+DL-02 orientation density remains visible at narrow width. See
+docs/ux/DAILY-LEARNING-ACCEPTANCE.md (Real Chromium browser zoom). Both repos private.
