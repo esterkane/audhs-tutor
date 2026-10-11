@@ -19,11 +19,11 @@ export function RecentAreas({ embedded = false }: { embedded?: boolean }) {
       Could not check recent areas. <Button disabled={areas.isFetching} onClick={() => void areas.refetch()}>Retry recent areas</Button>
     </p> : <>
       {!!available.length && <ul className="flex flex-wrap gap-3">{available.map(area => <li key={area.id} className="min-w-0">
-        <Link className="underline break-words" to={`/areas?area=${encodeURIComponent(area.id)}`}>{area.title}</Link>
+        <Link className="underline break-words" to={`/explore?area=${encodeURIComponent(area.id)}`}>{area.title}</Link>
       </li>)}</ul>}
       {missing && <p className="text-sm mt-2">A previously visited area is unavailable. Browse all areas to choose another.</p>}
     </>}
     {storageError && <p role="status" className="text-sm mt-2">Browsing history could not be saved or restored in this tab.</p>}
-    <p className="mt-2"><Link className="underline" to="/areas">Browse all areas</Link></p>
+    <p className="mt-2"><Link className="underline" to="/explore">Browse all areas</Link></p>
   </Container>
 }

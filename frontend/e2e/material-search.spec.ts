@@ -134,7 +134,12 @@ test('area matches survive unavailable retrieval and browse without session writ
   await expect(page.getByRole('button', { name: 'Retry source search' })).toBeVisible()
   await match.focus()
   await page.keyboard.press('Enter')
-  await expect(page).toHaveURL(/\/areas\?area=area-python$/)
+  await expect(page).toHaveURL(/\/explore\?area=area-python$/)
+  await expect(page.getByRole('heading', { name: 'Explore', exact: true })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Prepare learning material', exact: true })).toHaveAttribute('href', '/areas?area=area-python')
+  await page.goBack()
+  await expect(page).toHaveURL(/search\?q=PYTHON$/)
+  await expect(match).toBeVisible()
   expect(writes).toEqual([])
 })
 

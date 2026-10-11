@@ -1735,3 +1735,15 @@ Current-work checklist reconciled with delivered design work and both-private po
 Skipped opt-in audit/design cases, real browser zoom, screen-reader/human acceptance,
 physical audio and newest-head GitHub CI remain separate unverified gates. Existing
 production bundle-size warning remains. Logs retained locally in /tmp/design-integrated-browser-final.log.
+
+
+2026-10-11: Completed learner-area entry alignment across Search, Progress and
+Recent areas: browsing now reaches/explore with selected area preserved, rather
+than material preparation. Explicit preparation remains/areas, including empty-area
+recovery and dirty-editor guards.18 baseline and20 final browser checks pass covering
+keyboard320/1280, search failure, recent history, Back/query retention, no learning
+writes and authoring location guards. Lint/types/build and both reviews pass; narrow
+Progress screenshot inspected. Evidence semantics unchanged: transfer checks do not
+establish independent work. Full evidence levels still need a justified learning-policy
+contract; do not derive mastery or independence from these visual changes. Actual
+browser zoom, human/AT acceptance and newest-head CI remain open. Both repos private.

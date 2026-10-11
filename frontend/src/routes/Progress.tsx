@@ -42,7 +42,7 @@ export function Progress() {
     </>}
     <div className="flex flex-wrap gap-4">
       <Link className="underline" to="/map">View skill map</Link>
-      <Link className="underline" to="/areas">Explore learning areas</Link>
+      <Link className="underline" to="/explore">Explore learning areas</Link>
     </div>
   </div>
 }

@@ -58,7 +58,8 @@ for (const width of [390, 1280]) {
     await page.screenshot({ path: info.outputPath('home-recent.png'), fullPage: true })
     await recent.getByRole('link', { name: 'audio', exact: true }).focus()
     await page.keyboard.press('Enter')
-    await expect(page).toHaveURL(/areas\?area=audio$/)
+    await expect(page).toHaveURL(/explore\?area=audio$/)
+    await expect(page.getByRole('heading', { name: 'Explore', exact: true })).toBeVisible()
     await page.goBack()
     if (
       (await page

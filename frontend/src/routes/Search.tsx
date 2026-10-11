@@ -17,7 +17,7 @@ export function Search() {
     <p className="text-sm text-muted">Searches local material, not the web. Notebook edits, unsaved chats, project notes and saved thoughts are not searched here.</p>
     <SearchForm key={`form:${query}`} initial={query} onSearch={q => setParams(q ? { q } : {})} />
     {!query ? <p>Enter a phrase to search your local material.</p> : query.length > 200 ? <p role="alert">Use a search of 200 characters or fewer.</p> : <Results key={`results:${query}`} query={query} />}
-    <p className="text-sm">Browse instead: <Link className="underline" to="/areas">Learning areas</Link> · <Link className="underline" to="/programs">Project study</Link> · <Link className="underline" to="/map">Skill map</Link></p>
+    <p className="text-sm">Browse instead: <Link className="underline" to="/explore">Learning areas</Link> · <Link className="underline" to="/programs">Project study</Link> · <Link className="underline" to="/map">Skill map</Link></p>
   </div>
 }
 function SearchForm({ initial, onSearch }: { initial: string; onSearch: (q: string) => void }) {
@@ -56,10 +56,10 @@ function Results({ query }: { query: string }) {
       {areas.isPending ? <p role="status">Searching knowledge areas…</p> : areas.data ? <>
         <p role="status">{matchingAreas.length ? `${Math.min(8, matchingAreas.length)} of ${matchingAreas.length} matching areas shown.` : 'No knowledge areas matched.'}</p>
         <ul className="grid gap-3 my-2">{matchingAreas.slice(0, 8).map(area => <li key={area.id}>
-          <Link className="underline" to={`/areas?${new URLSearchParams({ area: area.id })}`}>{area.title}</Link>
+          <Link className="underline" to={`/explore?${new URLSearchParams({ area: area.id })}`}>{area.title}</Link>
           {area.description && <p className="text-sm">{area.description}</p>}
         </li>)}</ul>
-        {matchingAreas.length > 8 && <Link className="underline" to="/areas">Browse all knowledge areas</Link>}
+        {matchingAreas.length > 8 && <Link className="underline" to="/explore">Browse all knowledge areas</Link>}
       </> : null}
     </section>
     <SkillSearch phrase={query} />
