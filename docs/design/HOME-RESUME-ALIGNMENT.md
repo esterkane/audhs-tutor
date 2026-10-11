@@ -36,12 +36,50 @@ bundle warning persists.
 
 ## Remaining design work
 
-The PDF alternative trio (Quick review, Learn something else, Explore) is not
-fully adopted. Before changing those actions, inspect Review's current-session
-contract so Quick review cannot silently abandon or advance a saved lesson.
-Keep explicit switching and due-review caps. Do not infer a completed-work list
+The PDF alternative trio is implemented in the follow-up below. Keep explicit
+switching and due-review caps when refining its presentation. Do not infer a completed-work list
 from block position: passed-over/skipped activities are not demonstrated work.
 Adaptation dialogs/Preferences controls, the offer branch's heading and remaining
 native Home disclosures still need alignment. Cross-theme, actual browser zoom,
 screen-reader and owner re-entry/comprehension acceptance remain open. These
 bounded tests do not certify the complete Home blueprint.
+
+
+## Home alternative actions — 2026-10-11
+
+Inspected Review and its backend due endpoint before implementation. Review
+already supports a session-bound, capped set outside the planned review block;
+entry does not advance/end a lesson, and the empty/completed set offers Back to
+the session. Existing explicit rating/finish/continue actions retain their
+semantics. Home now presents Quick review, Learn something else (concept map)
+and Explore (knowledge areas), after the primary resume/new-session panel.
+
+Quick review performs a fresh bounded current-session read, uses the saved
+identity/scope if present, or explicitly starts a session using the click's
+settings before opening Review. No block transition/end/rating occurs on entry.
+Creation still respects backend area readiness; an empty selected area may
+require lesson activation rather than silently broadening the scope. A ref guard
+prevents duplicate starts; leaving Home prevents late navigation and cancels the
+read. Preferences/goal readiness gates creation, and new-session settings are
+locked during the pending action. Continue remains independent and existing
+explicit switch confirmation is retained.
+
+Review fixes: fresh lookup initially reused an unbounded query; replaced with
+shared15s boundedRead plus unmount cancellation and timeout/retry evidence.
+Creation initially allowed pending preferences; corrected readiness/controls.
+Code re-review and pedagogy review found no remaining blockers/majors.
+
+Verification: seven new browser cases pass (320/1280 no-write saved-session
+entry/return, single creation under repeated Enter, lookup error/retry, timeout,
+preferences readiness and leaving during creation). Six existing resume/switch
+journeys pass;12 Home unit tests, affected lint and production build pass.
+Keyboard tests wait for settings readiness before entering the control; one
+initial failure was a premature focus on the intentionally disabled button.
+Desktop/narrow screenshots inspected. The fixed bottom navigation scrolls over
+content in full-page screenshots; controls remain reachable by scrolling.
+No live models, new dependencies or backend changes. Existing large-bundle
+warning remains. Actual browser zoom/screen-reader and human choice clarity
+are still open; full design acceptance is not claimed.
+
+Next: Preferences switches/segmented-control alignment, plus remaining Home
+heading/disclosure consistency and shared cross-theme acceptance.

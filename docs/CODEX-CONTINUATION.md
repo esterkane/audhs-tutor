@@ -444,3 +444,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — Home resume activity/duration and optional adjustment disclosure verified. Continue/switch semantics unchanged. Evidence and remaining blueprint: docs/design/HOME-RESUME-ALIGNMENT.md.
+
+
+2026-10-11 — Home alternatives and bounded Quick review verified; saved-session, timeout, duplicate-click and settings readiness contracts documented in docs/design/HOME-RESUME-ALIGNMENT.md.

@@ -1,3 +1,4 @@
+import { boundedRead } from '../lib/boundedRead'
 import { ResumeContext } from '../features/session/ResumeContext'
 import { RecentContexts } from '../features/recent/RecentContexts'
 import { HomeTopicPreparation } from '../features/areas/HomeTopicPreparation'
@@ -42,6 +43,39 @@ function HomeOverview() {
   const [offer, setOffer] = useState<SessionOut | null>(null)
   const transition = useBlockTransition(offer?.id ?? sessionId)
   const current = useCurrentSession()
+  const [quickReviewBusy, setQuickReviewBusy] = useState(false)
+  const [quickReviewError, setQuickReviewError] = useState('')
+  const quickReviewPending = useRef(false)
+  const quickReviewRead = useRef<AbortController | null>(null)
+  const homeActive = useRef(false)
+  useEffect(() => {
+    homeActive.current = true
+    return () => { homeActive.current = false; quickReviewRead.current?.abort() }
+  }, [])
+
+  async function quickReview() {
+    if (quickReviewPending.current || start.isPending || prefs.isPending || prefs.isError || setPref.isPending || skills.isFetching || skills.isError) return
+    quickReviewPending.current = true
+    setQuickReviewBusy(true)
+    setQuickReviewError('')
+    try {
+      const controller = new AbortController()
+      quickReviewRead.current = controller
+      const fresh = await boundedRead<SessionOut | null>('/api/sessions/current', controller.signal, 'Saved session')
+      if (!homeActive.current) return
+      const saved = fresh ?? await start.mutateAsync({ mode, energy, socratic })
+      if (!homeActive.current) return
+      setSession(saved.id, saved.state?.skill_id ?? null)
+      nav('/review')
+    } catch (error) {
+      if (homeActive.current) setQuickReviewError(error instanceof Error ? error.message : 'Please try again.')
+    } finally {
+      quickReviewRead.current = null
+      quickReviewPending.current = false
+      if (homeActive.current) setQuickReviewBusy(false)
+    }
+  }
+
   const resumable = !current.isError && current.data?.id
   const prefs = usePreferences()
   const setPref = useSetPreference()
@@ -65,7 +99,7 @@ function HomeOverview() {
   const runningExperiment = (experiments.data?.experiments ?? []).find((e) => e.status === 'running')
 
   async function begin(skill_id?: string) {
-    if (current.isPending || current.isError) return
+    if (quickReviewPending.current || current.isPending || current.isError) return
     if (current.data) {
       const target = skill_id ?? nextSkill?.id
       if (target) nav(`/?lesson=${encodeURIComponent(target)}`)
@@ -235,7 +269,7 @@ function HomeOverview() {
                 prefs.isPending ||
                 prefs.isError ||
                 skills.isError ||
-                start.isPending ||
+                start.isPending || quickReviewBusy ||
                 setPref.isPending ||
                 selectionPending ||
                 Boolean((areaGoal || goal) && !nextSkill)
@@ -300,11 +334,29 @@ function HomeOverview() {
               Continue
             </Button>
       </Card>}
+      {!resumable && newSessionCard}
+      <section aria-label="Other ways to learn" className="grid gap-3 sm:grid-cols-3">
+        <Card>
+          <Button onClick={() => void quickReview()} disabled={quickReviewBusy || start.isPending || current.isPending || prefs.isPending || prefs.isError || setPref.isPending || skills.isFetching || skills.isError}>
+            {quickReviewBusy ? 'Opening review…' : 'Quick review'}
+          </Button>
+          <p className="text-sm text-muted mt-2">Review a short set of due cards. Keeps your saved lesson in place; if needed, starts a session with your current settings.</p>
+        </Card>
+        <Card>
+          <Button asChild><Link to="/map">Learn something else</Link></Button>
+          <p className="text-sm text-muted mt-2">Choose a different concept. Review the choice before switching your saved session.</p>
+        </Card>
+        <Card>
+          <Button asChild><Link to="/areas">Explore</Link></Button>
+          <p className="text-sm text-muted mt-2">Browse knowledge areas and sources without starting a session.</p>
+        </Card>
+      </section>
+      {quickReviewError && <p role="alert">Could not open quick review: {quickReviewError} Your saved session has not been ended. Try Quick review again.</p>}
       {resumable ? <details className="border border-line rounded-md p-3">
         <summary className="cursor-pointer font-medium">Start a different session</summary>
         <p className="text-sm text-muted my-2">Review the selected lesson before deciding whether to end your current session. Opening this does not change your saved work.</p>
         {newSessionCard}
-      </details> : newSessionCard}
+      </details> : null}
       <RecentContexts />
       <AdaptationCards collapsed />
       <PromotedReminders />
@@ -319,7 +371,7 @@ function HomeOverview() {
           <p key={id} className="mt-2">
             {status === 'later' ? 'Ask me later' : 'Clear'}:{' '}
             {skills.data?.skills.find((s) => s.id === id)?.title ?? id}{' '}
-            <Button size="sm" disabled={start.isPending} onClick={() => void begin(id)}>
+            <Button size="sm" disabled={start.isPending || quickReviewBusy} onClick={() => void begin(id)}>
               Revisit this lesson
             </Button>
           </p>
@@ -333,7 +385,7 @@ function HomeOverview() {
           <select
             className="block w-full min-w-0 max-w-full border border-line rounded-md px-2 py-1 mt-1"
             value={areaGoal}
-            disabled={setPref.isPending || skills.isFetching || areas.isPending || prefs.isPending}
+            disabled={quickReviewBusy || setPref.isPending || skills.isFetching || areas.isPending || prefs.isPending}
             onChange={(e) => setPref.mutate({ key: 'goal.area', value: e.target.value })}
           >
             <option value="">Whole map or course goal below</option>
@@ -370,7 +422,7 @@ function HomeOverview() {
               <select
                 className="block w-full min-w-0 max-w-full border border-line rounded-md px-2 py-1 mt-1"
                 value={goal}
-                disabled={Boolean(areaGoal) || setPref.isPending || skills.isFetching || prefs.isPending}
+                disabled={quickReviewBusy || Boolean(areaGoal) || setPref.isPending || skills.isFetching || prefs.isPending}
                 onChange={(e) => setPref.mutate({ key: 'goal.course', value: e.target.value })}
               >
                 <option value="">Whole skill map</option>
@@ -405,6 +457,7 @@ function HomeOverview() {
       </details>
       <details className="border border-line rounded-md p-3">
         <summary className="cursor-pointer font-medium">Session options</summary>
+        <fieldset disabled={quickReviewBusy}>
         <p className="text-sm text-muted my-2">
           Optional: adjust pace, energy and teaching style for a new session.
         </p>
@@ -486,6 +539,7 @@ function HomeOverview() {
             )}
           </div>
         </details>
+        </fieldset>
       </details>
     </div>
   )
