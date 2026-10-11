@@ -1,3 +1,4 @@
+import { Disclosure } from '../../components/ui/disclosure'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Markdown } from '../../components/Markdown'
 import { Button } from '../../components/ui/button'
@@ -246,8 +247,7 @@ function NotesArchive({ sessionId }: { sessionId: string }) {
     }
   }, [sessionId])
   return (
-    <details className="border border-line rounded-lg p-3">
-      <summary>Saved lesson notes ({saved.entries.length})</summary>
+    <Disclosure label={`Saved lesson notes (${saved.entries.length})`}>
       <p>
         Notes and explanations saved in this browser for this session. These are reading notes, not assessment
         results.
@@ -257,10 +257,7 @@ function NotesArchive({ sessionId }: { sessionId: string }) {
       {saved.entries.map((entry, index) => {
         const sections = sectionsFor(entry.text)
         return (
-          <details key={entry.key} className="border border-line rounded p-3 mt-3">
-            <summary>
-              Explanation {index + 1}: {sections[0]?.title ?? 'Saved explanation'}
-            </summary>
+          <Disclosure key={entry.key} className="mt-3" label={`Explanation ${index + 1}: ${sections[0]?.title ?? 'Saved explanation'}`}>
             {Object.entries(entry.notes)
               .filter(([, note]) => note.trim())
               .map(([key, note]) => (
@@ -273,8 +270,7 @@ function NotesArchive({ sessionId }: { sessionId: string }) {
                   <p className="whitespace-pre-wrap">{note}</p>
                 </div>
               ))}
-            <details>
-              <summary>Read the saved explanation</summary>
+            <Disclosure label="Read the saved explanation">
               <Markdown text={entry.text} />
               <h4 className="font-semibold">Saved sources</h4>
               {entry.sources === undefined ? (
@@ -311,10 +307,10 @@ function NotesArchive({ sessionId }: { sessionId: string }) {
                   ))}
                 </ol>
               )}
-            </details>
-          </details>
+            </Disclosure>
+          </Disclosure>
         )
       })}
-    </details>
+    </Disclosure>
   )
 }

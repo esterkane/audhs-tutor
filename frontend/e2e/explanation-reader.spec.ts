@@ -83,6 +83,18 @@ test('completed explanation sections preserve notes, focus and optional follow-u
     expect(calls).toBe(1) // Opening the choice is not a request for the answer.
     await page.keyboard.press('Enter')
     await expect(page.getByRole('button', { name: 'Show the full solution', exact: true })).not.toBeVisible()
+    const savedNotes = page.locator('summary').filter({ hasText: /^Saved lesson notes/ })
+    await savedNotes.focus()
+    await page.keyboard.press('Enter')
+    const entry = page.locator('summary').filter({ hasText: /^Explanation 1:/ })
+    await entry.focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Check what changes when doubled.', { exact: true })).toBeVisible()
+    const savedExplanation = page.locator('summary').filter({ hasText: /^Read the saved explanation$/ })
+    await savedExplanation.focus()
+    await page.keyboard.press('Enter')
+    await expect(savedExplanation.locator('..').getByText('Compare matching components.', { exact: true })).toBeVisible()
+    expect(calls).toBe(1)
     await page.getByRole('button', { name: 'End session', exact: true }).click()
   } finally {
     await endOpenSession(request)

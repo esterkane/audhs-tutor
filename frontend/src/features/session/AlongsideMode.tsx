@@ -1,3 +1,4 @@
+import { Disclosure } from '../../components/ui/disclosure'
 import { useState } from 'react'
 import { Together } from '../../routes/Together'
 
@@ -19,7 +20,7 @@ export function AlongsideMode({ sessionId }: { sessionId: string }) {
 function SessionAlongside({ sessionId }: { sessionId: string }) {
   const [state, setState] = useState(() => restore(sessionId))
   return <div>
-    <details open={state.open} onToggle={event => {
+    <Disclosure label="Work alongside" open={state.open} onToggle={event => {
       const open = event.currentTarget.open
       if (open === state.open) return
       let available = true
@@ -28,10 +29,9 @@ function SessionAlongside({ sessionId }: { sessionId: string }) {
       } catch { available = false }
       setState({ open, available })
     }}>
-      <summary className="cursor-pointer text-sm font-medium">Work alongside</summary>
       <p className="text-sm text-muted my-2">Keep this lesson open with a quiet work panel. Closing it keeps your answer here. This tab remembers the panel for this session; sound stays off when you return. The panel’s timer restarts when reopened.</p>
       {state.open && <Together embedded />}
-    </details>
+    </Disclosure>
     {!state.available && <p role="status" className="text-sm text-muted">The panel works here, but this tab cannot remember it after you leave.</p>}
   </div>
 }

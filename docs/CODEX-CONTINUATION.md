@@ -462,3 +462,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-11 — Lesson optional sections now use shared disclosures; explicit full-solution action and saved context retained.12 browser/10 unit checks plus lint/build/reviews pass. See docs/design/HEADER-CONTEXT-CONTRACT.md; child-component disclosures and heading adoption remain.
+
+
+2026-10-11 — Lesson child disclosures aligned, preserving audio focus, alongside state and nested saved notes/sources.15 browser/24 component checks, lint/build/reviews pass. Evidence and next heading work: docs/design/HEADER-CONTEXT-CONTRACT.md.

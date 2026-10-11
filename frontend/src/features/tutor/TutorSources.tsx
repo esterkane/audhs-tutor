@@ -1,3 +1,4 @@
+import { Disclosure } from '../../components/ui/disclosure'
 import { AnswerSaveStatus } from '../programs/AnswerSaveStatus'
 import { Link } from 'react-router-dom'
 import { useRef, useState } from 'react'
@@ -29,8 +30,7 @@ function TurnSources({ turn }: { turn: TurnDone }) {
         </p>
       )}
       {turn.sources.length > 0 ? (
-        <details>
-          <summary className="cursor-pointer font-medium">Sources for this explanation</summary>
+        <Disclosure label="Sources for this explanation">
           <p className="text-muted my-2">
             Open a passage to compare it with the answer. A citation alone does not verify the explanation.
           </p>
@@ -67,7 +67,7 @@ function TurnSources({ turn }: { turn: TurnDone }) {
               }}
             />
           )}
-        </details>
+        </Disclosure>
       ) : (
         <p className="text-muted">No course source for this explanation.</p>
       )}
