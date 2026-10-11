@@ -47,7 +47,8 @@ describe('AdaptationCards', () => {
     expect(await screen.findByText(/Suggestion: Start new material/)).toBeInTheDocument()
     expect(screen.getByText(/2.0 hints per attempt/)).toBeInTheDocument()
     expect(screen.getAllByRole('button')).toHaveLength(4)
-    fireEvent.click(screen.getByRole('button', { name: 'Try it this session' }))
+    expect(screen.getByText('tutor.representation_default')).not.toBeVisible()
+    fireEvent.click(screen.getByRole('button', { name: 'Try for this session' }))
     await waitFor(() => expect(calls).toHaveLength(1))
     expect(calls[0].url).toContain('/api/adaptations/a1/decide')
     expect(calls[0].body).toEqual({ decision: 'try', session_id: 's1' })
@@ -68,10 +69,23 @@ describe('AdaptationCards', () => {
       }),
     )
     renderApp(<AdaptationLog />)
-    expect(await screen.findByText(/decided: try \(one session\) · in effect/)).toBeInTheDocument()
-    expect(screen.getByText(/decided: no/)).toBeInTheDocument()
+    expect(await screen.findByText(/Tried for a session \(one session\) · in effect/)).toBeInTheDocument()
+    expect(screen.getByText(/Declined for now/)).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Undo' })).toHaveLength(1)
     fireEvent.click(screen.getByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(undone).toHaveLength(1))
   })
+})
+
+
+it('does not label a failed history read as an empty history and offers retry', async () => {
+  let failed = true
+  vi.stubGlobal('fetch', vi.fn(async () => failed ? jsonResponse({ error: { code: 'unavailable', message: 'Offline' } }, 503) : jsonResponse({ entries: [] })))
+  renderApp(<AdaptationLog />)
+  expect(await screen.findByRole('alert')).toHaveTextContent('Could not load adaptation history')
+  expect(screen.queryByText('No suggestions yet.')).not.toBeInTheDocument()
+  failed = false
+  fireEvent.click(screen.getByRole('button', { name: 'Retry history' }))
+  expect(await screen.findByText('No suggestions yet.')).toBeVisible()
+  vi.unstubAllGlobals()
 })

@@ -187,3 +187,20 @@ tests include pending audio stopped during hiding and silent return. Lint/type/b
 and code/pedagogy reviews pass. Desktop/narrow Focus screenshots inspected.
 The17-route audit found no automated violations/overflow, but incomplete checks and
 human/assistive-technology acceptance remain; see the adversarial report.
+
+
+## Adaptation choice clarity — 2026-10-11
+
+PDF pp11–12: suggestions now distinguish Try for this session, Make this my default,
+Not now and suppression, with technical preference details in a collapsed disclosure.
+Existing decision payloads, learning policy and undo semantics remain unchanged.
+History distinguishes loading, failure, empty and loaded states; failed undo retains
+the visible record and offers retry. Decision failures stay beside their proposal.
+
+Evidence:3 component tests, targeted lint and production/type build pass;2 browser
+journeys at390/1280 cover keyboard disclosure/choice, failed undo and successful retry,
+and no horizontal overflow. Both screenshots inspected; code/pedagogy reviews clear.
+The initial browser locator targeted the summary label span; fixed to focus the native
+summary and reran successfully. No learning-policy change or new dependency.
+Remaining: complete adaptation-dialog blueprint, dark/large-text acceptance for this
+slice, human comprehension and assistive-technology review; not full PDF conformance.
