@@ -1,3 +1,4 @@
+import { DisclosureSummary } from '../../components/ui/disclosure'
 function record(value: unknown): Record<string, unknown> {
   return value != null && typeof value === 'object' && !Array.isArray(value)
     ? (value as Record<string, unknown>)
@@ -19,8 +20,8 @@ export function AssessmentHistoryDetails({ metadata }: { metadata: Record<string
         current mastery or schedule another review. Personal assessment feedback is excluded from suggested
         answers.
       </p>
-      <details>
-        <summary>Question and grading details at the time</summary>
+      <details className="[&[open]>summary>svg]:rotate-90">
+        <DisclosureSummary>Question and grading details at the time</DisclosureSummary>
         {typeof question.question === 'string' && <p className="whitespace-pre-wrap">{question.question}</p>}
         {options.length > 0 && (
           <ol className="list-decimal ml-5">

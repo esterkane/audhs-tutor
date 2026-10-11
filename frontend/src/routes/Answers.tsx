@@ -1,3 +1,4 @@
+import { DisclosureSummary } from '../components/ui/disclosure'
 import { RememberContext } from '../features/recent/RememberContext'
 import { AssessmentHistoryDetails } from '../features/programs/AssessmentHistoryDetails'
 import { AnswerReplacement } from '../features/programs/AnswerReplacement'
@@ -250,8 +251,8 @@ function Answer({ id }: { id: string }) {
               </Card>
             )}
             {typeof data.request.learner_answer === 'string' && data.request.learner_answer && (
-              <details>
-                <summary>Your submitted answer at the time</summary>
+              <details className="[&[open]>summary>svg]:rotate-90">
+                <DisclosureSummary>Your submitted answer at the time</DisclosureSummary>
                 <p className="whitespace-pre-wrap break-words">{typeof data.request.learner_answer_display === 'string' ? data.request.learner_answer_display : data.request.learner_answer}</p>
               </details>
             )}
@@ -278,8 +279,8 @@ function Answer({ id }: { id: string }) {
               </p>
             )}
             {data.request.historical_answer && typeof data.request.historical_answer === 'object' && (
-              <details>
-                <summary>Historical context supplied for this reply</summary>
+              <details className="[&[open]>summary>svg]:rotate-90">
+                <DisclosureSummary>Historical context supplied for this reply</DisclosureSummary>
                 <p className="text-sm text-muted">
                   Unverified saved context, not freshly retrieved source evidence.
                 </p>
@@ -288,8 +289,8 @@ function Answer({ id }: { id: string }) {
                 </pre>
               </details>
             )}
-            {memory.length > 0 && <details>
-              <summary>Previous tutor answers supplied as context</summary>
+            {memory.length > 0 && <details className="[&[open]>summary>svg]:rotate-90">
+              <DisclosureSummary>Previous tutor answers supplied as context</DisclosureSummary>
               <p>Unverified historical tutor output, not independent evidence. These bounded excerpts may omit part of the original answer.</p>
               {memory.map((item) => <div key={item.answer_id}>
                 <Link to={`/answers/${encodeURIComponent(item.answer_id)}`}>Open previous answer</Link>
@@ -307,8 +308,8 @@ function Answer({ id }: { id: string }) {
             <AnswerChildren key={`children:${data.id}`} answerId={data.id} />
             <AnswerFollowup key={data.id} answerId={data.id} />
             {sources.length > 0 ? (
-              <details>
-                <summary>Source references</summary>
+              <details className="[&[open]>summary>svg]:rotate-90">
+                <DisclosureSummary>Source references</DisclosureSummary>
                 <p className="text-sm text-muted">
                   These references were saved with the answer. Opening a passage shows the current corpus
                   copy, which may have changed.
@@ -356,8 +357,8 @@ function Answer({ id }: { id: string }) {
               </p>
             )}
             {conversation.length > 0 && (
-              <details>
-                <summary>Conversation supplied at the time</summary>
+              <details className="[&[open]>summary>svg]:rotate-90">
+                <DisclosureSummary>Conversation supplied at the time</DisclosureSummary>
                 <p className="text-sm text-muted">
                   Earlier messages supplied with this request, not verified source evidence. At most the last
                   six messages are shown.
@@ -374,8 +375,8 @@ function Answer({ id }: { id: string }) {
                 </ol>
               </details>
             )}
-            <details>
-              <summary>Material and code supplied at the time</summary>
+            <details className="[&[open]>summary>svg]:rotate-90">
+              <DisclosureSummary>Material and code supplied at the time</DisclosureSummary>
               {['exercise', 'code', 'output'].map((key) =>
                 typeof data.request[key] === 'string' && data.request[key] ? (
                   <div key={key} className="mt-3">

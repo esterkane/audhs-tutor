@@ -1,8 +1,9 @@
 import { expect, test } from '@playwright/test'
 
 for (const width of [1280, 390]) {
-  test(`saved answer keyboard round trip (${width}px)`, async ({ page }) => {
+  test(`saved answer keyboard round trip (${width}px)`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 850 })
+    await page.emulateMedia({ colorScheme: width === 1280 ? 'dark' : 'light' })
     const requests: string[] = []
     page.on('request', (request) => {
       if (request.method() === 'POST') requests.push(request.url())
@@ -48,11 +49,22 @@ for (const width of [1280, 390]) {
     await page.keyboard.press('Enter')
     await expect(page.getByText(/Source text has changed/)).toBeVisible()
     await expect(page.getByText(/a newer local document version exists/)).toBeVisible()
-    await page.getByText('Conversation supplied at the time').click()
+    {
+      const summary = page.locator('summary').filter({ hasText: 'Conversation supplied at the time' })
+      expect((await summary.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      await summary.focus()
+      await page.keyboard.press('Enter')
+    }
     await expect(page.getByText('What changed after cleaning?')).toBeVisible()
-    await page.getByText('Material and code supplied at the time').click()
+    {
+      const summary = page.locator('summary').filter({ hasText: 'Material and code supplied at the time' })
+      expect((await summary.boundingBox())!.height).toBeGreaterThanOrEqual(44)
+      await summary.focus()
+      await page.keyboard.press('Enter')
+    }
     await expect(page.getByText('print(groups)')).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.screenshot({ path: info.outputPath('saved-disclosures.png'), fullPage: true })
     await page.getByRole('link', { name: 'Back to saved answers' }).click()
     await expect(page.getByRole('combobox', { name: 'Show', exact: true })).toHaveValue('playground')
     await expect(page.getByRole('searchbox', { name: 'Search saved answers' })).toHaveValue('groups')

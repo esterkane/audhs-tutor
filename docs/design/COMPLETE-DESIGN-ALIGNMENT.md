@@ -295,3 +295,16 @@ types/lint/build and code/pedagogy reviews pass; narrow open-state screenshot in
 uses fixture area IDs without real concepts and honestly shows its loading-error
 recovery; real concept/error flows were separately checked in the Explore slice.
 Broader shared-control adoption and human/AT acceptance remain open.
+
+
+2026-10-11: Saved-answer history now adopts the shared44px disclosure summary
+(PDF pp5–7) for seven historical-context/detail controls. Native details owners,
+collapsed defaults, saved content and source/grade caveats remain unchanged. Two
+baseline assessment-history journeys and four final history/keyboard journeys pass
+at390/1280 (light/dark); measured targets are >=44px, navigation/filter retention and
+read-only reopening checked. One assessment-history unit test, lint, TypeScript and
+production build pass; both screenshots inspected. Code review caught import casing,
+fixed before passing build; pedagogy review clear. Existing bundle-size warning and
+fixture feedback-loading error remain explicit. Other feature-owned disclosures,
+real browser zoom, screen-reader and human acceptance remain open. No learning-policy
+or model changes.
