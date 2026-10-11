@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   ANTHROPIC_API_KEY: ""
@@ -24,13 +24,30 @@ env:
   CI: "true"
 
 jobs:
-  publication:
+  scope:
+    name: determine required runtime gates
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      runtime: ${{ steps.scope.outputs.runtime }}
     steps:
       - uses: actions/checkout@v4
-      - run: python3 scripts/check_publication.py
+        with:
+          fetch-depth: 1
+      - name: Check sanitized publication contents
+        if: github.repository == 'esterkane/audhs-tutor'
+        run: python3 scripts/check_publication.py
+      - id: scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/ci_scope.py >> "$GITHUB_OUTPUT"
 
   backend:
+    needs: scope
+    if: needs.scope.outputs.runtime == 'true'
     name: backend · ruff, mypy, pytest
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -59,6 +76,8 @@ jobs:
         run: uv run pytest -q
 
   frontend:
+    needs: scope
+    if: needs.scope.outputs.runtime == 'true'
     name: frontend · tsc, eslint, vitest
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -85,6 +104,8 @@ jobs:
         run: pnpm exec vitest run
 
   migrations:
+    needs: scope
+    if: needs.scope.outputs.runtime == 'true'
     name: migrations · upgrade path on an empty database
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -109,6 +130,8 @@ jobs:
           uv run alembic current
 
   journeys:
+    needs: scope
+    if: needs.scope.outputs.runtime == 'true'
     name: browser journeys · playwright on the sandbox stack
     runs-on: ubuntu-latest
     timeout-minutes: 25
