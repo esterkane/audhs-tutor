@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/button'
 import { DisclosureSummary } from '../components/ui/disclosure'
 import { Card, CardTitle } from '../components/ui/card'
 import { useVocabDecks } from '../features/practice/api'
@@ -17,8 +18,16 @@ export function Vocab() {
           Cards are spaced like everything else. They appear only in the language block of a session (switch
           on "Plan a language block" under Preferences).
         </p>
-        {list.length === 0 ? (
-          <p className="text-sm">No decks yet. Add a first card below.</p>
+        <Button variant="ghost" size="sm" aria-disabled={decks.isFetching} aria-busy={decks.isFetching}
+          onClick={() => { if (!decks.isFetching) void decks.refetch() }}>
+          {decks.isError ? 'Retry decks' : 'Refresh decks'}
+        </Button>
+        {decks.isPending && <p role="status">Loading vocabulary decks…</p>}
+        {decks.isError && <p role={decks.data ? 'status' : 'alert'}>
+          {decks.data ? 'Could not refresh vocabulary decks. The last loaded list is kept.' : 'Could not load vocabulary decks.'} {decks.error.message}
+        </p>}
+        {decks.data && (list.length === 0 ? (
+          <p className="text-sm">{decks.isError ? 'No decks in the last loaded list.' : 'No decks yet. Add a first card below.'}</p>
         ) : (
           <ul className="text-sm grid gap-1">
             {list.map((d) => (
@@ -27,7 +36,7 @@ export function Vocab() {
               </li>
             ))}
           </ul>
-        )}
+        ))}
         <details className="mt-3 [&[open]>summary>svg]:rotate-90">
           <DisclosureSummary>Add one card</DisclosureSummary>
           <QuickAdd />

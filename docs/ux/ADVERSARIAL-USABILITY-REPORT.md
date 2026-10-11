@@ -148,3 +148,15 @@ requests, show failure with manual retry, preserve keyboard and native disclosur
 Longer term: durable draft recovery and server idempotency for ambiguous delivery.
 Risk: late success erasing newer edits; test changed drafts and held requests.
 This finding concerns local authoring, not assessed learning evidence.
+
+
+## AU-VOCAB-02 — failed library read appears empty (S3, 2026-10-11)
+
+With GET/api/vocab returning503, the page shows the empty-deck fallback without
+an error/retry. Expected distinct failure state; actual no error feedback after
+10seconds in the320px browser probe. This can falsely imply lost cards. Minimal
+fix: bounded cancellable read, explicit initial/refresh error, retained cached list,
+manual retry and no form remount. Longer-term acceptance: full offline/re-entry
+journey. Risk: conflating cached emptiness with current server state or losing draft
+on retry. Verify503→retry→success and failed background refresh with known decks.
+Baseline:/tmp/vocab-read-before.log; vocabulary-entry.spec.ts.

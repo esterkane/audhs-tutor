@@ -1,3 +1,4 @@
+import { boundedRead } from '../../lib/boundedRead'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, type DueList, type Schemas } from '../../lib/api'
 
@@ -20,7 +21,11 @@ export function useLogPractice() {
 }
 
 export function useVocabDecks() {
-  return useQuery({ queryKey: ['vocab'], queryFn: () => apiFetch<Schemas['DeckList']>('/api/vocab') })
+  return useQuery({
+    queryKey: ['vocab'],
+    queryFn: ({ signal }) => boundedRead<Schemas['DeckList']>('/api/vocab', signal, 'Vocabulary decks'),
+    retry: false,
+  })
 }
 
 export function useAddVocab() {

@@ -182,7 +182,7 @@ export function QuickAdd() {
       <label className="text-sm font-medium">
         Language
         <input
-          className="block w-16 border border-line rounded-md px-2 py-1 mt-1"
+          className="block min-h-control-target w-16 border border-control rounded-md px-2 py-1 mt-1"
           value={lang}
           onChange={(e) => { draftRevision.current++; setLang(e.target.value) }}
         />
@@ -190,7 +190,7 @@ export function QuickAdd() {
       <label className="text-sm font-medium grow">
         Word
         <input
-          className="block w-full border border-line rounded-md px-2 py-1 mt-1"
+          className="block min-h-control-target w-full border border-control rounded-md px-2 py-1 mt-1"
           value={word}
           onChange={(e) => { draftRevision.current++; setWord(e.target.value) }}
         />
@@ -198,7 +198,7 @@ export function QuickAdd() {
       <label className="text-sm font-medium grow">
         Translation
         <input
-          className="block w-full border border-line rounded-md px-2 py-1 mt-1"
+          className="block min-h-control-target w-full border border-control rounded-md px-2 py-1 mt-1"
           value={translation}
           onChange={(e) => { draftRevision.current++; setTranslation(e.target.value) }}
         />

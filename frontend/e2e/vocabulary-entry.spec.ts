@@ -40,6 +40,9 @@ for (const width of [320, 1280]) test(`vocabulary entry retains work after faile
   await expect(page.getByLabel('Word', { exact: true })).toHaveValue('new unsaved word')
   await expect(page.getByLabel('Translation', { exact: true })).toHaveValue('Beispiel')
   expect(calls).toBe(2)
+  for (const name of ['Language', 'Word', 'Translation']) {
+    expect((await page.getByRole('textbox', { name, exact: true }).boundingBox())!.height).toBeGreaterThanOrEqual(44)
+  }
   for (const label of ['Add one card', 'Import a CSV list']) {
     const summary = page.locator('summary').filter({ hasText: label })
     expect((await summary.boundingBox())!.height).toBeGreaterThanOrEqual(44)
@@ -50,4 +53,32 @@ for (const width of [320, 1280]) test(`vocabulary entry retains work after faile
   await expect(page.getByLabel('Word', { exact: true })).toHaveValue('')
   await expect(page.getByLabel('Translation', { exact: true })).toHaveValue('')
   expect(calls).toBe(3)
+})
+
+for (const width of [320, 1280]) test(`vocabulary read failure never claims an empty library ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  let fail = true
+  await page.route('**/api/vocab', async route => {
+    if (route.request().method() === 'POST') {
+      fail = true
+      return route.fulfill({ json: { id: 'fixture-card' } })
+    }
+    return route.fulfill(fail
+      ? { status: 503, json: { error: { code: 'unavailable', message: 'Deck storage unavailable' } } }
+      : { json: { decks: [{ lang: 'de', title: 'Saved German cards', cards: 4, due: 2 }] } })
+  })
+  await page.goto('/vocab')
+  await expect(page.getByRole('alert').filter({ hasText: 'Could not load vocabulary decks' })).toBeVisible()
+  await expect(page.getByText('No decks yet. Add a first card below.')).not.toBeVisible()
+  await page.locator('summary').filter({ hasText: /^Add one card$/ }).click()
+  await page.getByLabel('Word', { exact: true }).fill('retained')
+  await page.getByLabel('Translation', { exact: true }).fill('behalten')
+  fail = false
+  await page.getByRole('button', { name: 'Retry decks', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Saved German cards: 4 cards · 2 due')).toBeVisible()
+  await expect(page.getByLabel('Word', { exact: true })).toHaveValue('retained')
+  await page.getByRole('button', { name: 'Add card', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Could not refresh vocabulary decks' })).toBeVisible()
+  await expect(page.getByText('Saved German cards: 4 cards · 2 due')).toBeVisible()
 })

@@ -1844,3 +1844,15 @@ verify503, heldsuccess/neweredit, duplicate click, successful clear, keyboard to
 and containment. Focused lint, test types, production types/build and reviews pass;
 narrow screenshot inspected. Existing bundle warning remains. Other form-control
 targets and durable draft recovery are outside this slice. Logs:/tmp/vocab-entry-*.log.
+
+
+2026-10-11 AU-VOCAB-02 fixed: deck loading, initial failure, successful empty list
+and cached refresh failure are distinct. Existing boundedRead supplies cancellation
+and deadline; no automatic retry. Stable Refresh/Retry preserves the mounted card
+form, and known decks stay visible on refresh failure. Three quick-entry inputs
+use semantic44px targets/control borders. Four320/1280 browser journeys pass for
+read/save failure, retry/draft retention, refresh retention, delayed save/new edits,
+keyboard and geometry. Two existing import component tests, lint/types/build and
+reviews pass; narrow screenshot inspected. Existing bundle warning remains.
+No learning-policy changes; reload drafts/import-control targets remain separate.
+Logs:/tmp/vocab-read-{before,final,unit,build}.log.
