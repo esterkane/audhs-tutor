@@ -1899,3 +1899,12 @@ CI38152411503 completed:348 browser passes,20 skips,one explanation-reader failu
 Trace downloaded under /tmp/audhs-ci-38152411503: last unfinished browser call clicks
 End session without opening Session options. Next fix the stale journey selector/flow;
 the closed cleanup context is secondary to the test timeout, not the primary cause.
+
+
+2026-10-12 CI reader journey fixed: trace38152411503 showed the final End session
+click waiting behind collapsed Session options until the60s timeout; cleanup then
+reported a closed request context. The test now opens options by keyboard, activates
+End and checks both Home navigation and a null current session. One isolated full
+reader journey passes, including existing notes/focus/follow-up assertions; ESLint
+and e2e TypeScript pass. No runtime change, so prior production checks remain valid.
+Latest-head full CI remains unverified. Log:/tmp/explanation-reader-ci-fix.log.

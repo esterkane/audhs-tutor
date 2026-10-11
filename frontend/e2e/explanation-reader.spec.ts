@@ -95,7 +95,16 @@ test('completed explanation sections preserve notes, focus and optional follow-u
     await page.keyboard.press('Enter')
     await expect(savedExplanation.locator('..').getByText('Compare matching components.', { exact: true })).toBeVisible()
     expect(calls).toBe(1)
-    await page.getByRole('button', { name: 'End session', exact: true }).click()
+    const controls = page.getByRole('region', { name: 'Session controls' })
+    await expect(controls.getByRole('button', { name: 'End session', exact: true })).not.toBeVisible()
+    await controls.locator('summary').filter({ hasText: /^Session options$/ }).focus()
+    await page.keyboard.press('Enter')
+    await controls.getByRole('button', { name: 'End session', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page).toHaveURL(/\/$/)
+    const ended = await request.get(`${API}/api/sessions/current`)
+    await expectOk(ended)
+    expect(await ended.json()).toBeNull()
   } finally {
     await endOpenSession(request)
   }
