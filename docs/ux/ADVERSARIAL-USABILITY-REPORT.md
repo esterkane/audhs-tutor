@@ -196,3 +196,32 @@ Keyboard Retry/Enter and selector focus pass; native select keyboard-menu automa
 was inconclusive in headless Chromium, so selection/save uses selectOption. Physical
 keyboard/assistive-technology acceptance remains open. Existing bundle warning remains.
 No learning-policy changes. Temporary reproduction spec removed after the baseline run.
+
+
+## AU-IMPORT-01 — CSV preparation can overlap (S3, reproduced2026-10-11)
+
+Baseline browser test at320px sent two previews from rapid activation while the
+response was held (/tmp/import-pending-before.log). Source inspection additionally
+shows language/direction unlocked until rows arrive, overlapping file reads without
+identity protection, and old success feedback retained for changed rows. Expected:
+one explicit preview/confirmation uses stable settings and exact displayed rows;
+new work must not acquire an older operation's feedback. Scope:VocabImport owner,
+focused tests and existing design tokens. Minimal fix serializes local operations
+from file-read through preview/import and disables conflicting controls; reset stale
+feedback on new work. Keep server deduplication/scheduling behavior unchanged.
+Long-term cancellable preview/reload drafts are separate. Test duplicate activation,
+held preview/import, same payload settings, file-read error, edited-row feedback,
+keyboard confirmation and narrow layout. This does not claim exactly-once network
+execution or durable browser drafts.
+
+AU-IMPORT-01 implemented: synchronous operation guard spans file read, preview and
+confirmation; conflicting settings/row edits are disabled until settlement. File-read
+errors release the guard; new work clears stale success, pasted previews clear file
+provenance. Failure does not assert rollback. Shared44px tokens/disclosure adopted.
+The narrow import owner and scroll region contain the table, including absolutely
+positioned screen-reader headers; rows scroll by keyboard. Two browser checks cover
+held preview/import, duplicate activation, payload/settings, edited-row feedback and
+320/1280 geometry; three component tests cover existing import/axe and file-read
+recovery. Lint/types/build pass; narrow screenshot inspected. Existing bundle warning,
+preview cancellation/deadline and reload-draft recovery remain open. Logs:
+/tmp/import-pending-{before,final,unit,build}.log.

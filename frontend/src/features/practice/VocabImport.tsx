@@ -1,5 +1,6 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
+import { DisclosureSummary } from '../../components/ui/disclosure'
 import { Card } from '../../components/ui/card'
 import { Textarea } from '../../components/ui/textarea'
 import { useImportPreview, useImportVocab, type ImportPreviewOut } from './api'
@@ -31,38 +32,51 @@ export function VocabImport() {
   const [rows, setRows] = useState<Row[] | null>(null)
   const [meta, setMeta] = useState<ImportPreviewOut | null>(null)
 
-  async function runPreview(text: string) {
+  const operation = useRef(false)
+  const [busy, setBusy] = useState(false)
+  const [fileError, setFileError] = useState<string | null>(null)
+
+  async function runPreview(input: string | File) {
+    if (operation.current) return
+    operation.current = true
+    setBusy(true)
+    setFileError(null)
+    previewMut.reset()
+    importMut.reset()
     setRows(null)
+    setMeta(null)
     try {
+      const file = typeof input === 'string' ? null : input
+      if (file && file.size > 2_000_000) {
+        setFileError('File larger than 2 MB. Choose a smaller CSV file.')
+        return
+      }
+      let text: string
+      try { text = typeof input === 'string' ? input : await input.text() }
+      catch { setFileError('Could not read this file. Choose it again or paste the list.'); return }
+      setSource(file?.name ?? null)
+      setCsvText(text)
       const pv = await previewMut.mutateAsync({ lang, csv_text: text, reverse })
       setMeta(pv)
       setRows(pv.rows.map((r) => ({ ...r })))
     } catch {
       /* previewMut.error is rendered */
+    } finally {
+      operation.current = false
+      setBusy(false)
     }
-  }
-
-  async function onFile(file: File | undefined) {
-    if (!file) return
-    if (file.size > 2_000_000) {
-      setMeta({ ...(meta ?? emptyMeta(lang)), errors: ['file larger than 2 MB'], rows: [] })
-      setRows([])
-      return
-    }
-    const text = await file.text()
-    setSource(file.name)
-    setCsvText(text)
-    await runPreview(text)
   }
 
   const active = (rows ?? []).filter((r) => !r.removed)
   const importable = active.filter(
     (r) => (r.status === 'new' || r.status === 'reverse_only') && r.word.trim() && r.translation.trim(),
   )
-  const locked = rows !== null // language and direction were used for the preview: re-preview to change
+  const locked = busy || rows !== null // language and direction were used for the preview: re-preview to change
 
   async function confirm() {
-    if (importMut.isPending || importable.length === 0) return
+    if (operation.current || importable.length === 0) return
+    operation.current = true
+    setBusy(true)
     try {
       await importMut.mutateAsync({
         lang,
@@ -75,11 +89,16 @@ export function VocabImport() {
         })),
       })
     } catch {
-      /* importMut.error is rendered; the server rolled back */
+      /* A lost response does not establish whether the server committed. */
+    } finally {
+      operation.current = false
+      setBusy(false)
     }
   }
 
   function update(i: number, patch: Partial<Row>) {
+    if (operation.current) return
+    importMut.reset()
     const identityEdited = 'word' in patch || 'translation' in patch
     setRows((prev) =>
       prev
@@ -93,12 +112,16 @@ export function VocabImport() {
   }
 
   function startOver() {
+    if (operation.current) return
+    previewMut.reset()
+    importMut.reset()
+    setFileError(null)
     setRows(null)
     setMeta(null)
   }
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <p className="text-sm text-muted mb-3">
         Columns: word, translation, optional example (header row optional; `,` `;` or tab). Every row is shown
         with its status before anything is saved; re-importing the same file adds no cards and never changes a
@@ -109,7 +132,7 @@ export function VocabImport() {
         <label className="text-sm font-medium">
           Language
           <input
-            className="block w-16 border border-line rounded-md px-2 py-1 mt-1"
+            className="block min-h-control-target w-16 border border-control rounded-md px-2 py-1 mt-1"
             value={lang}
             maxLength={8}
             list="vocab-import-langs"
@@ -122,16 +145,17 @@ export function VocabImport() {
             ))}
           </datalist>
         </label>
-        <label className="text-sm font-medium">
+        <label className="text-sm font-medium min-w-0">
           CSV file
           <input
             type="file"
             accept=".csv,text/csv,text/plain"
-            className="block mt-1"
-            onChange={(e) => void onFile(e.target.files?.[0])}
+            className="block min-h-control-target mt-1 w-full min-w-0"
+            disabled={busy}
+            onChange={(e) => { const file = e.target.files?.[0]; if (file) void runPreview(file) }}
           />
         </label>
-        <label className="text-sm font-medium flex items-center gap-2">
+        <label className="text-sm font-medium flex min-h-control-target items-center gap-2">
           <input
             type="checkbox"
             checked={reverse}
@@ -141,18 +165,19 @@ export function VocabImport() {
           Also create reverse cards (translation → word)
         </label>
         {locked && (
-          <Button size="sm" variant="ghost" onClick={startOver}>
+          <Button size="sm" variant="ghost" disabled={busy} onClick={startOver}>
             Start over (change language or direction)
           </Button>
         )}
       </div>
-      <details className="mt-3">
-        <summary className="cursor-pointer text-sm">Or paste the list</summary>
+      <details className="mt-3 [&[open]>summary>svg]:rotate-90">
+        <DisclosureSummary>Or paste the list</DisclosureSummary>
         <label htmlFor="csv-paste" className="sr-only">
           CSV text
         </label>
         <Textarea
           id="csv-paste"
+          disabled={busy}
           value={csvText}
           onChange={(e) => setCsvText(e.target.value)}
           className="mt-2"
@@ -160,12 +185,14 @@ export function VocabImport() {
         <Button
           size="sm"
           className="mt-2"
-          disabled={!csvText.trim() || previewMut.isPending}
+          disabled={!csvText.trim() || busy}
           onClick={() => void runPreview(csvText)}
         >
           Preview
         </Button>
       </details>
+      {busy && <p role="status">{importMut.isPending ? 'Importing reviewed cards…' : 'Preparing preview…'}</p>}
+      {fileError && <p role="alert">{fileError}</p>}
       {previewMut.isError && (
         <p role="alert" className="text-warn mt-2">
           {(previewMut.error as Error).message}
@@ -196,8 +223,8 @@ export function VocabImport() {
             {active.filter((r) => r.status === 'duplicate_in_file').length} duplicates in file,{' '}
             {active.filter((r) => r.status === 'invalid').length} invalid
           </p>
-          <div className="overflow-x-auto mt-2">
-            <table className="text-sm w-full">
+          <div className="relative overflow-x-auto mt-2" role="region" aria-label="CSV preview rows; scroll horizontally for all columns" tabIndex={0}>
+            <table className="text-sm w-full min-w-max">
               <caption className="sr-only">Rows to import</caption>
               <thead>
                 <tr className="text-left">
@@ -224,6 +251,7 @@ export function VocabImport() {
                           size="sm"
                           variant="ghost"
                           aria-label={`Undo remove row ${r.row}`}
+                          disabled={busy}
                           onClick={() => update(i, { removed: false })}
                         >
                           Undo
@@ -236,7 +264,8 @@ export function VocabImport() {
                       <td className="pr-2">
                         <input
                           aria-label={`Word, row ${r.row}`}
-                          className="border border-line rounded-md px-1 w-full"
+                          disabled={busy}
+                          className="min-h-control-target border border-control rounded-md px-1 w-full"
                           value={r.word}
                           maxLength={LIMITS.word}
                           onChange={(e) => update(i, { word: e.target.value })}
@@ -245,7 +274,8 @@ export function VocabImport() {
                       <td className="pr-2">
                         <input
                           aria-label={`Translation, row ${r.row}`}
-                          className="border border-line rounded-md px-1 w-full"
+                          disabled={busy}
+                          className="min-h-control-target border border-control rounded-md px-1 w-full"
                           value={r.translation}
                           maxLength={LIMITS.translation}
                           onChange={(e) => update(i, { translation: e.target.value })}
@@ -254,7 +284,8 @@ export function VocabImport() {
                       <td className="pr-2">
                         <input
                           aria-label={`Example, row ${r.row}`}
-                          className="border border-line rounded-md px-1 w-full"
+                          disabled={busy}
+                          className="min-h-control-target border border-control rounded-md px-1 w-full"
                           value={r.example ?? ''}
                           maxLength={LIMITS.example}
                           onChange={(e) => update(i, { example: e.target.value || null })}
@@ -269,6 +300,7 @@ export function VocabImport() {
                           size="sm"
                           variant="ghost"
                           aria-label={`Remove row ${r.row}`}
+                          disabled={busy}
                           onClick={() => update(i, { removed: true })}
                         >
                           Remove
@@ -283,7 +315,7 @@ export function VocabImport() {
           <div className="mt-3 flex gap-2 items-center flex-wrap">
             <Button
               variant="primary"
-              disabled={importable.length === 0 || importMut.isPending}
+              disabled={importable.length === 0 || busy}
               onClick={() => void confirm()}
             >
               {importMut.isPending
@@ -302,7 +334,7 @@ export function VocabImport() {
             )}
             {importMut.isError && (
               <span role="alert" className="text-warn text-sm">
-                {(importMut.error as Error).message} — nothing was imported.
+                {(importMut.error as Error).message} — could not confirm the import. Your reviewed rows are kept; retrying will skip cards already saved.
               </span>
             )}
           </div>
@@ -310,10 +342,6 @@ export function VocabImport() {
       )}
     </Card>
   )
-}
-
-function emptyMeta(lang: string): ImportPreviewOut {
-  return { lang, rows: [], columns: {}, delimiter: ',', header: false, counts: {}, errors: [] }
 }
 
 /** Identity edited: the server decides on import (an existing card → skipped_existing). */

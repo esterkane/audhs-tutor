@@ -42,7 +42,7 @@ export function Vocab() {
           <QuickAdd />
         </details>
       </Card>
-      <details className="[&[open]>summary>svg]:rotate-90">
+      <details className="min-w-0 [&[open]>summary>svg]:rotate-90">
         <DisclosureSummary>Import a CSV list</DisclosureSummary>
         <VocabImport />
       </details>

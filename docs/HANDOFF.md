@@ -1886,3 +1886,16 @@ semantics, required decisions, four bounded implementation slices and acceptance
 matrix are now explicit; no ADR accepted and no runtime/kernel change. Pedagogy
 review found no major omissions. Runtime checks reused unchanged; diff check passed.
 Continue independent design/reliability work while the policy is unresolved.
+
+
+2026-10-11 AU-IMPORT-01: CSV preview/import operations now retain stable settings
+and cannot overlap via rapid activation. Inputs/rows lock only while pending;
+new work clears stale feedback, read failures recover, uncertain saves retain rows.
+Two320/1280 browser journeys, three component tests/axe, lint/types/build pass;
+keyboard table scroll and narrow screenshot verified. No scheduling/kernel changes.
+See ux/ADVERSARIAL-USABILITY-REPORT.md; preview cancellation/reload drafts remain.
+CI38152411503 completed:348 browser passes,20 skips,one explanation-reader failure
+(request context closed during cleanup). Full log:/tmp/ci-38152411503-failed.log.
+Trace downloaded under /tmp/audhs-ci-38152411503: last unfinished browser call clicks
+End session without opening Session options. Next fix the stale journey selector/flow;
+the closed cleanup context is secondary to the test timeout, not the primary cause.
