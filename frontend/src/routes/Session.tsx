@@ -1195,6 +1195,7 @@ function AssessPanel({
             {item.kind === 'mcq' && item.options ? (
               <Choice<string>
                 label="Your answer"
+                selectionTone="quiet"
                 options={item.options.map((o, i) => ({ value: String(i), label: o }))}
                 value={currentAnswer || null}
                 onChange={(value) => {

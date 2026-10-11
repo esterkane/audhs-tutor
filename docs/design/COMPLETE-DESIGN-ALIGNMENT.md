@@ -240,3 +240,12 @@ and enlarged-text acceptance for this presentation remain open.
 
 
 2026-10-11: Omitted-parent repeats now classify server-side under the write lock; concurrent requests create one original and one revision, preserving raw recovery identity.1141 backend tests pass; shared notices across result surfaces, component/browser/type/lint/build/review gates pass. Retry editing/actions remain next. See docs/design/PRACTICE-RETRY-CONTRACT.md.
+
+
+2026-10-11: Assessment selections use semantic accent-tint plus the existing pressed
+ring, leaving Check my answer as the filled primary action (PDF pp2/10). Other
+Choice uses remain unchanged. Two real-API revision browser journeys pass at390
+light/1280 dark, with keyboard/edit/reload/cancel/submission checks; screenshots
+inspected.10 Session tests, lint/type/build and code/pedagogy reviews pass. Existing
+large-chunk warning remains. Full secondary feedback-help controls and broader
+Practice/Progress design acceptance remain open; grading is unchanged.

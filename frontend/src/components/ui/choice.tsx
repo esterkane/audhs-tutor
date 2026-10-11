@@ -17,6 +17,7 @@ export function Choice<T extends string | number>({
   stackOnNarrow = false,
   describedBy,
   segmented = false,
+  selectionTone = 'strong',
 }: {
   label: string
   options: ChoiceOption<T>[]
@@ -26,6 +27,7 @@ export function Choice<T extends string | number>({
   stackOnNarrow?: boolean
   describedBy?: string
   segmented?: boolean
+  selectionTone?: 'strong' | 'quiet'
 }) {
   return (
     <fieldset aria-describedby={describedBy} className="border-0 p-0 m-0 min-w-0 @container">
@@ -41,10 +43,10 @@ export function Choice<T extends string | number>({
         {options.map((o) => (
           <Button
             key={String(o.value)}
-            variant={segmented ? 'ghost' : value === o.value ? 'primary' : 'secondary'}
+            variant={segmented ? 'ghost' : value === o.value && selectionTone === 'strong' ? 'primary' : 'secondary'}
             pressed={value === o.value}
             onClick={() => onChange(o.value)}
-            className={`flex-col h-auto py-2 items-start text-left min-w-0 max-w-full ${segmented ? `text-fg ${value === o.value ? 'before:bg-card hover:before:bg-card' : 'hover:before:bg-card'}` : ''}`}
+            className={`${!segmented && selectionTone === 'quiet' && value === o.value ? 'before:bg-accent-tint hover:before:bg-accent-tint text-fg' : ''} flex-col h-auto py-2 items-start text-left min-w-0 max-w-full ${segmented ? `text-fg ${value === o.value ? 'before:bg-card hover:before:bg-card' : 'hover:before:bg-card'}` : ''}`}
           >
             <span className="max-w-full [overflow-wrap:anywhere]">{o.label}</span>
             {o.hint && (

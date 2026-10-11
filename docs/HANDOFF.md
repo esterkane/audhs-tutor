@@ -1598,3 +1598,12 @@ build pass. Desktop/narrow screenshots inspected; code/pedagogy reviews clear.
 Existing large-chunk warning remains. Full Practice design, shared choice styling,
 physical assistive-technology and human comprehension acceptance remain open.
 See docs/design/PRACTICE-RETRY-CONTRACT.md.
+
+
+2026-10-11: Assessment selections use semantic accent-tint plus the existing pressed
+ring, leaving Check my answer as the filled primary action (PDF pp2/10). Other
+Choice uses remain unchanged. Two real-API revision browser journeys pass at390
+light/1280 dark, with keyboard/edit/reload/cancel/submission checks; screenshots
+inspected.10 Session tests, lint/type/build and code/pedagogy reviews pass. Existing
+large-chunk warning remains. Full secondary feedback-help controls and broader
+Practice/Progress design acceptance remain open; grading is unchanged.

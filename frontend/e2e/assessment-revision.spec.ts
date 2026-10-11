@@ -5,6 +5,7 @@ for (const width of [390, 1280]) test(`revise the saved answer with reload and c
   await endOpenSession(request)
   try {
     await page.setViewportSize({ width, height: 900 })
+    await page.emulateMedia({ colorScheme: width === 1280 ? 'dark' : 'light' })
     await request.put(`${API}/api/preferences`, { data: { key: 'goal.area', value: '' } })
     await request.put(`${API}/api/preferences`, { data: { key: 'goal.course', value: '' } })
     const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
