@@ -23,7 +23,9 @@ it('names the current page, provides Home and a skip link, and does not infer ru
     '#main-content',
   )
   expect(screen.queryByText(/session running/)).toBeNull()
-  expect(screen.getByRole('link', { name: 'Resume or manage session' })).toHaveAttribute('href', '/')
+  expect(screen.queryByRole('link', { name: 'Resume or manage session' })).toBeNull()
+  expect(screen.queryByRole('link', { name: 'Start or resume' })).toBeNull()
+  expect(useMode.getState().sessionId).toBe('remembered-id')
 })
 it('updates titles and focus after navigation and marks only the exact current route', () => {
   renderApp(
@@ -57,7 +59,7 @@ it('keeps every existing destination available within named groups without chang
     fireEvent.click(screen.getByText(name, { exact: true }))
   }
   const destinations = {
-    'Start or resume': '/', Review: '/review', Vocabulary: '/vocab', 'Work alongside': '/together',
+    Home: '/', Review: '/review', Vocabulary: '/vocab', 'Work alongside': '/together',
     'Learning areas': '/areas', 'Skill map': '/map', Projects: '/programs',
     'Saved answers': '/answers', Playground: '/playground', 'Audio visualizer': '/playground/visualizer',
     Materials: '/corpus', 'Lesson drafts': '/curriculum', Models: '/models',

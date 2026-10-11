@@ -39,7 +39,7 @@ const primaryPages = [
   ['/programs', 'Project study'],
 ] as const
 const navigationGroups: ReadonlyArray<{ label: string; pages: ReadonlyArray<readonly [string, string]> }> = [
-  { label: 'Learn', pages: [['/', 'Start or resume'], ['/review', 'Review'], ['/vocab', 'Vocabulary'], ['/together', 'Work alongside']] },
+  { label: 'Learn', pages: [['/review', 'Review'], ['/vocab', 'Vocabulary'], ['/together', 'Work alongside']] },
   { label: 'Explore', pages: [['/areas', 'Learning areas'], ['/map', 'Skill map']] },
   { label: 'Library', pages: [['/search', 'Search material'], ['/answers', 'Saved answers'], ['/sources', 'Sources']] },
   { label: 'Tools', pages: [['/playground', 'Playground'], ['/playground/visualizer', 'Audio visualizer']] },
@@ -56,7 +56,7 @@ const pageTitles: Record<string, string> = {
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
-  const { mode, energy, sessionId } = useMode()
+  const { mode, energy } = useMode()
   useSensory()
   const pathname = useLocation().pathname
   const routePath = pathname.replace(/\/+$/, '').toLowerCase() || '/'
@@ -98,11 +98,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <span>
             {MODE_LABELS[mode].title} · energy {energy}
           </span>
-          {sessionId && (
-            <Link to="/" className="underline">
-              Resume or manage session
-            </Link>
-          )}
+
         </div>
       </header>
       <div className="shell-workspace">

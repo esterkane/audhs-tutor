@@ -27,6 +27,8 @@ for (const width of [390, 1280]) {
       return route.fulfill({ status: 201, json: { ...original, id: 'new', active_skill: skill, state: { ...state, skill_id: 'next' } } })
     })
     await page.goto('/')
+    await expect(page.getByRole('link', { name: 'Resume or manage session', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('link', { name: 'Start or resume', exact: true })).toHaveCount(0)
     const resume = page.getByRole('button', { name: 'Continue', exact: true })
     await expect(resume).toBeVisible()
     await expect(page.getByLabel('Saved session').getByText('Original lesson', { exact: true })).toBeVisible()

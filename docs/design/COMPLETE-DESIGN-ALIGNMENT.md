@@ -23,7 +23,7 @@ Read all extracted pages and visually inspected typography/layout/component page
 | 22px page title,16px panel title,896px page measure,2px focus, pp5–8 | Existing shared CSS tokens,56rem page bound,focus rule | Foundations exist; audit adoption, not just token existence |
 | 14px UI /16px prose,13px code, p5 | Existing body inherits browser16px, prose line-height1.75 | Not exact: migrate semantic role tokens deliberately; preserve118% preference and do not globally shrink reading |
 | 48px header,240/48px navigation, five mobile destinations + Tools, p6 | Current grouped navigation and multirow header | Incomplete; prototype/verify responsive shell against target with all destinations retained |
-| Sole Home ResumeCard, p6 | Header still links “Resume or manage session” | Duplicate entry remains; reconcile with Home return/discovery tests |
+| Sole Home ResumeCard, p6 | Duplicate header/menu links removed | Shell aligned; Home and contextual recovery retained, see ../slices/single-shell-resume.md |
 | Shared44px Disclosure,40px visual controls/44px targets, pp5–7 | Shared Disclosure in two lesson controls; existing Button | Partial: see ../slices/shared-disclosure.md; remaining disclosure/raw-control adoption open; shared Button sizing verified in ../slices/button-target-plan.md |
 | ContextBar, goal→concept→step,Pause/Focus and anchored tutor, pp6/9 | Existing session cards, persistent tutor and pending goal/explanation consolidation | Partial; pending layout is an incremental reading-order fix, not completed Learn blueprint |
 | Evidence labels rather than false precision, pp8/10 | Existing learning evidence and mixed progress views | Map words to real evidence; never infer demonstrated understanding from exposure or bookmarks |
