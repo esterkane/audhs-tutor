@@ -1506,3 +1506,6 @@ Ordinary lesson questions now offer impact preview and explicit exclusion/restor
 
 
 2026-10-11 — Existing tutor launcher moved to page action area; single companion/captured context preserved. Six browser journeys, lint/build and review pass. Header/ContextBar plan: docs/design/HEADER-CONTEXT-CONTRACT.md.
+
+
+2026-10-11 — Compact global header verified with retained audio controls, saved drafts and page-level context. See docs/design/HEADER-CONTEXT-CONTRACT.md for checks and remaining ContextBar/Focus work.

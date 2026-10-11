@@ -432,3 +432,6 @@ Quick navigation implemented: header modal and Ctrl/Cmd+K, local page filtering,
 
 
 2026-10-05 next performance slice: Study Tutor buffers ordinary replies until complete, unlike session SSE. Documented a single streaming vertical slice in slices/study-tutor-streaming-plan.md with unchanged prompts/routing, authoritative final checks, retained partial text and durable recovery. No runtime change yet; next implement and test that contract. Do not remove bounded history or enable saved reuse silently.
+
+
+2026-10-11 — Compact global header verified with retained audio controls, saved drafts and page-level context. See docs/design/HEADER-CONTEXT-CONTRACT.md for checks and remaining ContextBar/Focus work.

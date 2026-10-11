@@ -74,32 +74,25 @@ export function Shell({ children }: { children: React.ReactNode }) {
       <a href="#main-content" className="sr-only focus:not-sr-only focus:block focus:p-3 focus:bg-card">
         Skip to learning content
       </a>
-      <header className="grid gap-3 px-4 py-3 border-b border-line bg-card">
-        <div className="flex flex-wrap gap-3 items-center justify-between">
-          <div className="flex flex-wrap items-center justify-between gap-3 w-full lg:w-auto">
-            <Link to="/" className="font-semibold no-underline text-fg">
-              <Brand />
-            </Link>
-            <QuickNavigation pages={[...primaryPages, ...toolPages]} />
-          </div>
-          <div className="flex flex-wrap items-start gap-2 min-w-0 max-w-full">
-            <AudioControls compact />
-            <ParkingLotButton />
-          </div>
-        </div>
-        <BrowseArea />
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted">
-          <span>
-            {MODE_LABELS[mode].title} · energy {energy}
-          </span>
-
-        </div>
+      <header className="shell-header border-b border-line bg-card">
+        <Link to="/" className="shell-brand font-semibold no-underline text-fg">
+          <Brand />
+        </Link>
+        <QuickNavigation pages={[...primaryPages, ...toolPages]} />
+        <ParkingLotButton />
+        <AudioControls compact header />
       </header>
       <div className="shell-workspace">
         <MainNavigation />
       <div className="tutor-workspace min-w-0">
       <div className="min-w-0">
-      <div ref={setTutorEntry} className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto px-4 pt-4 flex flex-wrap justify-end gap-2 min-w-0`} />
+      <div className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto px-4 pt-4 flex flex-wrap items-center justify-between gap-2 min-w-0`}>
+        <div className="min-w-0">
+          <BrowseArea />
+          <p className="text-xs text-muted">{MODE_LABELS[mode].title} · energy {energy}</p>
+        </div>
+        <div ref={setTutorEntry} className="flex flex-wrap gap-2 min-w-0" />
+      </div>
       <main
         id="main-content"
         ref={main}

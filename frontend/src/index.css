@@ -32,6 +32,7 @@
   --color-warn: #9a5f00;
   --spacing-nav-width: 15rem;
   --spacing-control-target: 2.75rem;
+  --spacing-shell-header: 3rem;
   --spacing-control-standard: 2.5rem;
   --spacing-control-compact: 2rem;
   --radius-panel: 0.375rem;
@@ -347,4 +348,62 @@ body {
 }
 .button-compact {
   --button-inset: calc((var(--spacing-control-target) - var(--spacing-control-compact)) / 2);
+}
+
+/* PDF p6: compact global controls; expanded audio remains in normal flow. */
+.shell-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.125rem 0.5rem;
+  min-height: var(--spacing-shell-header);
+  padding: 0.0625rem 1rem;
+}
+.shell-brand {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--spacing-control-target);
+  min-width: var(--spacing-control-target);
+  margin-right: auto;
+}
+.shell-audio > details > summary {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: var(--spacing-control-target);
+  min-width: var(--spacing-control-target);
+  padding: 0 0.5rem;
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-panel);
+}
+.shell-audio > details > summary::-webkit-details-marker { display: none; }
+.shell-audio:has(details[open]), .shell-audio[data-active="true"] {
+  flex-basis: 100%;
+  padding-bottom: 0.5rem;
+}
+.shell-audio:has(details[open]) > details > summary { justify-content: start; }
+@media (max-width: 47.999rem) {
+  .shell-header .shell-control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 47.999rem) {
+  .shell-audio:has(details[open]) .shell-control-label {
+    position: static;
+    width: auto;
+    height: auto;
+    margin: 0;
+    overflow: visible;
+    clip-path: none;
+    white-space: normal;
+  }
 }

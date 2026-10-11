@@ -22,7 +22,7 @@ Read all extracted pages and visually inspected typography/layout/component page
 | Inter / Roboto Mono, p5 | Local font-face assets and provenance | Implemented; retain local delivery |
 | 22px page title,16px panel title,896px page measure,2px focus, pp5–8 | Existing shared CSS tokens,56rem page bound,focus rule | Foundations exist; audit adoption, not just token existence |
 | 14px UI /16px prose,13px code, p5 | Existing body inherits browser16px, prose line-height1.75 | Not exact: migrate semantic role tokens deliberately; preserve118% preference and do not globally shrink reading |
-| 48px header,240/48px navigation, five mobile destinations + Tools, p6 | Current grouped navigation and multirow header | Incomplete; prototype/verify responsive shell against target with all destinations retained |
+| 48px header,240/48px navigation, five mobile destinations + Tools, p6 | Five-destination sidebar/rail/bottom navigation and compact header implemented | Bounded browser evidence in HEADER-CONTEXT-CONTRACT.md; full human/assistive-technology acceptance remains open |
 | Sole Home ResumeCard, p6 | Duplicate header/menu links removed | Shell aligned; Home and contextual recovery retained, see ../slices/single-shell-resume.md |
 | Shared44px Disclosure,40px visual controls/44px targets, pp5–7 | Shared Disclosure in two lesson controls; existing Button | Partial: see ../slices/shared-disclosure.md; remaining disclosure/raw-control adoption open; shared Button sizing verified in ../slices/button-target-plan.md |
 | ContextBar, goal→concept→step,Pause/Focus and anchored tutor, pp6/9 | Existing session cards, persistent tutor and pending goal/explanation consolidation | Partial; pending layout is an incremental reading-order fix, not completed Learn blueprint |
@@ -49,6 +49,6 @@ new design library merely to imitate the reference. Keep one dominant primary ac
 plain factual copy,opt-in audio and visible learner exits.
 
 Navigation implementation contract: [five-destination route map](SHELL-ROUTE-CONTRACT.md).
-The current application lacks dedicated Practice/Progress entries; implement
-the documented state-aware routes before replacing shell labels. Home baseline
-passed at390/1280px. No new shell behavior is claimed yet.
+Practice, dated Progress evidence and state-aware Learn routes are implemented.
+Five-destination navigation and the compact global header are verified in bounded
+journeys; Learn ContextBar and Focus remain next. See HEADER-CONTEXT-CONTRACT.md.

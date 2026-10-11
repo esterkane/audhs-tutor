@@ -1,3 +1,4 @@
+import { Bookmark } from 'lucide-react'
 import { useLocation } from 'react-router-dom'
 import { CAPTURE_REQUEST } from '../features/parking/requestCapture'
 import { validThoughtContext, type ThoughtContext } from '../features/parking/context'
@@ -83,7 +84,7 @@ export function ParkingLotButton() {
           aria-label="Save for later"
           title="Save a thought for later"
         >
-          Save for later
+          <Bookmark aria-hidden="true" size={18} /><span className="shell-control-label">Save for later</span>
         </Button>
       </Dialog.Trigger>
       <Dialog.Portal>

@@ -6,6 +6,6 @@ export function Brand() {
       <path d="m8 14 8 5 8-5" />
       <circle cx="16" cy="19" r="2.5" className="fill-card" />
     </svg>
-    <span>AuDHS Tutor</span>
+    <span className="shell-control-label">AuDHS Tutor</span>
   </span>
 }

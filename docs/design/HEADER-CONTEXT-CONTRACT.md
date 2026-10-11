@@ -97,3 +97,31 @@ ContextBar. The action remains above the route title rather than sharing a
 common title component; title consolidation can follow without duplicating
 existing route headings. Next: compact global controls with visible playback
 Stop, followed by authoritative lesson context and Focus.
+
+
+## Compact global controls verified — 2026-10-11
+
+Implemented PDF p6 idle header at48px at320/1280px. Search, saved thoughts and
+audio retain their existing owners; narrow controls use existing-library icons
+and accessible labels. Open audio settings reveal their label and expand in
+normal flow; active playback status/Pause/Stop stay outside the disclosure.
+Large text may expand the header rather than clip controls. Browsing and current
+mode/energy now sit beside the page-level tutor entry, outside captured main
+content. No planner, grading, session lifecycle, provider or storage changes.
+
+Evidence: baseline audio journey passed;19 affected browser checks passed
+(audio settings/reading lifecycle, browsing independent of learning, companion
+context, saved drafts/failure recovery and new compact-header checks). Final
+CSS refinement reveals the narrow audio label when expanded and uses semantic
+header/radius tokens; two header journeys rerun. App unit tests, affected ESLint
+and production build pass. Desktop/narrow dark screenshots and light200% root
+text inspected, reduced-motion enabled. Keyboard dialog entry/Escape/focus
+return,44px targets and no horizontal overflow checked. Code review found no
+blockers or majors. Physical headphone audibility, actual browser zoom,
+screen-reader and human comprehension are not certified by these checks.
+
+Remaining: Learn ContextBar and temporary Focus (steps4–5 above), full route
+adoption and human acceptance. No Focus implementation or complete design-system
+conformance is claimed. The production build retains its existing large-chunk
+warning. Next inspect session goal provenance and consolidate existing controls
+without introducing a second lifecycle owner.

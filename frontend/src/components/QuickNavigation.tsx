@@ -1,3 +1,4 @@
+import { Search } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Button } from './ui/button'
@@ -38,7 +39,7 @@ export function QuickNavigation({ pages }: { pages: ReadonlyArray<readonly [stri
   const phrase = query.trim()
   const matching = pages.filter(([, title]) => title.toLocaleLowerCase().includes(phrase.toLocaleLowerCase()))
   return <>
-    <Button variant="outline" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k" onClick={open}>Search or go to</Button>
+    <Button variant="outline" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k" title="Search or go to" onClick={open}><Search aria-hidden="true" size={18} /><span className="shell-control-label">Search or go to</span></Button>
     <dialog ref={dialog} aria-labelledby="quick-navigation-title" aria-describedby="quick-navigation-help"
       className="m-auto w-full max-w-lg max-h-[85dvh] overflow-hidden rounded-lg border border-line bg-card text-fg p-0 backdrop:bg-fg/30"
       onCancel={event => { event.preventDefault(); close() }}

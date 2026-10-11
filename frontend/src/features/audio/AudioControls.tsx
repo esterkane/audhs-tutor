@@ -1,3 +1,4 @@
+import { Volume2, VolumeX } from 'lucide-react'
 import { claimReading, updateReading, useReadingControls } from '../voice/readingOwner'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
@@ -20,7 +21,7 @@ const STOP_LABELS = {
   visualizer: 'Stop visualizer sound',
 }
 
-export function AudioControls({ compact = false }: { compact?: boolean }) {
+export function AudioControls({ compact = false, header = false }: { compact?: boolean; header?: boolean }) {
   const reading = useReadingControls((s) => s.reading)
   const { volume, muted, rate, saved, update } = useAudioSettings()
   const summary = useRef<HTMLElement>(null)
@@ -129,16 +130,17 @@ export function AudioControls({ compact = false }: { compact?: boolean }) {
     </div>
   )
   return (
-    <div className="min-w-0 max-w-full">
+    <div className={`${header ? 'shell-audio' : ''} min-w-0 max-w-full`} data-active={Boolean(reading)}>
       {compact && activity}
-      <details className="my-2 text-sm rounded-lg border border-line p-2">
-        <summary ref={summary} className="cursor-pointer">
-          Audio controls
+      <details className={header ? "text-sm" : "my-2 text-sm rounded-lg border border-line p-2"}>
+        <summary ref={summary} className="cursor-pointer" title="Audio controls">
+          {header && (muted || volume === 0 ? <VolumeX aria-hidden="true" size={18} /> : <Volume2 aria-hidden="true" size={18} />)}
+          <span className={header ? "shell-control-label" : undefined}>Audio controls
           {compact
             ? muted || volume === 0
               ? ' · muted'
               : ''
-            : ` · ${muted || volume === 0 ? 'muted' : `${Math.round(volume * 100)}%`} · ${rate}×`}
+            : ` · ${muted || volume === 0 ? 'muted' : `${Math.round(volume * 100)}%`} · ${rate}×`}</span>
         </summary>
         {!compact && activity}
         <div className="flex flex-wrap items-center gap-3 mt-2">
