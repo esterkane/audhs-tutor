@@ -678,6 +678,20 @@ class TutorTrace(IdMixin, LearnerScoped, Base):
     latency_ms: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class AnswerCheck(IdMixin, LearnerScoped, Base):
+    """Local model review receipt, not assessment or independently verified truth."""
+
+    __tablename__ = "answer_check"
+    __table_args__ = (UniqueConstraint("learner_id", "model_call_id", name="uq_answer_check_call"),)
+    answer_id: Mapped[str] = mapped_column(
+        Text, ForeignKey("tutor_answer.id", ondelete="CASCADE"), index=True
+    )
+    model_call_id: Mapped[str] = mapped_column(Text, ForeignKey("model_call.id"))
+    prompt_version: Mapped[str] = mapped_column(Text)
+    receipt_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class TutorAnswer(IdMixin, LearnerScoped, Base):
     """Delivered response snapshot; not curriculum truth or competency evidence."""
 

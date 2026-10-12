@@ -158,3 +158,16 @@ and origin/export evidence; G1 has not started.
 2026-10-12 follow-up: G0b image/speech endpoint containment delivered; see
 ../slices/media-source-containment.md. All new Ask work must remain local; hosted
 owner-only eligibility and public-export rights are still unavailable. G1 is next.
+
+2026-10-12 current checkpoint (supersedes earlier status): G1 independent Ask is
+implemented, migrated and pushed separately to both private variants. See
+../slices/ask-workspace.md for validation and limitations. G2 is in progress:
+../slices/ask-grounding.md describes the exact answer/passage check contract.
+Claim binding is not factual validation; no G2 UI or automated checker is live yet.
+G0 version-bound hosted/public origin eligibility and G3–G6 remain incomplete.
+
+2026-10-12: G2a bounded local passage review is verified and locally migrated; see
+../slices/ask-grounding.md. Explicit selection, local model claim proposals,
+unchanged/historical bindings, newer-version disclosure, saved review/recovery and
+source trust/displayed-text gates are implemented. G2 web references, grounded
+original generation and broader factual-quality evaluation remain open.

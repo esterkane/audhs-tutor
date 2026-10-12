@@ -242,3 +242,16 @@ export function useAskRequestRecovery(scope: string) {
       [value.area_id, value.parent_answer_id].every(v => v == null || (typeof v === 'string' && v.length > 0 && v.length <= 128))
   }, true, true)
 }
+
+export function useAnswerCheckRecovery(scope: string) {
+  return useTypedRequestRecovery<Schemas['AnswerCheckRequest']>(scope, (body): body is Schemas['AnswerCheckRequest'] => {
+    if (!body || typeof body !== 'object') return false
+    const value = body as Schemas['AnswerCheckRequest']
+    return typeof value.answer_id === 'string' && value.answer_id.length > 0 && value.answer_id.length <= 128 &&
+      Array.isArray(value.passage_ids) && value.passage_ids.length > 0 && value.passage_ids.length <= 6 &&
+      value.passage_ids.every(id => typeof id === 'string' && id.length > 0 && id.length <= 128) &&
+      new Set(value.passage_ids).size === value.passage_ids.length &&
+      !!value.passage_hashes && Object.keys(value.passage_hashes).length === value.passage_ids.length &&
+      value.passage_ids.every(id => /^[a-f0-9]{64}$/.test(value.passage_hashes[id] ?? ''))
+  }, true, true)
+}

@@ -2,6 +2,7 @@ from fastapi import APIRouter
 
 from app.api import (
     adaptations,
+    answer_checks,
     answers,
     areas,
     ask,
@@ -34,6 +35,7 @@ from app.api import (
 
 api_router = APIRouter(prefix="/api")
 for r in (
+    answer_checks,
     answers,
     ask,
     health,

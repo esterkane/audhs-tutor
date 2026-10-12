@@ -116,3 +116,63 @@ test('Saved follow-up retry survives an unavailable parent', async ({ page }) =>
   expect(calls).toHaveLength(2)
   expect(calls[1]).toEqual(calls[0])
 })
+
+test('Ask local source review is explicit, partial and preserved on reload', async ({ page }, info) => {
+  await fixture(page)
+  let checks = 0
+  const saved = { id: 'review-1', answer_id: 'saved-example', created_at: '2026-10-12T12:00:00Z',
+    method: 'local_model_review', coverage: 'listed_claims_only', binding_status: 'unchanged',
+    note: 'Local model review of listed claims only; not independent factual verification.',
+    passages: [{ passage_id: 'p1', title: 'Synthetic source', document_version: 1, newer_version_available: true, binding_status: 'unchanged' }],
+    proposal: { claims: [{ claim_quote: 'Fewer bits per weight reduce the storage required.', verdict: 'supported',
+      explanation: 'The selected passage gives the storage relationship.', evidence: [{ passage_id: 'p1', quote: 'Eight bits use one byte.' }] }], limitations: ['Accuracy was not checked.'] } }
+  await page.route('**/api/answer-checks/answer/*', route => route.fulfill({ json: { items: checks ? [saved] : [], has_more: false } }))
+  await page.route('**/api/corpus/search', route => route.fulfill({ json: { hits: [{ chunk_id: 'p1', citation: 'Synthetic source', text: 'Eight bits use one byte.', quarantined: false }] } }))
+  await page.route('**/api/answer-checks', route => { checks++; return route.fulfill({ json: saved }) })
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/ask?answer=saved-example')
+  await page.getByText('Check against local sources', { exact: true }).click()
+  await expect(page.getByText('No saved source reviews yet.')).toBeVisible()
+  await page.getByLabel('Find local source passages').fill('bytes')
+  await page.getByRole('button', { name: 'Search local library', exact: true }).click()
+  await page.getByRole('checkbox', { name: 'Synthetic source' }).focus()
+  await page.keyboard.press('Space')
+  expect(checks).toBe(0)
+  await page.getByRole('button', { name: 'Review selected sources', exact: true }).dblclick()
+  await expect(page.getByText('Model judgment: supported')).toBeVisible()
+  expect(checks).toBe(1)
+  await expect(page.getByText(/not independent factual verification/)).toBeVisible()
+  await expect(page.getByText(/A source has a newer local version/)).toBeVisible()
+  await page.reload()
+  await page.getByText('Check against local sources', { exact: true }).click()
+  await expect(page.getByText('Limitation: Accuracy was not checked.')).toBeVisible()
+  expect(checks).toBe(1)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  await page.screenshot({ path: info.outputPath('ask-check-mobile.png'), fullPage: true })
+})
+
+test('Source review failure preserves answer and exact retry after reload', async ({ page }) => {
+  await fixture(page)
+  const calls: { key: string; body: unknown }[] = []
+  await page.route('**/api/answer-checks/answer/*', route => route.fulfill({ json: { items: [], has_more: false } }))
+  await page.route('**/api/corpus/search', route => route.fulfill({ json: { hits: [{ chunk_id: 'p1', citation: 'Synthetic source', text: 'Eight bits use one byte.', quarantined: false }] } }))
+  await page.route('**/api/answer-checks', route => {
+    calls.push({ key: route.request().headers()['idempotency-key'], body: route.request().postDataJSON() })
+    return route.fulfill({ status: 503, json: { error: { code: 'unavailable', message: 'Temporary check failure' } } })
+  })
+  await page.goto('/ask?answer=saved-example')
+  await page.getByText('Check against local sources', { exact: true }).click()
+  await page.getByLabel('Find local source passages').fill('bytes')
+  await page.getByRole('button', { name: 'Search local library', exact: true }).click()
+  await page.getByRole('checkbox', { name: 'Synthetic source' }).check()
+  await page.getByRole('button', { name: 'Review selected sources', exact: true }).click()
+  await expect(page.getByText('Temporary check failure', { exact: true })).toBeVisible()
+  await expect(page.getByText('Fewer bits per weight reduce the storage required.', { exact: true })).toBeVisible()
+  await page.reload()
+  await page.getByText('Check against local sources', { exact: true }).click()
+  await page.getByRole('region', { name: 'Recover tutor request' }).getByRole('button', { name: 'Retry previous request' }).click()
+  await expect.poll(() => calls.length).toBe(2)
+  expect(calls[1]).toEqual(calls[0])
+  const body = calls[0].body as { passage_hashes: Record<string, string> }
+  expect(body.passage_hashes.p1).toMatch(/^[a-f0-9]{64}$/)
+})

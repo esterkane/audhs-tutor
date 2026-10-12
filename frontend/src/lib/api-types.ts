@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+  '/api/answer-checks': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Review an answer against selected local passages */
+    post: operations['create_check_api_answer_checks_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/answer-checks/answer/{answer_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read saved checks without generating or checking again */
+    get: operations['list_checks_api_answer_checks_answer__answer_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/answer-checks/{check_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read one owned saved check */
+    get: operations['get_check_api_answer_checks__check_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/answers/recover-save': {
     parameters: {
       query?: never
@@ -2567,6 +2618,61 @@ export interface components {
       /** Answer Id */
       answer_id: string
     }
+    /** AnswerCheckDetail */
+    AnswerCheckDetail: {
+      /** Id */
+      id: string
+      /** Answer Id */
+      answer_id: string
+      /** Created At */
+      created_at: string
+      /**
+       * Method
+       * @default local_model_review
+       * @constant
+       */
+      method: 'local_model_review'
+      /**
+       * Coverage
+       * @default listed_claims_only
+       * @constant
+       */
+      coverage: 'listed_claims_only'
+      /**
+       * Binding Status
+       * @enum {string}
+       */
+      binding_status: 'unchanged' | 'changed_or_missing' | 'invalid_record'
+      proposal?: components['schemas']['AnswerReviewProposal'] | null
+      /** Passages */
+      passages?: components['schemas']['CheckedPassageStatus'][]
+      /**
+       * Note
+       * @default Local model review of listed claims only; not independent factual verification.
+       */
+      note: string
+    }
+    /** AnswerCheckPage */
+    AnswerCheckPage: {
+      /** Items */
+      items: components['schemas']['AnswerCheckDetail'][]
+      /**
+       * Has More
+       * @default false
+       */
+      has_more: boolean
+    }
+    /** AnswerCheckRequest */
+    AnswerCheckRequest: {
+      /** Answer Id */
+      answer_id: string
+      /** Passage Ids */
+      passage_ids: string[]
+      /** Passage Hashes */
+      passage_hashes: {
+        [key: string]: string
+      }
+    }
     /** AnswerDetail */
     AnswerDetail: {
       /** Id */
@@ -2651,6 +2757,13 @@ export interface components {
        * @default 0
        */
       revision: number
+    }
+    /** AnswerReviewProposal */
+    AnswerReviewProposal: {
+      /** Claims */
+      claims: components['schemas']['ClaimReview'][]
+      /** Limitations */
+      limitations?: string[]
     }
     /** AnswerSaveReceipt */
     AnswerSaveReceipt: {
@@ -3308,6 +3421,25 @@ export interface components {
       /** Code */
       code: string
     }
+    /** CheckedPassageStatus */
+    CheckedPassageStatus: {
+      /** Passage Id */
+      passage_id: string
+      /** Title */
+      title?: string | null
+      /** Document Version */
+      document_version?: number | null
+      /**
+       * Newer Version Available
+       * @default false
+       */
+      newer_version_available: boolean
+      /**
+       * Binding Status
+       * @enum {string}
+       */
+      binding_status: 'unchanged' | 'changed' | 'missing'
+    }
     /** CheckpointIn */
     CheckpointIn: {
       /** Phase */
@@ -3361,6 +3493,20 @@ export interface components {
       prev_text: string | null
       /** Next Text */
       next_text: string | null
+    }
+    /** ClaimReview */
+    ClaimReview: {
+      /** Claim Quote */
+      claim_quote: string
+      /**
+       * Verdict
+       * @enum {string}
+       */
+      verdict: 'supported' | 'contradicted' | 'insufficient'
+      /** Explanation */
+      explanation: string
+      /** Evidence */
+      evidence?: components['schemas']['PassageEvidence'][]
     }
     /** ComponentOut */
     ComponentOut: {
@@ -5010,6 +5156,13 @@ export interface components {
       /** Created At */
       created_at: string
     }
+    /** PassageEvidence */
+    PassageEvidence: {
+      /** Passage Id */
+      passage_id: string
+      /** Quote */
+      quote: string
+    }
     /** Plan */
     Plan: {
       /** Mode */
@@ -6457,6 +6610,103 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  create_check_api_answer_checks_post: {
+    parameters: {
+      query?: never
+      header: {
+        'idempotency-key': string
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AnswerCheckRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerCheckDetail']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_checks_api_answer_checks_answer__answer_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerCheckPage']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_check_api_answer_checks__check_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        check_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerCheckDetail']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
   recover_save_api_answers_recover_save_post: {
     parameters: {
       query?: never
