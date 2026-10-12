@@ -2177,3 +2177,6 @@ quality work must target evidence fidelity/false attribution with reviewed contr
 
 
 2026-10-12 Glimmer evaluation preparation: owner approved 19GB MLX download (in progress). Existing local harness adds opt-in muse-glimmer-30b-mlx, exact installed-tag check and registration inside disposable run database only. No default assignments/provider changes.18 offline tests, Ruff, CLI help pass; bounded review clear. Strict standalone mypy baseline48 errors, initial delta51, typed helper/settings reduces final to45; not a full mypy pass. Live compatibility/teaching run await download completion.
+
+
+2026-10-12 visual technology assessment and ML prototype: all13 libraries retained in research/visualization-technologies.md, existing React Flow reused without new packages. Interactive mean-centering leakage experiment and transfer feedback at/playground/visual-learning.4 unit tests,2 keyboard/responsive/axe browser journeys, lint/types/build and review pass; visual findings corrected. No mastery or backend writes. See slices/visual-learning-prototype.md for evidence and remaining schema/human gates.

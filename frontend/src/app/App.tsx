@@ -1,3 +1,5 @@
+import { lazy, Suspense } from 'react'
+const VisualLearning = lazy(() => import('../routes/VisualLearning'))
 import { LessonFocusContext } from '../features/session/focusContext'
 import { MainNavigation } from '../components/MainNavigation'
 import { primaryPages, toolPages } from './navigation'
@@ -150,6 +152,7 @@ export default function App() {
             <Route path="/progress" element={<Progress />} />
             <Route path="/session" element={<Session />} />
             <Route path="/playground" element={<Playground />} />
+            <Route path="/playground/visual-learning" element={<Suspense fallback={<p>Loading visual experiment…</p>}><VisualLearning /></Suspense>} />
             <Route path="/playground/visualizer" element={<Visualizer />} />
             <Route path="/review" element={<Review />} />
             <Route path="/recap" element={<Recap />} />
