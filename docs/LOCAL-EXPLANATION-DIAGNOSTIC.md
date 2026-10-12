@@ -88,3 +88,53 @@ Evaluate a bounded design that preserves literalness, uncertainty and explicit-m
 control alongside step structure; do not add a second inference call or regex-strip
 questions as a substitute. G1 remains open. These judgements are manual assistant
 review, not independent pedagogy review or human comprehension evidence.
+
+
+## Representation boundary inspection — 2026-10-12
+
+Current source inspection identifies a concrete instruction conflict, not simply
+a missing request for numbered steps. `prompts/_base/pedagogy.v2.md` directs every
+concept explanation to choose a representation and print its name first. Both
+workspace task prompts direct literal explanation with no representation prefix
+unless requested. `playground.messages` concatenates these into the same system
+message. The diagnostic label failures are therefore consistent with conflicting
+instructions; this does not prove that conflict caused every observed failure.
+The base also invites predictions when helpful, whereas explicit workspace mode
+forbids unsolicited questions. Those boundaries need reconciliation before another
+local sample, rather than adding a third competing instruction.
+
+The existing alternative-representation service is a different operation:
+
+- `orchestrator/representations.py` renders a LearningObject concept/goal with
+  skill-scoped retrieval. Its cache is keyed by object and representation kind;
+  it does not receive the workspace's exact code, answer or selected step.
+- `kernel/representations.py` exposes seven kinds, including mastery-gated
+  problem-first. It has no shorter/smaller-steps kind.
+- `routes/Session.tsx` explicitly requests these alternatives and retains the
+  previous explanation. `representation.v1.md` explicitly asks for a kind label.
+- `programs/StudyTutor.tsx` instead sends adaptation requests through playground
+  with the same target, work snapshot and bounded history. That boundary should
+  remain: redirecting it to concept-only rendering would lose relevant context,
+  and caching personalized adaptations by object/kind would be insufficient.
+
+### Next bounded implementation proposal
+
+Version the shared base policy to make literal explanation the default and defer
+representation naming to an explicitly selected task contract. Make optional
+predictions conditional on the chosen questioning mode; preserve the existing
+explicit full-solution contract separately. Retain the dedicated representation
+task, its kinds, cache, source grounding and mastery gate. Do not change learning
+logic, model routing, schemas, UI controls or add inference calls.
+
+Likely files: a new versioned base prompt, `orchestrator/prompts.py`, focused prompt
+composition tests, and this diagnostic record. Inspect all base-policy consumers
+and their version/cache identities before editing; additional affected prompt
+versions must be explicit rather than silently reusing old cache identities.
+
+Acceptance: composition tests must cover workspace explicit/Socratic requests and
+explicit representation requests. One bounded local comparison must test labels,
+unrequested questions, simple step structure, uncertainty and units, with a held-out
+concept. Stop if improvements only affect labels or another contract regresses;
+do not claim the broader teaching-quality gap solved. Obtain code/pedagogy review
+before adopting a production change. No runtime changes or extra model calls were
+made during this inspection; browser/keyboard/reflow evidence is unchanged.

@@ -2115,3 +2115,12 @@ an unrequested quiz and increased jargon. Rejected; no production change. Six lo
 calls total, no paid route. Raw baseline/candidate artifacts and explicit trial-version
 caveat in LOCAL-EXPLANATION-DIAGNOSTIC.md. Stop wording iterations; inspect existing
 representation/mode contract before another bounded proposal. No broad quality pass.
+
+
+2026-10-12 explanation-boundary inspection: shared base requires representation
+labels while workspace task forbids them; optional predictions also conflict with
+explicit workspace guidance. Existing concept-level representation cache cannot
+safely replace exact-step workspace adaptation. Recorded bounded versioned-policy
+proposal and acceptance gates in LOCAL-EXPLANATION-DIAGNOSTIC.md. No runtime edits,
+model calls or new quality claim. Next inspect all base consumers/cache identities
+before implementation and one bounded local evaluation. Both repos remain private.
