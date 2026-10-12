@@ -7,7 +7,7 @@ import { AnswerSourceStatus } from '../features/programs/AnswerSourceStatus'
 import { AnswerFeedback } from '../features/programs/AnswerFeedback'
 import { AnswerFollowup } from '../features/programs/AnswerFollowup'
 import { useQuery } from '@tanstack/react-query'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
@@ -25,6 +25,13 @@ export function Answers() {
 
 function History() {
   const [params, setParams] = useSearchParams()
+  const renderedQuery = params.toString()
+  const queryIntent = useRef(renderedQuery)
+  useLayoutEffect(() => { queryIntent.current = renderedQuery }, [renderedQuery])
+  function navigateQuery(next: URLSearchParams) {
+    queryIntent.current = next.toString()
+    setParams(next)
+  }
   const appliedSearch = params.get('q') ?? ''
   const [search, setSearch] = useState(appliedSearch)
   const [previousSearch, setPreviousSearch] = useState(appliedSearch)
@@ -54,11 +61,11 @@ function History() {
     retry: false,
   })
   const update = (key: string, value: string) => {
-    const next = new URLSearchParams(params)
+    const next = new URLSearchParams(queryIntent.current)
     next.delete('cursor')
     if (value) next.set(key, value)
     else next.delete(key)
-    setParams(next)
+    navigateQuery(next)
   }
   return (
     <div className="grid gap-4">
@@ -167,9 +174,11 @@ function History() {
             {history.data.next_cursor && (
               <Button
                 onClick={() => {
-                  const next = new URLSearchParams(params)
+                  // This cursor belongs to the displayed query, not a pending filter change.
+                  if (queryIntent.current !== renderedQuery) return
+                  const next = new URLSearchParams(queryIntent.current)
                   next.set('cursor', history.data.next_cursor!)
-                  setParams(next)
+                  navigateQuery(next)
                 }}
               >
                 Older answers

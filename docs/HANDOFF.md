@@ -2071,3 +2071,16 @@ rapid search/filter acceptance. No handler or learning changes in this styling s
 Lint/e2e types/build pass; narrow screenshot inspected. Logs:
 /tmp/answer-controls-{before,final,retry,build}.log. Existing bundle warning and
 human/AT acceptance remain. Both repository variants remain private.
+
+
+2026-10-12 AU-ANSWERS-05: history search/filter updates now compose from the latest
+intended query, synchronized after committed navigation. Back/Forward restores the
+URL state; pagination refuses a displayed-page cursor while another query is pending.
+Deterministic batched search/filter failed at320/1280 before the fix and now retains
+q, surface, context and cursor reset through reload/Back/Forward/keyboard clear.
+Fourteen browser checks pass; final six saved-answer checks pass after the pagination
+guard. Nine component tests, ESLint/e2e types/build pass. Initial lint rejected render
+ref access; final synchronization uses layout effect. No visual or learning changes;
+preceding inspected form screenshots reused. Focused self-review covered query scope
+and cursor ownership. Logs:/tmp/answer-query-{before,final,pagination,unit,build}.log.
+Existing bundle warning and broader human/AT acceptance remain; both repos private.

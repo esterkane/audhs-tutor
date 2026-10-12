@@ -101,3 +101,33 @@ for (const width of [320, 1280]) test(`saved answer filters expose visible contr
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: `/tmp/answer-controls-${width}.png`, fullPage: true })
 })
+
+for (const width of [320, 1280]) test(`rapid saved-answer search and filter compose without losing context ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], next_cursor: null } }))
+  await page.goto('/answers?skill_id=example&cursor=old')
+  await page.getByRole('searchbox', { name: 'Search saved answers' }).fill('keep this')
+  // Two intents before React commits the first navigation reproduce the observed race.
+  await page.getByRole('searchbox', { name: 'Search saved answers' }).evaluate(el => {
+    (el as HTMLInputElement).form!.requestSubmit()
+    const select = document.querySelector('main select') as HTMLSelectElement
+    select.value = 'assessment'
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  await expect.poll(() => new URL(page.url()).searchParams.get('q')).toBe('keep this')
+  await expect(page.getByRole('combobox', { name: 'Show', exact: true })).toHaveValue('assessment')
+  expect(new URL(page.url()).searchParams.get('skill_id')).toBe('example')
+  expect(new URL(page.url()).searchParams.has('cursor')).toBe(false)
+  await page.reload()
+  await expect(page.getByRole('searchbox', { name: 'Search saved answers' })).toHaveValue('keep this')
+  await expect(page.getByRole('combobox', { name: 'Show', exact: true })).toHaveValue('assessment')
+  await page.goBack()
+  await expect(page.getByRole('combobox', { name: 'Show', exact: true })).toHaveValue('')
+  await expect(page.getByRole('searchbox', { name: 'Search saved answers' })).toHaveValue('keep this')
+  await page.goForward()
+  await expect(page.getByRole('combobox', { name: 'Show', exact: true })).toHaveValue('assessment')
+  await page.getByRole('button', { name: 'Clear search' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('searchbox', { name: 'Search saved answers' })).toHaveValue('')
+  expect(new URL(page.url()).searchParams.get('skill_id')).toBe('example')
+})
