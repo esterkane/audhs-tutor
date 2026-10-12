@@ -2107,3 +2107,11 @@ teaching. Recorded as a gap, not a pass. Total replies12.705/3.194/7.115s, not T
 production benchmark. See LOCAL-EXPLANATION-DIAGNOSTIC.md and raw synthetic artifact.
 No runtime/prompt/routing changes. Next reproduce on a contrasting concept before
 prompt edits; G1/main-lesson/human acceptance remain open. Both variants private.
+
+
+2026-10-12 G1 contrast: group-count example confirms weak stepwise simplification.
+One local prompt candidate produced numbered steps but retained mode labels, added
+an unrequested quiz and increased jargon. Rejected; no production change. Six local
+calls total, no paid route. Raw baseline/candidate artifacts and explicit trial-version
+caveat in LOCAL-EXPLANATION-DIAGNOSTIC.md. Stop wording iterations; inspect existing
+representation/mode contract before another bounded proposal. No broad quality pass.
