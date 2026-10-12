@@ -232,12 +232,28 @@ function AddForm() {
 
 function RoutingTable() {
   const routing = useRouting()
+  const [retrying, setRetrying] = useState(false)
+  const content = useRef<HTMLDivElement>(null)
   const models = useModels()
   const { assign } = useModelActions()
   const ready = (models.data?.models ?? []).filter((m) => m.status === 'ready' && m.benchmark)
-  if (!routing.data) return null
   return (
-    <table className="w-full text-sm">
+    <div ref={content} tabIndex={-1} role="region" aria-label="Model routing">
+      {routing.isLoading && !retrying && <p role="status">Loading model routing…</p>}
+      {(routing.isError || retrying) && <div className="grid gap-2 mb-3">
+        <p role="alert">{routing.data ? 'Could not refresh model routing. Showing the last loaded data.' : 'Could not load model routing.'}</p>
+        <p className="text-sm text-muted">Check that the local app backend is running, then retry.</p>
+        <Button aria-disabled={routing.isFetching} onClick={(event) => {
+          if (routing.isFetching) return
+          const trigger = event.currentTarget
+          setRetrying(true)
+          void routing.refetch().then(result => {
+            if (result.isSuccess && document.activeElement === trigger) content.current?.focus()
+          }).finally(() => setRetrying(false))
+        }}>Retry loading model routing</Button>
+        {routing.isFetching && <p role="status">Retrying model routing…</p>}
+      </div>}
+      {routing.data && <table className="w-full text-sm">
       <caption className="text-left text-muted mb-1">
         Routing profile "{routing.data.profile}": which model each task uses
       </caption>
@@ -304,7 +320,8 @@ function RoutingTable() {
           </tr>
         </tfoot>
       )}
-    </table>
+    </table>}
+    </div>
   )
 }
 

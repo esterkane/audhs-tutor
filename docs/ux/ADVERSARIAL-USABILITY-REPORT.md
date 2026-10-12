@@ -463,3 +463,12 @@ Long-term: extend consistent read recovery to other settings queries after concr
 failure evidence. Risk: focus loss or interpreting unknown registry as empty.
 Verified bounded implementation: ../slices/models-read-recovery.md. Model assignments,
 downloads and learning decisions are unchanged. Broader settings recovery remains open.
+
+
+## AU-MODELS-02 — Routing read failure leaves an empty panel (S3)
+Reproduced503 at320/1280: expanded routing gives no status or recovery. Minimal fix
+implemented: bounded read, explicit retry, cached-data warning and focus ownership.
+Longer-term: consistent recovery for remaining settings reads. Risk: stale routing
+misread as current, focus theft or retry causing mutations. Six browser checks,
+unit/lint/types/build, visual and review evidence: ../slices/routing-read-recovery.md.
+No model assignments or learning decisions changed.

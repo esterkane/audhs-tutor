@@ -19,7 +19,8 @@ export function useModels() {
 export function useRouting() {
   return useQuery({
     queryKey: ['models', 'routing'],
-    queryFn: () => apiFetch<RoutingOut>('/api/models/routing'),
+    queryFn: ({ signal }) => boundedRead<RoutingOut>('/api/models/routing', signal, 'Model routing'),
+    retry: false,
   })
 }
 
