@@ -371,3 +371,24 @@ narrow retained-content screenshot inspected. Self-review checked keyed answer
 identity and render-state latch. This is not a server authorization or cross-tab cache
 invalidation mechanism. Form styling and broader human/AT acceptance remain open;
 existing bundle warning remains. Logs:/tmp/detail-refresh-{before,final,retry,unit,build}.log.
+
+
+## AU-ANSWERS-04 — Search/filter fields lack visible control boundaries (S2)
+
+2026-10-12 screenshots show text-like fields;320/1280 browser reproduction measures
+the search input at21.6875px, below the design44px target (PDF pp5–7). Apply existing
+control/card/target tokens and responsive widths. Keep native semantics, labels,
+query updates and filters. Baseline:/tmp/answer-controls-before.log.
+
+
+2026-10-12 AU-ANSWERS-04: history search/filter now use shared44px target, control
+border and card background tokens, with responsive widths and retained native labels.
+Baseline search height21.6875px; final320/1280 checks pass boundary/size, keyboard
+search/clear, filter/reload and no overflow. Eleven browser checks passed initially;
+one fast sequence lost its query before the preceding navigation rendered. Final two
+control checks await the committed Clear search UI and pass. This does not dismiss
+the rapid-interaction observation: reproduce/resolve it separately before claiming
+rapid search/filter acceptance. No handler or learning changes in this styling slice.
+Lint/e2e types/build pass; narrow screenshot inspected. Logs:
+/tmp/answer-controls-{before,final,retry,build}.log. Existing bundle warning and
+human/AT acceptance remain. Both repository variants remain private.

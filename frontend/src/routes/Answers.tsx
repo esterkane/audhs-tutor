@@ -81,11 +81,11 @@ function History() {
           update('q', search.trim())
         }}
       >
-        <label className="min-w-0">
+        <label className="min-w-0 grow">
           Search saved answers
           <input
             type="search"
-            className="block mt-1 w-full"
+            className="block mt-1 w-full min-h-control-target rounded-md border border-control bg-card px-3 py-2"
             maxLength={200}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
@@ -109,10 +109,10 @@ function History() {
         Searches saved requests and answers on this device. All words must match; newest first. Code, output
         and earlier chat are not searched.
       </p>
-      <label>
+      <label className="min-w-0">
         Show
         <select
-          className="block mt-1"
+          className="block mt-1 w-full min-w-0 max-w-full min-h-control-target rounded-md border border-control bg-card px-3 py-2"
           value={params.get('surface') ?? ''}
           onChange={(e) => update('surface', e.target.value)}
         >

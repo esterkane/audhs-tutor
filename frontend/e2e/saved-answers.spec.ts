@@ -73,3 +73,31 @@ for (const width of [1280, 390]) {
     expect(requests.filter((url) => /tutor|assess|sessions/.test(url))).toEqual([])
   })
 }
+
+for (const width of [320, 1280]) test(`saved answer filters expose visible control targets ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], next_cursor: null } }))
+  await page.goto('/answers')
+  const search = page.getByRole('searchbox', { name: 'Search saved answers' })
+  const filter = page.getByRole('combobox', { name: 'Show', exact: true })
+  for (const control of [search, filter]) {
+    expect((await control.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+    expect(await control.evaluate(el => parseFloat(getComputedStyle(el).borderTopWidth))).toBeGreaterThan(0)
+  }
+  await search.focus()
+  await search.fill('saved phrase')
+  await page.keyboard.press('Enter')
+  await expect(page).toHaveURL(/q=saved\+phrase/)
+  await expect(page.getByRole('button', { name: 'Clear search' })).toBeVisible()
+  await filter.selectOption('assessment')
+  await expect(page).toHaveURL(/surface=assessment/)
+  await page.reload()
+  await expect(search).toHaveValue('saved phrase')
+  await expect(filter).toHaveValue('assessment')
+  await page.getByRole('button', { name: 'Clear search' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(search).toHaveValue('')
+  await expect(filter).toHaveValue('assessment')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: `/tmp/answer-controls-${width}.png`, fullPage: true })
+})
