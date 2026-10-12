@@ -2154,3 +2154,11 @@ blockers/majors (limited breadth remains). Fixed typed history warning. No new m
 calls or runtime/UI/learning changes. See LOCAL-EXPLANATION-DIAGNOSTIC.md for command,
 review criteria and limits. Use fixed hashes before comparing a defined candidate,
 not another open-ended tuning loop. CI was still running at inspection; not closed.
+
+
+2026-10-12 fixed teaching-suite comparison:8 cases each, local12b/27b, identical
+fixture hash,16 completed/zero paid calls. Both have substantive teaching failures;
+27b adds contradictory analogy and invented learner error, median total10.8s vs4.3s
+in this small sequential sample. No routing/prompt change or G1 pass. Raw results
+and per-case limits in LOCAL-EXPLANATION-DIAGNOSTIC.md. Stop model sweeps; future
+quality work must target evidence fidelity/false attribution with reviewed contracts.

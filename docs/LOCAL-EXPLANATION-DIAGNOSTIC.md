@@ -209,3 +209,42 @@ limits preclude a broad teaching or learning-outcome claim. Typed history replac
 a raw fixture dictionary to eliminate serialization warnings. All17 offline harness
 tests, targeted Ruff and CLI help pass. No additional model run, runtime prompt, UI,
 learning-state or routing change; visual/keyboard/build checks are unchanged.
+
+
+## Fixed-suite model comparison — no routing change
+
+Current unchanged production prompts were sampled once per case with installed
+gemma3:12b and gemma3:27b, sequentially, through the local-only harness. Both
+completed all eight cases with identical fixture hash
+`1f1827e6bedbada971f5f622c3115c0e3b5496e91e6af5d82ae67501fef2f718`.
+All16 calls used Ollama and reported zero paid cost. Raw artifacts:
+`evals/results/teaching-12b-fixed-20261012.json` and
+`evals/results/teaching-27b-fixed-20261012.json`.
+
+Manual evidence review (not independent grading or human comprehension):
+
+| Case | 12b | 27b |
+| --- | --- | --- |
+| Counts | Correct rates; unwanted representation prefix | Correct rates and ordered prose |
+| Fairness | Failed: changes80 total rows into80 missing incomes | Failed: says observed incomes will reveal whether missingness depends on income; not established from observed values alone |
+| List | Correct mutation/None and sequential explanation; prefix remains | Correct outputs but ends with an unwanted question asking for the outputs it just supplied |
+| Mean | Correct5 minutes | Correct5 minutes, then unsolicited question |
+| Socratic | One relevant question; prefix remains | One relevant question |
+| Analogy | Arithmetic correct but says proportions are misleading; lacks a clear analogy limit | Failed: cake needs100/has80 but calls80 missing; analogy denominator differs from supplied80-row group |
+| Fractions | Fake[1] sources, incomplete final calculation; runtime warning correctly appears | Correct3/12 and9/12 but falsely attributes a prior calculation error to learner; unsimplified results |
+| Prediction | Correctly rejects proof, retains uncertainty; prefix remains | Correctly rejects proof and suggests more evidence; generic next-action prompt |
+
+The 27b analogy later gives correct original rates; that does not repair its
+contradictory example. Accurate prediction of some outputs does not offset invented
+learner claims or factual errors in other cases. Neither sample closes G1.
+
+Median total respond latency was4.2585s (12b) and10.7845s (27b). These are completed
+reply times, not first-token latency; one sequential run per model includes model
+loading/warmth differences and does not establish a stable latency distribution.
+No quality-and-speed win supports switching. Leave routing unchanged; no further
+model/prompt sweep follows this result. Main lesson representation, grounded sources,
+long conversations and actual learner comprehension remain outside this suite.
+
+Next quality work should address the observed source/work fidelity and false
+learner attribution with targeted contracts and review, rather than adopting a
+larger model or treating citation warnings as correctness verification.
