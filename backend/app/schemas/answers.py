@@ -5,6 +5,17 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 
+class SavedSourceStatus(BaseModel):
+    chunk_id: str
+    status: Literal["unchanged", "changed", "missing", "unverifiable"]
+    newer_version: bool = False
+
+
+class SavedSourceCheck(BaseModel):
+    sources: list[SavedSourceStatus]
+    omitted: int = 0
+
+
 class AnswerSummary(BaseModel):
     id: str
     turn_id: str
@@ -17,6 +28,8 @@ class AnswerSummary(BaseModel):
     preview: str
     skill_id: str | None
     area_id: str | None
+    source_check: SavedSourceCheck | None = None
+    context_dependent: bool = False
 
 
 class AnswerPage(BaseModel):
@@ -48,17 +61,6 @@ class AnswerFeedbackState(BaseModel):
     note: str = Field(default="", max_length=2000)
     hidden: bool = False
     revision: int = Field(default=0, ge=0)
-
-
-class SavedSourceStatus(BaseModel):
-    chunk_id: str
-    status: Literal["unchanged", "changed", "missing", "unverifiable"]
-    newer_version: bool = False
-
-
-class SavedSourceCheck(BaseModel):
-    sources: list[SavedSourceStatus]
-    omitted: int = 0
 
 
 class AnswerReplacementState(BaseModel):

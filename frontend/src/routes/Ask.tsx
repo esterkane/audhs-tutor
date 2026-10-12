@@ -1,3 +1,4 @@
+import { SuggestionEvidence } from '../features/ask/SuggestionEvidence'
 import { SourcePicker } from '../features/ask/SourcePicker'
 import { sourceSelection, useSelectedPassages } from '../features/ask/useSelectedPassages'
 import { Disclosure } from '../components/ui/disclosure'
@@ -373,6 +374,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
                     >
                       Read saved answer
                     </Link>
+                    <SuggestionEvidence answer={suggestion} matching={!!search.trim()} />
                   </div>
                 ))}
             </section>

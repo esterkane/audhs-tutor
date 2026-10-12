@@ -184,3 +184,9 @@ Fixed documentation URLs only; no question-derived requests, no credentials,
 no automatic indexing or learning evidence. Third-party text remains local.
 See ../slices/reference-snapshots.md for transport, integrity, review and test evidence.
 Broader factual-quality acceptance and G3–G6 remain open. Both repository variants remain private.
+
+2026-10-12: G3a Ask suggestions show saved date, local-match reason, batched direct
+source currency and prior-context caution. No automatic reuse or factual-quality
+ranking; no model/learning-state writes. See ../slices/ask-suggestion-sources.md.
+Next: review-quality/currency-aware selection and measurable reuse, retaining
+explicit fresh generation. Broader G2 factual-quality and G3–G6 gates stay open.

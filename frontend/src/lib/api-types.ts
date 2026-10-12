@@ -2748,6 +2748,12 @@ export interface components {
       skill_id: string | null
       /** Area Id */
       area_id: string | null
+      source_check?: components['schemas']['SavedSourceCheck'] | null
+      /**
+       * Context Dependent
+       * @default false
+       */
+      context_dependent: boolean
       /** Text */
       text: string
       /** Request */
@@ -2850,6 +2856,12 @@ export interface components {
       skill_id: string | null
       /** Area Id */
       area_id: string | null
+      source_check?: components['schemas']['SavedSourceCheck'] | null
+      /**
+       * Context Dependent
+       * @default false
+       */
+      context_dependent: boolean
     }
     /** ArchiveRoleIn */
     ArchiveRoleIn: {

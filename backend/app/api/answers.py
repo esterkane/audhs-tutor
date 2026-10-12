@@ -86,6 +86,12 @@ def summary(row: TutorAnswer) -> AnswerSummary:
         preview=row.text[:300],
         skill_id=skill if isinstance(skill, str) else None,
         area_id=area if isinstance(area, str) else None,
+        context_dependent=bool(
+            row.metadata_json.get("parent_answer_id")
+            or row.metadata_json.get("context_answer_ids")
+            or row.metadata_json.get("answer_memory")
+            or row.request_json.get("historical_answer")
+        ),
     )
 
 
@@ -164,8 +170,13 @@ async def list_answers(
             raise KeyError("saved answer not found")
         stmt = stmt.where(TutorAnswer.id < cursor)
     rows = list((await db.scalars(stmt.order_by(TutorAnswer.id.desc()).limit(limit + 1))).all())
+    items = [summary(row) for row in rows[:limit]]
+    if suggestions:
+        checks = await answer_sources.check_many(db, learner.id, rows[:limit])
+        for item in items:
+            item.source_check = checks[item.id]
     return AnswerPage(
-        items=[summary(row) for row in rows[:limit]],
+        items=items,
         next_cursor=rows[limit - 1].id if len(rows) > limit else None,
     )
 

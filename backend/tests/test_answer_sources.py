@@ -48,6 +48,12 @@ async def test_source_status_is_owned_bounded_and_not_correctness(
         ],
         "omitted": 0,
     }
+    suggestions = (await client.get("/api/answers?suggestions=true")).json()["items"]
+    assert len(suggestions) == 1
+    assert suggestions[0]["source_check"] == result
+    assert not suggestions[0]["context_dependent"]
+    history = (await client.get("/api/answers")).json()["items"]
+    assert history[0]["source_check"] is None
     assert (await client.get("/api/answers/absent/source-status")).status_code == 404
     import pytest
 
@@ -68,3 +74,29 @@ async def test_source_status_is_owned_bounded_and_not_correctness(
     }
     for model in (LearningEvent, ModelCall):
         assert await db.scalar(select(func.count()).select_from(model)) == 0
+
+
+async def test_batch_source_status_checks_one_corpus_query_and_enforces_owner(db):
+    import pytest
+    from sqlalchemy import event
+
+    from app.db.answer_sources import check_many
+
+    rows = [TutorAnswer(learner_id="owner", id=str(i), metadata_json={}) for i in range(100)]
+    queries = []
+
+    def record(conn, cursor, statement, parameters, context, executemany):
+        queries.append(statement)
+
+    engine = db.bind.sync_engine
+    event.listen(engine, "before_cursor_execute", record)
+    try:
+        results = await check_many(db, "owner", rows)
+    finally:
+        event.remove(engine, "before_cursor_execute", record)
+    assert len(results) == 100
+    assert len(queries) == 1
+    with pytest.raises(ValueError):
+        await check_many(db, "foreign", rows)
+    with pytest.raises(ValueError):
+        await check_many(db, "owner", rows + [rows[0]])

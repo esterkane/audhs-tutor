@@ -6,7 +6,7 @@ async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' = 'comp
   await page.route('**/api/references/*', route => route.fulfill({ json: { snapshot: null } }))
   const records = new Map<string, Record<string, unknown>>()
   const requests: { key: string; body: { question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } } }[] = []
-  const old = { id: 'saved-example', turn_id: 'old', session_id: null, surface: 'ask', created_at: '2026-10-12T10:00:00Z', request_text: 'Why does quantization reduce memory?', learner_question: null, target_label: null, preview: 'Fewer bits per weight.', skill_id: null, area_id: null, text: 'Fewer bits per weight reduce the storage required.', request: { question: 'Why does quantization reduce memory?' }, metadata: {} }
+  const old = { id: 'saved-example', turn_id: 'old', session_id: null, surface: 'ask', created_at: '2026-10-12T10:00:00Z', request_text: 'Why does quantization reduce memory?', learner_question: null, target_label: null, source_check: { sources: [{ chunk_id: 'p1', status: 'unchanged', newer_version: true }], omitted: 0 }, context_dependent: true, preview: 'Fewer bits per weight.', skill_id: null, area_id: null, text: 'Fewer bits per weight reduce the storage required.', request: { question: 'Why does quantization reduce memory?' }, metadata: {} }
   records.set(old.id, old)
   await page.route('**/api/areas', route => route.fulfill({ json: { areas: [], total_documents: 0, unassigned_documents: 0 } }))
   await page.route('**/api/answers?*', route => {
@@ -46,6 +46,10 @@ for (const width of [390, 1280]) test(`Ask preserves sessions, supports keyboard
   await page.keyboard.press('Enter')
   await expect(page.getByRole('heading', { name: 'Ask the tutor', exact: true })).toBeVisible()
   await page.getByLabel('Your question', { exact: true }).fill('quant')
+  await expect(page.getByText(/Local question match.*Saved/)).toBeVisible()
+  await expect(page.getByText(/Source review needed/)).toBeVisible()
+  await expect(page.getByText(/Uses earlier conversation/)).toBeVisible()
+  await page.screenshot({ path: info.outputPath(`ask-suggestions-${width}.png`), fullPage: true })
   const suggestion = page.getByRole('button', { name: 'Why does quantization reduce memory?', exact: true })
   await suggestion.focus(); await page.keyboard.press('Enter')
   await expect(page.getByLabel('Your question', { exact: true })).toBeFocused()
