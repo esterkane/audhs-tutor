@@ -99,3 +99,36 @@ Recommend an optional $10 initial evaluation ceiling, extendable explicitly to $
 This slice adds this report only. No runtime, UI, assignments, credentials, dependencies, learner database or curriculum changes; no downloads or new model calls. Cost arithmetic was calculated with Python Decimal. Baseline artifacts and provider interfaces were inspected. Runtime tests/build/browser checks are not rerun for a documentation-only change; prior runtime results are cited rather than presented as fresh tests.
 
 Next requested authorization should be specific: download the approximately 19 GB `muse-glimmer:30b-mlx` candidate and run bounded local synthetic evaluations. Resolve minimum runtime/digest first; use the ordinary 18 GB tag only as a separately documented alternative if MLX compatibility fails. Paid Mistral work requires separate approval for a dollar ceiling and adapter/accounting tests. No evidence currently justifies production integration.
+
+
+## Authorized local installation and compatibility, 2026-10-12
+
+Owner authorized19GB download; installed `muse-glimmer:30b-mlx`,19053621992 bytes,
+digest `015fa21845bead56096c2f8773aff7a2047063507fe82897e662ad544c5b2fa6`.
+Ollama show identifies safetensors/nvfp4,32.3B parameters,131072 declared context,
+completion/vision/tools/thinking; no remote host/model metadata. This refines the
+published30B product label, not an independently counted parameter total.
+
+Local native chat smoke at8192 context, temperature0 and think:false:32 output-token
+limit finished length with empty visible content (11.68s incl8.05s load);256 limit
+answered5 correctly for2+3,39 generated tokens,1.90s warm total. This demonstrates
+basic native transport only, not teaching, structured schema, vision, tools or reliable
+reasoning suppression. Exact real app-path fixed-suite evaluation launched separately.
+No live model assignment, learner database or paid provider changes.
+
+
+## Completed app-path evaluation, 2026-10-12
+
+The authorized fixed eight-case local trial is complete: five replies, three
+`invalid_output` failures at the900-token limit. Median all-attempt response time
+was39.704s; completed-only median33.134s. Baseline8b completed8/8 at3.555s median,
+but also had factual/teaching failures. These single ordered runs do not prove a
+stable speed ranking or overall teaching quality. See
+[diagnostic review](../LOCAL-EXPLANATION-DIAGNOSTIC.md#glimmer-fixed-suite-result-2026-10-12)
+and `evals/results/teaching-glimmer-fixed-20261012.json` for raw evidence.
+
+Keep Glimmer installed as an experimental candidate, not a production assignment.
+Correct arithmetic in completed replies does not offset missing responses and high
+latency. No hosted calls, new paid integration, live curriculum edits or routing
+changes were made. The original download-authorization paragraph above is historical;
+the download and bounded trial are now completed.

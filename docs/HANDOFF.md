@@ -2180,3 +2180,13 @@ quality work must target evidence fidelity/false attribution with reviewed contr
 
 
 2026-10-12 visual technology assessment and ML prototype: all13 libraries retained in research/visualization-technologies.md, existing React Flow reused without new packages. Interactive mean-centering leakage experiment and transfer feedback at/playground/visual-learning.4 unit tests,2 keyboard/responsive/axe browser journeys, lint/types/build and review pass; visual findings corrected. No mastery or backend writes. See slices/visual-learning-prototype.md for evidence and remaining schema/human gates.
+
+
+## Local teaching candidate decision — 2026-10-12
+
+Completed the fixed eight-case8b/Glimmer comparison; raw synthetic artifacts and
+manual review are in LOCAL-EXPLANATION-DIAGNOSTIC.md. Glimmer5/8 replies,3 invalid
+outputs; median39.704s across all attempts,33.134s completed-only. No production
+promotion, hosted calls or routing changes.8b completed all but failed teaching
+fidelity checks. Documentation/results-only slice; unchanged harness retains its
+18 offline test passes. Further quality work remains; no whole-stage completion.

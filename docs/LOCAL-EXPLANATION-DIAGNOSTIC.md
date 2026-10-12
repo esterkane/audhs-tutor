@@ -248,3 +248,52 @@ long conversations and actual learner comprehension remain outside this suite.
 Next quality work should address the observed source/work fidelity and false
 learner attribution with targeted contracts and review, rather than adopting a
 larger model or treating citation warnings as correctness verification.
+
+
+## Current chat baseline, 2026-10-12
+
+`evals/results/teaching-8b-fixed-20261012.json`: eight completed synthetic cases,
+local llama31-8b, zero hosted calls. Median total response 3.555s, one sample/case;
+not TTFT or a statistical speed comparison. Same fixed teaching fixture as12b/27b.
+
+Manual review rejects a quality pass: counts_steps omits both requested percentages
+and incorrectly says each B row has ten missing incomes. requested_analogy changes
+A's denominator from80 to100 and confuses sample membership with missingness.
+list_steps explains mutation/None but omits the explicit output list and adds an
+unrequested understanding question. transfer_fraction gets1/4 and3/4 but omits the
+requested percentage forms and9/12. fairness_uncertainty correctly avoids a fairness
+conclusion (its suggested inspection largely repeats available evidence); mean_units
+and transfer_prediction are correct for these fixtures. socratic_choice asks one
+focused question. These are diagnostic observations, not learner outcome evidence.
+No routing/prompt change. The completed Glimmer comparison follows below; parameter
+count alone is not quality evidence.
+
+
+## Glimmer fixed-suite result, 2026-10-12
+
+Artifact: `evals/results/teaching-glimmer-fixed-20261012.json`. Same eight-case
+fixture hash, app prompt and 900-token limit as the baselines. Five replies completed;
+three failed (`list_steps`, `requested_analogy`, `transfer_fraction`). All eight
+attempts used local Ollama, recorded cost $0, with hosted fallback disabled.
+Median time across all eight attempts, including failures: **39.704s**. Median of
+only the five completed replies: **33.134s**. Neither is first-token latency.
+One ordered run with mixed loading/cache conditions cannot establish a stable
+performance distribution. It does establish that this configuration is unsuitable
+for the current interactive response-time requirement.
+
+Manual review: counts correctly retains both denominators and computes25%/50%,
+though its next step redundantly asks the learner to repeat them. Mean gives the
+correct calculation and units. Socratic mode asks one focused denominator question.
+Prediction distinguishes an assumed extrapolation from proof. Fairness correctly
+rejects inference from missingness counts alone and requests group performance;
+this is not a complete definition or assessment of fairness. No visible answer
+exists for the three failed cases, so they cannot receive a teaching-quality pass.
+The raw artifact retains `semantic_review: not_reviewed`; this paragraph records
+human-readable inspection separately, without rewriting the original measurements.
+
+Each failure recorded `invalid_output`,900 output tokens and AppError. The artifact
+lacks provider finish reasons and hidden reasoning, so token exhaustion is a
+hypothesis, not a proven cause. Do not silently increase limits or change reasoning
+settings and merge those results into this run. No production routing promotion.
+A separate, bounded transport/reasoning investigation would precede another trial;
+no additional model sweep is needed to reach the present decision.
