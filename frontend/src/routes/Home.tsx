@@ -302,7 +302,15 @@ function HomeOverview() {
   )
   return (
     <div className="grid grid-cols-1 min-w-0 gap-4">
-      <h1 className="text-page-title font-semibold">Home</h1>
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <h1 className="text-page-title font-semibold">Home</h1>
+        <div className="grid gap-2">
+          <Button asChild variant="secondary" aria-describedby="home-ask-description">
+            <Link to="/ask">Ask a question</Link>
+          </Button>
+          <p id="home-ask-description" className="text-sm text-muted">Explore any area. Keeps your saved session in place.</p>
+        </div>
+      </header>
       {resumable && <Card lift aria-label="Saved session">
         <CardTitle>Continue where you left off</CardTitle>
           <>
@@ -345,7 +353,6 @@ function HomeOverview() {
             </Button>
       </Card>}
       {!resumable && newSessionCard}
-      <p><Link to="/ask">Ask a question</Link> — explore any area without starting or changing a session.</p>
       <section aria-label="Other ways to learn" className="grid gap-3 sm:grid-cols-3">
         <Card>
           <Button onClick={() => void quickReview()} disabled={quickReviewBusy || start.isPending || current.isPending || prefs.isPending || prefs.isError || setPref.isPending || skills.isFetching || skills.isError}>

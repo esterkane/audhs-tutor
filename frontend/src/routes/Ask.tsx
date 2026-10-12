@@ -1,3 +1,4 @@
+import { FurtherReading } from '../features/ask/FurtherReading'
 import { AnswerChecks } from '../features/ask/AnswerChecks'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -201,6 +202,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
               <Markdown text={answer.text} />
               <ReadAloud text={`${answer.request_text}\n\n${answer.text}`} />
               <AnswerChecks key={answer.id} answerId={answer.id} learnerId={learnerId} />
+              <FurtherReading key={`reading:${answer.id}`} question={answer.request_text} />
               <div className="flex flex-wrap gap-4 mt-3">
                 <Link to={`/answers/${encodeURIComponent(answer.id)}`}>Review or label this answer</Link>
                 {typeof answer.metadata.parent_answer_id === 'string' && (
