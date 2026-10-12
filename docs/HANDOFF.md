@@ -1943,3 +1943,16 @@ Preferences/Pause/reload coverage; ESLint/e2e types pass. Both direct compositor
 selection screenshots inspected. Test helper now types the existing optional skill_id
 field. No runtime change, so production checks reused. Human comprehension/AT and
 other routes remain open. Log:/tmp/explore-zoom-final.log.
+
+
+2026-10-12 AU-IMPORT-02: CSV preview now uses the existing15s bounded read deadline.
+A hanging transport releases preparation controls and retains pasted text for explicit
+retry; a late old response cannot replace the retry result. Preview is read-only;
+confirmed-import writes and learning policy are unchanged. Baseline reproduced the
+missing recovery. Three browser checks pass (timeout/keyboard retry/stale response,
+plus320/1280 import flows), three component tests, ESLint, e2e types and production
+build pass. Existing import layout is unchanged; prior visual inspection is reused.
+Focused self-review checked Promise.race cleanup and the existing operation lock.
+Remaining: explicit preview cancellation, reload draft recovery, human/AT acceptance;
+existing bundle-size warning remains. Logs:/tmp/preview-timeout-{before,final,unit,build}.log.
+Both repository variants remain private.

@@ -225,3 +225,27 @@ held preview/import, duplicate activation, payload/settings, edited-row feedback
 recovery. Lint/types/build pass; narrow screenshot inspected. Existing bundle warning,
 preview cancellation/deadline and reload-draft recovery remain open. Logs:
 /tmp/import-pending-{before,final,unit,build}.log.
+
+
+## AU-IMPORT-02 — Stalled preview locks preparation indefinitely (S3)
+
+2026-10-12 browser reproduction holds a preview transport past15s; no failure or
+retry appears and conflicting controls stay locked. Source/API inspection confirms
+preview parses/reads only and does not save cards. Minimal fix: existing boundedRead
+deadline for this POST read, with retained CSV and explicit retry. Do not apply this
+as a claim that confirmed-import writes can be cancelled. Test a transport ignoring
+AbortSignal, timeout→retry and late original response. No learning policy changes.
+Baseline:/tmp/preview-timeout-before.log.
+
+
+2026-10-12 AU-IMPORT-02: CSV preview now uses the existing15s bounded read deadline.
+A hanging transport releases preparation controls and retains pasted text for explicit
+retry; a late old response cannot replace the retry result. Preview is read-only;
+confirmed-import writes and learning policy are unchanged. Baseline reproduced the
+missing recovery. Three browser checks pass (timeout/keyboard retry/stale response,
+plus320/1280 import flows), three component tests, ESLint, e2e types and production
+build pass. Existing import layout is unchanged; prior visual inspection is reused.
+Focused self-review checked Promise.race cleanup and the existing operation lock.
+Remaining: explicit preview cancellation, reload draft recovery, human/AT acceptance;
+existing bundle-size warning remains. Logs:/tmp/preview-timeout-{before,final,unit,build}.log.
+Both repository variants remain private.

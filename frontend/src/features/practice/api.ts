@@ -58,7 +58,7 @@ export type ImportOut = Schemas['ImportOut']
 export function useImportPreview() {
   return useMutation({
     mutationFn: (body: Schemas['ImportPreviewIn']) =>
-      apiFetch<ImportPreviewOut>('/api/vocab/import/preview', { method: 'POST', body: JSON.stringify(body) }),
+      boundedRead<ImportPreviewOut>('/api/vocab/import/preview', new AbortController().signal, 'CSV preview', { method: 'POST', body: JSON.stringify(body) }),
   })
 }
 
