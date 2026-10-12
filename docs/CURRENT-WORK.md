@@ -25,9 +25,11 @@ See HANDOFF.md and ux/ADVERSARIAL-USABILITY-REPORT.md for exact tests and limits
 2. **Human/assistive-technology acceptance:** owner re-entry, explanation clarity,
    screen-reader behavior and physical headphone/microphone output are still
    unverified. Automated fixtures cannot close these gates.
-3. **Progress design semantics:** PROGRESS-EVIDENCE-CONTRACT.md is proposed, not
-   accepted. Its task/rubric, assistance, independence and version policy decision
-   precedes new attainment labels. Current factual records remain in place.
+3. **Progress design semantics:** owner approved dated task-specific display labels,
+   disclosed help and unverified independence. Provenance storage and validated
+   task/help disclosure are delivered; eligible task/rubric metadata and versioned
+   qualification policy precede activating the new labels. See
+   slices/progress-task-context.md. Grading and scheduling remain unchanged.
 4. **R3/R4 reliability:** persisted grade-ready continuation exists; outcomes lost
    after inference starts remain uncertain. Do not automatically resend. Remaining
    cross-surface draft/content recovery follows the existing contracts.
@@ -181,22 +183,22 @@ Tool recovery slices are recorded in visualizer-*-recovery and related slice doc
 
 ## C3 work-alongside recovery — 2026-10-04
 
-The embedded quiet-panel choice survives matching-session/tab detours and reload without audio autoplay. See slices/alongside-recovery.md for verification and limits. Source retrieval/starter scaffolding shipped separately; older TODOs are historical. Remaining project/review/audio entry contracts and C5 stay open.
+The embedded quiet-panel choice now survives lesson/tool detours and reload within the matching session/tab, without audio autoplay.7 component tests and2 desktop/narrow browser journeys pass; visual, code and pedagogy review complete. See slices/alongside-recovery.md. Starter scaffolding/source retrieval shipped separately; older C3 source/starter TODOs above are historical. Next reconcile remaining project/review/audio context entry; full C3/C5 and owner acceptance remain open.
 
 
 ## C3 task notebook re-entry — 2026-10-04
 
-Task notebook view restores for matching course/section and starter/dataset paths; explicit return clears it. Results remain temporary; no code autoruns. See slices/task-notebook-view-recovery.md for evidence and versioning limits. Full C3/C5 remains open.
+Task notebook view now restores for matching course/section and starter/dataset paths; explicit return clears it. Notes and selected cell survive, results remain temporary and no code autoruns. See slices/task-notebook-view-recovery.md for tests, browser/review evidence and remaining source-version limits. Full C3/C5 remains incomplete.
 
 
 ## C3 project location links — 2026-10-04
 
-Project course/step/notebook view have URL identity and browser-history recovery; existing notes remain scoped. See slices/project-location-links.md. Relevant authored lab links remain next; full C3/C5 is open.
+Project course/step/notebook view now have URL identity and browser-history restoration; notes remain scoped to their existing stores. See slices/project-location-links.md. Next: explicitly authored relevant lab links using this return identity, not generic links for every lesson. Full C3/C5 remains open.
 
 
 ## C3 authored audio-lab links — 2026-10-04
 
-Optional project-to-audio lesson relations now have validation, explicit explanation selection and named return. See slices/project-audio-lab-contract.md for synthetic browser/review evidence. No real material mapped yet; relevance requires source inspection. Full C3/C5 remains open.
+Project sections can declare a validated audio lesson plus purpose. The lab verifies the relation and offers explicit explanation selection and named return, with no automatic sound or evidence.16 component checks and7 browser journeys pass; see slices/project-audio-lab-contract.md. No live material mapped yet. Inspect source relevance before enabling real links; full C3/C5 remains open.
 
 
 ## Current execution boundary — 2026-10-04
@@ -218,15 +220,15 @@ Library now offers Sources alongside Saved answers, reusing read-only retrieval 
 
 Captured material, unapplied edits and one previous capture now survive route changes/reload; applying material explicitly separates conversation identities. Existing close/request/media cleanup remains intact. See slices/companion-context.md and persistent-tutor-contract.md for baseline, tests, reviews and limits. Next: implement desktop panel/narrow sheet using this state owner; footer placement is still temporary. Full C5 and human acceptance remain open.
 
-2026-10-08: Review cards now offer explicit question exclusion/restoration, preserving notes and requiring queue refresh before rating. API19/UI20, desktop/narrow keyboard journeys, lint/types/build and bounded review passed. No scoring/scheduling changes. See docs/slices/review-question-controls.md. Dedicated activity controls and correction/replacement remain open.
+2026-10-08: assessment-backed review cards now reuse explicit exclusion/restore controls with preserved notes and an explicit queue refresh; no rating evidence is inferred. See `docs/slices/review-question-controls.md`. Dedicated activity controls and correction/replacement remain open.
 
-2026-10-08: Code exercise loading failures now offer Retry/exclusion management, preserving cached code and focus. Parent/child remount retry loop fixed. Focused17 component tests, desktop/narrow browser, lint/types/build and bounded review verified. See docs/slices/code-exercise-read-recovery.md. Dedicated activity exclusion controls remain next.
+2026-10-08: Code exercise read failures now show Retry/exclusion management instead of disappearing; fixed parent/child retry loop and preserved cached code/focus. Focused17 component tests, desktop/narrow browser, lint/types/build and bounded review verified. See docs/slices/code-exercise-read-recovery.md. Dedicated activity exclusion controls remain next.
 
-2026-10-08: Primary code-question exclusion/restoration preserves editing/local Run and requires fresh checks before renewed grading. Hint exposure is retained. Focused11 tests, two keyboard/narrow browser journeys, lint/types/build and bounded review passed. See docs/slices/code-question-practice-controls.md. Linked explain-back/challenge/listening controls remain open.
+2026-10-08: Primary code assessments now support exclusion/restoration while preserving code and local Run. Restoration requires explicit refresh and rerun; hint exposure retained. Focused11 tests, desktop/narrow keyboard browser, lint/types/build and bounded review pass. See docs/slices/code-question-practice-controls.md. Linked explain-back/challenge/listening controls remain open.
 
-2026-10-08: Challenge exclusion/restoration preserves answers through explicit refresh and same-question re-entry.8 focused tests, two desktop/narrow keyboard browser journeys, lint/types/build and bounded review pass. Generation entry was fixtured: cached challenge start still eagerly requires retrieval/embedding. See docs/slices/challenge-question-controls.md for evidence and next fix. Linked explain-back/listening controls remain open.
+2026-10-08: Challenge exclusion/restoration now preserves typed answers through explicit refresh and same-question re-entry. Fixed stale refresh after mode switch;8 focused tests and desktop/narrow browser controls verified. See docs/slices/challenge-question-controls.md. Next prerequisite: cached challenge start eagerly requires retrieval/embedding; browser generation entry was fixtured, not an offline-start pass. Linked explain-back/listening remain open.
 
-2026-10-08: Saved/excluded challenges now resolve before retrieval initialization.21 focused backend tests and two real-start desktop/narrow journeys pass; Ruff/mypy and bounded review clear. See docs/slices/challenge-cached-start.md. Generation misses still require configured services; linked explain-back/listening controls remain open.
+2026-10-08: Saved/excluded challenges resolve before retrieval initialization; only generation misses need an embedder.21 backend tests and two real-start browser journeys pass, Ruff/mypy and bounded review clear. See docs/slices/challenge-cached-start.md; previous generation-entry fixture removed. Linked explain-back/listening controls remain next.
 
 2026-10-08: Listening exclusion/restoration preserves answers and playback state, with safe MCQ reselection after changed content.13 focused tests, three browser journeys, lint/types/build and bounded review recorded in docs/slices/listening-question-controls.md. Physical audio remains separate; linked code explain-back and correction/replacement remain open.
 
@@ -250,9 +252,9 @@ Captured material, unapplied edits and one previous capture now survive route ch
 
 2026-10-08: Replacement visibility inventory identified distinct access/eligibility predicates, shared-only canonical caches, review LEFT JOIN fallback and explicit ownership portability requirements. See docs/slices/replacement-visibility-matrix.md. No runtime/schema change; next implement and prove ownership across the matrix before lineage/publication.
 
-2026-10-08: Assessment ownership foundation implemented with migration924acd018f31, shared-only canonical caches, direct/review visibility gates and explicit private export/wipe.1006 backend tests, Ruff/mypy214, six keyboard desktop/narrow browser journeys, disposable migration and bounded review pass. See docs/slices/assessment-visibility.md. Lineage, replacement resolution and publication remain next.
+2026-10-08: Assessment ownership foundation implemented with migration924acd018f31, shared-only canonical caches, direct/review visibility gates and explicit private export/wipe.1006 backend tests, Ruff/mypy214, six keyboard desktop/narrow browser journeys, disposable migration and bounded review pass. Live schema upgraded/backend restarted. See docs/slices/assessment-visibility.md. Lineage, replacement resolution and publication remain next.
 
-2026-10-08: Internal learner-owned question lineage and bounded future-practice resolver implemented;38 focused tests, Ruff/mypy215, backup/migration/export/wipe checks and bounded review pass. See docs/slices/question-replacement-lineage.md. No consumer integration or publication yet; connect future entry without redirecting history next.
+2026-10-08: Internal learner-owned question lineage and bounded future-practice resolver implemented;38 focused tests, Ruff/mypy215, backup/migration/export/wipe checks and bounded review pass. See docs/slices/question-replacement-lineage.md. Migration applied locally. No consumer integration or publication yet; connect future entry without redirecting history next.
 
 2026-10-08: Code/linked-check and listening future entry now resolve owned replacements; canonical rows and old submission identities remain intact.42 backend tests, six desktop/narrow keyboard regression journeys, Ruff/mypy215 and review pass. See docs/slices/replacement-practice-entry.md. Selector chain consistency, explicit UI transition and publication remain open.
 
@@ -265,12 +267,15 @@ Captured material, unapplied edits and one previous capture now survive route ch
 2026-10-08: Internal correction publication transaction implemented with learner-owned identity, immutable receipts, exact-report resolution and unchanged learning history.37 backend tests, strict mypy217/Ruff, editor tests and2 desktop/narrow browser regressions pass; bounded review clear. See slices/correction-publication-transaction.md. No publish endpoint/UI or live publication; explicit confirmation/recovery and integrated acceptance remain next.
 
 
-2026-10-08: Explicit correction publication now connects saved impact/source confirmation to the atomic service, with persisted same-command receipt recovery after lost response/reload.25 unique backend checks,12 UI tests and4 real desktop/narrow keyboard browser journeys pass; visual/lint/types/build and review clear. See slices/correction-publication-ui.md. Broader report/history/linked-surface acceptance and reversal policy remain.
+2026-10-08: Explicit correction publication now connects saved impact/source confirmation to the atomic service, with persisted same-command receipt recovery after lost response/reload.25 unique backend checks,12 UI tests and4 real desktop/narrow keyboard browser journeys pass; visual/lint/types/build and review clear. See slices/correction-publication-ui.md. Live schema c146f830ad92/health verified; no real publication. Broader report/history/linked-surface acceptance and reversal policy remain.
 
 
 2026-10-08: Three real-API correction publication integration tests now verify report resolution, old-receipt replay, due-card exclusion, six learning tables retained and linked code-check redirection with persisted exercise unchanged. Final3 tests/Ruff pass; review findings fixed. See slices/correction-publication-ui.md. No runtime delta; human/reversal and unsupported-kind gates remain.
 
-2026-10-08: CI repair: import recovery now validates a random v2 ownership marker in addition to inode identity; legacy/missing/replaced proof stays unknown.60 ingest and32 focused checks,2 resume browser journeys, Ruff/mypy and review pass. Browser fixtures now remove synthetic publication content and restore prior Home defaults;12 ordered regression journeys and focused ESLint pass. No grading/mastery changes. See slices/import-ownership-marker.md. Remote full CI pending.
+
+2026-10-08: Linux CI exposed inode reuse in import ownership recovery. New import locks/options carry an exact random v2 marker; legacy/missing/replaced proof remains unknown.60 ingest and32 targeted guard/recovery checks plus2 browser resume journeys pass; Ruff/mypy217/review clear. See slices/import-ownership-marker.md. Live backend updated; remote Linux rerun pending.
+
+2026-10-08: Browser CI fixture isolation repaired: publication cleans only its synthetic question/source/dependencies in the sandbox, including committed lost-response replacements; delayed Home preference tests restore the prior mode. All12 ordered publication/Home/reading/exclusion/session journeys pass, focused ESLint and bounded review clear. Narrow publication screenshot inspected; keyboard and390/1280 reflow assertions retained. No application learning change. See slices/import-ownership-marker.md. Remote full CI remains to verify after push.
 
 2026-10-08: Read-only assessment recovery distinguishes a released local grading worker with exact sealed proof from unknown/live ownership, without permitting repeat inference.49 backend,26 UI and6 desktop/narrow keyboard journeys pass; Ruff/mypy/types/lint/build and bounded review clear. Result-check focus is preserved while busy. See slices/assessment-unknown-outcome-plan.md; provider outcomes and explicit re-grading remain separate open work.
 

@@ -103,6 +103,14 @@ function ConceptEvidence({ skillId, title }: { skillId: string; title: string })
             <p>Recorded result: {item.score === 1 ? 'full credit' : item.score === 0 ? 'no credit' : 'partial credit'}.</p>
             <p className="text-sm text-muted">Checked by: {item.grader_level === 'local' ? 'local model' : item.grader_level === 'hosted' ? 'hosted model' : item.grader_level}.</p>
             <p className="text-sm text-muted">{item.reported_hint_count === null ? 'Hint history unavailable.' : `Reported hints: ${item.reported_hint_count}.`} {item.attempt_id ? 'Linked assessment attempt.' : 'Original attempt unavailable.'}</p>
+            <Disclosure label="Task and help context">
+              {item.task_context ? <div className="space-y-2 text-sm">
+                <p>Recorded task type: {item.task_context.task_kind}. {item.task_context.rubric_version === null ? 'Rubric version not recorded.' : `Rubric version: ${item.task_context.rubric_version}.`}</p>
+                <p>{item.task_context.revised_work ? 'Revision of earlier work.' : 'Original attempt.'}</p>
+                <p>Hint count was reported by the app, not independently verified. Help history is incomplete: external help is unknown and full-solution exposure was not recorded.</p>
+                <p>Independent work is not verified. These task facts do not establish that a learning objective has been achieved.</p>
+              </div> : <p className="text-sm text-muted">Task and help context is unavailable or could not be verified for this record. Independent work is not verified.</p>}
+            </Disclosure>
             {item.answer_id ? <Link className="inline-flex min-h-11 items-center underline" to={`/answers/${encodeURIComponent(item.answer_id)}`}>Open saved assessment</Link> : <p className="text-sm text-muted">Saved question and feedback unavailable.</p>}
           </li>)}
         </ol>

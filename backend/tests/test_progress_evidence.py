@@ -140,3 +140,84 @@ async def test_saved_assessment_link_is_owned_and_does_not_duplicate_evidence(cl
     hidden = await evidence_page(db, root.learner_id, skill_id, offset=0, limit=20)
     assert hidden.total == 1
     assert hidden.items[0].answer_id is None
+
+
+async def test_task_context_preserves_historical_facts_and_rejects_inconsistent_snapshot(client, db):
+    from app.db.models import Assessment
+    from tests.test_assessment_revisions import original
+
+    root, _ = await original(client, db)
+    assessment = await db.get(Assessment, root.assessment_id)
+    page = await evidence_page(db, root.learner_id, assessment.skill_id, offset=0, limit=20)
+    context = page.items[0].task_context
+    assert context is not None
+    assert context.task_kind == assessment.kind
+    assert context.reported_hint_count == root.hint_count
+    assert context.independence == "not_verified"
+    assert context.assistance_coverage == "partial"
+    assert not context.revised_work
+    # Current task edits cannot rewrite the historical snapshot.
+    assessment.kind = "changed"
+    await db.commit()
+    page = await evidence_page(db, root.learner_id, assessment.skill_id, offset=0, limit=20)
+    assert page.items[0].task_context == context
+    root.hint_count += 1
+    await db.commit()
+    page = await evidence_page(db, root.learner_id, assessment.skill_id, offset=0, limit=20)
+    assert page.items[0].task_context is None
+
+
+def test_task_context_rejects_missing_future_malformed_and_conflicting_metadata():
+    from copy import deepcopy
+
+    from app.db.models import AssessmentAttempt
+    from app.kernel.progress import task_context
+    from app.schemas.assessment_provenance import AssessmentProvenance
+
+    facts = AssessmentProvenance(
+        task_kind="mcq", content_fingerprint="fingerprint", rubric_version=None,
+        grading_method="deterministic", reported_hint_count=-1, revision_of_attempt_id=None,
+    ).model_dump()
+    attempt = AssessmentAttempt(
+        content_fingerprint="fingerprint", grader_route="deterministic", hint_count=-1,
+        revision_of_attempt_id=None,
+    )
+    def project(value):
+        attempt.deterministic_result_json = {"evidence_provenance": value}
+        return task_context(attempt)
+
+    assert project(facts).reported_hint_count == -1
+    for field in facts:
+        missing = deepcopy(facts)
+        del missing[field]
+        assert project(missing) is None
+    for field, value in (
+        ("schema_version", 2), ("independence", "verified"),
+        ("qualification", "passed"), ("reported_hint_count", "-1"),
+        ("content_fingerprint", "different"), ("revision_of_attempt_id", "other"),
+        ("grading_method", "hosted"), ("task_kind", " "),
+    ):
+        assert project({**facts, field: value}) is None
+    for malformed in (None, [], "invalid"):
+        assert project(malformed) is None
+    attempt.llm_result_json = {"evidence_provenance": facts}
+    assert project(facts) is None
+    assert task_context(None) is None
+
+
+async def test_cross_skill_attempt_reference_does_not_disclose_context(client, db):
+    from app.db.models import Assessment
+    from tests.test_assessment_revisions import original
+
+    root, _ = await original(client, db)
+    assessment = await db.get(Assessment, root.assessment_id)
+    original_skill = assessment.skill_id
+    db.add(SkillNode(id="different-skill", slug="different-skill", title="Other", domain="test"))
+    await db.flush()
+    assessment.skill_id = "different-skill"
+    await db.commit()
+    page = await evidence_page(db, root.learner_id, original_skill, offset=0, limit=20)
+    assert page.total == 1
+    assert page.items[0].attempt_id is None
+    assert page.items[0].answer_id is None
+    assert page.items[0].task_context is None

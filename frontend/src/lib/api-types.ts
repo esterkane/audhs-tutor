@@ -4373,7 +4373,7 @@ export interface components {
     IngestJobRequest: {
       /**
        * Path
-       * @description local file or folder (course layout: Course/Section/Lecture)
+       * @description local file or folder (source-provider layout: Course/Section/Lecture)
        */
       path: string
       /** Course */
@@ -4447,7 +4447,7 @@ export interface components {
     IngestRequest: {
       /**
        * Path
-       * @description local file or folder (course layout: Course/Section/Lecture)
+       * @description local file or folder (source-provider layout: Course/Section/Lecture)
        */
       path: string
       /** Course */
@@ -5136,6 +5136,7 @@ export interface components {
     }
     /** ProgressEvidence */
     ProgressEvidence: {
+      task_context?: components['schemas']['ProgressTaskContext'] | null
       /** Id */
       id: string
       /** Dimension */
@@ -5175,6 +5176,34 @@ export interface components {
       items: components['schemas']['ProgressEvidence'][]
       /** Dimensions */
       dimensions: components['schemas']['ProgressDimension'][]
+    }
+    /**
+     * ProgressTaskContext
+     * @description Historical task facts, never a current attainment qualification.
+     */
+    ProgressTaskContext: {
+      /** Task Kind */
+      task_kind: string
+      /** Rubric Version */
+      rubric_version: number | null
+      /** Grading Method */
+      grading_method: string
+      /** Reported Hint Count */
+      reported_hint_count: number
+      /** Revised Work */
+      revised_work: boolean
+      /**
+       * Assistance Coverage
+       * @default partial
+       * @constant
+       */
+      assistance_coverage: 'partial'
+      /**
+       * Independence
+       * @default not_verified
+       * @constant
+       */
+      independence: 'not_verified'
     }
     /** ProjectCapture */
     ProjectCapture: {

@@ -5,7 +5,20 @@ from typing import Literal
 from pydantic import BaseModel
 
 
+class ProgressTaskContext(BaseModel):
+    """Historical task facts, never a current attainment qualification."""
+
+    task_kind: str
+    rubric_version: int | None
+    grading_method: str
+    reported_hint_count: int
+    revised_work: bool
+    assistance_coverage: Literal["partial"] = "partial"
+    independence: Literal["not_verified"] = "not_verified"
+
+
 class ProgressEvidence(BaseModel):
+    task_context: ProgressTaskContext | None = None
     id: str
     dimension: str
     recorded_at: str
