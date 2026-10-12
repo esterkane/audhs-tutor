@@ -1956,3 +1956,15 @@ Focused self-review checked Promise.race cleanup and the existing operation lock
 Remaining: explicit preview cancellation, reload draft recovery, human/AT acceptance;
 existing bundle-size warning remains. Logs:/tmp/preview-timeout-{before,final,unit,build}.log.
 Both repository variants remain private.
+
+
+2026-10-12 AU-SEARCH-03 design alignment: Search input and category-jump links use
+shared min-h-control-target instead of40px input/text-height links (PDF pp5–7).
+Baseline rendered gate failed at40px; final browser checks require every affected
+control to reach44px at320/1280. Full material-search journey file passes, including
+keyboard jump focus, independent errors/retry, query/Back/reload retention, stale
+responses, enlarged-text reflow and no learning writes. ESLint, e2e types and build
+pass;390px full-page screenshot inspected. No search semantics or learning changes.
+Self-review confirms only classes changed; no new dependency or hard-coded sizing.
+Human/AT acceptance and other routes remain open; existing bundle warning remains.
+Logs:/tmp/search-targets-{before,final,build}.log. Both repos remain private.

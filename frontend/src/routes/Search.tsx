@@ -24,7 +24,7 @@ function SearchForm({ initial, onSearch }: { initial: string; onSearch: (q: stri
   const [value, setValue] = useState(initial)
   return <form className="flex flex-wrap items-end gap-2" onSubmit={event => { event.preventDefault(); onSearch(value.trim()) }}>
     <label className="grow min-w-0">Search phrase
-      <input type="search" className="block w-full min-h-10 mt-1 rounded-md border border-control bg-card px-3 py-2" value={value} onChange={event => setValue(event.target.value)} maxLength={200} required />
+      <input type="search" className="block w-full min-h-control-target mt-1 rounded-md border border-control bg-card px-3 py-2" value={value} onChange={event => setValue(event.target.value)} maxLength={200} required />
     </label>
     <Button disabled={!value.trim() || value.trim().length > 200} type="submit">Search</Button>
     {initial && <Button variant="secondary" type="button" onClick={() => onSearch('')}>Clear search</Button>}
@@ -47,7 +47,7 @@ function Results({ query }: { query: string }) {
     <nav aria-label="Search result groups" className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
       <span className="font-semibold">Jump to:</span>
       {([['areas', 'Knowledge areas'], ['skills', 'Skills'], ['projects', 'Project guides'], ['answers', 'Saved explanations'], ['sources', 'Indexed sources']] as const).map(([id, label]) =>
-        <a key={id} className="underline py-1" href={`#search-${id}`}>{label}</a>)}
+        <a key={id} className="inline-flex min-h-control-target items-center underline py-1" href={`#search-${id}`}>{label}</a>)}
     </nav>
     <section aria-labelledby="search-areas" className="rounded-md border border-line p-3 min-w-0 break-words">
       <h2 tabIndex={-1} id="search-areas" className="text-panel-heading font-semibold">Knowledge areas</h2>

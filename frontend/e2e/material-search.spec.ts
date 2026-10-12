@@ -232,3 +232,21 @@ for (const width of [320, 1280]) test(`long search results remain navigable with
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   expect(writes).toEqual([])
 })
+
+for (const width of [320, 1280]) test(`search navigation controls meet design targets ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], next_cursor: null } }))
+  await page.route('**/api/corpus/search', route => route.fulfill({ json: { hits: [] } }))
+  await page.goto('/search?q=example')
+  await expect(page.getByText('No indexed passages matched.')).toBeVisible()
+  const groups = page.getByRole('navigation', { name: 'Search result groups' })
+  for (const control of [page.getByRole('searchbox', { name: 'Search phrase' }), ...await groups.getByRole('link').all()]) {
+    const box = await control.boundingBox()
+    expect(box?.height).toBeGreaterThanOrEqual(44)
+  }
+  await groups.getByRole('link', { name: 'Indexed sources' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'Indexed sources', exact: true })).toBeFocused()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: `/tmp/search-targets-${width}.png`, fullPage: false })
+})
