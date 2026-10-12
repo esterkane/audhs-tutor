@@ -2162,3 +2162,6 @@ fixture hash,16 completed/zero paid calls. Both have substantive teaching failur
 in this small sequential sample. No routing/prompt change or G1 pass. Raw results
 and per-case limits in LOCAL-EXPLANATION-DIAGNOSTIC.md. Stop model sweeps; future
 quality work must target evidence fidelity/false attribution with reviewed contracts.
+
+
+2026-10-12 M00 read-only inventory complete: version-level rights evidence and source-sensitive hosted/export eligibility are absent in inspected boundaries; trust and model licence are distinct. Learner backup/export can retain derived text and are not public-export clearance. Generic inventory and M01/M02 acceptance plan: slices/material-rights-inventory.md. No live classification, runtime change, acquisition edit or external request. Both repos private.

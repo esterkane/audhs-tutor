@@ -34,7 +34,9 @@ See HANDOFF.md and ux/ADVERSARIAL-USABILITY-REPORT.md for exact tests and limits
 5. **Source/material quality:** private coverage ledger still has media, interactive,
    external-link and executable-notebook gaps. Stored/indexed text is not complete
    coverage or degree engagement. Preserve the separate acquisition worktree delta.
-6. **Dependent queues:** C01a/M00 metadata/rights, V00/V01 visual architecture and
+6. **Dependent queues:** M00 technical inventory is recorded in
+   slices/material-rights-inventory.md; C01a/M01 metadata/rights design and M02
+   enforcement remain open. V00/V01 visual architecture and
    benchmark, then dependent A/E authoring/resources and optional S/avatar/native
    tracks remain as recorded in the stage ledger. No replacement architecture or
    hosted provider is authorized merely by this checklist.

@@ -70,3 +70,6 @@ speech playback does not yet expose that signal. AV01 still needs implementation
 controls. No second speech engine, avatar SDK or expressive model is added by this reconciliation.
 Existing resource-curation, state-reliability, learning-UX and tutor-evidence skills cover these slices;
 use the existing skill-specific gates rather than installing another general-purpose workflow.
+
+
+2026-10-12 M00 technical boundary inventory is recorded in [material rights inventory](slices/material-rights-inventory.md). Source/version provenance, hosted egress, saved derivatives, learner exports, private backup and sanitized Git publication are distinguished. M01/M02 remain unimplemented; no source rights were inferred or runtime restrictions changed.
