@@ -98,3 +98,29 @@ journeys are not presented as integration evidence.
 
 Independent bounded static code/provenance review found no blockers or majors;
 the reviewer did not rerun tests.
+
+
+## Relationship payload foundation — 2026-10-12
+
+`schemas/visual_relationship.py` implements the first `visual.v1` kind, relationship.
+It requires the lesson binding, title, text equivalent, explicit directedness and
+bounded node/edge arrays. IDs/endpoints are checked; optional per-part source links
+must reference binding sources. Cycles, isolated nodes and self-loops are not rejected
+as inherently wrong. No positions, arbitrary styles, HTML fields, scripts, event
+handlers or data URLs are accepted. All captions/explanations are plain text, not
+executable markup; a future renderer must uphold that boundary.
+
+The bytes parser rejects more than128KiB before parsing; the future HTTP adapter
+must also bound request bodies before buffering. Limits:64 nodes,128 edges,240-char
+labels,1200-char node explanations,8000-char text equivalent,16 source links per
+part. These are implementation limits, not targets for pedagogical complexity.
+All thirteen candidate libraries remain in the research specs;
+unknown visual kinds are rejected rather than implicitly executed.
+
+Verification:23 relationship cases plus17 binding cases passed (40 total), targeted
+Ruff and strict schema mypy passed after an explicit union annotation corrected a
+type-check failure. Independent static review found no blockers/majors. No runtime,
+UI or persisted content uses this schema yet. Parsing success is not mathematical,
+conceptual, source-grounding or accessibility acceptance. Required next integration
+checks include text-only rendering and network denial, real source resolution,
+reviewed semantics and the existing keyboard/responsive learner-flow gates.

@@ -2210,3 +2210,12 @@ passed; bounded review found no blockers/majors. See slices/visual-learning-bind
 for limits: unwired to API/UI, no persistence/ownership guarantee from caller data,
 no renderer payload schema or learning-state writes. Next: bounded relationship
 payload and authenticated integration after authored lifecycle decision.
+
+
+## Relationship specification validator — 2026-10-12
+
+First bounded non-executable visual.v1 relationship kind added: valid endpoints,
+source references, explicit directedness and text equivalent; cycles/disconnected
+concepts allowed.40 combined schema/binding tests, targeted Ruff/strict mypy passed;
+static review clear. See slices/visual-learning-binding.md. Not wired to runtime/UI;
+remaining authored lifecycle and rendering/source/semantic acceptance are unchanged.
