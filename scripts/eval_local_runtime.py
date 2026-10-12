@@ -14,9 +14,10 @@ from urllib.parse import urlparse
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import get_settings
-from app.db.models import ModelCall, TutorAnswer
+from app.core.config import Settings, get_settings
+from app.db.models import ModelCall, ModelRegistry, TutorAnswer
 from app.evals.harness import open_world
 from app.kernel import session as sessions
 from app.models_ai.benchmark_gateway import BenchmarkRouter
@@ -28,12 +29,42 @@ from app.schemas.common import Mode
 from app.schemas.playground import PlaygroundContext, PlaygroundMessage, PlaygroundRequest
 
 
-def local_settings(settings):
+def local_settings(settings: Settings) -> Settings:
     if urlparse(settings.ollama_host).hostname not in {"localhost", "127.0.0.1", "::1"}:
         raise ValueError("Loopback Ollama required")
     return settings.model_copy(
         update={"openai_api_key": "", "anthropic_api_key": "", "daily_budget_usd": 0.0}
     )
+
+
+EXPERIMENTAL_MODEL = "muse-glimmer-30b-mlx"
+EXPERIMENTAL_TAG = "muse-glimmer:30b-mlx"
+
+
+async def register_experimental_candidate(
+    db: AsyncSession, model: str, installed_tags: set[str]
+) -> None:
+    """Register only in the disposable evaluation database; never download or assign."""
+    if model != EXPERIMENTAL_MODEL:
+        return
+    if EXPERIMENTAL_TAG not in installed_tags:
+        raise ValueError("Glimmer must already be installed")
+    if await db.get(ModelRegistry, model) is not None:
+        raise ValueError("Experimental candidate already registered")
+    db.add(
+        ModelRegistry(
+            id=model,
+            display_name="Muse Glimmer 30B MLX evaluation only",
+            source="ollama_library",
+            repo_id="muse-glimmer",
+            file_or_tag=EXPERIMENTAL_TAG,
+            runtime="ollama",
+            role="chat",
+            licence="Apache-2.0",
+            status="ready",
+        )
+    )
+    await db.flush()
 
 
 async def pinned_gateway(world, db, model):
@@ -607,6 +638,12 @@ async def run(output, model, suite="basic"):
             world = await open_world(str(Path(directory) / "eval.db"), with_repo=False)
             try:
                 async with world.session_factory() as db:
+                    if model == EXPERIMENTAL_MODEL:
+                        from app.models_ai.factory import installed_models
+
+                        await register_experimental_candidate(
+                            db, model, await installed_models(local_settings(world.settings))
+                        )
                     gateway = await pinned_gateway(world, db, model)
                     session = await sessions.start(db, world.learner_id, mode=Mode.STEADY, energy=3)
                     for name, body, criteria in cases(session.id, suite):
@@ -643,7 +680,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--model",
-        choices=["llama31-8b", "gemma3-12b", "gemma3-27b"],
+        choices=["llama31-8b", "gemma3-12b", "gemma3-27b", EXPERIMENTAL_MODEL],
         default="llama31-8b",
     )
     args = parser.parse_args()

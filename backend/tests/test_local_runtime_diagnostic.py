@@ -406,3 +406,25 @@ def test_teaching_suite_isolated_contracts_and_manifest(monkeypatch):
     changed = [(n, b, c + " Revised review criterion.") for n, b, c in cases]
     monkeypatch.setattr(diagnostic, "teaching_cases", lambda session_id: changed)
     assert diagnostic.suite_manifest("teaching")["fixture_sha256"] != manifest["fixture_sha256"]
+
+
+async def test_experimental_candidate_requires_installed_tag_and_stays_local(db):
+    from app.db.models import ModelRegistry
+    from app.models_ai.registry import get_spec
+
+    diagnostic = module()
+    with pytest.raises(ValueError, match="already be installed"):
+        await diagnostic.register_experimental_candidate(db, diagnostic.EXPERIMENTAL_MODEL, set())
+    assert await db.get(ModelRegistry, diagnostic.EXPERIMENTAL_MODEL) is None
+    await diagnostic.register_experimental_candidate(
+        db, diagnostic.EXPERIMENTAL_MODEL, {diagnostic.EXPERIMENTAL_TAG}
+    )
+    spec = await get_spec(db, diagnostic.EXPERIMENTAL_MODEL)
+    assert spec.provider == "ollama" and not spec.hosted
+    assert spec.model == diagnostic.EXPERIMENTAL_TAG
+    with pytest.raises(ValueError, match="already registered"):
+        await diagnostic.register_experimental_candidate(
+            db, diagnostic.EXPERIMENTAL_MODEL, {diagnostic.EXPERIMENTAL_TAG}
+        )
+    await db.rollback()
+    assert await db.get(ModelRegistry, diagnostic.EXPERIMENTAL_MODEL) is None
