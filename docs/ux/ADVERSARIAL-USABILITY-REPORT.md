@@ -455,3 +455,11 @@ No human comprehension, physical audio or complete screen-reader acceptance clai
 
 
 AU-EXPERIMENTS-01 implementation verified 2026-10-12. See ../slices/experiments-read-recovery.md for bounded acceptance and remaining limits.
+
+## AU-MODELS-01 — Registry failure has no feedback (S3)
+Reproduced initial503 at320/1280 after the broader audit observation. Minimal fix:
+explicit read-error/retry, cached-data retention, bounded waits and focus preservation.
+Long-term: extend consistent read recovery to other settings queries after concrete
+failure evidence. Risk: focus loss or interpreting unknown registry as empty.
+Verified bounded implementation: ../slices/models-read-recovery.md. Model assignments,
+downloads and learning decisions are unchanged. Broader settings recovery remains open.

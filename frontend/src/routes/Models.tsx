@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { VoiceSetup } from '../features/voice/VoiceSetup'
@@ -435,6 +435,8 @@ function CostCard() {
 
 export function Models() {
   const models = useModels()
+  const [retrying, setRetrying] = useState(false)
+  const modelList = useRef<HTMLDivElement>(null)
   const [polling, setPolling] = useState(false)
   const jobs = useJobs(polling)
   const running = (jobs.data?.jobs ?? []).filter((j) => j.status === 'running')
@@ -444,7 +446,7 @@ export function Models() {
       <CostCard />
       <VoiceSetup />
       <Card>
-        <CardTitle as="h1">Models</CardTitle>
+        <div ref={modelList} tabIndex={-1} role="region" aria-label="Model registry"><CardTitle as="h1">Models</CardTitle></div>
         <p className="text-sm text-muted">
           OpenAI uses OPENAI_API_KEY; Claude uses ANTHROPIC_API_KEY in your local .env. Restart the backend
           after saving a key. Ready means a key is configured, not that access or tutoring quality has been
@@ -455,7 +457,21 @@ export function Models() {
           Everything the tutor can run, where it comes from, whether it is downloaded and benchmarked, and
           which task uses it. Nothing downloads without your click.
         </p>
-        {models.isLoading && <p>Loading…</p>}
+        {models.isLoading && !retrying && <p role="status">Loading models…</p>}
+        {(models.isError || retrying) && <div className="grid gap-2 my-2">
+          <p role="alert">{models.data ? 'Could not refresh models. Showing the last loaded data.' : 'Could not load models.'}</p>
+          <p className="text-sm text-muted">Check that the local app backend is running, then retry.</p>
+          <Button aria-disabled={models.isFetching} onClick={(event) => {
+            if (models.isFetching) return
+            const trigger = event.currentTarget
+            setRetrying(true)
+            void models.refetch().then(result => {
+              if (result.isSuccess && document.activeElement === trigger) modelList.current?.focus()
+            }).finally(() => setRetrying(false))
+          }}>Retry loading models</Button>
+          {models.isFetching && <p role="status">Retrying models…</p>}
+        </div>}
+        {models.data?.models.length === 0 && <p>No models registered.</p>}
         {models.data && (
           <div className="relative overflow-x-auto" role="region" aria-label="Available models" tabIndex={0}>
             <table className="w-full text-sm">

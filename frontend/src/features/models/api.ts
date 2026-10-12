@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, type Schemas } from '../../lib/api'
+import { boundedRead } from '../../lib/boundedRead'
 
 export type ModelRow = Schemas['ModelRow']
 export type JobOut = Schemas['JobOut']
@@ -8,7 +9,11 @@ export type AddIn = Schemas['AddIn']
 export type CostsOut = Schemas['CostsOut']
 
 export function useModels() {
-  return useQuery({ queryKey: ['models'], queryFn: () => apiFetch<Schemas['ModelList']>('/api/models') })
+  return useQuery({
+    queryKey: ['models'],
+    queryFn: ({ signal }) => boundedRead<Schemas['ModelList']>('/api/models', signal, 'Models'),
+    retry: false,
+  })
 }
 
 export function useRouting() {

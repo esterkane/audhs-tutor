@@ -4373,7 +4373,7 @@ export interface components {
     IngestJobRequest: {
       /**
        * Path
-       * @description local file or folder (source-provider layout: Course/Section/Lecture)
+       * @description local file or folder (Course/Section/Lecture layout)
        */
       path: string
       /** Course */
@@ -4447,7 +4447,7 @@ export interface components {
     IngestRequest: {
       /**
        * Path
-       * @description local file or folder (source-provider layout: Course/Section/Lecture)
+       * @description local file or folder (Course/Section/Lecture layout)
        */
       path: string
       /** Course */
