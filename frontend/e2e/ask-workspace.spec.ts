@@ -1,9 +1,10 @@
+import { createHash } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { API } from './helpers'
 
 async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' = 'complete') {
   const records = new Map<string, Record<string, unknown>>()
-  const requests: { key: string; body: { question: string; parent_answer_id?: string } }[] = []
+  const requests: { key: string; body: { question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } } }[] = []
   const old = { id: 'saved-example', turn_id: 'old', session_id: null, surface: 'ask', created_at: '2026-10-12T10:00:00Z', request_text: 'Why does quantization reduce memory?', learner_question: null, target_label: null, preview: 'Fewer bits per weight.', skill_id: null, area_id: null, text: 'Fewer bits per weight reduce the storage required.', request: { question: 'Why does quantization reduce memory?' }, metadata: {} }
   records.set(old.id, old)
   await page.route('**/api/areas', route => route.fulfill({ json: { areas: [], total_documents: 0, unassigned_documents: 0 } }))
@@ -16,14 +17,14 @@ async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' = 'comp
     return records.has(id) ? route.fulfill({ json: records.get(id) }) : route.fulfill({ status: 404, json: { error: { message: 'Not found' } } })
   })
   await page.route('**/api/ask/stream', async route => {
-    const body = route.request().postDataJSON() as { question: string; parent_answer_id?: string }
+    const body = route.request().postDataJSON() as { question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } }
     const key = route.request().headers()['idempotency-key']
     requests.push({ key, body })
     if (mode === 'slow') { await new Promise(resolve => setTimeout(resolve, 700)); return route.abort().catch(() => undefined) }
     if (mode === 'partial' && requests.length === 1) return route.fulfill({ contentType: 'text/event-stream', body: 'event: token\ndata: {"text":"An unfinished explanation"}\n\n' })
     const id = `saved-${key}`
     const text = 'Quantization stores each weight with fewer bits. For example, eight-bit weights use less memory than 32-bit weights. Precision can decrease.'
-    const record = { ...old, id, turn_id: key, request_text: body.question, text, request: body, metadata: { parent_answer_id: body.parent_answer_id ?? null } }
+    const record = { ...old, id, turn_id: key, request_text: body.question, text, request: body, metadata: { parent_answer_id: body.parent_answer_id ?? null, sources: body.sources ? [{ chunk_id: 'p1', citation: 'S1: Synthetic bytes (local version 1)', text: 'Eight bits use one byte.' }] : [] } }
     records.set(id, record)
     await route.fulfill({ contentType: 'text/event-stream', body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ text, turn_id: key, model: 'local-fixture', route: 'primary', answer_id: id, conversation_id: 'example', history_turns: body.parent_answer_id ? 1 : 0 })}\n\n` })
   })
@@ -204,4 +205,60 @@ test('Further reading stays local until an explicit external link is opened', as
   expect(outbound).toEqual([])
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
   await page.screenshot({ path: info.outputPath('further-reading.png'), fullPage: true })
+})
+
+
+for (const width of [390, 1280]) test(`Ask attaches explicit sources, preserves selection on reload and renders snapshots ${width}`, async ({ page }, info) => {
+  const calls = await fixture(page)
+  let searches = 0
+  await page.route('**/api/corpus/search', route => { searches++; return route.fulfill({ json: { hits: [{ chunk_id: 'p1', citation: 'Synthetic bytes', text: 'Eight bits use one byte.', quarantined: false }] } }) })
+  await page.setViewportSize({ width, height: 900 })
+  await page.goto('/ask')
+  await page.getByText('Attach local sources (optional)', { exact: true }).click()
+  await page.getByLabel('Find passages in your local library').fill('bytes')
+  expect(searches).toBe(0)
+  await page.getByLabel('Find passages in your local library').press('Enter')
+  await page.getByRole('checkbox', { name: 'Synthetic bytes', exact: true }).focus()
+  await page.keyboard.press('Space')
+  expect(calls).toHaveLength(0)
+  await page.getByLabel('Your question', { exact: true }).fill('Explain bytes')
+  await page.reload()
+  await page.getByText('Attach local sources (optional) · 1 selected', { exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Passages attached to this question' })).toContainText('Eight bits use one byte.')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).dblclick()
+  await expect(page.getByRole('heading', { name: 'Explain bytes', exact: true })).toBeVisible()
+  expect(calls).toHaveLength(1)
+  expect(calls[0].body.sources).toEqual({ passage_ids: ['p1'], passage_hashes: { p1: createHash('sha256').update('Eight bits use one byte.').digest('hex') } })
+  await page.getByText('Passages supplied for this answer', { exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'S1: Synthetic bytes (local version 1)' })).toBeVisible()
+  await expect(page.getByText('Attach local sources (optional)', { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  await page.screenshot({ path: info.outputPath('ask-attached-sources.png'), fullPage: true })
+})
+
+
+test('Stop during source hashing prevents submission and retains the draft', async ({ page }) => {
+  const calls = await fixture(page)
+  await page.addInitScript(() => {
+    const digest = crypto.subtle.digest.bind(crypto.subtle)
+    crypto.subtle.digest = async (...args) => {
+      await new Promise<void>(resolve => window.addEventListener('release-test-digest', () => resolve(), { once: true }))
+      return digest(...args)
+    }
+  })
+  await page.route('**/api/corpus/search', route => route.fulfill({ json: { hits: [{ chunk_id: 'p1', citation: 'Synthetic bytes', text: 'Eight bits use one byte.', quarantined: false }] } }))
+  await page.goto('/ask')
+  await page.getByText('Attach local sources (optional)', { exact: true }).click()
+  await page.getByLabel('Find passages in your local library').fill('bytes')
+  await page.getByRole('button', { name: 'Find passages', exact: true }).click()
+  await page.getByRole('checkbox', { name: 'Synthetic bytes', exact: true }).check()
+  await page.getByLabel('Your question', { exact: true }).fill('Explain bytes')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).click()
+  await page.getByRole('button', { name: 'Stop response', exact: true }).click()
+  await page.evaluate(() => window.dispatchEvent(new Event('release-test-digest')))
+  await expect(page.getByText('Stopped before sending. Your question and selected passages are kept.', { exact: true })).toBeVisible()
+  expect(calls).toHaveLength(0)
+  await expect(page.getByLabel('Your question', { exact: true })).toHaveValue('Explain bytes')
+  await expect(page.getByText('Attach local sources (optional) · 1 selected', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Retry previous request' })).toHaveCount(0)
 })

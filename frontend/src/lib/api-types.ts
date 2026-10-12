@@ -3002,6 +3002,7 @@ export interface components {
     }
     /** AskQuestion */
     AskQuestion: {
+      sources?: components['schemas']['AskSources'] | null
       /** Question */
       question: string
       /** Area Id */
@@ -3054,6 +3055,15 @@ export interface components {
        * @default 0
        */
       history_turns: number
+    }
+    /** AskSources */
+    AskSources: {
+      /** Passage Ids */
+      passage_ids: string[]
+      /** Passage Hashes */
+      passage_hashes: {
+        [key: string]: string
+      }
     }
     /** AssessmentIn */
     AssessmentIn: {

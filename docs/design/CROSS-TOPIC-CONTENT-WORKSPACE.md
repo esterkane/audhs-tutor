@@ -171,3 +171,9 @@ G0 version-bound hosted/public origin eligibility and G3–G6 remain incomplete.
 unchanged/historical bindings, newer-version disclosure, saved review/recovery and
 source trust/displayed-text gates are implemented. G2 web references, grounded
 original generation and broader factual-quality evaluation remain open.
+
+2026-10-12: G2b curated further reading and Home Ask discovery delivered;
+G2c explicit local source attachment implemented, with exact snapshots and separate
+model-review labels. See ../slices/ask-further-reading.md and
+../slices/ask-selected-sources.md. External-source snapshots and broader factual-quality
+acceptance remain open; a synthetic conflict case still showed unsupported inference.

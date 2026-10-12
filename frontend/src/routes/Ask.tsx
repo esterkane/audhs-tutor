@@ -1,3 +1,6 @@
+import { SourcePicker } from '../features/ask/SourcePicker'
+import { sourceSelection, useSelectedPassages } from '../features/ask/useSelectedPassages'
+import { Disclosure } from '../components/ui/disclosure'
 import { FurtherReading } from '../features/ask/FurtherReading'
 import { AnswerChecks } from '../features/ask/AnswerChecks'
 import { useEffect, useRef, useState } from 'react'
@@ -37,6 +40,8 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
   const preview = useLessonDraft(`${scope}:preview`, 'unfinished reply')
   const previewQuestion = useLessonDraft(`${scope}:preview-question`, 'submitted question')
   const recovery = useAskRequestRecovery(scope)
+  const selection = useSelectedPassages(scope)
+  const preparing = useRef(false)
   const areas = useAreas()
   const nav = useNavigate()
   const cache = useQueryClient()
@@ -88,22 +93,45 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
   const ready = !parent || !!answer
 
   async function submit(pending?: PendingTutorRequest<Schemas['AskQuestion']>) {
-    if (controller.current || (!pending && !ready)) return
+    if (controller.current || preparing.current || (!pending && (!ready || selection.invalid))) return
+    preparing.current = true
+    setBusy(true)
+    const preparationToken = generation.current
+    const abort = new AbortController()
+    controller.current = abort
     let intent: PendingTutorRequest<Schemas['AskQuestion']>
     try {
+      const sources = pending ? pending.body.sources : await sourceSelection(selection.selected)
+      if (generation.current !== preparationToken || abort.signal.aborted) {
+        if (generation.current === preparationToken) {
+          controller.current = null
+          setBusy(false)
+          setStatus('Stopped before sending. Your question and selected passages are kept.')
+        }
+        return
+      }
       intent =
         pending ??
         recovery.prepare(
-          { question: draft.input, area_id: areaId || null, parent_answer_id: parent || null },
+          {
+            question: draft.input,
+            area_id: areaId || null,
+            parent_answer_id: parent || null,
+            ...(sources ? { sources } : {}),
+          },
           { snapshot: draft.input, submitted: draft.input, display: draft.input, mode: 'explicit' },
         )
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Could not prepare the question.')
+      if (generation.current === preparationToken) {
+        controller.current = null
+        setError(e instanceof Error ? e.message : 'Could not prepare the question.')
+        setBusy(false)
+      }
       return
+    } finally {
+      preparing.current = false
     }
     const token = ++generation.current
-    const abort = new AbortController()
-    controller.current = abort
     const entry = window.history.state?.key
     const url = window.location.href
     let moved = false
@@ -119,7 +147,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
       window.location.href === url
     setBusy(true)
     setError('')
-    setStatus('Generating locally…')
+    setStatus(intent.body.sources ? 'Explaining with your selected local passages…' : 'Generating locally…')
     // An explicit retry keeps the existing preview until new tokens actually arrive.
     let text = ''
     let started = false
@@ -141,6 +169,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
       if (draft.input === intent.body.question) draft.setInput('')
       preview.setInput('')
       previewQuestion.setInput('')
+      selection.set([])
       await cache.invalidateQueries({ queryKey: ['ask-suggestions'] })
       if (!current()) return
       nav(`/ask?answer=${encodeURIComponent(reply.answer_id)}`)
@@ -201,6 +230,22 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
               </p>
               <Markdown text={answer.text} />
               <ReadAloud text={`${answer.request_text}\n\n${answer.text}`} />
+              {Array.isArray(answer.metadata.sources) && answer.metadata.sources.length > 0 && (
+                <Disclosure label="Passages supplied for this answer" className="mt-3">
+                  <p className="text-sm text-muted">
+                    Historical snapshots supplied to the model, not proof that every claim is supported.
+                    [source:S1] refers to S1 below. Review current source status on the saved-answer page.
+                  </p>
+                  {answer.metadata.sources.map(
+                    (source: { chunk_id: string; citation: string; text: string }) => (
+                      <section key={source.chunk_id} className="mt-3 border-t border-line pt-2">
+                        <h3 className="font-medium break-words">{source.citation}</h3>
+                        <p className="text-sm whitespace-pre-wrap break-words">{source.text}</p>
+                      </section>
+                    ),
+                  )}
+                </Disclosure>
+              )}
               <AnswerChecks key={answer.id} answerId={answer.id} learnerId={learnerId} />
               <FurtherReading key={`reading:${answer.id}`} question={answer.request_text} />
               <div className="flex flex-wrap gap-4 mt-3">
@@ -270,8 +315,17 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
             {parent
               ? 'Uses up to three previous replies in this branch. Start a new topic to leave that context behind.'
               : 'No lesson, webpage or course material is attached automatically.'}{' '}
-            Answers in this workspace are not yet source-checked.
+            Model explanations are not fact-checked. Source review is available after saving.
           </p>
+          {selection.invalid && (
+            <p role="alert">
+              The saved source selection needs attention. Open Attach local sources to clear it before asking.
+            </p>
+          )}
+          <SourcePicker
+            selection={selection}
+            disabled={busy || !ready || !!recovery.pending || recovery.needsDiscard}
+          />
           {!parent && !busy && (
             <section aria-label="Suggested saved questions" className="space-y-2">
               <p className="text-sm font-medium">
@@ -326,7 +380,14 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
           <div className="flex flex-wrap gap-2">
             <Button
               variant="primary"
-              disabled={busy || !ready || !draft.input.trim() || !!recovery.pending || recovery.needsDiscard}
+              disabled={
+                busy ||
+                !ready ||
+                selection.invalid ||
+                !draft.input.trim() ||
+                !!recovery.pending ||
+                recovery.needsDiscard
+              }
               type="submit"
             >
               {busy ? 'Generating…' : parent ? 'Ask follow-up' : 'Ask question'}
