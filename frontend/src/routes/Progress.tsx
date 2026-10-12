@@ -70,7 +70,12 @@ function ConceptEvidence({ skillId, title }: { skillId: string; title: string })
       onClick={() => { if (!evidence.isFetching) void evidence.refetch() }}>Retry evidence</Button>
   </Card>
   return <>
-    {evidence.isError && <p role="alert">Could not load the requested evidence. Showing the last loaded records. <Button onClick={() => void evidence.refetch()}>Retry evidence</Button></p>}
+    {(evidence.isError || evidence.isFetching) && <div>
+      {evidence.isFetching ? <p role="status">Loading requested evidence. Showing the last loaded records.</p>
+        : <p role="alert">Could not load the requested evidence. Showing the last loaded records.</p>}
+      <Button aria-disabled={evidence.isFetching} aria-busy={evidence.isFetching}
+        onClick={() => { if (!evidence.isFetching) void evidence.refetch() }}>Retry evidence</Button>
+    </div>}
     <Card>
       <CardTitle>{title}</CardTitle>
       <dl className="grid gap-4">

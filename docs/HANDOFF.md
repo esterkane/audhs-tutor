@@ -1991,3 +1991,14 @@ learning-policy change. Initial baseline fixture was corrected to hold only expl
 retry, rather than the development StrictMode read. Final baseline reproduced the
 removed button; logs:/tmp/progress-retry-{before,final,build}.log. Existing bundle
 warning and broader cached-page retry/human/AT acceptance remain open.
+
+
+2026-10-12 AU-PROGRESS-02: older-page recovery retains its status and keyboard
+Retry evidence control while loading; aria-disabled/busy plus a guarded handler
+prevents repeated requests. Last loaded records/count remain explicit. Four Progress
+browser checks pass, plus two screenshot checks of held pagination; narrow pending
+screenshot inspected. ESLint/e2e types/build pass. Test assertions cover retained
+focus after another503, successful retry, original displayed-page numbering,
+saved-assessment return, concept/Back and no learning writes. Self-review confirms
+no evidence or kernel changes. Logs:/tmp/progress-cached-{before,final,visual,build}.log.
+Existing bundle warning and human/AT acceptance remain. Both variants stay private.

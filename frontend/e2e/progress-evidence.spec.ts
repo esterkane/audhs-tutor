@@ -7,10 +7,15 @@ for (const width of [320, 1280]) test(`Progress distinguishes records from indep
   const skill = (id: string) => ({ id, slug: id, title: `Concept ${id}`, description: '', domain: 'test', prerequisites: [], success_criteria: [], mastery: 0.9, unlocked: true, state: {} })
   await page.route('**/api/skills', route => route.fulfill({ json: { skills: [skill('a'), skill('b')], next_skill_id: 'a' } }))
   let failOlder = true
-  await page.route('**/api/skills/*/evidence?*', route => {
+  let holdOlder = false
+  let olderCalls = 0
+  let releaseOlder!: () => void
+  const olderPending = new Promise<void>(resolve => { releaseOlder = resolve })
+  await page.route('**/api/skills/*/evidence?*', async route => {
     const url = new URL(route.request().url())
     const empty = url.pathname.includes('/b/')
     const offset = Number(url.searchParams.get('offset'))
+    if (offset) { olderCalls++; if (holdOlder) await olderPending }
     if (offset && failOlder) return route.fulfill({ status: 503, json: {} })
     return route.fulfill({ json: { skill_id: empty ? 'b' : 'a', offset, limit: 20, total: empty ? 0 : 21,
       dimensions: empty ? [] : [{ dimension: 'transfer', count: 21, last_recorded_at: '2026-01-02T00:00:00Z' }],
@@ -39,8 +44,24 @@ for (const width of [320, 1280]) test(`Progress distinguishes records from indep
   await page.keyboard.press('Enter')
   await expect(page.getByRole('alert')).toContainText('Showing the last loaded records')
   await expect(page.getByText('Records 1–20 of 21, newest first.')).toBeVisible()
+  holdOlder = true
+  const retryOlder = page.getByRole('button', { name: 'Retry evidence' })
+  const beforeRetry = olderCalls
+  await retryOlder.focus()
+  await page.keyboard.press('Enter')
+  await expect.poll(() => olderCalls).toBe(beforeRetry + 1)
+  await expect(retryOlder).toHaveAttribute('aria-disabled', 'true')
+  await expect(retryOlder).toBeFocused()
+  await expect(page.getByText('Records 1–20 of 21, newest first.')).toBeVisible()
+  await page.keyboard.press('Enter')
+  expect(olderCalls).toBe(beforeRetry + 1)
+  await page.screenshot({ path: info.outputPath('progress-pending.png'), fullPage: true })
+  releaseOlder()
+  await expect(page.getByRole('alert')).toContainText('Showing the last loaded records')
+  await expect(retryOlder).toBeFocused()
+  await expect(retryOlder).toHaveAttribute('aria-disabled', 'false')
   failOlder = false
-  await page.getByRole('button', { name: 'Retry evidence' }).click()
+  await retryOlder.press('Enter')
   await expect(page.getByText('Records 21–21 of 21, newest first.')).toBeVisible()
   await expect(page.getByRole('button', { name: 'Newer records' })).toBeVisible()
   await page.screenshot({ path: info.outputPath('progress.png'), fullPage: true })
