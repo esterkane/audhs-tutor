@@ -197,3 +197,9 @@ Helpful/neutral/Confusing preferences and recency within bounded100 candidates.
 No automatic reuse/model/learning-state write. See ../slices/ask-suggestion-ranking.md
 for tests and inherited historical-question FTS gap. Review aggregation, semantic
 reuse and broader factual-quality acceptance remain open.
+
+2026-10-12: G3c opt-in exact saved Ask reuse implemented. New question + same bound
+inputs/registry + Helpful + no source/review issue; returns original dated answer,
+without inference or duplicate answers. Eligibility/receipt serialized; legacy
+fingerprints and normal fresh generation retained. See ../slices/ask-exact-reuse.md.
+Not factual certification or whole G3 completion. Both publication variants remain private.

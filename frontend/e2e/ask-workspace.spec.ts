@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { API } from './helpers'
 
-async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' = 'complete') {
+async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' | 'reuse' = 'complete') {
   await page.route('**/api/references/*', route => route.fulfill({ json: { snapshot: null } }))
   const records = new Map<string, Record<string, unknown>>()
   const requests: { key: string; body: { question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } } }[] = []
@@ -18,9 +18,10 @@ async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' = 'comp
     return records.has(id) ? route.fulfill({ json: records.get(id) }) : route.fulfill({ status: 404, json: { error: { message: 'Not found' } } })
   })
   await page.route('**/api/ask/stream', async route => {
-    const body = route.request().postDataJSON() as { question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } }
+    const body = route.request().postDataJSON() as { prefer_saved?: boolean; question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } }
     const key = route.request().headers()['idempotency-key']
     requests.push({ key, body })
+    if (mode === 'reuse' && body.prefer_saved) return route.fulfill({ contentType: 'text/event-stream', body: `event: done\ndata: ${JSON.stringify({ text: old.text, turn_id: key, model: 'local-fixture', route: 'saved', reused: true, answer_id: old.id, saved_at: old.created_at, conversation_id: old.id })}\n\n` })
     if (mode === 'slow') { await new Promise(resolve => setTimeout(resolve, 700)); return route.abort().catch(() => undefined) }
     if (mode === 'partial' && requests.length === 1) return route.fulfill({ contentType: 'text/event-stream', body: 'event: token\ndata: {"text":"An unfinished explanation"}\n\n' })
     const id = `saved-${key}`
@@ -307,4 +308,31 @@ test('Reference copy requires explicit download and import and preserves preview
   await expect(page.getByText(snapshot.text_preview, { exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
   await page.screenshot({ path: info.outputPath('reference-copy-mobile.png'), fullPage: true })
+})
+
+
+test('Opt-in saved answer reuse is disclosed and fresh generation stays available', async ({ page }, info) => {
+  const calls = await fixture(page, 'reuse')
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/ask')
+  const reuse = page.getByRole('checkbox', { name: /Try a saved answer first/ })
+  await expect(reuse).not.toBeChecked()
+  await reuse.focus()
+  await page.keyboard.press('Space')
+  await expect(reuse).toBeChecked()
+  await page.screenshot({ path: info.outputPath('ask-reuse-option-mobile.png'), fullPage: true })
+  await page.getByLabel('Your question', { exact: true }).fill('Why does quantization reduce memory?')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).click()
+  await expect(page.getByRole('status').filter({ hasText: 'Reopened your saved answer' })).toBeVisible()
+  await page.reload()
+  await expect(page.getByText(/Reopened your saved answer/)).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  await page.screenshot({ path: info.outputPath('ask-reused-mobile.png'), fullPage: true })
+  await page.getByRole('link', { name: 'New topic or question' }).click()
+  await expect(page.getByRole('checkbox', { name: /Try a saved answer first/ })).not.toBeChecked()
+  await page.getByLabel('Your question', { exact: true }).fill('Why does quantization reduce memory?')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Why does quantization reduce memory?', exact: true })).toBeVisible()
+  await expect(page.getByText(/Reopened your saved answer/)).toHaveCount(0)
+  expect(calls).toHaveLength(2)
 })

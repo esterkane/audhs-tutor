@@ -6,7 +6,7 @@ import { FurtherReading } from '../features/ask/FurtherReading'
 import { AnswerChecks } from '../features/ask/AnswerChecks'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
@@ -59,6 +59,8 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
   })
   const answer = saved.data?.surface === 'ask' ? saved.data : undefined
   const areaId = parent ? (typeof answer?.area_id === 'string' ? answer.area_id : '') : area.input
+  const location = useLocation()
+  const [preferSaved, setPreferSaved] = useState(false)
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -119,6 +121,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
             area_id: areaId || null,
             parent_answer_id: parent || null,
             ...(sources ? { sources } : {}),
+            ...(!parent && preferSaved ? { prefer_saved: true } : {}),
           },
           { snapshot: draft.input, submitted: draft.input, display: draft.input, mode: 'explicit' },
         )
@@ -148,7 +151,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
       window.location.href === url
     setBusy(true)
     setError('')
-    setStatus(intent.body.sources ? 'Explaining with your selected local passages…' : 'Generating locally…')
+    setStatus(intent.body.prefer_saved ? 'Checking for a saved answer; generating locally if none matches…' : intent.body.sources ? 'Explaining with your selected local passages…' : 'Generating locally…')
     // An explicit retry keeps the existing preview until new tokens actually arrive.
     let text = ''
     let started = false
@@ -173,7 +176,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
       selection.set([])
       await cache.invalidateQueries({ queryKey: ['ask-suggestions'] })
       if (!current()) return
-      nav(`/ask?answer=${encodeURIComponent(reply.answer_id)}`)
+      nav(`/ask?answer=${encodeURIComponent(reply.answer_id)}`, { state: { reusedAnswerId: reply.reused ? reply.answer_id : null } })
     } catch (e) {
       if (!current()) return
       setError(
@@ -222,6 +225,9 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
           )}
           {answer && (
             <Card>
+              {location.state?.reusedAnswerId === answer.id && (
+                <p role="status" className="text-sm mb-3">Reopened your saved answer without a new model call. Original date below; not refreshed from the web.</p>
+              )}
               <h2 tabIndex={-1} ref={heading} className="text-panel-heading font-semibold break-words">
                 {answer.request_text}
               </h2>
@@ -322,6 +328,15 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
             <p role="alert">
               The saved source selection needs attention. Open Attach local sources to clear it before asking.
             </p>
+          )}
+          {!parent && (
+            <label className="flex items-start gap-2 text-sm">
+              <input type="checkbox" checked={preferSaved} disabled={busy || !!recovery.pending}
+                onChange={event => setPreferSaved(event.target.checked)} />
+              <span>Try a saved answer first
+                <span className="block text-muted">Only an identical new question you marked Helpful with matching inputs and no known source or review issue. Otherwise, generate a fresh answer. This is not a correctness check.</span>
+              </span>
+            </label>
           )}
           <SourcePicker
             selection={selection}

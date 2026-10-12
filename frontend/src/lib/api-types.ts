@@ -3087,6 +3087,8 @@ export interface components {
     /** AskQuestion */
     AskQuestion: {
       sources?: components['schemas']['AskSources'] | null
+      /** Prefer Saved */
+      prefer_saved?: boolean | null
       /** Question */
       question: string
       /** Area Id */

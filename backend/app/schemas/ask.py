@@ -36,12 +36,15 @@ class AskSources(BaseModel):
 
 class AskQuestion(BaseModel):
     sources: AskSources | None = None
+    prefer_saved: bool | None = None
 
     @model_serializer(mode="wrap")
     def serialize(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data = cast(dict[str, Any], handler(self))
         if self.sources is None:
             data.pop("sources", None)  # Retain existing request fingerprints/retries.
+        if not self.prefer_saved:
+            data.pop("prefer_saved", None)
         return data
 
     question: str = Field(min_length=1, max_length=2000)

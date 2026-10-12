@@ -2,7 +2,7 @@
 
 from collections.abc import Awaitable, Callable
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
@@ -16,7 +16,7 @@ from app.db.traces import (
 )
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
-from app.orchestrator import ask_sources
+from app.orchestrator import ask_reuse, ask_sources
 from app.orchestrator.answer_check_binding import text_hash
 from app.orchestrator.context import escape_data
 from app.orchestrator.prompts import _read, base_policy
@@ -65,6 +65,7 @@ async def respond(
     area = await db.get(KnowledgeArea, area_id) if area_id else None
     if area_id and area is None:
         raise AppError("not_found", "This knowledge area is unavailable. Choose another area.", 404)
+    area_title = area.title if area else None
     sources = await ask_sources.resolve(db, body.sources, quarantine_below_trust)
     prompt_version = "pedagogy.v2+ask.grounded.v1" if sources else PROMPT_VERSION
     # Capture all prompt inputs before the claim commits/expires read transactions.
@@ -119,11 +120,86 @@ async def respond(
         }
         for row in previous
     ]
+    reuse_binding, reuse_model_id = await ask_reuse.input_binding(
+        db, gateway, learner_id, packet, sources, body
+    )
     identity, completed = await ask_requests.claim(
         db, learner_id, key, body.model_dump(mode="json")
     )
     if completed is not None:
         return AskReply.model_validate(completed)
+    if body.prefer_saved and not body.parent_answer_id:
+        # Eligibility and receipt share one short writer transaction. Never hold
+        # this lock while generating or contacting a model.
+        await db.execute(text("BEGIN IMMEDIATE"))
+        try:
+            current_sources = await ask_sources.resolve(db, body.sources, quarantine_below_trust)
+            current_title = (
+                await db.scalar(select(KnowledgeArea.title).where(KnowledgeArea.id == area_id))
+                if area_id
+                else None
+            )
+            current_binding, _ = await ask_reuse.input_binding(
+                db, gateway, learner_id, packet, current_sources, body
+            )
+            cached = (
+                await ask_reuse.exact_saved(db, learner_id, body, current_binding)
+                if (current_binding == reuse_binding and current_title == area_title)
+                else None
+            )
+            if cached is not None:
+                trace = await write_retrieval_trace(
+                    db,
+                    RetrievalTraceRecord(
+                        learner_id=learner_id,
+                        session_id=None,
+                        collection="saved-ask-answer",
+                        query=body.question,
+                        filters={"answer_id": cached.id, "input_binding": reuse_binding},
+                    ),
+                    commit=False,
+                )
+                await write_tutor_trace(
+                    db,
+                    TutorTraceRecord(
+                        learner_id=learner_id,
+                        session_id=None,
+                        turn_id=identity,
+                        action="ask_reuse",
+                        prompt_version=prompt_version,
+                        retrieval_trace_id=trace.id,
+                    ),
+                    commit=False,
+                )
+                reply = AskReply(
+                    text=cached.text,
+                    model=str(cached.metadata_json.get("model", "saved")),
+                    route="saved",
+                    turn_id=identity,
+                    answer_id=cached.id,
+                    saved_at=cached.created_at,
+                    conversation_id=str(cached.metadata_json.get("conversation_id") or cached.id),
+                    area_id=area_id,
+                    reused=True,
+                    source_status="supplied" if sources else "not_requested",
+                    sources=[
+                        PlaygroundSource(
+                            chunk_id=s["chunk_id"], citation=s["citation"], text=s["text"]
+                        )
+                        for s in sources
+                    ],
+                    source_note=(
+                        "Reopened your Helpful saved answer for identical inputs. "
+                        "Not fact-checked or refreshed from the web."
+                    ),
+                )
+                await ask_requests.complete(db, learner_id, identity, reply.model_dump(mode="json"))
+                await db.commit()
+                return reply
+            await db.commit()
+        except BaseException:
+            await db.rollback()
+            raise
     metadata = {"surface": "ask", "prompt_version": prompt_version, "turn_id": identity}
     if on_token:
         result = await gateway.complete_streamed(
@@ -205,6 +281,10 @@ async def respond(
                 "context_answer_hashes": {
                     s["answer_id"]: s["answer_hash"] for s in context_snapshots
                 },
+                "reuse_input_binding": reuse_binding
+                if result.registry_id == reuse_model_id
+                else None,
+                "reuse_answer_hash": ask_reuse.digest(result.result.text),
                 "check_status": "unverified",
                 "origin_status": "source_derived" if sources or previous else "unknown",
                 "history_turns": len(previous),
