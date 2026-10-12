@@ -142,7 +142,9 @@ async def test_saved_assessment_link_is_owned_and_does_not_duplicate_evidence(cl
     assert hidden.items[0].answer_id is None
 
 
-async def test_task_context_preserves_historical_facts_and_rejects_inconsistent_snapshot(client, db):
+async def test_task_context_preserves_historical_facts_and_rejects_inconsistent_snapshot(
+    client, db
+):
     from app.db.models import Assessment
     from tests.test_assessment_revisions import original
 
@@ -175,13 +177,20 @@ def test_task_context_rejects_missing_future_malformed_and_conflicting_metadata(
     from app.schemas.assessment_provenance import AssessmentProvenance
 
     facts = AssessmentProvenance(
-        task_kind="mcq", content_fingerprint="fingerprint", rubric_version=None,
-        grading_method="deterministic", reported_hint_count=-1, revision_of_attempt_id=None,
+        task_kind="mcq",
+        content_fingerprint="fingerprint",
+        rubric_version=None,
+        grading_method="deterministic",
+        reported_hint_count=-1,
+        revision_of_attempt_id=None,
     ).model_dump()
     attempt = AssessmentAttempt(
-        content_fingerprint="fingerprint", grader_route="deterministic", hint_count=-1,
+        content_fingerprint="fingerprint",
+        grader_route="deterministic",
+        hint_count=-1,
         revision_of_attempt_id=None,
     )
+
     def project(value):
         attempt.deterministic_result_json = {"evidence_provenance": value}
         return task_context(attempt)
@@ -192,10 +201,14 @@ def test_task_context_rejects_missing_future_malformed_and_conflicting_metadata(
         del missing[field]
         assert project(missing) is None
     for field, value in (
-        ("schema_version", 2), ("independence", "verified"),
-        ("qualification", "passed"), ("reported_hint_count", "-1"),
-        ("content_fingerprint", "different"), ("revision_of_attempt_id", "other"),
-        ("grading_method", "hosted"), ("task_kind", " "),
+        ("schema_version", 2),
+        ("independence", "verified"),
+        ("qualification", "passed"),
+        ("reported_hint_count", "-1"),
+        ("content_fingerprint", "different"),
+        ("revision_of_attempt_id", "other"),
+        ("grading_method", "hosted"),
+        ("task_kind", " "),
     ):
         assert project({**facts, field: value}) is None
     for malformed in (None, [], "invalid"):

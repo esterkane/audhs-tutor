@@ -213,7 +213,9 @@ async def test_committed_outcome_survives_history_interruption_and_restart(
 
 
 @pytest.mark.parametrize("hint_report", [0, -1])
-async def test_failure_completing_claim_rolls_back_learning_state(client, db, monkeypatch, hint_report):
+async def test_failure_completing_claim_rolls_back_learning_state(
+    client, db, monkeypatch, hint_report
+):
     from app.db import workspace_requests
 
     body = await prepare(client, db)

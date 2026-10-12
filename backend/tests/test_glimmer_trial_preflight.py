@@ -1,4 +1,5 @@
 """Offline budget and synthetic-only boundaries; no provider access."""
+
 import importlib.util
 from decimal import Decimal
 from pathlib import Path
@@ -23,7 +24,9 @@ def test_frozen_requests_and_pinned_provider(tmp_path):
     assert len(requests) == 8
     for item in requests:
         assert item["body"]["provider"] == {
-            "only": ["deepinfra/bf16"], "allow_fallbacks": False, "require_parameters": True,
+            "only": ["deepinfra/bf16"],
+            "allow_fallbacks": False,
+            "require_parameters": True,
         }
     changed = tmp_path / "changed.json"
     changed.write_bytes(source.read_bytes() + b" ")

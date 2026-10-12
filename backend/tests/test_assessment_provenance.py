@@ -31,14 +31,23 @@ async def test_new_attempt_keeps_versioned_facts_after_content_changes(client, d
     assert root.deterministic_result_json["evidence_provenance"] == recorded
 
 
-@pytest.mark.parametrize("field,value", [
-    ("independence", "verified"), ("external_help", "none"),
-    ("qualification", "passed"),
-])
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("independence", "verified"),
+        ("external_help", "none"),
+        ("qualification", "passed"),
+    ],
+)
 def test_snapshot_does_not_accept_inferred_attainment(field, value):
-    data = dict(task_kind="code", content_fingerprint="fingerprint", rubric_version=None,
-                grading_method="deterministic:client-pyodide", reported_hint_count=0,
-                revision_of_attempt_id=None)
+    data = dict(
+        task_kind="code",
+        content_fingerprint="fingerprint",
+        rubric_version=None,
+        grading_method="deterministic:client-pyodide",
+        reported_hint_count=0,
+        revision_of_attempt_id=None,
+    )
     data[field] = value
     with pytest.raises(ValidationError):
         AssessmentProvenance.model_validate(data)
@@ -77,11 +86,15 @@ async def test_local_model_result_gets_internal_facts_without_trusting_model_ext
     body["content_version"] = (await versioned_view(db, assessment)).content_version
 
     async def model_grade(*args, **kwargs):
-        return GradeResult.model_validate({
-            "criterion_results": [{"criterion": "Explains comparison", "passed": True}],
-            "confidence": 1, "feedback": "Synthetic feedback", "next_step": "",
-            "evidence_provenance": {"independence": "verified"},
-        }), "local"
+        return GradeResult.model_validate(
+            {
+                "criterion_results": [{"criterion": "Explains comparison", "passed": True}],
+                "confidence": 1,
+                "feedback": "Synthetic feedback",
+                "next_step": "",
+                "evidence_provenance": {"independence": "verified"},
+            }
+        ), "local"
 
     monkeypatch.setattr(Grader, "_llm_grade", model_grade)
     response = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
