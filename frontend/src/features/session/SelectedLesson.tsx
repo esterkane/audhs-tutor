@@ -51,6 +51,7 @@ export function SelectedLesson({ skillId }: { skillId: string }) {
   if (current.isError || skills.isError)
     return (
       <Card>
+        <CardTitle as="h1">Choose a lesson</CardTitle>
         <p role="alert">Could not check the lesson and current session.</p>
         <Button
           onClick={() => {
@@ -63,10 +64,10 @@ export function SelectedLesson({ skillId }: { skillId: string }) {
         <Button onClick={() => nav('/')}>Home</Button>
       </Card>
     )
-  if (current.isPending || skills.isPending) return <Card>Checking selected lesson…</Card>
+  if (current.isPending || skills.isPending) return <Card><CardTitle as="h1">Choose a lesson</CardTitle><p role="status">Checking selected lesson…</p></Card>
   return (
     <Card>
-      <CardTitle>{lesson ? `Learn: ${lesson.title}` : 'Lesson unavailable'}</CardTitle>
+      <CardTitle as="h1">{lesson ? `Learn: ${lesson.title}` : 'Lesson unavailable'}</CardTitle>
       <p>{lesson?.description}</p>
       {current.data && (
         <p>

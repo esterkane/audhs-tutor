@@ -1919,3 +1919,17 @@ and keyboard-activates Keep current session with checkpoint equality. Three Expl
 browser checks pass; ESLint/e2e types pass. No runtime change. Logs:
 /tmp/explore-ci-{baseline,final}.log; CI artifacts:/tmp/audhs-ci-38154477231.
 Latest-head full CI still pending; no broad success claim.
+
+
+2026-10-12 SelectedLesson orientation: baseline confirmed missing page-level heading.
+Loading/error now retain Choose a lesson h1; ready/unavailable uses shared h1 token.
+Loading announces status. No session/mutation/prompt changes. Five320/1280 browser
+checks (loading→503→keyboard retry, no writes, Explore/keep-session), four existing
+component tests, lint/types/build pass; narrow screenshot inspected. First baseline
+sandbox startup timed out and ended; one retry reached the UI and reproduced the
+missing heading. Logs:/tmp/selected-orientation-{before,final,unit,build}.log.
+Existing bundle warning and human/AT acceptance remain.
+Preceding complete CI is now verified green on both histories: sanitized6ba5fc4
+(run38187272238,360 browser passes/20 skips,1153 backend passes/3 skips; frontend and
+migrations green) and originala06e233 (run38186292910,all required jobs green).
+These results predate this bounded heading delta; new head CI remains pending.
