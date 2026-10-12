@@ -177,3 +177,35 @@ The next useful quality step is a fixed, independently reviewed teaching-contrac
 evaluation spanning these failures and untouched cases before comparing capable
 installed local models; do not weaken quality or enable paid routing automatically.
 Continue the independent integrated-acceptance queue while that gate remains open.
+
+
+## Reusable teaching contract suite
+
+The existing local diagnostic now accepts `--suite teaching`. Eight fixed cases
+cover count/rate steps, fairness uncertainty, list mutation after prior explanation,
+mean with units, chosen Socratic mode, requested analogy, borrowed/remaining
+fractions and uncertain extrapolation. Each has explicit manual review criteria
+and a separate synthetic target; saved-answer reuse is off. The existing manifest
+hashes requests and criteria, so changed fixtures cannot silently claim comparability.
+
+Run only when testing a defined candidate, from the repository root:
+
+```sh
+uv run --project backend python scripts/eval_local_runtime.py --suite teaching --model gemma3-12b --out /tmp/teaching-candidate.json
+```
+
+Use a fresh output path. Existing loopback-only, no-hosted-key, no-fallback and
+disposable-database restrictions apply. This suite does not call the main lesson
+representation endpoint, run learner code or exercise production routing. Compare
+identical fixture hashes; inspect exact source/work fidelity, mode adherence and
+clarity before latency. Do not average away factual/mode failures or use a keyword
+match as semantic approval. Record each case as met/partial/failed with quoted
+evidence; no automated semantic pass is implemented.
+
+Independent code/pedagogy review found no blockers/majors; noted limited domain
+breadth (mostly arithmetic) and only one prior-explanation follow-up. The two transfer
+examples are newly authored, not permanently held-out once used for tuning. These
+limits preclude a broad teaching or learning-outcome claim. Typed history replaced
+a raw fixture dictionary to eliminate serialization warnings. All17 offline harness
+tests, targeted Ruff and CLI help pass. No additional model run, runtime prompt, UI,
+learning-state or routing change; visual/keyboard/build checks are unchanged.

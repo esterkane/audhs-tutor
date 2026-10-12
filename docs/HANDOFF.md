@@ -2145,3 +2145,12 @@ stops waiting, with explicit recovery described in UI. Corrected the test contra
 not runtime. Synthetic transport proves client identity, not server replay behavior,
 model quality or human discoverability. No production changes; prior build evidence
 reused. Logs:/tmp/companion-interruption{,-final}.log. Both repos private.
+
+
+2026-10-12 reusable teaching diagnostic: added opt-in eight-case teaching suite to
+existing local harness, explicit manual criteria and isolated synthetic targets.
+17 offline tests, Ruff and CLI help pass; independent code/pedagogy review no
+blockers/majors (limited breadth remains). Fixed typed history warning. No new model
+calls or runtime/UI/learning changes. See LOCAL-EXPLANATION-DIAGNOSTIC.md for command,
+review criteria and limits. Use fixed hashes before comparing a defined candidate,
+not another open-ended tuning loop. CI was still running at inspection; not closed.

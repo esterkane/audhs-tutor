@@ -385,3 +385,24 @@ async def test_reasoning_runtime_uses_local_fake_passage_feedback(db, settings):
             == build_passages(body.learner_answer)[0]["text"]
         )
     assert len(fake.calls) == 5
+
+
+def test_teaching_suite_isolated_contracts_and_manifest(monkeypatch):
+    diagnostic = module()
+    cases = diagnostic.cases("session-a", "teaching")
+    assert len(cases) == 8
+    assert len({body.learning_context.target_id for _, body, _ in cases}) == len(cases)
+    assert all(body.session_id == "session-a" and not body.prefer_saved for _, body, _ in cases)
+    assert [name for name, body, _ in cases if body.questioning_style == "socratic"] == [
+        "socratic_choice"
+    ]
+    assert all(body.intent == "explain" and body.output == "" for _, body, _ in cases)
+    other = diagnostic.cases("session-b", "teaching")
+    assert [b.model_dump(exclude={"session_id"}) for _, b, _ in cases] == [
+        b.model_dump(exclude={"session_id"}) for _, b, _ in other
+    ]
+    manifest = diagnostic.suite_manifest("teaching")
+    assert manifest["case_count"] == 8
+    changed = [(n, b, c + " Revised review criterion.") for n, b, c in cases]
+    monkeypatch.setattr(diagnostic, "teaching_cases", lambda session_id: changed)
+    assert diagnostic.suite_manifest("teaching")["fixture_sha256"] != manifest["fixture_sha256"]

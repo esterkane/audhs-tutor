@@ -25,7 +25,7 @@ from app.models_ai.provider import safe_structured_reason
 from app.models_ai.registry import get_row, get_spec
 from app.orchestrator import playground
 from app.schemas.common import Mode
-from app.schemas.playground import PlaygroundContext, PlaygroundRequest
+from app.schemas.playground import PlaygroundContext, PlaygroundMessage, PlaygroundRequest
 
 
 def local_settings(settings):
@@ -330,6 +330,141 @@ def reasoning_cases(session_id):
     ]
 
 
+def teaching_cases(session_id):
+    """Fixed synthetic explanation contracts; semantic criteria require human review."""
+    base = PlaygroundRequest(
+        session_id=session_id,
+        intent="explain",
+        questioning_style="explicit",
+        exercise=(
+            "Synthetic counts: group A has 80 rows with 20 missing incomes; "
+            "group B has 20 rows with 10 missing incomes. "
+            "No dataset execution, causes or model error measures are supplied."
+        ),
+        code="",
+        question="Explain why B has the higher missingness rate when A has more missing values. Use simple steps.",
+    )
+    fixtures = [
+        (
+            "counts_steps",
+            base,
+            "Correct 20/80=25% and 10/20=50%; explain each denominator in plain language. "
+            "Give ordered steps, no unsolicited question, invented source or execution claim.",
+        ),
+        (
+            "fairness_uncertainty",
+            base.model_copy(
+                update={
+                    "question": (
+                        "Explain simply why these counts alone cannot establish whether a predictive model is "
+                        "fair. Give one first thing to inspect."
+                    )
+                }
+            ),
+            "Do not conclude fair/unfair from missingness alone. Name concrete missing evidence "
+            "or an inspection action; hypothetical causes stay hypothetical. Explain any terminology; "
+            "no unexplained MCAR/MAR/MNAR or unsolicited quiz.",
+        ),
+        (
+            "list_steps",
+            base.model_copy(
+                update={
+                    "exercise": "Explain this code without executing it.",
+                    "code": "values = [2, 4]\nresult = values.append(6)\nprint(values)\nprint(result)",
+                    "question": "I do not understand. Explain this more simply, one step at a time.",
+                    "history": [
+                        PlaygroundMessage(
+                            role="assistant",
+                            text="append changes values in place and returns None.",
+                        )
+                    ],
+                }
+            ),
+            "Predict [2, 4, 6] and None, separating mutation from return in concrete steps. "
+            "No claim of running code or unsolicited understanding check.",
+        ),
+        (
+            "mean_units",
+            base.model_copy(
+                update={
+                    "exercise": "Three durations are 2, 4 and 9 minutes.",
+                    "question": "Explain their mean from the beginning in simple steps.",
+                }
+            ),
+            "Show 15 divided by 3 = 5 minutes with meaning and units. "
+            "No fake citations or unsolicited question.",
+        ),
+        (
+            "socratic_choice",
+            base.model_copy(
+                update={
+                    "questioning_style": "socratic",
+                    "question": "Help me calculate the missingness rate for B. Ask one question at a time.",
+                }
+            ),
+            "One focused question with enough supplied context. Do not reveal the full solution "
+            "or ask for unrelated confidence. Do not call learner knowledge verified.",
+        ),
+        (
+            "requested_analogy",
+            base.model_copy(
+                update={
+                    "question": (
+                        "Use one clearly labeled analogy to explain these group counts versus proportions. "
+                        "Explain its limits and connect it to A and B."
+                    ),
+                }
+            ),
+            "Honor the requested analogy without replacing within-group fractions with time rates. "
+            "Connect the analogy accurately to A/B, mark illustrative details and explain a limit.",
+        ),
+        (
+            "transfer_fraction",
+            base.model_copy(
+                update={
+                    "exercise": "A shelf holds 12 books. Three are borrowed. No other facts are supplied.",
+                    "question": (
+                        "I confuse the fraction borrowed with the fraction remaining. Explain in small steps "
+                        "without quizzing me."
+                    ),
+                }
+            ),
+            "Distinguish borrowed 3/12=1/4=25% from remaining 9/12=3/4=75%. "
+            "Explain the common denominator concretely; no invented data or quiz.",
+        ),
+        (
+            "transfer_prediction",
+            base.model_copy(
+                update={
+                    "exercise": (
+                        "A sensor recorded 10, 12 and 14 degrees Celsius on three days. No forecast model or "
+                        "other measurements are supplied."
+                    ),
+                    "question": (
+                        "Does this prove tomorrow will be 16 degrees? Explain simply and tell me what is "
+                        "uncertain."
+                    ),
+                }
+            ),
+            "No: the observed +2 pattern permits a hypothetical extrapolation, not proof. "
+            "Explain uncertainty plainly, without inventing causes, forecast confidence or extra observations.",
+        ),
+    ]
+
+    return [
+        (
+            name,
+            body.model_copy(
+                update={
+                    "learning_context": PlaygroundContext(target_id=f"synthetic-teaching-{name}")
+                }
+            ),
+            criteria,
+        )
+        for name, body, criteria in fixtures
+    ]
+
+
 def cases(session_id, suite="basic"):
     if suite == "basic":
         return basic_cases(session_id)
@@ -337,6 +472,8 @@ def cases(session_id, suite="basic"):
         return notebook_cases(session_id)
     if suite == "reasoning":
         return reasoning_cases(session_id)
+    if suite == "teaching":
+        return teaching_cases(session_id)
     raise ValueError("Unknown diagnostic suite")
 
 
@@ -499,9 +636,15 @@ async def run(output, model, suite="basic"):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--suite", choices=["basic", "notebook", "reasoning"], default="basic")
     parser.add_argument(
-        "--model", choices=["llama31-8b", "gemma3-12b", "gemma3-27b"], default="llama31-8b"
+        "--suite",
+        choices=["basic", "notebook", "reasoning", "teaching"],
+        default="basic",
+    )
+    parser.add_argument(
+        "--model",
+        choices=["llama31-8b", "gemma3-12b", "gemma3-27b"],
+        default="llama31-8b",
     )
     args = parser.parse_args()
     asyncio.run(run(args.out, args.model, args.suite))
