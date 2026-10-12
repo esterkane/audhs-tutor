@@ -2305,3 +2305,7 @@ slices/explanation-output-headroom.md. Broader runtime/teaching validation remai
 keyboard/reset/no-write checks, light/dark screenshots, e2e types and ESLint pass;
 bounded review clear. No runtime change. See slices/task-review-ui.md.
 Human/assistive-technology acceptance remains open.
+
+2026-10-12: Real task-review persistence and review→grade→Progress pipeline
+acceptance added: 2 browser and2 HTTP/storage tests pass, targeted lint/types pass.
+No runtime change or paid inference. See slices/progress-reviewed-labels.md.

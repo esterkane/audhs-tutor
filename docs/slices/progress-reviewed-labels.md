@@ -60,3 +60,20 @@ preserve excluded historical results. Legacy/unreviewed records remain unlabeled
 No grading/mastery/FSRS changes, no model calls on reads, no external dependency.
 Human comprehension/assistive-technology acceptance remain open. This completes the
 bounded display policy, not the wider UX backlog or an independent-learning claim.
+
+
+## Integrated persistence acceptance — 2026-10-12
+Two real HTTP/database tests exercise explicit review, fake-provider grading,
+Progress qualification and idempotent replay. Approval after an answer never
+qualifies it retroactively; revocation retains the historical label with exclusion.
+Reported help remains visible and independence unverified. Replays preserve the
+response and learning-record counts and make no second provider call.
+Two real Chromium journeys at390/1280 use actual sandbox review endpoints and
+storage: approve, reload, read matching approval, revoke, reload and inspect revision2.
+Keyboard save/revoke focus and no horizontal overflow pass. The Progress evidence
+page remains unchanged by review-only actions. Fixtures create isolated disposable
+tasks; no owner database or hosted model calls. This does not certify model quality.
+Targeted Ruff/format, frontend ESLint and e2e TypeScript pass. Existing visual zoom
+and production-build evidence is reused because runtime/layout code is unchanged.
+Human/assistive-technology and full integrated acceptance remain open.
+Bounded code/pedagogy review found no blockers or major findings.

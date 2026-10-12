@@ -25,11 +25,12 @@ See HANDOFF.md and ux/ADVERSARIAL-USABILITY-REPORT.md for exact tests and limits
 2. **Human/assistive-technology acceptance:** owner re-entry, explanation clarity,
    screen-reader behavior and physical headphone/microphone output are still
    unverified. Automated fixtures cannot close these gates.
-3. **Progress design semantics:** owner approved dated task-specific display labels,
-   disclosed help and unverified independence. Provenance storage and validated
-   task/help disclosure are delivered; eligible task/rubric metadata and versioned
-   qualification policy precede activating the new labels. See
-   slices/progress-task-context.md. Grading and scheduling remain unchanged.
+3. **Progress design semantics delivered:** explicit task/rubric reviews, frozen
+   pre-inference eligibility and dated task-specific labels are implemented. Model
+   checks/help and historical exclusions are disclosed; independence stays unverified.
+   Real HTTP/storage and browser persistence acceptance passes. See
+   slices/progress-reviewed-labels.md. Human interpretation remains unverified;
+   grading and scheduling are unchanged.
 4. **R3/R4 reliability:** persisted grade-ready continuation exists; outcomes lost
    after inference starts remain uncertain. Do not automatically resend. Remaining
    cross-surface draft/content recovery follows the existing contracts.
