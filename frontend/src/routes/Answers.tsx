@@ -128,14 +128,15 @@ function History() {
           Filtered to the selected learning context. <Link to="/answers">Show all answers</Link>
         </p>
       )}
-      {history.isPending || history.isError ? (
+      {(history.isPending || history.isError || history.isFetching) && (
         <div>
-          {history.isFetching ? <p role="status">Loading saved answers…</p>
-            : <p role="alert">Could not load saved answers.</p>}
+          {history.isFetching ? <p role="status">Loading saved answers…{history.data && ' Showing the last loaded answers; they may be out of date.'}</p>
+            : <p role="alert">Could not load saved answers.{history.data && ' Showing the last loaded answers; they may be out of date.'}</p>}
           <Button aria-disabled={history.isFetching} aria-busy={history.isFetching}
             onClick={() => { if (!history.isFetching) void history.refetch() }}>Retry history</Button>
         </div>
-      ) : (
+      )}
+      {history.data && (
         <>
           {history.data.items.length === 0 && (
             <p>

@@ -36,3 +36,46 @@ for (const width of [320, 1280]) for (const detail of [false, true]) test(`saved
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   await page.screenshot({ path: `/tmp/answer-read-${width}-${detail}.png`, fullPage: true })
 })
+
+for (const width of [320, 1280]) test(`saved history survives failed refresh after return ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  let fail = false
+  let hold = false
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  const item = { id: 'retained-answer', request_text: 'A saved question', preview: 'Earlier explanation', surface: 'tutor', created_at: '2026-10-01' }
+  await page.route('**/api/answers?*', async route => {
+    if (hold) await pending
+    await route.fulfill(fail ? { status: 503, json: {} } : { json: { items: [item], next_cursor: null } })
+  })
+  await page.route('**/api/answers/retained-answer', route => route.fulfill({ json: { ...item, text: 'Saved detail text.', request: {}, metadata: {} } }))
+  await page.goto('/answers?q=saved')
+  const link = page.getByRole('link', { name: 'A saved question', exact: true })
+  await link.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('Saved detail text.', { exact: true })).toBeVisible()
+  fail = true
+  await page.getByRole('link', { name: 'Back to saved answers' }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('alert')).toContainText('Showing the last loaded answers')
+  await expect(link).toBeVisible()
+  await expect(page.getByRole('searchbox', { name: 'Search saved answers' })).toHaveValue('saved')
+  hold = true
+  const retry = page.getByRole('button', { name: 'Retry history' })
+  await retry.focus()
+  await page.keyboard.press('Enter')
+  await expect(retry).toHaveAttribute('aria-disabled', 'true')
+  await expect(retry).toBeFocused()
+  await expect(link).toBeVisible()
+  await page.screenshot({ path: `/tmp/history-refresh-${width}.png`, fullPage: true })
+  fail = false
+  release()
+  await expect(retry).toHaveCount(0)
+  await expect(link).toBeVisible()
+  fail = true
+  await page.getByRole('searchbox', { name: 'Search saved answers' }).fill('different')
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await expect(page.getByRole('alert')).toHaveText('Could not load saved answers.')
+  await expect(link).toHaveCount(0)
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})

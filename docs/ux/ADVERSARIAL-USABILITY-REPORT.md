@@ -330,3 +330,23 @@ inspected. Focused self-review confirms read-only requests and no learning/model
 changes. Cached-refresh content retention and raw history form control styling remain
 separate open work; existing bundle warning and human/AT gates remain. Logs:
 /tmp/answer-read-{before,final,unit,build}.log.
+
+
+## AU-ANSWERS-02 — Failed history refresh hides loaded answers (S3)
+
+2026-10-12: returning from a saved answer to a failed history refresh hides the
+previous list at320/1280. Preserve cached results for the exact query, label them
+as last loaded while refreshing/failed and keep keyboard Retry mounted. Different
+queries must not borrow old results. Detail404 behavior remains unchanged.
+Baseline:/tmp/history-refresh-before.log.
+
+
+2026-10-12 AU-ANSWERS-02: failed history refresh preserves exact-query cached
+answers with explicit last-loaded/out-of-date status. Retry remains focused during
+pending recovery; successful refresh clears the warning. Different search/filter keys
+do not inherit the old list. Eight browser checks pass plus two final query-isolation
+checks at320/1280; nine component tests, ESLint/e2e types/build pass. Narrow pending
+screenshot inspected. Self-review confirms query keys and learning behavior unchanged;
+no detail404 behavior change. Cached detail refresh and form styling remain separate.
+Logs:/tmp/history-refresh-{before,final,query,unit,build}.log. Existing bundle warning,
+human/AT acceptance and latest-head CI remain open. Both variants remain private.
