@@ -17,6 +17,7 @@ from app.core.errors import AppError
 from app.db import answer_feedback, answer_replacement, answer_sources, workspace_requests
 from app.db.answer_eligibility import excluded_answer_ids
 from app.db.answer_search import literal_query
+from app.db.answer_suggestions import context_dependent
 from app.db.answers import save_completed
 from app.db.models import TutorAnswer
 from app.orchestrator import playground
@@ -86,12 +87,7 @@ def summary(row: TutorAnswer) -> AnswerSummary:
         preview=row.text[:300],
         skill_id=skill if isinstance(skill, str) else None,
         area_id=area if isinstance(area, str) else None,
-        context_dependent=bool(
-            row.metadata_json.get("parent_answer_id")
-            or row.metadata_json.get("context_answer_ids")
-            or row.metadata_json.get("answer_memory")
-            or row.request_json.get("historical_answer")
-        ),
+        context_dependent=context_dependent(row),
     )
 
 

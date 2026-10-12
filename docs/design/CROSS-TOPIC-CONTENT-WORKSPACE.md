@@ -190,3 +190,10 @@ source currency and prior-context caution. No automatic reuse or factual-quality
 ranking; no model/learning-state writes. See ../slices/ask-suggestion-sources.md.
 Next: review-quality/currency-aware selection and measurable reuse, retaining
 explicit fresh generation. Broader G2 factual-quality and G3–G6 gates stay open.
+
+2026-10-12: G3b local feedback-aware suggestions implemented. Dedicated Ask read
+preserves history pagination; exact question text then direct-source/context risk,
+Helpful/neutral/Confusing preferences and recency within bounded100 candidates.
+No automatic reuse/model/learning-state write. See ../slices/ask-suggestion-ranking.md
+for tests and inherited historical-question FTS gap. Review aggregation, semantic
+reuse and broader factual-quality acceptance remain open.

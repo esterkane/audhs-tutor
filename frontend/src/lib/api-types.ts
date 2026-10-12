@@ -227,6 +227,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/ask/suggestions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Find local saved questions with source and feedback context */
+    get: operations['suggestions_api_ask_suggestions_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/health': {
     parameters: {
       query?: never
@@ -2754,6 +2771,8 @@ export interface components {
        * @default false
        */
       context_dependent: boolean
+      /** Suggestion Reason */
+      suggestion_reason?: string | null
       /** Text */
       text: string
       /** Request */
@@ -2862,6 +2881,8 @@ export interface components {
        * @default false
        */
       context_dependent: boolean
+      /** Suggestion Reason */
+      suggestion_reason?: string | null
     }
     /** ArchiveRoleIn */
     ArchiveRoleIn: {
@@ -7249,6 +7270,39 @@ export interface operations {
         }
         content: {
           'application/json': unknown
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  suggestions_api_ask_suggestions_get: {
+    parameters: {
+      query?: {
+        q?: string
+        area_id?: string | null
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerPage']
         }
       }
       /** @description Validation Error */

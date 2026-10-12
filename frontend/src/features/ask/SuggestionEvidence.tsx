@@ -21,7 +21,7 @@ export function SuggestionEvidence({ answer, matching }: {
         : 'No recorded sources to check'
   return (
     <div className="basis-full text-sm text-muted space-y-1">
-      <p>{matching ? 'Local question match' : 'Recent saved question'} · Saved {new Date(answer.created_at).toLocaleDateString()}</p>
+      <p>{answer.suggestion_reason ?? (matching ? 'Local question match' : 'Recent saved question')} · Saved {new Date(answer.created_at).toLocaleDateString()}</p>
       <p>{sourceLabel}. Not fact-checked.</p>
       {answer.context_dependent && <p>Uses earlier conversation. Read it in context before reusing.</p>}
     </div>

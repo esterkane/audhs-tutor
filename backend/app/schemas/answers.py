@@ -30,6 +30,7 @@ class AnswerSummary(BaseModel):
     area_id: str | None
     source_check: SavedSourceCheck | None = None
     context_dependent: bool = False
+    suggestion_reason: str | None = None
 
 
 class AnswerPage(BaseModel):

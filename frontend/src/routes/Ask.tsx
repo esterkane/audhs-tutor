@@ -81,13 +81,13 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
   useEffect(() => {
     if (parent && answer) heading.current?.focus()
   }, [parent, answer])
-  const query = new URLSearchParams({ limit: '5', suggestions: 'true', question_prefix: 'true' })
+  const query = new URLSearchParams({ limit: '5' })
   if (search.trim()) query.set('q', search)
   if (areaId) query.set('area_id', areaId)
   const suggestions = useQuery({
     queryKey: ['ask-suggestions', learnerId, search, areaId],
     queryFn: ({ signal }) =>
-      boundedRead<Schemas['AnswerPage']>(`/api/answers?${query}`, signal, 'Saved questions'),
+      boundedRead<Schemas['AnswerPage']>(`/api/ask/suggestions?${query}`, signal, 'Saved questions'),
     enabled: !parent && !busy,
     retry: false,
   })
@@ -330,7 +330,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
           {!parent && !busy && (
             <section aria-label="Suggested saved questions" className="space-y-2">
               <p className="text-sm font-medium">
-                {search.trim() ? 'Matching saved questions' : 'Recent saved questions'}
+                {search.trim() ? 'Matching saved questions' : 'Suggested saved questions'}
               </p>
               {suggestions.isFetching && (
                 <p role="status" className="text-sm">

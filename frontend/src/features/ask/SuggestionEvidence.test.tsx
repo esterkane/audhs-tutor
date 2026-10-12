@@ -20,3 +20,9 @@ it('flags newer versions and historical context even when the direct text is unc
   expect(screen.getByText(/Uses earlier conversation/)).toBeInTheDocument()
   expect(screen.getByText(/Recent saved question/)).toHaveTextContent('Saved')
 })
+
+it('discloses explicit helpful feedback without presenting it as correctness', () => {
+  renderApp(<SuggestionEvidence answer={{ ...answer, suggestion_reason: 'Same question text · You marked it helpful (not a correctness check)' }} matching />)
+  expect(screen.getByText(/You marked it helpful/)).toHaveTextContent('not a correctness check')
+  expect(screen.getByText(/Source status unavailable/)).toHaveTextContent('Not fact-checked')
+})
