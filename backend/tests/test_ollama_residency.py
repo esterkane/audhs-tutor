@@ -10,6 +10,12 @@ from app.models_ai.ollama import OllamaProvider
 from app.models_ai.provider import Message, ModelSpec
 
 
+@pytest.fixture(autouse=True)
+def isolated_protocol_transport(monkeypatch):
+    """These protocol tests mock inference; real policy is tested in test_source_policy."""
+    monkeypatch.setattr(OllamaProvider, "validate_local_transport", AsyncMock())
+
+
 @pytest.mark.parametrize("seconds", [0, 300, 1800])
 async def test_residency_reaches_complete_and_stream_without_changing_content(monkeypatch, seconds):
     provider = OllamaProvider("http://localhost:11434", keep_alive_s=seconds)

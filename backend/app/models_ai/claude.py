@@ -24,6 +24,7 @@ from app.models_ai.provider import (
     structured_reason,
     usage_of,
 )
+from app.models_ai.source_policy import deny_external
 
 litellm.suppress_debug_info = True
 
@@ -63,6 +64,8 @@ class ClaudeProvider:
     def _model(self, spec: ModelSpec) -> str:
         return f"anthropic/{spec.model}"
 
+    validate_local_transport = staticmethod(deny_external)
+
     async def complete(
         self,
         spec: ModelSpec,
@@ -74,6 +77,7 @@ class ClaudeProvider:
         metadata: dict[str, Any] | None = None,
         max_retries: int = 1,
     ) -> ProviderResult:
+        await self.validate_local_transport(spec)
         t0 = time.perf_counter()
         kwargs: dict[str, Any] = dict(
             model=self._model(spec),
@@ -124,6 +128,7 @@ class ClaudeProvider:
         max_tokens: int = 1024,
         temperature: float = 0.2,
     ) -> AsyncIterator[StreamEvent]:
+        await self.validate_local_transport(spec)
         usage: Any | None = None
         try:
             response = await litellm.acompletion(

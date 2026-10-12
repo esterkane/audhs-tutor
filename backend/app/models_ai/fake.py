@@ -41,6 +41,9 @@ class FakeProvider:
     stream_delay_s: float = 0.0  # await between words (lets a test cancel mid-stream)
     fail_after_words: int | None = None  # break the stream after n words (partial)
 
+    async def validate_local_transport(self, spec: ModelSpec) -> None:
+        """This deterministic test adapter never transmits input."""
+
     async def complete(
         self,
         spec: ModelSpec,

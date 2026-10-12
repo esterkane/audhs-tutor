@@ -16,6 +16,13 @@ from app.models_ai.gateway import GatewayError, ModelGateway, StreamHandle
 from app.models_ai.openai import OpenAIProvider
 from app.models_ai.provider import Message, ModelSpec, ProviderError, StreamUsage, TaskClass
 
+
+@pytest.fixture(autouse=True)
+def isolated_protocol_transport(monkeypatch):
+    """These protocol tests mock inference; real policy is tested in test_source_policy."""
+    monkeypatch.setattr(OpenAIProvider, "validate_local_transport", AsyncMock())
+
+
 MESSAGES = [Message(role="system", content="Tutor policy"), Message(role="user", content="hint")]
 SPEC = ModelSpec(
     registry_id="openai-luna",

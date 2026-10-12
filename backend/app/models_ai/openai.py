@@ -27,6 +27,7 @@ from app.models_ai.provider import (
     usage_of,
 )
 from app.models_ai.routing import load_profiles
+from app.models_ai.source_policy import deny_external
 
 litellm.suppress_debug_info = True
 
@@ -73,6 +74,8 @@ class OpenAIProvider:
         if spec.price_in_per_mtok <= 0 or spec.price_out_per_mtok <= 0:
             raise ProviderError("OpenAI registry prices must be positive")
 
+    validate_local_transport = staticmethod(deny_external)
+
     async def complete(
         self,
         spec: ModelSpec,
@@ -84,6 +87,7 @@ class OpenAIProvider:
         metadata: dict[str, Any] | None = None,
         max_retries: int = 1,
     ) -> ProviderResult:
+        await self.validate_local_transport(spec)
         self._validate(spec, messages, response_model)
         t0 = time.perf_counter()
         kwargs: dict[str, Any] = dict(
@@ -136,6 +140,7 @@ class OpenAIProvider:
         max_tokens: int = 1024,
         temperature: float = 0.2,
     ) -> AsyncIterator[StreamEvent]:
+        await self.validate_local_transport(spec)
         self._validate(spec, messages)
         usage: Any | None = None
         response: Any | None = None

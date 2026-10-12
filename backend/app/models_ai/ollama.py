@@ -2,6 +2,7 @@
 
 import time
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any, cast
 from urllib.parse import urlparse
 
@@ -9,6 +10,7 @@ import httpx
 import instructor
 import litellm
 from instructor.core.exceptions import InstructorRetryException
+from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 from pydantic import BaseModel
 
 from app.models_ai.provider import (
@@ -24,8 +26,21 @@ from app.models_ai.provider import (
     to_chat,
     usage_of,
 )
+from app.models_ai.source_policy import SourcePolicyDenied
 
 litellm.suppress_debug_info = True
+
+
+@asynccontextmanager
+async def _local_sdk_client(timeout_s: float) -> AsyncIterator[AsyncHTTPHandler]:
+    """Pin LiteLLM/Instructor to the same no-proxy/no-redirect transport as native calls."""
+    handler = AsyncHTTPHandler(timeout=timeout_s)
+    await handler.client.aclose()
+    async with httpx.AsyncClient(
+        timeout=timeout_s, trust_env=False, follow_redirects=False
+    ) as client:
+        handler.client = client
+        yield handler
 
 
 class OllamaProvider:
@@ -42,6 +57,36 @@ class OllamaProvider:
 
     def _model(self, spec: ModelSpec) -> str:
         return f"ollama_chat/{spec.model}"
+
+    async def validate_local_transport(self, spec: ModelSpec) -> None:
+        """Inspect local model metadata without sending learner content."""
+        endpoint = urlparse(self.host)
+        if (
+            endpoint.scheme not in {"http", "https"}
+            or endpoint.hostname not in {"localhost", "127.0.0.1", "::1"}
+            or endpoint.username is not None
+            or endpoint.password is not None
+            or endpoint.path not in {"", "/"}
+            or endpoint.query
+            or endpoint.fragment
+        ):
+            raise SourcePolicyDenied("Source policy: Ollama endpoint must be local loopback")
+        try:
+            async with httpx.AsyncClient(
+                timeout=min(self.timeout_s, 10.0), trust_env=False, follow_redirects=False
+            ) as client:
+                response = await client.post(f"{self.host}/api/show", json={"model": spec.model})
+                response.raise_for_status()
+                details = response.json()
+            if (
+                not isinstance(details, dict)
+                or details.get("remote_host")
+                or details.get("remote_model")
+                or not details.get("model_info")
+            ):
+                raise SourcePolicyDenied("Source policy: model local weights are unverified")
+        except (httpx.HTTPError, ValueError) as exc:
+            raise SourcePolicyDenied("Source policy: cannot verify local model transport") from exc
 
     async def preload(self, spec: ModelSpec) -> bool:
         """Load an installed local model only; no prompts, inference or model pull."""
@@ -84,44 +129,50 @@ class OllamaProvider:
         metadata: dict[str, Any] | None = None,
         max_retries: int = 1,
     ) -> ProviderResult:
-        t0 = time.perf_counter()
-        kwargs: dict[str, Any] = dict(
-            model=self._model(spec),
-            messages=to_chat(messages),
-            api_base=self.host,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            timeout=self.timeout_s,
-            keep_alive=self.keep_alive_s,
-        )
-        try:
-            if response_model is not None:
-                parsed, completion = await self._instructor.chat.completions.create_with_completion(
-                    response_model=response_model, max_retries=max(max_retries, 1), **kwargs
-                )
-                text = parsed.model_dump_json()
-            else:
-                completion = await litellm.acompletion(**kwargs)
-                parsed = None
-                text = completion.choices[0].message.content or ""
-        except InstructorRetryException as e:
-            raise _structured_error(e) from e
-        except Exception as e:  # httpx / litellm transport errors
-            raise ProviderError(f"ollama {spec.model}: {e}") from e
-        tin, tout, cached = usage_of(completion)
-        reason = getattr(completion.choices[0], "finish_reason", None)
-        return ProviderResult(
-            text=text,
-            parsed=parsed,
-            tokens_in=tin,
-            tokens_out=tout,
-            cached_tokens=cached,
-            latency_ms=int((time.perf_counter() - t0) * 1000),
-            model=spec.model,
-            provider=self.name,
-            reported_cost_usd=0.0,
-            finish_reason=reason if isinstance(reason, str) else None,
-        )
+        await self.validate_local_transport(spec)
+        async with _local_sdk_client(self.timeout_s) as transport:
+            t0 = time.perf_counter()
+            kwargs: dict[str, Any] = dict(
+                client=transport,
+                model=self._model(spec),
+                messages=to_chat(messages),
+                api_base=self.host,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                timeout=self.timeout_s,
+                keep_alive=self.keep_alive_s,
+            )
+            try:
+                if response_model is not None:
+                    (
+                        parsed,
+                        completion,
+                    ) = await self._instructor.chat.completions.create_with_completion(
+                        response_model=response_model, max_retries=max(max_retries, 1), **kwargs
+                    )
+                    text = parsed.model_dump_json()
+                else:
+                    completion = await litellm.acompletion(**kwargs)
+                    parsed = None
+                    text = completion.choices[0].message.content or ""
+            except InstructorRetryException as e:
+                raise _structured_error(e) from e
+            except Exception as e:  # httpx / litellm transport errors
+                raise ProviderError(f"ollama {spec.model}: {e}") from e
+            tin, tout, cached = usage_of(completion)
+            reason = getattr(completion.choices[0], "finish_reason", None)
+            return ProviderResult(
+                text=text,
+                parsed=parsed,
+                tokens_in=tin,
+                tokens_out=tout,
+                cached_tokens=cached,
+                latency_ms=int((time.perf_counter() - t0) * 1000),
+                model=spec.model,
+                provider=self.name,
+                reported_cost_usd=0.0,
+                finish_reason=reason if isinstance(reason, str) else None,
+            )
 
     async def stream(
         self,
@@ -131,44 +182,50 @@ class OllamaProvider:
         max_tokens: int = 1024,
         temperature: float = 0.2,
     ) -> AsyncIterator[StreamEvent]:
-        usage: Any | None = None
-        finish_reason: str | None = None
-        try:
-            response = await litellm.acompletion(
-                model=self._model(spec),
-                messages=to_chat(messages),
-                api_base=self.host,
-                max_tokens=max_tokens,
-                temperature=temperature,
-                stream=True,
-                stream_options={"include_usage": True},
-                timeout=self.timeout_s,
-                keep_alive=self.keep_alive_s,
-            )
-            async for chunk in response:
-                if getattr(chunk, "usage", None) is not None:
-                    usage = chunk.usage  # the provider's final usage chunk
-                if not chunk.choices:
-                    continue
-                reason = getattr(chunk.choices[0], "finish_reason", None)
-                if isinstance(reason, str):
-                    finish_reason = reason
-                delta = chunk.choices[0].delta.content
-                if delta:
-                    yield delta
-        except Exception as e:
-            raise ProviderError(f"ollama stream {spec.model}: {e}") from e
-        if usage is not None:
-            tin, tout, cached = usage_of(usage)
-            if tin or tout:
-                yield StreamUsage(tokens_in=tin, tokens_out=tout, cached_tokens=cached)
+        await self.validate_local_transport(spec)
+        async with _local_sdk_client(self.timeout_s) as transport:
+            usage: Any | None = None
+            finish_reason: str | None = None
+            try:
+                response = await litellm.acompletion(
+                    client=transport,
+                    model=self._model(spec),
+                    messages=to_chat(messages),
+                    api_base=self.host,
+                    max_tokens=max_tokens,
+                    temperature=temperature,
+                    stream=True,
+                    stream_options={"include_usage": True},
+                    timeout=self.timeout_s,
+                    keep_alive=self.keep_alive_s,
+                )
+                async for chunk in response:
+                    if getattr(chunk, "usage", None) is not None:
+                        usage = chunk.usage  # the provider's final usage chunk
+                    if not chunk.choices:
+                        continue
+                    reason = getattr(chunk.choices[0], "finish_reason", None)
+                    if isinstance(reason, str):
+                        finish_reason = reason
+                    delta = chunk.choices[0].delta.content
+                    if delta:
+                        yield delta
+            except Exception as e:
+                raise ProviderError(f"ollama stream {spec.model}: {e}") from e
+            if usage is not None:
+                tin, tout, cached = usage_of(usage)
+                if tin or tout:
+                    yield StreamUsage(tokens_in=tin, tokens_out=tout, cached_tokens=cached)
 
-        if finish_reason is not None:
-            yield StreamFinish(reason=finish_reason)
+            if finish_reason is not None:
+                yield StreamFinish(reason=finish_reason)
 
     async def embed(self, spec: ModelSpec, texts: list[str]) -> list[list[float]]:
         """Ollama's native /api/embed (batched); returns one vector per input."""
-        async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+        await self.validate_local_transport(spec)
+        async with httpx.AsyncClient(
+            timeout=self.timeout_s, trust_env=False, follow_redirects=False
+        ) as client:
             try:
                 r = await client.post(
                     f"{self.host}/api/embed", json={"model": spec.model, "input": texts}
@@ -188,7 +245,10 @@ class OllamaProvider:
         self, spec: ModelSpec, prompt: str, max_tokens: int = 256
     ) -> dict[str, float]:
         """Native /api/generate call returning Ollama's own eval counters (for benchmarks)."""
-        async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+        await self.validate_local_transport(spec)
+        async with httpx.AsyncClient(
+            timeout=self.timeout_s, trust_env=False, follow_redirects=False
+        ) as client:
             r = await client.post(
                 f"{self.host}/api/generate",
                 json={

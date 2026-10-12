@@ -1,6 +1,7 @@
 # M01 proposal — versioned evidence and action-specific permissions
 
-Status: owner policy accepted with stricter origin limits, 2026-10-12. No new runtime enforcement yet. Follows
+Status: owner policy accepted with stricter origin limits, 2026-10-12. Partial model-provider containment now exists (source-transport-containment.md);
+full lineage/export enforcement remains outstanding. Follows
 material-rights-inventory.md. This is an application contract, not a legal finding.
 
 ## Accepted owner policy — 2026-10-12
@@ -22,7 +23,7 @@ Local-first routing, task-specific evaluation and existing spending approvals re
 in force; this policy does not authorize new hosted calls. Private archive recovery
 is separate from public export and retains its existing owner-authorized scope.
 
-The metadata, assembly-lineage and enforcement implementation is still outstanding.
+The metadata, assembly-lineage and full enforcement implementation is still outstanding.
 Until implemented, this document is not evidence that every runtime path is gated.
 
 ## Concrete problem and scope

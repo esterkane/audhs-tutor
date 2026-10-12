@@ -42,6 +42,7 @@ from app.models_ai.provider import (
     TaskClass,
 )
 from app.models_ai.routing import NoModelReady, Router
+from app.models_ai.source_policy import SourcePolicyDenied, validate_transport
 from app.schemas.common import Actor, ObjectType
 
 REPAIR_POLICY_VERSION = "structured-repair.v3"
@@ -273,6 +274,11 @@ class ModelGateway:
             msgs = list(messages)
             repairs = 0
             while True:
+                try:
+                    await validate_transport(provider, spec)
+                except SourcePolicyDenied as exc:
+                    errors.append(f"{rid}: {exc}")
+                    break
                 reservation, bound, blocked = await self._reserve(
                     spec,
                     request_id=request_id,
@@ -497,6 +503,11 @@ class ModelGateway:
             kind = (
                 "degraded" if degraded else ("primary" if route.position + pos == 0 else "fallback")
             )
+            try:
+                await validate_transport(provider, spec)
+            except SourcePolicyDenied as exc:
+                errors.append(f"{rid}: {exc}")
+                continue
             reservation, bound, blocked = await self._reserve(
                 spec,
                 request_id=request_id,

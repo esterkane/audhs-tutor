@@ -2337,3 +2337,9 @@ free references, saved-question suggestions/reuse, follow-ups, visuals/video and
 reviewed original-content replacement. Existing capabilities audited; ordered G0–G6
 plan in design/CROSS-TOPIC-CONTENT-WORKSPACE.md. G0 origin containment precedes new
 hosted flows; G1 must not require or alter a learning session. Plan only so far.
+
+2026-10-12: G0a model-provider containment denies unverified external text inference
+before reservation; direct adapters and local embeddings/statistics enforce the
+transport boundary. Local complete context retained; no learning-rule changes.
+See slices/source-transport-containment.md for evidence and remaining image/speech,
+origin-lineage and public-export scope. G0 and the Ask workspace are not complete.

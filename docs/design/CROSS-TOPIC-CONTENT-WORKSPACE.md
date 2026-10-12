@@ -150,3 +150,7 @@ Current evidence: repository audit only. No new question workspace, reference-fe
 provider, automated fact checker, generated video or content deletion is implemented
 by this plan. Next: G0 containment, then G1; reuse existing capabilities rather than
 introducing another generic chat backend.
+
+2026-10-12 checkpoint: G0a model-provider transport containment implemented; see
+../slices/source-transport-containment.md. G0 remains open for image/speech paths
+and origin/export evidence; G1 has not started.
