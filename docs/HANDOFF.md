@@ -2084,3 +2084,16 @@ ref access; final synchronization uses layout effect. No visual or learning chan
 preceding inspected form screenshots reused. Focused self-review covered query scope
 and cursor ownership. Logs:/tmp/answer-query-{before,final,pagination,unit,build}.log.
 Existing bundle warning and broader human/AT acceptance remain; both repos private.
+
+
+2026-10-12 CI notebook readiness: private run38210130517 at2434701 finished with
+361 browser passes/20 skips/one failure; backend/frontend/migrations passed.
+Sanitized counterpart38210149596 at4dd9e22 passed all jobs. Private trace shows
+Prepare.focus before notebook status fulfillment, then Enter while heading retained
+focus; the disabled button correctly did not start. Test now holds readiness,
+asserts disabled/no start, releases status, waits enabled and verifies actual keyboard
+focus before Enter. All five notebook journeys pass (41.1s), ESLint/e2e types pass.
+No app code change; prior production/visual evidence reused, CI screenshot inspected.
+Log:/tmp/notebook-readiness-ci.log; downloaded trace under
+/tmp/private-ci-38210130517-artifacts. Newest-head CI remains unverified; older green
+results do not close it. Both variants remain private.

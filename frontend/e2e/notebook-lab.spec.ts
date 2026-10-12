@@ -9,9 +9,12 @@ test('prepares a notebook from the app without a terminal or automatic cell exec
       },
     }),
   )
-  await page.route('**/api/notebooks/status', (route) =>
-    route.fulfill({ json: { service_id: '11111111-1111-4111-8111-111111111111', status: 'idle', message: 'Ready to prepare', url: null, course_id: '' } }),
-  )
+  let releaseStatus!: () => void
+  const statusReady = new Promise<void>(resolve => { releaseStatus = resolve })
+  await page.route('**/api/notebooks/status', async (route) => {
+    await statusReady
+    return route.fulfill({ json: { service_id: '11111111-1111-4111-8111-111111111111', status: 'idle', message: 'Ready to prepare', url: null, course_id: '' } })
+  })
   let requests = 0
   await page.route('**/api/notebooks/start', (route) => {
     requests++
@@ -30,7 +33,12 @@ test('prepares a notebook from the app without a terminal or automatic cell exec
   await page.getByRole('button', { name: 'Open full course notebook tools', exact: true }).click()
   await page.setViewportSize({ width: 390, height: 844 })
   const prepare = page.getByRole('button', { name: 'Prepare and start notebook lab' })
+  await expect(prepare).toBeDisabled()
+  expect(requests).toBe(0)
+  releaseStatus()
+  await expect(prepare).toBeEnabled()
   await prepare.focus()
+  await expect(prepare).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('link', { name: 'Open prepared notebook in Jupyter' })).toHaveAttribute(
     'href',
