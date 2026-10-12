@@ -1,7 +1,29 @@
 # M01 proposal — versioned evidence and action-specific permissions
 
-Status: proposed design, 2026-10-12. No migration or runtime enforcement. Follows
+Status: owner policy accepted with stricter origin limits, 2026-10-12. No new runtime enforcement yet. Follows
 material-rights-inventory.md. This is an application contract, not a legal finding.
+
+## Accepted owner policy — 2026-10-12
+
+The owner approved enforcement with a stricter limit: only content created by the
+owner may be sent; explicit third-party learning/course material must not be sent.
+This supersedes the broader proposed allowed-permission rule below. Apply the same
+boundary to hosted-model transmission and public exports; retain material locally.
+Unknown or mixed origin is ineligible. Cached answers, excerpts, translations and
+other derived artifacts inherit their inputs' restrictions; rewriting does not make
+third-party material owner-created. Access, subscription, attribution, an external
+license or a model-generated authorship assertion cannot override this boundary.
+
+Owner-authored text needs explicit, version-bound origin evidence. An own-written
+answer may be eligible only if the actual assembled request is free of third-party
+course prompts, rubrics, sources and derived context. Do not silently strip necessary
+context to force hosted eligibility: keep the complete task local instead.
+Local-first routing, task-specific evaluation and existing spending approvals remain
+in force; this policy does not authorize new hosted calls. Private archive recovery
+is separate from public export and retains its existing owner-authorized scope.
+
+The metadata, assembly-lineage and enforcement implementation is still outstanding.
+Until implemented, this document is not evidence that every runtime path is gated.
 
 ## Concrete problem and scope
 

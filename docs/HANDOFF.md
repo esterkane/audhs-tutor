@@ -2324,3 +2324,10 @@ only; see slices/unchanged-archive-reuse.md. No runtime or learning changes.
 autoplay. 648 frontend tests,5 browser journeys, lint/types/build and review pass;
 final desktop/narrow screenshots inspected. See slices/visualizer-artistic-choice-recovery.md.
 Broader visualizer lifecycle and human acceptance remain open.
+
+2026-10-12: Integrated430 browser run:409passed20skipped1failed (real registry
+initialization race). Race reproduced/fixed;1313backend and8 affectedbrowser checks
+pass; lint/types and review clear. See slices/model-registry-seed-race.md.
+Owner accepted stricter source policy: only owner-created content may reach hosted
+models/public exports; third-party/mixed/unknown and derived material stays local.
+See material-rights-contract.md; enforcement is next, not yet claimed complete.

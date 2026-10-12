@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.dialects.sqlite import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import LearnerPreference, ModelRegistry
@@ -73,10 +74,6 @@ async def seed_defaults(
     rows: list[ModelRegistry] = []
     installed = installed_ollama_tags or set()
     for entry in load_profiles(path)["registry_defaults"]:
-        existing = await db.get(ModelRegistry, entry["id"])
-        if existing is not None:
-            rows.append(existing)
-            continue
         status = "available"
         if entry["runtime"] == "ollama" and _tag_installed(entry["file_or_tag"], installed):
             status = "ready"
@@ -90,8 +87,16 @@ async def seed_defaults(
             status = "ready"
         if entry["runtime"] == "onnx" and f"onnx:{entry['repo_id']}" in installed:
             status = "ready"
-        row = ModelRegistry(**entry, status=status)
-        db.add(row)
+        # Concurrent settings reads may initialize the same missing defaults.
+        # Acquire the SQLite write transaction before reading, and let the unique
+        # key resolve races without replacing owner-edited registry values.
+        await db.execute(
+            insert(ModelRegistry)
+            .values(**entry, status=status)
+            .on_conflict_do_nothing(index_elements=[ModelRegistry.id])
+        )
+        row = await db.get(ModelRegistry, entry["id"])
+        assert row is not None
         rows.append(row)
     await db.commit()
     return rows

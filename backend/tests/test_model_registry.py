@@ -87,3 +87,28 @@ def test_cli_parser_covers_contract() -> None:
         "assign",
         "rm",
     }
+
+
+async def test_concurrent_registry_seed_preserves_existing_rows(session_factory):
+    import asyncio
+
+    from sqlalchemy import func, select
+
+    from app.db.models import ModelRegistry
+
+    async def seed():
+        async with session_factory() as session:
+            return [row.id for row in await registry.seed_defaults(session)]
+
+    first, second = await asyncio.gather(seed(), seed())
+    assert first == second and first
+    async with session_factory() as session:
+        assert await session.scalar(select(func.count()).select_from(ModelRegistry)) == len(first)
+        row = await session.get(ModelRegistry, first[0])
+        row.display_name = "Owner customized label"
+        row.status = "failed"
+        await session.commit()
+    await asyncio.gather(seed(), seed())
+    async with session_factory() as session:
+        row = await session.get(ModelRegistry, first[0])
+        assert row.display_name == "Owner customized label" and row.status == "failed"
