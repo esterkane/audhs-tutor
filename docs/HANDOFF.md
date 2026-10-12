@@ -2002,3 +2002,12 @@ focus after another503, successful retry, original displayed-page numbering,
 saved-assessment return, concept/Back and no learning writes. Self-review confirms
 no evidence or kernel changes. Logs:/tmp/progress-cached-{before,final,visual,build}.log.
 Existing bundle warning and human/AT acceptance remain. Both variants stay private.
+
+
+2026-10-12 task reconciliation: CURRENT-WORK now distinguishes bounded delivered
+UX/recovery/zoom work from integrated/human/AT, Progress policy, R3/R4, material and
+dependent-queue gates. Corrected stale R5/public-visibility statements; older design
+checkpoints are explicitly historical. Compared with companion-panel,
+correction-publication-ui and prepared-continuation slice evidence. No runtime
+change; existing checks reused. Next prioritize integrated daily-learning acceptance
+and reproduced blocked/lost-work findings, rather than repeating delivered cases.

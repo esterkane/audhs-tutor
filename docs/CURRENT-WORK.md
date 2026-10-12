@@ -2,6 +2,48 @@
 
 # Current work and next acceptance gates
 
+## Actionable checkpoint — 2026-10-12
+
+This checkpoint supersedes older stage TODOs below. Do not schedule completed
+features again or use isolated UI checks to mark the complete design adopted.
+
+**Delivered and verified in bounded flows:** content-first Learn and explicit help,
+Pause/Focus/session options, area-based Explore without implicit session switching,
+persistent companion, saved assessment links, correction publication/recovery,
+local fonts/palette/logo, shared controls, CSV preview recovery, and Progress retry
+focus. Actual200% Chromium checks now cover lesson/Preferences/Pause/reload,
+Explore/selection and Search/return at light320/dark640 CSS pixels. Search targets
+and initial/paginated Progress retry have separate keyboard/responsive evidence.
+See HANDOFF.md and ux/ADVERSARIAL-USABILITY-REPORT.md for exact tests and limits.
+
+**Outstanding work, in execution order:**
+
+1. **Integrated acceptance:** latest-head CI must finish; prior passing heads are
+   not proof for the newest commit. Continue the remaining daily-learning matrix
+   against existing implementations, prioritizing reproduced blocked tasks or lost
+   work over more isolated cosmetic changes. Do not repeat the delivered zoom cases.
+2. **Human/assistive-technology acceptance:** owner re-entry, explanation clarity,
+   screen-reader behavior and physical headphone/microphone output are still
+   unverified. Automated fixtures cannot close these gates.
+3. **Progress design semantics:** PROGRESS-EVIDENCE-CONTRACT.md is proposed, not
+   accepted. Its task/rubric, assistance, independence and version policy decision
+   precedes new attainment labels. Current factual records remain in place.
+4. **R3/R4 reliability:** persisted grade-ready continuation exists; outcomes lost
+   after inference starts remain uncertain. Do not automatically resend. Remaining
+   cross-surface draft/content recovery follows the existing contracts.
+5. **Source/material quality:** private coverage ledger still has media, interactive,
+   external-link and executable-notebook gaps. Stored/indexed text is not complete
+   coverage or degree engagement. Preserve the separate acquisition worktree delta.
+6. **Dependent queues:** C01a/M00 metadata/rights, V00/V01 visual architecture and
+   benchmark, then dependent A/E authoring/resources and optional S/avatar/native
+   tracks remain as recorded in the stage ledger. No replacement architecture or
+   hosted provider is authorized merely by this checklist.
+
+Both repositories are PRIVATE, including the sanitized future-public variant.
+Sanitation and separate histories remain required. Batch related work and validation;
+reuse unchanged evidence and avoid commits solely to report CI polling.
+
+
 ## Current design reconciliation — 2026-10-11
 
 Do not schedule already delivered design slices again. Bounded implementation now includes:
@@ -48,7 +90,7 @@ Execution order:
 See slices/recent-contexts.md for current search evidence; design/BRAND-FOUNDATION.md for colors, typography, logo and limitations. The stage ledger below remains a broader backlog. Estimates communicated to the owner are planning ranges, not completion promises.
 
 
-Reconciled 2026-10-03 against current code, slice records and two independent queue reviews. This page is the current navigation point; older dated handoff entries remain historical evidence. A shipped slice does not close its entire stage. The sanitized variant is public again by owner decision2026-10-05; the original archive remains private.
+Reconciled 2026-10-03 against current code, slice records and two independent queue reviews. This page is the current navigation point; older dated handoff entries remain historical evidence. A shipped slice does not close its entire stage. Both variants are private by the latest owner instruction; the older public-visibility decision is superseded.
 
 ## Working baseline
 
@@ -80,7 +122,7 @@ Implemented [Preferences read recovery](slices/preferences-read-recovery.md): in
 | R2 | Partial | Remaining service/worker/stream/voice failure matrix |
 | R3 | Partial | Assessment/review versions and atomic review recovery implemented; caught pre-model failures recover; crash/inference outcome recovery remains |
 | R4 | Partial | Consistent draft/content conflict handling across surfaces |
-| R5 | Partial | Suspension/reuse guards and main activity controls implemented; reviewed replacement and integrated acceptance remain |
+| R5 | Partial | Suspension/reuse guards and reviewed replacement/publication implemented; human acceptance, reversal policy and code/listening support remain |
 | R6 | Partial | Structured curriculum editing and conflict preservation |
 | R7/Q5 | Partial | Complete keyboard/zoom/screen-reader/comfort matrix and owner comprehension |
 | R8/Q2/Q7 | Partial | Held-out semantic correctness, source support and delayed transfer; diagnostics are not learning-outcome proof |
@@ -110,6 +152,12 @@ Automated tests do not certify owner comprehension, Bluetooth output, VoiceOver 
 ## Proposed runtime extensions
 
 The owner-proposed memory, voice and development-tool additions are reconciled in [runtime-extension-evaluation](runtime-extension-evaluation.md). Evaluation and daily-learning acceptance come first; Hindsight/local memory comparison and optional hosted voice experiments follow. No new provider is activated and no architecture replacement is accepted by this queue entry.
+
+## Historical checkpoints — consult the actionable checkpoint above first
+
+The following dated implementation notes preserve provenance. Their “next” and
+“not implemented” statements are not current task assignments; later slice records
+(including companion-panel and correction-publication-ui) supersede them.
 
 ## Design adoption checkpoint
 
