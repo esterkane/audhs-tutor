@@ -132,3 +132,57 @@ Correct arithmetic in completed replies does not offset missing responses and hi
 latency. No hosted calls, new paid integration, live curriculum edits or routing
 changes were made. The original download-authorization paragraph above is historical;
 the download and bounded trial are now completed.
+
+## Hosted availability check — 2026-10-12
+
+Owner requested checking OpenRouter and Together; this does not authorize paid calls
+or switching production routing. Official catalogs currently list:
+
+| Service | Model identifier | Input /1M | Output /1M | Cached input /1M |
+| --- | --- | ---: | ---: | ---: |
+| OpenRouter, DeepInfra route | meta/muse-glimmer-30b | $0.30 | $1.20 | $0.04 |
+| Together direct | meta-models/Muse-Glimmer-30B | $0.35 | $1.50 | $0.04 |
+
+Sources inspected: [OpenRouter model](https://openrouter.ai/meta/muse-glimmer-30b),
+[Together catalog](https://docs.together.ai/docs/serverless/models),
+[Together pricing](https://www.together.ai/pricing),
+[OpenRouter platform fees](https://openrouter.ai/pricing).
+OpenRouter Standard lists5.5% platform fee. Rates and provider availability must be
+rechecked before an actual trial. Example1000 requests at3000 input+500 output
+billable tokens cost$1.50/$1.80 before platform fees/taxes; extra reasoning tokens,
+longer contexts and retries change that estimate. Do not assume a cache hit.
+
+OpenRouter's displayed provider statistics were DeepInfra1.28s/65tok/s and
+Together4.48s/52tok/s. These are catalog observations, not app measurements, a
+latency guarantee or evidence of teaching quality. Together lists FP8 weights;
+local MLX quantization differs, so hosted versus local is not hardware-only.
+
+### Bounded trial — authorized, awaiting credential and implementation
+
+- Explicit spend ceiling and separately configured provider key required. Owner
+  asked about availability; do not interpret that as permission to transmit lessons.
+- Use the existing eight synthetic teaching fixtures only, one attempt each,
+  disposable state, no personal content/course passages/owner database.
+- Pin DeepInfra and disable cross-provider fallbacks; record returned provider/model,
+  prompt/fixture hashes, token accounting including reasoning, finish reason, first
+  visible token, total duration and all failures. A stream opening is not first text.
+- Reserve pessimistic request cost before each attempt, including possible billed
+  reasoning within a verified completion cap. Stop when the remaining budget cannot
+  cover another request; missing usage means uncertain cost, not zero. No auto-repair
+  or retry beyond the authorized total. Explicit output/timeout limits remain.
+- Validate the isolated adapter/accounting with fake transport before making a paid
+  request. Reuse the existing provider/gateway boundaries; add neither a new agent
+  framework nor a general-purpose hosted fallback.
+- Review directness, arithmetic, citations, hint restraint, explicit/Socratic
+  adherence and truncation. Compare against recorded local cases without claiming
+  equal runtime conditions or statistical significance from eight observations.
+- A pass only permits considering a task-specific optional route; no automatic
+  production promotion. Local voice/retrieval and existing local defaults stay local.
+
+Owner approved a synthetic-only OpenRouter trial up to $1 on 2026-10-12.
+A presence-only check found no OPENROUTER_API_KEY in the process environment or
+project .env; no credential value was printed. Paid execution awaits that key and
+the adapter/accounting validation above. No API request was sent or app routing
+changed. Include platform fees in the ceiling; do not expand the approved data scope.
+This research addendum can accompany the next relevant implementation publication
+rather than starting a separate documentation-only release cycle.
