@@ -2168,3 +2168,6 @@ quality work must target evidence fidelity/false attribution with reviewed contr
 
 
 2026-10-12 model candidate assessment: research/muse-glimmer-mistral-evaluation.md verifies Glimmer/Mistral availability, hardware feasibility, pricing and existing provider boundaries. Reuses fixed teaching evidence; neither candidate tested. Recommend authorized local Glimmer experiment first; no runtime/routing/DB change, paid calls or weights downloaded. Monthly campaign cap is not supplied by existing daily budget. Candidate execution awaits explicit approval.
+
+
+2026-10-12 M01 proposed contract: slices/material-rights-contract.md specifies learner-scoped version evidence, append-only action decisions, derived lineage, unknown handling and backup/restore acceptance. Not an accepted policy or implemented gate. No runtime or learning changes; candidate model download still awaits approval.
