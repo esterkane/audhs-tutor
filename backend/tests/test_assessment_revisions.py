@@ -135,6 +135,10 @@ async def test_revision_records_new_answer_without_reapplying_learning(
     assert await learning_rows(db) == before
     revision = await db.get(AssessmentAttempt, result["attempt_id"])
     assert revision.answer == "1" and revision.revision_of_attempt_id == root.id
+    facts = revision.deterministic_result_json["evidence_provenance"]
+    assert facts["revision_of_attempt_id"] == root.id
+    assert facts["content_fingerprint"] == revision.content_fingerprint
+    assert facts["qualification"] == "not_evaluated"
     await db.refresh(root)
     assert root.answer == original_answer and root.revision_of_attempt_id is None
     saved = await db.scalar(select(TutorAnswer).where(TutorAnswer.id == result["answer_id"]))

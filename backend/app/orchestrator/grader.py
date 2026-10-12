@@ -35,6 +35,7 @@ from app.orchestrator import assessment_content, assessment_revisions, prompts
 from app.orchestrator.assessment_answers import feedback_snapshot, save_feedback
 from app.orchestrator.assessment_execution import AssessmentExecution
 from app.orchestrator.context import escape_data, learner_answer_block
+from app.schemas.assessment_provenance import AssessmentProvenance
 from app.schemas.common import ActivityType, Domain, ObjectType
 from app.schemas.grading import (
     AssessmentView,
@@ -583,6 +584,24 @@ class Grader:
             )
             req = req.model_copy(update={"revision_of_attempt_id": root_id})
             attempt.revision_of_attempt_id = root_id
+            # Internal provenance is attached after model validation and root resolution.
+            # It commits atomically with the grade; it never qualifies an attainment label.
+            provenance = AssessmentProvenance(
+                task_kind=a.kind,
+                content_fingerprint=assessment_content.recovery_fingerprint(content),
+                rubric_version=rubric_version,
+                grading_method=route_label,
+                reported_hint_count=req.hint_count,
+                revision_of_attempt_id=root_id,
+            ).model_dump(mode="json")
+            if attempt.deterministic_result_json is not None:
+                attempt.deterministic_result_json = {
+                    **attempt.deterministic_result_json, "evidence_provenance": provenance
+                }
+            elif attempt.llm_result_json is not None:
+                attempt.llm_result_json = {
+                    **attempt.llm_result_json, "evidence_provenance": provenance
+                }
             db.add(attempt)
             await db.flush()
 

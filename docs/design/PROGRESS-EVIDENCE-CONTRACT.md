@@ -1,6 +1,8 @@
 # Progress evidence labels — contract before implementation
 
-Status: proposed policy and implementation plan; no new evidence levels are active.
+Status: owner approved the first display scope on 2026-10-12: task-specific, dated
+evidence labels with disclosed help and independence unverified. Detailed eligibility
+metadata remains to be implemented; no new evidence levels are active.
 Authority: owner-supplied Complete Design System, pages8 and10. Existing boundaries:
 ADR0004 (memory versus competence), ADR0020 (revision provenance).
 
@@ -107,3 +109,45 @@ This contract identifies the missing semantics; it does not certify current evid
 introduce new states, or authorize changing accepted kernel thresholds. Continue other
 independent design/reliability tasks while the policy remains unresolved. The existing
 Progress evidence view remains usable and accurate within its documented limits.
+
+
+## Concrete decision proposal — 2026-10-12, not accepted
+
+Recommended first scope: a display-only evidence policy. Keep current kernel,
+prerequisites and FSRS untouched. Display dated, task-specific claims rather than
+permanent skill badges or a forced ladder. The following resolves the proposed
+policy choices for owner review; it does not authorize implementation or an ADR.
+
+| Decision | Proposed rule |
+| --- | --- |
+| Exposure | Record an explicit learner “I read this explanation” action tied to exact concept/content version; show it as learner-reported exposure. Page opening alone never qualifies. |
+| Understanding check | Only a task explicitly designated as an explanation check with a versioned, reviewed rubric can qualify. Every required criterion must pass; disclose deterministic/model/human checking. State “Explanation check passed” with date and task, not an unqualified claim that the concept is understood. |
+| Practice | Distinguish “Application attempted” from “Application check passed.” A designated application task, exact work and recorded check are required; merely running code is insufficient. |
+| Repetition and recency | Keep dated results visible; no expiry or fixed number of repetitions establishes attainment. Immediate revisions remain marked practice and never become additional independent demonstrations. |
+| Assistance | Show observed hints, full-solution exposure, revision lineage and voluntary external-help self-report separately. Legacy/missing observations remain unknown. No cross-app monitoring. |
+| Independence | Leave “Independent application not verified” in place. A learner's no-help report may be displayed as self-report, but does not activate Demonstrated. A later independently reviewed opportunity policy is required for that claim. |
+| Disputes and versions | Preserve original outcomes. Mark disputed/corrected results and incompatible content versions; exclude them from current qualified summaries until explicitly resolved. Record policy version and exclusion reason; no silent retroactive rewriting. |
+| Learning decisions | Display-only. No score-threshold changes, gating changes, scheduling changes or model classification on page load. |
+
+This deliberately refines the design's Understood/Practised wording into observable
+check results until stronger evidence can support broader claims. That wording
+choice needs owner agreement because the complete design system is authoritative.
+The existing factual Progress page remains the alternative while this proposal is
+unresolved. P-E1–P-E4 stay open; do not mark this draft as an accepted policy.
+
+
+### Owner decision recorded — 2026-10-12
+Owner selected “Use task-specific evidence labels” in response to the concrete
+choice between that first implementation and retaining the current display.
+Approved: dated Explanation check passed / Application attempted or passed labels,
+help disclosed, independence unverified, display-only with no grading/scheduling
+change. This supersedes the unresolved wording choice above. It does not authorize
+inventing eligibility from aggregate scores or retroactively certifying old work.
+
+Current implementation inspection confirms ProgressEvidence has only dimension,
+score, grader, date, attempt reference and hint count. It does not carry a versioned
+eligible task/rubric or complete assistance context. Therefore first implement the
+provenance foundation and unknown fallback, not a frontend score-to-label mapping.
+Do not treat one full-credit evidence row as automatically qualifying under the new
+policy. Remaining detailed lifecycle/exposure rules above retain their proposal
+status until incorporated through the existing versioned-policy process.

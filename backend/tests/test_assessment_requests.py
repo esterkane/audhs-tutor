@@ -212,10 +212,12 @@ async def test_committed_outcome_survives_history_interruption_and_restart(
         assert "_assessment_history_v1" not in result
 
 
-async def test_failure_completing_claim_rolls_back_learning_state(client, db, monkeypatch):
+@pytest.mark.parametrize("hint_report", [0, -1])
+async def test_failure_completing_claim_rolls_back_learning_state(client, db, monkeypatch, hint_report):
     from app.db import workspace_requests
 
     body = await prepare(client, db)
+    body["hint_count"] = hint_report
     before = await counts(db)
     original = workspace_requests.complete
 
@@ -249,6 +251,10 @@ async def test_failure_completing_claim_rolls_back_learning_state(client, db, mo
     )
     assert all(r.status_code == 200 for r in results), [r.text for r in results]
     assert results[0].json()["attempt_id"] == results[1].json()["attempt_id"]
+    applied = await db.get(models.AssessmentAttempt, results[0].json()["attempt_id"])
+    facts = applied.deterministic_result_json["evidence_provenance"]
+    assert facts["reported_hint_count"] == hint_report
+    assert facts["independence"] == "not_verified"
     assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 1
 
 
