@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { ApiError, apiFetch, type Schemas } from '../../lib/api'
 import { Button } from '../../components/ui/button'
 import { Textarea } from '../../components/ui/textarea'
@@ -15,6 +15,7 @@ export function QuestionPractice(props: { assessmentId: string; onChanged?: (id:
 }
 
 function PracticeControl({ assessmentId, onChanged }: { assessmentId: string; onChanged?: (id: string, state: State) => void | Promise<void> }) {
+  const location = useLocation()
   const id = useId()
   const qc = useQueryClient()
   const [open, setOpen] = useState(false)
@@ -85,6 +86,7 @@ function PracticeControl({ assessmentId, onChanged }: { assessmentId: string; on
       {message && <p role="status">{message}</p>}
       {error && <p role="alert">{error} {needsRefresh ? 'Reload status before choosing again.' : 'The result is uncertain. Retry the same action or reload its status; nothing is retried automatically.'}</p>}
       {(query.isError || error || needsRefresh) && <Button disabled={busy || query.isFetching} onClick={() => void reload()}>Reload question status</Button>}
+      <Link to={`/task-review?assessment=${encodeURIComponent(assessmentId)}&returnTo=${encodeURIComponent(location.pathname + location.search + location.hash)}`}>Review task and rubric — reveals reference content</Link>
       <Link to="/preferences#excluded-questions">Manage excluded questions</Link>
     </div>}
   </div>

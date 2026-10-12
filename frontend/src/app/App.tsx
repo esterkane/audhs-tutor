@@ -1,3 +1,4 @@
+import { TaskReview } from '../features/questions/TaskReview'
 import { lazy, Suspense } from 'react'
 const VisualLearning = lazy(() => import('../routes/VisualLearning'))
 import { LessonFocusContext } from '../features/session/focusContext'
@@ -158,6 +159,7 @@ export default function App() {
             <Route path="/recap" element={<Recap />} />
             <Route path="/map" element={<Map />} />
             <Route path="/preferences" element={<Preferences />} />
+            <Route path="/task-review" element={<TaskReview />} />
             <Route path="/corrections" element={<CorrectionEditor />} />
             <Route path="/corpus" element={<Corpus />} />
             <Route path="/explore" element={<Explore />} />
