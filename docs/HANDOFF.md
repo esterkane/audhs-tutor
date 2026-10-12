@@ -2247,3 +2247,14 @@ Original answer/checkpoint preserved; no new grading submission. Only the existi
 local preload POST occurs.6 browser checks, ESLint/e2e types pass; no runtime edits.
 See slices/assessment-durable-result-plan.md for simulated lookup boundary and exact
 evidence. Truly uncertain inference is still not automatically retried.
+
+
+## Current-app audit refresh — 2026-10-12
+
+Full browser386 passed/20 opt-in skips;11 current-app opt-in audits now complete.
+Updated obsolete persona disclosure selector; lint/e2e types pass.68 recorded screen
+observations: no axe violations/overflow, manual incomplete findings remain. Actual
+503 experiment reads incorrectly appear empty: AU-EXPERIMENTS-01 documented in the
+adversarial report with reproduction and acceptance; fix next. First custom-output
+audit run was aborted after a dev reload loop; standard ignored output resolved it.
+No runtime change, paid calls or claims of human/physical-audio acceptance.

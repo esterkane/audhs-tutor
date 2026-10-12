@@ -414,3 +414,41 @@ ref access; final synchronization uses layout effect. No visual or learning chan
 preceding inspected form screenshots reused. Focused self-review covered query scope
 and cursor ownership. Logs:/tmp/answer-query-{before,final,pagination,unit,build}.log.
 Existing bundle warning and broader human/AT acceptance remain; both repos private.
+
+
+## Integrated refresh and AU-EXPERIMENTS-01 — 2026-10-12
+
+Latest full isolated browser suite:386 passed,20 skipped,9.7minutes. The skips are
+9 historical design-direction prototypes and11 opt-in current-app audits. Ran those
+11 separately: all completed in2.3minutes after updating a stale persona selector
+from Change topic or save for later to Session options (keyboard disclosure).
+The inventory is evidence collection, not a conformance pass:68 observations across
+17 routes at390/800/1280/1920 reported0 axe violations and0 horizontal overflows;
+each width still has18 incomplete axe findings requiring manual inspection.
+
+The first audit attempt also used a custom output directory inside the frontend
+source tree; this coincided with a Vite reload loop and more than150,000 trace network
+entries. Stopped that owned test process, moved its artifacts to /tmp, and reran with
+the standard ignored output directory. Do not count that aborted run as app evidence.
+No test outcomes were replaced by assumed success.
+
+**AU-EXPERIMENTS-01, S3: unavailable experiment data is presented as empty.**
+With all API reads returning503, Experiments says No experiments yet and offers a
+new experiment section, without a load-error/retry explanation. Existing results
+also use a no-data Loading results message without inspecting query error.
+This is an actual data-visibility/recovery problem, not evidence that records were
+lost. Source: ux-audit backend-failure artifact for /experiments and current
+routes/Experiments.tsx. Preferences and Map show explicit recovery in the same run.
+
+Minimal fix: distinguish loading/error/confirmed-empty for experiment list and
+result reads, preserve any already loaded data during refresh failure, provide
+keyboard-safe retry, and avoid changing experimental outcomes or assignments.
+Long-term: apply the existing shared read-recovery conventions consistently to
+research screens. Risk: replacing cached data or moving focus after retry.
+Acceptance: initial503 is never an empty-state claim; retry restores existing data;
+failed refresh retains results and draft controls; desktop/narrow keyboard checks.
+Implementation remains outstanding; the completed audit does not close this finding.
+
+Models also lacks a clear model-list error while Hosted spend shows its own error;
+recorded as a separate follow-up observation, not yet ranked/reproduced in isolation.
+No human comprehension, physical audio or complete screen-reader acceptance claimed.
