@@ -270,3 +270,86 @@ async def test_suspend_restore_invalidates_preview(db, learner):
             await db.rollback()
     fresh = await command(db, learner_id, task_id)
     assert (await task_reviews.decide(db, learner_id, task_id, fresh)).decision == "approve"
+
+
+async def test_preview_distinguishes_approval_from_changed_content(db, learner):
+    task, rubric, _ = await setup_task(db)
+    before = await task_reviews.preview(db, learner.id, task.id)
+    assert before.reviewable and not before.approval_matches_content
+    assert before.current_review is None
+    body = await command(db, learner.id, task.id)
+    approved = await task_reviews.decide(db, learner.id, task.id, body)
+    await db.commit()
+    current = await task_reviews.preview(db, learner.id, task.id)
+    assert current.approval_matches_content and current.current_review == approved
+    rubric.criteria_json = [{"criterion": "Revised criterion"}]
+    await db.commit()
+    changed = await task_reviews.preview(db, learner.id, task.id)
+    assert changed.current_review == approved
+    assert not changed.approval_matches_content
+    assert changed.content_version != before.content_version
+
+
+async def test_unsupported_preview_explains_without_writing(db, learner):
+    task, _, _ = await setup_task(db)
+    task.kind = "code"
+    await db.commit()
+    result = await task_reviews.preview(db, learner.id, task.id)
+    assert not result.reviewable and result.unavailable_reason
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 0
+
+
+async def test_review_api_preview_confirm_replay_and_stale_content(client, db):
+    task, _, _ = await setup_task(db)
+    path = f"/api/questions/{task.id}/task-review"
+    response = await client.get(path)
+    assert response.status_code == 200
+    preview = response.json()
+    assert preview["content"]["item"] == {"prompt": "Why?"}
+    assert not preview["approval_matches_content"]
+    body = {
+        "request_id": str(uuid4()),
+        "expected_revision": 0,
+        "content_version": preview["content_version"],
+        "decision": "approve",
+        "facet": "explanation",
+        "confirmed": False,
+    }
+    assert (await client.post(path, json=body)).status_code == 409
+    body["confirmed"] = True
+    approved = await client.post(path, json=body)
+    assert approved.status_code == 200
+    assert (await client.post(path, json=body)).json() == approved.json()
+    assert (await client.get(path)).json()["approval_matches_content"]
+    task.item_json = {"prompt": "Changed after preview"}
+    await db.commit()
+    changed = await client.get(path)
+    assert not changed.json()["approval_matches_content"]
+    body.update(request_id=str(uuid4()), expected_revision=1)
+    assert (await client.post(path, json=body)).status_code == 409
+    assert (await client.get("/api/questions/unknown/task-review")).status_code == 404
+
+
+async def test_review_api_rejects_another_learners_private_task(client, db):
+    task, _, _ = await setup_task(db)
+    path = f"/api/questions/{task.id}/task-review"
+    preview = (await client.get(path)).json()
+    other = LearnerProfile(display_name="Private author")
+    db.add(other)
+    await db.flush()
+    task.owner_learner_id = other.id
+    await db.commit()
+    assert (await client.get(path)).status_code == 404
+    response = await client.post(
+        path,
+        json={
+            "request_id": str(uuid4()),
+            "expected_revision": 0,
+            "content_version": preview["content_version"],
+            "decision": "approve",
+            "facet": "explanation",
+            "confirmed": True,
+        },
+    )
+    assert response.status_code == 404
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 0

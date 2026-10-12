@@ -673,6 +673,24 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/questions/{assessment_id}/task-review': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Inspect the exact task, objective and rubric before authoring review */
+    get: operations['preview_api_questions__assessment_id__task_review_get']
+    put?: never
+    /** Explicitly approve or revoke task and rubric review for yourself */
+    post: operations['decide_api_questions__assessment_id__task_review_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/tutor/stream': {
     parameters: {
       query?: never
@@ -6014,6 +6032,71 @@ export interface components {
         [key: string]: unknown
       }
     }
+    /** TaskReviewCommand */
+    TaskReviewCommand: {
+      /**
+       * Request Id
+       * Format: uuid
+       */
+      request_id: string
+      /** Expected Revision */
+      expected_revision: number
+      /** Content Version */
+      content_version: string
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: 'approve' | 'revoke'
+      /**
+       * Facet
+       * @enum {string}
+       */
+      facet: 'explanation' | 'application'
+      /** Confirmed */
+      confirmed: boolean
+    }
+    /** TaskReviewPreview */
+    TaskReviewPreview: {
+      /** Assessment Id */
+      assessment_id: string
+      /** Content Version */
+      content_version: string
+      /** Content */
+      content: {
+        [key: string]: unknown
+      }
+      current_review: components['schemas']['TaskReviewReceipt'] | null
+      /** Approval Matches Content */
+      approval_matches_content: boolean
+      /** Reviewable */
+      reviewable: boolean
+      /** Unavailable Reason */
+      unavailable_reason: string | null
+    }
+    /** TaskReviewReceipt */
+    TaskReviewReceipt: {
+      /** Id */
+      id: string
+      /** Assessment Id */
+      assessment_id: string
+      /** Revision */
+      revision: number
+      /**
+       * Decision
+       * @enum {string}
+       */
+      decision: 'approve' | 'revoke'
+      /**
+       * Facet
+       * @enum {string}
+       */
+      facet: 'explanation' | 'application'
+      /** Policy Version */
+      policy_version: string
+      /** Reviewed At */
+      reviewed_at: string
+    }
     /** TemplateIn */
     TemplateIn: {
       /** Template */
@@ -7564,6 +7647,72 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AttemptResult']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  preview_api_questions__assessment_id__task_review_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        assessment_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TaskReviewPreview']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  decide_api_questions__assessment_id__task_review_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        assessment_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['TaskReviewCommand']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['TaskReviewReceipt']
         }
       }
       /** @description Validation Error */

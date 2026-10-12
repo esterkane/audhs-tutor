@@ -26,6 +26,7 @@ from app.api import (
     review,
     sessions,
     skills,
+    task_reviews,
     tutor,
     voice,
 )
@@ -42,6 +43,7 @@ for r in (
     preferences,
     representations,
     challenge,
+    task_reviews,
     tutor,
     assess,
     questions,

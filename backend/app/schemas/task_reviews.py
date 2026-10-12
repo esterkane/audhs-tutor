@@ -27,3 +27,13 @@ class TaskReviewReceipt(BaseModel):
     facet: Facet
     policy_version: str
     reviewed_at: str
+
+
+class TaskReviewPreview(BaseModel):
+    assessment_id: str
+    content_version: str
+    content: dict[str, object]
+    current_review: TaskReviewReceipt | None
+    approval_matches_content: bool
+    reviewable: bool
+    unavailable_reason: str | None

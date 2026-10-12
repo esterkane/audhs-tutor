@@ -168,6 +168,7 @@ Correction draft foundation: `question_correction_draft` stores learner-owned or
 `assessment_task_review` is learner-scoped authoring history: versioned approval or
 revocation bound to exact task/rubric/objective content, with repeat-safe command and
 revision identity. It is separate from generated content and competency evidence.
-The kernel appends receipts; it does not change grading, FSRS or mastery. No API/UI
-or grading consumer is active yet. Export/wipe and private backup cover this table.
+The kernel appends receipts; it does not change grading, FSRS or mastery. The
+explicit preview/confirmation API is described in `slices/task-review-api.md`; UI
+and grading consumers remain pending. Export/wipe and private backup cover this table.
 See `slices/task-review-receipts.md` and `design/PROGRESS-TASK-ELIGIBILITY.md`.

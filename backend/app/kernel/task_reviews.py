@@ -17,7 +17,7 @@ from app.core.content_versions import token
 from app.core.errors import AppError
 from app.db.models import Assessment, AssessmentRubric, AssessmentTaskReview, SkillNode
 from app.kernel import question_state
-from app.schemas.task_reviews import TaskReviewCommand, TaskReviewReceipt
+from app.schemas.task_reviews import TaskReviewCommand, TaskReviewPreview, TaskReviewReceipt
 
 POLICY_VERSION = "task-review-v1"
 
@@ -174,3 +174,27 @@ async def decide(
     db.add(row)
     await db.flush()
     return receipt(row)
+
+
+async def preview(db: AsyncSession, learner_id: str, assessment_id: str) -> TaskReviewPreview:
+    content = await snapshot(db, learner_id, assessment_id)
+    current = await latest(db, learner_id, assessment_id)
+    reason = None
+    try:
+        require_reviewable(content)
+    except AppError as error:
+        reason = str(error)
+    return TaskReviewPreview(
+        assessment_id=assessment_id,
+        content_version=token(content),
+        content=content,
+        current_review=receipt(current) if current else None,
+        approval_matches_content=bool(
+            current
+            and current.decision == "approve"
+            and current.policy_version == POLICY_VERSION
+            and current.content_fingerprint == fingerprint(content)
+        ),
+        reviewable=reason is None,
+        unavailable_reason=reason,
+    )
