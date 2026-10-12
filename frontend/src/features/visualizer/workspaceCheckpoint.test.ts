@@ -29,3 +29,17 @@ it('handles unavailable storage while retaining a tab checkpoint', () => {
   expect(store.write(fixture())).toBe(false)
   expect(store.read()).toEqual(fixture())
 })
+
+it('restores artistic choice with old checkpoint compatibility and rejects unknown identities', () => {
+  const store = createWorkspaceCheckpointStore(() => localStorage)
+  expect(store.write({ ...fixture(), richPresetId: 'geiss-planar-mix' })).toBe(true)
+  expect(createWorkspaceCheckpointStore(() => localStorage).read()?.richPresetId).toBe('geiss-planar-mix')
+  localStorage.setItem(WORKSPACE_KEY, JSON.stringify(fixture()))
+  expect(createWorkspaceCheckpointStore(() => localStorage).read()).toEqual(fixture())
+  const raw = JSON.stringify({ ...fixture(), richPresetId: 'unknown-future-visual' })
+  localStorage.setItem(WORKSPACE_KEY, raw)
+  const future = createWorkspaceCheckpointStore(() => localStorage)
+  expect(future.read()).toBeNull()
+  expect(future.write(fixture())).toBe(false)
+  expect(localStorage.getItem(WORKSPACE_KEY)).toBe(raw)
+})

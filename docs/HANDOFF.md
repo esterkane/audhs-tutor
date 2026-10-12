@@ -2319,3 +2319,8 @@ slices/lesson-draft-navigation-recovery.md for reload limits and remaining R4 wo
 with fresh SQLite integrity and full decompressed hash verification. Disposable
 corruption/reuse regression and review pass. Sanitized variant gets generic docs
 only; see slices/unchanged-archive-reuse.md. No runtime or learning changes.
+
+2026-10-12: C3 artistic visual choice now survives route return/reload without
+autoplay. 648 frontend tests,5 browser journeys, lint/types/build and review pass;
+final desktop/narrow screenshots inspected. See slices/visualizer-artistic-choice-recovery.md.
+Broader visualizer lifecycle and human acceptance remain open.

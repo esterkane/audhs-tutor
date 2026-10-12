@@ -1,3 +1,4 @@
+import { RICH_PRESET_IDS } from '../features/visualizer/richPresetIds'
 import { RememberContext } from '../features/recent/RememberContext'
 import { ProjectAudioContext } from '../features/visualizer/ProjectAudioContext'
 import { initialLesson, lessonIds } from '../features/visualizer/lessonCheckpoint'
@@ -60,7 +61,7 @@ export function Visualizer() {
     }
   })
   const [renderer, setRenderer] = useState<'graph' | 'milkdrop'>(recovered?.renderer ?? 'graph')
-  const [richPreset, setRichPreset] = useState(0)
+  const [richPreset, setRichPreset] = useState(() => recovered?.richPresetId ? RICH_PRESET_IDS.indexOf(recovered.richPresetId) : 0)
   const [richError, setRichError] = useState('')
   const [collectionVersion, setCollectionVersion] = useState(0)
   const [view, setView] = useState<'Watch' | 'Learn' | 'Create'>(recovered?.view ?? 'Watch')
@@ -121,10 +122,10 @@ export function Visualizer() {
     repeat: { start: number; end: number } | null
   } | null>(null)
   useEffect(() => {
-    const saved = workspaceCheckpoint.write({ version: 1, preset, history: history.snapshot, view, renderer, savedId, lesson: lessonState, fileExpected: (source === 'file' || (source === 'lesson' && previousAudio.current?.source === 'file')) && (!!file || needsFile) })
+    const saved = workspaceCheckpoint.write({ version: 1, preset, history: history.snapshot, view, renderer, richPresetId: RICH_PRESET_IDS[richPreset], savedId, lesson: lessonState, fileExpected: (source === 'file' || (source === 'lesson' && previousAudio.current?.source === 'file')) && (!!file || needsFile) })
     // Reflect external storage success without changing the editable draft.
     setDraftSaved(saved)
-  }, [preset, history.snapshot, view, renderer, savedId, lessonState, source, file, needsFile])
+  }, [preset, history.snapshot, view, renderer, richPreset, savedId, lessonState, source, file, needsFile])
   const releasePrevious = () => {
     previousAudio.current?.abort?.abort()
     previousAudio.current?.input?.stop()
@@ -836,7 +837,7 @@ export function Visualizer() {
               <summary className="cursor-pointer text-sm">{draftSaved ? 'Draft saved · ' : ''}How it works and what is saved</summary>
               <div className="grid gap-2 mt-2 text-sm text-muted">
                 <p>Start demo runs silent synthetic levels. Open audio prepares a local file; playback starts only when you press Play.</p>
-                <p>Your editing draft, lesson step, tone settings and comparison choices are kept automatically in this browser when storage is available. Save a preset to add it to your collection.</p>
+                <p>Your editing draft, artistic visual choice, lesson step, tone settings and comparison choices are kept automatically in this browser when storage is available. Save a preset to add it to your collection.</p>
                 <p>Files and positions stay only in this tab until reload. After returning to this page, press Play or Resume; sound remains an explicit choice. A newly selected file starts from the beginning.</p>
                 {energy <= 2 && <p>Short version: keep the silent demo and use Next sample for a still view. The guided lesson is optional.</p>}
               </div>

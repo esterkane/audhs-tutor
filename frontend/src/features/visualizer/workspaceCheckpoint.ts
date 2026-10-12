@@ -1,3 +1,4 @@
+import { RICH_PRESET_IDS, type RichPresetId } from './richPresetIds'
 import { parseLesson, type LessonCheckpoint } from './lessonCheckpoint'
 import { parsePreset, type Preset } from './engine'
 import type { DraftHistoryState } from './useDraftHistory'
@@ -9,6 +10,7 @@ export type WorkspaceCheckpoint = {
   history: DraftHistoryState
   view: 'Watch' | 'Learn' | 'Create'
   renderer: 'graph' | 'milkdrop'
+  richPresetId?: RichPresetId
   fileExpected?: boolean
   lesson?: LessonCheckpoint
   savedId: string | null
@@ -21,6 +23,7 @@ function parse(raw: string): WorkspaceCheckpoint {
       !(value.savedId === null || (typeof value.savedId === 'string' && value.savedId.length <= 100)) ||
       !value.history || typeof value.history.text !== 'string' || value.history.text.length > 16000)
     throw new Error('Unsupported workspace')
+  if (value.richPresetId !== undefined && !RICH_PRESET_IDS.includes(value.richPresetId)) throw new Error('Unsupported artistic visual')
   if (value.fileExpected !== undefined && typeof value.fileExpected !== 'boolean') throw new Error('Invalid source checkpoint')
   if (value.lesson !== undefined) value.lesson = parseLesson(value.lesson)
   for (const list of [value.history.past, value.history.future]) {
