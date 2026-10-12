@@ -1,0 +1,239 @@
+{
+  "synthetic": true,
+  "scope": "frozen app prompt replay; not app-path integration",
+  "artifact_sha256": "7badcd9ff079f540a59a07d650e583ea6b9f209156ff72f497ab0df19b296961",
+  "model": "meta/muse-glimmer-30b",
+  "provider": "deepinfra/bf16",
+  "ceiling_usd": "1",
+  "accounted_with_fee_usd": "0.00880623270",
+  "results": [
+    {
+      "case": "counts_steps",
+      "state": "settled",
+      "reserved_or_charged_usd": "0.0013410105",
+      "response": {
+        "text": "Missingness rate is missing divided by total rows, not the absolute count.\n\nGroup A: 20 missing / 80 rows = 0.25 = 25%.\nGroup B: 10 missing / 20 rows = 0.50 = 50%.\n\nB has a higher proportion because its denominator is smaller. Absolute missing values are larger in A, but the share of rows missing income is larger in B.",
+        "finish_reason": "stop",
+        "status": "completed",
+        "first_visible_seconds": 7.943962124991231,
+        "total_seconds": 8.493995666998671,
+        "tokens_in": 1397,
+        "tokens_out": 710,
+        "reasoning_tokens": 727,
+        "cached_tokens": 0,
+        "cost_usd": "0.0012711",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "messages_sha256": "603bfa5df7f9548ac409c63d3ca5b479fb7872589d1f8d8e08829dd5b9181760"
+      },
+      "manual_review_criteria": "Correct 20/80=25% and 10/20=50%; explain each denominator in plain language. Give ordered steps, no unsolicited question, invented source or execution claim.",
+      "teaching_review": {
+        "status": "reviewed",
+        "finding": "Correct 25%/50%; smaller denominator alone is incomplete reasoning because numerators also differ."
+      }
+    },
+    {
+      "case": "fairness_uncertainty",
+      "state": "settled",
+      "reserved_or_charged_usd": "0.00094859270",
+      "response": {
+        "text": "Missing counts describe data availability, not model behavior. Fairness is about disparities in predictions or errors across groups, which requires model outputs and ground truth.\n\nThese counts alone give no information on what the model predicts for A vs B, or how often it is wrong for each group.\n\nFirst thing to inspect is per-group model error metrics on the same task, e.g., error rate, false positive/negative rate, or calibration, computed on held-out labels for A and B.",
+        "finish_reason": "stop",
+        "status": "completed",
+        "first_visible_seconds": 3.6214223749993835,
+        "total_seconds": 4.471756457991432,
+        "tokens_in": 1399,
+        "tokens_out": 663,
+        "reasoning_tokens": 712,
+        "cached_tokens": 1216,
+        "cost_usd": "0.00089914",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "messages_sha256": "6725a3f3288490f9139089447310d34bc8297654b6581765ed4df4395e6282d0"
+      },
+      "manual_review_criteria": "Do not conclude fair/unfair from missingness alone. Name concrete missing evidence or an inspection action; hypothetical causes stay hypothetical. Explain any terminology; no unexplained MCAR/MAR/MNAR or unsolicited quiz.",
+      "teaching_review": {
+        "status": "reviewed",
+        "finding": "Correct caution; unexplained jargon and multiple metrics exceed requested simple first inspection; fairness definition narrow."
+      }
+    },
+    {
+      "case": "list_steps",
+      "state": "settled",
+      "reserved_or_charged_usd": "0.00126745590",
+      "response": {
+        "text": "",
+        "finish_reason": "length",
+        "status": "incomplete",
+        "first_visible_seconds": null,
+        "total_seconds": 5.124867375008762,
+        "tokens_in": 1403,
+        "tokens_out": 900,
+        "reasoning_tokens": 1053,
+        "cached_tokens": 1152,
+        "cost_usd": "0.00120138",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "messages_sha256": "7373aef6c8348f5c8489f0488525337745260edc644930f0f586ae8865ea55dc"
+      },
+      "manual_review_criteria": "Predict [2, 4, 6] and None, separating mutation from return in concrete steps. No claim of running code or unsolicited understanding check.",
+      "teaching_review": {
+        "status": "reviewed",
+        "finding": "No visible answer; length-limited. Teaching unavailable."
+      }
+    },
+    {
+      "case": "mean_units",
+      "state": "settled",
+      "reserved_or_charged_usd": "0.00076517040",
+      "response": {
+        "text": "Mean is the average value.\n\nStep 1: add the three durations: 2 + 4 + 9 = 15 minutes.\nStep 2: count how many durations there are: 3.\nStep 3: divide the total by the count: 15 / 3 = 5 minutes.\n\nThe mean duration is 5 minutes.",
+        "finish_reason": "stop",
+        "status": "completed",
+        "first_visible_seconds": 2.8123197090171743,
+        "total_seconds": 3.151075125002535,
+        "tokens_in": 1360,
+        "tokens_out": 514,
+        "reasoning_tokens": 533,
+        "cached_tokens": 1152,
+        "cost_usd": "0.00072528",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "messages_sha256": "c7764434098e3a1ed75b8cfb2832a8daa07710959a09bf633b62275ad687d748"
+      },
+      "manual_review_criteria": "Show 15 divided by 3 = 5 minutes with meaning and units. No fake citations or unsolicited question.",
+      "teaching_review": {
+        "status": "reviewed",
+        "finding": "Correct arithmetic, ordered steps and minutes; explicit style retained."
+      }
+    },
+    {
+      "case": "socratic_choice",
+      "state": "settled",
+      "reserved_or_charged_usd": "0.00124736870",
+      "response": {
+        "text": "Missingness rate = number missing \u00f7 number of rows in the group.\n\nFor group B the denominator is 20 rows. What count of missing incomes will you use as the numerator?",
+        "finish_reason": "length",
+        "status": "incomplete",
+        "first_visible_seconds": 5.175380667002173,
+        "total_seconds": 5.337082084006397,
+        "tokens_in": 1395,
+        "tokens_out": 900,
+        "reasoning_tokens": 981,
+        "cached_tokens": 1216,
+        "cost_usd": "0.00118234",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "messages_sha256": "d5770d40e0afc74b4a021a83641fc4ee1206e53a62e88e036ea5b169062c563b"
+      },
+      "manual_review_criteria": "One focused question with enough supplied context. Do not reveal the full solution or ask for unrelated confidence. Do not call learner knowledge verified.",
+      "teaching_review": {
+        "status": "reviewed",
+        "finding": "One useful numerator question without revealing answer; still length-limited, not completed."
+      }
+    },
+    {
+      "case": "requested_analogy",
+      "state": "settled",
+      "reserved_or_charged_usd": "0.00124926770",
+      "response": {
+        "text": "",
+        "finish_reason": "length",
+        "status": "incomplete",
+        "first_visible_seconds": null,
+        "total_seconds": 5.138510541000869,
+        "tokens_in": 1401,
+        "tokens_out": 900,
+        "reasoning_tokens": 1071,
+        "cached_tokens": 1216,
+        "cost_usd": "0.00118414",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "messages_sha256": "586bde89563cd48deb5b5c65149db66f73e8fbba369ce4cd0c013baa19ec0e29"
+      },
+      "manual_review_criteria": "Honor the requested analogy without replacing within-group fractions with time rates. Connect the analogy accurately to A/B, mark illustrative details and explain a limit.",
+      "teaching_review": {
+        "status": "reviewed",
+        "finding": "No visible analogy; length-limited. Teaching unavailable."
+      }
+    },
+    {
+      "case": "transfer_fraction",
+      "state": "settled",
+      "reserved_or_charged_usd": "0.00099874740",
+      "response": {
+        "text": "Total is 12. Borrowed count is 3.\n\nFraction borrowed = borrowed / total = 3 / 12 = 1/4.\n\nRemaining count = 12 - 3 = 9.\n\nFraction remaining = remaining / total = 9 / 12 = 3/4.\n\nThe two fractions sum to 1. Next step: write 3/12 and 9/12 with the same denominator 12 and simplify each separately.",
+        "finish_reason": "stop",
+        "status": "completed",
+        "first_visible_seconds": 3.6088068330136593,
+        "total_seconds": 4.0425387079885695,
+        "tokens_in": 1374,
+        "tokens_out": 695,
+        "reasoning_tokens": 681,
+        "cached_tokens": 1152,
+        "cost_usd": "0.00094668",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "messages_sha256": "6b50b660175025624cddeb636fe259148f44f15c6d9702aac688ef0a1959afee"
+      },
+      "manual_review_criteria": "Distinguish borrowed 3/12=1/4=25% from remaining 9/12=3/4=75%. Explain the common denominator concretely; no invented data or quiz.",
+      "teaching_review": {
+        "status": "reviewed",
+        "finding": "Correct fractions but required percentages missing; redundant unsolicited simplification exercise."
+      }
+    },
+    {
+      "case": "transfer_prediction",
+      "state": "settled",
+      "reserved_or_charged_usd": "0.00098861940",
+      "response": {
+        "text": "No. Three observed values 10, 12, 14 do not prove the next value is 16.\n\nWith no forecast model or other measurements supplied, the only thing known is the past three readings. A continuation of +2 \u00b0C per day is one possible continuation, but it is not forced by the data. What is uncertain is whether a trend exists at all, whether it is linear, and what external factors will affect tomorrow\u2019s temperature. Measurement noise and random variation are also unknown.\n\nA concrete next step is to state an explicit forecasting assumption, e.g., a linear trend with constant step, and then list what would make that assumption invalid.",
+        "finish_reason": "stop",
+        "status": "completed",
+        "first_visible_seconds": 3.812583041988546,
+        "total_seconds": 4.692196999996668,
+        "tokens_in": 1382,
+        "tokens_out": 685,
+        "reasoning_tokens": 688,
+        "cached_tokens": 1152,
+        "cost_usd": "0.00093708",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "messages_sha256": "db676a9b3ca753a49f23de3a9717d55784e1daf436a932399b143601ff0cbd74"
+      },
+      "manual_review_criteria": "No: the observed +2 pattern permits a hypothetical extrapolation, not proof. Explain uncertainty plainly, without inventing causes, forecast confidence or extra observations.",
+      "teaching_review": {
+        "status": "reviewed",
+        "finding": "Correct uncertainty; jargon and unsolicited forecasting exercise exceed simple direct request."
+      }
+    }
+  ],
+  "fixture_sha256": "1f1827e6bedbada971f5f622c3115c0e3b5496e91e6af5d82ae67501fef2f718",
+  "output_cap": 900,
+  "temperature": 0,
+  "reasoning_setting": "provider default; no override",
+  "runtime_prompt_version": "playground.tutor.v14",
+  "limitations": [
+    "Single ordered sample per case; not statistical p95 or app-path latency.",
+    "Hosted BF16 and local NVFP4 MLX differ; provider defaults/cache/transport differ.",
+    "Reported reasoning token counts exceed completion counts in seven cases; breakdown inconsistent and not suitable for reasoning-fraction estimates. Reported usage.cost retained without adding reasoning twice.",
+    "No automatic production promotion; three length-limited replies, including two empty."
+  ],
+  "review_conclusion": "Not suitable for production promotion: incomplete teaching and instruction-following gaps; single ordered diagnostic only."
+}

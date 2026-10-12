@@ -186,3 +186,17 @@ the adapter/accounting validation above. No API request was sent or app routing
 changed. Include platform fees in the ceiling; do not expand the approved data scope.
 This research addendum can accompany the next relevant implementation publication
 rather than starting a separate documentation-only release cycle.
+
+
+## Hosted trial completed — 2026-10-12
+Owner supplied the local key after approving synthetic-only spending up to$1.
+Eight frozen prompt replays through OpenRouter/DeepInfra cost$0.00834714 reported
+($0.00880623270 with conservative5.5% overhead). All-attempt total median4.91s;
+first-visible median3.72s over6 nonempty replies only. Five complete, three length-
+limited, including two empty. Seven reasoning-token breakdowns contradict reported
+completion totals; do not infer reasoning fractions. Case-level independent review
+finds instruction-following gaps. No production routing promotion.
+See [trial evidence](../slices/glimmer-hosted-trial.md) for controls, limitations,
+review and reproducible persistent campaign runner. This is frozen app-prompt replay,
+not a ModelGateway integration or live lesson measurement. Earlier credential-waiting
+and preflight-only notes above are historical; the eight-call campaign is finished.

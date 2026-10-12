@@ -13,6 +13,7 @@ PROVIDER = "deepinfra/bf16"
 ARTIFACT_SHA256 = "7badcd9ff079f540a59a07d650e583ea6b9f209156ff72f497ab0df19b296961"
 CONTEXT_LIMIT = 131072
 OUTPUT_LIMIT = 900
+BILLABLE_OUTPUT_BOUND = 16384
 # Verified 2026-10-12; execution must revalidate pricing/capabilities before calls.
 INPUT_RATE = Decimal("0.0000003")
 OUTPUT_RATE = Decimal("0.0000012")
@@ -22,7 +23,7 @@ CEILING = Decimal(1)
 
 def reservation() -> Decimal:
     """Charge the entire advertised context as input; no speculative cache savings."""
-    return (CONTEXT_LIMIT * INPUT_RATE + OUTPUT_LIMIT * OUTPUT_RATE) * FEE_MULTIPLIER
+    return (CONTEXT_LIMIT * INPUT_RATE + BILLABLE_OUTPUT_BOUND * OUTPUT_RATE) * FEE_MULTIPLIER
 
 
 class CampaignBudget:
@@ -115,7 +116,7 @@ def main() -> None:
         "approved_ceiling_usd": str(CEILING),
         "paid_calls": 0,
         "execution_ready": False,
-        "remaining": "credential, live price/cap revalidation, streaming adapter and review",
+        "remaining": "paid execution is separate: eval_hosted_glimmer.py and its persistent campaign journal",
     }, indent=2))
 
 

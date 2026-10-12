@@ -41,3 +41,8 @@ promotion. Production and the local diagnostic remain unchanged.
 ## Review
 Bounded code review found no blockers or majors. This review does not establish
 paid execution readiness.
+
+The subsequent hosted trial slice increases the conservative reservation to the
+endpoint maximum16384 output tokens, including potential reasoning, even though
+requests stay at900. The revised eight-call bound is $0.497811456. See
+[hosted trial](glimmer-hosted-trial.md) for transport, persistent journal and results.
