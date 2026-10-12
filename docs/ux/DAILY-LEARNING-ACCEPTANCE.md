@@ -364,3 +364,25 @@ queue recovery, confidence reset and500ms timing checks remain unchanged.
 Full frontend126files/640tests, ESLint and tsc pass locally. No production changes;
 no new browser/build claim. Remote rerun remains necessary to confirm CI behavior.
 Bounded test review found no actionable issues; root cause remains provisional.
+
+## Repeated incorrect answers — 2026-10-12
+Two real sandbox journeys at390/1280 submit three deliberately incorrect choices,
+asserting deterministic score0 each time. Revisions link to the original attempt,
+keep review_updated=false and preserve its due date. Optional confidence stays null.
+Contextual help references the latest saved answer; its generated text is synthetic,
+so no teaching-quality claim. Keyboard revision, choice, checking, help and Pause
+work; reload/Continue restores the same checkpoint and latest saved feedback link.
+Next and Try again remain enabled; exactly three POST submissions are observed.
+This is not an independent database attempt-count assertion or human/AT acceptance.
+
+Final two browser cases pass8.6s, ESLint/e2e TypeScript pass. Narrow feedback screenshot
+inspected; no horizontal overflow. Controls below the fold remain reachable through
+keyboard, not all visible together. Existing criterion phrase “selects the correct
+option — 9” under What to reconsider could be clearer; note as a copy-review item,
+not proof of a grading error. No runtime, learning logic, styling or model changes;
+prior production build evidence reused. Code/pedagogy review found no blockers or
+majors; restored saved-answer identity assertion added after the review's minor note.
+Initial failures were test assumptions: revisions retain the root ID, and revision
+source-loading focus must settle before choosing with the keyboard. Logs:
+/tmp/repeated-incorrect-identity.log. This closes the bounded repeated-practice flow
+check, not all repeated-misconception teaching, comprehension or learning-outcome gates.
