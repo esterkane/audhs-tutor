@@ -865,6 +865,14 @@ function TeachPanel({
           </Button>
           {!(done || alt || hasQuestion) && <Disclosure label="More ways to learn">{helpActions}</Disclosure>}
         </div>
+        {skillId && (
+          <div className="mb-3">
+            <Button asChild variant="ghost">
+              <Link to={`/answers?skill_id=${encodeURIComponent(skillId)}&surface=tutor`}>Read saved explanations</Link>
+            </Button>
+            <p className="text-sm text-muted">Past replies for this concept. Opens without generating; sources may have changed.</p>
+          </div>
+        )}
         {input.trim() && <p className="text-sm mb-2">Starting an explanation keeps your draft below without sending it. Use Send lesson question to ask it.</p>}
         <label htmlFor="ask" className="text-sm font-medium">
           Ask about this lesson (optional)

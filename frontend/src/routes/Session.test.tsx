@@ -283,6 +283,7 @@ it('guides explanation to a question with optional controls collapsed and access
   expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Listen to explanation' })).not.toBeInTheDocument()
   expect(screen.getByText(/No explanation has been prepared yet/)).toBeVisible()
+  expect(screen.getByRole('link', { name: 'Read saved explanations' })).toHaveAttribute('href', '/answers?skill_id=k1&surface=tutor')
   expect(screen.queryByRole('button', { name: 'Let me try' })).not.toBeInTheDocument()
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/tutor/stream'))).toBe(false)
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/voice/speak'))).toBe(false)
