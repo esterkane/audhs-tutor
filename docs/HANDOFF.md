@@ -2300,3 +2300,8 @@ Spoken/conversation190, Socratic120 and other action caps unchanged. One real lo
 sample finished305 tokens but exceeded six sentences; no overall quality/speed claim.
 39 regression tests, Ruff/mypy228 and code/pedagogy review pass. See
 slices/explanation-output-headroom.md. Broader runtime/teaching validation remains open.
+
+2026-10-12: Task-review real 200% zoom acceptance added: 2 Chromium cases,
+keyboard/reset/no-write checks, light/dark screenshots, e2e types and ESLint pass;
+bounded review clear. No runtime change. See slices/task-review-ui.md.
+Human/assistive-technology acceptance remains open.

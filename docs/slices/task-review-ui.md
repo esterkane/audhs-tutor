@@ -29,3 +29,13 @@ DB (d257a941be03 and 4ab714cf670c), then refreshed private snapshot.
 Remaining: human/assistive-technology acceptance; approval does not yet qualify
 performance. Next freeze receipt-or-none in prepared grading requests before
 inference, preserving older request replay and never backfilling attainment claims.
+
+
+2026-10-12 zoom acceptance: two isolated Chromium cases pass at actual 200% tab
+zoom (light 320 CSS px; dark 640 CSS px). Keyboard reveal, explicit confirmation,
+close/reopen reset and no review writes verified; no horizontal overflow. Native
+compositor screenshots inspected: readable wrapping and visible focus controls.
+E2E TypeScript and targeted ESLint pass. Bounded code/pedagogy review found no
+blockers or majors. This test-only delta changes no learning logic. Human and
+assistive-technology acceptance remain open. Subsequent binding and Progress
+qualification are already delivered; see progress-reviewed-labels.md.
