@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { BookOpen, ChartColumn, Compass, House, Pencil, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react'
+import { BookOpen, ChartColumn, Compass, House, MessageCircle, Pencil, PanelLeftClose, PanelLeftOpen, Settings } from 'lucide-react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Button } from './ui/button'
 
@@ -70,6 +70,7 @@ export function MainNavigation() {
       })}
     </nav>
     <div className="shell-navigation-footer">
+      <Link to="/ask" className="shell-preferences-link" aria-label="Ask tutor" title="Ask tutor" aria-current={path === '/ask' ? 'page' : undefined}><MessageCircle aria-hidden="true" size={20} /><span className="shell-primary-label">Ask tutor</span></Link>
       <Button aria-haspopup="dialog" onClick={event => {
         trigger.current = event.currentTarget
         if (document.querySelector('dialog[open]')) return
