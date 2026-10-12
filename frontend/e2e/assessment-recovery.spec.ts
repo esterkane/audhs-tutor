@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, endOpenSession, expectOk, freshDeterministicSkill } from './helpers'
+import { API, currentSession, endOpenSession, expectOk, freshDeterministicSkill } from './helpers'
 
 for (const recoveryState of ['grade_ready', 'prepared_ready', 'unresolved'] as const) {
 for (const narrow of [false, true]) {
@@ -55,6 +55,35 @@ for (const narrow of [false, true]) {
         await expect(lookup).toBeFocused()
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
         await panel.screenshot({ path: `/tmp/assessment-stopped-${narrow ? 'narrow' : 'desktop'}.png` })
+        const original = panel.locator('details').filter({ has: page.getByText('Original question and submitted answer', { exact: true }) })
+        await original.locator('summary').focus()
+        await page.keyboard.press('Enter')
+        await expect(original.locator('pre')).toBeVisible()
+        const submittedText = await original.locator('pre').textContent()
+        expect(submittedText?.trim()).toBeTruthy()
+        const before = await currentSession(request)
+        const writes: string[] = []
+        page.on('request', req => {
+          if (req.method() !== 'GET' && req.url().includes('/api/')) writes.push(new URL(req.url()).pathname)
+        })
+        await page.getByRole('button', { name: 'Pause and return Home', exact: true }).focus()
+        await page.keyboard.press('Enter')
+        await expect(page).toHaveURL(/\/$/)
+        await expect(page.getByRole('button', { name: /^Continue$/ })).toBeVisible()
+        expect(await currentSession(request)).toEqual(before)
+        await page.reload()
+        await page.getByRole('button', { name: /^Continue$/ }).click()
+        await expect(panel).toBeVisible()
+        await lookup.focus()
+        await page.keyboard.press('Enter')
+        await expect(panel.getByText(/The local grading worker has stopped/)).toBeVisible()
+        await expect(panel.getByRole('button', { name: /Continue saved submission|Send the original answer/ })).toHaveCount(0)
+        expect(await currentSession(request)).toEqual(before)
+        await original.locator('summary').focus()
+        await page.keyboard.press('Enter')
+        await expect(original.locator('pre')).toBeVisible()
+        expect(await original.locator('pre').textContent()).toBe(submittedText)
+        expect(writes).toEqual([`/api/sessions/${session.id}/prepare`])
         expect(submissions).toBe(1)
         return
       }

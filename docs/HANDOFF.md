@@ -2238,3 +2238,12 @@ flushing pending changes or trusting stale ORM snapshots.47 offline tests, targe
 Ruff/strict mypy and static review pass. No endpoint, migration or acceptance write;
 authorization and transactional revalidation remain integration requirements. See
 slices/visual-learning-binding.md. UI unchanged.
+
+
+## Interrupted assessment re-entry acceptance — 2026-10-12
+
+Added desktop/narrow Pause→Home reload→Continue coverage for unresolved result UI.
+Original answer/checkpoint preserved; no new grading submission. Only the existing
+local preload POST occurs.6 browser checks, ESLint/e2e types pass; no runtime edits.
+See slices/assessment-durable-result-plan.md for simulated lookup boundary and exact
+evidence. Truly uncertain inference is still not automatically retried.
