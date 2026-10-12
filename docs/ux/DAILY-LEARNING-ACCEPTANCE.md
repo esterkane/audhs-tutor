@@ -297,3 +297,14 @@ terms; fixture corrected, no runtime defect/change. Only the existing read-only
 corpus search POST is excluded from the no-learning-writes assertion. Production
 checks reused for unchanged app code. Human/AT and other-route acceptance remain
 open. Log:/tmp/search-zoom-final.log. Both repository variants remain private.
+
+
+2026-10-12 integrated preference-change acceptance: actual200% zoom journey now
+keyboard-saves large text during an active lesson, verifies the root font increases,
+then returns through Pause/reload, Explore/selection and Search to the same draft
+and server checkpoint. Only one expected ui.font_scale PUT is allowed; other
+learning writes remain forbidden. Sandbox font preference resets in cleanup.
+Both light320/dark640 CSS-pixel cases pass (11.9s), ESLint/e2e types pass; narrow
+post-change selection screenshot inspected. No runtime change; production checks
+reused. This verifies the display setting, not learning-preference timing, every
+sensory option or human/AT acceptance. Log:/tmp/preference-session-zoom.log.

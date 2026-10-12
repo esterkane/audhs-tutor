@@ -38,6 +38,7 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
   })
   try {
     await endOpenSession(request)
+    await expectOk(await request.put(`${API}/api/preferences`, { data: { key: 'ui.font_scale', value: 'normal' } }))
     await expectOk(await request.put(`${API}/api/preferences`, { data: { key: 'ui.theme', value: theme } }))
     for (const key of ['goal.area', 'goal.course']) await expectOk(await request.put(`${API}/api/preferences`, { data: { key, value: '' } }))
     const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
@@ -48,7 +49,8 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     const before = await currentSession(request)
     const page = await context.newPage()
     const writes: string[] = []
-    page.on('request', r => { if (r.url().includes('/api/') && r.method() !== 'GET' && !r.url().endsWith('/prepare') && !r.url().endsWith('/api/corpus/search')) writes.push(r.url()) })
+    const preferenceWrites: unknown[] = []
+    page.on('request', r => { if (r.url().endsWith('/api/preferences') && r.method() === 'PUT') { preferenceWrites.push(r.postDataJSON()); return } if (r.url().includes('/api/') && r.method() !== 'GET' && !r.url().endsWith('/prepare') && !r.url().endsWith('/api/corpus/search')) writes.push(r.url()) })
     await page.goto('/')
     const rootSize = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
     await setZoom(context, page, 2)
@@ -96,7 +98,13 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     await cdp.detach()
     await page.getByRole('link', { name: 'Preferences', exact: true }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('button', { name: 'large', exact: true })).toBeVisible()
+    const largeText = page.getByRole('button', { name: 'large', exact: true })
+    await expect(largeText).toBeVisible()
+    await largeText.focus()
+    await page.keyboard.press('Enter')
+    await expect(largeText).toHaveAttribute('aria-pressed', 'true')
+    await expect.poll(() => page.evaluate(() => parseFloat(getComputedStyle(document.documentElement).fontSize))).toBeGreaterThan(parseFloat(rootSize))
+    expect(preferenceWrites).toEqual([{ key: 'ui.font_scale', value: 'large' }])
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.getByRole('button', { name: 'Back', exact: true }).focus()
     await page.keyboard.press('Enter')
@@ -179,7 +187,9 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     await expect(draft).toHaveValue('Keep my question through real browser zoom')
     expect(await currentSession(request)).toEqual(before)
     expect(writes).toEqual([])
+    expect(preferenceWrites).toEqual([{ key: 'ui.font_scale', value: 'large' }])
   } finally {
+    await expectOk(await request.put(`${API}/api/preferences`, { data: { key: 'ui.font_scale', value: 'normal' } }))
     await context.close()
     await endOpenSession(request)
     await expectOk(await request.put(`${API}/api/preferences`, { data: { key: 'ui.theme', value: 'light' } }))
