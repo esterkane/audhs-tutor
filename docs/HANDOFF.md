@@ -2171,3 +2171,6 @@ quality work must target evidence fidelity/false attribution with reviewed contr
 
 
 2026-10-12 M01 proposed contract: slices/material-rights-contract.md specifies learner-scoped version evidence, append-only action decisions, derived lineage, unknown handling and backup/restore acceptance. Not an accepted policy or implemented gate. No runtime or learning changes; candidate model download still awaits approval.
+
+
+2026-10-12 browser Back transition acceptance: six Pause/Back start/movement/review journeys pass, focused lint/e2e types pass, narrow screenshot inspected. No runtime change; see ux/DAILY-LEARNING-ACCEPTANCE.md. Glimmer download authorized and running; MCP installation is local Codex configuration, not app dependency.

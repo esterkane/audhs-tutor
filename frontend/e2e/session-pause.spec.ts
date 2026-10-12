@@ -64,78 +64,81 @@ for (const width of [1280, 390]) {
   }
 }
 
-for (const step of ['start', 'movement-next', 'review-next'] as const) {
-  test(`late ${step} response cannot undo pause`, async ({ page, request }, info) => {
-    await endOpenSession(request)
-    try {
-      const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
-      await expectOk(response)
-      const session = await response.json()
-      if (step !== 'start') {
-        const type = step === 'movement-next' ? 'movement_primer' : 'retrieval'
-        const index = session.plan.findIndex((block: { type: string }) => block.type === type)
-        expect(index).toBeGreaterThanOrEqual(0)
-        await expectOk(await request.post(`${API}/api/plan/blocks/start`, {
-          data: { session_id: session.id, index },
-        }))
-      }
-      await page.clock.install()
-      await page.setViewportSize({ width: step === 'movement-next' ? 390 : 1280, height: 900 })
-      await page.goto('/')
-      await page.getByRole('button', { name: /^Continue$/ }).click()
-      if (step === 'review-next') await finishReview(page)
-      if (step === 'movement-next') {
-        await page.getByRole('button', { name: 'walk 5 minutes', exact: true }).click()
-        await page.getByRole('button', { name: '3', exact: true }).click()
-        await expect(page.getByRole('button', { name: 'Log and continue', exact: true })).toBeEnabled()
-      }
-      let transitionCalls = 0
-      let release!: () => void
-      const delivery = new Promise<void>((resolve) => { release = resolve })
-      let committed!: () => void
-      const ready = new Promise<void>((resolve) => { committed = resolve })
-      let delivered!: () => void
-      const finished = new Promise<void>((resolve) => { delivered = resolve })
-      await page.route(`**/api/plan/blocks/${step === 'start' ? 'start' : 'next'}`, async (route) => {
-        transitionCalls++
-        const saved = await route.fetch()
-        await expectOk(saved)
-        committed()
-        await delivery
-        await route.fulfill({ response: saved })
-        delivered()
-      })
-      const action = step === 'start' ? /then new material/ : step === 'movement-next' ? 'Skip this block' : 'Continue the plan'
-      await page.getByRole('button', { name: action }).click()
-      await ready
-      if (step === 'movement-next') {
-        await expect(page.getByRole('button', { name: 'Skip this block', exact: true })).toBeDisabled()
-        await expect(page.getByRole('button', { name: 'Log and continue', exact: true })).toBeDisabled()
-      }
-      await expect(page.getByText('This change is taking longer than expected.', { exact: false })).not.toBeVisible()
-      await page.clock.fastForward(16000)
-      await expect(page.getByRole('status').filter({ hasText: 'This change is taking longer than expected.' })).toBeVisible()
-      expect(transitionCalls).toBe(1)
-      await page.screenshot({ path: info.outputPath('waiting-transition.png'), fullPage: true })
-      await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
-      await expect(page).toHaveURL(/\/$/)
-      release()
-      await finished
-      // Allow the intentionally delayed response callbacks to run before checking navigation.
-      await page.waitForTimeout(200)
-      // A read of the fresh server state on Home must settle without old navigation winning.
-      await expect(page.getByRole('button', { name: /^Continue$/ })).toBeVisible()
-      await expect.poll(() => page.url()).toMatch(/\/$/)
-      const persisted = await currentSession(request)
-      expect(persisted?.id).toBe(session.id)
-      await page.getByRole('button', { name: /^Continue$/ }).click()
-      await expect(page.getByRole('button', { name: 'Pause and return Home', exact: true })).toBeVisible()
-      expect(await currentSession(request)).toEqual(persisted)
-      expect(transitionCalls).toBe(1)
-    } finally {
+for (const exit of ['pause', 'browser Back'] as const) {
+  for (const step of ['start', 'movement-next', 'review-next'] as const) {
+    test(`late ${step} response cannot undo ${exit}`, async ({ page, request }, info) => {
       await endOpenSession(request)
-    }
-  })
+      try {
+        const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
+        await expectOk(response)
+        const session = await response.json()
+        if (step !== 'start') {
+          const type = step === 'movement-next' ? 'movement_primer' : 'retrieval'
+          const index = session.plan.findIndex((block: { type: string }) => block.type === type)
+          expect(index).toBeGreaterThanOrEqual(0)
+          await expectOk(await request.post(`${API}/api/plan/blocks/start`, {
+            data: { session_id: session.id, index },
+          }))
+        }
+        await page.clock.install()
+        await page.setViewportSize({ width: step === 'movement-next' ? 390 : 1280, height: 900 })
+        await page.goto('/')
+        await page.getByRole('button', { name: /^Continue$/ }).click()
+        if (step === 'review-next') await finishReview(page)
+        if (step === 'movement-next') {
+          await page.getByRole('button', { name: 'walk 5 minutes', exact: true }).click()
+          await page.getByRole('button', { name: '3', exact: true }).click()
+          await expect(page.getByRole('button', { name: 'Log and continue', exact: true })).toBeEnabled()
+        }
+        let transitionCalls = 0
+        let release!: () => void
+        const delivery = new Promise<void>((resolve) => { release = resolve })
+        let committed!: () => void
+        const ready = new Promise<void>((resolve) => { committed = resolve })
+        let delivered!: () => void
+        const finished = new Promise<void>((resolve) => { delivered = resolve })
+        await page.route(`**/api/plan/blocks/${step === 'start' ? 'start' : 'next'}`, async (route) => {
+          transitionCalls++
+          const saved = await route.fetch()
+          await expectOk(saved)
+          committed()
+          await delivery
+          await route.fulfill({ response: saved })
+          delivered()
+        })
+        const action = step === 'start' ? /then new material/ : step === 'movement-next' ? 'Skip this block' : 'Continue the plan'
+        await page.getByRole('button', { name: action }).click()
+        await ready
+        if (step === 'movement-next') {
+          await expect(page.getByRole('button', { name: 'Skip this block', exact: true })).toBeDisabled()
+          await expect(page.getByRole('button', { name: 'Log and continue', exact: true })).toBeDisabled()
+        }
+        await expect(page.getByText('This change is taking longer than expected.', { exact: false })).not.toBeVisible()
+        await page.clock.fastForward(16000)
+        await expect(page.getByRole('status').filter({ hasText: 'This change is taking longer than expected.' })).toBeVisible()
+        expect(transitionCalls).toBe(1)
+        await page.screenshot({ path: info.outputPath('waiting-transition.png'), fullPage: true })
+        if (exit === 'browser Back') await page.goBack()
+        else await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
+        await expect(page).toHaveURL(/\/$/)
+        release()
+        await finished
+        // Allow the intentionally delayed response callbacks to run before checking navigation.
+        await page.waitForTimeout(200)
+        // A read of the fresh server state on Home must settle without old navigation winning.
+        await expect(page.getByRole('button', { name: /^Continue$/ })).toBeVisible()
+        await expect.poll(() => page.url()).toMatch(/\/$/)
+        const persisted = await currentSession(request)
+        expect(persisted?.id).toBe(session.id)
+        await page.getByRole('button', { name: /^Continue$/ }).click()
+        await expect(page.getByRole('button', { name: 'Pause and return Home', exact: true })).toBeVisible()
+        expect(await currentSession(request)).toEqual(persisted)
+        expect(transitionCalls).toBe(1)
+      } finally {
+        await endOpenSession(request)
+      }
+    })
+  }
 }
 
 for (const width of [390, 1280]) {

@@ -321,3 +321,14 @@ stops waiting, with explicit recovery described in UI. Corrected the test contra
 not runtime. Synthetic transport proves client identity, not server replay behavior,
 model quality or human discoverability. No production changes; prior build evidence
 reused. Logs:/tmp/companion-interruption{,-final}.log. Both repos private.
+
+
+## Browser Back during committed transitions — 2026-10-12
+
+Extended the existing delayed-transition fixture to browser Back as well as Pause.
+All six final start/movement/review cases pass (12.6s), preserving committed session
+state and allowing explicit re-entry without another transition request. ESLint and
+e2e TypeScript checks pass. Inspected narrow waiting-state screenshot: status wraps
+and controls remain visible; this is not a new full accessibility/keyboard audit.
+No runtime or learning change. General browser Forward and human re-entry remain
+separate gates. Evidence: /tmp/audhs-back-final.log.
