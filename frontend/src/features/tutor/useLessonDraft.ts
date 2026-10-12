@@ -1,9 +1,15 @@
 import { useRef, useState, type SetStateAction } from 'react'
 
+// Only failed browser writes live here; never persisted or submitted automatically.
+// The existing session/block/skill scope prevents recovery into a different activity.
+const unsaved = new Map<string, string>()
+const reloadWarning = 'Your draft is kept while navigating in this tab but could not be saved for reload. Keep a copy.'
+
 /** Scope is fixed by the parent panel key: session, block instance and skill. */
 export function useLessonDraft(scope: string) {
   const key = `lesson-draft:v1:${scope}`
   const [initial] = useState(() => {
+    if (unsaved.has(key)) return { text: unsaved.get(key)!, error: reloadWarning }
     try {
       const text = sessionStorage.getItem(key) ?? ''
       if (text.length > 100000) throw new Error('Oversized draft')
@@ -22,9 +28,11 @@ export function useLessonDraft(scope: string) {
     try {
       if (next.length > 100000) throw new Error('Oversized draft')
       sessionStorage.setItem(key, next)
+      unsaved.delete(key)
       setError('')
     } catch {
-      setError('Your draft is kept on this page but could not be saved for reload. Keep a copy.')
+      unsaved.set(key, next)
+      setError(reloadWarning)
     }
   }
   return { input, setInput, error }

@@ -2309,3 +2309,8 @@ Human/assistive-technology acceptance remains open.
 2026-10-12: Real task-review persistence and review→grade→Progress pipeline
 acceptance added: 2 browser and2 HTTP/storage tests pass, targeted lint/types pass.
 No runtime change or paid inference. See slices/progress-reviewed-labels.md.
+
+2026-10-12: R4 denied-storage lesson drafts now survive Pause/return in tab
+memory. Failed remount reproduction fixed; 647 frontend tests,6 browser cases,
+lint/types/build and bounded review pass. No backend or learning changes. See
+slices/lesson-draft-navigation-recovery.md for reload limits and remaining R4 work.

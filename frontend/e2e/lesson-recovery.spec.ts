@@ -112,3 +112,41 @@ test('long streaming content keeps Stop before the response on narrow screens', 
   await expect(page.getByLabel('Ask about this lesson (optional)')).toHaveValue('Keep this question')
   await expect(page.getByText('Streaming example.', { exact: true })).toHaveCount(80)
 })
+
+for (const width of [390, 1280]) test(`unsaved lesson question survives storage denial and Pause ${width}`, async ({ page, request }, info) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.addInitScript(() => {
+    const write = Storage.prototype.setItem
+    Storage.prototype.setItem = function (key: string, value: string) {
+      if (key.startsWith('lesson-draft:')) throw new DOMException('Full', 'QuotaExceededError')
+      return write.call(this, key, value)
+    }
+  })
+  const response = await request.post(`${API}/api/sessions`, { data: { mode: 'steady', energy: 3 } })
+  await expectOk(response)
+  const session = await response.json()
+  const index = session.plan.findIndex((block: { type: string }) => block.type === 'new_material')
+  await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index } }))
+  let sends = 0
+  page.on('request', req => { if (req.url().endsWith('/api/tutor/stream')) sends++ })
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  const input = page.getByLabel('Ask about this lesson (optional)')
+  await input.fill('How does this connect to my earlier example?')
+  const warning = page.getByText('Your draft is kept while navigating in this tab but could not be saved for reload. Keep a copy.')
+  await expect(warning).toBeVisible()
+  await page.getByRole('button', { name: 'Pause and return Home', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await page.getByRole('button', { name: 'Continue', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(input).toHaveValue('How does this connect to my earlier example?')
+  await expect(warning).toBeVisible()
+  expect(sends).toBe(0)
+  await input.focus()
+  await page.screenshot({ path: info.outputPath('draft-storage-denied.png') })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await input.fill('')
+  await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
+  await page.getByRole('button', { name: 'Continue', exact: true }).click()
+  await expect(input).toHaveValue('')
+})
