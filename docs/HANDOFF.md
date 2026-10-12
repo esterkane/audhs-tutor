@@ -2200,3 +2200,13 @@ proposal; see slices/visual-learning-binding.md for exact-version binding, sourc
 verification and authored-history boundaries. V00 lifecycle/ADR remains proposed;
 no runtime or learning-logic change, migration, new dependency or browser-test claim.
 Next: resolve authored lifecycle before V03 storage, then bounded schema/binding tests.
+
+
+## Visual binding validator — 2026-10-12
+
+Added a pure strict/bounded binding schema and read-only validator against actual
+lesson/source records.17 offline tests, targeted Ruff and strict source-module mypy
+passed; bounded review found no blockers/majors. See slices/visual-learning-binding.md
+for limits: unwired to API/UI, no persistence/ownership guarantee from caller data,
+no renderer payload schema or learning-state writes. Next: bounded relationship
+payload and authenticated integration after authored lifecycle decision.

@@ -73,3 +73,28 @@ No app behavior changed, so no browser success or new runtime test pass is claim
 The existing standalone prototype's browser/test evidence remains in
 `visual-learning-prototype.md`. This is a prerequisite clarification, not completion
 of V03/V04 or adoption of the complete design system.
+
+
+## Pure validator foundation implemented — 2026-10-12
+
+`schemas/visual_binding.py` defines the strict bounded `visual-binding.v1` reference
+contract. `kernel/visual_binding.py` compares it with server-resolved LearningObject
+and Chunk records: exact object/version/skill/goal, criterion index/text, source
+membership/version and SHA-256 text identity. Duplicate criterion/source references
+and unknown envelope fields are rejected. Repeated criterion text at different
+indices remains valid. Missing evidence fails rather than being relabeled grounded.
+
+This is not a renderer payload schema or a production endpoint. It cannot establish
+ownership from arbitrary caller-supplied records; the future authenticated service
+must resolve them. No schema migration, cache writes, model calls, lesson changes,
+competency evidence or UI behavior. Authored persistence remains proposed.
+
+Verification:17 offline tests passed; targeted Ruff and strict mypy on both source
+modules passed (`--follow-imports=silent`). Tests cover exact JSON binding, wrong
+object/version/skill/goal/criterion, missing/unrelated/changed source records, duplicate
+criteria, empty sources, extra fields, coercion and oversized goal. Browser/keyboard
+checks are not relevant to this unwired backend-only validator; prior prototype
+journeys are not presented as integration evidence.
+
+Independent bounded static code/provenance review found no blockers or majors;
+the reviewer did not rerun tests.
