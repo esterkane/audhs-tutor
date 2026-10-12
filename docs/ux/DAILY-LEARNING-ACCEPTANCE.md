@@ -195,6 +195,9 @@ Two new390/1280 browser cases reproduced raw history.back leaving the app from d
 
 Final verification: production build passed;390/1280 screenshots inspected with readable controls/focus, bounded review clear. No layout change. Human comprehension and actual browser zoom remain separate open gates.
 
+2026-10-11 native zoom attempt: isolated5175/8011 sandbox opened via Chrome connector. Tab key commands did not establish any zoom level; native Chrome was actively being used and interrupted tab selection. Stopped to avoid interfering; temporary tab and sandbox processes closed. Actual browser zoom remains unverified. Rendered Preferences exposed stale correction-inbox copy claiming replacement unavailable despite shipped publication. Next bounded fix: reconcile that copy with the verified saved-draft/source-preview/explicit-confirmation flow.
+
+
 ## DL-02 current rendered baseline — 2026-10-11
 
 Read-only sandbox probe at390×900, seeded lesson with no model generation: Start
@@ -332,3 +335,20 @@ e2e TypeScript checks pass. Inspected narrow waiting-state screenshot: status wr
 and controls remain visible; this is not a new full accessibility/keyboard audit.
 No runtime or learning change. General browser Forward and human re-entry remain
 separate gates. Evidence: /tmp/audhs-back-final.log.
+
+
+## Browser Forward after interrupted transitions — 2026-10-12
+Three sandbox cases now cover Forward after leaving committed start, movement-next
+and review-next responses via Back. No duplicate transition; server checkpoint stays
+unchanged. Phase-specific headings/routes are checked. Historical Review intentionally
+stays browseable as Review done; keyboard Back to the session reaches the live
+skill heading. This is explicit recovery, not automatic route replacement.
+Three cases pass10.1s; final changed review assertion passes7.4s. ESLint/e2e types
+pass.390px review and1280px live lesson screenshots inspected; keyboard Pause works
+and no horizontal overflow occurs. Code review's insufficient-display-assertion
+finding was addressed. No production changes, so prior build evidence is reused.
+Initial failures were test-contract expectations (automatic redirect and heading
+prefix), not runtime regressions. Review-next screenshot covers the live lesson
+after explicit return, not the historical Review page. Human re-entry, screen readers
+and general history behavior remain open. Logs:/tmp/audhs-forward-final.log and
+/tmp/audhs-forward-review-final.log.

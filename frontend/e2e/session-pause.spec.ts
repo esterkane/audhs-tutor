@@ -130,6 +130,38 @@ for (const exit of ['pause', 'browser Back'] as const) {
         await expect.poll(() => page.url()).toMatch(/\/$/)
         const persisted = await currentSession(request)
         expect(persisted?.id).toBe(session.id)
+        if (exit === 'browser Back') {
+          // Forward restores the historical route, but the committed server checkpoint wins.
+          await page.goForward()
+          const pause = page.getByRole('button', { name: 'Pause and return Home', exact: true })
+          await expect(pause).toBeVisible()
+          if (step === 'review-next') {
+            // A historical Review page remains browseable; its explicit return opens the live block.
+            await expect(page.getByRole('heading', { name: 'Review done', exact: true })).toBeVisible()
+            const returnToSession = page.getByRole('button', { name: 'Back to the session', exact: true })
+            await returnToSession.focus()
+            await page.keyboard.press('Enter')
+            await expect(page).toHaveURL(/\/session$/)
+            const liveResponse = await request.get(`${API}/api/sessions/${session.id}`)
+            await expectOk(liveResponse)
+            const liveSession = await liveResponse.json()
+            await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Learn: ${liveSession.active_skill.title}`)
+          } else if (step === 'movement-next') {
+            await expect(page).toHaveURL(/\/review$/)
+            await expect(page.getByRole('heading', { name: 'Review done', exact: true })).toBeVisible()
+          } else {
+            await expect(page).toHaveURL(/\/session$/)
+            await expect(page.getByRole('heading', { name: 'Movement block', exact: true })).toBeVisible()
+          }
+          expect(await currentSession(request)).toEqual(persisted)
+          expect(transitionCalls).toBe(1)
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+          await pause.focus()
+          await expect(pause).toBeFocused()
+          await page.screenshot({ path: info.outputPath('forward-restored.png'), fullPage: true })
+          await page.keyboard.press('Enter')
+          await expect(page).toHaveURL(/\/$/)
+        }
         await page.getByRole('button', { name: /^Continue$/ }).click()
         await expect(page.getByRole('button', { name: 'Pause and return Home', exact: true })).toBeVisible()
         expect(await currentSession(request)).toEqual(persisted)
