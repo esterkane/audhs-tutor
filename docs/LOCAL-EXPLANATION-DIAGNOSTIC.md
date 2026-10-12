@@ -138,3 +138,42 @@ concept. Stop if improvements only affect labels or another contract regresses;
 do not claim the broader teaching-quality gap solved. Obtain code/pedagogy review
 before adopting a production change. No runtime changes or extra model calls were
 made during this inspection; browser/keyboard/reflow evidence is unchanged.
+
+
+## Shared-base trial — not adopted
+
+A temporary in-process replacement of the base representation paragraph made
+literal explanation the default and deferred labels to explicit task contracts.
+A second replacement restricted optional predictions to Socratic mode, preserving
+the separate full-solution check. No task prompt, production file or model route
+changed. Exact composed messages are in
+`evals/results/explanation-base-conflict-20261012.json`; its runtime version identifies
+the unchanged underlying runtime, NOT the temporary policy.
+
+Six completed local gemma3:12b calls, zero reported paid cost:
+
+| Case | Observation | Total reply time |
+| --- | --- | --- |
+| Counts | Correct 25%/50%, numbered comparison; unwanted question | 12.428s |
+| Fairness | Retains uncertainty but MCAR/MAR/MNAR still increases complexity | 3.825s |
+| List | Correct numbered trace and None; unwanted clarification question | 6.240s |
+| Mean | Correct 5 minutes, explanation in paragraphs | 4.893s |
+| Socratic control | One relevant question, no full solution | 2.095s |
+| Requested analogy | Switches to time rates instead of supplied group proportions; does not connect back to data | 4.286s |
+
+Representation prefixes disappeared in this sample, but fake-looking
+`[general guidance]` labels remain. Literal arithmetic is correct; teaching/mode
+contract adherence is still insufficient. Reject the candidate under the stated
+stopping criterion. These single synthetic samples are manual diagnostic evidence,
+not causal proof, statistical comparisons, a representation-endpoint test or human
+comprehension validation. No UI change: keyboard/reflow evidence is unchanged.
+
+Consumer inspection also found separate version metadata for workspace, grader,
+area drafting and curriculum drafting; a future shared-base adoption needs to
+account for those consumers, not just bump the lesson prompt version.
+
+Stop further wording experiments in this diagnostic. Preserve this gap in G1.
+The next useful quality step is a fixed, independently reviewed teaching-contract
+evaluation spanning these failures and untouched cases before comparing capable
+installed local models; do not weaken quality or enable paid routing automatically.
+Continue the independent integrated-acceptance queue while that gate remains open.

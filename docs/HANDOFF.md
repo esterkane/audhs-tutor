@@ -2124,3 +2124,11 @@ safely replace exact-step workspace adaptation. Recorded bounded versioned-polic
 proposal and acceptance gates in LOCAL-EXPLANATION-DIAGNOSTIC.md. No runtime edits,
 model calls or new quality claim. Next inspect all base consumers/cache identities
 before implementation and one bounded local evaluation. Both repos remain private.
+
+
+2026-10-12 shared-base trial rejected: six local calls removed representation
+prefixes but retained unsolicited questions/jargon and an off-target analogy.
+No production change or paid call. Exact synthetic trial evidence and consumer
+version caveat in LOCAL-EXPLANATION-DIAGNOSTIC.md. Stop wording experiments; G1
+remains open. Continue independent integrated acceptance; broader quality needs
+a fixed reviewed contract set before another model comparison. Both repos private.
