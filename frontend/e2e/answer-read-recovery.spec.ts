@@ -79,3 +79,41 @@ for (const width of [320, 1280]) test(`saved history survives failed refresh aft
   await expect(link).toHaveCount(0)
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+for (const width of [320, 1280]) test(`saved detail retains transient failures but respects unavailable records ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  let status = 200
+  let hold = false
+  let release!: () => void
+  const pending = new Promise<void>(resolve => { release = resolve })
+  const item = { id: 'cached-detail', request_text: 'Cached question', preview: 'Saved content', surface: 'tutor', created_at: '2026-10-01' }
+  await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [item], next_cursor: null } }))
+  await page.route('**/api/answers/cached-detail', async route => {
+    if (hold) await pending
+    await route.fulfill({ status, json: status === 200 ? { ...item, text: 'Retained explanation text.', request: {}, metadata: {} } : {} })
+  })
+  await page.goto('/answers/cached-detail')
+  const text = page.getByText('Retained explanation text.', { exact: true })
+  await expect(text).toBeVisible()
+  await page.getByRole('link', { name: 'Back to saved answers' }).click()
+  status = 503
+  await page.getByRole('link', { name: 'Cached question', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'Could not load this answer.' })).toContainText('Showing the last loaded answer')
+  await expect(text).toBeVisible()
+  await page.screenshot({ path: `/tmp/detail-refresh-${width}.png`, fullPage: true })
+  status = 404
+  const retry = page.getByRole('button', { name: 'Retry answer' })
+  await retry.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('alert').filter({ hasText: 'This saved answer is unavailable.' })).toBeVisible()
+  await expect(text).toHaveCount(0)
+  hold = true
+  status = 200
+  await retry.focus()
+  await page.keyboard.press('Enter')
+  await expect(retry).toHaveAttribute('aria-disabled', 'true')
+  await expect(text).toHaveCount(0)
+  release()
+  await expect(text).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+})

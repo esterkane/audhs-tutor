@@ -196,7 +196,12 @@ function Answer({ id }: { id: string }) {
   useEffect(() => {
     heading.current?.focus()
   }, [])
-  const data = answer.data
+  const accessUnavailable = answer.error instanceof ApiError && [401, 403, 404, 410].includes(answer.error.status)
+  const [unavailable, setUnavailable] = useState(false)
+  // An unavailable response stays authoritative while a retry is pending.
+  if (accessUnavailable && !unavailable) setUnavailable(true)
+  if (answer.isSuccess && !answer.isFetching && unavailable) setUnavailable(false)
+  const data = !accessUnavailable && !unavailable ? answer.data : undefined
   const sources = Array.isArray(data?.metadata.sources)
     ? data.metadata.sources.filter(
         (s): s is { chunk_id: string; citation: string; cited?: boolean; flagged?: unknown } =>
@@ -230,18 +235,19 @@ function Answer({ id }: { id: string }) {
       <h1 ref={heading} tabIndex={-1} className="text-page-title font-semibold">
         Saved answer
       </h1>
-      {answer.isPending || answer.isError ? (
+      {(answer.isPending || answer.isError || answer.isFetching) && (
         <div>
-          {answer.isFetching ? <p role="status">Loading answer…</p> : <p role="alert">
+          {answer.isFetching ? <p role="status">Loading answer…{data && ' Showing the last loaded answer; it may be out of date.'}</p> : <p role="alert">
             {answer.error instanceof ApiError && answer.error.status === 404
               ? 'This saved answer is unavailable.'
               : 'Could not load this answer.'}
+            {data && ' Showing the last loaded answer; it may be out of date.'}
           </p>}
           <Button aria-disabled={answer.isFetching} aria-busy={answer.isFetching}
             onClick={() => { if (!answer.isFetching) void answer.refetch() }}>Retry answer</Button>
         </div>
-      ) : (
-        data && (
+      )}
+      {data && (
           <>
             {data.id === id && <RememberContext context={{ version: 1, kind: 'answer', answer_id: data.id, label: (data.request_text || data.target_label || 'Saved explanation').slice(0, 200) }} />}
             <p className="text-sm text-muted">
@@ -403,7 +409,6 @@ function Answer({ id }: { id: string }) {
               )}
             </details>
           </>
-        )
       )}
     </div>
   )

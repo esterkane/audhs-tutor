@@ -350,3 +350,24 @@ screenshot inspected. Self-review confirms query keys and learning behavior unch
 no detail404 behavior change. Cached detail refresh and form styling remain separate.
 Logs:/tmp/history-refresh-{before,final,query,unit,build}.log. Existing bundle warning,
 human/AT acceptance and latest-head CI remain open. Both variants remain private.
+
+
+## AU-ANSWERS-03 — Temporary detail refresh failure removes explanation (S3)
+
+2026-10-12: returning to a cached answer whose refresh returns503 hides the loaded
+explanation at320/1280. Retain it with explicit stale status. Unavailable/access
+responses must hide cached content through retry until a successful refresh; never
+reinterpret cached text as a newly checked answer. Baseline:/tmp/detail-refresh-before.log.
+
+
+2026-10-12 AU-ANSWERS-03: detail refresh retains cached explanation with explicit
+out-of-date status on transient failure.401/403/404/410 hides content; a mounted
+view latches unavailable until successful refresh, so pending retry cannot reveal
+it again. Existing saved-answer content/learning semantics unchanged. Eight existing
+browser cases passed; two new320/1280 cases pass after scoping alert selectors away
+from the separate feedback warning. They cover503 retention,404 hiding, pending
+retry hiding and successful recovery. Nine component tests, lint/types/build pass;
+narrow retained-content screenshot inspected. Self-review checked keyed answer
+identity and render-state latch. This is not a server authorization or cross-tab cache
+invalidation mechanism. Form styling and broader human/AT acceptance remain open;
+existing bundle warning remains. Logs:/tmp/detail-refresh-{before,final,retry,unit,build}.log.
