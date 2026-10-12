@@ -2219,3 +2219,13 @@ source references, explicit directedness and text equivalent; cycles/disconnecte
 concepts allowed.40 combined schema/binding tests, targeted Ruff/strict mypy passed;
 static review clear. See slices/visual-learning-binding.md. Not wired to runtime/UI;
 remaining authored lifecycle and rendering/source/semantic acceptance are unchanged.
+
+
+## Visual prototype part explanations — 2026-10-12
+
+Reusable trusted-local relationship renderer and optional keyboard part help now
+serve the existing leakage experiment. Help stays selected and updates with current
+parameters; calculations/assessment unchanged.5 unit tests, lint/types/build,2 sandbox
+journeys390/1280 and visual inspection passed; static review clear. See
+slices/visual-learning-prototype.md for limits and keyboard-test correction.
+This is not yet a server visual.v1 adapter; storage/source binding remains outstanding.
