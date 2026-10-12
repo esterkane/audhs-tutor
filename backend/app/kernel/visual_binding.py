@@ -1,13 +1,17 @@
 """Read-only binding checks; callers must resolve owned records before calling.
 
 This does not validate visual semantics, permissions, or an authored lifecycle.
-It performs no persistence, retrieval, model calls or competency updates.
+It performs no persistence, model calls or competency updates.
+The stored-record adapter reads the existing database only.
 """
 
 import hashlib
 from collections.abc import Mapping
 
-from app.db.models import Chunk, LearningObject
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.db.models import Chunk, Document, DocumentVersion, LearningObject
 from app.schemas.visual_binding import VisualBinding
 
 
@@ -43,3 +47,47 @@ def validate_binding(
             raise ValueError("source version mismatch")
         if hashlib.sha256(chunk.text.encode("utf-8")).hexdigest() != source.text_sha256:
             raise ValueError("source text changed")
+
+
+async def validate_stored_binding(db: AsyncSession, binding: VisualBinding) -> None:
+    """Check persisted content without flushing/discarding caller changes.
+
+    This is not an authorization check or an acceptance transaction. Callers must
+    authorize access and revalidate within any later authored-version write.
+    Exact historical versions are intentional; never substitute the latest one.
+    """
+    # Column projections bypass stale ORM identity-map objects and pending edits.
+    with db.no_autoflush:
+        row = (
+            (
+                await db.execute(
+                    select(
+                        LearningObject.id,
+                        LearningObject.version,
+                        LearningObject.skill_id,
+                        LearningObject.goal,
+                        LearningObject.success_criteria_json,
+                        LearningObject.sources_json,
+                    ).where(LearningObject.id == binding.object_id)
+                )
+            )
+            .mappings()
+            .one_or_none()
+        )
+        if row is None:
+            raise ValueError("learning object unavailable")
+        source_rows = (
+            (
+                await db.execute(
+                    select(Chunk.id, Chunk.document_version_id, Chunk.text)
+                    .join(DocumentVersion, DocumentVersion.id == Chunk.document_version_id)
+                    .join(Document, Document.id == DocumentVersion.document_id)
+                    .where(Chunk.id.in_([source.chunk_id for source in binding.sources]))
+                )
+            )
+            .mappings()
+            .all()
+        )
+    obj = LearningObject(**row)
+    chunks = {str(source["id"]): Chunk(**source) for source in source_rows}
+    validate_binding(binding, obj, chunks)

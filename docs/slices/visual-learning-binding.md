@@ -124,3 +124,23 @@ UI or persisted content uses this schema yet. Parsing success is not mathematica
 conceptual, source-grounding or accessibility acceptance. Required next integration
 checks include text-only rendering and network denial, real source resolution,
 reviewed semantics and the existing keyboard/responsive learner-flow gates.
+
+
+## Persisted-record binding checks — 2026-10-12
+
+`validate_stored_binding` reads exact lesson and chunk column snapshots from SQLite,
+joining source document versions/documents before applying the pure validator. It
+never substitutes a newer lesson. Column projections bypass stale ORM identity-map
+objects; `no_autoflush` prevents accidental writes of caller drafts. Pending edits
+are retained rather than refreshed/discarded. Reads create only transient snapshots.
+
+Seven disposable-database tests plus40 existing binding/schema cases passed (47).
+Coverage includes historical versions, missing objects, persisted version/text/source
+membership changes, stale identity-map values and pending edits remaining unflushed.
+Initial fixtures missed the required concept field; corrected before the passing run.
+Targeted Ruff and strict mypy passed; static review found no blockers/majors.
+
+No production endpoint, authorization policy, migration or authored acceptance is
+introduced. A future authenticated caller must authorize access and revalidate in
+its acceptance transaction; this read-only check is not a durable validity receipt.
+UI behavior unchanged, so no new browser success is claimed for this backend slice.

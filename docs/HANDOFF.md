@@ -2229,3 +2229,12 @@ parameters; calculations/assessment unchanged.5 unit tests, lint/types/build,2 s
 journeys390/1280 and visual inspection passed; static review clear. See
 slices/visual-learning-prototype.md for limits and keyboard-test correction.
 This is not yet a server visual.v1 adapter; storage/source binding remains outstanding.
+
+
+## Stored visual evidence validation — 2026-10-12
+
+Read-only database adapter now validates exact persisted lesson/source records without
+flushing pending changes or trusting stale ORM snapshots.47 offline tests, targeted
+Ruff/strict mypy and static review pass. No endpoint, migration or acceptance write;
+authorization and transactional revalidation remain integration requirements. See
+slices/visual-learning-binding.md. UI unchanged.
