@@ -1968,3 +1968,14 @@ pass;390px full-page screenshot inspected. No search semantics or learning chang
 Self-review confirms only classes changed; no new dependency or hard-coded sizing.
 Human/AT acceptance and other routes remain open; existing bundle warning remains.
 Logs:/tmp/search-targets-{before,final,build}.log. Both repos remain private.
+
+
+2026-10-12 actual200% zoom acceptance now includes Search: keyboard entry from an
+active lesson, explicit search,44px category links, jump-heading focus then result
+focus, reflow, query reload and return to unchanged lesson draft/checkpoint. Both
+light320/dark640 CSS-pixel cases pass (11.8s); compositor screenshots inspected.
+ESLint/e2e types pass. First run exposed an incomplete mock area lacking required
+terms; fixture corrected, no runtime defect/change. Only the existing read-only
+corpus search POST is excluded from the no-learning-writes assertion. Production
+checks reused for unchanged app code. Human/AT and other-route acceptance remain
+open. Log:/tmp/search-zoom-final.log. Both repository variants remain private.

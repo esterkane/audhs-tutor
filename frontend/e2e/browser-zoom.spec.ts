@@ -48,7 +48,7 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     const before = await currentSession(request)
     const page = await context.newPage()
     const writes: string[] = []
-    page.on('request', r => { if (r.url().includes('/api/') && r.method() !== 'GET' && !r.url().endsWith('/prepare')) writes.push(r.url()) })
+    page.on('request', r => { if (r.url().includes('/api/') && r.method() !== 'GET' && !r.url().endsWith('/prepare') && !r.url().endsWith('/api/corpus/search')) writes.push(r.url()) })
     await page.goto('/')
     const rootSize = await page.evaluate(() => getComputedStyle(document.documentElement).fontSize)
     await setZoom(context, page, 2)
@@ -114,7 +114,7 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     const selectedSkill = skillList.skills.find((skill: { id: string }) => skill.id !== before?.state?.skill_id)
     expect(selectedSkill).toBeTruthy()
     await page.route('**/api/areas', route => route.fulfill({ json: {
-      areas: [{ id: 'zoom-area', title: 'Example area', description: 'Browse concepts', active_lessons: 1 }],
+      areas: [{ id: 'zoom-area', title: 'Example area', description: 'Browse concepts', terms: ['example'], active_lessons: 1 }],
       total_documents: 0, unassigned_documents: 0,
     } }))
     await page.route('**/api/areas/zoom-area/concepts', route => route.fulfill({ json: {
@@ -135,6 +135,43 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     await writeFile(info.outputPath('selection-200-percent.png'), Buffer.from(selectionImage.data, 'base64'))
     await selectionCapture.detach()
     await page.getByRole('button', { name: 'Keep current session', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(draft).toHaveValue('Keep my question through real browser zoom')
+    // Search is read-only and must preserve the same learning checkpoint at real zoom.
+    await page.route('**/api/areas', route => route.fulfill({ json: { areas: [], total_documents: 0, unassigned_documents: 0 } }))
+    await page.route('**/local-learning/program.json', route => route.fulfill({ status: 404, json: {} }))
+    await page.route('**/api/answers?*', route => route.fulfill({ json: { items: [], next_cursor: null } }))
+    await page.route('**/api/corpus/search', route => route.fulfill({ json: { hits: [{
+      chunk_id: 'zoom-source', citation: 'A source with a long descriptive title for comparing evidence',
+      text: 'Inspect the evidence before drawing a conclusion.', source_type: 'text', flagged: [], quarantined: false,
+    }] } }))
+    const searchEntry = page.locator('header').getByRole('button', { name: 'Search or go to', exact: true })
+    await searchEntry.focus()
+    await page.keyboard.press('Enter')
+    await page.getByRole('button', { name: 'Open material search', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    const search = page.getByRole('searchbox', { name: 'Search phrase' })
+    await search.fill('evidence')
+    await search.press('Enter')
+    const groups = page.getByRole('navigation', { name: 'Search result groups' })
+    await expect(groups).toBeVisible()
+    for (const link of await groups.getByRole('link').all()) {
+      expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44)
+    }
+    await groups.getByRole('link', { name: 'Indexed sources', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: 'Indexed sources', exact: true })).toBeFocused()
+    await page.keyboard.press('Tab')
+    await expect(page.getByRole('link', { name: 'A source with a long descriptive title for comparing evidence' })).toBeFocused()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await groups.scrollIntoViewIfNeeded()
+    const searchCapture = await context.newCDPSession(page)
+    const searchImage = await searchCapture.send('Page.captureScreenshot', { format: 'png' })
+    await writeFile(info.outputPath('search-200-percent.png'), Buffer.from(searchImage.data, 'base64'))
+    await searchCapture.detach()
+    await page.reload()
+    await expect(search).toHaveValue('evidence')
+    await page.getByRole('link', { name: 'Learn', exact: true }).focus()
     await page.keyboard.press('Enter')
     await expect(draft).toHaveValue('Keep my question through real browser zoom')
     await setZoom(context, page, 1)
