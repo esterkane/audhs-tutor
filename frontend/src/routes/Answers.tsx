@@ -15,7 +15,8 @@ import { Card } from '../components/ui/card'
 import { SourceViewer } from '../features/curriculum/SourceViewer'
 import { withheldCount } from '../features/tutor/sourceFlags'
 import { ReadAloud } from '../features/voice/ReadAloud'
-import { ApiError, apiFetch, type Schemas } from '../lib/api'
+import { ApiError, type Schemas } from '../lib/api'
+import { boundedRead } from '../lib/boundedRead'
 
 export function Answers() {
   const { answerId } = useParams()
@@ -49,7 +50,8 @@ function History() {
   query.set('limit', '20')
   const history = useQuery({
     queryKey: ['answers', query.toString()],
-    queryFn: ({ signal }) => apiFetch<Schemas['AnswerPage']>(`/api/answers?${query}`, { signal }),
+    queryFn: ({ signal }) => boundedRead<Schemas['AnswerPage']>(`/api/answers?${query}`, signal, 'Saved answers'),
+    retry: false,
   })
   const update = (key: string, value: string) => {
     const next = new URLSearchParams(params)
@@ -126,11 +128,12 @@ function History() {
           Filtered to the selected learning context. <Link to="/answers">Show all answers</Link>
         </p>
       )}
-      {history.isPending ? (
-        <p role="status">Loading saved answers…</p>
-      ) : history.isError ? (
-        <div role="alert">
-          Could not load saved answers. <Button onClick={() => void history.refetch()}>Retry history</Button>
+      {history.isPending || history.isError ? (
+        <div>
+          {history.isFetching ? <p role="status">Loading saved answers…</p>
+            : <p role="alert">Could not load saved answers.</p>}
+          <Button aria-disabled={history.isFetching} aria-busy={history.isFetching}
+            onClick={() => { if (!history.isFetching) void history.refetch() }}>Retry history</Button>
         </div>
       ) : (
         <>
@@ -186,7 +189,7 @@ function Answer({ id }: { id: string }) {
   const answer = useQuery({
     queryKey: ['answer', id],
     queryFn: ({ signal }) =>
-      apiFetch<Schemas['AnswerDetail']>(`/api/answers/${encodeURIComponent(id)}`, { signal }),
+      boundedRead<Schemas['AnswerDetail']>(`/api/answers/${encodeURIComponent(id)}`, signal, 'Saved answer'),
     retry: false,
   })
   useEffect(() => {
@@ -226,14 +229,15 @@ function Answer({ id }: { id: string }) {
       <h1 ref={heading} tabIndex={-1} className="text-page-title font-semibold">
         Saved answer
       </h1>
-      {answer.isPending ? (
-        <p role="status">Loading answer…</p>
-      ) : answer.isError ? (
-        <div role="alert">
-          {answer.error instanceof ApiError && answer.error.status === 404
-            ? 'This saved answer is unavailable.'
-            : 'Could not load this answer.'}
-          <Button onClick={() => void answer.refetch()}>Retry answer</Button>
+      {answer.isPending || answer.isError ? (
+        <div>
+          {answer.isFetching ? <p role="status">Loading answer…</p> : <p role="alert">
+            {answer.error instanceof ApiError && answer.error.status === 404
+              ? 'This saved answer is unavailable.'
+              : 'Could not load this answer.'}
+          </p>}
+          <Button aria-disabled={answer.isFetching} aria-busy={answer.isFetching}
+            onClick={() => { if (!answer.isFetching) void answer.refetch() }}>Retry answer</Button>
         </div>
       ) : (
         data && (

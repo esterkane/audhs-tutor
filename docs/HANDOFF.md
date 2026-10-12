@@ -2022,3 +2022,15 @@ Both light320/dark640 CSS-pixel cases pass (11.9s), ESLint/e2e types pass; narro
 post-change selection screenshot inspected. No runtime change; production checks
 reused. This verifies the display setting, not learning-preference timing, every
 sensory option or human/AT acceptance. Log:/tmp/preference-session-zoom.log.
+
+
+2026-10-12 AU-ANSWERS-01: history/detail reads now use the existing15s boundedRead
+helper with automatic retry disabled. Pending/error views retain guarded keyboard
+Retry controls and announce loading/failure;404 remains distinct. Four stalled
+transport checks at320/1280 verify timeout, focus across another timeout, successful
+retry and retained search query; two saved-answer round trips also pass. Nine route
+component tests, ESLint/e2e types/build pass; narrow recovered history screenshot
+inspected. Focused self-review confirms read-only requests and no learning/model
+changes. Cached-refresh content retention and raw history form control styling remain
+separate open work; existing bundle warning and human/AT gates remain. Logs:
+/tmp/answer-read-{before,final,unit,build}.log.

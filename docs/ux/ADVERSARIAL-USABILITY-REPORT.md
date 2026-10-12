@@ -309,3 +309,24 @@ focus after another503, successful retry, original displayed-page numbering,
 saved-assessment return, concept/Back and no learning writes. Self-review confirms
 no evidence or kernel changes. Logs:/tmp/progress-cached-{before,final,visual,build}.log.
 Existing bundle warning and human/AT acceptance remain. Both variants stay private.
+
+
+## AU-ANSWERS-01 — Saved-answer reads can remain pending indefinitely (S3)
+
+2026-10-12: stalled list/detail transports remain loading beyond15s at320/1280,
+without a recovery alert. Use the existing bounded read helper and keep keyboard
+retry controls mounted during pending/error states. Preserve query/filter identity,
+404 distinction and saved content. No model call or learning write is added.
+Baseline:/tmp/answer-read-before.log. Cached refresh content retention is separate.
+
+
+2026-10-12 AU-ANSWERS-01: history/detail reads now use the existing15s boundedRead
+helper with automatic retry disabled. Pending/error views retain guarded keyboard
+Retry controls and announce loading/failure;404 remains distinct. Four stalled
+transport checks at320/1280 verify timeout, focus across another timeout, successful
+retry and retained search query; two saved-answer round trips also pass. Nine route
+component tests, ESLint/e2e types/build pass; narrow recovered history screenshot
+inspected. Focused self-review confirms read-only requests and no learning/model
+changes. Cached-refresh content retention and raw history form control styling remain
+separate open work; existing bundle warning and human/AT gates remain. Logs:
+/tmp/answer-read-{before,final,unit,build}.log.
