@@ -208,3 +208,57 @@ test('tutor keeps one pending conversation across desktop and sheet resizing', a
   await expect(panel).not.toBeVisible()
   await expect(open).toBeFocused()
 })
+
+for (const width of [320, 1280]) {
+  test(`closed companion explicitly recovers original request without reclaiming navigation ${width}`, async ({ page }, info) => {
+    await page.setViewportSize({ width, height: 900 })
+    await page.route('**/api/sessions/current', route => route.fulfill({ json: { id: 'fixture-session' } }))
+    let release!: () => void
+    const held = new Promise<void>(resolve => { release = resolve })
+    let calls = 0
+    const requests: Array<{ key: string | undefined; body: unknown }> = []
+    await page.route('**/api/playground/tutor{,/stream}', async route => {
+      calls++
+      requests.push({ key: route.request().headers()['idempotency-key'], body: route.request().postDataJSON() })
+      await held
+      await tutorReply(route, { text: 'Retained explanation for original material', model: 'fixture', route: 'local', turn_id: 'closed-turn', source_note: 'Synthetic response only' })
+    })
+    await page.goto('/sources')
+    const open = page.getByRole('button', { name: /Listen or ask about this page|Reopen learning companion/ })
+    await open.focus()
+    await page.keyboard.press('Enter')
+    const question = page.getByRole('textbox', { name: 'Your tutor message or response' })
+    await question.fill('Explain the original material')
+    await page.getByRole('button', { name: 'Send to tutor', exact: true }).click()
+    await expect.poll(() => calls).toBe(1)
+    await page.getByRole('button', { name: 'Close learning companion' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(open).toBeFocused()
+    await page.getByRole('link', { name: 'Search saved tutor answers', exact: true }).click()
+    await expect(page).toHaveURL(/\/answers/)
+    const heading = page.locator('main h1')
+    await heading.focus()
+    release()
+    // Reopening is explicit; receiving a reply must not reopen the panel or navigate.
+    await expect(page.getByRole('dialog', { name: 'Learning companion' })).not.toBeVisible()
+    await open.focus()
+    await page.keyboard.press('Enter')
+    await expect(question).toHaveValue('Explain the original material')
+    const recovery = page.getByRole('region', { name: 'Recover tutor request' })
+    await expect(recovery).toBeVisible()
+    expect(calls).toBe(1)
+    await question.fill('Later unsent question must survive recovery')
+    await recovery.getByRole('button', { name: 'Retry previous request' }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Retained explanation for original material', { exact: true }).first()).toBeVisible()
+    await expect(page).toHaveURL(/\/answers/)
+    await expect(page.getByText(/You are browsing another page/)).toBeVisible()
+    expect(calls).toBe(2)
+    expect(requests[0].key).toBeTruthy()
+    expect(requests[1]).toEqual(requests[0])
+    await expect(question).toHaveValue('Later unsent question must survive recovery')
+    await expect(recovery).not.toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: info.outputPath('interrupted-companion.png'), fullPage: true })
+  })
+}

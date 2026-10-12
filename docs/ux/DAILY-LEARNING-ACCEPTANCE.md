@@ -308,3 +308,16 @@ Both light320/dark640 CSS-pixel cases pass (11.9s), ESLint/e2e types pass; narro
 post-change selection screenshot inspected. No runtime change; production checks
 reused. This verifies the display setting, not learning-preference timing, every
 sensory option or human/AT acceptance. Log:/tmp/preference-session-zoom.log.
+
+
+2026-10-12 companion interruption acceptance: two browser journeys at320/1280
+close during a held reply, navigate to saved answers, reopen and explicitly retry.
+Original body/idempotency key are identical on retry; later unsent edits survive,
+recovery clears after completion and navigation stays on saved answers. Keyboard
+close/reopen/retry, focus return and no horizontal overflow pass;320px recovered
+composer screenshot inspected. ESLint/e2e types pass. Initial probe incorrectly
+expected automatic reply restoration; closing intentionally unmounts the tutor and
+stops waiting, with explicit recovery described in UI. Corrected the test contract,
+not runtime. Synthetic transport proves client identity, not server replay behavior,
+model quality or human discoverability. No production changes; prior build evidence
+reused. Logs:/tmp/companion-interruption{,-final}.log. Both repos private.
