@@ -9,8 +9,8 @@ it('orders recorded strengths before gaps and preserves evidence exactly', () =>
     { criterion: 'Identify groups', passed: true, evidence: 'Both groups were named.' },
   ] }} />)
   expect(screen.getAllByRole('heading').map(h => h.textContent)).toEqual(['What was right', 'What to reconsider', 'Why'])
-  expect(within(screen.getByRole('region', { name: 'What was right' })).getByText('Identify groups — Both groups were named.')).toBeVisible()
-  expect(within(screen.getByRole('region', { name: 'What to reconsider' })).getByText('Compare proportions — Only totals were compared.')).toBeVisible()
+  expect(within(screen.getByRole('region', { name: 'What was right' })).getByText('Both groups were named.', { exact: false })).toBeVisible()
+  expect(within(screen.getByRole('region', { name: 'What to reconsider' })).getByText('Only totals were compared.', { exact: false })).toBeVisible()
 })
 it('does not invent strengths or gaps when criteria are absent', () => {
   render(<AssessmentEvidence result={{ ...result, criterion_results: [] }} />)
@@ -23,4 +23,16 @@ it('does not invent a failed criterion for a fully satisfied rubric', () => {
   render(<AssessmentEvidence result={{ ...result, criterion_results: [{ criterion: 'Identify groups', passed: true, evidence: '' }] }} />)
   expect(screen.getByRole('heading', { name: 'What was right' })).toBeVisible()
   expect(screen.queryByRole('heading', { name: 'What to reconsider' })).not.toBeInTheDocument()
+})
+
+it('separates an unmet criterion from the chosen wrong option without rewriting either', () => {
+  render(<AssessmentEvidence result={{ ...result, criterion_results: [
+    { criterion: 'selects the correct option', passed: false, evidence: '9' },
+  ] }} />)
+  const gap = within(screen.getByRole('region', { name: 'What to reconsider' }))
+  expect(gap.getByText('Criterion:')).toBeVisible()
+  expect(gap.getByText('selects the correct option', { exact: false })).toHaveTextContent('Criterion: selects the correct option')
+  expect(gap.getByText('Recorded evidence:')).toBeVisible()
+  expect(gap.getByText('9', { exact: false })).toHaveTextContent('Recorded evidence: 9')
+  expect(screen.queryByRole('heading', { name: 'What was right' })).not.toBeInTheDocument()
 })

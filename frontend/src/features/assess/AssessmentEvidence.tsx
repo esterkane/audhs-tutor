@@ -13,7 +13,10 @@ export function AssessmentEvidence({ result }: { result: Pick<AttemptResult, 'cr
         return <section key={String(passed)} aria-label={passed ? 'What was right' : 'What to reconsider'}>
           <h4 className="font-medium">{passed ? 'What was right' : 'What to reconsider'}</h4>
           <ul className="list-disc ml-5 mt-1">
-            {criteria.map((c, index) => <li key={index}>{c.criterion}{c.evidence ? ` — ${c.evidence}` : ''}</li>)}
+            {criteria.map((c, index) => <li key={index}>
+              <p><span className="font-medium">Criterion: </span>{c.criterion}</p>
+              {c.evidence && <p className="mt-1"><span className="font-medium">Recorded evidence: </span>{c.evidence}</p>}
+            </li>)}
           </ul>
         </section>
       })}

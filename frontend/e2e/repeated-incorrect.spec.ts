@@ -57,6 +57,9 @@ print((int(item['answer'])+1)%len(item['options']))
       expect(grade.score).toBe(0)
       latestAnswer = grade.answer_id
       expect(grade.confidence_pre).toBeNull()
+      const gap = page.getByRole('region', { name: 'What to reconsider', exact: true })
+      await expect(gap.getByText('Criterion:', { exact: true })).toBeVisible()
+      await expect(gap.getByText('Recorded evidence:', { exact: true })).toBeVisible()
       if (attempt > 0) {
         expect(grade.revision_of_attempt_id).toBe(rootAttempt)
         expect(grade.review_updated).toBe(false)
