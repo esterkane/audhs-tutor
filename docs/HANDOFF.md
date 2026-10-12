@@ -1933,3 +1933,13 @@ Preceding complete CI is now verified green on both histories: sanitized6ba5fc4
 (run38187272238,360 browser passes/20 skips,1153 backend passes/3 skips; frontend and
 migrations green) and originala06e233 (run38186292910,all required jobs green).
 These results predate this bounded heading delta; new head CI remains pending.
+
+
+2026-10-12 actual zoom acceptance extended: existing isolated Chromium200% journey
+now keyboard-browses Explore, selects a different concept, and uses Keep current
+session to return to the preserved draft. API checkpoint equality and no unexpected
+writes remain asserted. Both light320/dark640 CSS-pixel cases pass, including prior
+Preferences/Pause/reload coverage; ESLint/e2e types pass. Both direct compositor
+selection screenshots inspected. Test helper now types the existing optional skill_id
+field. No runtime change, so production checks reused. Human comprehension/AT and
+other routes remain open. Log:/tmp/explore-zoom-final.log.

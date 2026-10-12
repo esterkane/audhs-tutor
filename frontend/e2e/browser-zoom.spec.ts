@@ -108,6 +108,35 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     await expect(draft).toHaveValue('Keep my question through real browser zoom')
     await page.reload()
     await expect(draft).toHaveValue('Keep my question through real browser zoom')
+    // Browse another topic without losing the active session or draft at real zoom.
+    const skillList = await (await request.get(`${API}/api/skills`)).json()
+    expect(before?.state?.skill_id).toBeTruthy()
+    const selectedSkill = skillList.skills.find((skill: { id: string }) => skill.id !== before?.state?.skill_id)
+    expect(selectedSkill).toBeTruthy()
+    await page.route('**/api/areas', route => route.fulfill({ json: {
+      areas: [{ id: 'zoom-area', title: 'Example area', description: 'Browse concepts', active_lessons: 1 }],
+      total_documents: 0, unassigned_documents: 0,
+    } }))
+    await page.route('**/api/areas/zoom-area/concepts', route => route.fulfill({ json: {
+      area_id: 'zoom-area', concepts: [selectedSkill],
+    } }))
+    await page.getByRole('link', { name: 'Explore', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await page.getByRole('link', { name: 'Example area', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { name: selectedSkill.title, exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.getByRole('link', { name: 'Choose this lesson', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(page.getByRole('heading', { level: 1, name: `Learn: ${selectedSkill.title}`, exact: true })).toBeVisible()
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    const selectionCapture = await context.newCDPSession(page)
+    const selectionImage = await selectionCapture.send('Page.captureScreenshot', { format: 'png' })
+    await writeFile(info.outputPath('selection-200-percent.png'), Buffer.from(selectionImage.data, 'base64'))
+    await selectionCapture.detach()
+    await page.getByRole('button', { name: 'Keep current session', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    await expect(draft).toHaveValue('Keep my question through real browser zoom')
     await setZoom(context, page, 1)
     await expect.poll(() => page.evaluate(() => innerWidth)).toBe(width)
     await expect(draft).toHaveValue('Keep my question through real browser zoom')

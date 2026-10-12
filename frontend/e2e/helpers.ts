@@ -12,6 +12,7 @@ export async function expectOk(res: { status(): number; text(): Promise<string> 
 }
 
 export type SessionState = {
+  skill_id?: string | null
   block_index: number | null
   block_status: string | null
   phase: string | null
