@@ -1,0 +1,104 @@
+{
+  "scope": "Disposable Session HTTP with seeded content and real nomic embeddings via SQLite hybrid retrieval. Standard SWA, checkpoint minimum spacing512 verified in runner log. No owner DB or hosted calls.",
+  "attempts": [
+    {
+      "case": "initial",
+      "first_text_s": 12.100197666994063,
+      "done": {
+        "elapsed_s": 19.1552124999871,
+        "registry_id": "gemma3-12b",
+        "outcome": "ok",
+        "source_count": 4
+      },
+      "native": {
+        "total_duration": 18863353917,
+        "load_duration": 1661041209,
+        "prompt_eval_count": 2767,
+        "prompt_eval_cached_count": 0,
+        "prompt_eval_duration": 10299598000,
+        "eval_count": 191,
+        "eval_duration": 6889492000,
+        "done_reason": "stop"
+      },
+      "server": {
+        "body_completed": true,
+        "marks_ms": {
+          "answer_finalized": 19153,
+          "body_sent": 19154,
+          "context_finished": 71,
+          "context_started": 69,
+          "dependencies_ready": 20,
+          "done_ready": 19153,
+          "evidence_started": 25,
+          "first_text_ready": 12099,
+          "generation_closed": 19148,
+          "headers_sent": 20,
+          "literal_history_finished": 66,
+          "literal_history_started": 63,
+          "repository_dependency_finished": 19,
+          "repository_dependency_started": 19,
+          "retrieval_finished": 62,
+          "retrieval_started": 31,
+          "semantic_history_started": 66,
+          "turn_started": 21
+        },
+        "scope": "server_request",
+        "status": 200,
+        "version": 1
+      }
+    },
+    {
+      "case": "changed",
+      "first_text_s": 11.25157374999253,
+      "done": {
+        "elapsed_s": 19.09045170797617,
+        "registry_id": "gemma3-12b",
+        "outcome": "ok",
+        "source_count": 4
+      },
+      "native": {
+        "total_duration": 18949362542,
+        "load_duration": 2704500,
+        "prompt_eval_count": 3017,
+        "prompt_eval_cached_count": 0,
+        "prompt_eval_duration": 11035736000,
+        "eval_count": 218,
+        "eval_duration": 7822226000,
+        "done_reason": "stop"
+      },
+      "server": {
+        "body_completed": true,
+        "marks_ms": {
+          "answer_finalized": 19086,
+          "body_sent": 19086,
+          "context_finished": 96,
+          "context_started": 94,
+          "dependencies_ready": 12,
+          "done_ready": 19086,
+          "evidence_started": 14,
+          "first_text_ready": 11247,
+          "generation_closed": 19080,
+          "headers_sent": 12,
+          "literal_history_finished": 57,
+          "literal_history_started": 54,
+          "repository_dependency_finished": 5,
+          "repository_dependency_started": 5,
+          "retrieval_finished": 54,
+          "retrieval_started": 20,
+          "semantic_history_started": 57,
+          "turn_started": 12
+        },
+        "scope": "server_request",
+        "status": 200,
+        "version": 1
+      }
+    }
+  ],
+  "conclusion": "No prefix reuse on changed request; runtime explicitly forced full prompt reprocessing. Do not add checkpoint tuning as a recommended optimization.",
+  "limitations": [
+    "Two observations, not percentiles.",
+    "Not paired identical prompts: prior generated answer enters follow-up history.",
+    "Both finished, but initial alignment generalization and follow-up rounding error remain.",
+    "No independent citation quality gate."
+  ]
+}

@@ -1,10 +1,12 @@
 """Request-scoped dependencies. Providers and the retrieval repo live on app.state (set in lifespan
 or overridden by tests); nothing is a module singleton."""
 
+import asyncio
 from typing import Annotated
 
 from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.applications import Starlette
 
 from app.core.config import Settings
 from app.core.tutor_timing import mark as timing_mark
@@ -57,16 +59,33 @@ async def get_gateway(
 Gateway = Annotated[ModelGateway, Depends(get_gateway)]
 
 
+async def shared_repo(app: Starlette, db: AsyncSession, settings: Settings) -> RetrievalRepository:
+    """One initialization per app; failure/cancellation leaves the next caller able to retry."""
+    repo: RetrievalRepository | None = getattr(app.state, "repo", None)
+    if repo is not None:
+        return repo
+    lock = getattr(app.state, "repo_initialization_lock", None)
+    if lock is None:
+        lock = asyncio.Lock()
+        app.state.repo_initialization_lock = lock
+    async with lock:
+        repo = getattr(app.state, "repo", None)
+        if repo is None:
+            from app.knowledge.reindex import build_repo
+
+            timing_mark("repository_initialization_started")
+            # Voice tests create their thread-bound SQLite repository in the app loop.
+            factory = getattr(app.state, "repo_factory", None)
+            repo = factory() if factory is not None else await build_repo(db, settings)
+            timing_mark("repository_initialization_finished")
+            app.state.repo = repo
+        assert repo is not None
+        return repo
+
+
 async def get_repo(request: Request, db: DB, settings: SettingsDep) -> RetrievalRepository:
     timing_mark("repository_dependency_started")
-    repo: RetrievalRepository | None = getattr(request.app.state, "repo", None)
-    if repo is None:
-        from app.knowledge.reindex import build_repo
-
-        timing_mark("repository_initialization_started")
-        repo = await build_repo(db, settings)
-        timing_mark("repository_initialization_finished")
-        request.app.state.repo = repo
+    repo = await shared_repo(request.app, db, settings)
     timing_mark("repository_dependency_finished")
     return repo
 

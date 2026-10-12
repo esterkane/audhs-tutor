@@ -9,10 +9,9 @@ from uuid import UUID
 from fastapi import APIRouter, Request, WebSocket
 from pydantic import BaseModel, Field
 
-from app.api.deps import DB, Learner, SettingsDep, get_budget
+from app.api.deps import DB, Learner, SettingsDep, get_budget, shared_repo
 from app.core.errors import AppError
 from app.kernel.learner import get_or_create_owner
-from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.routing import Router
 from app.orchestrator.tutor import TutorTurn
@@ -220,18 +219,7 @@ async def ws(websocket: WebSocket) -> None:
             app.state.providers,
             get_budget(websocket, settings),  # type: ignore[arg-type]
         )
-        repo: RetrievalRepository | None = getattr(app.state, "repo", None)
-        if repo is None:
-            # built inside the app's own loop/thread (tests hand over a factory; SQLite handles are
-            # thread-bound), otherwise the production Qdrant repository
-            factory = getattr(app.state, "repo_factory", None)
-            if factory is not None:
-                repo = factory()
-            else:
-                from app.knowledge.reindex import build_repo
-
-                repo = await build_repo(db, settings)
-            app.state.repo = repo
+        repo = await shared_repo(app, db, settings)
         turn = TutorTurn(
             db,
             gateway,

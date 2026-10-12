@@ -172,3 +172,40 @@ strict script mypy pass. Actual installed --check succeeds; live launcher return
 gap, now fixed with regression and re-review. No browser UI changed; no new visual
 claims. Usage/rollback/memory limits:docs/LOCAL-TUTOR-RUNTIME.md. Performance/quality
 acceptance remains open; the full-cache profile is experimental, not default.
+
+
+## Real embedding coexistence — 2026-10-12
+Two actual Session HTTP requests, disposable seeded DB, real nomic embeddings,
+SQLite hybrid retrieval and isolated full-SWA server (two resident models).
+No owner DB, hosted calls, or default runtime changes. Current text ceiling384.
+Initial cold tutor: first13.06s, complete19.42s,171 output tokens, natural stop.
+Changed question: first7.21s, complete15.67s,232 tokens, natural stop.
+Both models remained resident. Follow-up load3ms, prefill6.42s, decode8.44s,
+cached1278/3029 input tokens; retrieval597ms, context ready658ms.
+Initial answer overgeneralized larger dot product as greater alignment without
+holding magnitudes fixed. Follow-up formula correct but rounded0.98387 to0.99
+instead of0.98. Citation support not independently verified. No quality gate pass.
+Full-SWA remains optional: this does not solve15-second completion latency.
+Not a paired speed comparison or percentile estimate; not production Qdrant.
+Initialization precedes request timing. Server marks joined after shutdown to
+avoid immediate log capture referring to the previous request. Owned runtime stopped.
+Next isolate prompt-processing cost while preserving sources and context; verify
+known-example explanation accuracy. Diagnostic evidence will accompany the next
+implementation commit, avoiding a documentation-only publication cycle.
+Evidence: evals/results/session-real-embedding-profile-20261012.json.
+
+
+## Lower-memory checkpoint candidate rejected — 2026-10-12
+Hypothesis: standard SWA with checkpoint spacing512 might retain reusable context
+without full-SWA's extra cache. Same two requests and real-embedding fixture as
+above; isolated local server, current384 text ceiling, no app changes. Runner log
+confirmed spacing512 and KV allocations2048+480MiB (checkpoint storage additional).
+Initial first12.10s/complete19.16s. Follow-up first11.25s/complete19.09s,
+0/3017 cached input,11.04s prefill,7.82s decode. Runner explicitly forced full
+reprocessing and invalidated both checkpoints. Both answers naturally stopped;
+the same alignment generalization/rounding issue remained. Not a quality pass.
+Do not recommend checkpoint tuning or add another launcher option from this result.
+No paired latency claim: prior generated response changes follow-up history.
+The owned process exited cleanly. Evidence: session-checkpoint-profile-20261012.json.
+Next prioritize explicit preparation coverage and measured cold repository startup
+over more speculative runner tuning. Preserve all learning context and source data.
