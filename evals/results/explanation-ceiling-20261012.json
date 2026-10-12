@@ -1,0 +1,20 @@
+{
+  "cap": 384,
+  "first_s": 2.231287957984023,
+  "total_s": 13.34817650000332,
+  "native": {
+    "load_duration": 8049167,
+    "prompt_eval_count": 2607,
+    "prompt_eval_cached_count": 2606,
+    "prompt_eval_duration": 2172635000,
+    "eval_count": 305,
+    "eval_duration": 11118261000,
+    "done_reason": "stop"
+  },
+  "scope": "One native local request with captured synthetic Session prompt, output cap384; production model/prompt/context unchanged. Not an end-to-end Session timing comparison.",
+  "review": {
+    "completion": "Natural stop after305 tokens; two complete numerical dot/cosine examples.",
+    "limitations": "Exceeded requested six sentences; questionable generalization about dimensions; citations not independently validated. Not a full teaching-quality pass.",
+    "latency": "11.12s generation; raising a ceiling can increase completion time. Cached prompt prevents comparison with prior cold/uncached totals."
+  }
+}

@@ -666,3 +666,45 @@ async def test_turn_diagnostics_follow_real_orchestration(world):
     values = [timing.marks[stage] for stage in stages]
     assert values == sorted(values)
     assert text and done["outcome"] == "ok"
+
+
+@pytest.mark.parametrize(
+    ("action", "spoken", "socratic", "conversation", "expected"),
+    [
+        ("explain", False, False, False, 384),
+        ("explain", False, False, True, 190),
+        ("explain", True, False, False, 190),
+        ("explain", False, True, False, 120),
+        ("explain", True, True, False, 120),
+        ("hint", False, False, False, 95),
+        ("summarize", False, False, False, 160),
+        ("full_solution", False, False, False, 700),
+    ],
+)
+async def test_output_ceiling_preserves_other_tutor_modes(
+    world, monkeypatch, action, spoken, socratic, conversation, expected
+):
+    session = world["session"]
+    session.socratic = socratic
+    await world["db"].commit()
+    original = world["gw"].stream
+    captured = []
+
+    async def record(*args, **kwargs):
+        captured.append(kwargs["max_tokens"])
+        async for chunk in original(*args, **kwargs):
+            yield chunk
+
+    monkeypatch.setattr(world["gw"], "stream", record)
+    _, _, done = await _collect(
+        TutorTurn(world["db"], world["gw"], world["repo"]),
+        TurnRequest(
+            session_id=session.id,
+            text="Explain this",
+            action=action,
+            spoken=spoken,
+            conversation_lang="en" if conversation else None,
+        ),
+    )
+    assert captured == [expected]
+    assert done["outcome"] == "ok"

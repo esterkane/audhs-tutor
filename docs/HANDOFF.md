@@ -2292,3 +2292,11 @@ still partial at existing cap; no quality-pass claim. Four launcher tests, lint/
 installed check and real start/Ctrl-C/port-close pass. Review cleanup finding fixed.
 See LOCAL-TUTOR-RUNTIME.md and slices/session-latency-observability.md. Next: bounded
 real Session validation with retrieval and complete-answer quality before adoption.
+
+
+## Explanation completeness — 2026-10-12
+Ordinary text explanation ceiling384 replaces190 after repeated mid-example stops.
+Spoken/conversation190, Socratic120 and other action caps unchanged. One real local
+sample finished305 tokens but exceeded six sentences; no overall quality/speed claim.
+39 regression tests, Ruff/mypy228 and code/pedagogy review pass. See
+slices/explanation-output-headroom.md. Broader runtime/teaching validation remains open.

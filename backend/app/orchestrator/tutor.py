@@ -40,12 +40,13 @@ from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
 
 logger = logging.getLogger(__name__)
 
-MAX_TOKENS_FOR_ACTION = {  # ~25 tokens per sentence; the cap backs up the prompt's sentence limit
-    actions.Action.EXPLAIN: 190,
+MAX_TOKENS_FOR_ACTION = {  # Safety ceilings, not target answer lengths.
+    actions.Action.EXPLAIN: 384,
     actions.Action.HINT: 95,
     actions.Action.FULL_SOLUTION: 700,
     actions.Action.SUMMARIZE: 160,
 }
+SPOKEN_EXPLAIN_MAX_TOKENS = 190
 SOCRATIC_MAX_TOKENS = 120
 TASK_FOR_ACTION = {
     actions.Action.EXPLAIN: TaskClass.EXPLAIN_SIMPLE,
@@ -398,7 +399,13 @@ class TutorTurn:
                 "skill_id": node.id,
                 "turn_id": turn_id,
             },
-            max_tokens=SOCRATIC_MAX_TOKENS if socratic else MAX_TOKENS_FOR_ACTION[action],
+            max_tokens=(
+                SOCRATIC_MAX_TOKENS
+                if socratic
+                else SPOKEN_EXPLAIN_MAX_TOKENS
+                if (req.spoken or conversation) and action == actions.Action.EXPLAIN
+                else MAX_TOKENS_FOR_ACTION[action]
+            ),
             events=events,
         )
         partial = False
