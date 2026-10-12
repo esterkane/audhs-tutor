@@ -177,3 +177,10 @@ G2c explicit local source attachment implemented, with exact snapshots and separ
 model-review labels. See ../slices/ask-further-reading.md and
 ../slices/ask-selected-sources.md. External-source snapshots and broader factual-quality
 acceptance remain open; a synthetic conflict case still showed unsupported inference.
+
+2026-10-12: G2d explicit local reference copies implemented. Further reading now
+supports Save/Refresh, plain-text preview, then separate Add to local library.
+Fixed documentation URLs only; no question-derived requests, no credentials,
+no automatic indexing or learning evidence. Third-party text remains local.
+See ../slices/reference-snapshots.md for transport, integrity, review and test evidence.
+Broader factual-quality acceptance and G3–G6 remain open. Both repository variants remain private.

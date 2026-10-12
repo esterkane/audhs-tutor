@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test'
 import { API } from './helpers'
 
 async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' = 'complete') {
+  await page.route('**/api/references/*', route => route.fulfill({ json: { snapshot: null } }))
   const records = new Map<string, Record<string, unknown>>()
   const requests: { key: string; body: { question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } } }[] = []
   const old = { id: 'saved-example', turn_id: 'old', session_id: null, surface: 'ask', created_at: '2026-10-12T10:00:00Z', request_text: 'Why does quantization reduce memory?', learner_question: null, target_label: null, preview: 'Fewer bits per weight.', skill_id: null, area_id: null, text: 'Fewer bits per weight reduce the storage required.', request: { question: 'Why does quantization reduce memory?' }, metadata: {} }
@@ -261,4 +262,44 @@ test('Stop during source hashing prevents submission and retains the draft', asy
   await expect(page.getByLabel('Your question', { exact: true })).toHaveValue('Explain bytes')
   await expect(page.getByText('Attach local sources (optional) · 1 selected', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Retry previous request' })).toHaveCount(0)
+})
+
+
+test('Reference copy requires explicit download and import and preserves preview on failure', async ({ page }, info) => {
+  await fixture(page)
+  let downloads = 0
+  let imports = 0
+  const snapshot = { reference_id: 'numpy-basics', snapshot_id: 'a'.repeat(64), url: 'https://numpy.org/doc/stable/user/absolute_beginners.html', title: 'Synthetic NumPy reference', fetched_at: '2026-10-12T16:00:00Z', license_url: 'https://numpy.org/doc/stable/license.html', origin: 'third_party', extraction_version: 'html-blocks.v1', text_preview: 'Synthetic arrays have shapes. <script>not executed</script>', extracted_characters: 69, note: 'Local reading copy, not fact-checked.' }
+  await page.route('**/api/references/numpy-basics/load', route => {
+    downloads++
+    expect(route.request().postDataJSON()).toEqual({ refresh: downloads > 1 })
+    return downloads > 1 ? route.fulfill({ status: 502, json: { error: { message: 'Reference is temporarily unavailable' } } }) : route.fulfill({ json: snapshot })
+  })
+  await page.route('**/api/references/numpy-basics/import', route => {
+    imports++
+    expect(route.request().postDataJSON()).toEqual({ snapshot_id: 'a'.repeat(64) })
+    return imports === 1 ? route.fulfill({ status: 503, json: { error: { message: 'Reading copy kept; local index unavailable' } } }) : route.fulfill({ json: { document_id: 'reference-doc', chunks: 1, indexed: 1, changed: true, note: 'Added to the local library as third-party material.' } })
+  })
+  await page.setViewportSize({ width: 390, height: 900 })
+  await page.goto('/ask?answer=saved-example')
+  await page.getByText('Further reading · official documentation', { exact: true }).click()
+  await page.getByLabel('Documentation topic').selectOption('numpy-basics')
+  await expect(page.getByRole('button', { name: 'Save a local reading copy', exact: true })).toBeEnabled()
+  expect(downloads).toBe(0); expect(imports).toBe(0)
+  await page.getByRole('button', { name: 'Save a local reading copy', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText(/Local reading copy saved/)).toBeVisible()
+  expect(downloads).toBe(1); expect(imports).toBe(0)
+  await page.getByText(/Read saved preview/).click()
+  await expect(page.getByText(snapshot.text_preview, { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Add to local library', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'local index unavailable' })).toBeVisible()
+  await expect(page.getByText(snapshot.text_preview, { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Add to local library', exact: true }).click()
+  await expect(page.getByText(/Added to the local library as third-party material/)).toBeVisible()
+  await page.getByRole('button', { name: 'Refresh reading copy', exact: true }).click()
+  await expect(page.getByRole('alert').filter({ hasText: 'temporarily unavailable' })).toBeVisible()
+  await expect(page.getByText(snapshot.text_preview, { exact: true })).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  await page.screenshot({ path: info.outputPath('reference-copy-mobile.png'), fullPage: true })
 })

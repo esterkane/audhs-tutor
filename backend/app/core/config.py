@@ -35,6 +35,7 @@ class Settings(BaseSettings):
     transcript_cache_dir: str = "./data/transcripts"  # STT results by content hash
     vision_cache_dir: str = "./data/vision"  # vision-model answers by image bytes + model + prompt
     stt_language: str = ""  # ISO code forced for transcription; empty = auto-detect
+    reference_cache_dir: str = "./data/reference-snapshots"
     voice_dir: str = "./data/voice"  # retained voice recordings (opt-in, see voice.retain_audio)
 
     @property
@@ -75,6 +76,11 @@ class Settings(BaseSettings):
     @property
     def voice_dir_resolved(self) -> Path:
         p = Path(self.voice_dir).expanduser()
+        return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
+
+    @property
+    def reference_cache_dir_resolved(self) -> Path:
+        p = Path(self.reference_cache_dir).expanduser()
         return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
 
     @property

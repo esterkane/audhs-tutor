@@ -1,3 +1,4 @@
+import { ReferenceCopy } from './ReferenceCopy'
 import { useState } from 'react'
 import { Disclosure } from '../../components/ui/disclosure'
 import { references, suggestedReferences } from './referenceCatalog'
@@ -47,6 +48,7 @@ export function FurtherReading({ question }: { question: string }) {
               <summary>Source and reuse information</summary>
               <p className="text-sm mt-2">{card.reuseNote}</p>
             </details>
+            <ReferenceCopy key={card.id} referenceId={card.id} />
           </article>
         ))}
       </div>

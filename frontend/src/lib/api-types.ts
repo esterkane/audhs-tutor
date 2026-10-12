@@ -656,6 +656,57 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/references/{identity}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read local reference-copy status without fetching */
+    get: operations['status_api_references__identity__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/references/{identity}/load': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Explicitly save or refresh a curated external page locally */
+    post: operations['load_api_references__identity__load_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/references/{identity}/import': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Explicitly import a saved reading copy into the local library */
+    post: operations['import_copy_api_references__identity__import_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/objects/{skill_id}/representations': {
     parameters: {
       query?: never
@@ -5673,6 +5724,75 @@ export interface components {
       /** Notes */
       notes: string[]
     }
+    /** ReferenceImport */
+    ReferenceImport: {
+      /** Snapshot Id */
+      snapshot_id: string
+    }
+    /** ReferenceImported */
+    ReferenceImported: {
+      /** Document Id */
+      document_id: string
+      /** Chunks */
+      chunks: number
+      /** Indexed */
+      indexed: number
+      /** Changed */
+      changed: boolean
+      /**
+       * Note
+       * @default Added to the local library as third-party material. Search and choose relevant passages before asking.
+       */
+      note: string
+    }
+    /** ReferenceLoad */
+    ReferenceLoad: {
+      /**
+       * Refresh
+       * @default false
+       */
+      refresh: boolean
+    }
+    /** ReferenceSnapshot */
+    ReferenceSnapshot: {
+      /** Reference Id */
+      reference_id: string
+      /** Snapshot Id */
+      snapshot_id: string
+      /** Url */
+      url: string
+      /** Title */
+      title: string
+      /** Fetched At */
+      fetched_at: string
+      /** License Url */
+      license_url: string
+      /**
+       * Origin
+       * @default third_party
+       * @constant
+       */
+      origin: 'third_party'
+      /**
+       * Extraction Version
+       * @default html-blocks.v1
+       * @constant
+       */
+      extraction_version: 'html-blocks.v1'
+      /** Text Preview */
+      text_preview: string
+      /** Extracted Characters */
+      extracted_characters: number
+      /**
+       * Note
+       * @default Local reading copy, not fact-checked. Images, interactive content and linked pages are not downloaded.
+       */
+      note: string
+    }
+    /** ReferenceStatus */
+    ReferenceStatus: {
+      snapshot?: components['schemas']['ReferenceSnapshot'] | null
+    }
     /** RenderIn */
     RenderIn: {
       /** Session Id */
@@ -7906,6 +8026,107 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['PrefOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  status_api_references__identity__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        identity: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReferenceStatus']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  load_api_references__identity__load_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        identity: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReferenceLoad']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReferenceSnapshot']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  import_copy_api_references__identity__import_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        identity: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReferenceImport']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ReferenceImported']
         }
       }
       /** @description Validation Error */
