@@ -94,6 +94,7 @@ class AssessmentExecution(LearnerScoped, Base):
     request_json: Mapped[JsonDict] = mapped_column(JSON)
     grade_json: Mapped[JsonDict | None] = mapped_column(JSON, nullable=True)
     owner_json: Mapped[JsonDict | None] = mapped_column(JSON, nullable=True)
+    task_review_json: Mapped[JsonDict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
     updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 

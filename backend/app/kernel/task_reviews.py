@@ -17,7 +17,13 @@ from app.core.content_versions import token
 from app.core.errors import AppError
 from app.db.models import Assessment, AssessmentRubric, AssessmentTaskReview, SkillNode
 from app.kernel import question_state
-from app.schemas.task_reviews import TaskReviewCommand, TaskReviewPreview, TaskReviewReceipt
+from app.schemas.task_reviews import (
+    FrozenReviewIdentity,
+    FrozenTaskReview,
+    TaskReviewCommand,
+    TaskReviewPreview,
+    TaskReviewReceipt,
+)
 
 POLICY_VERSION = "task-review-v1"
 
@@ -198,3 +204,76 @@ async def preview(db: AsyncSession, learner_id: str, assessment_id: str) -> Task
         reviewable=reason is None,
         unavailable_reason=reason,
     )
+
+
+async def capture(
+    db: AsyncSession,
+    learner_id: str,
+    assessment_id: str,
+    expected_content: dict[str, Any],
+) -> FrozenTaskReview:
+    """Capture under the caller's preparation write lock; never commit or qualify.
+
+    The expected content is the separate review snapshot taken before inference,
+    not the assessment recovery snapshot. Callers must preserve the latter's hash.
+    """
+    content = await snapshot(db, learner_id, assessment_id)
+    if fingerprint(content) != fingerprint(expected_content):
+        raise AppError(
+            "task_review_content_changed",
+            "The task, objective or rubric changed before preparation. Review it again.",
+            409,
+        )
+    try:
+        require_reviewable(content)
+    except AppError:
+        return FrozenTaskReview(review=None)
+    current = await latest(db, learner_id, assessment_id)
+    if (
+        current is None
+        or current.decision != "approve"
+        or current.policy_version != POLICY_VERSION
+        or current.content_fingerprint != fingerprint(content)
+    ):
+        return FrozenTaskReview(review=None)
+    return FrozenTaskReview(
+        review=FrozenReviewIdentity(
+            receipt_id=current.id,
+            assessment_id=assessment_id,
+            revision=current.revision,
+            facet=receipt(current).facet,
+            policy_version="task-review-v1",
+            content_fingerprint=current.content_fingerprint,
+        )
+    )
+
+
+async def restore_binding(
+    db: AsyncSession, learner_id: str, assessment_id: str, raw: Any
+) -> FrozenTaskReview | None:
+    """Validate saved authority; never replace it with today's review state."""
+    from pydantic import ValidationError
+
+    if not isinstance(raw, dict) or not {"schema_version", "review"} <= raw.keys():
+        return None
+    try:
+        binding = FrozenTaskReview.model_validate(raw)
+    except ValidationError:
+        return None
+    identity = binding.review
+    if identity is None:
+        return binding
+    row = await db.get(AssessmentTaskReview, identity.receipt_id, populate_existing=True)
+    if (
+        row is None
+        or row.learner_id != learner_id
+        or row.assessment_id != assessment_id
+        or identity.assessment_id != assessment_id
+        or row.decision != "approve"
+        or row.revision != identity.revision
+        or row.facet != identity.facet
+        or row.policy_version != identity.policy_version
+        or row.content_fingerprint != identity.content_fingerprint
+    ):
+        return None
+    return binding

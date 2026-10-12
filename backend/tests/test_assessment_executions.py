@@ -138,3 +138,57 @@ def test_migration_does_not_infer_legacy_execution(tmp_path):
     command.downgrade(cfg, "a42e7f90d821")
     with sqlite3.connect(path) as conn:
         assert conn.execute("SELECT count(*) FROM workspace_request").fetchone()[0] == 1
+
+
+async def test_review_binding_is_captured_once_without_changing_request(db, learner):
+    claim_id = await new_claim(db, learner)
+    original = {"answer": "same original answer"}
+    calls = 0
+
+    async def capture():
+        nonlocal calls
+        calls += 1
+        return {"schema_version": 1, "review": None}
+
+    await executions.prepare(
+        db,
+        learner.id,
+        claim_id,
+        request_json=original,
+        content_fingerprint="original-hash",
+        capture_review=capture,
+    )
+    row = await executions.get_owned(db, learner.id, claim_id)
+    assert row.request_json == original
+    assert row.content_fingerprint == "original-hash"
+    assert row.task_review_json == {"schema_version": 1, "review": None}
+    with pytest.raises(AppError):
+        await executions.prepare(
+            db,
+            learner.id,
+            claim_id,
+            request_json=original,
+            content_fingerprint="original-hash",
+            capture_review=capture,
+        )
+    assert calls == 1
+
+
+async def test_failed_capture_leaves_no_prepared_execution(db, learner):
+    learner_id = learner.id
+    claim_id = await new_claim(db, learner)
+
+    async def changed():
+        raise AppError("changed", "Content changed", 409)
+
+    with pytest.raises(AppError):
+        await executions.prepare(
+            db,
+            learner_id,
+            claim_id,
+            request_json={"answer": "kept"},
+            content_fingerprint="original-hash",
+            capture_review=changed,
+        )
+    assert await executions.get_owned(db, learner_id, claim_id) is None
+    assert await db.get(WorkspaceRequest, claim_id) is not None

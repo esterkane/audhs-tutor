@@ -169,3 +169,78 @@ async def test_model_continuation_seals_before_gateway_and_cannot_repeat(
     assert (await client.post(url(body, "/continue"))).status_code == 409
     assert calls == [True]
     assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 0
+
+
+@pytest.mark.parametrize("approved_before", [False, True])
+@pytest.mark.parametrize("phase", ["prepared", "grade_ready"])
+async def test_prepared_review_binding_ignores_later_review_decisions(
+    client, db, monkeypatch, approved_before, phase
+):
+    from app.kernel import task_reviews
+    from app.schemas.grading import GradeResult
+    from tests.test_assessment_ownership_lifecycle import model_question
+    from tests.test_task_reviews import command
+
+    body = await model_question(client, db)
+    session = await db.get(models.Session, body["session_id"])
+    owner, task_id = session.learner_id, body["assessment_id"]
+    task = await db.get(models.Assessment, task_id)
+    rubric = models.AssessmentRubric(criteria_json=[{"criterion": "Explain the idea"}], version=1)
+    db.add(rubric)
+    await db.flush()
+    task.rubric_id = rubric.id
+    await db.commit()
+    body["content_version"] = (await grader.versioned_view(db, task)).content_version
+    before = None
+    if approved_before:
+        before = await task_reviews.decide(db, owner, task_id, await command(db, owner, task_id))
+        await db.commit()
+
+    async def successful(*args, **kwargs):
+        return GradeResult.model_validate(
+            {"criterion_results": [], "confidence": 1, "feedback": "Synthetic", "next_step": ""}
+        ), "local"
+
+    monkeypatch.setattr(grader.Grader, "_llm_grade", successful)
+    method = "prepare" if phase == "prepared" else "save_grade"
+    original_prepare = getattr(grader.assessment_executions, method)
+
+    async def stop_after_prepare(*args, **kwargs):
+        await original_prepare(*args, **kwargs)
+        raise asyncio.CancelledError()
+
+    with monkeypatch.context() as patch:
+        patch.setattr(grader.assessment_executions, method, stop_after_prepare)
+        with pytest.raises(RuntimeError, match="No response returned"):
+            await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    staged = await db.scalar(select(models.AssessmentExecution))
+    original_binding = staged.task_review_json
+    await task_reviews.decide(
+        db,
+        owner,
+        task_id,
+        await command(
+            db,
+            owner,
+            task_id,
+            decision="revoke" if approved_before else "approve",
+            expected_revision=1 if approved_before else 0,
+        ),
+    )
+    await db.commit()
+
+    if phase == "grade_ready":
+
+        async def never_grade(*args, **kwargs):
+            raise AssertionError("Saved grade recovery must not regrade")
+
+        monkeypatch.setattr(grader.Grader, "grade", never_grade)
+    response = await client.post(url(body, "/continue" if phase == "prepared" else "/finish"))
+    assert response.status_code == 200, response.text
+    attempt = await db.get(models.AssessmentAttempt, response.json()["attempt_id"])
+    saved = attempt.llm_result_json or attempt.deterministic_result_json
+    assert saved["task_review_binding"] == original_binding
+    if before:
+        assert saved["task_review_binding"]["review"]["receipt_id"] == before.id
+    else:
+        assert saved["task_review_binding"]["review"] is None

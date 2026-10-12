@@ -104,3 +104,49 @@ async def test_local_model_result_gets_internal_facts_without_trusting_model_ext
     assert facts["task_kind"] == "explain_back"
     assert facts["grading_method"] == "local"
     assert facts["independence"] == "not_verified"
+
+
+async def test_review_binding_reaches_attempt_without_changing_provenance(client, db, monkeypatch):
+    from app.db.models import AssessmentAttempt, AssessmentRubric, Session
+    from app.kernel import task_reviews
+    from app.orchestrator.grader import Grader, versioned_view
+    from app.schemas.grading import GradeResult
+    from tests.test_assessment_requests import HEADERS, prepare
+    from tests.test_task_reviews import command
+
+    body = await prepare(client, db)
+    task = await db.get(Assessment, body["assessment_id"])
+    session = await db.get(Session, body["session_id"])
+    rubric = AssessmentRubric(criteria_json=[{"criterion": "Explains comparison"}], version=1)
+    db.add(rubric)
+    await db.flush()
+    task.kind = "explain_back"
+    task.item_json = {"prompt": "Explain comparison"}
+    task.rubric_id = rubric.id
+    await db.commit()
+    review = await task_reviews.decide(
+        db, session.learner_id, task.id, await command(db, session.learner_id, task.id)
+    )
+    await db.commit()
+    body["content_version"] = (await versioned_view(db, task)).content_version
+
+    async def model_grade(*args, **kwargs):
+        return GradeResult.model_validate(
+            {
+                "criterion_results": [{"criterion": "Explains comparison", "passed": True}],
+                "confidence": 1,
+                "feedback": "Synthetic",
+                "next_step": "",
+            }
+        ), "local"
+
+    monkeypatch.setattr(Grader, "_llm_grade", model_grade)
+    response = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert response.status_code == 200, response.text
+    attempt = await db.get(AssessmentAttempt, response.json()["attempt_id"])
+    saved = attempt.llm_result_json or attempt.deterministic_result_json
+    assert saved["task_review_binding"]["review"]["receipt_id"] == review.id
+    assert saved["evidence_provenance"]["qualification"] == "not_evaluated"
+    assert saved["evidence_provenance"]["independence"] == "not_verified"
+    replay = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert replay.json()["attempt_id"] == attempt.id

@@ -26,7 +26,7 @@ from app.db.models import (
     SkillNode,
     WorkspaceRequest,
 )
-from app.kernel import competency, memory, question_replacements, question_state
+from app.kernel import competency, memory, question_replacements, question_state, task_reviews
 from app.kernel import session as ksession
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
@@ -363,12 +363,28 @@ class Grader:
                     "check the saved result before retrying.",
                     409,
                 )
+        review_content = await task_reviews.snapshot(db, learner_id, a.id)
         a = assessment_content.assessment(content)
         question_snapshot = view(a).model_dump()
         question_snapshot["content_version"] = assessment_content.token(content)
         # Close all reads before inference; gateway accounting owns its short transactions.
         await db.commit()
         if self.request_claim_id is not None and not self.execution.prepared_continuation:
+
+            async def capture_review() -> dict[str, Any]:
+                current = await assessment_content.snapshot(db, a.id, learner_id)
+                if assessment_content.recovery_fingerprint(
+                    current
+                ) != assessment_content.recovery_fingerprint(content):
+                    raise AppError(
+                        "assessment_content_changed_during_grading",
+                        "The task changed before preparation.",
+                        409,
+                    )
+                return (
+                    await task_reviews.capture(db, learner_id, a.id, review_content)
+                ).model_dump(mode="json")
+
             await assessment_executions.prepare(
                 db,
                 learner_id,
@@ -376,6 +392,7 @@ class Grader:
                 request_json=req.model_dump(mode="json"),
                 content_fingerprint=assessment_content.recovery_fingerprint(content),
                 owner_json=self.execution.guard.receipt if self.execution.guard else None,
+                capture_review=capture_review,
             )
         item = a.item_json
         correct: bool | None
@@ -509,6 +526,7 @@ class Grader:
         """
         db = self.db
         now = now or datetime.now(UTC)
+        frozen_review = None
         if self.request_claim_id is not None:
             # Serialize initial application and explicit recovery; both can race
             # after the grade has been staged but before evidence is committed.
@@ -532,6 +550,9 @@ class Grader:
             staged = await assessment_executions.get_owned(db, claim.learner_id, claim.id)
             if staged is None or staged.phase != "grade_ready":
                 raise AppError("request_unresolved", "No saved grade is available.", 409)
+            frozen_review = await task_reviews.restore_binding(
+                db, claim.learner_id, req.assessment_id, staged.task_review_json
+            )
             if staged.content_fingerprint != assessment_content.recovery_fingerprint(content):
                 raise AppError(
                     "assessment_content_changed",
@@ -604,6 +625,14 @@ class Grader:
                     **attempt.llm_result_json,
                     "evidence_provenance": provenance,
                 }
+            if frozen_review is not None:
+                payload = (
+                    attempt.llm_result_json
+                    if attempt.llm_result_json is not None
+                    else attempt.deterministic_result_json
+                )
+                assert payload is not None
+                payload["task_review_binding"] = frozen_review.model_dump(mode="json")
             db.add(attempt)
             await db.flush()
 

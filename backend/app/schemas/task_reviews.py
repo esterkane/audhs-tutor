@@ -37,3 +37,19 @@ class TaskReviewPreview(BaseModel):
     approval_matches_content: bool
     reviewable: bool
     unavailable_reason: str | None
+
+
+class FrozenReviewIdentity(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    receipt_id: str = Field(min_length=1)
+    assessment_id: str = Field(min_length=1)
+    revision: int = Field(ge=1)
+    facet: Facet
+    policy_version: Literal["task-review-v1"]
+    content_fingerprint: str = Field(min_length=1)
+
+
+class FrozenTaskReview(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    schema_version: Literal[1] = 1
+    review: FrozenReviewIdentity | None

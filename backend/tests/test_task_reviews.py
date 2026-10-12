@@ -353,3 +353,121 @@ async def test_review_api_rejects_another_learners_private_task(client, db):
     )
     assert response.status_code == 404
     assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 0
+
+
+async def test_capture_is_explicit_none_until_exact_approval(db, learner):
+    task, _, _ = await setup_task(db)
+    content = await task_reviews.snapshot(db, learner.id, task.id)
+    absent = await task_reviews.capture(db, learner.id, task.id, content)
+    assert absent.model_dump() == {"schema_version": 1, "review": None}
+    body = await command(db, learner.id, task.id)
+    receipt = await task_reviews.decide(db, learner.id, task.id, body)
+    await db.commit()
+    captured = await task_reviews.capture(db, learner.id, task.id, content)
+    assert captured.review.receipt_id == receipt.id
+    assert absent.review is None  # later approval cannot rewrite the captured value
+    revoke = await command(db, learner.id, task.id, decision="revoke", expected_revision=1)
+    await task_reviews.decide(db, learner.id, task.id, revoke)
+    await db.commit()
+    assert (await task_reviews.capture(db, learner.id, task.id, content)).review is None
+    assert captured.review.receipt_id == receipt.id
+
+
+@pytest.mark.parametrize("target", ["task", "rubric", "objective"])
+async def test_capture_rejects_edits_since_pre_inference_read(db, learner, target):
+    task, rubric, skill = await setup_task(db)
+    content = await task_reviews.snapshot(db, learner.id, task.id)
+    if target == "task":
+        task.item_json = {"prompt": "New task"}
+    elif target == "rubric":
+        rubric.criteria_json = [{"criterion": "New criterion"}]
+    else:
+        skill.description = "New objective"
+    await db.commit()
+    with pytest.raises(AppError, match="changed"):
+        await task_reviews.capture(db, learner.id, task.id, content)
+
+
+async def test_restore_uses_historical_receipt_never_later_approval(db, learner):
+    task, _, _ = await setup_task(db)
+    content = await task_reviews.snapshot(db, learner.id, task.id)
+    absent = (await task_reviews.capture(db, learner.id, task.id, content)).model_dump()
+    approved = await task_reviews.decide(
+        db, learner.id, task.id, await command(db, learner.id, task.id)
+    )
+    await db.commit()
+    saved = (await task_reviews.capture(db, learner.id, task.id, content)).model_dump()
+    await task_reviews.decide(
+        db,
+        learner.id,
+        task.id,
+        await command(db, learner.id, task.id, decision="revoke", expected_revision=1),
+    )
+    await db.commit()
+    assert (
+        await task_reviews.restore_binding(db, learner.id, task.id, saved)
+    ).review.receipt_id == approved.id
+    assert (await task_reviews.restore_binding(db, learner.id, task.id, absent)).review is None
+    assert await task_reviews.restore_binding(db, learner.id, task.id, None) is None
+    assert (
+        await task_reviews.restore_binding(db, learner.id, task.id, {"schema_version": 99}) is None
+    )
+    assert await task_reviews.restore_binding(db, "foreign-owner", task.id, saved) is None
+    assert await task_reviews.restore_binding(db, learner.id, "wrong-task", saved) is None
+
+
+async def test_restore_refuses_missing_binding_version(db, learner):
+    task, _, _ = await setup_task(db)
+    assert await task_reviews.restore_binding(db, learner.id, task.id, {"review": None}) is None
+
+
+async def test_concurrent_approval_waits_for_preparation_capture(db, learner):
+    import asyncio
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    from app.db import assessment_executions
+    from tests.test_assessment_executions import new_claim
+
+    task, _, _ = await setup_task(db)
+    owner, task_id = learner.id, task.id
+    claim_id = await new_claim(db, learner)
+    content = await task_reviews.snapshot(db, owner, task_id)
+    approval = await command(db, owner, task_id)
+    await db.commit()
+    sessions = async_sessionmaker(db.bind, expire_on_commit=False)
+    captured, release, approval_started = asyncio.Event(), asyncio.Event(), asyncio.Event()
+
+    async def prepare():
+        async with sessions() as conn:
+
+            async def capture():
+                value = await task_reviews.capture(conn, owner, task_id, content)
+                captured.set()
+                await asyncio.wait_for(release.wait(), 5)
+                return value.model_dump()
+
+            await assessment_executions.prepare(
+                conn,
+                owner,
+                claim_id,
+                request_json={"answer": "original"},
+                content_fingerprint="original",
+                capture_review=capture,
+            )
+
+    async def approve():
+        async with sessions() as conn:
+            approval_started.set()
+            await task_reviews.decide(conn, owner, task_id, approval)
+            await conn.commit()
+
+    preparation = asyncio.create_task(prepare())
+    await asyncio.wait_for(captured.wait(), 5)
+    decision = asyncio.create_task(approve())
+    await asyncio.wait_for(approval_started.wait(), 5)
+    release.set()
+    await asyncio.gather(preparation, decision)
+    saved = await assessment_executions.get_owned(db, owner, claim_id)
+    assert saved.task_review_json == {"schema_version": 1, "review": None}
+    assert (await task_reviews.latest(db, owner, task_id)).decision == "approve"

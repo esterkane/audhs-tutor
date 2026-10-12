@@ -172,3 +172,10 @@ The kernel appends receipts; it does not change grading, FSRS or mastery. The
 explicit preview/confirmation API is described in `slices/task-review-api.md`; UI
 and grading consumers remain pending. Export/wipe and private backup cover this table.
 See `slices/task-review-receipts.md` and `design/PROGRESS-TASK-ELIGIBILITY.md`.
+
+Assessment execution review binding: nullable task_review_json preserves legacy
+unrecorded state; new ordinary requests freeze explicit receipt-or-none under the
+preparation write lock. Request fingerprints and v1 provenance remain unchanged.
+Prepared and grade-ready recovery reuse this binding; validated historical identity
+is copied into separate attempt result metadata. No attainment claim is enabled.
+See slices/task-review-binding.md.

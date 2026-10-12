@@ -4,6 +4,7 @@ Short-transaction methods require no pending caller writes. JSON semantics are
 validated by the orchestrator; store no corpus passages or hidden answer keys.
 """
 
+from collections.abc import Awaitable, Callable
 from typing import Any, cast
 
 from sqlalchemy import select, update
@@ -59,6 +60,7 @@ async def prepare(
     request_json: dict[str, Any],
     content_fingerprint: str,
     owner_json: dict[str, Any] | None = None,
+    capture_review: Callable[[], Awaitable[dict[str, Any]]] | None = None,
 ) -> None:
     """Only the invocation that just created the claim may call this method."""
     if not request_json or not content_fingerprint:
@@ -68,6 +70,7 @@ async def prepare(
         claim = await _lock(db, learner_id, claim_id)
         if claim.response_json is not None or await get_owned(db, learner_id, claim_id) is not None:
             raise _conflict()
+        review = await capture_review() if capture_review else None
         db.add(
             AssessmentExecution(
                 claim_id=claim_id,
@@ -78,6 +81,7 @@ async def prepare(
                 request_json=request_json,
                 grade_json=None,
                 owner_json=owner_json,
+                task_review_json=review,
             )
         )
         await db.commit()
