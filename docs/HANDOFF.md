@@ -1908,3 +1908,14 @@ End and checks both Home navigation and a null current session. One isolated ful
 reader journey passes, including existing notes/focus/follow-up assertions; ESLint
 and e2e TypeScript pass. No runtime change, so prior production checks remain valid.
 Latest-head full CI remains unverified. Log:/tmp/explanation-reader-ci-fix.log.
+
+
+2026-10-12 Explore CI race fixed: run38154477231 also failed its post-navigation
+heading check. Screenshot shows the correct SelectedLesson screen with Learn: prefix;
+the old assertion matched the outgoing Explore heading and could pass before React
+committed navigation (local baseline passed). The journey now waits for the exact
+destination heading and explicit switch control, verifies unchanged session state,
+and keyboard-activates Keep current session with checkpoint equality. Three Explore
+browser checks pass; ESLint/e2e types pass. No runtime change. Logs:
+/tmp/explore-ci-{baseline,final}.log; CI artifacts:/tmp/audhs-ci-38154477231.
+Latest-head full CI still pending; no broad success claim.
