@@ -352,3 +352,15 @@ prefix), not runtime regressions. Review-next screenshot covers the live lesson
 after explicit return, not the historical Review page. Human re-entry, screen readers
 and general history behavior remain open. Logs:/tmp/audhs-forward-final.log and
 /tmp/audhs-forward-review-final.log.
+
+
+## CI review fixture isolation — 2026-10-12
+Run38241466813 frontend failed one of640 tests: confidence/timing recovery expected
+a lost response but saw a completed two-card queue. The unchanged17-test Review
+file passes locally; shared s1 persistence is a suspected cross-test contamination
+path, not a conclusively reproduced production bug. Give this scenario a unique
+session identity and assert its first question before rating. Lost-response lookup,
+queue recovery, confidence reset and500ms timing checks remain unchanged.
+Full frontend126files/640tests, ESLint and tsc pass locally. No production changes;
+no new browser/build claim. Remote rerun remains necessary to confirm CI behavior.
+Bounded test review found no actionable issues; root cause remains provisional.

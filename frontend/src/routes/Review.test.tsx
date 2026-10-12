@@ -459,7 +459,9 @@ describe('Review', () => {
   })
 
   it('resets confidence and timing after recovering the previous card', async () => {
-    useMode.setState({ sessionId: 's1' })
+    // Recovery fixtures must not inherit another test's queue for the same session.
+    const sessionId = 'confidence-after-recovery'
+    useMode.setState({ sessionId })
     const clock = vi.spyOn(Date, 'now').mockReturnValue(1000)
     let secondBody: Record<string, unknown> | undefined
     vi.stubGlobal(
@@ -468,7 +470,8 @@ describe('Review', () => {
         if (url.startsWith('/api/review/due')) return jsonResponse(due)
         if (url.startsWith('/api/review/requests/'))
           return jsonResponse({ status: 'completed', result: { item_id: 'i1' } })
-        if (url.endsWith('/api/sessions/s1')) return jsonResponse(reviewSession)
+        if (url.endsWith(`/api/sessions/${sessionId}`))
+          return jsonResponse({ ...reviewSession, id: sessionId })
         if (url === '/api/review/i1' && init?.method === 'POST') throw new Error('Lost response')
         if (url === '/api/review/i2' && init?.method === 'POST') {
           secondBody = JSON.parse(String(init.body))
@@ -478,6 +481,7 @@ describe('Review', () => {
       }),
     )
     renderApp(<Review />)
+    await screen.findByText(due.items[0].question)
     await screen.findByRole('button', { name: /show answer/i })
     fireEvent.click(screen.getByText('Confidence (optional)'))
     fireEvent.click(screen.getByRole('button', { name: '4' }))
