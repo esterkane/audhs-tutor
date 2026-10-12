@@ -1,0 +1,272 @@
+from uuid import uuid4
+
+import pytest
+from sqlalchemy import func, select
+
+from app.core.content_versions import token
+from app.core.errors import AppError
+from app.db.models import (
+    Assessment,
+    AssessmentRubric,
+    AssessmentTaskReview,
+    CompetencyEvidence,
+    LearnerProfile,
+    MemoryState,
+    SkillNode,
+)
+from app.kernel import task_reviews
+from app.schemas.task_reviews import TaskReviewCommand
+
+
+async def setup_task(db):
+    skill = SkillNode(
+        slug=str(uuid4()), title="Explain an example", domain="test", description="Explain why"
+    )
+    rubric = AssessmentRubric(criteria_json=[{"criterion": "Give a causal explanation"}], version=1)
+    db.add_all([skill, rubric])
+    await db.flush()
+    task = Assessment(
+        skill_id=skill.id, kind="explain_back", rubric_id=rubric.id, item_json={"prompt": "Why?"}
+    )
+    db.add(task)
+    await db.commit()
+    return task, rubric, skill
+
+
+async def command(db, learner_id, task_id, **overrides):
+    content = await task_reviews.snapshot(db, learner_id, task_id)
+    return TaskReviewCommand.model_validate(
+        {
+            "request_id": str(uuid4()),
+            "expected_revision": 0,
+            "content_version": token(content),
+            "decision": "approve",
+            "facet": "explanation",
+            "confirmed": True,
+            **overrides,
+        }
+    )
+
+
+async def test_review_replay_revoke_and_no_learning_evidence(db, learner):
+    task, _, _ = await setup_task(db)
+    body = await command(db, learner.id, task.id)
+    result = await task_reviews.decide(db, learner.id, task.id, body)
+    await db.commit()
+    assert result.revision == 1 and result.policy_version == "task-review-v1"
+    assert await task_reviews.decide(db, learner.id, task.id, body) == result
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 1
+    assert await db.scalar(select(func.count()).select_from(CompetencyEvidence)) == 0
+    assert await db.scalar(select(func.count()).select_from(MemoryState)) == 0
+    revoke = await command(db, learner.id, task.id, expected_revision=1, decision="revoke")
+    revoked = await task_reviews.decide(db, learner.id, task.id, revoke)
+    await db.commit()
+    assert revoked.revision == 2 and revoked.decision == "revoke"
+    assert (await db.get(AssessmentTaskReview, result.id)).decision == "approve"
+    assert await task_reviews.decide(db, learner.id, task.id, body) == result
+    assert (await task_reviews.latest(db, learner.id, task.id)).id == revoked.id
+
+
+@pytest.mark.parametrize("target", ["task", "rubric", "objective"])
+async def test_review_requires_exact_content(db, learner, target):
+    task, rubric, skill = await setup_task(db)
+    body = await command(db, learner.id, task.id)
+    if target == "task":
+        task.item_json = {"prompt": "Changed question"}
+    elif target == "rubric":
+        rubric.criteria_json = [{"criterion": "Changed criterion"}]
+    else:
+        skill.description = "Changed objective"
+    await db.commit()
+    with pytest.raises(AppError, match="changed"):
+        await task_reviews.decide(db, learner.id, task.id, body)
+    await db.rollback()
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 0
+
+
+async def test_review_request_and_revision_conflicts(db, learner):
+    learner_id = learner.id
+    task, _, _ = await setup_task(db)
+    task_id = task.id
+    body = await command(db, learner_id, task_id)
+    await task_reviews.decide(db, learner_id, task_id, body)
+    await db.commit()
+    with pytest.raises(AppError):
+        await task_reviews.decide(
+            db, learner_id, task_id, body.model_copy(update={"facet": "application"})
+        )
+    await db.rollback()
+    stale = await command(db, learner_id, task_id)
+    with pytest.raises(AppError):
+        await task_reviews.decide(db, learner_id, task_id, stale)
+    await db.rollback()
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 1
+
+
+async def test_review_is_owner_scoped_and_rollback_safe(db, learner):
+    learner_id = learner.id
+    task, _, _ = await setup_task(db)
+    task_id = task.id
+    other = LearnerProfile(display_name="Other")
+    db.add(other)
+    await db.commit()
+    other_id = other.id
+    body = await command(db, learner_id, task_id)
+    receipt = await task_reviews.decide(db, learner_id, task_id, body)
+    await db.rollback()
+    assert await db.get(AssessmentTaskReview, receipt.id) is None
+    task_id = receipt.assessment_id
+    task = await db.get(Assessment, task_id)
+    task.owner_learner_id = other_id
+    await db.commit()
+    with pytest.raises(AppError):
+        await task_reviews.decide(db, learner_id, task_id, body)
+    await db.rollback()
+    assert await task_reviews.latest(db, other_id, task_id) is None
+
+
+@pytest.mark.parametrize(
+    "change", ["confirmation", "empty_rubric", "duplicate_rubric", "code", "revoke_without_review"]
+)
+async def test_review_refuses_unsupported_or_unconfirmed_decision(db, learner, change):
+    task, rubric, _ = await setup_task(db)
+    if change == "empty_rubric":
+        rubric.criteria_json = []
+    elif change == "duplicate_rubric":
+        rubric.criteria_json = [{"criterion": "Same"}, {"criterion": "same"}]
+    elif change == "code":
+        task.kind = "code"
+    await db.commit()
+    body = await command(
+        db,
+        learner.id,
+        task.id,
+        confirmed=change != "confirmation",
+        decision="revoke" if change == "revoke_without_review" else "approve",
+    )
+    with pytest.raises(AppError):
+        await task_reviews.decide(db, learner.id, task.id, body)
+    await db.rollback()
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 0
+
+
+async def test_review_export_and_wipe_preserve_other_owner(db, learner, db_path):
+    from app.db.portability import export_learner, wipe_learner
+    from app.db.session import sync_connect
+
+    task, _, _ = await setup_task(db)
+    other = LearnerProfile(display_name="Other")
+    db.add(other)
+    await db.commit()
+    owner_id, other_id = learner.id, other.id
+    for owner in (owner_id, other_id):
+        body = await command(db, owner, task.id)
+        await task_reviews.decide(db, owner, task.id, body)
+        await db.commit()
+    conn = sync_connect(f"sqlite:///{db_path}")
+    try:
+        rows = export_learner(conn, owner_id)["assessment_task_review"]
+        assert len(rows) == 1 and rows[0]["decision"] == "approve"
+        assert wipe_learner(conn, owner_id)["assessment_task_review"] == 1
+        assert len(export_learner(conn, other_id)["assessment_task_review"]) == 1
+        assert conn.execute("PRAGMA foreign_key_check").fetchall() == []
+    finally:
+        conn.close()
+
+
+async def test_parallel_replay_creates_one_review(db, learner):
+    import asyncio
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    task, _, _ = await setup_task(db)
+    learner_id, task_id = learner.id, task.id
+    body = await command(db, learner_id, task_id)
+    await db.commit()
+    sessions = async_sessionmaker(db.bind, expire_on_commit=False)
+
+    async def perform():
+        async with sessions() as connection:
+            result = await task_reviews.decide(connection, learner_id, task_id, body)
+            await connection.commit()
+            return result
+
+    first, second = await asyncio.gather(perform(), perform())
+    assert first == second
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 1
+
+
+async def test_unicode_preview_is_controlled_conflict(db, learner):
+    task, _, _ = await setup_task(db)
+    body = await command(db, learner.id, task.id, content_version="é")
+    with pytest.raises(AppError, match="changed"):
+        await task_reviews.decide(db, learner.id, task.id, body)
+    await db.rollback()
+
+
+async def test_review_preserves_exact_historical_content(db, learner):
+    task, rubric, skill = await setup_task(db)
+    original = await task_reviews.snapshot(db, learner.id, task.id)
+    body = await command(db, learner.id, task.id)
+    result = await task_reviews.decide(db, learner.id, task.id, body)
+    await db.commit()
+    task.item_json = {"prompt": "New task"}
+    rubric.criteria_json = [{"criterion": "New rubric"}]
+    skill.description = "New objective"
+    await db.commit()
+    saved = await db.get(AssessmentTaskReview, result.id, populate_existing=True)
+    assert saved.content_json == original
+    assert saved.content_fingerprint == task_reviews.fingerprint(original)
+
+
+async def test_parallel_distinct_commands_conflict(db, learner):
+    import asyncio
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    task, _, _ = await setup_task(db)
+    learner_id, task_id = learner.id, task.id
+    bodies = [await command(db, learner_id, task_id) for _ in range(2)]
+    await db.commit()
+    sessions = async_sessionmaker(db.bind, expire_on_commit=False)
+
+    async def perform(body):
+        async with sessions() as connection:
+            try:
+                result = await task_reviews.decide(connection, learner_id, task_id, body)
+                await connection.commit()
+                return result
+            except AppError:
+                await connection.rollback()
+                return None
+
+    results = await asyncio.gather(*(perform(body) for body in bodies))
+    assert sum(result is not None for result in results) == 1
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 1
+
+
+async def test_suspend_restore_invalidates_preview(db, learner):
+    from app.kernel import question_state
+    from app.schemas.question_state import QuestionTransitionIn
+
+    task, _, _ = await setup_task(db)
+    learner_id, task_id = learner.id, task.id
+    original = await command(db, learner_id, task_id)
+    for revision, action in enumerate(("suspend", "restore")):
+        await question_state.transition(
+            db,
+            learner_id,
+            task_id,
+            QuestionTransitionIn(request_id=uuid4(), expected_revision=revision, action=action),
+        )
+        await db.commit()
+        with pytest.raises(AppError, match="changed"):
+            await task_reviews.decide(db, learner_id, task_id, original)
+        await db.rollback()
+        if action == "suspend":
+            suspended = await command(db, learner_id, task_id)
+            with pytest.raises(AppError, match="active"):
+                await task_reviews.decide(db, learner_id, task_id, suspended)
+            await db.rollback()
+    fresh = await command(db, learner_id, task_id)
+    assert (await task_reviews.decide(db, learner_id, task_id, fresh)).decision == "approve"

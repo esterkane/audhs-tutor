@@ -163,3 +163,11 @@ Representation provenance: representation.provenance_json preserves generation-t
 `assessment_execution` is private learner-scoped staging keyed to a workspace claim: prepared → inference_started → grade_ready → completed. It holds the original learner request, a private content fingerprint, validated grade and original grading time. Short transactions preserve model accounting; a serialized finish applies learning evidence and completed outcome atomically without another model call. Unknown legacy/inference-only outcomes are never reclaimed. No source passages or hidden keys are copied into this table. See `slices/assessment-durable-result-plan.md`.
 
 Correction draft foundation: `question_correction_draft` stores learner-owned original snapshots, private stable fingerprints, eligibility revisions and unvalidated candidate work. `question_correction_command` stores learner/request-scoped immutable logical receipts. Kernel create/save/discard never modifies assessments or learning evidence; no public editing or publication API is enabled. See `slices/correction-draft-foundation.md`.
+
+### Explicit task-review receipts (2026-10-12 foundation)
+`assessment_task_review` is learner-scoped authoring history: versioned approval or
+revocation bound to exact task/rubric/objective content, with repeat-safe command and
+revision identity. It is separate from generated content and competency evidence.
+The kernel appends receipts; it does not change grading, FSRS or mastery. No API/UI
+or grading consumer is active yet. Export/wipe and private backup cover this table.
+See `slices/task-review-receipts.md` and `design/PROGRESS-TASK-ELIGIBILITY.md`.

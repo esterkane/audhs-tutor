@@ -151,3 +151,10 @@ provenance foundation and unknown fallback, not a frontend score-to-label mappin
 Do not treat one full-credit evidence row as automatically qualifying under the new
 policy. Remaining detailed lifecycle/exposure rules above retain their proposal
 status until incorporated through the existing versioned-policy process.
+
+Owner decision2026-10-12: “Use explicit task/rubric review.” Only explicitly
+reviewed objectives/rubrics qualify; generated/imported tasks remain unqualified,
+edits need fresh review, model checks stay identified and independence unverified.
+This authorizes the review-record workflow. It does not make earlier attempts
+qualified or enable grading/scheduling changes. Receipt storage is the first slice;
+preview/confirmation UI and pre-inference frozen eligibility follow.

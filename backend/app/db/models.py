@@ -253,6 +253,29 @@ class Assessment(IdMixin, Base):
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 
+class AssessmentTaskReview(IdMixin, LearnerScoped, Base):
+    """Explicit review receipt; never generated content or learning evidence."""
+
+    __tablename__ = "assessment_task_review"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "request_id", name="uq_task_review_request"),
+        UniqueConstraint("learner_id", "assessment_id", "revision", name="uq_task_review_revision"),
+        CheckConstraint("decision IN ('approve', 'revoke')", name="ck_task_review_decision"),
+        CheckConstraint("facet IN ('explanation', 'application')", name="ck_task_review_facet"),
+        CheckConstraint("revision >= 1", name="ck_task_review_revision"),
+    )
+    assessment_id: Mapped[str] = mapped_column(ForeignKey("assessment.id"), index=True)
+    request_id: Mapped[str] = mapped_column(Text)
+    request_json: Mapped[JsonDict] = mapped_column(JSON)
+    revision: Mapped[int] = mapped_column(Integer)
+    decision: Mapped[str] = mapped_column(Text)
+    facet: Mapped[str] = mapped_column(Text)
+    content_json: Mapped[dict[str, Any]] = mapped_column(JSON)
+    content_fingerprint: Mapped[str] = mapped_column(Text)
+    policy_version: Mapped[str] = mapped_column(Text)
+    reviewed_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class QuestionState(LearnerScoped, Base):
     """Explicit learner eligibility; absence means active revision zero."""
 

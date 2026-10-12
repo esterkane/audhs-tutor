@@ -78,13 +78,19 @@ server-owned, outside generated item content, tied to exact reviewed content.
 
 ## Policy boundary before activation
 
-The owner approved label wording, disclosure and display-only behavior. The detailed
-review authority, eligible task/rubric requirements and revocation semantics above
-are still a proposal under the contract's versioned-policy process. Do not activate
-new attainment claims by treating this engineering document as policy acceptance.
-The shipped task/help disclosure stays useful while this policy is resolved.
+The owner approved label wording, disclosure, display-only behavior and explicit
+task/rubric review authority (decision below). Review receipts alone do not activate
+attainment claims: preview/confirmation and frozen pre-inference eligibility must
+be implemented and verified first. The shipped task/help disclosure remains active.
 
 Design review: identified and resolved the prepared-recovery timing gap above.
 Implementation must freeze eligibility before inference; selecting current approval
 at grade application could incorrectly qualify earlier work. No code or learning
 state has changed as part of this design review.
+
+Owner decision2026-10-12: “Use explicit task/rubric review.” Only explicitly
+reviewed objectives/rubrics qualify; generated/imported tasks remain unqualified,
+edits need fresh review, model checks stay identified and independence unverified.
+This authorizes the review-record workflow. It does not make earlier attempts
+qualified or enable grading/scheduling changes. Receipt storage is the first slice;
+preview/confirmation UI and pre-inference frozen eligibility follow.
