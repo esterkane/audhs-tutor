@@ -2331,3 +2331,9 @@ pass; lint/types and review clear. See slices/model-registry-seed-race.md.
 Owner accepted stricter source policy: only owner-created content may reach hosted
 models/public exports; third-party/mixed/unknown and derived material stays local.
 See material-rights-contract.md; enforcement is next, not yet claimed complete.
+
+2026-10-12: Owner requested cross-topic Ask workspace, checked detailed answers,
+free references, saved-question suggestions/reuse, follow-ups, visuals/video and
+reviewed original-content replacement. Existing capabilities audited; ordered G0–G6
+plan in design/CROSS-TOPIC-CONTENT-WORKSPACE.md. G0 origin containment precedes new
+hosted flows; G1 must not require or alter a learning session. Plan only so far.
