@@ -21,14 +21,18 @@ async def save_completed(
     db: AsyncSession,
     *,
     learner_id: str,
-    session_id: str,
+    session_id: str | None,
     turn_id: str,
     surface: str,
     request: dict[str, Any],
     text: str,
     metadata: dict[str, Any],
+    commit: bool = True,
 ) -> TutorAnswer:
-    await get_owned(db, session_id, learner_id)
+    if session_id is not None:
+        await get_owned(db, session_id, learner_id)
+    elif surface != "ask":
+        raise ValueError("Only independent Ask answers may omit a learning session")
     if not text.strip():
         raise ValueError("An empty answer cannot be saved as complete")
     payload = {
@@ -68,7 +72,10 @@ async def save_completed(
         ).scalar_one()
         if row.fingerprint != fingerprint:
             raise ValueError("This turn already has a different saved answer")
-        await db.commit()
+        if commit:
+            await db.commit()
+        else:
+            await db.flush()
         return row
     except BaseException:
         await db.rollback()

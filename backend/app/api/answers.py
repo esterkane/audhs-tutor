@@ -7,7 +7,7 @@ from uuid import UUID
 from fastapi import APIRouter, Header, Query, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
-from sqlalchemy import select, text
+from sqlalchemy import or_, select, text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.deps import DB, Gateway, Learner
@@ -105,7 +105,8 @@ async def list_answers(
     q: Annotated[str | None, Query(max_length=200)] = None,
     parent_answer_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     suggestions: bool = False,
-    surface: Literal["tutor", "playground", "representation", "assessment"] | None = None,
+    question_prefix: bool = False,
+    surface: Literal["tutor", "playground", "representation", "assessment", "ask"] | None = None,
 ) -> AnswerPage:
     stmt = select(TutorAnswer).where(TutorAnswer.learner_id == learner.id)
     if parent_answer_id is not None:
@@ -116,10 +117,19 @@ async def list_answers(
     if suggestions:
         excluded = excluded_answer_ids(learner.id)
         stmt = stmt.where(TutorAnswer.id.not_in(excluded))
+    if question_prefix:
+        stmt = stmt.where(
+            or_(
+                TutorAnswer.surface == "ask",
+                TutorAnswer.request_json["learner_question"].as_string().is_not(None),
+            )
+        )
     if q is not None and q.strip():
         expression = literal_query(q)
         if expression is None:
             return AnswerPage(items=[], next_cursor=None)
+        if question_prefix:
+            expression = f"request : ({expression}*)"
         stmt = stmt.where(
             TutorAnswer.id.in_(
                 select(text("id"))

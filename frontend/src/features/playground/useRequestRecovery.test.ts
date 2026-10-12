@@ -1,7 +1,7 @@
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import type { TutorRequest } from './api'
-import { useRequestRecovery } from './useRequestRecovery'
+import { useAskRequestRecovery, useRequestRecovery } from './useRequestRecovery'
 
 const body: TutorRequest = {
   session_id: 's',
@@ -93,4 +93,20 @@ it('offers explicitly chosen in-memory tutoring when all storage access is denie
   act(() => hook.result.current.accept(key))
   expect(hook.result.current.pending).toBeNull()
   act(() => expect(hook.result.current.prepare(body, view).key).not.toBe(key))
+})
+
+
+it('keeps Ask identity across remounts when storage writes fail', () => {
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied') })
+  const first = renderHook(() => useAskRequestRecovery('ask:remount-test'))
+  let key = ''
+  act(() => { key = first.result.current.prepare({ question: 'Why?' }, view).key })
+  first.unmount()
+  const next = renderHook(() => useAskRequestRecovery('ask:remount-test'))
+  expect(next.result.current.pending?.key).toBe(key)
+  expect(next.result.current.pending?.body.question).toBe('Why?')
+  act(() => next.result.current.accept(key))
+  next.unmount()
+  const completed = renderHook(() => useAskRequestRecovery('ask:remount-test'))
+  expect(completed.result.current.pending).toBeNull()
 })

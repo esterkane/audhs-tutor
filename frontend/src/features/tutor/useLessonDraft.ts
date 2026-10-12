@@ -6,7 +6,7 @@ const unsaved = new Map<string, string>()
 const reloadWarning = 'Your draft is kept while navigating in this tab but could not be saved for reload. Keep a copy.'
 
 /** Scope is fixed by the parent panel key: session, block instance and skill. */
-export function useLessonDraft(scope: string) {
+export function useLessonDraft(scope: string, label = 'lesson') {
   const key = `lesson-draft:v1:${scope}`
   const [initial] = useState(() => {
     if (unsaved.has(key)) return { text: unsaved.get(key)!, error: reloadWarning }
@@ -15,7 +15,7 @@ export function useLessonDraft(scope: string) {
       if (text.length > 100000) throw new Error('Oversized draft')
       return { text, error: '' }
     } catch {
-      return { text: '', error: 'Your lesson draft could not be restored. Keep a copy before leaving.' }
+      return { text: '', error: `Your ${label} draft could not be restored. Keep a copy before leaving.` }
     }
   })
   const [input, update] = useState(initial.text)

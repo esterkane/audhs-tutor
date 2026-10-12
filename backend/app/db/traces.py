@@ -56,7 +56,7 @@ class RetrievalTraceRecord(BaseModel):
 
 class TutorTraceRecord(BaseModel):
     learner_id: str
-    session_id: str
+    session_id: str | None
     turn_id: str
     action: str
     prompt_version: str

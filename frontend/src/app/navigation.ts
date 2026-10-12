@@ -2,6 +2,7 @@ export const primaryPages = [
   ['/', 'Home'], ['/learn', 'Learn'], ['/practice', 'Practice'], ['/progress', 'Progress'], ['/explore', 'Explore'],
 ] as const
 export const toolPages = [
+  ['/ask', 'Ask the tutor'],
   ['/areas', 'Prepare learning material'], ['/corpus', 'Materials'], ['/models', 'Models'], ['/experiments', 'Experiments'],
   ['/curriculum', 'Lesson drafts'], ['/answers', 'Saved answers'], ['/playground', 'Playground'],
   ['/playground/visualizer', 'Audio visualizer'], ['/vocab', 'Vocabulary'], ['/together', 'Work alongside'],

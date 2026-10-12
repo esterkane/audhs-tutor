@@ -142,6 +142,40 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/ask': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Ask a question without a learning session */
+    post: operations['question_api_ask_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/ask/stream': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Stream an independent explanation and its saved result */
+    post: operations['question_stream_api_ask_stream_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/health': {
     parameters: {
       query?: never
@@ -2852,6 +2886,61 @@ export interface components {
       n_events: number
       /** Fidelity */
       fidelity?: number | null
+    }
+    /** AskQuestion */
+    AskQuestion: {
+      /** Question */
+      question: string
+      /** Area Id */
+      area_id?: string | null
+      /** Parent Answer Id */
+      parent_answer_id?: string | null
+    }
+    /** AskReply */
+    AskReply: {
+      /** Source Status */
+      source_status?: ('supplied' | 'empty' | 'unavailable' | 'not_requested') | null
+      /** Sources */
+      sources?: components['schemas']['PlaygroundSource'][]
+      /** Text */
+      text: string
+      /** Model */
+      model: string
+      /** Route */
+      route: string
+      /** Turn Id */
+      turn_id: string
+      /** Answer Id */
+      answer_id?: string | null
+      /** Save Error */
+      save_error?: string | null
+      /** Save Receipt */
+      save_receipt?: string | null
+      /**
+       * Reused
+       * @default false
+       */
+      reused: boolean
+      /** Saved At */
+      saved_at?: string | null
+      /** Memory Answers */
+      memory_answers?: string[]
+      /**
+       * Source Note
+       * @default General coding guidance; no course sources retrieved.
+       */
+      source_note: string
+      /** Conversation Id */
+      conversation_id: string
+      /** Area Id */
+      area_id?: string | null
+      /** Parent Answer Id */
+      parent_answer_id?: string | null
+      /**
+       * History Turns
+       * @default 0
+       */
+      history_turns: number
     }
     /** AssessmentIn */
     AssessmentIn: {
@@ -6414,7 +6503,8 @@ export interface operations {
         q?: string | null
         parent_answer_id?: string | null
         suggestions?: boolean
-        surface?: ('tutor' | 'playground' | 'representation' | 'assessment') | null
+        question_prefix?: boolean
+        surface?: ('tutor' | 'playground' | 'representation' | 'assessment' | 'ask') | null
       }
       header?: never
       path?: never
@@ -6697,6 +6787,76 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AnswerReplacementState']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  question_api_ask_post: {
+    parameters: {
+      query?: never
+      header: {
+        'idempotency-key': string
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AskQuestion']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AskReply']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  question_stream_api_ask_stream_post: {
+    parameters: {
+      query?: never
+      header: {
+        'idempotency-key': string
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['AskQuestion']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
         }
       }
       /** @description Validation Error */

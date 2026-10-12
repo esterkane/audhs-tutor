@@ -67,6 +67,19 @@ class Session(IdMixin, LearnerScoped, Base):
     experiment_arm_id: Mapped[str | None] = mapped_column(Text)  # session-unit n-of-1 assignment
 
 
+class AskRequest(IdMixin, LearnerScoped, Base):
+    """Session-independent intent claim; an unresolved claim is never auto-replayed."""
+
+    __tablename__ = "ask_request"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "request_key", name="uq_ask_request_owner_key"),
+    )
+    request_key: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    response_json: Mapped[JsonDict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class WorkspaceRequest(IdMixin, LearnerScoped, Base):
     """Durable transport identity; pending claims are never automatically re-executed."""
 
@@ -653,7 +666,7 @@ class RetrievalTrace(IdMixin, Base):
 
 class TutorTrace(IdMixin, LearnerScoped, Base):
     __tablename__ = "tutor_trace"
-    session_id: Mapped[str] = mapped_column(Text, ForeignKey("session.id"), index=True)
+    session_id: Mapped[str | None] = mapped_column(Text, ForeignKey("session.id"), index=True)
     turn_id: Mapped[str] = mapped_column(Text, index=True)
     ts: Mapped[str] = mapped_column(Text, default=utcnow_iso)
     action: Mapped[str] = mapped_column(Text)  # explain | hint | assess | quiz | summarize

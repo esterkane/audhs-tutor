@@ -126,6 +126,7 @@ function History() {
           <option value="">All saved answers</option>
           <option value="tutor">Lessons and hints</option>
           <option value="representation">Alternative explanations</option>
+          <option value="ask">Ask conversations</option>
           <option value="assessment">Assessment feedback</option>
           <option value="playground">Notebook and coding help</option>
         </select>
@@ -161,7 +162,7 @@ function History() {
                       : 'Explanation requested'}
                   </Link>
                   <p className="text-xs text-muted mt-1">
-                    {answer.surface === 'playground' ? 'Notebook / coding help' : answer.surface === 'representation' ? 'Alternative explanation' : answer.surface === 'assessment' ? 'Assessment feedback' : 'Lesson / hint'} ·{' '}
+                    {answer.surface === 'ask' ? 'Independent question' : answer.surface === 'playground' ? 'Notebook / coding help' : answer.surface === 'representation' ? 'Alternative explanation' : answer.surface === 'assessment' ? 'Assessment feedback' : 'Lesson / hint'} ·{' '}
                     {new Date(answer.created_at).toLocaleString()}
                   </p>
                   <p className="mt-2 whitespace-pre-wrap">{answer.preview}</p>
@@ -283,7 +284,7 @@ function Answer({ id }: { id: string }) {
             </Card>
             <Card>
               <Markdown text={data.text} />
-              <ReadAloud text={data.surface === 'assessment' ? `${data.request_text}\n\n${data.text}` : data.text} />
+              <ReadAloud text={['assessment', 'ask'].includes(data.surface) ? `${data.request_text}\n\n${data.text}` : data.text} />
             </Card>
             {data.metadata.followup_purpose === 'correction' && <p role="status">This is a proposed correction, not a verified replacement. Review its reasoning and sources alongside the original answer.</p>}
             {typeof data.metadata.parent_answer_id === 'string' && (
@@ -326,7 +327,7 @@ function Answer({ id }: { id: string }) {
             )}
             <AnswerReplacement key={`preference:${data.id}`} answerId={data.id} />
             <AnswerChildren key={`children:${data.id}`} answerId={data.id} />
-            <AnswerFollowup key={data.id} answerId={data.id} />
+            {data.surface === 'ask' ? <Link to={`/ask?answer=${encodeURIComponent(data.id)}`}>Continue this Ask conversation</Link> : <AnswerFollowup key={data.id} answerId={data.id} />}
             {sources.length > 0 ? (
               <details className="[&[open]>summary>svg]:rotate-90">
                 <DisclosureSummary>Source references</DisclosureSummary>

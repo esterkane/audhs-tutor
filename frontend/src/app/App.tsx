@@ -17,6 +17,7 @@ import { ParkingLotButton } from '../components/ParkingLotButton'
 import { Corpus } from '../routes/Corpus'
 import { Search } from '../routes/Search'
 import { Sources } from '../routes/Sources'
+import { Ask } from '../routes/Ask'
 import { Answers } from '../routes/Answers'
 import { Explore } from '../routes/Explore'
 import { Areas } from '../routes/Areas'
@@ -129,7 +130,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         {children}
       </main>
       </div>
-      <LearningCompanion entryRoot={tutorEntry} />
+      {pathname !== '/ask' && <LearningCompanion entryRoot={tutorEntry} />}
       </div>
       </div>
     </div>
@@ -146,6 +147,7 @@ export default function App() {
             <Route path="/" element={<Home />} />
             <Route path="/search" element={<Search />} />
             <Route path="/sources" element={<Sources />} />
+            <Route path="/ask" element={<Ask />} />
             <Route path="/answers" element={<Answers />} />
             <Route path="/answers/:answerId" element={<Answers />} />
             <Route path="/learn" element={<Learn />} />

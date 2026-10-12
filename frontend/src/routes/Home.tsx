@@ -345,6 +345,7 @@ function HomeOverview() {
             </Button>
       </Card>}
       {!resumable && newSessionCard}
+      <p><Link to="/ask">Ask a question</Link> — explore any area without starting or changing a session.</p>
       <section aria-label="Other ways to learn" className="grid gap-3 sm:grid-cols-3">
         <Card>
           <Button onClick={() => void quickReview()} disabled={quickReviewBusy || start.isPending || current.isPending || prefs.isPending || prefs.isError || setPref.isPending || skills.isFetching || skills.isError}>

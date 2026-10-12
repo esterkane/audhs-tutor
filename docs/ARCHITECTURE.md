@@ -179,3 +179,14 @@ preparation write lock. Request fingerprints and v1 provenance remain unchanged.
 Prepared and grade-ready recovery reuse this binding; validated historical identity
 is copied into separate attempt result metadata. No attainment claim is enabled.
 See slices/task-review-binding.md.
+
+### Independent Ask workspace (G1)
+
+`/ask` calls the same tutor gateway without manufacturing a learning Session.
+Learner-scoped `ask_request` owns durable request fingerprints and response receipts;
+completed `tutor_answer` and `tutor_trace` rows may have a null session. The answer,
+trace and completed receipt commit atomically. Equal retries replay without another
+model call; uncertain intents do not regenerate automatically. Existing session
+traces remain linked to their original session. No competency/FSRS evidence is
+created by conversation. Follow-up context is explicit owned Ask ancestry, bounded
+to three previous turns. No implicit course material or webpage is attached.

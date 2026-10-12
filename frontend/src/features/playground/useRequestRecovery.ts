@@ -11,6 +11,9 @@ export type PendingTutorRequest<T = TutorRequest> = {
   body: T
   view: { snapshot: string; submitted: string; display: string; mode: 'explicit' | 'socratic' }
 }
+// Ask keeps failed retry writes across in-tab navigation; never automatically submits them.
+const askFallback = new Map<string, PendingTutorRequest<unknown> | null>()
+const askMemoryWarning = 'Retry identity is retained while navigating in this tab. Reload recovery may be unavailable.'
 const memoryWarning =
   'Retry is kept only while this page stays open. Reload may show an older retry or lose these details. New work may make another model call.'
 const warning =
@@ -19,12 +22,19 @@ const warning =
 function read<T>(
   storageKey: string,
   validBody: (body: unknown) => body is T,
+  retainInMemory = false,
 ): {
   pending: PendingTutorRequest<T> | null
   error: string
   blocked: boolean
   inaccessible?: boolean
 } {
+  if (retainInMemory && askFallback.has(storageKey)) {
+    const entry = askFallback.get(storageKey)
+    if (entry == null) return { pending: null, error: askMemoryWarning, blocked: false }
+    if (validBody(entry.body)) return { pending: { ...entry, body: entry.body }, error: askMemoryWarning, blocked: false }
+    return { pending: null, error: 'Retry details are invalid. Discard them explicitly.', blocked: true }
+  }
   let raw: string | null
   try {
     raw = sessionStorage.getItem(storageKey)
@@ -65,11 +75,12 @@ function useTypedRequestRecovery<T>(
   scope: string,
   validBody: (body: unknown) => body is T,
   persistent = true,
+  retainInMemory = false,
 ) {
   const storageKey = `tutor-request:v1:${scope}`
   const [initial] = useState(() =>
     persistent
-      ? read(storageKey, validBody)
+      ? read(storageKey, validBody, retainInMemory)
       : { pending: null, error: '', blocked: false, inaccessible: false },
   )
   const current = useRef(initial.pending)
@@ -96,21 +107,25 @@ function useTypedRequestRecovery<T>(
     setPending(next)
     if (!persistent) return next
     if (memoryOnly.current) {
-      setError(memoryWarning)
+      if (retainInMemory) askFallback.set(storageKey, next)
+      setError(retainInMemory ? askMemoryWarning : memoryWarning)
       return next
     }
     try {
       const encoded = JSON.stringify(next)
       if (encoded.length > 200000) throw new Error('Oversized retry record')
       sessionStorage.setItem(storageKey, encoded)
+      if (retainInMemory) askFallback.delete(storageKey)
     } catch {
-      setError(warning)
+      if (retainInMemory) askFallback.set(storageKey, next)
+      setError(retainInMemory ? askMemoryWarning : warning)
     }
     return next
   }
 
   function accept(key: string) {
     if (current.current?.key !== key) return
+    if (retainInMemory) askFallback.set(storageKey, null)
     try {
       if (persistent && !memoryOnly.current) sessionStorage.removeItem(storageKey)
     } catch {
@@ -124,6 +139,7 @@ function useTypedRequestRecovery<T>(
       )
       return
     }
+    if (retainInMemory && !memoryOnly.current) askFallback.delete(storageKey)
     current.current = null
     setPending(null)
     setError(memoryOnly.current ? memoryWarning : '')
@@ -139,6 +155,10 @@ function useTypedRequestRecovery<T>(
       setError('Retry details could not be removed. Keep this page open; retry will reuse the same request.')
       return
     }
+    if (retainInMemory) {
+      if (memoryOnly.current) askFallback.set(storageKey, null)
+      else askFallback.delete(storageKey)
+    }
     current.current = null
     blocked.current = false
     setPending(null)
@@ -149,6 +169,7 @@ function useTypedRequestRecovery<T>(
   function continueInMemory() {
     // Explicit learner choice: never silently discard an identity that may already have run.
     memoryOnly.current = true
+    if (retainInMemory) askFallback.set(storageKey, null)
     current.current = null
     blocked.current = false
     setPending(null)
@@ -210,4 +231,14 @@ function lessonBody(body: unknown): body is TurnRequest {
 }
 export function useLessonRequestRecovery(scope: string, persistent = true) {
   return useTypedRequestRecovery(scope, lessonBody, persistent)
+}
+
+
+export function useAskRequestRecovery(scope: string) {
+  return useTypedRequestRecovery<Schemas['AskQuestion']>(scope, (body): body is Schemas['AskQuestion'] => {
+    if (!body || typeof body !== 'object') return false
+    const value = body as Schemas['AskQuestion']
+    return typeof value.question === 'string' && !!value.question.trim() && value.question.length <= 2000 &&
+      [value.area_id, value.parent_answer_id].every(v => v == null || (typeof v === 'string' && v.length > 0 && v.length <= 128))
+  }, true, true)
 }

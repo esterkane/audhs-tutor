@@ -27,13 +27,13 @@ export function streamAnswerFollowup(
   )
 }
 
-async function streamReply(
+export async function streamReply<T extends TutorReply = TutorReply>(
   endpoint: string,
-  body: TutorRequest | Schemas['AnswerFollowup'],
+  body: TutorRequest | Schemas['AnswerFollowup'] | Schemas['AskQuestion'],
   signal: AbortSignal,
   requestKey: string | undefined,
   onToken: (text: string) => void,
-): Promise<TutorReply> {
+): Promise<T> {
   const response = await fetch(endpoint, {
     method: 'POST',
     signal,
@@ -47,7 +47,7 @@ async function streamReply(
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
   let buffer = ''
-  function dispatch(block: string): TutorReply | undefined {
+  function dispatch(block: string): T | undefined {
     const lines = block.split('\n')
     const event = lines
       .find((line) => line.startsWith('event:'))
@@ -64,7 +64,7 @@ async function streamReply(
     if (event === 'done') {
       if (typeof payload.text !== 'string' || typeof payload.turn_id !== 'string')
         throw new Error('The tutor returned an invalid completed reply.')
-      return payload as TutorReply
+      return payload as T
     }
   }
   try {
