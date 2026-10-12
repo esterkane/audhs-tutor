@@ -19,7 +19,7 @@ for (const width of [320, 1280]) test(`Progress distinguishes records from indep
     if (offset && failOlder) return route.fulfill({ status: 503, json: {} })
     return route.fulfill({ json: { skill_id: empty ? 'b' : 'a', offset, limit: 20, total: empty ? 0 : 21,
       dimensions: empty ? [] : [{ dimension: 'transfer', count: 21, last_recorded_at: '2026-01-02T00:00:00Z' }],
-      items: empty ? [] : Array.from({ length: offset ? 1 : 20 }, (_, i) => ({ task_context: i === 0 ? { task_kind: 'mcq', rubric_version: null, grading_method: 'local', reported_hint_count: 0, revised_work: false, assistance_coverage: 'partial', independence: 'not_verified' } : null, id: String(offset + i), dimension: 'transfer', recorded_at: '2026-01-02T00:00:00Z', score: 1, weight: 1, grader_level: 'local', attempt_id: 'attempt', answer_id: i === 0 ? 'saved-check' : null, reported_hint_count: 0, independence: 'not_verified' })),
+      items: empty ? [] : Array.from({ length: offset ? 1 : 20 }, (_, i) => ({ reviewed_result: i < 2 ? { label: i === 0 ? 'Explanation check passed' : 'Application attempted', currently_eligible: i === 0, exclusion_reason: i === 0 ? null : 'Task approval or content has changed since this attempt.', grading_method: 'local', review_authority: 'learner_review', independence: 'not_verified' } : null, task_context: i === 0 ? { task_kind: 'explain_back', rubric_version: 1, grading_method: 'local', reported_hint_count: 0, revised_work: false, assistance_coverage: 'partial', independence: 'not_verified' } : null, id: String(offset + i), dimension: 'transfer', recorded_at: '2026-01-02T00:00:00Z', score: 1, weight: 1, grader_level: 'local', attempt_id: 'attempt', answer_id: i === 0 ? 'saved-check' : null, reported_hint_count: 0, independence: 'not_verified' })),
     } })
   })
   await page.route('**/api/answers/saved-check', route => route.fulfill({ json: {
@@ -35,10 +35,14 @@ for (const width of [320, 1280]) test(`Progress distinguishes records from indep
   await disclosure.focus()
   await page.keyboard.press('Enter')
   await expect(page.getByText('Reported hints: 0.', { exact: false })).toHaveCount(20)
+  await expect(page.getByText('Explanation check passed · Reviewed task')).toBeVisible()
+  await expect(page.getByText('Application attempted · Historical result')).toBeVisible()
+  await expect(page.getByText('Task approval or content has changed since this attempt.')).toBeVisible()
+  await expect(page.getByText('Task and rubric reviewed by you.', { exact: false })).toHaveCount(2)
   const context = page.locator('summary').filter({ hasText: 'Task and help context' }).first()
   await context.focus()
   await page.keyboard.press('Enter')
-  await expect(page.getByText('Recorded task type: mcq.', { exact: false })).toBeVisible()
+  await expect(page.getByText('Recorded task type: explain_back.', { exact: false })).toBeVisible()
   await expect(page.getByText('Hint count was reported by the app,', { exact: false })).toBeVisible()
   await expect(context).toBeFocused()
   await page.screenshot({ path: info.outputPath('progress-task-context.png'), fullPage: true })

@@ -5154,6 +5154,7 @@ export interface components {
     }
     /** ProgressEvidence */
     ProgressEvidence: {
+      reviewed_result?: components['schemas']['ProgressReviewedResult'] | null
       task_context?: components['schemas']['ProgressTaskContext'] | null
       /** Id */
       id: string
@@ -5194,6 +5195,32 @@ export interface components {
       items: components['schemas']['ProgressEvidence'][]
       /** Dimensions */
       dimensions: components['schemas']['ProgressDimension'][]
+    }
+    /** ProgressReviewedResult */
+    ProgressReviewedResult: {
+      /**
+       * Label
+       * @enum {string}
+       */
+      label: 'Explanation check passed' | 'Application attempted' | 'Application check passed'
+      /** Currently Eligible */
+      currently_eligible: boolean
+      /** Exclusion Reason */
+      exclusion_reason: string | null
+      /** Grading Method */
+      grading_method: string
+      /**
+       * Review Authority
+       * @default learner_review
+       * @constant
+       */
+      review_authority: 'learner_review'
+      /**
+       * Independence
+       * @default not_verified
+       * @constant
+       */
+      independence: 'not_verified'
     }
     /**
      * ProgressTaskContext

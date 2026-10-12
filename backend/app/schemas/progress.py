@@ -17,7 +17,17 @@ class ProgressTaskContext(BaseModel):
     independence: Literal["not_verified"] = "not_verified"
 
 
+class ProgressReviewedResult(BaseModel):
+    label: Literal["Explanation check passed", "Application attempted", "Application check passed"]
+    currently_eligible: bool
+    exclusion_reason: str | None
+    grading_method: str
+    review_authority: Literal["learner_review"] = "learner_review"
+    independence: Literal["not_verified"] = "not_verified"
+
+
 class ProgressEvidence(BaseModel):
+    reviewed_result: ProgressReviewedResult | None = None
     task_context: ProgressTaskContext | None = None
     id: str
     dimension: str

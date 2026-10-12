@@ -100,6 +100,11 @@ function ConceptEvidence({ skillId, title }: { skillId: string; title: string })
         <ol className="grid gap-3 mt-3">
           {data.items.map(item => <li key={item.id} className="border-b border-line pb-3">
             <p className="font-medium">{labels[item.dimension] ?? item.dimension} · <time dateTime={item.recorded_at}>{dateLabel(item.recorded_at)}</time></p>
+            {item.reviewed_result && <div className="my-2 text-sm">
+              <p className="font-medium">{item.reviewed_result.label} · {item.reviewed_result.currently_eligible ? 'Reviewed task' : 'Historical result'}</p>
+              {item.reviewed_result.exclusion_reason && <p>{item.reviewed_result.exclusion_reason}</p>}
+              <p>Task and rubric reviewed by you. {item.reviewed_result.grading_method === 'local' ? 'Checked by a local model.' : item.reviewed_result.grading_method === 'hosted' ? 'Checked by a hosted model.' : 'Recorded attempt; no model-verified pass.'} Help history is incomplete; independent work is not verified.</p>
+            </div>}
             <p>Recorded result: {item.score === 1 ? 'full credit' : item.score === 0 ? 'no credit' : 'partial credit'}.</p>
             <p className="text-sm text-muted">Checked by: {item.grader_level === 'local' ? 'local model' : item.grader_level === 'hosted' ? 'hosted model' : item.grader_level}.</p>
             <p className="text-sm text-muted">{item.reported_hint_count === null ? 'Hint history unavailable.' : `Reported hints: ${item.reported_hint_count}.`} {item.attempt_id ? 'Linked assessment attempt.' : 'Original attempt unavailable.'}</p>

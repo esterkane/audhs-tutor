@@ -5,6 +5,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Assessment, AssessmentAttempt, CompetencyEvidence, TutorAnswer
+from app.kernel.progress_qualification import reviewed_result
 from app.schemas.assessment_provenance import AssessmentProvenance
 from app.schemas.progress import (
     ProgressDimension,
@@ -100,6 +101,7 @@ async def evidence_page(
         ],
         items=[
             ProgressEvidence(
+                reviewed_result=await reviewed_result(db, learner_id, attempt) if attempt else None,
                 task_context=task_context(attempt),
                 id=evidence.id,
                 answer_id=answer_id,
