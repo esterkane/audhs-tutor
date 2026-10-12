@@ -64,8 +64,10 @@ function ConceptEvidence({ skillId, title }: { skillId: string; title: string })
     else setOffset(next)
   }
   if (!data) return <Card>
-    {evidence.isError ? <><p role="alert">Could not load evidence for {title}.</p><Button onClick={() => void evidence.refetch()} disabled={evidence.isFetching}>Retry evidence</Button></>
+    {evidence.isError && !evidence.isFetching ? <p role="alert">Could not load evidence for {title}.</p>
       : <p role="status">Loading evidence for {title}…</p>}
+    <Button aria-disabled={evidence.isFetching} aria-busy={evidence.isFetching}
+      onClick={() => { if (!evidence.isFetching) void evidence.refetch() }}>Retry evidence</Button>
   </Card>
   return <>
     {evidence.isError && <p role="alert">Could not load the requested evidence. Showing the last loaded records. <Button onClick={() => void evidence.refetch()}>Retry evidence</Button></p>}

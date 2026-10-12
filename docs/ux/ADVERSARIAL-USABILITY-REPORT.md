@@ -270,3 +270,23 @@ pass;390px full-page screenshot inspected. No search semantics or learning chang
 Self-review confirms only classes changed; no new dependency or hard-coded sizing.
 Human/AT acceptance and other routes remain open; existing bundle warning remains.
 Logs:/tmp/search-targets-{before,final,build}.log. Both repos remain private.
+
+
+## AU-PROGRESS-01 — Initial evidence retry loses keyboard control (S3)
+
+2026-10-12: held retry after initial503 removes Retry evidence and loses focus at
+320/1280. Keep the recovery control mounted through loading, announce status and
+guard repeat activation. Only initial evidence recovery is in scope; no evidence
+semantics or learning writes change. Baseline:/tmp/progress-retry-before.log.
+
+
+2026-10-12 AU-PROGRESS-01: initial evidence recovery now keeps Retry evidence
+mounted with aria-disabled/busy and a guarded handler during the read. Keyboard
+focus survives a held retry and repeated503; duplicate activation sends no extra
+request. Existing summary semantics, pagination and learning owners unchanged.
+Four browser checks pass (320/1280 recovery plus saved-feedback/Back/pagination),
+ESLint/e2e types/build pass;320px screenshot inspected. Focused self-review found no
+learning-policy change. Initial baseline fixture was corrected to hold only explicit
+retry, rather than the development StrictMode read. Final baseline reproduced the
+removed button; logs:/tmp/progress-retry-{before,final,build}.log. Existing bundle
+warning and broader cached-page retry/human/AT acceptance remain open.

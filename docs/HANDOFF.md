@@ -1979,3 +1979,15 @@ terms; fixture corrected, no runtime defect/change. Only the existing read-only
 corpus search POST is excluded from the no-learning-writes assertion. Production
 checks reused for unchanged app code. Human/AT and other-route acceptance remain
 open. Log:/tmp/search-zoom-final.log. Both repository variants remain private.
+
+
+2026-10-12 AU-PROGRESS-01: initial evidence recovery now keeps Retry evidence
+mounted with aria-disabled/busy and a guarded handler during the read. Keyboard
+focus survives a held retry and repeated503; duplicate activation sends no extra
+request. Existing summary semantics, pagination and learning owners unchanged.
+Four browser checks pass (320/1280 recovery plus saved-feedback/Back/pagination),
+ESLint/e2e types/build pass;320px screenshot inspected. Focused self-review found no
+learning-policy change. Initial baseline fixture was corrected to hold only explicit
+retry, rather than the development StrictMode read. Final baseline reproduced the
+removed button; logs:/tmp/progress-retry-{before,final,build}.log. Existing bundle
+warning and broader cached-page retry/human/AT acceptance remain open.

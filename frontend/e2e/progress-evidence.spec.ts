@@ -70,3 +70,35 @@ for (const width of [320, 1280]) test(`Progress distinguishes records from indep
   await expect(page.getByRole('heading', { name: 'Concept a', exact: true })).toBeVisible()
   expect(writes).toEqual([])
 })
+
+for (const width of [320, 1280]) test(`Progress keeps keyboard retry available while evidence loads ${width}`, async ({ page }) => {
+  await page.setViewportSize({ width, height: 900 })
+  await page.route('**/api/skills', route => route.fulfill({ json: { skills: [{ id: 'retry', title: 'Retry concept', prerequisites: [], success_criteria: [] }], next_skill_id: null } }))
+  let release!: () => void
+  const held = new Promise<void>(resolve => { release = resolve })
+  let calls = 0
+  let holdRetry = false
+  await page.route('**/api/skills/retry/evidence?*', async route => {
+    calls++
+    if (holdRetry) await held
+    await route.fulfill({ status: 503, json: {} })
+  })
+  await page.goto('/progress?skill=retry')
+  const retry = page.getByRole('button', { name: 'Retry evidence', exact: true })
+  await expect(retry).toBeVisible()
+  const initialCalls = calls
+  holdRetry = true
+  await retry.focus()
+  await page.keyboard.press('Enter')
+  await expect.poll(() => calls).toBe(initialCalls + 1)
+  await expect(retry).toBeFocused()
+  await expect(retry).toHaveAttribute('aria-disabled', 'true')
+  await page.keyboard.press('Enter')
+  expect(calls).toBe(initialCalls + 1)
+  release()
+  await expect(page.getByRole('alert')).toContainText('Could not load evidence')
+  await expect(retry).toBeFocused()
+  await expect(retry).toHaveAttribute('aria-disabled', 'false')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.screenshot({ path: `/tmp/progress-retry-${width}.png`, fullPage: true })
+})
