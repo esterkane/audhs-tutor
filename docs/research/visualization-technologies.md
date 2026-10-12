@@ -82,8 +82,11 @@ separate; retain notices. Authoring tool maintenance is not evidence of lesson q
 
 ## Unified representation proposal
 
-Versioned `visual.v1` envelope attached to exact LearningObject ID/version, skill ID
-and objective/success-criterion IDs. Discriminated kinds: relationship, coordinate,
+Versioned `visual.v1` envelope attached to exact LearningObject ID/version and skill ID.
+Current objectives and criteria lack IDs: bind the goal text and criterion index/text
+to that exact object version, as reconciled in
+[the binding contract](../slices/visual-learning-binding.md). Stable objective/criterion
+IDs would require a separate curriculum migration; never fabricate them. Discriminated kinds: relationship, coordinate,
 data_plot, signal, spatial, reviewed_animation. Each kind has a bounded typed payload,
 explicit units/domains, deterministic initial state, allowed interaction IDs and a
 text equivalent. No eval, arbitrary functions, HTML/SVG strings or remote loaders.

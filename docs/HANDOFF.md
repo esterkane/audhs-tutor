@@ -2190,3 +2190,13 @@ outputs; median39.704s across all attempts,33.134s completed-only. No production
 promotion, hosted calls or routing changes.8b completed all but failed teaching
 fidelity checks. Documentation/results-only slice; unchanged harness retains its
 18 offline test passes. Further quality work remains; no whole-stage completion.
+
+
+## Visual binding reconciliation — 2026-10-12
+
+Inspected current object/schema/cache/API: objectives and criteria have no stable
+IDs, and representation invalidation deletes cache rows. Corrected the research
+proposal; see slices/visual-learning-binding.md for exact-version binding, source
+verification and authored-history boundaries. V00 lifecycle/ADR remains proposed;
+no runtime or learning-logic change, migration, new dependency or browser-test claim.
+Next: resolve authored lifecycle before V03 storage, then bounded schema/binding tests.
