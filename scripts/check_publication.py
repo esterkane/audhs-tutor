@@ -36,7 +36,15 @@ def inspect_blob(name: str, content: bytes, prohibited: frozenset[str] = PROHIBI
 
 def check_index(root: Path) -> list[str]:
     entries = subprocess.check_output(["git", "ls-files", "--stage", "-z"], cwd=root)
-    failures = []
+    # A clean index is not approval for a later staging operation. Reject drift so
+    # the checked content is the exact candidate the caller intends to commit.
+    unstaged = subprocess.check_output(
+        ["git", "diff", "--name-only", "-z"], cwd=root
+    ).split(b"\0")
+    failures = [
+        f"{name.decode('utf-8', errors='replace')}: unstaged tracked changes; stage before checking"
+        for name in unstaged if name
+    ]
     for entry in entries.split(b"\0"):
         if not entry:
             continue

@@ -45,3 +45,15 @@ def test_private_snapshot_paths_are_forbidden_even_when_compressed() -> None:
         "private-state/database/snapshot.gz", b"compressed"
     )
     assert "private runtime path" in module.inspect_blob(".env", b"EXAMPLE=private")
+
+
+def test_clean_index_does_not_approve_later_staging(tmp_path: Path) -> None:
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    path = tmp_path / "generated.ts"
+    path.write_text("clean staged content")
+    subprocess.run(["git", "add", "generated.ts"], cwd=tmp_path, check=True)
+    path.write_text("changed generated content")
+    failures = module.check_index(tmp_path)
+    assert failures == ["generated.ts: unstaged tracked changes; stage before checking"]
+    subprocess.run(["git", "add", "generated.ts"], cwd=tmp_path, check=True)
+    assert module.check_index(tmp_path) == []
