@@ -1,0 +1,54 @@
+{
+  "scope": "Two local Session HTTP diagnostic requests on disposable databases, seeded curriculum and deterministic retrieval. In-process observer copied native numeric fields before unchanged LiteLLM parsing. No provider/runtime/prompt change.",
+  "samples": [
+    {
+      "case": "repeat",
+      "headers_s": 0.019643125007860363,
+      "first_text_s": 0.2595689580193721,
+      "done": {
+        "elapsed_s": 6.397083457995905,
+        "registry_id": "gemma3-12b",
+        "outcome": "ok",
+        "source_count": 3
+      },
+      "error": null,
+      "native": {
+        "total_duration": 6282982958,
+        "load_duration": 4800083,
+        "prompt_eval_count": 2638,
+        "prompt_eval_cached_count": 2637,
+        "prompt_eval_duration": 151780000,
+        "eval_count": 169,
+        "eval_duration": 6111465000,
+        "done_reason": "stop"
+      }
+    },
+    {
+      "case": "changed_question",
+      "headers_s": 0.020028875005664304,
+      "first_text_s": 9.781879375019344,
+      "done": {
+        "elapsed_s": 16.705673000018578,
+        "registry_id": "gemma3-12b",
+        "outcome": "partial",
+        "source_count": 3
+      },
+      "error": null,
+      "native": {
+        "total_duration": 16599438875,
+        "load_duration": 4454625,
+        "prompt_eval_count": 2607,
+        "prompt_eval_cached_count": 0,
+        "prompt_eval_duration": 9673699000,
+        "eval_count": 190,
+        "eval_duration": 6907364000,
+        "done_reason": "length"
+      }
+    }
+  ],
+  "limits": [
+    "Not a cold/warm randomized benchmark or production corpus measurement.",
+    "Different questions change retrieval and prompt composition; this does not isolate why cache was lost.",
+    "Partial output is retained as failure evidence, not a completed answer."
+  ]
+}

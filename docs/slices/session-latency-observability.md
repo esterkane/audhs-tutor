@@ -100,3 +100,75 @@ was correct but the explanation overgeneralizes alignment without fixing magnitu
 not a teaching-quality pass. No more samples needed to answer this narrow hypothesis.
 Evidence: evals/results/session-http-profile-20261012.json. Next: native model phase
 metrics; avoid reducing history/retrieval budgets based on this synthetic fixture.
+
+
+## Native timing experiment — 2026-10-12
+A temporary in-process wrapper observed numeric fields before the installed LiteLLM
+parser discarded them; original parsing and requests were unchanged. Two disposable
+Session HTTP calls used deterministic seeded retrieval, no hosted model or live data.
+Repeated prompt:2638 input tokens,2637 reported cached; load0.0048s, prompt0.1518s,
+generation6.1115s for169 tokens, stop. Changed question:2607 input tokens,0 cached;
+load0.0045s, prompt9.6737s, generation6.9074s for190 tokens, length/partial. This confirms
+uncached prompt processing dominated that changed-question wait; it does not explain
+cache invalidation or establish production percentiles. Evidence:session-native-profile-20261012.json
+in evals/results. The observer remains temporary, not a production SDK monkey patch.
+
+Next hypothesis: identify which rendered sections account for uncached input using
+existing token estimates and exact prompt-prefix comparison, without new inference.
+Only then choose a bounded quality-tested optimization. Do not lower output limits:
+the changed question already terminated partial. Do not remove sources or reintroduce
+rejected reordering as an assumed safe speedup. Native telemetry remains diagnostic
+only; permanent adapter support is not yet implemented. Batch this evidence with the
+next implementation publication rather than issuing another status-only commit.
+
+
+## Offline prompt comparison — 2026-10-12
+Reconstructed both requests through production Session assembly with fake generation
+and separate disposable databases; no new inference. System content is byte-identical
+(3151 characters); user messages share3010 initial characters and first differ inside
+retrieved knowledge. No early timestamp/ID volatility was found in this fixture.
+Approximate section costs: policy787, retrieved1369/1302, output contract420, learning
+contract170, state37, evidence35; estimates are not native tokenizer counts. Evidence:
+evals/results/session-prompt-comparison-20261012.json. This weakens a generic early-field
+reorder hypothesis: substantial shared prefix already exists. Next inspect runner
+cache reuse/rollback semantics before changing educational content. Do not infer that
+retrieval is unnecessary from its size. Official cached-count definition verified at
+https://github.com/ollama/ollama/blob/main/docs/api/usage.mdx (read2026-10-12); installed
+v0.33.3 reports cached input count independently of logical total input.
+
+
+## Runtime cache cause and bounded candidate — 2026-10-12
+Installed runner log for the2607-token changed request explicitly forces full prompt
+reprocessing because retained SWA checkpoints cannot restore the required prefix. The
+normal process is llama-server with32768 context; installed --help exposes --swa-full
+via LLAMA_ARG_SWA_FULL. Ollama v0.33.3 llm/llama_server.go inherits os.Environ.
+This establishes a concrete runtime candidate without changing educational context.
+
+An isolated server with LLAMA_ARG_SWA_FULL=1 confirmed full SWA allocation in logs:
+2048MiB non-SWA plus10240MiB SWA. First/cold request took15.88s to first text with5.97s
+load. Changed request reused1477/2607 tokens: prompt4.267s, first text4.283s, total11.236s;
+baseline changed request had0 cached, prompt9.674s, first9.782s,total16.706s. These are
+individual observations, not p95 or an isolated randomized effect estimate. Temperature,
+context, prompt and output cap retained. Both changed answers end partway through a
+numerical example at190 tokens. Neither is teaching acceptance; do not conceal partial
+output to claim a speedup. Original runtime untouched; isolated server shut down.
+Evidence:evals/results/session-full-swa-20261012.json.
+
+Next bounded implementation should expose a reversible opt-in local runtime profile
+with explicit memory cost and independent port, then compare multiple representative
+Session turns and complete-answer quality before adoption. Output-cap adequacy is a
+separate observed teaching issue, not permission to lower the budget further. No global
+launch environment, model route or owner daemon was changed. Batch these measurements
+with that implementation rather than repeatedly publishing investigation-only commits.
+
+
+## Opt-in launcher implementation
+`scripts/local_tutor_runtime.py` provides a separate loopback runtime with explicit
+--full-cache, --check, independent port, compatible-runner check and owned-process
+cleanup. It allows two resident models so embedding does not systematically evict the
+tutor. No automatic app switch or permanent environment edit. Four tests, Ruff and
+strict script mypy pass. Actual installed --check succeeds; live launcher returned
+/api/version200, Ctrl-C exited130 and its port closed. Review found SIGTERM cleanup
+gap, now fixed with regression and re-review. No browser UI changed; no new visual
+claims. Usage/rollback/memory limits:docs/LOCAL-TUTOR-RUNTIME.md. Performance/quality
+acceptance remains open; the full-cache profile is experimental, not default.

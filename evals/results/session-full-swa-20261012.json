@@ -1,0 +1,44 @@
+{
+  "scope": "Separate local Ollama server, existing Gemma3 12B weights, captured synthetic Session prompts; native HTTP comparison, not main-app rollout. Same32768 context and190 output cap, temperature0.3.",
+  "setting": "LLAMA_ARG_SWA_FULL=1",
+  "kv_cache_mib": {
+    "non_swa": 2048,
+    "swa": 10240
+  },
+  "samples": [
+    {
+      "case": "repeat",
+      "first_s": 15.877705166989472,
+      "total_s": 22.14726850000443,
+      "native": {
+        "load_duration": 5973847333,
+        "prompt_eval_count": 2638,
+        "prompt_eval_cached_count": 0,
+        "prompt_eval_duration": 9884178000,
+        "eval_count": 170,
+        "eval_duration": 6269506000,
+        "done_reason": "stop"
+      }
+    },
+    {
+      "case": "changed",
+      "first_s": 4.282694749999791,
+      "total_s": 11.235951000009663,
+      "native": {
+        "load_duration": 4555083,
+        "prompt_eval_count": 2607,
+        "prompt_eval_cached_count": 1477,
+        "prompt_eval_duration": 4267432000,
+        "eval_count": 190,
+        "eval_duration": 6952150000,
+        "done_reason": "length"
+      }
+    }
+  ],
+  "limitations": [
+    "Two single runs; first includes cold loading.",
+    "Changed answer remains incomplete at190 tokens in baseline and candidate.",
+    "More cache memory; no production setting changed.",
+    "Original local server untouched; isolated process group shut down and absence verified."
+  ]
+}

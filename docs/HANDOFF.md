@@ -2282,3 +2282,13 @@ and separately tested native Ollama metrics. See slices/session-latency-observab
 Fixed migration logging suppression with subprocess regression;3 tests/Ruff/review pass.
 Fixture preparation42ms and finalization8ms; inference dominates this sample. See
 slices/session-latency-observability.md for limits and next native-timing step.
+
+
+## Optional runtime profile — 2026-10-12
+Added reversible local full-cache launcher; no default switch. Native diagnostics
+confirm prompt reprocessing from SWA checkpoint loss; isolated candidate reduces one
+changed-question first-text sample9.78→4.28s with roughly11GiB extra cache. Answer
+still partial at existing cap; no quality-pass claim. Four launcher tests, lint/types,
+installed check and real start/Ctrl-C/port-close pass. Review cleanup finding fixed.
+See LOCAL-TUTOR-RUNTIME.md and slices/session-latency-observability.md. Next: bounded
+real Session validation with retrieval and complete-answer quality before adoption.

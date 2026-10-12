@@ -1,0 +1,45 @@
+{
+  "method": "Production Session prompt assembly with fake generation, separate disposable databases and seeded deterministic retrieval; no model inference.",
+  "approximate_sections": [
+    {
+      "checked_assessment": 0,
+      "policy": 787,
+      "historical": 0,
+      "preferences": 1,
+      "session_state": 37,
+      "learning_contract": 170,
+      "evidence": 35,
+      "retrieved": 1369,
+      "request": 20,
+      "output_contract": 420
+    },
+    {
+      "checked_assessment": 0,
+      "policy": 787,
+      "historical": 0,
+      "preferences": 1,
+      "session_state": 37,
+      "learning_contract": 170,
+      "evidence": 35,
+      "retrieved": 1302,
+      "request": 34,
+      "output_contract": 420
+    }
+  ],
+  "prefix_comparison": [
+    {
+      "role": "system",
+      "first_characters": 3151,
+      "second_characters": 3151,
+      "shared_prefix_characters": 3151
+    },
+    {
+      "role": "user",
+      "first_characters": 8342,
+      "second_characters": 8132,
+      "shared_prefix_characters": 3010
+    }
+  ],
+  "first_changed_section": "Retrieved knowledge; source selection/order changes with the question.",
+  "conclusion": "System message and early user context are stable. Cannot attribute zero native cache tokens solely to volatile early prompt fields; runner reuse semantics remain to investigate. Character lengths/section estimates are not native tokenizer counts."
+}
