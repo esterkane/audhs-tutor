@@ -89,6 +89,56 @@ const results = {
 describe('Experiments', () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it('distinguishes failed reads from empty data and retries without a mutation', async () => {
+    let fail = true
+    const fetcher = vi.fn(async () => fail
+      ? jsonResponse({ detail: 'Unavailable' }, 503)
+      : jsonResponse({ experiments: [], templates: [], metrics: [] }))
+    vi.stubGlobal('fetch', fetcher)
+    renderApp(<Experiments />)
+    expect(screen.queryByText(/No experiments yet/)).not.toBeInTheDocument()
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load experiments.')
+    expect(screen.queryByText(/No experiments yet/)).not.toBeInTheDocument()
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading experiments' }))
+    expect(await screen.findByText(/No experiments yet/)).toBeInTheDocument()
+    expect(fetcher).toHaveBeenCalledTimes(2)
+  })
+
+  it('recovers a results error without closing the chosen experiment', async () => {
+    let fail = true
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/results')
+      ? fail ? jsonResponse({ detail: 'Unavailable' }, 503) : jsonResponse(results)
+      : jsonResponse({ experiments: [exp], templates: [], metrics: [] })))
+    renderApp(<Experiments />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Results' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('Could not load results.')
+    expect(screen.queryByText('Loading results…')).not.toBeInTheDocument()
+    fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Retry loading results' }))
+    expect(await screen.findByText(/Analysis v2/)).toBeInTheDocument()
+  })
+
+  it('retains cached experiment and result data when invalidated reads fail', async () => {
+    let fail = false
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (init?.method === 'POST') {
+        fail = true
+        return jsonResponse({ ...exp, status: 'done' })
+      }
+      if (fail) return jsonResponse({ detail: 'Unavailable' }, 503)
+      return jsonResponse(url.endsWith('/results') ? results : { experiments: [exp], templates: [], metrics: [] })
+    }))
+    renderApp(<Experiments />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Results' }))
+    expect(await screen.findByText(/Analysis v2/)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Stop' }))
+    expect(await screen.findByText('Could not refresh experiments. Showing the last loaded data.')).toBeInTheDocument()
+    expect(await screen.findByText('Could not refresh results. Showing the last loaded data.')).toBeInTheDocument()
+    expect(screen.getByText('Socratic vs explicit')).toBeInTheDocument()
+    expect(screen.getByText(/Analysis v2/)).toBeInTheDocument()
+  })
+
   it('lists experiments, opens results as hypotheses with the raw numbers, stops on click', async () => {
     const posts: string[] = []
     vi.stubGlobal(

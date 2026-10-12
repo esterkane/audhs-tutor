@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { apiFetch, type Schemas } from '../../lib/api'
+import { boundedRead } from '../../lib/boundedRead'
 
 export type ExperimentOut = Schemas['ExperimentOut']
 export type ResultsOut = Schemas['ResultsOut']
@@ -8,14 +9,16 @@ export type MetricOut = Schemas['MetricOut']
 export function useExperiments() {
   return useQuery({
     queryKey: ['experiments'],
-    queryFn: () => apiFetch<Schemas['ExperimentList']>('/api/experiments'),
+    queryFn: ({ signal }) => boundedRead<Schemas['ExperimentList']>('/api/experiments', signal, 'Experiments'),
+    retry: false,
   })
 }
 
 export function useResults(id: string | null) {
   return useQuery({
     queryKey: ['experiments', id, 'results'],
-    queryFn: () => apiFetch<ResultsOut>(`/api/experiments/${id}/results`),
+    queryFn: ({ signal }) => boundedRead<ResultsOut>(`/api/experiments/${id}/results`, signal, 'Results'),
+    retry: false,
     enabled: id !== null,
   })
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { useExperimentActions, useExperiments, useResults, type MetricOut } from '../features/experiments/api'
@@ -58,12 +58,32 @@ function MetricRow({ m, primary, unitType }: { m: MetricOut; primary: boolean; u
   )
 }
 
+function ReadRecovery({ label, cached, fetching, retry }: {
+  label: string; cached: boolean; fetching: boolean; retry: () => void
+}) {
+  return <div className="grid gap-2">
+    <p role="alert">{cached
+      ? `Could not refresh ${label}. Showing the last loaded data.`
+      : `Could not load ${label}.`}</p>
+    <p className="text-sm text-muted">Check that the local app backend is running, then retry.</p>
+    <Button onClick={() => { if (!fetching) retry() }} aria-disabled={fetching}>Retry loading {label}</Button>
+    {fetching && <p role="status">Retrying {label}…</p>}
+  </div>
+}
+
 function Dashboard({ id }: { id: string }) {
   const results = useResults(id)
-  if (!results.data) return <p className="text-sm">Loading results…</p>
+  const [retrying, setRetrying] = useState(false)
+  const content = useRef<HTMLDivElement>(null)
+  const recovery = (results.isError || retrying) && <ReadRecovery label="results" cached={!!results.data}
+    fetching={results.isFetching} retry={() => { setRetrying(true); void results.refetch().then(result => { if (result.isSuccess) content.current?.focus() }).finally(() => setRetrying(false)) }} />
+  if (!results.data) return <div ref={content} tabIndex={-1} role="region" aria-label="Experiment results">
+    {recovery || <p role="status" className="text-sm">Loading results…</p>}
+  </div>
   const r = results.data
   return (
-    <div className="grid gap-3">
+    <div ref={content} tabIndex={-1} role="region" aria-label="Experiment results" className="grid gap-3">
+      {recovery}
       <p className="text-sm text-muted">
         Hypothesis: {r.experiment.hypothesis || '—'} · unit: {r.experiment.unit_type} · arms:{' '}
         {r.experiment.arms.map((a) => `${a.name} (${a.assigned} ${r.experiment.unit_type}s)`).join(', ')}
@@ -132,19 +152,24 @@ function Dashboard({ id }: { id: string }) {
 
 export function Experiments() {
   const list = useExperiments()
+  const [retrying, setRetrying] = useState(false)
+  const content = useRef<HTMLDivElement>(null)
   const { fromTemplate, start, stop } = useExperimentActions()
   const [open, setOpen] = useState<string | null>(null)
   const experiments = list.data?.experiments ?? []
   const templates = (list.data?.templates ?? []) as Array<{ id: string; name: string; hypothesis: string }>
   return (
-    <div className="grid gap-4">
+    <div ref={content} tabIndex={-1} role="region" aria-label="Experiments" className="grid gap-4">
       <Card>
         <CardTitle as="h1">Experiments (n-of-1)</CardTitle>
         <p className="text-sm text-muted mb-3">
           Compare two ways of learning on matched skills or sessions. You start it, you stop it, and you read
           the result. While one runs, the session screen says which arm is active.
         </p>
-        {experiments.length === 0 && (
+        {(list.isError || retrying) && <ReadRecovery label="experiments" cached={!!list.data}
+          fetching={list.isFetching} retry={() => { setRetrying(true); void list.refetch().then(result => { if (result.isSuccess) content.current?.focus() }).finally(() => setRetrying(false)) }} />}
+        {!list.data && !list.isError && !retrying && <p role="status">Loading experiments…</p>}
+        {list.data && experiments.length === 0 && (
           <p className="text-sm">No experiments yet. Start one from a template below.</p>
         )}
         <ul className="grid gap-2">
@@ -183,7 +208,7 @@ export function Experiments() {
           <Dashboard id={open} />
         </Card>
       )}
-      <details className="rounded-lg border border-line bg-card p-4 shadow-sm">
+      {list.data && <details className="rounded-lg border border-line bg-card p-4 shadow-sm">
         <summary className="cursor-pointer font-medium">New experiment from a template</summary>
         <ul className="grid gap-2 mt-3">
           {templates.map((t) => (
@@ -196,7 +221,7 @@ export function Experiments() {
             </li>
           ))}
         </ul>
-      </details>
+      </details>}
     </div>
   )
 }

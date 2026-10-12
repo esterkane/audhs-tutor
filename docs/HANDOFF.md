@@ -2258,3 +2258,12 @@ observations: no axe violations/overflow, manual incomplete findings remain. Act
 adversarial report with reproduction and acceptance; fix next. First custom-output
 audit run was aborted after a dev reload loop; standard ignored output resolved it.
 No runtime change, paid calls or claims of human/physical-audio acceptance.
+
+
+## Experiment read recovery — 2026-10-12
+AU-EXPERIMENTS-01 fixed: distinguish failed reads from empty data, bounded retry,
+retain cached results, preserve keyboard focus through recovery. Four component and
+three isolated browser tests pass; lint/types/build pass, desktop/narrow screenshots
+inspected, code-review findings resolved. Existing build chunk warning remains.
+No metric/assignment/learning logic changed. See slices/experiments-read-recovery.md.
+Next: representative tutor latency evidence and remaining UX acceptance.

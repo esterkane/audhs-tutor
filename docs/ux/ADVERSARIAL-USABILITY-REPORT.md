@@ -452,3 +452,6 @@ Implementation remains outstanding; the completed audit does not close this find
 Models also lacks a clear model-list error while Hosted spend shows its own error;
 recorded as a separate follow-up observation, not yet ranked/reproduced in isolation.
 No human comprehension, physical audio or complete screen-reader acceptance claimed.
+
+
+AU-EXPERIMENTS-01 implementation verified 2026-10-12. See ../slices/experiments-read-recovery.md for bounded acceptance and remaining limits.
