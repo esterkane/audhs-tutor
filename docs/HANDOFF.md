@@ -2314,3 +2314,8 @@ No runtime change or paid inference. See slices/progress-reviewed-labels.md.
 memory. Failed remount reproduction fixed; 647 frontend tests,6 browser cases,
 lint/types/build and bounded review pass. No backend or learning changes. See
 slices/lesson-draft-navigation-recovery.md for reload limits and remaining R4 work.
+
+2026-10-12: Private recovery tooling avoids unchanged binary archive churn,
+with fresh SQLite integrity and full decompressed hash verification. Disposable
+corruption/reuse regression and review pass. Sanitized variant gets generic docs
+only; see slices/unchanged-archive-reuse.md. No runtime or learning changes.
