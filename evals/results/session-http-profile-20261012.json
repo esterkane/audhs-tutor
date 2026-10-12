@@ -1,0 +1,53 @@
+{
+  "scope": "Real loopback HTTP Session endpoint; synthetic seeded curriculum and deterministic in-memory retrieval; no production corpus or learner DB; no model unloaded or explicit preload",
+  "resident_names_before": [
+    "gemma3:12b",
+    "nomic-embed-text:latest"
+  ],
+  "attempts": [
+    {
+      "case": "initial",
+      "headers_s": 0.020629083999665454,
+      "first_text_s": 9.896230500016827,
+      "done": {
+        "elapsed_s": 16.16907420899952,
+        "registry_id": "gemma3-12b",
+        "outcome": "ok",
+        "source_count": 3
+      },
+      "error": null,
+      "server": {
+        "body_completed": true,
+        "marks_ms": {
+          "answer_finalized": 16167,
+          "body_sent": 16168,
+          "context_finished": 42,
+          "context_started": 40,
+          "dependencies_ready": 18,
+          "done_ready": 16167,
+          "evidence_started": 23,
+          "first_text_ready": 9894,
+          "generation_closed": 16159,
+          "headers_sent": 19,
+          "literal_history_finished": 36,
+          "literal_history_started": 33,
+          "repository_dependency_finished": 18,
+          "repository_dependency_started": 18,
+          "retrieval_finished": 33,
+          "retrieval_started": 29,
+          "semantic_history_started": 36,
+          "turn_started": 20
+        },
+        "scope": "server_request",
+        "status": 200,
+        "version": 1
+      }
+    }
+  ],
+  "limitations": [
+    "One profiled run, not percentiles; deterministic seeded retrieval, not production Qdrant/corpus.",
+    "Client may observe completion before diagnostic log emission; stages joined from completed server log.",
+    "Answer arithmetic correct; direction/magnitude wording needs fixed-length qualification. Not teaching-quality acceptance.",
+    "No native load/prefill timings; residency does not prove zero model load."
+  ]
+}

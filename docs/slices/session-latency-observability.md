@@ -81,3 +81,22 @@ for this diagnostics-only slice. Previous Experiments browser checks remain sepa
 Next: real HTTP measurement harness with disposable data, explicit cold/prepared cases
 and source-heavy prompts; native Ollama telemetry remains a separately tested adapter
 change. Do not call this a measured speedup or declare the latency problem resolved.
+
+
+## Real loopback HTTP check — 2026-10-12
+Three bounded local calls used disposable SQLite and the actual Session SSE endpoint;
+seeded curriculum with deterministic in-memory retrieval (not production Qdrant). No
+hosted providers, live learner writes, model unloads or prompt/routing changes. Initial
+two replies: first text9.987/9.734s, done16.630/16.519s. Migration logging disabled the
+new child logger; fixed Alembic fileConfig to preserve existing loggers. A subprocess
+regression proves actual stderr after Uvicorn configuration followed by real migration.
+Three focused timing tests and Ruff pass; bounded code review found no remaining issue.
+
+Final profiled turn with Gemma already resident: first text9.896s, done16.169s. Context
+ready42ms, server first text9894ms, generation closed16159ms, answer finalized16167ms,
+body sent16168ms. This fixture concentrates delay in model processing/generation; it
+does not prove production retrieval is always cheap or native load is zero. Arithmetic
+was correct but the explanation overgeneralizes alignment without fixing magnitudes;
+not a teaching-quality pass. No more samples needed to answer this narrow hypothesis.
+Evidence: evals/results/session-http-profile-20261012.json. Next: native model phase
+metrics; avoid reducing history/retrieval budgets based on this synthetic fixture.

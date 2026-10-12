@@ -67,3 +67,28 @@ async def test_cancellation_logs_incomplete_and_restores_context(caplog):
     assert record["body_completed"] is False
     assert "first_text_ready" not in record["marks_ms"]
     assert timing._current.get() is None
+
+
+def test_migration_preserves_server_diagnostics(tmp_path):
+    # Isolate logging configuration: production starts Uvicorn before lifespan migrations.
+    import subprocess
+    import sys
+
+    code = """
+import logging, sys, uvicorn
+from app.core.tutor_timing import logger
+from app.db.migrate import upgrade_to_head
+uvicorn.Config("app.main:app")
+upgrade_to_head("sqlite:///" + sys.argv[1])
+assert not logger.disabled
+assert logger.isEnabledFor(logging.INFO)
+logger.info("tutor_timing migration-logging-smoke")
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", code, str(tmp_path / "logging.db")],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stderr
+    assert "tutor_timing migration-logging-smoke" in result.stderr

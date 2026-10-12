@@ -2276,3 +2276,9 @@ and HTTP tests, Ruff and strict mypy228 pass; code review clear after logging-co
 fix. No UI/prompt/model/learning policy changed, no speedup claimed. Local server logs
 are not durable DB telemetry or browser paint. Next: disposable full HTTP timing harness
 and separately tested native Ollama metrics. See slices/session-latency-observability.md.
+
+
+2026-10-12: Real Session HTTP latency reproduced (~9.9s first text,16.2s done).
+Fixed migration logging suppression with subprocess regression;3 tests/Ruff/review pass.
+Fixture preparation42ms and finalization8ms; inference dominates this sample. See
+slices/session-latency-observability.md for limits and next native-timing step.
