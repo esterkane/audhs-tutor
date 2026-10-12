@@ -2165,3 +2165,6 @@ quality work must target evidence fidelity/false attribution with reviewed contr
 
 
 2026-10-12 M00 read-only inventory complete: version-level rights evidence and source-sensitive hosted/export eligibility are absent in inspected boundaries; trust and model licence are distinct. Learner backup/export can retain derived text and are not public-export clearance. Generic inventory and M01/M02 acceptance plan: slices/material-rights-inventory.md. No live classification, runtime change, acquisition edit or external request. Both repos private.
+
+
+2026-10-12 model candidate assessment: research/muse-glimmer-mistral-evaluation.md verifies Glimmer/Mistral availability, hardware feasibility, pricing and existing provider boundaries. Reuses fixed teaching evidence; neither candidate tested. Recommend authorized local Glimmer experiment first; no runtime/routing/DB change, paid calls or weights downloaded. Monthly campaign cap is not supplied by existing daily budget. Candidate execution awaits explicit approval.
