@@ -2097,3 +2097,13 @@ No app code change; prior production/visual evidence reused, CI screenshot inspe
 Log:/tmp/notebook-readiness-ci.log; downloaded trace under
 /tmp/private-ci-38210130517-artifacts. Newest-head CI remains unverified; older green
 results do not close it. Both variants remain private.
+
+
+2026-10-12 local teaching diagnostic: three synthetic workspace explanation requests
+through existing harness/current respond, pinned local gemma3-12b, disposable DB,
+no paid calls. Factual append/concatenation predictions correct against independent
+handwritten Python checks; literal confusion request did not deliver staged/simpler
+teaching. Recorded as a gap, not a pass. Total replies12.705/3.194/7.115s, not TTFT or
+production benchmark. See LOCAL-EXPLANATION-DIAGNOSTIC.md and raw synthetic artifact.
+No runtime/prompt/routing changes. Next reproduce on a contrasting concept before
+prompt edits; G1/main-lesson/human acceptance remain open. Both variants private.
