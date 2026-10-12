@@ -36,9 +36,10 @@ See HANDOFF.md and ux/ADVERSARIAL-USABILITY-REPORT.md for exact tests and limits
    coverage or degree engagement. Preserve the separate acquisition worktree delta.
 6. **Dependent queues:** M00 technical inventory is recorded in
    slices/material-rights-inventory.md; C01a/M01 metadata/rights design and M02
-   enforcement remain open. V00/V01 visual architecture and
-   benchmark, then dependent A/E authoring/resources and optional S/avatar/native
-   tracks remain as recorded in the stage ledger. No replacement architecture or
+   enforcement remain open. Visual technology research, the standalone prototype
+   and bounded schema/binding foundations are delivered; authored lifecycle and
+   lesson integration remain open. Dependent A/E authoring/resources and optional
+   S/avatar/native tracks remain as recorded in the stage ledger. No replacement architecture or
    hosted provider is authorized merely by this checklist.
 
 Both repositories are PRIVATE, including the sanitized future-public variant.
@@ -135,7 +136,7 @@ Implemented [Preferences read recovery](slices/preferences-read-recovery.md): in
 | Q3 | Partial | Integrated report → correction → reviewed replacement across answers and graded items |
 | Q4 | Enhancements unstarted | Optional timeline/capture shortcut with correct focus; timer/parking foundations already exist |
 | QA answer library | Partial | Broader source/reuse acceptance, main-lesson replay and scoped portability/backfill |
-| V visual learning | Assessed, implementation queued | V00 decision → V01 benchmark hardening → V02 local quality; not the audio visualizer |
+| V visual learning | Research and standalone prototype delivered; integration partial | All13 candidates retained; interactive leakage experiment, local part help, bounded specs and persisted binding checks verified. Authored lifecycle, authenticated integration and semantic acceptance remain open; not the audio visualizer |
 | A authoring | Planned | A00 reconciliation after V04, provenance/versioned editing/export gates |
 | E curated resources | Planned | E00 provider/privacy contract after V04; acquisition scripts are not resource-card UX |
 | S codebase tutor | Assessed | S00 allowlisted corpus decision → immutable source snapshots and cited explanations |
@@ -358,3 +359,25 @@ docs/design/LESSON-ORIENTATION-CONTRACT.md. Current duplication spans distinct
 state owners; no speculative remount/refactor was made. Next prototype the
 presentational composition against its draft/focus/mutation acceptance gates.
 This contract is not implementation or a human-usability pass.
+
+
+## Visual investigation completion boundary — 2026-10-12
+
+The requested technology comparison, architecture recommendation and initial ML
+prototype are delivered; keep all13 candidates in the specification for future
+content creation. See research/visualization-technologies.md and
+slices/visual-learning-prototype.md. The extra schema/database-binding foundations
+are recorded in slices/visual-learning-binding.md. They are not a production
+versioned-authoring feature or an accepted lifecycle ADR.
+
+Storage audit: representation invalidation deletes rows; authored history must use
+its own lifecycle. Learner backup retains derived artifacts under current policy;
+export/wipe discovers learner-scoped tables through metadata. New tables still need
+migration, ownership, immutable version/idempotency and nonempty backup/wipe tests.
+Do not claim these future gates passed from the pure validators or prototype.
+
+Return to the existing integrated UX/reliability acceptance queue before expanding
+visual authoring speculatively. R3 grade-ready recovery is already implemented;
+absence of a persisted inference result remains uncertain and must not auto-retry.
+Latest full backend strict mypy passed227 source files. CI remains independently
+pending behind active browser runs; prior-head success does not close latest-head CI.
