@@ -60,3 +60,7 @@ workspace described in ../design/CROSS-TOPIC-CONTENT-WORKSPACE.md. No new Ask UI
 automatic references/fact checking, generated video or course replacement is delivered
 by this backend slice. Browser/keyboard/responsive checks are unchanged, not rerun:
 no frontend files changed; human learning-quality and accessibility gates stay open.
+
+Follow-up 2026-10-12: image/speech adapter containment delivered in
+media-source-containment.md. Version-bound origin/lineage and public-export policy
+remain incomplete; the limitations above are the historical G0a checkpoint.

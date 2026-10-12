@@ -582,3 +582,11 @@ before reservation; direct adapters and local embeddings/statistics enforce the
 transport boundary. Local complete context retained; no learning-rule changes.
 See slices/source-transport-containment.md for evidence and remaining image/speech,
 origin-lineage and public-export scope. G0 and the Ask workspace are not complete.
+
+2026-10-12: G0b image/speech adapters now require local endpoints and proxy/redirect
+isolation; image model metadata is checked before bytes are sent. See
+slices/media-source-containment.md. Owner-origin/derived-lineage and public-export
+enforcement remain open; next implementation is G1 independent Ask workspace.
+Live media verification also fixed Kokoro object-voice parsing (automatic voice
+selection previously returned400). 1,359 full tests passed before that correction;
+73 affected final tests and real local synthesis pass; physical audio remains open.

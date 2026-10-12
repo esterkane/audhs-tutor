@@ -25,6 +25,7 @@ import httpx
 
 from app.knowledge.ingest.converters import image_to_png
 from app.knowledge.ingest.types import Block, RuntimeCallFailed
+from app.models_ai.source_policy import SourcePolicyDenied, require_local_weights, require_loopback
 
 IMAGE_SUFFIXES = {
     ".png",
@@ -88,6 +89,7 @@ class OllamaImageReader:
         self.timeout_s = timeout_s
 
     def read(self, image: bytes, *, mime: str) -> VisionOutput:
+        require_loopback(self.host)
         t0 = time.perf_counter()
         payload: dict[str, Any] = {
             "model": self.model,
@@ -96,9 +98,22 @@ class OllamaImageReader:
             "stream": False,
             "options": {"temperature": 0, "num_predict": 1200},
         }
-        r = httpx.post(f"{self.host}/api/generate", json=payload, timeout=self.timeout_s)
-        r.raise_for_status()
-        body = r.json()
+        with httpx.Client(
+            timeout=self.timeout_s, trust_env=False, follow_redirects=False
+        ) as client:
+            try:
+                info = client.post(
+                    f"{self.host}/api/show",
+                    json={"model": self.model},
+                    timeout=min(self.timeout_s, 10.0),
+                )
+                info.raise_for_status()
+                require_local_weights(info.json())
+            except (httpx.HTTPError, ValueError) as exc:
+                raise SourcePolicyDenied("Source policy: cannot verify local image model") from exc
+            r = client.post(f"{self.host}/api/generate", json=payload)
+            r.raise_for_status()
+            body = r.json()
         return VisionOutput(
             text=str(body.get("response", "")).strip(),
             latency_ms=int((time.perf_counter() - t0) * 1000),

@@ -26,7 +26,7 @@ from app.models_ai.provider import (
     to_chat,
     usage_of,
 )
-from app.models_ai.source_policy import SourcePolicyDenied
+from app.models_ai.source_policy import SourcePolicyDenied, require_local_weights, require_loopback
 
 litellm.suppress_debug_info = True
 
@@ -60,17 +60,7 @@ class OllamaProvider:
 
     async def validate_local_transport(self, spec: ModelSpec) -> None:
         """Inspect local model metadata without sending learner content."""
-        endpoint = urlparse(self.host)
-        if (
-            endpoint.scheme not in {"http", "https"}
-            or endpoint.hostname not in {"localhost", "127.0.0.1", "::1"}
-            or endpoint.username is not None
-            or endpoint.password is not None
-            or endpoint.path not in {"", "/"}
-            or endpoint.query
-            or endpoint.fragment
-        ):
-            raise SourcePolicyDenied("Source policy: Ollama endpoint must be local loopback")
+        require_loopback(self.host)
         try:
             async with httpx.AsyncClient(
                 timeout=min(self.timeout_s, 10.0), trust_env=False, follow_redirects=False
@@ -78,13 +68,7 @@ class OllamaProvider:
                 response = await client.post(f"{self.host}/api/show", json={"model": spec.model})
                 response.raise_for_status()
                 details = response.json()
-            if (
-                not isinstance(details, dict)
-                or details.get("remote_host")
-                or details.get("remote_model")
-                or not details.get("model_info")
-            ):
-                raise SourcePolicyDenied("Source policy: model local weights are unverified")
+            require_local_weights(details)
         except (httpx.HTTPError, ValueError) as exc:
             raise SourcePolicyDenied("Source policy: cannot verify local model transport") from exc
 

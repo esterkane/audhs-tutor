@@ -154,3 +154,7 @@ introducing another generic chat backend.
 2026-10-12 checkpoint: G0a model-provider transport containment implemented; see
 ../slices/source-transport-containment.md. G0 remains open for image/speech paths
 and origin/export evidence; G1 has not started.
+
+2026-10-12 follow-up: G0b image/speech endpoint containment delivered; see
+../slices/media-source-containment.md. All new Ask work must remain local; hosted
+owner-only eligibility and public-export rights are still unavailable. G1 is next.

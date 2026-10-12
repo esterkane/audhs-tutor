@@ -11,6 +11,8 @@ from typing import Protocol
 
 import httpx
 
+from app.models_ai.source_policy import SourcePolicyDenied, require_loopback
+
 TTS_SAMPLE_RATE = 24_000
 MAX_TTS_CHARS = 1200
 # Kokoro-82M v1 language codes (a = American English, b = British, e Spanish, f French, h Hindi,
@@ -52,10 +54,13 @@ class Tts(Protocol):
 async def kokoro_reachable(base_url: str, *, timeout_s: float = 2.0) -> bool:
     """True when the persistent Kokoro server answers its voices listing. Never starts anything."""
     try:
-        async with httpx.AsyncClient(timeout=timeout_s) as client:
+        require_loopback(base_url)
+        async with httpx.AsyncClient(
+            timeout=timeout_s, trust_env=False, follow_redirects=False
+        ) as client:
             r = await client.get(f"{base_url.rstrip('/')}/v1/audio/voices")
             return r.status_code == 200
-    except httpx.HTTPError:
+    except (httpx.HTTPError, SourcePolicyDenied):
         return False
 
 
@@ -76,20 +81,29 @@ class KokoroClient:
         self.timeout_s = timeout_s
 
     async def voices(self) -> list[str]:
-        async with httpx.AsyncClient(timeout=5.0) as client:
+        require_loopback(self.base)
+        async with httpx.AsyncClient(
+            timeout=5.0, trust_env=False, follow_redirects=False
+        ) as client:
             r = await client.get(f"{self.base}/v1/audio/voices")
             r.raise_for_status()
             data = r.json()
         voices = data.get("voices") if isinstance(data, dict) else data
-        return [str(v) for v in (voices or [])]
+        if not isinstance(voices, list):
+            return []
+        ids = [voice.get("id") if isinstance(voice, dict) else voice for voice in voices]
+        return [voice for voice in ids if isinstance(voice, str) and voice.strip()]
 
     async def stream(self, text: str, *, voice: str, lang: str | None) -> AsyncIterator[TtsChunk]:
         text = text.strip()[:MAX_TTS_CHARS]
         if not text:
             return
+        require_loopback(self.base)
         t0 = time.perf_counter()
         first = True
-        async with httpx.AsyncClient(timeout=self.timeout_s) as client:
+        async with httpx.AsyncClient(
+            timeout=self.timeout_s, trust_env=False, follow_redirects=False
+        ) as client:
             async with client.stream(
                 "POST",
                 f"{self.base}/v1/audio/speech",
