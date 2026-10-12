@@ -2267,3 +2267,12 @@ three isolated browser tests pass; lint/types/build pass, desktop/narrow screens
 inspected, code-review findings resolved. Existing build chunk warning remains.
 No metric/assignment/learning logic changed. See slices/experiments-read-recovery.md.
 Next: representative tutor latency evidence and remaining UX acceptance.
+
+
+## Session timing diagnostics — 2026-10-12
+Content-free server timing now spans request/dependency initialization through first
+text and reply finalization/delivery, with separate replay/error marks.48 local fake-provider
+and HTTP tests, Ruff and strict mypy228 pass; code review clear after logging-config
+fix. No UI/prompt/model/learning policy changed, no speedup claimed. Local server logs
+are not durable DB telemetry or browser paint. Next: disposable full HTTP timing harness
+and separately tested native Ollama metrics. See slices/session-latency-observability.md.

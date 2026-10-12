@@ -9,6 +9,7 @@ from app.api import api_router
 from app.core.answer_recovery import AnswerRecovery
 from app.core.config import Settings, get_settings
 from app.core.errors import register_error_handlers
+from app.core.tutor_timing import TutorTimingMiddleware
 from app.db.migrate import upgrade_to_head
 from app.db.session import make_engine, make_session_factory
 from app.models_ai.factory import build_providers
@@ -47,6 +48,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             await engine.dispose()
 
     app = FastAPI(title="AuDHS-Tutor", version="0.1.0", lifespan=lifespan)
+    app.add_middleware(TutorTimingMiddleware)
     app.state.settings = settings
     app.state.answer_recovery = AnswerRecovery()
     app.state.providers = None

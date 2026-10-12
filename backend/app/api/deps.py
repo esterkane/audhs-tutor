@@ -7,6 +7,7 @@ from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
+from app.core.tutor_timing import mark as timing_mark
 from app.db.models import LearnerProfile
 from app.db.session import get_db
 from app.kernel.learner import get_or_create_owner
@@ -57,12 +58,16 @@ Gateway = Annotated[ModelGateway, Depends(get_gateway)]
 
 
 async def get_repo(request: Request, db: DB, settings: SettingsDep) -> RetrievalRepository:
+    timing_mark("repository_dependency_started")
     repo: RetrievalRepository | None = getattr(request.app.state, "repo", None)
     if repo is None:
         from app.knowledge.reindex import build_repo
 
+        timing_mark("repository_initialization_started")
         repo = await build_repo(db, settings)
+        timing_mark("repository_initialization_finished")
         request.app.state.repo = repo
+    timing_mark("repository_dependency_finished")
     return repo
 
 

@@ -1,6 +1,7 @@
 """Answer-producing routes cannot use another learner's session."""
 
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -18,8 +19,9 @@ SEED = Path(__file__).resolve().parents[2] / "seeds" / "attention"
 
 @pytest.mark.parametrize("surface", ["turn", "stream", "representation", "prefer"])
 async def test_foreign_session_is_indistinguishable_from_missing(
-    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider, surface: str
+    client: AsyncClient, db: AsyncSession, fake_local: FakeProvider, surface: str, caplog
 ) -> None:
+    caplog.set_level(logging.INFO, logger="uvicorn.error.tutor_timing")
     await load_seed(db, SEED)
     await registry.seed_defaults(db, installed_ollama_tags={"llama3.1:8b"})
     await client.get("/api/learner/me")
@@ -50,6 +52,16 @@ async def test_foreign_session_is_indistinguishable_from_missing(
             assert response.status_code == 404, response.text
             data = response.json()["error"]
         responses.append(data)
+    if surface == "stream":
+        records = [
+            json.loads(r.getMessage().removeprefix("tutor_timing "))
+            for r in caplog.records
+            if r.name == "uvicorn.error.tutor_timing"
+        ]
+        assert len(records) == 2
+        assert all("stream_error" in r["marks_ms"] for r in records)
+        assert all("first_text_ready" not in r["marks_ms"] for r in records)
+        assert all(r["body_completed"] for r in records)
     assert responses[0] == responses[1]
     assert fake_local.calls == []
     for table in (

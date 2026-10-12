@@ -20,6 +20,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.answer_recovery import AnswerRecovery
 from app.core.config import Settings
+from app.core.tutor_timing import mark as timing_mark
 from app.db.answers import save_completed
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
@@ -157,6 +158,7 @@ class TutorTurn:
 
     async def run(self, req: TurnRequest) -> AsyncIterator[tuple[str, dict[str, Any]]]:
         t0 = time.perf_counter()
+        timing_mark("turn_started")
         db = self.db
         session = await ksession.get(db, req.session_id)
         if session.ended_at:
@@ -198,6 +200,7 @@ class TutorTurn:
         # a running node-unit experiment decides the questioning style / representation for this
         # node (matched-node design); disclosed on the session screen, stamped on every event
         socratic = session.socratic
+        timing_mark("evidence_started")
         evidence = await tools.get_evidence(db, learner_id, node)
         mastery = float(evidence.get("mastery", 0.0))
         prefs = await tools.get_preferences(db, learner_id)
@@ -261,6 +264,7 @@ class TutorTurn:
             ).model_dump(),
         )
 
+        timing_mark("retrieval_started")
         if conversation:
             hits: list[Any] = []  # no course sources in conversation practice: nothing to cite
             rtrace_id: str | None = None
@@ -276,6 +280,7 @@ class TutorTurn:
                 ),
             )
             rtrace_id = rtrace.id
+        timing_mark("retrieval_finished")
         teaching_contract = self._contract(
             req,
             action,
@@ -293,6 +298,7 @@ class TutorTurn:
         contract_key = hashlib.sha256(
             json.dumps([prompts.PROMPT_VERSION, teaching_contract], sort_keys=True).encode()
         ).hexdigest()
+        timing_mark("literal_history_started")
         historical = []
         if not conversation:
             try:
@@ -308,7 +314,9 @@ class TutorTurn:
                     )
             except SQLAlchemyError as exc:
                 logger.warning("Lesson answer lookup unavailable: %s", type(exc).__name__)
+        timing_mark("literal_history_finished")
         if not conversation and self.settings is not None and len(historical) < 2:
+            timing_mark("semantic_history_started")
             node_id = node.id
             related: list[dict[str, str]] = []
             try:
@@ -356,6 +364,7 @@ class TutorTurn:
             historical = (historical + [item for item in related if item["answer_id"] not in seen])[
                 :2
             ]
+        timing_mark("context_started")
         packet = build_packet(
             policy=prompts.base_policy(),
             historical=historical,
@@ -374,6 +383,7 @@ class TutorTurn:
         )
         messages = render_messages(packet)
 
+        timing_mark("context_finished")
         handle = StreamHandle()
         text = ""
         completed = False
@@ -395,6 +405,8 @@ class TutorTurn:
         try:
             try:
                 async for tok in stream:
+                    if tok:
+                        timing_mark("first_text_ready")
                     text += tok
                     yield ("token", {"text": tok})
                 partial = handle.finish_reason == "length"
@@ -406,6 +418,7 @@ class TutorTurn:
         finally:
             # close the model stream first so its model_call row exists before the trace links to it
             await stream.aclose()
+            timing_mark("generation_closed")
             trimmed = actions.trim_incomplete_tail(text) if completed else text
             text = trimmed
             cited_idx = actions.cited_indices(text, len(packet.retrieved))
@@ -540,6 +553,7 @@ class TutorTurn:
                     "This answer could not be saved to the database. Keep a copy before leaving."
                 )
 
+        timing_mark("answer_finalized")
         yield (
             "done",
             TurnDone(

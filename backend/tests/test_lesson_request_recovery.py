@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 from pathlib import Path
 
 import pytest
@@ -30,8 +31,9 @@ def events(response):
 @pytest.mark.parametrize("first_stream", [False, True])
 @pytest.mark.parametrize("partial", [False, True])
 async def test_lost_lesson_reply_replays_across_transports_without_progress_writes(
-    client, db, fake_local, first_stream, partial
+    client, db, fake_local, first_stream, partial, caplog
 ):
+    caplog.set_level(logging.INFO, logger="uvicorn.error.tutor_timing")
     body = await setup(client, db)
     if partial:
         fake_local.fail_after_words = 1
@@ -54,6 +56,17 @@ async def test_lost_lesson_reply_replays_across_transports_without_progress_writ
     calls = len(fake_local.calls)
     stream = await client.post("/api/tutor/stream", json=body, headers=headers)
     replay = dict(events(stream))
+    diagnostic = json.loads(
+        [
+            r.getMessage().removeprefix("tutor_timing ")
+            for r in caplog.records
+            if r.name == "uvicorn.error.tutor_timing"
+        ][-1]
+    )
+    assert "replay_started" in diagnostic["marks_ms"]
+    assert "first_text_ready" not in diagnostic["marks_ms"]
+    assert "turn_started" not in diagnostic["marks_ms"]
+    assert diagnostic["body_completed"] is True
     assert replay["done"] == done
     assert replay["meta"]["turn_id"] == done["turn_id"]
     assert replay["meta"]["replayed"] is True

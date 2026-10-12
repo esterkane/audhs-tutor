@@ -10,6 +10,7 @@ from app.api.answer_jobs import schedule_index
 from app.api.deps import DB, Gateway, Learner, Repo, SettingsDep
 from app.api.sse import sse
 from app.core.errors import AppError
+from app.core.tutor_timing import mark as timing_mark
 from app.db import workspace_requests
 from app.kernel import session as ksession
 from app.orchestrator.tutor import TutorTurn
@@ -36,6 +37,7 @@ async def stream(
     background: BackgroundTasks,
     idempotency_key: Annotated[UUID | None, Header()] = None,
 ) -> StreamingResponse:
+    timing_mark("dependencies_ready")
     learner_id = learner.id
     identity = None
     saved = None
@@ -67,6 +69,7 @@ async def stream(
     async def gen() -> AsyncIterator[bytes]:
         try:
             if saved is not None:
+                timing_mark("replay_started")
                 restored = TurnDone.model_validate(saved["done"])
                 if saved.get("meta") is not None:
                     yield sse(
@@ -91,13 +94,18 @@ async def stream(
                     )
                 if kind == "done" and data.get("answer_id"):
                     schedule_index(request, background, settings, learner_id)
+                if kind == "done":
+                    timing_mark("done_ready")
                 yield sse(kind, data)
         except AppError as e:
+            timing_mark("stream_error")
             yield sse("error", {"code": e.code, "message": e.message})
         except (KeyError, ValueError) as e:
+            timing_mark("stream_error")
             yield sse("error", {"code": "bad_request", "message": str(e)})
         except Exception:  # never leave the stream hanging; detail goes to the log, not the learner
             logger.exception("tutor turn failed")
+            timing_mark("stream_error")
             yield sse("error", {"code": "tutor_failed", "message": TUTOR_FAILED})
 
     return StreamingResponse(

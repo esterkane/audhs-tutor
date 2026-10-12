@@ -635,3 +635,34 @@ async def test_learning_rollback_preserves_model_accounting(
         assert len(calls) == 1
         assert calls[0].task == "grade_simple"
     assert len(world["local"].calls) == 1
+
+
+async def test_turn_diagnostics_follow_real_orchestration(world):
+    from app.core.tutor_timing import Timing, _current
+
+    timing = Timing()
+    token = _current.set(timing)
+    try:
+        _, text, done = await _collect(
+            TutorTurn(world["db"], world["gw"], world["repo"]),
+            TurnRequest(session_id=world["session"].id, text="Explain this"),
+        )
+    finally:
+        _current.reset(token)
+    stages = [
+        "turn_started",
+        "evidence_started",
+        "retrieval_started",
+        "retrieval_finished",
+        "literal_history_started",
+        "literal_history_finished",
+        "context_started",
+        "context_finished",
+        "first_text_ready",
+        "generation_closed",
+        "answer_finalized",
+    ]
+    assert all(stage in timing.marks for stage in stages)
+    values = [timing.marks[stage] for stage in stages]
+    assert values == sorted(values)
+    assert text and done["outcome"] == "ok"
