@@ -1,6 +1,6 @@
 # Assessment quality after local grader diagnostics
 
-Status: proposal; owner decision required before changing evidence or scheduling.
+Status: owner approved the recommended provisional-feedback policy on 2026-10-13. Implementation pending; runtime is not yet changed.
 
 ## Verified boundary
 The current explanation grader accepts structurally valid model results at confidence >=0.6. That number is supplied by the model, not measured calibration. Initial accepted attempts can update competency and FSRS in `Grader._apply_result`; explicit task/rubric review controls separate Progress eligibility and does not verify a model's judgement. Existing model-origin disclosures remain useful but do not prevent incorrect decisions.
@@ -22,4 +22,4 @@ Keep current assessment behavior while treating the new transport as evaluation-
 4. Revisit assessed model results only after an independently reviewed multi-concept evaluation measures false positives, false negatives, contradiction handling, evidence support and latency. Repeated runs and held-out paraphrases are required; six known cases are not a general quality benchmark. Never promote based only on model confidence or agreement.
 
 ## Acceptance and authority
-No new policy is active. Keep the current production grader untouched pending the owner decision. This document does not change the approved task/rubric wording, activated lesson, learning objectives, scoring rules or past evidence. The owner-approved Progress contract explicitly requires a separate decision for changing gating/scheduling. Further implementation must preserve local-first policy and bounded evaluation costs.
+No new policy is active yet. The owner approved implementation of the recommended policy on 2026-10-13; implement and verify the storage/API, routing and learner-flow slices before claiming enforcement. This document does not change the approved task/rubric wording, activated lesson, learning objectives, scoring rules or past evidence. The owner-approved Progress contract explicitly requires a separate decision for changing gating/scheduling. Further implementation must preserve local-first policy and bounded evaluation costs.
