@@ -64,6 +64,7 @@ for (const narrow of [false, true]) {
       await page.getByRole('button', { name: 'Show answer', exact: true }).click()
       const good = page.getByRole('button', { name: /^Good/ })
       await expect(good).toBeEnabled()
+      await expect(page.getByText(/check the earlier submission before trying again/)).toHaveCount(0)
       await good.focus()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
       await page.screenshot({ path: `/tmp/review-help-${narrow ? '390' : '1280'}.png`, fullPage: true })

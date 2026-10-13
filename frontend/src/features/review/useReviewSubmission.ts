@@ -174,6 +174,7 @@ export function useReviewSubmission(sessionId: string, reconcileQueue = false) {
         setArchivedRatings(archive)
       }
       remove(sessionId)
+      mutation.reset()
       setStored({ pending: null, error: '' })
       setLookup(null)
       setError('')
