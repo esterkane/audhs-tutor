@@ -1017,6 +1017,91 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/authored-visuals': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** List private visual documents */
+    get: operations['list_documents_api_authored_visuals_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/authored-visuals/{document_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read current visual document revision */
+    get: operations['get_document_api_authored_visuals__document_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/authored-visuals/{document_id}/versions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** List immutable visual versions */
+    get: operations['list_versions_api_authored_visuals__document_id__versions_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/authored-visuals/{document_id}/versions/{version_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read a visual version and present grounding availability */
+    get: operations['get_version_api_authored_visuals__document_id__versions__version_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/authored-visuals/{document_id}/versions/{version_id}/reviews': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read historical presentation reviews, not learning evidence */
+    get: operations['list_reviews_api_authored_visuals__document_id__versions__version_id__reviews_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/questions/corrections': {
     parameters: {
       query?: never
@@ -2841,6 +2926,35 @@ export interface components {
       /** Next Cursor */
       next_cursor?: string | null
     }
+    /** AnswerRelationshipVisual */
+    AnswerRelationshipVisual: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      schema_version: 'visual.answer.v1'
+      /**
+       * Kind
+       * @constant
+       */
+      kind: 'relationship'
+      binding: components['schemas']['AnswerVisualBinding']
+      /** Title */
+      title: string
+      /** Text Equivalent */
+      text_equivalent: string
+      /** Directed */
+      directed: boolean
+      /**
+       * Source Chunk Ids
+       * @default []
+       */
+      source_chunk_ids: string[]
+      /** Nodes */
+      nodes: components['schemas']['RelationshipNode'][]
+      /** Edges */
+      edges: components['schemas']['RelationshipEdge'][]
+    }
     /** AnswerReplacementState */
     AnswerReplacementState: {
       /** Replacement Id */
@@ -2900,6 +3014,25 @@ export interface components {
       context_dependent: boolean
       /** Suggestion Reason */
       suggestion_reason?: string | null
+    }
+    /** AnswerVisualBinding */
+    AnswerVisualBinding: {
+      /**
+       * Schema Version
+       * @default answer-visual-binding.v1
+       * @constant
+       */
+      schema_version: 'answer-visual-binding.v1'
+      /** Answer Id */
+      answer_id: string
+      /** Question Sha256 */
+      question_sha256: string
+      /** Answer Sha256 */
+      answer_sha256: string
+      /** Lineage Sha256 */
+      lineage_sha256: string
+      /** Learning Purpose */
+      learning_purpose?: string | null
     }
     /** ArchiveRoleIn */
     ArchiveRoleIn: {
@@ -4055,6 +4188,13 @@ export interface components {
       expected_question_revision: number
       /** Expected Content Version */
       expected_content_version: string
+    }
+    /** CriterionRef */
+    CriterionRef: {
+      /** Index */
+      index: number
+      /** Text */
+      text: string
     }
     /** CriterionResult */
     CriterionResult: {
@@ -5845,6 +5985,60 @@ export interface components {
     ReferenceStatus: {
       snapshot?: components['schemas']['ReferenceSnapshot'] | null
     }
+    /** RelationshipEdge */
+    RelationshipEdge: {
+      /** Id */
+      id: string
+      /** Source */
+      source: string
+      /** Target */
+      target: string
+      /** Label */
+      label: string
+      /**
+       * Source Chunk Ids
+       * @default []
+       */
+      source_chunk_ids: string[]
+    }
+    /** RelationshipNode */
+    RelationshipNode: {
+      /** Id */
+      id: string
+      /** Label */
+      label: string
+      /** Explanation */
+      explanation: string
+      /**
+       * Source Chunk Ids
+       * @default []
+       */
+      source_chunk_ids: string[]
+    }
+    /** RelationshipVisual */
+    RelationshipVisual: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      schema_version: 'visual.v1'
+      /**
+       * Kind
+       * @constant
+       */
+      kind: 'relationship'
+      binding: components['schemas']['VisualBinding']
+      /** Title */
+      title: string
+      /** Text Equivalent */
+      text_equivalent: string
+      /** Directed */
+      directed: boolean
+      /** Nodes */
+      nodes: components['schemas']['RelationshipNode'][]
+      /** Edges */
+      edges: components['schemas']['RelationshipEdge'][]
+    }
     /** RenderIn */
     RenderIn: {
       /** Session Id */
@@ -6697,6 +6891,55 @@ export interface components {
       /** Problems */
       problems: string[]
     }
+    /** VisualBinding */
+    VisualBinding: {
+      /**
+       * Schema Version
+       * @constant
+       */
+      schema_version: 'visual-binding.v1'
+      /** Object Id */
+      object_id: string
+      /** Object Version */
+      object_version: number
+      /** Skill Id */
+      skill_id: string
+      /** Goal */
+      goal: string
+      /** Criteria */
+      criteria: components['schemas']['CriterionRef'][]
+      /** Sources */
+      sources: components['schemas']['VisualSourceRef'][]
+    }
+    /** VisualDocumentSummary */
+    VisualDocumentSummary: {
+      /** Id */
+      id: string
+      /** Title */
+      title: string
+      /** Revision */
+      revision: number
+      /** Archived */
+      archived: boolean
+      /** Updated At */
+      updated_at: string
+    }
+    /**
+     * VisualOrigin
+     * @description Server-supplied generation identity, never a client-provided approval.
+     */
+    VisualOrigin: {
+      /**
+       * Kind
+       * @default learner
+       * @enum {string}
+       */
+      kind: 'learner' | 'model'
+      /** Model */
+      model?: string | null
+      /** Prompt Version */
+      prompt_version?: string | null
+    }
     /** VisualReceipt */
     VisualReceipt: {
       /**
@@ -6721,6 +6964,86 @@ export interface components {
        * @default false
        */
       archived: boolean
+    }
+    /** VisualReviewRecord */
+    VisualReviewRecord: {
+      /** Id */
+      id: string
+      /** Decision */
+      decision: string
+      /** Note */
+      note: string
+      /** Content Sha256 */
+      content_sha256: string
+      /** Snapshot Sha256 */
+      snapshot_sha256: string
+      /** Created At */
+      created_at: string
+    }
+    /** VisualSourceRef */
+    VisualSourceRef: {
+      /** Chunk Id */
+      chunk_id: string
+      /** Document Version Id */
+      document_version_id: string
+      /** Text Sha256 */
+      text_sha256: string
+    }
+    /** VisualVersionDetail */
+    VisualVersionDetail: {
+      /** Id */
+      id: string
+      /** Version */
+      version: number
+      /** Content Sha256 */
+      content_sha256: string
+      /** Snapshot Sha256 */
+      snapshot_sha256: string
+      /** Target Kind */
+      target_kind: string
+      /** Target Id */
+      target_id: string
+      /** Created At */
+      created_at: string
+      /** Spec */
+      spec:
+        | (components['schemas']['RelationshipVisual'] | components['schemas']['AnswerRelationshipVisual'])
+        | null
+      origin?: components['schemas']['VisualOrigin'] | null
+      /**
+       * Grounding Now
+       * @enum {string}
+       */
+      grounding_now:
+        | 'sources_recorded'
+        | 'ungrounded'
+        | 'unavailable_or_changed'
+        | 'snapshot_unavailable'
+        | 'source_excluded'
+        | 'invalid_content'
+      /**
+       * Review Meaning
+       * @default historical_presentation_review_only
+       * @constant
+       */
+      review_meaning: 'historical_presentation_review_only'
+    }
+    /** VisualVersionSummary */
+    VisualVersionSummary: {
+      /** Id */
+      id: string
+      /** Version */
+      version: number
+      /** Content Sha256 */
+      content_sha256: string
+      /** Snapshot Sha256 */
+      snapshot_sha256: string
+      /** Target Kind */
+      target_kind: string
+      /** Target Id */
+      target_id: string
+      /** Created At */
+      created_at: string
     }
     /** VocabIn */
     VocabIn: {
@@ -8829,6 +9152,171 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['VisualReceipt']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_documents_api_authored_visuals_get: {
+    parameters: {
+      query?: {
+        archived?: boolean
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualDocumentSummary'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_document_api_authored_visuals__document_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualDocumentSummary']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_versions_api_authored_visuals__document_id__versions_get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualVersionSummary'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_version_api_authored_visuals__document_id__versions__version_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+        version_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualVersionDetail']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_reviews_api_authored_visuals__document_id__versions__version_id__reviews_get: {
+    parameters: {
+      query?: {
+        offset?: number
+        limit?: number
+      }
+      header?: never
+      path: {
+        document_id: string
+        version_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualReviewRecord'][]
         }
       }
       /** @description Validation Error */
