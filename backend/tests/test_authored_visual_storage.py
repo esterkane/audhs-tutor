@@ -110,8 +110,10 @@ def test_export_wipe_covers_all_visual_tables_only_for_selected_learner(visual_d
         assert not conn.execute("PRAGMA foreign_key_check").fetchall()
 
 
-def test_migration_refuses_populated_downgrade_without_partial_deletion(visual_database):
-    _, url, _ = visual_database
+def test_migration_refuses_populated_downgrade_without_partial_deletion(tmp_path):
+    url = f"sqlite:///{tmp_path / 'visual-guard.db'}"
+    command.upgrade(alembic_config(url), "0a507010540e")
+    fill_all_tables(url)
     before = dump_tables(url)
     with pytest.raises(RuntimeError, match="Cannot discard authored visual history"):
         command.downgrade(alembic_config(url), "f6e5b241a148")

@@ -1002,6 +1002,40 @@ class AuthoredVisualOperation(IdMixin, LearnerScoped, Base):
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 
+class VisualGenerationRequest(IdMixin, LearnerScoped, Base):
+    """Durable local inference reservation; never automatically retried after restart."""
+
+    __tablename__ = "visual_generation_request"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "request_key", name="uq_visual_generation_request_key"),
+        CheckConstraint(
+            "state IN ('pending','running','completed','failed','cancelled','interrupted')",
+            name="ck_visual_generation_state",
+        ),
+        CheckConstraint(
+            "attempts >= 0 AND attempts <= attempt_limit AND attempt_limit BETWEEN 1 AND 3",
+            name="ck_visual_generation_attempts",
+        ),
+        ForeignKeyConstraint(
+            ["learner_id", "result_version_id"],
+            ["authored_visual_version.learner_id", "authored_visual_version.id"],
+            name="fk_visual_generation_owned_result",
+        ),
+    )
+    request_key: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    binding_json: Mapped[str] = mapped_column(Text)
+    prompt_version: Mapped[str] = mapped_column(Text)
+    state: Mapped[str] = mapped_column(Text, default="pending")
+    worker_token: Mapped[str | None] = mapped_column(Text)
+    attempts: Mapped[int] = mapped_column(Integer, default=0)
+    attempt_limit: Mapped[int] = mapped_column(Integer, default=3)
+    result_version_id: Mapped[str | None] = mapped_column(Text)
+    error_code: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 from app.db.visual_ddl import VISUAL_IMMUTABLE_GUARDS  # noqa: E402
 
 for _visual_table, _visual_ddl in VISUAL_IMMUTABLE_GUARDS.items():

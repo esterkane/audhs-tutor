@@ -11,6 +11,7 @@ from app.db.base import Base
 from app.db.migrate import upgrade_to_head
 
 EXPECTED_TABLES = {
+    "visual_generation_request",
     "authored_visual_document",
     "authored_visual_version",
     "authored_visual_source_snapshot",

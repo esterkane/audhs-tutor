@@ -74,6 +74,8 @@ def _value(table: Table, col: Any, n: int, ids: dict[str, str]) -> Any:
         return 1
     if isinstance(t, Float):
         return 0.5
+    if table.name == "visual_generation_request" and name == "state":
+        return "pending"
     # text-ish: give a few well-known columns plausible values so data migrations run over them
     if table.name == "authored_visual_version" and name == "target_kind":
         return "answer"

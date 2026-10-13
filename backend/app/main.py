@@ -26,6 +26,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         engine = make_engine(settings.database_url_resolved)
         app.state.engine = engine
         app.state.session_factory = make_session_factory(engine)
+        from app.kernel.visual_generation import GenerationRequests
+
+        await GenerationRequests(app.state.session_factory).interrupt_abandoned()
         if getattr(app.state, "providers", None) is None:
             app.state.providers = build_providers(settings)
         try:

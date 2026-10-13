@@ -205,3 +205,12 @@ Full private recovery retains all rows; learner scope omits raw snapshots and re
 derived content/reviews with an explicit warning. Export/wipe discover all five tables.
 Transactional validation/idempotency and typed write APIs are still pending; schema
 presence does not approve content. See slices/authored-visual-storage.md.
+
+### Visual generation reservations (2026-10-13)
+
+`visual_generation_request` holds learner-owned, durable input fingerprints and bounded
+attempt counters separately from completed `authored_visual_operation` receipts.
+Short transactions reserve, claim and cancel; startup marks abandoned work interrupted
+without inference. Private backups and learner wipe include the metadata-only records.
+The optional result-version FK preserves ownership. Inference integration and atomic
+version/completion publication remain pending; see slices/visual-generation-requests.md.
