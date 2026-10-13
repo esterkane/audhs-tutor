@@ -11,50 +11,88 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import LearningObject, SkillEdge, SkillNode
-from app.kernel import competency, preferences
+from app.kernel import competency, content_access, preferences
 
 MASTERY_UNLOCK = 0.6  # prerequisites must reach this before a node is offered as new material
 MASTERY_DONE = 0.6  # a node at/above this is not "the next thing to learn" any more
 
 
-async def get_node(db: AsyncSession, skill_id: str) -> SkillNode:
-    row = await db.get(SkillNode, skill_id)
+async def get_node(db: AsyncSession, skill_id: str, *, learner_id: str | None = None) -> SkillNode:
+    row = await db.scalar(
+        select(SkillNode)
+        .where(SkillNode.id == skill_id, content_access.skill_visible(learner_id))
+        .execution_options(populate_existing=True)
+    )
     if row is None:
         raise KeyError(f"skill {skill_id!r} not found")
     return row
 
 
-async def get_node_by_slug(db: AsyncSession, slug: str) -> SkillNode | None:
-    return (await db.execute(select(SkillNode).where(SkillNode.slug == slug))).scalar_one_or_none()
+async def get_node_by_slug(
+    db: AsyncSession, slug: str, *, learner_id: str | None = None
+) -> SkillNode | None:
+    return (
+        await db.execute(
+            select(SkillNode).where(
+                SkillNode.slug == slug, content_access.skill_visible(learner_id)
+            )
+        )
+    ).scalar_one_or_none()
 
 
-async def all_nodes(db: AsyncSession, domain: str | None = None) -> Sequence[SkillNode]:
-    stmt = select(SkillNode).order_by(SkillNode.created_at, SkillNode.id)  # ULIDs ≈ insertion order
+async def all_nodes(
+    db: AsyncSession, domain: str | None = None, *, learner_id: str | None = None
+) -> Sequence[SkillNode]:
+    stmt = (
+        select(SkillNode)
+        .where(content_access.skill_visible(learner_id))
+        .order_by(SkillNode.created_at, SkillNode.id)
+    )  # ULIDs ≈ insertion order
     if domain:
         stmt = stmt.where(SkillNode.domain == domain)
     return (await db.execute(stmt)).scalars().all()
 
 
-async def all_edges(db: AsyncSession) -> Sequence[SkillEdge]:
-    return (await db.execute(select(SkillEdge))).scalars().all()
+async def all_edges(db: AsyncSession, *, learner_id: str | None = None) -> Sequence[SkillEdge]:
+    visible_ids = select(SkillNode.id).where(content_access.skill_visible(learner_id))
+    return (
+        (
+            await db.execute(
+                select(SkillEdge).where(
+                    SkillEdge.from_skill_id.in_(visible_ids), SkillEdge.to_skill_id.in_(visible_ids)
+                )
+            )
+        )
+        .scalars()
+        .all()
+    )
 
 
-async def prerequisites(db: AsyncSession, skill_id: str) -> list[SkillNode]:
+async def prerequisites(
+    db: AsyncSession, skill_id: str, *, learner_id: str | None = None
+) -> list[SkillNode]:
+    await get_node(db, skill_id, learner_id=learner_id)
     stmt = (
         select(SkillNode)
         .join(SkillEdge, SkillEdge.from_skill_id == SkillNode.id)
-        .where(SkillEdge.to_skill_id == skill_id, SkillEdge.kind == "prerequisite")
+        .where(
+            SkillEdge.to_skill_id == skill_id,
+            SkillEdge.kind == "prerequisite",
+            content_access.skill_visible(learner_id),
+        )
     )
     return list((await db.execute(stmt)).scalars().all())
 
 
-async def topological_order(db: AsyncSession, domain: str | None = None) -> list[SkillNode]:
+async def topological_order(
+    db: AsyncSession, domain: str | None = None, *, learner_id: str | None = None
+) -> list[SkillNode]:
     """Kahn's algorithm over prerequisite edges; ties keep insertion order (stable seeds)."""
-    nodes = list(await all_nodes(db, domain))
+    nodes = list(await all_nodes(db, domain, learner_id=learner_id))
     ids = {n.id for n in nodes}
     indeg = {n.id: 0 for n in nodes}
     out: dict[str, list[str]] = {n.id: [] for n in nodes}
-    for e in await all_edges(db):
+    for e in await all_edges(db, learner_id=learner_id):
         if e.kind == "prerequisite" and e.from_skill_id in ids and e.to_skill_id in ids:
             indeg[e.to_skill_id] += 1
             out[e.from_skill_id].append(e.to_skill_id)
@@ -73,10 +111,12 @@ async def topological_order(db: AsyncSession, domain: str | None = None) -> list
     return order
 
 
-async def learning_object_for(db: AsyncSession, skill_id: str) -> LearningObject | None:
+async def learning_object_for(
+    db: AsyncSession, skill_id: str, *, learner_id: str | None = None
+) -> LearningObject | None:
     stmt = (
         select(LearningObject)
-        .where(LearningObject.skill_id == skill_id)
+        .where(LearningObject.skill_id == skill_id, content_access.object_visible(learner_id))
         .order_by(LearningObject.version.desc())
         .limit(1)
     )
@@ -84,7 +124,21 @@ async def learning_object_for(db: AsyncSession, skill_id: str) -> LearningObject
 
 
 async def is_unlocked(db: AsyncSession, learner_id: str, skill_id: str) -> bool:
-    for pre in await prerequisites(db, skill_id):
+    await get_node(db, skill_id, learner_id=learner_id)
+    # Invalid legacy/private edges must not unlock a target by hiding its prerequisite.
+    visible_ids = select(SkillNode.id).where(content_access.skill_visible(learner_id))
+    hidden = await db.scalar(
+        select(SkillEdge.id)
+        .where(
+            SkillEdge.to_skill_id == skill_id,
+            SkillEdge.kind == "prerequisite",
+            ~SkillEdge.from_skill_id.in_(visible_ids),
+        )
+        .limit(1)
+    )
+    if hidden is not None:
+        return False
+    for pre in await prerequisites(db, skill_id, learner_id=learner_id):
         if await competency.mastery(db, learner_id, pre.id) < MASTERY_UNLOCK:
             return False
     return True
@@ -124,7 +178,7 @@ async def next_skill(
     A `goal.course` preference narrows the order to that course; when every goal node is still
     locked, the unlocked prerequisites *of* the goal come next. An empty selected goal returns
     None; it never substitutes an unrelated lesson."""
-    order = [n for n in await topological_order(db, domain) if teachable(n)]
+    order = [n for n in await topological_order(db, domain, learner_id=learner_id) if teachable(n)]
     goals = goals if goals is not None else await preferences.get_all(db, learner_id)
     goal = str(goals.get("goal.course") or "").strip()
     area = str(goals.get("goal.area") or "").strip()
@@ -142,7 +196,7 @@ async def next_skill(
             needed: set[str] = set()
             frontier = [n.id for n in in_goal]
             while frontier:
-                for pre in await prerequisites(db, frontier.pop()):
+                for pre in await prerequisites(db, frontier.pop(), learner_id=learner_id):
                     if pre.id not in needed:
                         needed.add(pre.id)
                         frontier.append(pre.id)
@@ -153,7 +207,7 @@ async def next_skill(
     pick = await _pick(db, learner_id, order)
     if pick is not None:
         return pick
-    return order[0] if order else None
+    return None
 
 
 async def map_view(
@@ -161,9 +215,9 @@ async def map_view(
 ) -> dict[str, Any]:
     """Open learner model: every node with mastery, dimensions, memory overlay and unlock state,
     every visible edge, plus Mermaid. Optional area scope retains transitive prerequisites."""
-    order = await topological_order(db)
+    order = await topological_order(db, learner_id=learner_id)
     nxt = await next_skill(db, learner_id)
-    graph_edges = await all_edges(db)
+    graph_edges = await all_edges(db, learner_id=learner_id)
     members = {n.id for n in order if n.area_id == area_id}
     visible = set(members)
     if area_id is not None:
@@ -239,11 +293,11 @@ async def goal_scope(
     course = str(goals.get("goal.course") or "").strip()
     if not (area or course):
         return None
-    nodes = await all_nodes(db)
+    nodes = await all_nodes(db, learner_id=learner_id)
     ids = {n.id for n in nodes if (n.area_id == area if area else n.course == course)}
     frontier = list(ids)
     while frontier:
-        for pre in await prerequisites(db, frontier.pop()):
+        for pre in await prerequisites(db, frontier.pop(), learner_id=learner_id):
             if pre.id not in ids:
                 ids.add(pre.id)
                 frontier.append(pre.id)
@@ -255,7 +309,7 @@ async def selection(
 ) -> tuple[SkillNode | None, list[str] | None]:
     """Resolve the goal preference once so plan, checkpoint and review share one scope."""
     if chosen_skill_id:
-        node = await get_node(db, chosen_skill_id)
+        node = await get_node(db, chosen_skill_id, learner_id=learner_id)
         if not teachable(node):
             raise ValueError("Choose a teaching lesson")
         return node, [chosen_skill_id]

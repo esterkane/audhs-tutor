@@ -22,7 +22,9 @@ async def _view(db: DB, learner_id: str, node: SkillNode) -> SkillView:
         description=node.description,
         domain=node.domain,
         success_criteria=list(node.success_criteria_json or []),
-        prerequisites=[p.slug for p in await skill_graph.prerequisites(db, node.id)],
+        prerequisites=[
+            p.slug for p in await skill_graph.prerequisites(db, node.id, learner_id=learner_id)
+        ],
         mastery=state["mastery"],
         unlocked=await skill_graph.is_unlocked(db, learner_id, node.id),
         state=state,
@@ -40,7 +42,7 @@ class SkillList(BaseModel):
     response_model=SkillList,
 )
 async def list_skills(db: DB, learner: Learner) -> SkillList:
-    nodes = await skill_graph.topological_order(db)
+    nodes = await skill_graph.topological_order(db, learner_id=learner.id)
     nxt = await skill_graph.next_skill(db, learner.id)
     return SkillList(
         skills=[await _view(db, learner.id, n) for n in nodes],
@@ -72,7 +74,9 @@ async def skill_map(db: DB, learner: Learner, area_id: str | None = None) -> Map
 
 @router.get("/{skill_id}", summary="One skill with its state", response_model=SkillView)
 async def get_skill(skill_id: str, db: DB, learner: Learner) -> SkillView:
-    return await _view(db, learner.id, await skill_graph.get_node(db, skill_id))
+    return await _view(
+        db, learner.id, await skill_graph.get_node(db, skill_id, learner_id=learner.id)
+    )
 
 
 class MaterialMarkIn(BaseModel):
@@ -92,7 +96,7 @@ class MaterialMarkOut(BaseModel):
 async def mark_material(
     skill_id: str, body: MaterialMarkIn, request: Request, db: DB, learner: Learner
 ) -> MaterialMarkOut:
-    await skill_graph.get_node(db, skill_id)
+    await skill_graph.get_node(db, skill_id, learner_id=learner.id)
     async with session_lock(request, "material-marks:" + learner.id):
         marks = dict(await preferences.get(db, learner.id, "learning.material_marks"))
         if body.status is None:
@@ -112,5 +116,5 @@ async def skill_evidence(
     limit: int = Query(default=20, ge=1, le=100),
 ) -> ProgressEvidencePage:
     """Dated evidence, not an independent-work certification or a new mastery score."""
-    await skill_graph.get_node(db, skill_id)
+    await skill_graph.get_node(db, skill_id, learner_id=learner.id)
     return await progress.evidence_page(db, learner.id, skill_id, offset=offset, limit=limit)
