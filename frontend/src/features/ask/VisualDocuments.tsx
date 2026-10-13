@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
 import type { Schemas } from '../../lib/api'
 import { boundedRead } from '../../lib/boundedRead'
+import { VisualEditor } from './VisualEditor'
 import { VisualArchive } from './VisualArchive'
 import { VisualReview } from './VisualReview'
 import { VisualFallback } from '../visual-learning/VisualFallback'
@@ -77,6 +78,7 @@ function VisualDocument({ document, learnerId, locked }: { document: Document; l
           <ul className="list-disc pl-5 space-y-2 mt-3">{spec.edges.map(edge => <li key={edge.id}>{spec.nodes.find(node => node.id === edge.source)?.label} {spec.directed ? '→' : '—'} {spec.nodes.find(node => node.id === edge.target)?.label}: {edge.label}</li>)}</ul>
         </Disclosure>
         <p className="text-sm text-muted">Source passages, when available, are in the answer above.</p>
+        <VisualEditor key={`edit:${detail.data!.id}`} document={document} learnerId={learnerId} version={detail.data!} readOnly={locked || document.archived || versionId !== rows[0]?.id || offset !== 0} />
         {<VisualReview readOnly={locked || document.archived || versionId !== versions.data?.[0]?.id || offset !== 0} key={`review:${detail.data!.id}`} documentId={document.id} learnerId={learnerId} version={detail.data!} />}
       </section>}
   </div>

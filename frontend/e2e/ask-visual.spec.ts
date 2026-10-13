@@ -295,3 +295,70 @@ for (const width of [390, 1280]) test(`Archive lost response survives reload and
   await page.screenshot({ path: info.outputPath(`archive-${width}.png`), fullPage: true })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })
+
+for (const width of [390, 1280]) test(`Edit draft survives reload and uncertain save ${width}`, async ({ page }, info) => {
+  const calls = await fixture(page)
+  let revision = 1
+  let savedSpec: typeof calls.spec | null = null
+  let lose = true
+  const saveKeys: string[] = []
+  const receipts = new Map<string, object>()
+  await page.route('**/api/authored-visuals/doc', route => route.fulfill({ json: { id: 'doc', title: savedSpec?.title ?? calls.spec.title, revision, archived: false } }))
+  await page.route('**/api/authored-visuals/doc/versions?*', route => route.fulfill({ json: savedSpec ? [{ id: 'edited', version: 2 }, { id: 'ver', version: 1 }] : [{ id: 'ver', version: 1 }] }))
+  await page.route('**/api/authored-visuals/doc/versions/edited', route => route.fulfill({ json: { id: 'edited', version: 2, content_sha256: 'f'.repeat(64), snapshot_sha256: 'e'.repeat(64), spec: savedSpec, origin: { kind: 'learner' }, grounding_now: 'ungrounded' } }))
+  await page.route('**/api/authored-visuals/doc/versions/edited/reviews', route => route.fulfill({ json: [] }))
+  await page.route('**/api/authored-visuals/commands', route => {
+    const body = route.request().postDataJSON()
+    expect(body.action).toBe('save')
+    const key = route.request().headers()['idempotency-key']
+    saveKeys.push(key)
+    if (!receipts.has(key)) {
+      if (body.expected_revision !== revision) return route.fulfill({ status: 409, json: { error: { message: 'The document changed. Refresh before editing or reviewing.' } } })
+      savedSpec = body.spec; revision++
+      receipts.set(key, { action: 'save', document_id: 'doc', version_id: 'edited', revision })
+      if (lose) { lose = false; return route.abort() }
+    }
+    return route.fulfill({ json: receipts.get(key) })
+  })
+  await page.setViewportSize({ width, height: 900 })
+  await page.goto('/ask?answer=visual-answer')
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Generate local diagram', exact: true }).click()
+  calls.complete(); await page.getByRole('button', { name: 'Refresh visual status' }).click()
+  await page.getByText('Edit diagram · based on version 1', { exact: true }).click()
+  await page.getByRole('button', { name: 'Start editing this version' }).click()
+  await page.getByRole('button', { name: 'Remove concept 1', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Save as new version' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Undo last edit' }).click()
+  await page.getByRole('textbox', { name: 'Diagram title', exact: true }).fill('Fit on training; apply to held-out data')
+  await page.reload()
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await page.getByText('Edit diagram · based on version 1', { exact: true }).click()
+  await expect(page.getByRole('textbox', { name: 'Diagram title', exact: true })).toHaveValue('Fit on training; apply to held-out data')
+  await page.getByRole('button', { name: 'Preview draft', exact: true }).click()
+  await expect(page.getByRole('region', { name: 'Unsaved diagram preview' })).toBeVisible()
+  await page.getByRole('button', { name: 'Save as new version' }).focus(); await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Retry previous request' })).toBeVisible()
+  await page.getByRole('textbox', { name: 'Diagram title', exact: true }).fill('Later unsaved title')
+  await page.getByRole('button', { name: 'Retry previous request' }).click()
+  await expect(page.getByText(/New version saved/)).toBeVisible()
+  expect(saveKeys[0]).toBe(saveKeys[1])
+  expect(savedSpec!.title).toBe('Fit on training; apply to held-out data')
+  await expect(page.getByRole('textbox', { name: 'Diagram title', exact: true })).toHaveValue('Later unsaved title')
+  await page.getByRole('combobox', { name: 'Diagram version', exact: true }).selectOption('edited')
+  await expect(page.getByRole('heading', { name: 'Fit on training; apply to held-out data', exact: true })).toBeVisible()
+  await page.getByText('Edit diagram · based on version 2', { exact: true }).click()
+  await page.getByRole('button', { name: 'Start editing this version' }).click()
+  await page.getByRole('textbox', { name: 'Diagram title', exact: true }).fill('Conflicting draft kept')
+  revision++
+  await page.getByRole('button', { name: 'Save as new version' }).click()
+  await expect(page.getByText('The document changed. Refresh before editing or reviewing.')).toBeVisible()
+  await page.getByRole('button', { name: 'Compare latest saved version' }).click()
+  await expect(page.getByRole('region', { name: 'Latest version comparison' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: 'Diagram title', exact: true })).toHaveValue('Conflicting draft kept')
+  await page.screenshot({ path: info.outputPath(`editor-${width}.png`), fullPage: true })
+  await page.addScriptTag({ content: axe.source })
+  expect(await page.evaluate(async () => (await (window as unknown as { axe: typeof axe }).axe.run('main')).violations)).toEqual([])
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  expect(calls.keys).toHaveLength(1)
+})

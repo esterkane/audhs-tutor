@@ -1,3 +1,4 @@
+import { applyVisualEdits, editableFields, type visualSaveBody } from '../ask/visualEditing'
 import { useRef, useState } from 'react'
 import type { TutorRequest } from './api'
 import type { Schemas, TurnRequest } from '../../lib/api'
@@ -333,4 +334,18 @@ export function useVisualArchiveRecovery(scope: string) {
       && typeof value.archived === 'boolean'
   }, true, true)
   return { ...recovery, error: recovery.error.replaceAll('model call', 'archive change') }
+}
+
+export function useVisualSaveRecovery(scope: string, documentId: string, version: Schemas['VisualVersionDetail']) {
+  type Body = ReturnType<typeof visualSaveBody>
+  const recovery = useTypedRequestRecovery<Body>(scope, (body): body is Body => {
+    try {
+      if (!body || typeof body !== 'object' || version.spec?.schema_version !== 'visual.answer.v1') return false
+      const value = body as Body
+      return value.action === 'save' && value.document_id === documentId
+        && Number.isSafeInteger(value.expected_revision) && value.expected_revision > 0
+        && JSON.stringify(value.spec) === JSON.stringify(applyVisualEdits(version.spec, editableFields(value.spec)))
+    } catch { return false }
+  }, true, true)
+  return { ...recovery, error: recovery.error.replaceAll('model call', 'version save') }
 }
