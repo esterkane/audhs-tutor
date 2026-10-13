@@ -76,11 +76,12 @@ async def test_snapshots_citations_replay_and_followup_lineage(db, learner, fake
     source_message = next(
         m.content for m in fake_local.calls[0].messages if m.content.startswith("<retrieved_data")
     )
+    assert "Then answer the question itself." in fake_local.calls[0].messages[-1].content
     assert "[source:S1]" in source_message
     assert "(trust " not in source_message
     assert "[1]" not in source_message
     assert answer.metadata_json["sources"][0]["trust_tier"] == 2
-    assert trace.prompt_version == "pedagogy.v2+ask.grounded.v1+sources.v2"
+    assert trace.prompt_version == "pedagogy.v2+ask.grounded.v1+sources.v2+contract.v3"
     assert source_message.count("</retrieved_data>") == 1
     assert "‹/retrieved_data›" in source_message
     assert chunk.text not in fake_local.calls[0].messages[0].content

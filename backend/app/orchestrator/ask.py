@@ -67,7 +67,9 @@ async def respond(
         raise AppError("not_found", "This knowledge area is unavailable. Choose another area.", 404)
     area_title = area.title if area else None
     sources = await ask_sources.resolve(db, body.sources, quarantine_below_trust)
-    prompt_version = "pedagogy.v2+ask.grounded.v1+sources.v2" if sources else PROMPT_VERSION
+    prompt_version = (
+        "pedagogy.v2+ask.grounded.v1+sources.v2+contract.v3" if sources else PROMPT_VERSION
+    )
     # Capture all prompt inputs before the claim commits/expires read transactions.
     packet = [
         Message(
@@ -97,7 +99,7 @@ async def respond(
             role="user",
             content=(
                 f"<question>\n{escape_data(body.question)}\n</question>\n\n"
-                + _read("ask/grounded-contract.v1.md")
+                + _read("ask/grounded-contract.v3.md")
                 if sources
                 else body.question
             ),
