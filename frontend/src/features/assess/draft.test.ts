@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { clearDraft, readDraft, writeDraft } from './draft'
+import { clearDraft, readDraft, writeDraft, draftStorageFailed } from './draft'
 
 afterEach(() => vi.restoreAllMocks())
 it('keeps answers and delivered hints together when browser storage is blocked', () => {
@@ -17,4 +17,15 @@ it('keeps answers and delivered hints together when browser storage is blocked',
   expect(readDraft('blocked')).toEqual({ answer: 'my work', hints: 2 })
   expect(() => clearDraft('blocked')).not.toThrow()
   expect(readDraft('blocked')).toEqual({ answer: '', hints: 0 })
+})
+
+it('reports failed persistence until a later save succeeds', () => {
+  const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('quota') })
+  writeDraft('save-status', { answer: 'retained' })
+  expect(draftStorageFailed('save-status')).toBe(true)
+  expect(readDraft('save-status').answer).toBe('retained')
+  spy.mockRestore()
+  writeDraft('save-status', { answer: 'now saved' })
+  expect(draftStorageFailed('save-status')).toBe(false)
+  clearDraft('save-status')
 })

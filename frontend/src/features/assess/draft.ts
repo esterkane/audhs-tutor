@@ -1,6 +1,10 @@
 /** Best-effort tab-local draft storage. Storage failure must never hide a successful grade. */
 type Draft = { answer: string; hints: number }
 const fallback = new Map<string, Draft>()
+const failedWrites = new Set<string>()
+export function draftStorageFailed(key: string): boolean {
+  return failedWrites.has(key)
+}
 export function readDraft(key: string): Draft {
   const memory = fallback.get(key)
   if (memory) return memory
@@ -18,11 +22,13 @@ export function writeDraft(key: string, update: Partial<Draft>) {
   fallback.set(key, next)
   try {
     sessionStorage.setItem(key, JSON.stringify(next))
+    failedWrites.delete(key)
   } catch {
-    /* memory copy remains */
+    failedWrites.add(key) // memory copy remains; callers can disclose reload risk
   }
 }
 export function clearDraft(key: string) {
+  failedWrites.delete(key)
   fallback.set(key, { answer: '', hints: 0 })
   try {
     sessionStorage.removeItem(key)

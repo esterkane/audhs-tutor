@@ -20,7 +20,7 @@ import { LessonReader, SavedLessonNotes } from '../features/tutor/LessonReader'
 import { useStopSession } from '../features/session/useStopSession'
 import { SessionControls } from '../features/session/SessionControls'
 import { ReadAloud } from '../features/voice/ReadAloud'
-import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
+import { readDraft, writeDraft, clearDraft, draftStorageFailed } from '../features/assess/draft'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { OptionalConfidence } from '../components/OptionalConfidence'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
@@ -1221,6 +1221,12 @@ function AssessPanel({
               </>
             )}
             </div>
+            {!revision.editing && draftStorageFailed(answerKey) && (
+              <p role="alert" className="text-sm mt-2">
+                This browser could not save your answer. It remains available while this page is open;
+                copy it before refreshing or closing the tab. You can still check your answer.
+              </p>
+            )}
             <div className="mt-3">
               <OptionalConfidence value={confidence} onChange={setConfidence} />
             </div>
