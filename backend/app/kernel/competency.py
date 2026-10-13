@@ -32,6 +32,14 @@ def _parse(ts: str) -> datetime:
     return datetime.fromisoformat(ts)
 
 
+async def _visible_node(db: AsyncSession, learner_id: str, skill_id: str) -> SkillNode | None:
+    # Missing historical unit IDs retain their empty-state behavior.
+    node = await db.get(SkillNode, skill_id, populate_existing=True)
+    if node is not None and node.owner_learner_id not in (None, learner_id):
+        raise AppError("not_found", "This learning material is unavailable.", 404)
+    return node
+
+
 async def record_evidence(
     db: AsyncSession,
     learner_id: str,
@@ -45,6 +53,7 @@ async def record_evidence(
     events: EventWriter | None = None,
     commit: bool = True,
 ) -> CompetencyEvidence:
+    await _visible_node(db, learner_id, skill_id)
     if dimension not in DIMENSIONS:
         raise ValueError(f"unknown dimension {dimension}")
     score = min(1.0, max(0.0, score))
@@ -100,6 +109,7 @@ async def refresh(
     now: datetime | None = None,
     commit: bool = True,
 ) -> dict[str, CompetencyState]:
+    await _visible_node(db, learner_id, skill_id)
     now = now or datetime.now(UTC)
     stmt = select(CompetencyEvidence).where(
         CompetencyEvidence.learner_id == learner_id, CompetencyEvidence.skill_id == skill_id
@@ -161,6 +171,7 @@ async def refresh(
 
 
 async def states(db: AsyncSession, learner_id: str, skill_id: str) -> dict[str, CompetencyState]:
+    await _visible_node(db, learner_id, skill_id)
     stmt = select(CompetencyState).where(
         CompetencyState.learner_id == learner_id, CompetencyState.skill_id == skill_id
     )
@@ -186,17 +197,13 @@ def mastery_from_states(states_by_dim: dict[str, CompetencyState], required: lis
 
 
 async def mastery(db: AsyncSession, learner_id: str, skill_id: str) -> float:
-    node = await db.get(SkillNode, skill_id, populate_existing=True)
-    if node is not None and node.owner_learner_id not in (None, learner_id):
-        raise AppError("not_found", "This learning material is unavailable.", 404)
+    node = await _visible_node(db, learner_id, skill_id)
     return mastery_from_states(await states(db, learner_id, skill_id), required_dimensions(node))
 
 
 async def skill_state(db: AsyncSession, learner_id: str, skill_id: str) -> dict[str, Any]:
     """Open-learner-model view of one node: per-dimension state + mastery + memory summary."""
-    node = await db.get(SkillNode, skill_id, populate_existing=True)
-    if node is not None and node.owner_learner_id not in (None, learner_id):
-        raise AppError("not_found", "This learning material is unavailable.", 404)
+    node = await _visible_node(db, learner_id, skill_id)
     st = await states(db, learner_id, skill_id)
     return {
         "skill_id": skill_id,

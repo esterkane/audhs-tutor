@@ -79,3 +79,48 @@ async def test_foreign_competency_and_reminder_links_are_denied(db, learner, cli
     assert response.status_code == 200
     assert "Secret title" not in response.text
     assert response.json()["units"][0]["label"] == node.id
+
+
+async def test_competency_writes_reject_foreign_skills_without_evidence(db, learner):
+    from app.db.events import EventContext, EventWriter
+    from app.db.models import CompetencyEvidence, CompetencyState, LearningEvent
+    from app.schemas.common import Mode
+
+    db.add(LearnerProfile(id="other", display_name="Other"))
+    await db.flush()
+    for name, owner in [("shared", None), ("own", learner.id), ("foreign", "other")]:
+        db.add(SkillNode(id=name, slug=name, title=name, domain="ai_ml", owner_learner_id=owner))
+    await db.commit()
+    for name in ["shared", "own"]:
+        await competency.record_evidence(
+            db, learner.id, name, "explanation", 0.8, grader_level="deterministic"
+        )
+        state = await competency.refresh(db, learner.id, name)
+        assert state["explanation"].count == 1
+    tables = [CompetencyEvidence, CompetencyState, LearningEvent]
+    before = [await db.scalar(select(func.count()).select_from(t)) for t in tables]
+    for commit in [False, True]:
+        with pytest.raises(AppError) as error:
+            await competency.record_evidence(
+                db,
+                learner.id,
+                "foreign",
+                "explanation",
+                1,
+                grader_level="deterministic",
+                events=EventWriter(
+                    db,
+                    EventContext(
+                        learner_id=learner.id, session_id=None, mode=Mode.STEADY, energy=3
+                    ),
+                ),
+                commit=commit,
+            )
+        assert error.value.http_status == 404
+        with pytest.raises(AppError):
+            await competency.refresh(db, learner.id, "foreign", commit=commit)
+    with pytest.raises(AppError):
+        await competency.states(db, learner.id, "foreign")
+    after = [await db.scalar(select(func.count()).select_from(t)) for t in tables]
+    assert before == after
+    assert await competency.states(db, learner.id, "missing") == {}
