@@ -76,11 +76,20 @@ async def start(
         raise AppError("visual_shutdown", "Server is stopping. Try again after restart.", 503)
     try:
         body = StartVisualGeneration.model_validate_json(await bounded_body(request))
+        # Prompt upgrades must not change the identity of an already accepted intent.
+        # The original fingerprint still checks exact binding and attempt budget.
+        async with request.app.state.session_factory() as db:
+            prior_prompt = await db.scalar(
+                select(VisualGenerationRequest.prompt_version).where(
+                    VisualGenerationRequest.learner_id == learner.id,
+                    VisualGenerationRequest.request_key == request_id,
+                )
+            )
         row = await GenerationRequests(request.app.state.session_factory).reserve(
             learner.id,
             request_id,
             body.binding,
-            PROMPT_VERSION,
+            prior_prompt or PROMPT_VERSION,
         )
     except (ValidationError, ValueError):
         raise AppError("invalid_visual_request", "Invalid visual request or target.", 422) from None

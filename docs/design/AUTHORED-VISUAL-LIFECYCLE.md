@@ -119,7 +119,10 @@ Binding, immutable storage, private backup/wipe, transactional document commands
 read/version/review APIs and exact Ask target preview are implemented. See
 slices/authored-visual-storage.md, slices/authored-visual-commands.md,
 slices/authored-visual-history.md and slices/ask-visual-generation.md (under docs/).
-Durable generation requests, local model generation and inline Ask UI are still
-pending. Existing local single-owner access is not multi-user authentication.
+Durable generation requests, explicit local generation start/status/stop and the
+inline Ask visual panel are implemented. See slices/ask-visual-worker.md,
+slices/visual-generation-api.md and slices/ask-visual-ui.md. Exact-version review/edit/
+archive UI and semantic-quality acceptance remain open; the two-case local trial
+found meaningful errors (slices/ask-visual-fidelity.md). Existing local single-owner access is not multi-user authentication.
 No generated content approval, public-export permission or learning evidence follows
 from completing these implementation foundations.

@@ -145,3 +145,32 @@ async def test_shutdown_stops_workers_and_refuses_new_start(client, db, learner,
     assert (
         await client.post("/api/visual-generation", json=body, headers={"Idempotency-Key": "after"})
     ).status_code == 503
+
+
+async def test_prompt_upgrade_does_not_change_existing_retry_identity(
+    client, db, learner, session_factory
+):
+    from app.kernel.visual_generation import GenerationRequests
+    from app.schemas.answer_visual_binding import AnswerVisualBinding
+
+    app, _, body = await prepare(client, db, learner, session_factory)
+    repo = GenerationRequests(session_factory)
+    old = await repo.reserve(
+        learner.id,
+        "old-prompt",
+        AnswerVisualBinding.model_validate(body["binding"]),
+        "ask.visual.older",
+    )
+    await repo.cancel(learner.id, old.id)
+    replay = await client.post(
+        "/api/visual-generation", json=body, headers={"Idempotency-Key": "old-prompt"}
+    )
+    assert replay.status_code == 202
+    assert replay.json()["id"] == old.id
+    assert replay.json()["state"] == "cancelled"
+    assert not app.state.visual_jobs.tasks
+    body["binding"]["learning_purpose"] = "Different intent"
+    conflict = await client.post(
+        "/api/visual-generation", json=body, headers={"Idempotency-Key": "old-prompt"}
+    )
+    assert conflict.status_code == 409
