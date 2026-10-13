@@ -70,3 +70,8 @@ must not be described as end-to-end G5 completion or removal of course dependenc
 Architecture review confirmed the projection gap and identified shared publication
 as a major missing boundary; the staged plan now requires ownership/access resolution
 and refusal of private promotion until that boundary is implemented. No runtime change.
+
+## Ownership implementation contract
+See [Private lesson activation](PRIVATE-LESSON-ACTIVATION.md) for the current-code
+audit, schema/access boundary, ordered rollout and cross-owner verification gates.
+Inactive authoring is delivered; activation remains disabled pending those gates.
