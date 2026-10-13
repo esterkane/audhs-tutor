@@ -1,5 +1,7 @@
 import { QuestionPractice } from '../questions/QuestionPractice'
-import { readDraft, writeDraft, clearDraft } from '../assess/draft'
+import { readDraft } from '../assess/draft'
+import { questionDrafts, questionIdentity, saveQuestionDraft, clearQuestionDraft, questionDraftFailed } from '../assess/questionDraft'
+import { Disclosure } from '../../components/ui/disclosure'
 import { boundedRead } from '../../lib/boundedRead'
 import { Link } from 'react-router-dom'
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
@@ -19,6 +21,10 @@ import {
   type ChallengeView,
 } from './api'
 
+function draftItem(item: ChallengeView): AssessmentView {
+  return { id: item.assessment_id, skill_id: item.skill_id, kind: `challenge_${item.mode}`, question: item.prompt, criteria: item.criteria, content_version: item.content_version, confidence_required: false }
+}
+
 /** Opt-in critical-thinking block: choose one of four concrete modes, answer, get criterion feedback. */
 export function ChallengePanel({
   sessionId,
@@ -37,7 +43,7 @@ export function ChallengePanel({
   const practicePanel = useRef<HTMLDivElement>(null)
   const beginning = useRef(false)
   useEffect(() => () => refreshRequest.current?.abort(), [])
-  const draftKey = (id: string) => `challenge:${sessionId}:${id}`
+  const draftKey = (id: string) => `challenge-versioned:${sessionId}:${id}`
   const modes = useChallengeModes()
   const start = useChallengeStart()
   const submit = useChallengeSubmit(sessionId)
@@ -48,6 +54,8 @@ export function ChallengePanel({
     displayedItem.current = item
   }, [item])
   const [answer, setAnswer] = useState('')
+  const latestAnswer = useRef(answer)
+  useLayoutEffect(() => { latestAnswer.current = answer }, [answer])
   const [confidence, setConfidence] = useState<number | null>(null)
   const [result, setResult] = useState<AttemptResult | null>(null)
   const [startedAt, setStartedAt] = useState(() => Date.now())
@@ -66,7 +74,7 @@ export function ChallengePanel({
     try {
       const it = await start.mutateAsync({ session_id: sessionId, mode: m, skill_id: skillId })
       setItem(it)
-      setAnswer(readDraft(draftKey(it.assessment_id)).answer)
+      setAnswer(questionDrafts(draftKey(it.assessment_id)).find(row => row.identity === questionIdentity(draftItem(it)))?.answer ?? '')
       setResult(null)
       setConfidence(null)
       setPracticeChanged(false)
@@ -91,9 +99,16 @@ export function ChallengePanel({
         `/api/assess/items/${encodeURIComponent(item.assessment_id)}?session_id=${encodeURIComponent(sessionId)}`,
         controller.signal, 'Challenge',
       )
-      if (controller.signal.aborted || displayedItem.current?.assessment_id !== item.assessment_id) return
+      if (controller.signal.aborted || displayedItem.current?.assessment_id !== item.assessment_id || displayedItem.current?.content_version !== item.content_version) return
       if (latest.id !== item.assessment_id) throw new Error('Different question')
-      setItem({ ...item, prompt: latest.question, criteria: latest.criteria ?? [], content_version: latest.content_version })
+      const refreshed = { ...item, prompt: latest.question, criteria: latest.criteria ?? [], content_version: latest.content_version }
+      setItem(refreshed)
+      if (refreshed.prompt === item.prompt && JSON.stringify(refreshed.criteria) === JSON.stringify(item.criteria)) {
+        // Explicit restoration with unchanged displayed requirements may retain the draft.
+        saveQuestionDraft(draftKey(item.assessment_id), draftItem(refreshed), latestAnswer.current, 0)
+      } else {
+        setAnswer(questionDrafts(draftKey(item.assessment_id)).find(row => row.identity === questionIdentity(draftItem(refreshed)))?.answer ?? '')
+      }
       setPracticeChanged(false)
       setPracticeRestored(false)
       requestAnimationFrame(() => practicePanel.current?.focus())
@@ -123,7 +138,7 @@ export function ChallengePanel({
         displayedItem.current?.content_version !== item.content_version
       )
         return
-      clearDraft(draftKey(item.assessment_id))
+      clearQuestionDraft(draftKey(item.assessment_id), draftItem(item))
       setResult(res)
     } catch {
       // The mutation alert offers retry; preserve the answer and confidence.
@@ -143,14 +158,17 @@ export function ChallengePanel({
           `/api/assess/items/${encodeURIComponent(item.assessment_id)}?session_id=${encodeURIComponent(sessionId)}`,
           { signal },
         )
-        if (signal.aborted) throw new Error('Refresh cancelled.')
+        if (signal.aborted || displayedItem.current?.assessment_id !== item.assessment_id || displayedItem.current?.content_version !== item.content_version) throw new Error('Refresh cancelled.')
         if (latest.id !== item.assessment_id) throw new Error('The refreshed challenge does not match.')
-        setItem({
+        const refreshed = {
           ...item,
           prompt: latest.question,
           criteria: latest.criteria ?? [],
           content_version: latest.content_version,
-        })
+        }
+        // This recovery action explicitly asks to keep the submitted answer.
+        saveQuestionDraft(draftKey(item.assessment_id), draftItem(refreshed), latestAnswer.current, 0)
+        setItem(refreshed)
         setResult(null)
       }}
       onUse={(saved, body) => {
@@ -161,7 +179,7 @@ export function ChallengePanel({
           body.content_version !== item?.content_version
         )
           return false
-        clearDraft(draftKey(saved.assessment_id))
+        clearQuestionDraft(draftKey(saved.assessment_id), draftItem(item))
         setResult(saved)
         return true
       }}
@@ -229,13 +247,22 @@ export function ChallengePanel({
       )}
       {!result ? (
         <>
+          {(questionDrafts(draftKey(item.assessment_id)).some(row => row.identity !== questionIdentity(draftItem(item)) && row.answer) || readDraft(`challenge:${sessionId}:${item.assessment_id}`).answer) && <Disclosure label="Earlier answer drafts — not applied to this challenge">
+            <p className="text-sm">Review the current challenge before answering. Earlier drafts are kept below.</p>
+            {questionDrafts(draftKey(item.assessment_id)).filter(row => row.identity !== questionIdentity(draftItem(item)) && row.answer).map(row => <div key={row.identity} className="mt-2">
+              <p className="text-sm font-medium">{row.question}</p>
+              <p className="text-sm whitespace-pre-wrap">{row.answerLabel}</p>
+            </div>)}
+            {readDraft(`challenge:${sessionId}:${item.assessment_id}`).answer && <p className="text-sm whitespace-pre-wrap">Older draft (question version unknown): {readDraft(`challenge:${sessionId}:${item.assessment_id}`).answer}</p>}
+          </Disclosure>}
           <label htmlFor="challenge-answer" className="text-sm font-medium mt-3 block">
             Your answer
           </label>
           <Textarea id="challenge-answer" value={answer} onChange={(e) => {
             setAnswer(e.target.value)
-            writeDraft(draftKey(item.assessment_id), { answer: e.target.value })
+            saveQuestionDraft(draftKey(item.assessment_id), draftItem(item), e.target.value, 0)
           }} />
+          {questionDraftFailed(draftKey(item.assessment_id)) && <p role="alert" className="text-sm mt-2">This browser could not save your answer. Copy it before refreshing or closing the tab. You can still submit it.</p>}
           <div className="mt-3">
             <OptionalConfidence value={confidence} onChange={setConfidence} />
           </div>

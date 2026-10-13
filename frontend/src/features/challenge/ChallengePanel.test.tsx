@@ -216,16 +216,21 @@ it('retains the answer through exclusion, failed refresh and explicit restoratio
   await screen.findByText('Could not refresh the challenge. Your answer is kept. Try again.')
   expect(screen.getByLabelText('Your answer')).toHaveValue('my explanation')
   failRefresh = false
+  deferRefresh = true
   fireEvent.click(screen.getByRole('button', { name: 'Refresh restored challenge' }))
+  await waitFor(() => expect(releaseRefresh).toBeDefined())
+  fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: 'updated while refreshing' } })
+  await act(async () => { releaseRefresh() })
+  deferRefresh = false
   await waitFor(() => expect(screen.getByRole('button', { name: 'Submit' })).toBeEnabled())
   view.unmount()
   renderApp(<ChallengePanel sessionId="s1" skillId="k1" onDone={() => {}} />)
   fireEvent.click(await screen.findByRole('button', { name: /planted error/i }))
-  expect(await screen.findByLabelText('Your answer')).toHaveValue('my explanation')
+  expect(await screen.findByLabelText('Your answer')).toHaveValue('updated while refreshing')
   expect(submits).toEqual([])
   fireEvent.click(screen.getByRole('button', { name: 'Submit' }))
   await screen.findByText('Found it.')
-  expect(submits).toEqual([expect.objectContaining({ answer: 'my explanation', content_version: 'fresh' })])
+  expect(submits).toEqual([expect.objectContaining({ answer: 'updated while refreshing', content_version: 'fresh' })])
   fireEvent.click(screen.getByRole('button', { name: 'Question practice options' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Exclude this question' }))
   fireEvent.click(await screen.findByRole('button', { name: 'Restore this question' }))
@@ -239,4 +244,20 @@ it('retains the answer through exclusion, failed refresh and explicit restoratio
   await act(async () => { releaseRefresh() })
   expect(screen.getByText('New challenge')).toBeVisible()
   expect(screen.getByLabelText('Your answer')).toHaveValue('new answer')
+})
+
+it('keeps an earlier challenge answer separate after its content changes', async () => {
+  let changed = false
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => url.endsWith('/modes') ? jsonResponse(modes) : url.endsWith('/start') ? jsonResponse(changed ? { ...item, content_version: 'new-version', prompt: 'Explain the changed example.' } : item) : jsonResponse({})))
+  const first = renderApp(<ChallengePanel sessionId="s1" skillId="k1" onDone={() => {}} />)
+  fireEvent.click(await screen.findByRole('button', { name: /planted error/i }))
+  fireEvent.change(await screen.findByLabelText(/your answer/i), { target: { value: 'My earlier reasoning' } })
+  first.unmount()
+  changed = true
+  renderApp(<ChallengePanel sessionId="s1" skillId="k1" onDone={() => {}} />)
+  fireEvent.click(await screen.findByRole('button', { name: /planted error/i }))
+  expect(await screen.findByLabelText(/your answer/i)).toHaveValue('')
+  expect(screen.getByRole('button', { name: 'Submit' })).toBeDisabled()
+  fireEvent.click(screen.getByText('Earlier answer drafts — not applied to this challenge'))
+  expect(screen.getByText('My earlier reasoning')).toBeVisible()
 })

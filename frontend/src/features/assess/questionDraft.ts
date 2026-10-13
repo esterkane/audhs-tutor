@@ -4,7 +4,7 @@ export type QuestionDraft = { identity: string; question: string; answer: string
 const memory = new Map<string, QuestionDraft[]>()
 const failures = new Set<string>()
 export function questionIdentity(item: AssessmentView): string {
-  return JSON.stringify([item.id, item.content_version ?? null, item.kind, item.question, item.options ?? null])
+  return JSON.stringify([item.id, item.content_version ?? null, item.kind, item.question, item.options ?? null, item.criteria ?? null])
 }
 export function questionDrafts(key: string): QuestionDraft[] {
   const cached = memory.get(key)
