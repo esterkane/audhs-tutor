@@ -236,6 +236,22 @@ class VisualRepository:
             await db.flush()
             number = 1
         else:
+            previous = await db.scalar(
+                select(Version)
+                .where(
+                    Version.document_id == document.id,
+                    Version.learner_id == learner_id,
+                )
+                .order_by(Version.version.desc())
+                .limit(1)
+            )
+            if previous is None or (previous.target_kind, previous.target_id) != (
+                target.kind,
+                target.id,
+            ):
+                raise conflict(
+                    "An edit must explain the same target. Save a separate document instead."
+                )
             number = (
                 int(
                     (

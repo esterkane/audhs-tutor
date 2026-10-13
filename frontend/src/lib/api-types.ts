@@ -9285,6 +9285,7 @@ export interface operations {
     parameters: {
       query?: {
         archived?: boolean
+        answer_id?: string | null
         offset?: number
         limit?: number
       }

@@ -121,8 +121,11 @@ slices/authored-visual-storage.md, slices/authored-visual-commands.md,
 slices/authored-visual-history.md and slices/ask-visual-generation.md (under docs/).
 Durable generation requests, explicit local generation start/status/stop and the
 inline Ask visual panel are implemented. See slices/ask-visual-worker.md,
-slices/visual-generation-api.md and slices/ask-visual-ui.md. Exact-version review/edit/
-archive UI and semantic-quality acceptance remain open; the two-case local trial
+slices/visual-generation-api.md and slices/ask-visual-ui.md. Exact-version presentation review UI is implemented (slices/ask-visual-review-ui.md).
+Editing/archive UI and semantic-quality acceptance remain open; the two-case local trial
 found meaningful errors (slices/ask-visual-fidelity.md). Existing local single-owner access is not multi-user authentication.
 No generated content approval, public-export permission or learning evidence follows
 from completing these implementation foundations.
+
+Document/history navigation prerequisite: ASK-VISUAL-DOCUMENT-NAVIGATION.md records
+why generation receipts cannot serve as the editable/archivable document library.

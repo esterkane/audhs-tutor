@@ -142,3 +142,131 @@ async def test_restored_invalid_spec_is_not_renderable_or_echoed(client, db, lea
     assert response.json()["spec"] is None
     assert response.json()["grounding_now"] == "invalid_content"
     assert "private-source-secret" not in response.text
+
+
+async def test_answer_documents_are_distinct_paginated_and_include_manual_saves(
+    client, db, learner
+):
+    from app.kernel.answer_visual_binding import resolve_answer_binding
+    from tests.test_answer_visual_binding import saved
+
+    spec = await ask_spec(db, learner)
+    first = VisualReceipt.model_validate((await post(client, save_command(spec), "first")).json())
+    second = VisualReceipt.model_validate((await post(client, save_command(spec), "second")).json())
+    edited = await post(client, save_command({**spec, "title": "Edited"}, first), "edit")
+    assert edited.status_code == 200
+    other = await saved(db, learner, identity="other-answer")
+    binding = (await resolve_answer_binding(db, learner.id, other.id)).binding
+    unrelated = await post(
+        client, save_command({**spec, "binding": binding.model_dump(mode="json")}), "unrelated"
+    )
+    assert unrelated.status_code == 200
+    path = "/api/authored-visuals?answer_id=root"
+    rows = (await client.get(path)).json()
+    assert {row["id"] for row in rows} == {first.document_id, second.document_id}
+    assert len(rows) == 2  # Multiple versions do not duplicate a document.
+    pages = [(await client.get(path + f"&limit=1&offset={offset}")).json() for offset in range(3)]
+    assert [page[0]["id"] for page in pages[:2]] == [row["id"] for row in rows]
+    assert pages[2] == []
+    assert (await client.get(path + "&limit=51")).status_code == 422
+    archived = await post(
+        client,
+        {
+            "action": "archive",
+            "document_id": first.document_id,
+            "expected_revision": 2,
+            "archived": True,
+        },
+        "archive-first",
+    )
+    assert archived.status_code == 200
+    assert [row["id"] for row in (await client.get(path)).json()] == [second.document_id]
+    assert [row["id"] for row in (await client.get(path + "&archived=true")).json()] == [
+        first.document_id
+    ]
+    restored = await post(
+        client,
+        {
+            "action": "archive",
+            "document_id": first.document_id,
+            "expected_revision": 3,
+            "archived": False,
+        },
+        "restore-first",
+    )
+    assert restored.status_code == 200
+    assert len((await client.get(path)).json()) == 2
+
+
+async def test_answer_document_filter_hides_foreign_missing_and_non_ask_targets(
+    client, db, learner
+):
+    from tests.test_answer_visual_binding import saved
+
+    await setup(client, db, learner)
+    other = LearnerProfile(display_name="Other")
+    db.add(other)
+    await db.commit()
+    await saved(db, other, identity="foreign-answer")
+    non_ask = await saved(db, learner, identity="non-ask")
+    non_ask.surface = "playground"
+    await db.commit()
+    responses = [
+        await client.get(f"/api/authored-visuals?answer_id={identity}")
+        for identity in ("foreign-answer", "missing", "non-ask")
+    ]
+    assert all(response.status_code == 404 for response in responses)
+    assert len({response.text for response in responses}) == 1
+    assert (await client.get("/api/authored-visuals?answer_id=")).status_code == 422
+    assert (
+        await client.get("/api/authored-visuals", params={"answer_id": "x" * 129})
+    ).status_code == 422
+
+
+async def test_edit_cannot_retarget_document_and_current_target_filters_legacy_history(
+    client, db, learner
+):
+    from sqlalchemy import func
+
+    from app.db.models import AuthoredVisualVersion as Version
+    from app.kernel.answer_visual_binding import resolve_answer_binding
+    from tests.test_answer_visual_binding import saved
+
+    spec = await ask_spec(db, learner)
+    receipt = VisualReceipt.model_validate(
+        (await post(client, save_command(spec), "create")).json()
+    )
+    other = await saved(db, learner, identity="other-answer")
+    binding = (await resolve_answer_binding(db, learner.id, other.id)).binding
+    moved = {**spec, "binding": binding.model_dump(mode="json")}
+    response = await post(client, save_command(moved, receipt), "move")
+    assert response.status_code == 409
+    assert (await client.get(f"/api/authored-visuals/{receipt.document_id}")).json()[
+        "revision"
+    ] == 1
+    assert await db.scalar(select(func.count()).select_from(Version)) == 1
+    # A formerly permissive client or restored archive may contain retargeted history.
+    result = await post(client, save_command(spec, receipt), "edit")
+    assert result.status_code == 200
+    latest = await db.get(Version, result.json()["version_id"])
+    db.add(
+        Version(
+            id="legacy-retargeted",
+            learner_id=learner.id,
+            document_id=receipt.document_id,
+            version=3,
+            spec_json=latest.spec_json,
+            content_sha256=latest.content_sha256,
+            binding_json=latest.binding_json,
+            snapshot_sha256=latest.snapshot_sha256,
+            target_kind="answer",
+            target_id="other-answer",
+            origin_json=latest.origin_json,
+        )
+    )
+    await db.commit()
+    assert (await client.get("/api/authored-visuals?answer_id=root")).json() == []
+    assert [
+        row["id"]
+        for row in (await client.get("/api/authored-visuals?answer_id=other-answer")).json()
+    ] == [receipt.document_id]

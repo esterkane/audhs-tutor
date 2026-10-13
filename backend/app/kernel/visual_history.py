@@ -2,12 +2,14 @@
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import aliased
 
 from app.core.errors import AppError
 from app.db.models import AuthoredVisualDocument as Document
 from app.db.models import AuthoredVisualReview as Review
 from app.db.models import AuthoredVisualSourceSnapshot as Snapshot
 from app.db.models import AuthoredVisualVersion as Version
+from app.db.models import TutorAnswer
 from app.kernel.answer_visual_binding import resolve_answer_binding
 from app.kernel.authored_visuals import digest, require_current_trust, resolve_target
 from app.schemas.authored_visuals import SPEC, VisualOrigin
@@ -31,14 +33,50 @@ async def document(db: AsyncSession, owner: str, document_id: str) -> Document:
 
 
 async def documents(
-    db: AsyncSession, owner: str, archived: bool, offset: int, limit: int
+    db: AsyncSession,
+    owner: str,
+    archived: bool,
+    offset: int,
+    limit: int,
+    answer_id: str | None = None,
 ) -> list[VisualDocumentSummary]:
+    query = select(Document).where(Document.learner_id == owner, Document.archived == archived)
+    if answer_id is not None:
+        answer = await db.scalar(
+            select(TutorAnswer.id).where(
+                TutorAnswer.id == answer_id,
+                TutorAnswer.learner_id == owner,
+                TutorAnswer.surface == "ask",
+            )
+        )
+        if answer is None:
+            raise AppError("not_found", "Ask answer unavailable.", 404)
+        latest = aliased(Version)
+        latest_id = (
+            select(latest.id)
+            .where(
+                latest.document_id == Document.id,
+                latest.learner_id == owner,
+            )
+            .order_by(latest.version.desc())
+            .limit(1)
+            .correlate(Document)
+            .scalar_subquery()
+        )
+        # Current target only: restored history may contain older retargeted versions.
+        query = query.where(
+            select(Version.id)
+            .where(
+                Version.id == latest_id,
+                Version.learner_id == owner,
+                Version.target_kind == "answer",
+                Version.target_id == answer_id,
+            )
+            .correlate(Document)
+            .exists()
+        )
     rows = await db.scalars(
-        select(Document)
-        .where(Document.learner_id == owner, Document.archived == archived)
-        .order_by(Document.updated_at.desc(), Document.id.desc())
-        .offset(offset)
-        .limit(limit)
+        query.order_by(Document.updated_at.desc(), Document.id.desc()).offset(offset).limit(limit)
     )
     return [VisualDocumentSummary.model_validate(row, from_attributes=True) for row in rows]
 

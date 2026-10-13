@@ -87,10 +87,11 @@ async def list_documents(
     db: ReadDB,
     learner: Learner,
     archived: bool = False,
+    answer_id: Annotated[str | None, Query(min_length=1, max_length=128)] = None,
     offset: PageOffset = 0,
     limit: PageLimit = 20,
 ) -> list[VisualDocumentSummary]:
-    return await visual_history.documents(db, learner.id, archived, offset, limit)
+    return await visual_history.documents(db, learner.id, archived, offset, limit, answer_id)
 
 
 @router.get(
