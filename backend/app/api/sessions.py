@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, BackgroundTasks, Request, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 
 from app.api.deps import DB, Learner, SettingsDep
@@ -35,9 +35,65 @@ class SessionStart(BaseModel):
 
 
 class SessionEnd(BaseModel):
+    confirm_recap: bool = False
     energy_after: int | None = Field(default=None, ge=1, le=5)
     self_report: int | None = Field(default=None, ge=1, le=5)
     notes: str | None = None
+
+
+class SavedRecap(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    energy_after: int | None = Field(ge=1, le=5)
+    self_report: int | None = Field(ge=1, le=5)
+    notes: str | None
+
+
+class SessionCompletionOut(BaseModel):
+    session_id: str
+    status: Literal["open", "saved", "unverified"]
+    ended_at: str | None
+    recap: SavedRecap | None = None
+
+
+async def _owned_session(db: DB, session_id: str, learner_id: str) -> Session:
+    try:
+        return await ksession.get_owned(db, session_id, learner_id)
+    except KeyError as exc:
+        raise AppError("session_not_found", "Session not found.", http_status=404) from exc
+
+
+async def _completion(db: DB, s: Session) -> SessionCompletionOut:
+    if not s.ended_at:
+        return SessionCompletionOut(session_id=s.id, status="open", ended_at=None)
+    events = list(
+        await db.scalars(
+            select(models.LearningEvent)
+            .where(
+                models.LearningEvent.learner_id == s.learner_id,
+                models.LearningEvent.session_id == s.id,
+                models.LearningEvent.verb == "ended",
+                models.LearningEvent.object_type == "session",
+                models.LearningEvent.object_id == s.id,
+            )
+            .limit(2)
+        )
+    )
+    recap = None
+    if len(events) == 1:
+        try:
+            recap = SavedRecap.model_validate(events[0].result_json)
+            if recap.energy_after != s.energy_after:
+                recap = None
+            elif recap.notes == "":
+                recap.notes = None
+        except ValidationError:
+            pass
+    return SessionCompletionOut(
+        session_id=s.id,
+        status="saved" if recap else "unverified",
+        ended_at=s.ended_at,
+        recap=recap,
+    )
 
 
 class SessionOut(BaseModel):
@@ -311,6 +367,12 @@ async def get(session_id: str, db: DB, learner: Learner) -> SessionOut:
     return await _out(db, learner.id, await ksession.get(db, session_id))
 
 
+@router.get("/{session_id}/completion", response_model=SessionCompletionOut)
+async def completion(session_id: str, db: DB, learner: Learner) -> SessionCompletionOut:
+    """Read the owned completion receipt without repeating an end request."""
+    return await _completion(db, await _owned_session(db, session_id, learner.id))
+
+
 @router.post(
     "/{session_id}/end",
     summary="End a session; recap ratings are optional",
@@ -324,6 +386,7 @@ async def end(
 
 
 async def _end_session(session_id: str, body: SessionEnd, db: DB, learner: Learner) -> SessionOut:
+    await _owned_session(db, session_id, learner.id)
     await ensure_recall_item_for_explained_skill(db, learner.id, session_id)
     await blocks.end_running(db, await ksession.get(db, session_id), reason="session_end")
     await ksession.prune_checkpoints(db, session_id)
@@ -334,6 +397,18 @@ async def _end_session(session_id: str, body: SessionEnd, db: DB, learner: Learn
         self_report=body.self_report,
         notes=body.notes,
     )
+    if body.confirm_recap:
+        receipt = await _completion(db, s)
+        requested = SavedRecap(
+            energy_after=body.energy_after, self_report=body.self_report, notes=body.notes or None
+        )
+        if receipt.status != "saved" or receipt.recap != requested:
+            raise AppError(
+                "recap_not_confirmed",
+                "This session ended, but these recap values were not confirmed as saved. "
+                "Your local draft is kept. Check the saved recap before leaving.",
+                http_status=409,
+            )
     return await _out(db, learner.id, s)
 
 

@@ -28,7 +28,7 @@ for (const save of [true, false]) it(`shares one finish operation, saving option
   expect(screen.getByLabelText('One line for next time (optional)')).toBeDisabled()
   expect(screen.getByRole('button', { name: 'Return Home' })).toBeEnabled()
   expect(screen.getByRole('button', { name: save ? 'Saving…' : 'Ending session…' })).toBeDisabled()
-  expect(bodies).toEqual([save ? { notes: 'Keep notes' } : {}])
+  expect(bodies).toEqual([save ? { confirm_recap: true, notes: 'Keep notes' } : {}])
   await act(async () => { release(jsonResponse({ id: 's1', next_skill: null, due_reviews: 0 })); await response })
   expect(await screen.findByText(save ? 'Session saved' : 'Home destination')).toBeVisible()
   expect(useMode.getState().sessionId).toBeNull()
@@ -48,4 +48,26 @@ it('keeps recap notes and shows one error when saving fails', async () => {
   expect(screen.getByLabelText('One line for next time (optional)')).toHaveValue('Keep notes')
   expect(sessionStorage.getItem(recapDraftKey('s1'))).toContain('Keep notes')
   expect(useMode.getState().sessionId).toBe('s1')
+})
+
+for (const status of ['saved', 'unverified'] as const) it(`retains local draft for a ${status} completion`, async () => {
+  useMode.setState({ sessionId: 's1' })
+  sessionStorage.setItem(recapDraftKey('s1'), JSON.stringify({ version: 1, notes: 'Local changes', energyAfter: null, recall: null }))
+  const posts: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST') posts.push(url)
+    return jsonResponse(url.endsWith('/completion') ? {
+      session_id: 's1', status, ended_at: '2026-10-13T00:00:00Z',
+      recap: status === 'saved' ? { notes: 'Saved earlier', energy_after: 3, self_report: null } : null,
+    } : { values: {}, specs: [] })
+  }))
+  renderApp(<Recap />, { route: '/recap' })
+  await screen.findByRole('heading', { name: 'Review your saved recap' })
+  expect(screen.getByLabelText('One line for next time (optional)')).toHaveValue('Local changes')
+  expect(screen.getByRole('button', { name: 'Session already ended' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Return Home' })).toBeEnabled()
+  if (status === 'saved') expect(screen.getByLabelText('Saved notes')).toHaveValue('Saved earlier')
+  else expect(screen.getByRole('status')).toHaveTextContent('could not be verified')
+  expect(posts).toEqual([])
+  expect(sessionStorage.getItem(recapDraftKey('s1'))).toContain('Local changes')
 })

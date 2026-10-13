@@ -88,7 +88,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  endSession: (id: string, body: { energy_after?: number; self_report?: number; notes?: string }) =>
+  endSession: (id: string, body: { energy_after?: number; self_report?: number; notes?: string; confirm_recap?: boolean }) =>
     apiFetch<SessionOut>(`/api/sessions/${id}/end`, {
       method: 'POST',
       body: JSON.stringify(body),

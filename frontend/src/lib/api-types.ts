@@ -468,6 +468,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/sessions/{session_id}/completion': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Completion
+     * @description Read the owned completion receipt without repeating an end request.
+     */
+    get: operations['completion_api_sessions__session_id__completion_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/sessions/{session_id}/end': {
     parameters: {
       query?: never
@@ -6746,6 +6766,15 @@ export interface components {
        */
       rationale: string
     }
+    /** SavedRecap */
+    SavedRecap: {
+      /** Energy After */
+      energy_after: number | null
+      /** Self Report */
+      self_report: number | null
+      /** Notes */
+      notes: string | null
+    }
     /** SavedSourceCheck */
     SavedSourceCheck: {
       /** Sources */
@@ -6859,8 +6888,26 @@ export interface components {
       /** Sections */
       sections: components['schemas']['app__schemas__curriculum__SectionOut'][]
     }
+    /** SessionCompletionOut */
+    SessionCompletionOut: {
+      /** Session Id */
+      session_id: string
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'open' | 'saved' | 'unverified'
+      /** Ended At */
+      ended_at: string | null
+      recap?: components['schemas']['SavedRecap'] | null
+    }
     /** SessionEnd */
     SessionEnd: {
+      /**
+       * Confirm Recap
+       * @default false
+       */
+      confirm_recap: boolean
       /** Energy After */
       energy_after?: number | null
       /** Self Report */
@@ -8500,6 +8547,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SessionOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  completion_api_sessions__session_id__completion_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        session_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SessionCompletionOut']
         }
       }
       /** @description Validation Error */
