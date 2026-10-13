@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 
 const pages = [
   ['/areas', 'Learning areas'], ['/programs', 'Project study'],
-  ['/curriculum', 'Turn course material into lessons'], ['/corpus', 'Corpus'],
+  ['/curriculum', 'Review lesson drafts'], ['/corpus', 'Corpus'],
   ['/models', 'Models'], ['/experiments', 'Experiments (n-of-1)'],
   ['/vocab', 'Vocabulary decks'], ['/together', 'Working alongside'],
   ['/playground', 'Coding playground'], ['/playground/visualizer', 'Audio visualizer lab'],

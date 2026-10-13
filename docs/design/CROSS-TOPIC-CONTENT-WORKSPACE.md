@@ -80,7 +80,7 @@ their text does not become eligible for hosted transmission by being publicly re
 ## Ordered implementation slices
 
 ### G0 — Enforce source containment
-Follow `material-rights-contract.md`. Gate external provider entry points, fallbacks,
+Follow `../slices/material-rights-contract.md`. Gate external provider entry points, fallbacks,
 repairs, streaming and direct benchmarking/embedding paths before transmission or
 budget reservation. Unknown stays local; no untrusted caller-authorship flag.
 Introduce version-bound origin/lineage evidence before enabling owner-only external

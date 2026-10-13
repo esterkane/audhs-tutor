@@ -1,7 +1,6 @@
 # M00 — source rights and output boundary inventory
 
-Status: source-code inventory completed 2026-10-12. M01/M02 design and enforcement
-remain unimplemented. This is a technical inventory, not a legal determination or
+Status: historical source-code inventory completed 2026-10-12. The owner subsequently accepted the stricter contract in material-rights-contract.md. Fail-closed model and media transport containment is implemented; see source-transport-containment.md and media-source-containment.md. Version-bound origin/lineage records, positive owner-only hosted eligibility and public-export enforcement remain outstanding. The table below records the pre-containment inspection, not current gateway behavior. This is a technical inventory, not a legal determination or
 permission to transmit/distribute any particular source. No learner records were
 read, classified, changed or deleted for this inspection.
 
