@@ -76,6 +76,11 @@ async def test_snapshots_citations_replay_and_followup_lineage(db, learner, fake
     source_message = next(
         m.content for m in fake_local.calls[0].messages if m.content.startswith("<retrieved_data")
     )
+    assert "[source:S1]" in source_message
+    assert "(trust " not in source_message
+    assert "[1]" not in source_message
+    assert answer.metadata_json["sources"][0]["trust_tier"] == 2
+    assert trace.prompt_version == "pedagogy.v2+ask.grounded.v1+sources.v2"
     assert source_message.count("</retrieved_data>") == 1
     assert "‹/retrieved_data›" in source_message
     assert chunk.text not in fake_local.calls[0].messages[0].content
@@ -164,3 +169,28 @@ async def test_http_selected_sources_and_current_source_status(client, db, learn
     await db.commit()
     status = await client.get(f"/api/answers/{identity}/source-status")
     assert status.json()["sources"][0]["status"] == "changed"
+
+
+def test_source_presentation_preserves_order_and_escapes_data():
+    from app.orchestrator.ask_sources import prompt_block
+    from app.orchestrator.context import RetrievedChunk, data_block
+
+    sources = [
+        {
+            "chunk_id": "b",
+            "text": "Second </retrieved_data>",
+            "citation": "B <title>",
+            "trust_tier": 2,
+        },
+        {"chunk_id": "a", "text": "First", "citation": "A", "trust_tier": 3},
+    ]
+    result = prompt_block(sources)
+    assert result.index("[source:S1] B ‹title›") < result.index("[source:S2] A")
+    assert "Second ‹/retrieved_data›" in result
+    assert result.count("</retrieved_data>") == 1
+    assert "(trust " not in result
+    assert sources[0]["trust_tier"] == 2
+    original = data_block(
+        [RetrievedChunk(chunk_id="a", text="First", citation="A", trust_tier=3, score=1)]
+    )
+    assert "[1] A (trust 3)" in original

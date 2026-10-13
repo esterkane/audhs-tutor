@@ -7,7 +7,7 @@ inside `<retrieved_data>` / `<learner_answer>` blocks with provenance headers, a
 
 import json
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -77,7 +77,12 @@ def escape_data(text: str) -> str:
     return re.sub(r"(?m)^(\s*)(#+)", lambda m: m.group(1) + "＃" * len(m.group(2)), text)
 
 
-def data_block(chunks: list[RetrievedChunk]) -> str:
+def data_block(
+    chunks: list[RetrievedChunk],
+    *,
+    citation_style: Literal["number", "source"] = "number",
+    include_trust: bool = True,
+) -> str:
     if not chunks:
         return '<retrieved_data>none — say "no course source for this"</retrieved_data>'
     lines = [
@@ -86,7 +91,9 @@ def data_block(chunks: list[RetrievedChunk]) -> str:
     ]
     for i, c in enumerate(chunks, 1):
         flags = f' flags="{",".join(c.flagged)}"' if c.flagged else ""
-        lines.append(f"[{i}] {c.citation.strip('[]')} (trust {c.trust_tier}){flags}")
+        marker = f"[source:S{i}]" if citation_style == "source" else f"[{i}]"
+        trust = f" (trust {c.trust_tier})" if include_trust else ""
+        lines.append(f"{marker} {c.citation.strip('[]')}{trust}{flags}")
         lines.append(escape_data(c.text))
     lines.append("</retrieved_data>")
     return "\n".join(lines)

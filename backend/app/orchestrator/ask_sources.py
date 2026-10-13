@@ -99,7 +99,9 @@ def prompt_block(sources: list[dict[str, Any]]) -> str:
                 flagged=[],
             )
             for s in sources
-        ]
+        ],
+        citation_style="source",
+        include_trust=False,
     )
 
 
