@@ -77,6 +77,9 @@ def wipe_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, int]:
     inside the same transaction so the append-only rule holds for everyone else."""
     deleted: dict[str, int] = {}
     tables = learner_scoped_tables()
+    # Cross-table membership guards require dependent links deleted before skill links.
+    tables.remove("lesson_activation_skill")
+    tables.insert(tables.index("lesson_activation") + 1, "lesson_activation_skill")
     # children before parents: sorted_tables is parent-first, so reverse it
     with conn:
         # sqlite3's implicit transaction starts at DML, not DROP TRIGGER. Start

@@ -57,6 +57,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.db import backup_crypto
 from app.db import models as _models  # noqa: F401  (registers every table on Base.metadata)
+from app.db.activation_ddl import ACTIVATION_GUARDS, ACTIVATION_REVISION, INVALID_ACTIVATION
 from app.db.base import Base
 from app.db.content_ddl import (
     CONTENT_GUARD_REVISION,
@@ -647,6 +648,7 @@ def _expected_schema_objects() -> tuple[set[str], set[str]]:
     )
     triggers = (
         set(LEARNING_EVENT_GUARDS)
+        | set(ACTIVATION_GUARDS)
         | set(CONTENT_GUARDS)
         | {f"{table}_no_update" for table in (VISUAL_IMMUTABLE_GUARDS | LESSON_IMMUTABLE_GUARDS)}
         | {"tutor_answer_fts_" + action for action in ("insert", "update", "delete")}
@@ -706,6 +708,21 @@ def _check_snapshot_schema(db_file: Path, revision: str) -> None:
                     expected.split()
                 ).rstrip(";"):
                     raise BackupError("snapshot has altered private content guards")
+    if any(
+        r.revision == ACTIVATION_REVISION for r in script.walk_revisions(base="base", head=revision)
+    ):
+        required |= set(ACTIVATION_GUARDS)
+        with closing(sqlite3.connect(db_file)) as conn:
+            for name, expected in ACTIVATION_GUARDS.items():
+                row = conn.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='trigger' AND name=?", (name,)
+                ).fetchone()
+
+                def normalize(value: str) -> str:
+                    return " ".join(value.replace("IF NOT EXISTS ", "").split()).rstrip(";")
+
+                if row is None or normalize(row[0]) != normalize(expected):
+                    raise BackupError("snapshot has altered activation guards")
     present_tables = {name for kind, name, _ in objects if kind == "table"}
     required |= {
         f"{table}_no_update"
@@ -722,7 +739,7 @@ def _check_after_upgrade(db_file: Path) -> None:
     conn = sqlite3.connect(db_file)
     try:
         conn.execute("PRAGMA foreign_keys=ON")
-        for query in (INVALID_EDGE, INVALID_ASSESSMENT):
+        for query in (INVALID_EDGE, INVALID_ASSESSMENT, *INVALID_ACTIVATION):
             if conn.execute(query).fetchone():
                 raise BackupError("restored database has invalid private content relationships")
         bad = conn.execute("PRAGMA foreign_key_check").fetchall()

@@ -142,7 +142,12 @@ def fill_all_tables(sync_url: str, *, seq: int = 1) -> dict[str, dict[str, Any]]
             conn.execute(
                 text(drop_guard(guard))
             )  # append-only triggers block nothing here (insert) but keep symmetric
-        for n, table in enumerate(meta.sorted_tables, start=seq * 1000):
+        tables = list(meta.sorted_tables)
+        if "lesson_activation_skill" in meta.tables:
+            skill_link = meta.tables["lesson_activation_skill"]
+            tables.remove(skill_link)
+            tables.insert(tables.index(meta.tables["lesson_activation"]) + 1, skill_link)
+        for n, table in enumerate(tables, start=seq * 1000):
             if table.name == "alembic_version":
                 continue
             row = {c.name: _value(table, c, n, ids) for c in table.columns}

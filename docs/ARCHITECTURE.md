@@ -218,5 +218,13 @@ version/completion publication remain pending; see slices/visual-generation-requ
 Private lesson-promotion foundation: `lesson_promotion` records immutable learner-owned
 answer/draft identity; `lesson_promotion_snapshot` contains raw generation lineage and
 is excluded from learner-only backup. Shared curriculum publication refuses linked
+
+### Private activation storage (2026-10-13)
+`lesson_activation` freezes owned promotion, draft version/hash, edited payload and request
+identity. Four immutable typed link tables retain created skill/object/assessment/edge membership;
+mutation guards preserve that membership and owned foreign keys protect receipt access. Restore
+validates both definitions and existing relationships; wipe removes dependent links first.
+This is storage groundwork, not an enabled activation path or learning evidence.
+See `slices/private-activation-storage.md` and `design/PRIVATE-ACTIVATION-STORAGE.md`.
 promotions until private learning-object ownership is implemented. No producer API yet.
 See `slices/lesson-promotion-storage.md`.

@@ -814,6 +814,86 @@ class LessonPromotionSnapshot(IdMixin, LearnerScoped, Base):
     snapshot_json: Mapped[str] = mapped_column(Text)
 
 
+class LessonActivation(IdMixin, LearnerScoped, Base):
+    """Immutable private activation receipt; never learning evidence."""
+
+    __tablename__ = "lesson_activation"
+    __table_args__ = (
+        UniqueConstraint("promotion_id", name="uq_lesson_activation_promotion"),
+        UniqueConstraint("learner_id", "request_key", name="uq_lesson_activation_request"),
+        UniqueConstraint("learner_id", "id", name="uq_lesson_activation_owned_id"),
+        ForeignKeyConstraint(
+            ["learner_id", "promotion_id"],
+            ["lesson_promotion.learner_id", "lesson_promotion.id"],
+            name="fk_lesson_activation_owned_promotion",
+        ),
+    )
+    promotion_id: Mapped[str] = mapped_column(Text)
+    request_key: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    draft_version: Mapped[int] = mapped_column(Integer)
+    payload_sha256: Mapped[str] = mapped_column(Text)
+    payload_json: Mapped[str] = mapped_column(Text)
+    binding_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class LessonActivationSkill(IdMixin, LearnerScoped, Base):
+    __tablename__ = "lesson_activation_skill"
+    __table_args__ = (
+        UniqueConstraint("entity_id", name="uq_activation_skill_entity"),
+        ForeignKeyConstraint(
+            ["learner_id", "activation_id"],
+            ["lesson_activation.learner_id", "lesson_activation.id"],
+            name="fk_activation_skill_owned_header",
+        ),
+    )
+    activation_id: Mapped[str] = mapped_column(Text)
+    entity_id: Mapped[str] = mapped_column(ForeignKey("skill_node.id"))
+
+
+class LessonActivationObject(IdMixin, LearnerScoped, Base):
+    __tablename__ = "lesson_activation_object"
+    __table_args__ = (
+        UniqueConstraint("entity_id", name="uq_activation_object_entity"),
+        ForeignKeyConstraint(
+            ["learner_id", "activation_id"],
+            ["lesson_activation.learner_id", "lesson_activation.id"],
+            name="fk_activation_object_owned_header",
+        ),
+    )
+    activation_id: Mapped[str] = mapped_column(Text)
+    entity_id: Mapped[str] = mapped_column(ForeignKey("learning_object.id"))
+
+
+class LessonActivationAssessment(IdMixin, LearnerScoped, Base):
+    __tablename__ = "lesson_activation_assessment"
+    __table_args__ = (
+        UniqueConstraint("entity_id", name="uq_activation_assessment_entity"),
+        ForeignKeyConstraint(
+            ["learner_id", "activation_id"],
+            ["lesson_activation.learner_id", "lesson_activation.id"],
+            name="fk_activation_assessment_owned_header",
+        ),
+    )
+    activation_id: Mapped[str] = mapped_column(Text)
+    entity_id: Mapped[str] = mapped_column(ForeignKey("assessment.id"))
+
+
+class LessonActivationEdge(IdMixin, LearnerScoped, Base):
+    __tablename__ = "lesson_activation_edge"
+    __table_args__ = (
+        UniqueConstraint("entity_id", name="uq_activation_edge_entity"),
+        ForeignKeyConstraint(
+            ["learner_id", "activation_id"],
+            ["lesson_activation.learner_id", "lesson_activation.id"],
+            name="fk_activation_edge_owned_header",
+        ),
+    )
+    activation_id: Mapped[str] = mapped_column(Text)
+    entity_id: Mapped[str] = mapped_column(ForeignKey("skill_edge.id"))
+
+
 class QuestionFeedback(IdMixin, LearnerScoped, Base):
     """Explicit, reversible feedback on an immutable question snapshot; never competency evidence."""
 
@@ -1108,3 +1188,8 @@ for _guard_name, _content_ddl in CONTENT_GUARDS.items():
         else Assessment
     )
     event.listen(_guard_table.__table__, "after_create", DDL(_content_ddl))  # type: ignore[no-untyped-call]
+
+from app.db.activation_ddl import ACTIVATION_GUARDS  # noqa: E402
+
+for _activation_ddl in ACTIVATION_GUARDS.values():
+    event.listen(Base.metadata, "after_create", DDL(_activation_ddl))  # type: ignore[no-untyped-call]

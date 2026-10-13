@@ -83,10 +83,14 @@ async def test_storage_guards_and_allowed_relationships(db, learner):
 def test_migration_and_backup_guard_definitions(tmp_path):
     path = tmp_path / "guards.db"
     cfg = alembic_config(f"sqlite:///{path}")
+    from alembic.script import ScriptDirectory
+
+    head = ScriptDirectory.from_config(cfg).get_current_head()
+    assert head is not None
     command.upgrade(cfg, "41332c2fe9b8")
     _check_snapshot_schema(path, "41332c2fe9b8")
     command.upgrade(cfg, "head")
-    _check_snapshot_schema(path, CONTENT_GUARD_REVISION)
+    _check_snapshot_schema(path, head)
     _check_after_upgrade(path)
     with sqlite3.connect(path) as conn:
         conn.execute("DROP TRIGGER skill_owner_immutable")
@@ -94,14 +98,14 @@ def test_migration_and_backup_guard_definitions(tmp_path):
             "CREATE TRIGGER skill_owner_immutable BEFORE UPDATE ON skill_node BEGIN SELECT 1; END"
         )
     with pytest.raises(BackupError, match="altered private content guards"):
-        _check_snapshot_schema(path, CONTENT_GUARD_REVISION)
+        _check_snapshot_schema(path, head)
     with sqlite3.connect(path) as conn:
         conn.execute("DROP TRIGGER skill_owner_immutable")
         conn.execute(CONTENT_GUARDS["skill_owner_immutable"])
     command.downgrade(cfg, "41332c2fe9b8")
     _check_snapshot_schema(path, "41332c2fe9b8")
     command.upgrade(cfg, "head")
-    _check_snapshot_schema(path, CONTENT_GUARD_REVISION)
+    _check_snapshot_schema(path, head)
 
 
 @pytest.mark.parametrize("relationship", ["assessment", "edge"])
@@ -141,7 +145,7 @@ def test_populated_downgrade_preserves_ownership_guards(tmp_path):
     path = tmp_path / "downgrade.db"
     url = f"sqlite:///{path}"
     cfg = alembic_config(url)
-    command.upgrade(cfg, "head")
+    command.upgrade(cfg, CONTENT_GUARD_REVISION)
     fill_all_tables(url)
     with pytest.raises(RuntimeError, match="private skills"):
         command.downgrade(cfg, "41332c2fe9b8")

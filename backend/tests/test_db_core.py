@@ -12,6 +12,11 @@ from app.db.migrate import upgrade_to_head
 
 EXPECTED_TABLES = {
     "visual_generation_request",
+    "lesson_activation",
+    "lesson_activation_skill",
+    "lesson_activation_object",
+    "lesson_activation_assessment",
+    "lesson_activation_edge",
     "lesson_promotion",
     "lesson_promotion_snapshot",
     "authored_visual_document",
