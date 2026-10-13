@@ -3,7 +3,7 @@
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.base import utcnow_iso
@@ -91,19 +91,36 @@ async def end(
     self_report: int | None,
     notes: str | None = None,
 ) -> Session:
-    s = await get(db, session_id)
-    if s.ended_at:
+    """Own the end-state/recap transaction; concurrent retries preserve the first completion.
+
+    API block cleanup and recall scheduling precede this boundary and remain separate.
+    """
+    try:
+        won = await db.scalar(
+            update(Session)
+            .where(Session.id == session_id, Session.ended_at.is_(None))
+            .values(ended_at=utcnow_iso(), energy_after=energy_after)
+            .returning(Session.id)
+            .execution_options(synchronize_session=False)
+        )
+        s = await db.get(Session, session_id, populate_existing=True)
+        if s is None:
+            raise KeyError(f"session {session_id!r} not found")
+        if won is not None:
+            await EventWriter(
+                db, event_context(s, domain=Domain.META, activity=ActivityType.RECAP)
+            ).emit(
+                Verb.ENDED,
+                ObjectType.SESSION,
+                s.id,
+                result={"energy_after": energy_after, "self_report": self_report, "notes": notes},
+                commit=False,
+            )
+        await db.commit()
         return s
-    s.ended_at = utcnow_iso()
-    s.energy_after = energy_after
-    await db.commit()
-    await EventWriter(db, event_context(s, domain=Domain.META, activity=ActivityType.RECAP)).emit(
-        Verb.ENDED,
-        ObjectType.SESSION,
-        s.id,
-        result={"energy_after": energy_after, "self_report": self_report, "notes": notes},
-    )
-    return s
+    except BaseException:
+        await db.rollback()
+        raise
 
 
 async def save_checkpoint(
