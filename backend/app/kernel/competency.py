@@ -14,6 +14,7 @@ from typing import Any
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.base import utcnow_iso
 from app.db.events import EventWriter, Verb
 from app.db.models import CompetencyEvidence, CompetencyState, SkillNode
@@ -185,13 +186,17 @@ def mastery_from_states(states_by_dim: dict[str, CompetencyState], required: lis
 
 
 async def mastery(db: AsyncSession, learner_id: str, skill_id: str) -> float:
-    node = await db.get(SkillNode, skill_id)
+    node = await db.get(SkillNode, skill_id, populate_existing=True)
+    if node is not None and node.owner_learner_id not in (None, learner_id):
+        raise AppError("not_found", "This learning material is unavailable.", 404)
     return mastery_from_states(await states(db, learner_id, skill_id), required_dimensions(node))
 
 
 async def skill_state(db: AsyncSession, learner_id: str, skill_id: str) -> dict[str, Any]:
     """Open-learner-model view of one node: per-dimension state + mastery + memory summary."""
-    node = await db.get(SkillNode, skill_id)
+    node = await db.get(SkillNode, skill_id, populate_existing=True)
+    if node is not None and node.owner_learner_id not in (None, learner_id):
+        raise AppError("not_found", "This learning material is unavailable.", 404)
     st = await states(db, learner_id, skill_id)
     return {
         "skill_id": skill_id,

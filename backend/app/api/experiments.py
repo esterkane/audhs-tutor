@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import DB, Learner
 from app.db.models import Experiment, ExperimentAssignment, SkillNode
 from app.kernel import experiments
+from app.kernel.content_access import skill_visible
 from app.schemas.experiments import (
     ArmOut,
     ArmStatsOut,
@@ -116,7 +117,9 @@ async def results(experiment_id: str, db: DB, learner: Learner, record: bool = F
     for a in (await db.execute(stmt)).scalars():
         label = a.unit_id
         if a.unit_type == "node":
-            node = await db.get(SkillNode, a.unit_id)
+            node = await db.scalar(
+                select(SkillNode).where(SkillNode.id == a.unit_id, skill_visible(learner.id))
+            )
             label = node.title if node else a.unit_id
         units.append({"id": a.unit_id, "arm": arm_names.get(a.arm_id), "label": label, "ts": a.ts})
     return ResultsOut(

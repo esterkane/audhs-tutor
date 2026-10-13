@@ -12,6 +12,7 @@ from app.core.errors import AppError
 from app.db.base import new_id
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import ParkingLotItem, SkillNode, ThoughtAction
+from app.kernel.content_access import skill_visible
 from app.schemas.common import Mode, ObjectType
 
 
@@ -83,7 +84,15 @@ async def apply_action(
                 "revision_conflict", "A newer change prevents this undo. Refresh the thought.", 409
             )
         target = original.before_json
-        if target["node_id"] and await db.get(SkillNode, target["node_id"]) is None:
+        if (
+            target["node_id"]
+            and await db.scalar(
+                select(SkillNode.id).where(
+                    SkillNode.id == target["node_id"], skill_visible(learner_id)
+                )
+            )
+            is None
+        ):
             raise AppError("revision_conflict", "The previous skill link no longer exists.", 409)
         item.status = target["status"]
         item.node_id = target["node_id"]
@@ -96,7 +105,9 @@ async def apply_action(
                 "revision_conflict", "This thought was removed. Undo its removal first.", 409
             )
         if body.promoted_to != "next_session":
-            node = await db.get(SkillNode, body.promoted_to)
+            node = await db.scalar(
+                select(SkillNode).where(SkillNode.id == body.promoted_to, skill_visible(learner_id))
+            )
             if node is None:
                 raise AppError("not_found", "Skill not found.", 404)
             item.node_id = node.id
