@@ -87,3 +87,18 @@ def flag_instruction_patterns(text: str) -> list[str]:
     elif not flags and _INVISIBLE.search(text) and len(_INVISIBLE.findall(text)) >= 3:
         flags.append("obfuscated")  # invisible characters sprinkled through clean-looking text
     return flags
+
+
+# Shared high-precision quarantine patterns; context assembly and visual reviews use
+# the same policy. Advisory flags alone do not quarantine educational material.
+QUARANTINE_FLAGS = frozenset(
+    {
+        "ignore_previous",
+        "role_override",
+        "exfiltration",
+        "fake_markup",
+        "hidden_directive",
+        "authority_claim",
+        "obfuscated",
+    }
+)

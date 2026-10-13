@@ -46,21 +46,12 @@ class RelationshipVisual(GraphPart):
 
     @model_validator(mode="after")
     def check_references(self) -> "RelationshipVisual":
-        ids = {node.id for node in self.nodes}
-        if len(ids) != len(self.nodes):
-            raise ValueError("duplicate node id")
-        if len({edge.id for edge in self.edges}) != len(self.edges):
-            raise ValueError("duplicate edge id")
-        if any(edge.source not in ids or edge.target not in ids for edge in self.edges):
-            raise ValueError("edge endpoint does not exist")
-        source_ids = {source.chunk_id for source in self.binding.sources}
-        parts: tuple[RelationshipNode | RelationshipEdge, ...] = (*self.nodes, *self.edges)
-        for part in parts:
-            if len(set(part.source_chunk_ids)) != len(part.source_chunk_ids):
-                raise ValueError("duplicate part source reference")
-            if not set(part.source_chunk_ids) <= source_ids:
-                raise ValueError("part source is absent from lesson binding")
-        # Cycles, isolated nodes, self-loops and labeled parallel edges can be meaningful.
+        validate_graph(
+            self.nodes,
+            self.edges,
+            {source.chunk_id for source in self.binding.sources},
+            "part source is absent from lesson binding",
+        )
         return self
 
 
@@ -73,3 +64,26 @@ def parse_relationship(raw: bytes) -> RelationshipVisual:
     if len(raw) > MAX_RELATIONSHIP_BYTES:
         raise ValueError("relationship payload exceeds byte limit")
     return RelationshipVisual.model_validate_json(raw)
+
+
+def validate_graph(
+    nodes: tuple[RelationshipNode, ...],
+    edges: tuple[RelationshipEdge, ...],
+    source_ids: set[str],
+    source_error: str,
+) -> None:
+    """Shared bounded topology checks; target membership is resolved separately."""
+    ids = {node.id for node in nodes}
+    if len(ids) != len(nodes):
+        raise ValueError("duplicate node id")
+    if len({edge.id for edge in edges}) != len(edges):
+        raise ValueError("duplicate edge id")
+    if any(edge.source not in ids or edge.target not in ids for edge in edges):
+        raise ValueError("edge endpoint does not exist")
+    parts: tuple[RelationshipNode | RelationshipEdge, ...] = (*nodes, *edges)
+    for part in parts:
+        if len(set(part.source_chunk_ids)) != len(part.source_chunk_ids):
+            raise ValueError("duplicate part source reference")
+        if not set(part.source_chunk_ids) <= source_ids:
+            raise ValueError(source_error)
+    # Cycles, isolated nodes, self-loops and labeled parallel edges can be meaningful.

@@ -11,6 +11,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from app.knowledge.provenance import QUARANTINE_FLAGS as QUARANTINE_FLAGS
 from app.knowledge.provenance import flag_instruction_patterns
 from app.knowledge.repository import ScoredChunk
 from app.models_ai.provider import Message
@@ -109,17 +110,6 @@ def learner_answer_block(answer: str) -> str:
 QUARANTINE_BELOW_TRUST = 2
 # Only high-precision patterns quarantine. "system prompt", "## Instructions", "run the following"
 # or a long base64 run are normal in AI/programming material: they stay advisory flags.
-QUARANTINE_FLAGS = frozenset(
-    {
-        "ignore_previous",
-        "role_override",
-        "exfiltration",
-        "fake_markup",
-        "hidden_directive",
-        "authority_claim",
-        "obfuscated",
-    }
-)
 
 
 def quarantine(
