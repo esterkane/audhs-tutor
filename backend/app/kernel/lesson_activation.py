@@ -78,6 +78,38 @@ async def _receipt(db: AsyncSession, row: LessonActivation) -> LessonActivationR
     )
 
 
+async def prepare_payload(
+    db: AsyncSession, learner_id: str, raw_payload: dict[str, Any]
+) -> tuple[DraftPayload, dict[str, str], dict[str, str], list[curriculum.Problem]]:
+    """Shared read-only validation for preview and transactional activation."""
+    payload = DraftPayload.model_validate(raw_payload)
+    Domain(payload.domain)
+    # Each skill has one initial object version; ambiguous duplicates must not be collapsed.
+    object_skills = [o.skill for o in payload.learning_objects]
+    if len(set(object_skills)) != len(object_skills):
+        raise ValueError("Duplicate learning-object mappings")
+    slugs = [s.slug for s in payload.skills]
+    if len(set(slugs)) != len(slugs):
+        raise ValueError("Duplicate skill mappings")
+    ids = {slug: new_id() for slug in slugs}
+    # Draft identifiers are local aliases, never existing-node upserts. Remap for cycle checks too.
+    mapped = payload.model_dump(mode="json")
+    aliases = {slug: f"private-lesson-{identity.lower()}" for slug, identity in ids.items()}
+    for skill in mapped["skills"]:
+        skill["slug"] = aliases[skill["slug"]]
+        skill["prerequisites"] = [aliases.get(p, p) for p in skill["prerequisites"]]
+    for obj in mapped["learning_objects"]:
+        obj["skill"] = aliases.get(obj["skill"], obj["skill"])
+    for assessment in mapped["assessments"]:
+        assessment["skill"] = aliases.get(assessment["skill"], assessment["skill"])
+    problems = curriculum.selection_problems(
+        payload.selection
+    ) + await curriculum.validate_private_payload(db, mapped, learner_id=learner_id)
+    if any(p.level == "error" for p in problems):
+        raise ValueError("Lesson payload failed curriculum validation")
+    return payload, ids, aliases, problems
+
+
 class LessonActivationRepository:
     def __init__(self, factory: async_sessionmaker[AsyncSession]):
         self.factory = factory
@@ -152,33 +184,9 @@ class LessonActivationRepository:
                     raise conflict(
                         "Answer or source history changed. The draft has been retained."
                     ) from None
-                payload = DraftPayload.model_validate(draft.payload_json)
-                Domain(payload.domain)
-                # Each skill has one initial object version; ambiguous duplicates must not be collapsed.
-                object_skills = [o.skill for o in payload.learning_objects]
-                if len(set(object_skills)) != len(object_skills):
-                    raise ValueError("Duplicate learning-object mappings")
-                slugs = [s.slug for s in payload.skills]
-                if len(set(slugs)) != len(slugs):
-                    raise ValueError("Duplicate skill mappings")
-                ids = {slug: new_id() for slug in slugs}
-                # Draft identifiers are local aliases, never existing-node upserts. Remap for cycle checks too.
-                mapped = payload.model_dump(mode="json")
-                aliases = {
-                    slug: f"private-lesson-{identity.lower()}" for slug, identity in ids.items()
-                }
-                for skill in mapped["skills"]:
-                    skill["slug"] = aliases[skill["slug"]]
-                    skill["prerequisites"] = [aliases.get(p, p) for p in skill["prerequisites"]]
-                for obj in mapped["learning_objects"]:
-                    obj["skill"] = aliases.get(obj["skill"], obj["skill"])
-                for assessment in mapped["assessments"]:
-                    assessment["skill"] = aliases.get(assessment["skill"], assessment["skill"])
-                problems = curriculum.selection_problems(
-                    payload.selection
-                ) + await curriculum.validate_private_payload(db, mapped, learner_id=learner_id)
-                if any(p.level == "error" for p in problems):
-                    raise ValueError("Lesson payload failed curriculum validation")
+                payload, ids, aliases, problems = await prepare_payload(
+                    db, learner_id, draft.payload_json
+                )
                 row = LessonActivation(
                     learner_id=learner_id,
                     promotion_id=promotion.id,

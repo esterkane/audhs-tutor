@@ -27,3 +27,21 @@ class LessonActivationReceipt(BaseModel):
     object_ids: tuple[Identifier, ...]
     assessment_ids: tuple[Identifier, ...]
     edge_ids: tuple[Identifier, ...]
+
+
+class LessonActivationPreview(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    draft_id: Identifier
+    promotion_id: Identifier
+    draft_version: int
+    title: str
+    status: str
+    command: ActivateLesson | None = None
+    skills: int = 0
+    learning_objects: int = 0
+    assessments: int = 0
+    warnings: tuple[str, ...] = ()
+    issues: tuple[str, ...] = ()
+    grounding: Literal["unknown", "ungrounded", "sources_recorded"] = "unknown"
+    receipt: LessonActivationReceipt | None = None
+    # Preview checks identity/structure, never factual accuracy, rights or task qualification.

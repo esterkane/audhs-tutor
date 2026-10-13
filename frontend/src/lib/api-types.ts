@@ -1119,6 +1119,57 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/lesson-activations/drafts/{draft_id}/preview': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Preview exact private draft activation without changing learning state */
+    get: operations['activation_preview_api_lesson_activations_drafts__draft_id__preview_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/lesson-activations/{activation_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read an owned private lesson activation receipt */
+    get: operations['receipt_api_lesson_activations__activation_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/lesson-activations/commands': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Explicitly activate one exact private lesson draft version */
+    post: operations['activate_api_lesson_activations_commands_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/lesson-promotions/answers/{answer_id}/preview': {
     parameters: {
       query?: never
@@ -2831,6 +2882,15 @@ export interface components {
     ActivateIn: {
       /** Enabled */
       enabled: boolean
+    }
+    /** ActivateLesson */
+    ActivateLesson: {
+      /** Promotion Id */
+      promotion_id: string
+      /** Expected Version */
+      expected_version: number
+      /** Payload Sha256 */
+      payload_sha256: string
     }
     /** ActivitiesOut */
     ActivitiesOut: {
@@ -5221,6 +5281,79 @@ export interface components {
       sources?: string[]
     } & {
       [key: string]: unknown
+    }
+    /** LessonActivationPreview */
+    LessonActivationPreview: {
+      /** Draft Id */
+      draft_id: string
+      /** Promotion Id */
+      promotion_id: string
+      /** Draft Version */
+      draft_version: number
+      /** Title */
+      title: string
+      /** Status */
+      status: string
+      command?: components['schemas']['ActivateLesson'] | null
+      /**
+       * Skills
+       * @default 0
+       */
+      skills: number
+      /**
+       * Learning Objects
+       * @default 0
+       */
+      learning_objects: number
+      /**
+       * Assessments
+       * @default 0
+       */
+      assessments: number
+      /**
+       * Warnings
+       * @default []
+       */
+      warnings: string[]
+      /**
+       * Issues
+       * @default []
+       */
+      issues: string[]
+      /**
+       * Grounding
+       * @default unknown
+       * @enum {string}
+       */
+      grounding: 'unknown' | 'ungrounded' | 'sources_recorded'
+      receipt?: components['schemas']['LessonActivationReceipt'] | null
+    }
+    /** LessonActivationReceipt */
+    LessonActivationReceipt: {
+      /**
+       * Action
+       * @default activate_private_lesson
+       * @constant
+       */
+      action: 'activate_private_lesson'
+      /** Activation Id */
+      activation_id: string
+      /** Promotion Id */
+      promotion_id: string
+      /** Draft Id */
+      draft_id: string
+      /** Activated Version */
+      activated_version: number
+      /** Payload Sha256 */
+      payload_sha256: string
+      /** Skill Ids */
+      skill_ids: string[]
+      /** Object Ids */
+      object_ids: string[]
+      /** Assessment Ids */
+      assessment_ids: string[]
+      /** Edge Ids */
+      edge_ids: string[]
     }
     /** LessonCapture */
     LessonCapture: {
@@ -9554,6 +9687,104 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AnswerVisualTarget']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  activation_preview_api_lesson_activations_drafts__draft_id__preview_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LessonActivationPreview']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  receipt_api_lesson_activations__activation_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        activation_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LessonActivationReceipt']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  activate_api_lesson_activations_commands_post: {
+    parameters: {
+      query?: never
+      header: {
+        'Idempotency-Key': string
+      }
+      path?: never
+      cookie?: never
+    }
+    /** @description Strict ActivateLesson command, limited to 4096 streamed bytes. */
+    requestBody: {
+      content: {
+        'application/json': Record<string, never>
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LessonActivationReceipt']
         }
       }
       /** @description Validation Error */
