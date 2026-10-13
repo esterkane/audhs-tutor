@@ -20,3 +20,12 @@ describe('relationship help', () => {
     expect(screen.getByRole('combobox')).toHaveValue('')
   })
 })
+
+it('preserves named directed connections as readable literal text', () => {
+  render(<RelationshipGraph graph={{ ...graph, nodes: [
+    { id: 'a', label: 'Training data', explanation: 'Input' },
+    { id: 'b', label: 'Mean', explanation: 'Parameter' },
+  ], edges: [{ id: 'ab', source: 'a', target: 'b', label: 'fits <script>not code</script>' }] }} />)
+  expect(screen.getByText('Read connections as text')).toBeInTheDocument()
+  expect(screen.getByText('Training data → Mean: fits <script>not code</script>')).toBeInTheDocument()
+})

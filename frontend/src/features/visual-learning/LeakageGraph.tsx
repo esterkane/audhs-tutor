@@ -11,6 +11,6 @@ export default function LeakageGraph({ scope, mean }: { scope: FitScope; mean: n
       { id: '2', label: `Fit mean = ${mean}`, explanation: scope === 'train' ? `The mean is ${mean}, calculated from training values only. Moving the held-out slider cannot change it.` : `The mean is ${mean}, calculated using both sets. Moving the held-out slider changes a learned parameter: this is leakage, even without outcome labels.` },
       { id: '3', label: 'Apply the same mean', explanation: `Subtract the saved mean (${mean}) from every value in each set. This transformation does not fit a new mean. The held-out results are listed below the diagram.` },
     ],
-    edges: pairs.map(([a, b]) => ({ id: `${a}-${b}`, source: String(a), target: String(b) })),
+    edges: pairs.map(([a, b]) => ({ id: `${a}-${b}`, source: String(a), target: String(b), label: b === 2 ? (a === 1 ? 'Leaks held-out values into fitting' : 'Fits the mean') : (a === 2 ? 'Supplies the fitted parameter' : 'Supplies values to transform') })),
   }} />
 }
