@@ -811,6 +811,30 @@ def _dicts(items: Any) -> list[dict[str, Any]]:
 
 
 async def validate_payload(db: AsyncSession, payload: dict[str, Any]) -> list[Problem]:
+    """Validate shared publication without admitting private prerequisites."""
+    return await _validate_payload(db, payload, learner_id=None)
+
+
+async def validate_private_payload(
+    db: AsyncSession, payload: dict[str, Any], *, learner_id: str
+) -> list[Problem]:
+    """Explicit private context; does not authorize publication or change shared validation."""
+    problems = await _validate_payload(db, payload, learner_id=learner_id)
+    references = {
+        str(a["source_chunk_id"])
+        for a in _dicts(payload.get("assessments"))
+        if a.get("source_chunk_id")
+    }
+    if references:
+        present = set((await db.scalars(select(Chunk.id).where(Chunk.id.in_(references)))).all())
+        if references - present:
+            problems.append(Problem("error", "draft", "Assessment source passages are unavailable"))
+    return problems
+
+
+async def _validate_payload(
+    db: AsyncSession, payload: dict[str, Any], *, learner_id: str | None
+) -> list[Problem]:
     """Errors block publishing; warnings are shown. Checks: shape, slugs, prerequisites (draft or
     already published), cycles over the draft **plus the published graph**, learning objects and
     assessments per skill (no orphans), assessment shapes, source chunks that still exist, and the
@@ -826,7 +850,7 @@ async def validate_payload(db: AsyncSession, payload: dict[str, Any]) -> list[Pr
     published_slug_of: dict[str, str] = {
         str(i): str(sl)
         for i, sl in (
-            await db.execute(select(SkillNode.id, SkillNode.slug).where(skill_visible(None)))
+            await db.execute(select(SkillNode.id, SkillNode.slug).where(skill_visible(learner_id)))
         ).all()
     }
     published_slugs = set(published_slug_of.values())
