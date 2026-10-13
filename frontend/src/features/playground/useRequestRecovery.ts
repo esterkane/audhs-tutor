@@ -291,3 +291,15 @@ export function useAnswerCheckRecovery(scope: string) {
     true,
   )
 }
+
+export type VisualGenerationBody = { binding: Schemas['AnswerVisualBinding'] }
+export function useVisualRequestRecovery(scope: string) {
+  return useTypedRequestRecovery<VisualGenerationBody>(scope, (body): body is VisualGenerationBody => {
+    if (!body || typeof body !== 'object') return false
+    const binding = (body as VisualGenerationBody).binding
+    return !!binding && binding.schema_version === 'answer-visual-binding.v1'
+      && typeof binding.answer_id === 'string' && binding.answer_id.length > 0 && binding.answer_id.length <= 128
+      && [binding.question_sha256, binding.answer_sha256, binding.lineage_sha256].every(hash => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash))
+      && (binding.learning_purpose == null || (typeof binding.learning_purpose === 'string' && binding.learning_purpose.length <= 4000))
+  }, true, true)
+}

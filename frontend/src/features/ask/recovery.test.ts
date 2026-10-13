@@ -20,3 +20,18 @@ it('retains the exact failed-storage retry through navigation without sending it
   const accepted = renderHook(() => useAskRequestRecovery(scope))
   expect(accepted.result.current.pending).toBeNull()
 })
+
+it('keeps a visual binding and retry identity across remount without resending', async () => {
+  const { useVisualRequestRecovery } = await import('../playground/useRequestRecovery')
+  const scope = `visual:${crypto.randomUUID()}`
+  const body = { binding: { schema_version: 'answer-visual-binding.v1' as const, answer_id: 'answer', question_sha256: 'a'.repeat(64), answer_sha256: 'b'.repeat(64), lineage_sha256: 'c'.repeat(64), learning_purpose: null } }
+  const first = renderHook(() => useVisualRequestRecovery(scope))
+  let key = ''
+  act(() => { key = first.result.current.prepare(body, { display: 'Visual', submitted: '', snapshot: '', mode: 'explicit' }).key })
+  first.unmount()
+  const second = renderHook(() => useVisualRequestRecovery(scope))
+  expect(second.result.current.pending?.key).toBe(key)
+  expect(second.result.current.pending?.body).toEqual(body)
+  act(() => second.result.current.accept(key))
+  expect(second.result.current.pending).toBeNull()
+})

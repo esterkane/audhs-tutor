@@ -1,0 +1,114 @@
+import { expect, test, type Page } from '@playwright/test'
+import axe from 'axe-core'
+
+async function fixture(page: Page, lost = false) {
+  const binding = { schema_version: 'answer-visual-binding.v1', answer_id: 'visual-answer', question_sha256: 'a'.repeat(64), answer_sha256: 'b'.repeat(64), lineage_sha256: 'c'.repeat(64), learning_purpose: null }
+  const spec = { schema_version: 'visual.answer.v1', kind: 'relationship', binding, title: 'Training and prediction', text_equivalent: 'Training examples fit a model. The model then predicts results for new examples.', directed: true, source_chunk_ids: [], nodes: [{ id: 'fit', label: 'Training examples', explanation: 'Use known examples to learn model parameters.', source_chunk_ids: [] }, { id: 'model', label: 'Fitted model', explanation: 'Keep learned parameters for new predictions.', source_chunk_ids: [] }], edges: [{ id: 'learn', source: 'fit', target: 'model', label: 'Fit parameters from examples', source_chunk_ids: [] }] }
+  const answer = { id: 'visual-answer', surface: 'ask', turn_id: 'turn', created_at: '2026-10-13T10:00:00Z', request_text: 'How do training and prediction differ?', text: 'Training learns model parameters. Prediction uses them on new inputs.', request: {}, metadata: {}, session_id: null, skill_id: null, area_id: null, source_check: { sources: [], omitted: 0 } }
+  type State = 'running' | 'completed' | 'cancelled'
+  let state: State = 'running'
+  let created = false
+  const keys: string[] = []
+  const job = () => ({ id: 'visual-job', answer_id: answer.id, state, attempts: 1, attempt_limit: 3, document_id: state === 'completed' ? 'doc' : null, result_version_id: state === 'completed' ? 'ver' : null, error_code: null, created_at: '2026-10-13T10:01:00Z', updated_at: '2026-10-13T10:01:00Z' })
+  await page.route('**/api/areas', route => route.fulfill({ json: { areas: [], total_documents: 0, unassigned_documents: 0 } }))
+  await page.route('**/api/answers/visual-answer', route => route.fulfill({ json: answer }))
+  await page.route('**/api/authored-visuals/answer-target/*', route => route.fulfill({ json: { binding, grounding: 'ungrounded', source_chunk_ids: [], sources_omitted: 0, issues: [], meaning: 'target_snapshot_not_approval' } }))
+  await page.route('**/api/visual-generation?*', route => route.fulfill({ json: created ? [job()] : [] }))
+  await page.route('**/api/visual-generation', route => {
+    created = true
+    keys.push(route.request().headers()['idempotency-key'])
+    if (lost && keys.length === 1) return route.abort()
+    return route.fulfill({ status: 202, json: job() })
+  })
+  await page.route('**/api/visual-generation/visual-job/cancel', route => { state = 'cancelled'; return route.fulfill({ json: job() }) })
+  await page.route('**/api/authored-visuals/doc/versions/ver', route => route.fulfill({ json: { id: 'ver', version: 1, target_kind: 'answer', target_id: answer.id, created_at: '2026-10-13T10:01:00Z', content_sha256: 'd'.repeat(64), snapshot_sha256: 'e'.repeat(64), spec, origin: { kind: 'model', model: 'synthetic-local', prompt_version: 'ask.visual.v1' }, grounding_now: 'ungrounded', review_meaning: 'historical_presentation_review_only' } }))
+  return { keys, complete: () => { state = 'completed' } }
+}
+
+for (const width of [390, 1280]) test(`Ask local visual controls preserve answer and follow-up ${width}`, async ({ page }, info) => {
+  const calls = await fixture(page)
+  await page.setViewportSize({ width, height: 900 })
+  await page.goto('/ask?answer=visual-answer')
+  const panel = page.locator('details').filter({ has: page.locator('summary', { hasText: 'Visual explanation (optional)' }) }).first()
+  await expect(page.getByText('Training learns model parameters. Prediction uses them on new inputs.')).toBeVisible()
+  await panel.locator(':scope > summary').focus()
+  await page.keyboard.press('Enter')
+  const generate = panel.getByRole('button', { name: 'Generate local diagram', exact: true })
+  await expect(generate).toBeEnabled()
+  await expect.poll(() => calls.keys.length).toBe(0)
+  await generate.focus(); await page.keyboard.press('Enter')
+  await expect(panel.getByRole('button', { name: 'Stop generation', exact: true })).toBeVisible()
+  await expect(panel.getByRole('button', { name: 'Generate another diagram' })).toBeDisabled()
+  calls.complete()
+  await panel.getByRole('button', { name: 'Refresh visual status' }).click()
+  await expect(panel.getByRole('heading', { name: 'Training and prediction' })).toBeVisible()
+  await expect(panel.getByText('Ungrounded: no source passages support this draft.')).toBeVisible()
+  const select = panel.getByRole('combobox', { name: 'Explain a part of the diagram' })
+  await select.focus(); await page.keyboard.press('t'); await page.keyboard.press('Tab')
+  await expect(panel.getByText('Use known examples to learn model parameters.', { exact: true }).first()).toBeVisible()
+  await page.screenshot({ path: info.outputPath(`visual-${width}.png`), fullPage: true })
+  await page.addScriptTag({ content: axe.source })
+  expect(await page.evaluate(async () => (await (window as unknown as { axe: typeof axe }).axe.run('main')).violations)).toEqual([])
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await page.reload()
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await expect(panel.getByRole('heading', { name: 'Training and prediction' })).toBeVisible()
+  expect(calls.keys).toHaveLength(1)
+  await expect(panel.getByRole('combobox', { name: 'Explain a part of the diagram' })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: /question/i }).first()).toBeVisible()
+  await page.emulateMedia({ colorScheme: 'dark', reducedMotion: 'reduce' })
+  await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+  await expect(panel.getByRole('region', { name: 'Training and prediction: scrollable diagram' })).toBeVisible()
+  await panel.getByRole('region', { name: 'Training and prediction: scrollable diagram' }).scrollIntoViewIfNeeded()
+  await expect.poll(async () => panel.locator('.react-flow__node').evaluateAll(nodes => nodes.every(node => { const box = node.getBoundingClientRect(); const frame = node.closest('[role=region]')!.getBoundingClientRect(); return box.left >= frame.left && box.right <= frame.right }))).toBe(true)
+  await page.screenshot({ path: info.outputPath(`visual-large-${width}.png`) })
+})
+
+test('Lost visual start response retries the same identity and stop survives reload', async ({ page }) => {
+  const calls = await fixture(page, true)
+  await page.goto('/ask?answer=visual-answer')
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Generate local diagram', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Retry previous request' })).toBeVisible()
+  await page.reload()
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Retry previous request' }).click()
+  await expect(page.getByRole('button', { name: 'Stop generation', exact: true })).toBeEnabled()
+  expect(calls.keys).toHaveLength(2)
+  expect(calls.keys[0]).toBe(calls.keys[1])
+  await page.getByRole('button', { name: 'Stop generation', exact: true }).click()
+  await expect(page.getByText('Generation stopped. No new diagram was saved.')).toBeVisible()
+  await page.reload()
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await expect(page.getByText('Generation stopped. No new diagram was saved.')).toBeVisible()
+  expect(calls.keys).toHaveLength(2)
+})
+
+test('Renderer failure keeps complete text and follow-up available without regeneration', async ({ page }) => {
+  const calls = await fixture(page)
+  await page.route('**/src/features/visual-learning/RelationshipGraph.tsx*', route => route.abort())
+  await page.goto('/ask?answer=visual-answer')
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Generate local diagram', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Stop generation', exact: true })).toBeVisible()
+  calls.complete()
+  await page.getByRole('button', { name: 'Refresh visual status' }).click()
+  await expect(page.getByText(/The diagram is unavailable/)).toBeVisible()
+  await expect(page.getByText('Training examples fit a model. The model then predicts results for new examples.')).toBeVisible()
+  await page.getByText('Read all concepts and relationships', { exact: true }).click()
+  await expect(page.getByText('Keep learned parameters for new predictions.', { exact: false })).toBeVisible()
+  await expect(page.getByRole('textbox', { name: /question/i }).first()).toBeVisible()
+  expect(calls.keys).toHaveLength(1)
+})
+
+test('History failure offers recovery and never enables duplicate blind generation', async ({ page }) => {
+  const calls = await fixture(page)
+  await page.route('**/api/visual-generation?*', route => route.fulfill({ status: 503, json: { error: { message: 'Synthetic unavailable' } } }))
+  await page.goto('/ask?answer=visual-answer')
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Retry visual history' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Generate local diagram', exact: true })).toHaveCount(0)
+  expect(calls.keys).toHaveLength(0)
+  await expect(page.getByRole('textbox', { name: /question/i }).first()).toBeVisible()
+})

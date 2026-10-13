@@ -4,6 +4,7 @@ import { SuggestionEvidence } from '../features/ask/SuggestionEvidence'
 import { SourcePicker } from '../features/ask/SourcePicker'
 import { sourceSelection, useSelectedPassages } from '../features/ask/useSelectedPassages'
 import { FurtherReading } from '../features/ask/FurtherReading'
+import { AnswerVisual } from '../features/ask/AnswerVisual'
 import { AnswerChecks } from '../features/ask/AnswerChecks'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -239,6 +240,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
               <SourcedAnswer key={`sources:${answer.id}`} text={answer.text} sources={Array.isArray(answer.metadata.sources) ? answer.metadata.sources : []} />
               <ReadAloud text={`${answer.request_text}\n\n${answer.text}`} />
               <AnswerChecks key={answer.id} answerId={answer.id} learnerId={learnerId} />
+              <AnswerVisual key={`visual:${answer.id}`} answerId={answer.id} learnerId={learnerId} />
               <FurtherReading key={`reading:${answer.id}`} question={answer.request_text} />
               <div className="flex flex-wrap gap-4 mt-3">
                 <Link to={`/answers/${encodeURIComponent(answer.id)}`}>Review or label this answer</Link>
