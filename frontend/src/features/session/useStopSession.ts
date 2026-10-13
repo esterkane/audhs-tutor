@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { api, type SessionOut } from '../../lib/api'
 import { useMode } from '../../stores/mode'
 
-export function useStopSession(sessionId: string) {
+export function useStopSession(sessionId: string, onRecapSaved?: (session: SessionOut) => void) {
   const nav = useNavigate()
   const qc = useQueryClient()
   const active = useRef(false)
@@ -15,7 +15,7 @@ export function useStopSession(sessionId: string) {
     return () => { active.current = false; cleanups.forEach(cleanup => cleanup()); cleanups.clear() }
   }, [sessionId])
   return useMutation({
-    mutationFn: () => api.endSession(sessionId, {}),
+    mutationFn: (body?: Parameters<typeof api.endSession>[1]) => api.endSession(sessionId, body ?? {}),
     onMutate: () => {
       const key = window.history.state?.key
       const url = window.location.href
@@ -31,7 +31,7 @@ export function useStopSession(sessionId: string) {
       return { endedSessionId: sessionId, cleanup,
         stillHere: () => !moved && window.history.state?.key === key && window.location.href === url }
     },
-    onSuccess: (_result, _variables, intent) => {
+    onSuccess: (result, body, intent) => {
       const endedId = intent.endedSessionId
       const currentId = useMode.getState().sessionId
       if (currentId === endedId) useMode.getState().reset()
@@ -41,7 +41,10 @@ export function useStopSession(sessionId: string) {
       void qc.invalidateQueries({ queryKey: ['session', endedId] })
       void qc.invalidateQueries({ queryKey: ['session-current'] })
       // Ending still commits after leaving, but its response cannot own a newer view/session.
-      if (active.current && intent.stillHere() && sessionId === endedId && (!currentId || currentId === endedId)) nav('/')
+      if (active.current && intent.stillHere() && sessionId === endedId && (!currentId || currentId === endedId)) {
+        if (body !== undefined && onRecapSaved) onRecapSaved(result)
+        else nav('/')
+      }
     },
     onSettled: (_result, _error, _variables, intent) => intent?.cleanup(),
   })

@@ -9,12 +9,15 @@ import { usePreferences } from '../preferences/api'
 import { useNavigate } from 'react-router-dom'
 
 /** Ending a session is always available and never submits an assessment or a rating. */
-export function SessionControls({ sessionId, skillId, onPause, compact = false, children }: { children?: ReactNode; sessionId: string; skillId?: string | null; onPause?: () => void; compact?: boolean }) {
+export function SessionControls({ sessionId, skillId, onPause, compact = false, children, endAction }: { endAction?: { run: () => void; isPending: boolean; error: Error | null }; children?: ReactNode; sessionId: string; skillId?: string | null; onPause?: () => void; compact?: boolean }) {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const prefs = usePreferences()
   const marks = (prefs.data?.values?.['learning.material_marks'] ?? {}) as Record<string, string>
-  const stop = useStopSession(sessionId)
+  const defaultStop = useStopSession(sessionId)
+  const stop = endAction
+    ? { mutate: endAction.run, isPending: endAction.isPending, error: endAction.error }
+    : defaultStop
   const mark = useMutation({
     mutationFn: (status: 'clear' | 'later' | null) =>
       apiFetch<Schemas['MaterialMarkOut']>(`/api/skills/${skillId}/mark`, {
@@ -57,8 +60,8 @@ export function SessionControls({ sessionId, skillId, onPause, compact = false, 
     <section aria-label="Session controls" className="border border-line rounded-md p-3">
       {children}
       <div className="flex gap-2 flex-wrap">
-        <Button onClick={() => { onPause?.(); navigate('/') }} disabled={stop.isPending}>
-          Pause and return Home
+        <Button onClick={() => { onPause?.(); navigate('/') }}>
+          {stop.isPending ? 'Return Home' : 'Pause and return Home'}
         </Button>
         {!compact && <Button onClick={() => stop.mutate()} disabled={stop.isPending}>
           End session
@@ -66,11 +69,12 @@ export function SessionControls({ sessionId, skillId, onPause, compact = false, 
         <LessonFocusControls />
         {!compact && secondaryActions}
       </div>
-      {!compact && <p className="text-xs text-muted mt-2">
+      {stop.isPending && <p role="status" className="text-sm mt-2">Session completion is in progress. Returning Home does not cancel it.</p>}
+      {!compact && !stop.isPending && <p className="text-xs text-muted mt-2">
         Pause keeps this session available to resume from Home. End session or change topic finishes it; completed work stays saved. No rating needed.
       </p>}
       {compact && <Disclosure className="mt-2" label="Session options">
-        <p className="text-sm text-muted mt-2">Pause keeps this session available from Home. End or change topic finishes it; completed work stays saved. No rating needed. Labels save a reminder; they do not change assessed mastery.</p>
+        {!stop.isPending && <p className="text-sm text-muted mt-2">Pause keeps this session available from Home. End or change topic finishes it; completed work stays saved. No rating needed. Labels save a reminder; they do not change assessed mastery.</p>}
         <div className="flex gap-2 flex-wrap mt-2"><Button onClick={() => stop.mutate()} disabled={stop.isPending}>
           End session
         </Button>{secondaryActions}</div>

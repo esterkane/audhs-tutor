@@ -1,25 +1,23 @@
 import { SessionControls } from '../features/session/SessionControls'
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { useRecapDraft } from '../features/session/useRecapDraft'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { Choice } from '../components/ui/choice'
 import { Textarea } from '../components/ui/textarea'
-import { useEndSession } from '../features/session/api'
+import { useStopSession } from '../features/session/useStopSession'
 import type { SessionOut } from '../lib/api'
 import { useMode } from '../stores/mode'
 
 export function Recap() {
-  const { sessionId, reset } = useMode()
-  const end = useEndSession()
+  const { sessionId } = useMode()
   const nav = useNavigate()
   const saving = useRef(false)
-  const mounted = useRef(true)
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
   const draft = useRecapDraft(sessionId)
   const { energyAfter, recall, notes } = draft
   const [summary, setSummary] = useState<SessionOut | null>(null)
+  const end = useStopSession(sessionId ?? '', (saved) => { draft.clear(); setSummary(saved) })
 
   if (!sessionId && !summary)
     return (
@@ -32,22 +30,15 @@ export function Recap() {
       </Card>
     )
 
-  async function finish() {
+  async function finish(withRecap = true) {
     if (!sessionId || saving.current) return
     saving.current = true
     try {
-    const s = await end.mutateAsync({
-      id: sessionId,
-      body: {
+      await end.mutateAsync(withRecap ? {
         energy_after: energyAfter ?? undefined,
         self_report: recall ?? undefined,
         notes: notes || undefined,
-      },
-    })
-    if (!mounted.current || useMode.getState().sessionId !== sessionId) return
-    draft.clear()
-    setSummary(s)
-    reset()
+      } : undefined)
     } finally { saving.current = false }
   }
 
@@ -68,7 +59,10 @@ export function Recap() {
 
   return (
     <Card>
-      {sessionId && <SessionControls sessionId={sessionId} />}
+      {sessionId && <SessionControls sessionId={sessionId} endAction={{
+        run: () => { void finish(false).catch(() => { /* The shared error remains visible. */ }) },
+        isPending: end.isPending, error: null,
+      }} />}
       <CardTitle as="h1">Finish your session</CardTitle>
       <p className="text-sm text-muted mb-3">
         Ratings and notes are optional. You can save immediately. These ratings describe this session; they
@@ -97,7 +91,7 @@ export function Recap() {
       <Textarea id="notes" value={notes} onChange={(e) => draft.edit({ notes: e.target.value })} className="min-h-16" />
       {draft.error && <p role="alert">{draft.error}</p>}
       <Button variant="primary" className="mt-3" onClick={() => void finish().catch(() => { /* Error is displayed below; keep the draft. */ })} disabled={end.isPending}>
-        {end.isPending ? 'Saving…' : 'Save and finish session'}
+        {end.isPending ? (end.variables === undefined ? 'Ending session…' : 'Saving…') : 'Save and finish session'}
       </Button>
       </fieldset>
       {end.isError && (
