@@ -48,6 +48,24 @@ CATALOG = {
             "Data preprocessing with scikit-learn",
             "https://scikit-learn.org/stable/about.html",
         ),
+        Reference(
+            "python-data-structures",
+            "https://docs.python.org/3/tutorial/datastructures.html",
+            "Python lists, tuples and dictionaries",
+            "https://docs.python.org/3/license.html",
+        ),
+        Reference(
+            "pandas-tables",
+            "https://pandas.pydata.org/docs/getting_started/intro_tutorials/01_table_oriented.html",
+            "Tabular data with pandas",
+            "https://pandas.pydata.org/docs/getting_started/overview.html",
+        ),
+        Reference(
+            "sklearn-evaluation",
+            "https://scikit-learn.org/stable/modules/model_evaluation.html",
+            "Model evaluation metrics with scikit-learn",
+            "https://scikit-learn.org/stable/about.html",
+        ),
     )
 }
 

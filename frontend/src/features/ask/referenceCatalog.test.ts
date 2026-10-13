@@ -4,10 +4,12 @@ import { references, suggestedReferences } from './referenceCatalog'
 describe('curated local references', () => {
   it('matches whole terms locally and does not invent a generic result', () => {
     expect(suggestedReferences('Explain NumPy array indexing').map((r) => r.id)).toEqual(['numpy-basics'])
-    expect(suggestedReferences('Explain Python dictionaries').map((r) => r.id)).toEqual(['python-tutorial'])
+    expect(suggestedReferences('Explain Python dictionaries').map((r) => r.id)).toEqual(['python-tutorial', 'python-data-structures'])
     expect(suggestedReferences('How does feature scaling work?').map((r) => r.id)).toEqual([
       'sklearn-preprocessing',
     ])
+    expect(suggestedReferences('Explain pandas DataFrame').map(r => r.id)).toEqual(['pandas-tables'])
+    expect(suggestedReferences('Compare precision and recall').map(r => r.id)).toEqual(['sklearn-evaluation'])
     expect(suggestedReferences('What is a pythonicologist?')).toEqual([])
     expect(suggestedReferences('How do I play a chord?')).toEqual([])
   })
@@ -19,7 +21,7 @@ describe('curated local references', () => {
       expect(url.protocol).toBe('https:')
       expect(url.search).toBe('')
       expect(url.username).toBe('')
-      expect(card.inspectedAt).toBe('2026-10-12')
+      expect(card.inspectedAt).toMatch(/^2026-10-1[23]$/)
     }
   })
 })

@@ -195,7 +195,7 @@ test('Further reading stays local until an explicit external link is opened', as
   await fixture(page)
   const outbound: string[] = []
   page.on('request', request => {
-    if (/https:\/\/(docs\.python\.org|numpy\.org|scikit-learn\.org)/.test(request.url())) outbound.push(request.url())
+    if (/https:\/\/(docs\.python\.org|numpy\.org|scikit-learn\.org|pandas\.pydata\.org)/.test(request.url())) outbound.push(request.url())
   })
   await page.setViewportSize({ width: 390, height: 900 })
   await page.goto('/ask?answer=saved-example')
@@ -209,6 +209,11 @@ test('Further reading stays local until an explicit external link is opened', as
   await expect(link).toHaveAttribute('rel', 'noopener noreferrer')
   await expect(link).toHaveAttribute('referrerpolicy', 'no-referrer')
   await expect(page.getByText(/Optional reading, not evidence used to check this answer/)).toBeVisible()
+  for (const [id, title] of [['python-data-structures', 'Python lists, tuples and dictionaries'], ['pandas-tables', 'Tabular data with pandas'], ['sklearn-evaluation', 'Model evaluation metrics with scikit-learn']]) {
+    await topic.selectOption(id)
+    await expect(page.getByRole('link', { name: `${title} (external)` })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Save a local reading copy', exact: true })).toBeVisible()
+  }
   expect(outbound).toEqual([])
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
   await page.screenshot({ path: info.outputPath('further-reading.png'), fullPage: true })

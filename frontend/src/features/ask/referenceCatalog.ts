@@ -48,6 +48,60 @@ export const references: readonly ReferenceCard[] = [
       'Redistribution permissions have not been assessed. This link does not establish fairness or correctness of a cleaning decision.',
     terms: ['scikit-learn', 'sklearn', 'preprocessing', 'feature scaling', 'standardization', 'one-hot'],
   },
+  {
+    "id": "python-data-structures",
+    "title": "Python lists, tuples and dictionaries",
+    "url": "https://docs.python.org/3/tutorial/datastructures.html",
+    "publisher": "Python Software Foundation",
+    "why": "Compare sequence mutability, dictionary operations and common data-structure examples.",
+    "terms": [
+        "dictionary",
+        "dictionaries",
+        "tuple",
+        "tuples",
+        "python list",
+        "python lists",
+        "list comprehension"
+    ],
+    "versionNote": "Rolling documentation; select the version matching your local environment.",
+    "inspectedAt": "2026-10-13",
+    "reuseNote": "Linked content remains third-party material. Redistribution permissions have not been assessed; a local copy does not grant permission for public exports."
+},
+  {
+    "id": "pandas-tables",
+    "title": "Tabular data with pandas",
+    "url": "https://pandas.pydata.org/docs/getting_started/intro_tutorials/01_table_oriented.html",
+    "publisher": "pandas",
+    "why": "Understand DataFrame columns, rows and Series before working with tabular datasets.",
+    "terms": [
+        "pandas",
+        "dataframe",
+        "series",
+        "tabular data"
+    ],
+    "versionNote": "Rolling documentation; select the version matching your local environment.",
+    "inspectedAt": "2026-10-13",
+    "reuseNote": "Linked content remains third-party material. Redistribution permissions have not been assessed; a local copy does not grant permission for public exports."
+},
+  {
+    "id": "sklearn-evaluation",
+    "title": "Model evaluation metrics with scikit-learn",
+    "url": "https://scikit-learn.org/stable/modules/model_evaluation.html",
+    "publisher": "scikit-learn",
+    "why": "Compare scoring functions and classification or regression metrics; choose a metric suited to the task.",
+    "terms": [
+        "model evaluation",
+        "precision",
+        "recall",
+        "f1 score",
+        "confusion matrix",
+        "classification accuracy",
+        "regression metrics"
+    ],
+    "versionNote": "Rolling documentation; select the version matching your local environment.",
+    "inspectedAt": "2026-10-13",
+    "reuseNote": "Linked content remains third-party material. Redistribution permissions have not been assessed; a local copy does not grant permission for public exports."
+},
 ]
 
 export function suggestedReferences(question: string): readonly ReferenceCard[] {
