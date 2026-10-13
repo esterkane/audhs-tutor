@@ -1,5 +1,6 @@
 import { SessionControls } from '../features/session/SessionControls'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useRecapDraft } from '../features/session/useRecapDraft'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -13,9 +14,11 @@ export function Recap() {
   const { sessionId, reset } = useMode()
   const end = useEndSession()
   const nav = useNavigate()
-  const [energyAfter, setEnergyAfter] = useState<number | null>(null)
-  const [recall, setRecall] = useState<number | null>(null)
-  const [notes, setNotes] = useState('')
+  const saving = useRef(false)
+  const mounted = useRef(true)
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false } }, [])
+  const draft = useRecapDraft(sessionId)
+  const { energyAfter, recall, notes } = draft
   const [summary, setSummary] = useState<SessionOut | null>(null)
 
   if (!sessionId && !summary)
@@ -30,7 +33,9 @@ export function Recap() {
     )
 
   async function finish() {
-    if (!sessionId) return
+    if (!sessionId || saving.current) return
+    saving.current = true
+    try {
     const s = await end.mutateAsync({
       id: sessionId,
       body: {
@@ -39,8 +44,11 @@ export function Recap() {
         notes: notes || undefined,
       },
     })
+    if (!mounted.current || useMode.getState().sessionId !== sessionId) return
+    draft.clear()
     setSummary(s)
     reset()
+    } finally { saving.current = false }
   }
 
   if (summary)
@@ -66,11 +74,12 @@ export function Recap() {
         Ratings and notes are optional. You can save immediately. These ratings describe this session; they
         are not a test score.
       </p>
+      <fieldset disabled={end.isPending} className="border-0 p-0 m-0 min-w-0">
       <Choice<number>
         label="Energy now (1–5)"
         options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
         value={energyAfter}
-        onChange={setEnergyAfter}
+        onChange={(energyAfter) => draft.edit({ energyAfter })}
         columns={5}
       />
       <div className="mt-4">
@@ -78,17 +87,19 @@ export function Recap() {
           label="How much of today's material can you still recall without looking? (1 = almost none, 5 = all of it)"
           options={[1, 2, 3, 4, 5].map((n) => ({ value: n, label: String(n) }))}
           value={recall}
-          onChange={setRecall}
+          onChange={(recall) => draft.edit({ recall })}
           columns={5}
         />
       </div>
       <label htmlFor="notes" className="block text-sm font-medium mt-4">
         One line for next time (optional)
       </label>
-      <Textarea id="notes" value={notes} onChange={(e) => setNotes(e.target.value)} className="min-h-16" />
-      <Button variant="primary" className="mt-3" onClick={() => void finish()} disabled={end.isPending}>
+      <Textarea id="notes" value={notes} onChange={(e) => draft.edit({ notes: e.target.value })} className="min-h-16" />
+      {draft.error && <p role="alert">{draft.error}</p>}
+      <Button variant="primary" className="mt-3" onClick={() => void finish().catch(() => { /* Error is displayed below; keep the draft. */ })} disabled={end.isPending}>
         {end.isPending ? 'Saving…' : 'Save and finish session'}
       </Button>
+      </fieldset>
       {end.isError && (
         <p role="alert" className="text-warn mt-2">
           {(end.error as Error).message}
