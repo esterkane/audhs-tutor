@@ -258,3 +258,55 @@ async def test_source_request_with_lost_snapshots_is_unknown(db, learner):
     result = await service.resolve_answer_binding(db, learner.id, row.id)
     assert "incomplete_sources" in result.issues
     assert result.grounding == "unknown"
+
+
+async def test_lesson_binding_is_private_read_only_and_has_separate_identity(db, learner):
+    from app.db.models import Assessment, CurriculumDraft, LearningObject
+    from app.kernel import answer_lesson_binding as lessons
+
+    row = await saved(db, learner)
+    result = await lessons.resolve_lesson_binding(db, learner.id, row.id)
+    assert result.binding.schema_version == "answer-lesson-binding.v1"
+    assert result.grounding == "ungrounded"
+    assert (
+        json.loads(result.snapshot_json)["answers"][0]["metadata_json"]["origin_status"]
+        == "unknown"
+    )
+    assert await lessons.validate_lesson_binding(db, learner.id, result.binding) == result
+    assert not db.new and not db.dirty and not db.deleted
+    for model in (CurriculumDraft, LearningObject, Assessment, LearningEvent, ModelCall):
+        assert await db.scalar(select(func.count()).select_from(model)) == 0
+    for owner, identity in (("another-learner", row.id), (learner.id, "missing")):
+        with pytest.raises(KeyError, match="Ask answer unavailable"):
+            await lessons.resolve_lesson_binding(db, owner, identity)
+
+
+async def test_lesson_binding_rejects_source_currency_change_without_answer_change(db, learner):
+    from app.kernel import answer_lesson_binding as lessons
+
+    passage = await source(db)
+    row = await saved(db, learner, sources=[passage])
+    original = await lessons.resolve_lesson_binding(db, learner.id, row.id)
+    await db.execute(update(Chunk).where(Chunk.id == "chunk").values(text="Changed passage"))
+    await db.commit()
+    current = await lessons.resolve_lesson_binding(db, learner.id, row.id)
+    assert current.binding.lineage_sha256 == original.binding.lineage_sha256
+    assert current.binding.source_state_sha256 != original.binding.source_state_sha256
+    assert current.grounding == "unknown"
+    with pytest.raises(ValueError, match="source state changed"):
+        await lessons.validate_lesson_binding(db, learner.id, original.binding)
+
+
+async def test_lesson_binding_rejects_changed_ancestor_and_preserves_unknown(db, learner):
+    from app.kernel import answer_lesson_binding as lessons
+
+    parent = await saved(db, learner, "parent")
+    row = await saved(db, learner, "child", parent=parent)
+    before = await lessons.resolve_lesson_binding(db, learner.id, row.id)
+    await db.execute(update(TutorAnswer).where(TutorAnswer.id == parent.id).values(text="Changed"))
+    await db.commit()
+    with pytest.raises(ValueError, match="lineage"):
+        await lessons.validate_lesson_binding(db, learner.id, before.binding)
+    current = await lessons.resolve_lesson_binding(db, learner.id, row.id)
+    assert "changed_ancestor" in current.issues
+    assert current.grounding == "unknown"
