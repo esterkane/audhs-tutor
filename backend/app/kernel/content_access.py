@@ -60,3 +60,17 @@ async def require_representation(
     if row is None:
         raise AppError("not_found", "This learning material is unavailable.", 404)
     return row
+
+
+async def shared_nodes_by_slug(db: AsyncSession, slugs: list[str]) -> dict[str, SkillNode]:
+    """Preflight shared writers before any mutation; private slug collisions cannot be adopted."""
+    rows = list(
+        await db.scalars(
+            select(SkillNode)
+            .where(SkillNode.slug.in_(slugs))
+            .execution_options(populate_existing=True)
+        )
+    )
+    if any(row.owner_learner_id is not None for row in rows):
+        raise AppError("content_conflict", "A requested content identifier is unavailable.", 409)
+    return {row.slug: row for row in rows}

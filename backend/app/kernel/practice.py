@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import MemoryState, ReviewItem, Session, SkillNode
 from app.kernel import memory
+from app.kernel.content_access import shared_nodes_by_slug
 from app.schemas.common import ActivityType, Domain, Mode, ObjectType
 
 PRACTICE_DOMAINS = ("guitar", "movement", "language")
@@ -40,7 +41,7 @@ DECK_REQUIREMENTS: dict[str, Any] = {"teachable": False, "kind": "vocab_deck"}
 async def vocab_deck(db: AsyncSession, lang: str, *, commit: bool = True) -> SkillNode:
     """Get-or-create the language deck node (domain=language)."""
     slug = deck_slug(lang)
-    node = (await db.execute(select(SkillNode).where(SkillNode.slug == slug))).scalar_one_or_none()
+    node = (await shared_nodes_by_slug(db, [slug])).get(slug)
     if node is None:
         node = SkillNode(
             domain=str(Domain.LANGUAGE),

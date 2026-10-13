@@ -27,6 +27,7 @@ from app.db.models import (
     SkillNode,
 )
 from app.kernel import question_state
+from app.kernel.content_access import shared_nodes_by_slug
 from app.kernel.curriculum import STOP_WORDS, WORD_RE, open_target
 from app.knowledge.ingest.loaders import _LANG_SUFFIX, SUFFIX_TYPES, clean_stem
 
@@ -45,7 +46,7 @@ def listening_slug(lang: str) -> str:
 async def listening_node(db: AsyncSession, lang: str, *, commit: bool = True) -> SkillNode:
     """Get-or-create the per-language listening node (domain language, never a tutor lesson)."""
     slug = listening_slug(lang)
-    node = (await db.execute(select(SkillNode).where(SkillNode.slug == slug))).scalar_one_or_none()
+    node = (await shared_nodes_by_slug(db, [slug])).get(slug)
     if node is None:
         node = SkillNode(
             slug=slug,

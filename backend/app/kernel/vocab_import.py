@@ -19,6 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import SkillNode
 from app.kernel import practice
+from app.kernel.content_access import skill_visible
 
 MAX_BYTES = 2_000_000
 MAX_ROWS = 2000
@@ -177,7 +178,9 @@ async def existing_refs(db: AsyncSession, learner_id: str, lang: str) -> set[str
     """Refs of the learner's active cards in this deck. Never creates the deck (a preview saves
     nothing)."""
     node = (
-        await db.execute(select(SkillNode).where(SkillNode.slug == practice.deck_slug(lang)))
+        await db.execute(
+            select(SkillNode).where(SkillNode.slug == practice.deck_slug(lang), skill_visible(None))
+        )
     ).scalar_one_or_none()
     if node is None:
         return set()

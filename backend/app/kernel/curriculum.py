@@ -36,6 +36,7 @@ from app.db.models import (
     SkillNode,
 )
 from app.kernel.assessment_quality import course_metadata, orientation_title, unsuitable_question
+from app.kernel.content_access import shared_nodes_by_slug, skill_visible
 from app.knowledge.ingest.course_manifest import parse_lecture_dir, parse_section_dir
 from app.knowledge.ingest.loaders import clean_stem, split_number
 
@@ -318,7 +319,7 @@ async def material_status(db: AsyncSession, learner_id: str) -> list[dict[str, A
     for course, n in (
         await db.execute(
             select(SkillNode.course, func.count(SkillNode.id))
-            .where(SkillNode.course.is_not(None))
+            .where(SkillNode.course.is_not(None), skill_visible(learner_id))
             .group_by(SkillNode.course)
         )
     ).all():
@@ -823,7 +824,10 @@ async def validate_payload(db: AsyncSession, payload: dict[str, Any]) -> list[Pr
         problems.append(Problem("error", "draft", "duplicate skill slugs"))
     known = {x for x in slugs if x}
     published_slug_of: dict[str, str] = {
-        str(i): str(sl) for i, sl in (await db.execute(select(SkillNode.id, SkillNode.slug))).all()
+        str(i): str(sl)
+        for i, sl in (
+            await db.execute(select(SkillNode.id, SkillNode.slug).where(skill_visible(None)))
+        ).all()
     }
     published_slugs = set(published_slug_of.values())
     for s in skills:
@@ -1173,6 +1177,7 @@ async def publish_draft(
         raise ValueError(
             "draft has errors: " + "; ".join(f"{p.where}: {p.message}" for p in errors[:5])
         )
+    shared_nodes = await shared_nodes_by_slug(db, [s["slug"] for s in payload["skills"]])
     report = PublishReport()
     domain = str(payload.get("domain") or "ai_ml")
     course = None if d.area_id else str(payload.get("course") or d.course)
@@ -1184,9 +1189,7 @@ async def publish_draft(
     section_index = section_labels.index(section) + 1 if section in section_labels else None
     ids: dict[str, str] = {}
     for position, s in enumerate(payload["skills"], start=1):
-        node = (
-            await db.execute(select(SkillNode).where(SkillNode.slug == s["slug"]))
-        ).scalar_one_or_none()
+        node = shared_nodes.get(s["slug"])
         fields = dict(
             domain=domain,
             area_id=d.area_id,
@@ -1213,7 +1216,9 @@ async def publish_draft(
             pre_id = ids.get(pre)
             if pre_id is None:
                 row = (
-                    await db.execute(select(SkillNode.id).where(SkillNode.slug == pre))
+                    await db.execute(
+                        select(SkillNode.id).where(SkillNode.slug == pre, skill_visible(None))
+                    )
                 ).scalar_one_or_none()
                 pre_id = str(row) if row else None
             if pre_id is None:

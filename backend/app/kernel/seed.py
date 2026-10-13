@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Assessment, AssessmentRubric, LearningObject, SkillEdge, SkillNode
+from app.kernel.content_access import shared_nodes_by_slug
 from app.knowledge.ingest.service import ingest_markdown
 
 
@@ -58,11 +59,10 @@ async def load_seed(db: AsyncSession, seed_dir: Path) -> SeedReport:
     report = SeedReport()
 
     _check_acyclic(data["skills"])
+    shared_nodes = await shared_nodes_by_slug(db, [s["slug"] for s in data["skills"]])
     ids: dict[str, str] = {}
     for s in data["skills"]:
-        node = (
-            await db.execute(select(SkillNode).where(SkillNode.slug == s["slug"]))
-        ).scalar_one_or_none()
+        node = shared_nodes.get(s["slug"])
         fields = dict(
             domain=domain,
             course=data.get("course"),
