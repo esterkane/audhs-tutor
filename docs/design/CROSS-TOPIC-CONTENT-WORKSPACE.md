@@ -211,3 +211,7 @@ are delivered in bounded slices. G4 cannot reuse the disposable Representation c
 for authored history. AUTHORED-VISUAL-LIFECYCLE.md is the concrete proposed storage,
 answer/lesson binding, backup and archive contract awaiting acceptance; no migration
 is activated by that document. Existing lesson-only schema is not an Ask binding.
+
+2026-10-13 owner decision: AUTHORED-VISUAL-LIFECYCLE.md accepted explicitly. Proceed
+with its ordered binding, persistence/backup/wipe, API and UI gates. No generated
+visual or curriculum is approved by that architectural acceptance.

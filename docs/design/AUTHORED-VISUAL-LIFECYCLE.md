@@ -1,6 +1,7 @@
 # Authored visual lifecycle — decision proposal
 
-Date: 2026-10-13. Status: Proposed; no migration or endpoint is activated.
+Date: 2026-10-13. Status: Accepted by the owner on 2026-10-13.
+Implementation pending; acceptance alone activates no migration or endpoint.
 Implements the prerequisite in slices/visual-learning-binding.md and G4 of
 CROSS-TOPIC-CONTENT-WORKSPACE.md. Retains the learning kernel and existing renderers.
 
@@ -94,10 +95,10 @@ Immutable history increases storage; bounded payloads and reversible archive are
 initial limits. Owner review cannot certify factual correctness. Broad semantic
 quality and assistive-technology acceptance remain independent gates.
 
-## Acceptance requested
+## Owner acceptance
 
-Accept the recommended lifecycle, including private learner-backup treatment of derived
-specs and reversible archive without automatic deletion. This authorizes implementing
+The owner explicitly accepted the recommended lifecycle, including private learner-backup
+treatment of derived specs and reversible archive without automatic deletion. This authorizes implementing
 the staged migration/API; it does not approve any generated visual, publish curriculum,
 change provider routing or authorize public release of content.
 
@@ -107,4 +108,6 @@ Code/provenance review identified the need to preserve explicit learner-wipe sem
 that requirement and scoped-wipe/table-inventory tests are included above. No runtime
 change or acceptance is implied by this documentation review.
 Re-review confirmed the wipe finding resolved, with no remaining blockers/majors.
-Owner acceptance is pending; no migration is authorized by the reviewer.
+Owner acceptance was subsequently received: “Accept the proposed lifecycle”.
+The owner authorizes staged storage/API implementation under this contract; the reviewer
+did not supply that authorization.
