@@ -115,17 +115,33 @@ did not supply that authorization.
 
 ## Implementation status — 2026-10-13
 
-Binding, immutable storage, private backup/wipe, transactional document commands,
-read/version/review APIs and exact Ask target preview are implemented. See
-slices/authored-visual-storage.md, slices/authored-visual-commands.md,
-slices/authored-visual-history.md and slices/ask-visual-generation.md (under docs/).
-Durable generation requests, explicit local generation start/status/stop and the
-inline Ask visual panel are implemented. See slices/ask-visual-worker.md,
-slices/visual-generation-api.md and slices/ask-visual-ui.md. Exact-version presentation review UI is implemented (slices/ask-visual-review-ui.md).
-Editing/archive UI and semantic-quality acceptance remain open; the two-case local trial
-found meaningful errors (slices/ask-visual-fidelity.md). Existing local single-owner access is not multi-user authentication.
-No generated content approval, public-export permission or learning evidence follows
-from completing these implementation foundations.
+Binding, immutable storage, private backup/wipe, transactional commands, read/history
+APIs and exact Ask target preview are implemented. Local generation, document/version
+navigation, exact-version presentation review, reversible archive/restore and structured
+manual editing are implemented in bounded slices. See:
 
-Document/history navigation prerequisite: ASK-VISUAL-DOCUMENT-NAVIGATION.md records
-why generation receipts cannot serve as the editable/archivable document library.
+- slices/authored-visual-storage.md, authored-visual-commands.md and authored-visual-history.md
+- slices/ask-visual-worker.md, visual-generation-api.md and ask-visual-ui.md
+- slices/ask-visual-document-reads.md and ask-visual-document-ui.md
+- slices/ask-visual-review-ui.md, ask-visual-archive-ui.md and ask-visual-editor-ui.md
+
+All slice paths are under docs/. These are implementation checkpoints, not acceptance
+of the complete learning experience. Source-derived edits retain their restrictions;
+presentation reviews remain separate from factual checks and learning evidence.
+
+Remaining gates:
+
+1. Manual native keyboard-select/screen-reader acceptance and larger-graph usability.
+2. Semantic quality: the two-case local trial found material errors; the revised
+   prompt candidate was not promoted (slices/ask-visual-fidelity.md).
+3. One reviewed worked prediction/transfer task bound to actual learning-object and
+   assessment versions. The existing synthetic leakage playground stays unbound and
+   writes no competency evidence. Its multiple-choice check alone cannot establish
+   explanation quality. review-candidates/leakage-transfer-v1.json is a new explicit
+   candidate, awaiting owner review; it is not a live lesson or task-review receipt.
+4. User-visible evaluation of understanding and transfer; no inference of learning
+   gains from schema validity, page visits or successful browser tests.
+
+Existing localhost access is single-owner, not multi-user authentication. No generated
+content approval or public-export permission follows from the completed foundations.
+ASK-VISUAL-DOCUMENT-NAVIGATION.md records the document/history separation prerequisite.

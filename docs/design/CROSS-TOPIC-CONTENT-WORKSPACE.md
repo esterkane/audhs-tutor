@@ -215,3 +215,14 @@ is activated by that document. Existing lesson-only schema is not an Ask binding
 2026-10-13 owner decision: AUTHORED-VISUAL-LIFECYCLE.md accepted explicitly. Proceed
 with its ordered binding, persistence/backup/wipe, API and UI gates. No generated
 visual or curriculum is approved by that architectural acceptance.
+
+2026-10-13 G4 reconciliation: authored Ask lifecycle now includes local generation,
+immutable history, review, archive/restore and structured editing. See the lifecycle
+implementation status and referenced slice evidence. G4 remains incomplete: semantic
+quality, manual accessibility/larger-graph acceptance, and reviewed object-bound
+prediction/transfer integration are not established. The unbound leakage experiment
+is not a substitute for persisted task/rubric review. A concrete candidate is prepared
+in review-candidates/leakage-transfer-v1.json; no activation or assessment writes.
+
+## 2026-10-13 — Owner-approved leakage lesson content draft
+Owner approved using the exact transfer task/rubric for draft preparation. Created `docs/design/review-candidates/leakage-lesson-v1.json`, preserving the approved objective, example, question, hint and criteria with a short fit/transform explanation. No activation, persisted assessment review receipt or learning evidence was created. Integration inspection found a concrete contract gap: `curriculum.validate_payload` accepts only mcq/cloze/explain_back, whereas task reviews support transfer. Do not silently convert this task to explain_back or bypass validation. Next bounded slice: reconcile transfer draft validation/publication with existing assessment consumers and test on a disposable database, then obtain exact persisted-content review. JSON/content equality checked; runtime unchanged, previous runtime gates remain applicable.
