@@ -513,3 +513,46 @@ async def test_goal_follows_course_order_not_publish_order(
     await preferences.set_pref(db, learner.id, "goal.course", "")
     order = await skill_graph.topological_order(db)
     assert order[0].slug == attention_first
+
+
+async def test_transfer_draft_validation_and_publication(
+    db: AsyncSession, learner: models.LearnerProfile
+) -> None:
+    """Transfer remains transfer through publication, with its exact prompt and rubric."""
+    payload = _payload("Synthetic preprocessing", "fit-transform", [])
+    assessment = {
+        "skill": "fit-transform",
+        "kind": "transfer",
+        "item": {"prompt": "Which records may determine the imputation median, and why?"},
+        "rubric": [{"criterion": "Fit the median on observed training values only."}],
+    }
+    payload["assessments"] = [assessment]
+    assert not [p for p in await curriculum.validate_payload(db, payload) if p.level == "error"]
+    draft = await curriculum.create_draft(
+        db, learner.id, course=None, section=None, payload=payload
+    )
+    assert draft.status == "draft"
+    await curriculum.publish_draft(db, learner.id, draft.id)
+    stored = (
+        await db.execute(select(Assessment).where(Assessment.kind == "transfer"))
+    ).scalar_one()
+    assert stored.item_json["prompt"] == assessment["item"]["prompt"]
+    rubric = await db.get(models.AssessmentRubric, stored.rubric_id)
+    assert rubric is not None and rubric.criteria_json == assessment["rubric"]
+
+
+async def test_transfer_draft_rejects_unusable_prompt_or_rubric(db: AsyncSession) -> None:
+    cases = [
+        ({"prompt": " "}, [{"criterion": "Training only"}]),
+        ({"prompt": "Explain the split"}, []),
+        ({"prompt": "Explain the split"}, {"criterion": "Training only"}),
+        ({"prompt": "Explain the split"}, [{"criterion": " "}]),
+        ({"prompt": "Explain the split"}, [{"criterion": "Training"}, {"criterion": " training "}]),
+    ]
+    for item, rubric in cases:
+        payload = _payload("Synthetic preprocessing", "fit-transform", [])
+        payload["assessments"] = [
+            {"skill": "fit-transform", "kind": "transfer", "item": item, "rubric": rubric}
+        ]
+        problems = await curriculum.validate_payload(db, payload)
+        assert any(p.level == "error" and "transfer needs" in p.message for p in problems)

@@ -897,7 +897,28 @@ async def validate_payload(db: AsyncSession, payload: dict[str, Any]) -> list[Pr
             problems.append(Problem("error", sk, "mcq needs question, options, answer"))
         if kind == "explain_back" and not (item.get("prompt") and a.get("rubric")):
             problems.append(Problem("error", sk, "explain_back needs prompt and rubric"))
-        if kind not in ("mcq", "cloze", "explain_back"):
+        if kind == "transfer":
+            names = (
+                [row.get("criterion") for row in rubric if isinstance(row, dict)]
+                if isinstance(rubric, list)
+                else []
+            )
+            valid_names = [name.strip().casefold() for name in names if isinstance(name, str)]
+            if not (
+                isinstance(item.get("prompt"), str)
+                and item["prompt"].strip()
+                and isinstance(rubric, list)
+                and len(valid_names) == len(rubric)
+                and valid_names
+                and all(valid_names)
+                and len(set(valid_names)) == len(valid_names)
+            ):
+                problems.append(
+                    Problem(
+                        "error", sk, "transfer needs a prompt and distinct nonempty rubric criteria"
+                    )
+                )
+        if kind not in ("mcq", "cloze", "explain_back", "transfer"):
             problems.append(Problem("error", sk, f"unsupported assessment kind {kind!r}"))
         if a.get("guessable"):
             problems.append(
