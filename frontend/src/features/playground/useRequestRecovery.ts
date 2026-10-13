@@ -1,3 +1,4 @@
+import { validLessonBody, type LessonBody } from '../ask/lessonDraft'
 import { applyVisualEdits, editableFields, type visualSaveBody } from '../ask/visualEditing'
 import { useRef, useState } from 'react'
 import type { TutorRequest } from './api'
@@ -348,4 +349,9 @@ export function useVisualSaveRecovery(scope: string, documentId: string, version
     } catch { return false }
   }, true, true)
   return { ...recovery, error: recovery.error.replaceAll('model call', 'version save') }
+}
+
+export function useLessonPromotionRecovery(scope: string, answerId: string) {
+  const recovery = useTypedRequestRecovery<LessonBody>(scope, (body): body is LessonBody => validLessonBody(body, answerId), true, true)
+  return { ...recovery, error: recovery.error.replaceAll('model call', 'draft save') }
 }

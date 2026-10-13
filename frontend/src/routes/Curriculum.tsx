@@ -2,7 +2,7 @@ import { ApiError } from '../lib/api'
 import { useDraftRecovery } from '../features/curriculum/useDraftRecovery'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { Textarea } from '../components/ui/textarea'
@@ -32,12 +32,20 @@ export function Curriculum() {
   const drafts = useDrafts()
   const actions = useDraftActions()
   const [course, setCourse] = useState<string | null>(null)
-  const [selected, setSelected] = useState<string | null>(null)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selected = searchParams.get('draft')
+  function setSelected(id: string | null) {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous)
+      if (id) next.set('draft', id); else next.delete('draft')
+      return next
+    })
+  }
   const [dirty, setDirty] = useState(false)
   const [useModel, setUseModel] = useState(false)
   const sections = useSections(course)
   const courseDrafts = (drafts.data?.drafts ?? []).filter((d) => d.course === course)
-  const draft = courseDrafts.find((d) => d.id === selected) ?? null
+  const draft = drafts.data?.drafts.find((d) => d.id === selected) ?? null
   const current = material.data?.courses.find((m) => m.course === course)
   const openDrafts = courseDrafts.filter((d) => d.status === 'draft')
   const history = courseDrafts.filter((d) => d.status !== 'draft')
@@ -150,6 +158,7 @@ export function Curriculum() {
                 </Button>
               </p>
             )}
+            {selected && drafts.isSuccess && !draft && <p role="status">The requested draft is unavailable. Choose another draft below.</p>}
             {drafts.isSuccess &&
               (openDrafts.length ? (
                 <ul aria-label="Draft sections">{openDrafts.map(draftButton)}</ul>
@@ -359,6 +368,7 @@ export function DraftEditor({
     heading.current?.focus()
   }, [])
   useEffect(() => onDirtyChange(dirty), [dirty, onDirtyChange])
+  useEffect(() => () => onDirtyChange(false), [onDirtyChange])
   const [sourceBaseline, setSourceBaseline] = useState(canonicalText)
   if (sourceBaseline !== canonicalText) {
     setSourceBaseline(canonicalText)
@@ -700,10 +710,11 @@ export function DraftEditor({
       )}
       {editable && (
         <div className="border-t border-line mt-5 pt-4">
-          <p className="font-medium">Ready to study this section?</p>
+          <p className="font-medium">{draft.origin === 'answer_derived' ? 'Private lesson draft' : 'Ready to study this section?'}</p>
           <p className="text-sm text-muted mt-1">
-            Activate these {skills.length} lessons to make them available on Home and the skill map. You can
-            leave this page and keep the draft for later.
+            {draft.origin === 'answer_derived'
+              ? 'Answer-derived lessons cannot be activated yet. You can edit and keep this private draft for later.'
+              : `Activate these ${skills.length} lessons to make them available on Home and the skill map. You can leave this page and keep the draft for later.`}
           </p>
           {dirty && (
             <p role="status" className="text-sm mt-2">
@@ -713,7 +724,7 @@ export function DraftEditor({
           <Button
             className="mt-3"
             variant="primary"
-            disabled={errors.length > 0 || dirty || busy || conflict}
+            disabled={draft.origin === 'answer_derived' || errors.length > 0 || dirty || busy || conflict}
             onClick={() => actions.publish.mutate({ id: draft.id, expected_version: draft.version })}
           >
             {actions.publish.isPending ? 'Activating…' : 'Activate lessons'}
