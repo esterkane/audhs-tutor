@@ -1,3 +1,4 @@
+import { PrivateActivation } from '../features/curriculum/PrivateActivation'
 import { ApiError } from '../lib/api'
 import { useDraftRecovery } from '../features/curriculum/useDraftRecovery'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
@@ -378,13 +379,14 @@ export function DraftEditor({
     (error) => error instanceof ApiError && error.code === 'draft_conflict',
   )
   const conflict = serverConflict || (dirty && (canonicalText !== savedText || recovery.baseVersion !== draft.version))
-  const busy = actions.update.isPending || actions.publish.isPending || actions.reject.isPending || actions.refresh.isPending
+  const [activationBusy, setActivationBusy] = useState(false)
+  const busy = activationBusy || actions.update.isPending || actions.publish.isPending || actions.reject.isPending || actions.refresh.isPending
   const editable = draft.status === 'draft'
   const skills = payload.skills ?? []
   const objects = payload.learning_objects ?? []
   const assessments = payload.assessments ?? []
   const errors = draft.problems.filter((p) => p.level === 'error')
-  const warnings = draft.problems.filter((p) => p.level === 'warning')
+  const warnings = draft.problems.filter((p) => p.level === 'warning').map(p => draft.origin === 'answer_derived' ? { ...p, message: p.message.replace('Activation is unavailable until private lesson publication is supported.', '').trim() } : p)
   const notes = draft.problems.filter((p) => p.level === 'info')
 
   function save() {
@@ -708,13 +710,12 @@ export function DraftEditor({
           {actions.refresh.error && <p role="alert">{actions.refresh.error.message}</p>}
         </div>
       )}
-      {editable && (
+      {draft.origin === 'answer_derived' && <PrivateActivation draftId={draft.id} version={draft.version} blocked={dirty || conflict || actions.update.isPending || actions.reject.isPending || actions.refresh.isPending} onBusy={setActivationBusy} onRefresh={() => actions.refresh.mutate(draft.id)} />}
+      {editable && draft.origin !== 'answer_derived' && (
         <div className="border-t border-line mt-5 pt-4">
-          <p className="font-medium">{draft.origin === 'answer_derived' ? 'Private lesson draft' : 'Ready to study this section?'}</p>
+          <p className="font-medium">Ready to study this section?</p>
           <p className="text-sm text-muted mt-1">
-            {draft.origin === 'answer_derived'
-              ? 'Answer-derived lessons cannot be activated yet. You can edit and keep this private draft for later.'
-              : `Activate these ${skills.length} lessons to make them available on Home and the skill map. You can leave this page and keep the draft for later.`}
+            Activate these {skills.length} lessons to make them available on Home and the skill map. You can leave this page and keep the draft for later.
           </p>
           {dirty && (
             <p role="status" className="text-sm mt-2">
@@ -724,7 +725,7 @@ export function DraftEditor({
           <Button
             className="mt-3"
             variant="primary"
-            disabled={draft.origin === 'answer_derived' || errors.length > 0 || dirty || busy || conflict}
+            disabled={errors.length > 0 || dirty || busy || conflict}
             onClick={() => actions.publish.mutate({ id: draft.id, expected_version: draft.version })}
           >
             {actions.publish.isPending ? 'Activating…' : 'Activate lessons'}
@@ -746,7 +747,8 @@ export function DraftEditor({
           </details>
         </div>
       )}
-      {draft.status === 'published' && (
+      {editable && draft.origin === 'answer_derived' && <details className="mt-3"><summary className="cursor-pointer text-sm text-muted">Discard this draft instead</summary><p className="text-sm my-2">The draft becomes read-only. Existing lessons and saved answers stay available.</p><Button size="sm" disabled={busy || dirty || conflict} onClick={() => actions.reject.mutate({ id: draft.id, expected_version: draft.version })}>Discard draft</Button></details>}
+      {draft.status === 'published' && draft.origin !== 'answer_derived' && (
         <div role="status" className="mt-4">
           <p className="font-medium">These lessons are active.</p>
           <p className="text-sm mt-1">
