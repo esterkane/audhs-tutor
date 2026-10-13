@@ -11,6 +11,11 @@ from app.db.base import Base
 from app.db.migrate import upgrade_to_head
 
 EXPECTED_TABLES = {
+    "authored_visual_document",
+    "authored_visual_version",
+    "authored_visual_source_snapshot",
+    "authored_visual_review",
+    "authored_visual_operation",
     "answer_check",
     "ask_request",
     "assessment_task_review",

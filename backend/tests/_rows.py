@@ -35,6 +35,8 @@ LIST_JSON_COLUMNS = frozenset(
 
 
 def _value(table: Table, col: Any, n: int, ids: dict[str, str]) -> Any:
+    if col.name == "learner_id" and "learner_profile" in ids:
+        return ids["learner_profile"]
     if col.foreign_keys:
         fk = next(iter(col.foreign_keys))
         parent = fk.column.table.name
@@ -73,6 +75,10 @@ def _value(table: Table, col: Any, n: int, ids: dict[str, str]) -> Any:
     if isinstance(t, Float):
         return 0.5
     # text-ish: give a few well-known columns plausible values so data migrations run over them
+    if table.name == "authored_visual_version" and name == "target_kind":
+        return "answer"
+    if table.name == "authored_visual_review" and name == "decision":
+        return "accept"
     if table.name == "assessment_task_review":
         if name == "decision":
             return "approve"

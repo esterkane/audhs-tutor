@@ -106,12 +106,13 @@ async def test_failed_or_hosted_call_cannot_supply_local_review(db, learner):
 
 def test_downgrade_refuses_saved_check_loss(tmp_path):
     from alembic import command
-    from app.db.migrate import alembic_config, upgrade_to_head
+    from app.db.migrate import alembic_config
     from tests._rows import fill_all_tables
 
     path = tmp_path / "checks.db"
     url = f"sqlite:///{path}"
-    upgrade_to_head(url)
+    # Test this migration's guard, independently of newer history guards.
+    command.upgrade(alembic_config(url), "f6e5b241a148")
     fill_all_tables(url)
     with pytest.raises(RuntimeError, match="Cannot discard saved answer checks"):
         command.downgrade(alembic_config(url), "2ef8502090bd")

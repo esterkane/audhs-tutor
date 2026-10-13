@@ -190,3 +190,18 @@ model call; uncertain intents do not regenerate automatically. Existing session
 traces remain linked to their original session. No competency/FSRS evidence is
 created by conversation. Follow-up context is explicit owned Ask ancestry, bounded
 to three previous turns. No implicit course material or webpage is attached.
+
+### Authored visual history (G4 storage foundation, 2026-10-13)
+
+Learner-owned `authored_visual_document` groups immutable numbered
+`authored_visual_version` rows. The latest version is derived by document/version
+index, avoiding a cyclic pointer that would complicate scoped wipe.
+`authored_visual_source_snapshot` holds raw generation grounding separately;
+`authored_visual_review` binds presentation reviews to exact version/content/snapshot
+hashes. `authored_visual_operation` reserves owner-scoped retry receipts. Composite
+foreign keys enforce ownership and UPDATE guards protect history. This is separate
+from disposable Representation caching; no mastery/scheduling evidence is created.
+Full private recovery retains all rows; learner scope omits raw snapshots and retains
+derived content/reviews with an explicit warning. Export/wipe discover all five tables.
+Transactional validation/idempotency and typed write APIs are still pending; schema
+presence does not approve content. See slices/authored-visual-storage.md.

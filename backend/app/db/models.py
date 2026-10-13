@@ -13,6 +13,7 @@ from sqlalchemy import (
     CheckConstraint,
     Float,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     Text,
@@ -904,3 +905,104 @@ class TutorAnswerVector(IdMixin, LearnerScoped, Base):
     model_key: Mapped[str] = mapped_column(Text)
     vector_json: Mapped[JsonList] = mapped_column(JSON)
     updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class AuthoredVisualDocument(IdMixin, LearnerScoped, Base):
+    """Private authored history; never removed by representation-cache invalidation."""
+
+    __tablename__ = "authored_visual_document"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "id", name="uq_visual_document_owner_id"),
+        CheckConstraint("revision >= 1", name="ck_visual_document_revision"),
+    )
+    title: Mapped[str] = mapped_column(Text)
+    archived: Mapped[bool] = mapped_column(Boolean, default=False)
+    revision: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class AuthoredVisualVersion(IdMixin, LearnerScoped, Base):
+    __tablename__ = "authored_visual_version"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "id", name="uq_visual_version_owner_id"),
+        UniqueConstraint("document_id", "version", name="uq_visual_document_version"),
+        ForeignKeyConstraint(
+            ["learner_id", "document_id"],
+            ["authored_visual_document.learner_id", "authored_visual_document.id"],
+            name="fk_visual_version_owned_document",
+        ),
+        CheckConstraint("version >= 1", name="ck_visual_version_number"),
+        CheckConstraint("target_kind IN ('lesson', 'answer')", name="ck_visual_version_target"),
+    )
+    document_id: Mapped[str] = mapped_column(Text, index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    # Private, validated non-executable envelope; only trusted renderers may consume it.
+    spec_json: Mapped[str] = mapped_column(Text)
+    content_sha256: Mapped[str] = mapped_column(Text)
+    binding_json: Mapped[str] = mapped_column(Text)
+    snapshot_sha256: Mapped[str] = mapped_column(Text)
+    target_kind: Mapped[str] = mapped_column(Text)
+    # No target FK: imported backups must retain unavailable historical targets.
+    target_id: Mapped[str] = mapped_column(Text)
+    origin_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class AuthoredVisualSourceSnapshot(IdMixin, LearnerScoped, Base):
+    __tablename__ = "authored_visual_source_snapshot"
+    __table_args__ = (
+        UniqueConstraint("version_id", name="uq_visual_source_version"),
+        ForeignKeyConstraint(
+            ["learner_id", "version_id"],
+            ["authored_visual_version.learner_id", "authored_visual_version.id"],
+            name="fk_visual_source_owned_version",
+        ),
+    )
+    version_id: Mapped[str] = mapped_column(Text, index=True)
+    snapshot_json: Mapped[str] = mapped_column(Text)
+
+
+class AuthoredVisualReview(IdMixin, LearnerScoped, Base):
+    """Presentation review of one exact version, not correctness/competency evidence."""
+
+    __tablename__ = "authored_visual_review"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["learner_id", "version_id"],
+            ["authored_visual_version.learner_id", "authored_visual_version.id"],
+            name="fk_visual_review_owned_version",
+        ),
+        CheckConstraint("decision IN ('accept', 'reject')", name="ck_visual_review_decision"),
+    )
+    version_id: Mapped[str] = mapped_column(Text, index=True)
+    content_sha256: Mapped[str] = mapped_column(Text)
+    snapshot_sha256: Mapped[str] = mapped_column(Text)
+    decision: Mapped[str] = mapped_column(Text)
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class AuthoredVisualOperation(IdMixin, LearnerScoped, Base):
+    """Immutable private retry receipt; repository owns fingerprint/replay semantics."""
+
+    __tablename__ = "authored_visual_operation"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "request_id", name="uq_visual_operation_request"),
+        ForeignKeyConstraint(
+            ["learner_id", "document_id"],
+            ["authored_visual_document.learner_id", "authored_visual_document.id"],
+            name="fk_visual_operation_owned_document",
+        ),
+    )
+    document_id: Mapped[str] = mapped_column(Text, index=True)
+    request_id: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    response_json: Mapped[JsonDict] = mapped_column(JSON)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+from app.db.visual_ddl import VISUAL_IMMUTABLE_GUARDS  # noqa: E402
+
+for _visual_table, _visual_ddl in VISUAL_IMMUTABLE_GUARDS.items():
+    event.listen(Base.metadata.tables[_visual_table], "after_create", DDL(_visual_ddl))  # type: ignore[no-untyped-call]
