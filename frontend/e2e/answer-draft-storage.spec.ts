@@ -8,7 +8,7 @@ for (const width of [390, 1280]) {
     await page.addInitScript(() => {
       const original = Storage.prototype.setItem
       Storage.prototype.setItem = function(key, value) {
-        if (key.startsWith('audhs-answer:')) throw new DOMException('Quota', 'QuotaExceededError')
+        if (key.startsWith('audhs-question-drafts:')) throw new DOMException('Quota', 'QuotaExceededError')
         original.call(this, key, value)
       }
     })

@@ -20,7 +20,8 @@ import { LessonReader, SavedLessonNotes } from '../features/tutor/LessonReader'
 import { useStopSession } from '../features/session/useStopSession'
 import { SessionControls } from '../features/session/SessionControls'
 import { ReadAloud } from '../features/voice/ReadAloud'
-import { readDraft, writeDraft, clearDraft, draftStorageFailed } from '../features/assess/draft'
+import { readDraft } from '../features/assess/draft'
+import { questionIdentity, questionDrafts, questionDraftFailed, saveQuestionDraft, clearQuestionDraft } from '../features/assess/questionDraft'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
 import { OptionalConfidence } from '../components/OptionalConfidence'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
@@ -992,7 +993,8 @@ function AssessPanel({
   const [round, setRound] = useState(0)
   const next = useNextItem(sessionId, skillId, round, active && !checked.saved && !checked.error)
   const [confidence, setConfidence] = useState<number | null>(null)
-  const [answer, setAnswer] = useState('')
+  const [answer, setAnswer] = useState<{ identity: string; value: string } | null>(null)
+  const [, refreshDraft] = useState(0)
   const [localResult, setResult] = useState<AttemptResult | null>(null)
   const savedResult = localResult ?? checked.result.data ?? null
   const revision = useAssessmentRevision(recoveryScope, sessionId, savedResult?.attempt_id ?? null, active)
@@ -1021,8 +1023,18 @@ function AssessPanel({
     }
   }, [checked.result.data, onGraded])
   const answerKey = `audhs-answer:${sessionId}:${item?.id ?? ''}`
-  const savedAnswer = item ? readDraft(answerKey).answer : ''
-  const currentAnswer = revision.editing ? revision.answer : answer || savedAnswer
+  const versionedKey = `audhs-question-drafts:${sessionId}:${item?.id ?? ''}`
+  const identity = item ? questionIdentity(item) : ''
+  const drafts = item ? questionDrafts(versionedKey) : []
+  const savedDraft = drafts.find(draft => draft.identity === identity)
+  const previousDrafts = drafts.filter(draft => draft.identity !== identity && draft.answer)
+  const legacyAnswer = item ? readDraft(answerKey).answer : ''
+  const currentAnswer = revision.editing ? revision.answer : answer?.identity === identity ? answer.value : savedDraft?.answer ?? ''
+  function editAnswer(value: string) {
+    if (!item) return
+    setAnswer({ identity, value })
+    saveQuestionDraft(versionedKey, item, value, savedDraft?.hints ?? 0)
+  }
   const answerControls = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!revision.data || !active) return
@@ -1042,14 +1054,14 @@ function AssessPanel({
         answerLabel: item.options?.[Number(currentAnswer)] ?? currentAnswer,
         confidence_pre: confidence,
         latency_ms: Date.now() - startedAt,
-        hint_count: hintCount + readDraft(answerKey).hints,
+        hint_count: hintCount + (savedDraft?.hints ?? 0),
       })
       if (
         displayedItem.current?.id !== item.id ||
         displayedItem.current?.content_version !== item.content_version
       )
         return
-      clearDraft(answerKey)
+      clearQuestionDraft(versionedKey, item)
       revision.clear(true)
       setResult(res)
       onGraded(res)
@@ -1065,7 +1077,7 @@ function AssessPanel({
     setPreviousChoice('')
     setStartedAt(Date.now())
     setResult(null)
-    setAnswer('')
+    setAnswer(null)
     setConfidence(null)
     setRound((r) => r + 1)
   }
@@ -1087,8 +1099,8 @@ function AssessPanel({
         if (latest.id !== item.id) throw new Error('The refreshed question does not match.')
         if (item.options) {
           setPreviousChoice(item.options[Number(currentAnswer)] ?? currentAnswer)
-          setAnswer('')
-          clearDraft(answerKey)
+          setAnswer(null)
+          // Older version drafts remain available below.
         }
         setRefreshedItem(latest)
         setResult(null)
@@ -1105,7 +1117,7 @@ function AssessPanel({
         revision.clear(true)
         setResult(saved)
         onGraded(saved)
-        clearDraft(answerKey)
+        if (item) clearQuestionDraft(versionedKey, item)
         return true
       }}
     />
@@ -1163,11 +1175,11 @@ function AssessPanel({
         {!result && (
           <QuestionHelp
             active={active}
-            key={`help:${item.id}`}
+            key={`help:${identity}`}
             sessionId={sessionId}
             skillId={skillId}
             question={item.question}
-            onHint={() => writeDraft(answerKey, { hints: readDraft(answerKey).hints + 1 })}
+            onHint={() => { saveQuestionDraft(versionedKey, item, currentAnswer, (savedDraft?.hints ?? 0) + 1); refreshDraft(n => n + 1) }}
           />
         )}
         {previousChoice && (
@@ -1192,6 +1204,16 @@ function AssessPanel({
         </section>}
         {!result && (
           <>
+            {!revision.editing && (previousDrafts.length > 0 || legacyAnswer) && (
+              <Disclosure label="Earlier answer drafts — not applied to this question">
+                <p className="text-sm">Review the current question before answering. Earlier drafts are kept below.</p>
+                {previousDrafts.map(draft => <div key={draft.identity} className="mt-2">
+                  <p className="text-sm font-medium">{draft.question}</p>
+                  <p className="whitespace-pre-wrap text-sm">{draft.answerLabel}</p>
+                </div>)}
+                {legacyAnswer && <p className="whitespace-pre-wrap text-sm">Older draft (question version unknown): {legacyAnswer}</p>}
+              </Disclosure>
+            )}
             <div ref={answerControls}>
             {item.kind === 'mcq' && item.options ? (
               <Choice<string>
@@ -1201,7 +1223,7 @@ function AssessPanel({
                 value={currentAnswer || null}
                 onChange={(value) => {
                   if (revision.editing) revision.edit(value)
-                  else { setAnswer(value); writeDraft(answerKey, { answer: value }) }
+                  else editAnswer(value)
                 }}
                 columns={1}
               />
@@ -1215,13 +1237,13 @@ function AssessPanel({
                   value={currentAnswer}
                   onChange={(e) => {
                     if (revision.editing) revision.edit(e.target.value)
-                    else { setAnswer(e.target.value); writeDraft(answerKey, { answer: e.target.value }) }
+                    else editAnswer(e.target.value)
                   }}
                 />
               </>
             )}
             </div>
-            {!revision.editing && draftStorageFailed(answerKey) && (
+            {!revision.editing && questionDraftFailed(versionedKey) && (
               <p role="alert" className="text-sm mt-2">
                 This browser could not save your answer. It remains available while this page is open;
                 copy it before refreshing or closing the tab. You can still check your answer.

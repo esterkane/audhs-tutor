@@ -91,3 +91,27 @@ it('keeps contextual help disabled until the checked feedback has been saved', (
   expect(screen.getByText(/Save your feedback using the retry control/)).toBeVisible()
   expect(streamTurn).not.toHaveBeenCalled()
 })
+
+it('ignores old hint completion after the question identity changes', async () => {
+  let handlers!: StreamHandlers
+  let signal!: AbortSignal
+  let finish!: () => void
+  vi.mocked(streamTurn).mockImplementation((_request, h, abort) => {
+    handlers = h; signal = abort!
+    return new Promise<void>(resolve => { finish = resolve })
+  })
+  const oldHint = vi.fn()
+  const newHint = vi.fn()
+  const view = render(<QuestionHelp key="same-item-version-one" sessionId="s" skillId="k" question="Old wording" onHint={oldHint} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Give me a hint' }))
+  view.rerender(<QuestionHelp key="same-item-version-two" sessionId="s" skillId="k" question="New wording" onHint={newHint} />)
+  expect(signal.aborted).toBe(true)
+  await act(async () => {
+    handlers.onMeta?.({ turn_id: 'old-hint' } as Parameters<NonNullable<StreamHandlers['onMeta']>>[0])
+    handlers.onToken?.('Hint for old wording')
+    finish()
+  })
+  expect(screen.queryByText('Hint for old wording')).not.toBeInTheDocument()
+  expect(oldHint).not.toHaveBeenCalled()
+  expect(newHint).not.toHaveBeenCalled()
+})
