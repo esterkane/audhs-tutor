@@ -15,6 +15,10 @@ for (const width of [390, 1280]) test(`private lesson save recovery and review $
     if (requests.length === 1) return route.abort()
     return route.fulfill({ json: { action: 'create_private_draft', draft_id: draft.id, promotion_id: 'promotion', created_version: 1 } })
   })
+  await page.route('**/api/lesson-activations/**', route => {
+    if (route.request().method() !== 'GET') { otherWrites++; return route.abort() }
+    return route.fulfill({ json: { draft_id: draft.id, promotion_id: 'promotion', draft_version: 1, title: draft.title, status: 'draft', command: null, receipt: null, skills: 0, assessments: 0, learning_objects: 0, grounding: 'ungrounded', warnings: [], issues: ['Add lesson content before activation.'] } })
+  })
   await page.route('**/api/curriculum/**', route => {
     if (route.request().method() !== 'GET') { otherWrites++; return route.abort() }
     return route.fulfill({ json: route.request().url().includes('/material') ? { courses: [] } : { drafts: [draft] } })
@@ -22,6 +26,7 @@ for (const width of [390, 1280]) test(`private lesson save recovery and review $
   await page.goto('/ask?answer=lesson-answer')
   const disclosure = page.locator('summary').filter({ hasText: 'Create lesson draft (optional)' })
   await disclosure.focus(); await page.keyboard.press('Enter')
+  await expect(page.getByText(/After saving, open the lesson draft to review it/)).toBeVisible()
   await page.getByLabel('Lesson title', { exact: true }).fill(draft.title)
   await page.getByLabel('What should the learner be able to do?').fill('Apply training-only statistics.')
   await page.getByRole('button', { name: 'Use answer as explanation' }).click()
@@ -44,7 +49,8 @@ for (const width of [390, 1280]) test(`private lesson save recovery and review $
   await page.screenshot({ path: `/tmp/audhs-ask-lesson-${width}.png`, fullPage: true })
   await page.getByRole('link', { name: 'Open saved lesson draft' }).focus(); await page.keyboard.press('Enter')
   await expect(page.getByRole('heading', { name: draft.title, exact: true })).toBeFocused()
-  await expect(page.getByRole('button', { name: 'Activate lessons', exact: true })).toBeDisabled()
+  await expect(page.getByText('Add lesson content before activation.', { exact: true })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Activate private lessons', exact: true })).toHaveCount(0)
   await page.reload()
   await expect(page.getByRole('heading', { name: draft.title, exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Back to drafts' }).click()

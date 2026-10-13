@@ -61,7 +61,7 @@ export function AnswerLessonDraft({ answerId, learnerId, answerText }: { answerI
   return <Disclosure label="Create lesson draft (optional)" className="my-3">
     <div className="space-y-3">
       <p>Turn this saved answer into a private lesson draft. Supply an objective, worked example and question that checks application. This saves your text locally without a model call.</p>
-      <p className="text-sm text-muted">Answer-derived lessons cannot be activated yet. Source history is retained, but saving is not an accuracy review or permission to share the material.</p>
+      <p className="text-sm text-muted">After saving, open the lesson draft to review it and activate it for private practice. Source history is retained, but saving is not an accuracy review or permission to share the material.</p>
       {stored.error && <p role="alert">{stored.error}</p>}
       {invalid ? <><p role="alert">Saved authoring data could not be read. Copy it before starting again.</p><textarea className={field} aria-label="Recover lesson draft data" readOnly value={stored.input} /><Button onClick={() => stored.setInput('')}>Discard unreadable draft</Button></> : <>
         <label className="block">Lesson title<input className={field} value={form.title} disabled={busy} maxLength={300} onChange={e => update({ ...form, title: e.target.value })} /></label>

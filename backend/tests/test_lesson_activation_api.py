@@ -124,3 +124,38 @@ async def test_invalid_draft_preview_is_not_actionable(client, db, learner, sess
     response = await client.get(f"/api/lesson-activations/drafts/{promotion.draft_id}/preview")
     assert response.status_code == 200
     assert response.json()["command"] is None and response.json()["issues"]
+
+
+async def test_activated_lesson_can_be_selected_resumed_and_assessed(
+    client, db, learner, session_factory
+):
+    """Cross the real activation/session/content boundaries without generating evidence."""
+    _, command = await prepared(db, learner, session_factory)
+    response = await post(client, command)
+    assert response.status_code == 200, response.text
+    receipt = response.json()
+    skill = receipt["skill_ids"][0]
+    catalog = (await client.get("/api/skills")).json()
+    assert skill in {item["id"] for item in catalog["skills"]}
+    selection = await client.get(f"/api/sessions/selection/{skill}")
+    assert selection.status_code == 200 and selection.json()["unlocked"]
+    started = await client.post("/api/sessions", json={"skill_id": skill})
+    assert started.status_code == 201, started.text
+    session = started.json()
+    assert session["next_skill"]["id"] == skill
+    current = (await client.get("/api/sessions/current")).json()
+    assert current["id"] == session["id"]
+    assert current["next_skill"]["id"] == skill
+    content = await client.get(f"/api/objects/{skill}/representations")
+    assert content.status_code == 200, content.text
+    assert content.json()["object_id"] == receipt["object_ids"][0]
+    assessment = await client.get(
+        "/api/assess/next", params={"session_id": session["id"], "skill_id": skill}
+    )
+    assert assessment.status_code == 200, assessment.text
+    assert assessment.json()["item"]["id"] == receipt["assessment_ids"][0]
+    for model in (AssessmentAttempt, AssessmentTaskReview, MemoryState, ModelCall):
+        assert await db.scalar(select(func.count()).select_from(model)) == 0
+    ended = await client.post(f"/api/sessions/{session['id']}/end", json={})
+    assert ended.status_code == 200, ended.text
+    assert (await client.get("/api/sessions/current")).json() is None
