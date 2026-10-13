@@ -1,6 +1,8 @@
 # Cross-topic question workspace and original learning content
 
-Status: owner requested2026-10-12; architecture/implementation plan. Not delivered.
+Status: partial implementation, updated 2026-10-13. G1 and bounded G2/G3 slices are
+delivered; factual-quality acceptance, full reuse lineage, G4–G6 and version-bound
+hosted/public origin eligibility remain open. See dated checkpoints and slice evidence.
 This adds a clear path for asking across areas and building a reusable local learning
 library. It does not replace the learning kernel or remove existing source material.
 The accepted owner-only transmission/public-export policy remains a prerequisite.
@@ -146,7 +148,7 @@ relevant unit/integration/browser checks, inspects visuals and keyboard/responsi
 behavior, and records open human/AT gates. Preserve existing source acquisition work.
 Batch paired publication after verified slices; both repositories remain private.
 
-Current evidence: repository audit only. No new question workspace, reference-fetch
+Initial audit evidence (historical; superseded by dated checkpoints below): repository audit only. No new question workspace, reference-fetch
 provider, automated fact checker, generated video or content deletion is implemented
 by this plan. Next: G0 containment, then G1; reuse existing capabilities rather than
 introducing another generic chat backend.
@@ -203,3 +205,9 @@ inputs/registry + Helpful + no source/review issue; returns original dated answe
 without inference or duplicate answers. Eligibility/receipt serialized; legacy
 fingerprints and normal fresh generation retained. See ../slices/ask-exact-reuse.md.
 Not factual certification or whole G3 completion. Both publication variants remain private.
+
+2026-10-13: G2 explanation controls, citation navigation and expanded official reading
+are delivered in bounded slices. G4 cannot reuse the disposable Representation cache
+for authored history. AUTHORED-VISUAL-LIFECYCLE.md is the concrete proposed storage,
+answer/lesson binding, backup and archive contract awaiting acceptance; no migration
+is activated by that document. Existing lesson-only schema is not an Ask binding.
