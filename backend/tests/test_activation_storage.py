@@ -6,17 +6,17 @@ import sqlite3
 import pytest
 
 from alembic import command
-from app.db.activation_ddl import ACTIVATION_GUARDS, ACTIVATION_REVISION
+from app.db.activation_ddl import ACTIVATION_GUARDS
 from app.db.backup import BackupError, _check_after_upgrade, _check_snapshot_schema
 from app.db.migrate import alembic_config
 from app.db.portability import export_learner, wipe_learner
 from tests._rows import fill_all_tables
 
 
-def _database(tmp_path):
+def _database(tmp_path, revision="head"):
     path = tmp_path / "activation.db"
     url = f"sqlite:///{path}"
-    command.upgrade(alembic_config(url), "head")
+    command.upgrade(alembic_config(url), revision)
     rows = fill_all_tables(url)
     conn = sqlite3.connect(path)
     conn.execute("PRAGMA foreign_keys=ON")
@@ -57,7 +57,9 @@ def test_receipt_immutable_and_membership_survives_edits(tmp_path):
         conn.execute("UPDATE skill_edge SET to_skill_id='outside'")
         conn.execute("UPDATE skill_node SET title='Edited' WHERE id=?", (skill,))
     _check_after_upgrade(path)
-    _check_snapshot_schema(path, ACTIVATION_REVISION)
+    _check_snapshot_schema(
+        path, conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+    )
     exported = export_learner(conn, owner)
     assert len(exported["lesson_activation_skill"]) == 2
     assert (
@@ -98,7 +100,9 @@ def test_restore_checks_guard_definitions_and_existing_memberships(tmp_path):
         conn.execute(f"DROP TRIGGER {name}")
         conn.execute(f"CREATE TRIGGER {name} BEFORE UPDATE ON learning_object BEGIN SELECT 1; END")
     with pytest.raises(BackupError, match="altered activation guards"):
-        _check_snapshot_schema(path, ACTIVATION_REVISION)
+        _check_snapshot_schema(
+            path, conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
+        )
     with conn:
         conn.execute(f"DROP TRIGGER {name}")
         conn.execute(ACTIVATION_GUARDS[name])
@@ -113,7 +117,8 @@ def test_restore_checks_guard_definitions_and_existing_memberships(tmp_path):
 
 
 def test_populated_downgrade_refuses_before_removing_guards(tmp_path):
-    _, url, conn, _ = _database(tmp_path)
+    # Pin this guard test so later migrations cannot mask activation protection.
+    _, url, conn, _ = _database(tmp_path, "969f9ebbe38a")
     with pytest.raises(RuntimeError, match="populated activation history"):
         command.downgrade(alembic_config(url), "52443d30fac9")
     names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='trigger'")}

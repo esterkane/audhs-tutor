@@ -59,3 +59,42 @@ def test_restore_validation_detects_rows_bypassing_insert_guard(stored):
     stored.execute("UPDATE provisional_feedback SET claim_id='missing'")
     stored.execute(PROVISIONAL_GUARDS["provisional_feedback_no_update"])
     assert stored.execute(INVALID_PROVISIONAL_OWNERSHIP).fetchone() is not None
+
+
+@pytest.mark.parametrize("target", ["969f9ebbe38a", "c0ff66df480b"])
+def test_populated_downgrade_preserves_rows_schema_and_revision(tmp_path, target):
+    from alembic import command
+    from app.db.migrate import alembic_config
+    from tests._rows import dump_tables
+
+    path = tmp_path / "downgrade.db"
+    url = f"sqlite:///{path}"
+    command.upgrade(alembic_config(url), "a71f2039c4de")
+    fill_all_tables(url)
+    before = dump_tables(url)
+    with sqlite3.connect(path) as conn:
+        schema = conn.execute("SELECT * FROM sqlite_master ORDER BY name").fetchall()
+    with pytest.raises(RuntimeError, match="populated provisional feedback history"):
+        command.downgrade(alembic_config(url), target)
+    assert dump_tables(url) == before
+    with sqlite3.connect(path) as conn:
+        assert conn.execute("SELECT * FROM sqlite_master ORDER BY name").fetchall() == schema
+        assert (
+            conn.execute("SELECT version_num FROM alembic_version").fetchone()[0] == "a71f2039c4de"
+        )
+        with pytest.raises(sqlite3.IntegrityError, match="immutable"):
+            conn.execute("UPDATE provisional_feedback SET answer='changed'")
+
+
+def test_empty_provisional_storage_can_downgrade_and_upgrade(tmp_path):
+    from alembic import command
+    from app.db.migrate import alembic_config
+    from tests._rows import dump_tables
+
+    url = f"sqlite:///{tmp_path / 'empty.db'}"
+    config = alembic_config(url)
+    command.upgrade(config, "a71f2039c4de")
+    command.downgrade(config, "969f9ebbe38a")
+    assert "provisional_feedback" not in dump_tables(url)
+    command.upgrade(config, "a71f2039c4de")
+    assert dump_tables(url)["provisional_feedback"] == []

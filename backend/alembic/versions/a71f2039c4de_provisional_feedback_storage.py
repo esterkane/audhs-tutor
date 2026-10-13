@@ -39,6 +39,8 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    if op.get_bind().exec_driver_sql("SELECT 1 FROM provisional_feedback LIMIT 1").first():
+        raise RuntimeError("Cannot downgrade populated provisional feedback history")
     for name in PROVISIONAL_GUARDS:
         op.execute(f"DROP TRIGGER IF EXISTS {name}")
     op.drop_table("provisional_feedback")
