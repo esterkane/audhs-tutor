@@ -1,7 +1,7 @@
+import { SourcedAnswer } from '../features/ask/SourcedAnswer'
 import { SuggestionEvidence } from '../features/ask/SuggestionEvidence'
 import { SourcePicker } from '../features/ask/SourcePicker'
 import { sourceSelection, useSelectedPassages } from '../features/ask/useSelectedPassages'
-import { Disclosure } from '../components/ui/disclosure'
 import { FurtherReading } from '../features/ask/FurtherReading'
 import { AnswerChecks } from '../features/ask/AnswerChecks'
 import { useEffect, useRef, useState } from 'react'
@@ -235,24 +235,8 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
                 Saved locally · {new Date(answer.created_at).toLocaleString()} · Model explanation, not
                 fact-checked.
               </p>
-              <Markdown text={answer.text} />
+              <SourcedAnswer key={answer.id} text={answer.text} sources={Array.isArray(answer.metadata.sources) ? answer.metadata.sources : []} />
               <ReadAloud text={`${answer.request_text}\n\n${answer.text}`} />
-              {Array.isArray(answer.metadata.sources) && answer.metadata.sources.length > 0 && (
-                <Disclosure label="Passages supplied for this answer" className="mt-3">
-                  <p className="text-sm text-muted">
-                    Historical snapshots supplied to the model, not proof that every claim is supported.
-                    [source:S1] refers to S1 below. Review current source status on the saved-answer page.
-                  </p>
-                  {answer.metadata.sources.map(
-                    (source: { chunk_id: string; citation: string; text: string }) => (
-                      <section key={source.chunk_id} className="mt-3 border-t border-line pt-2">
-                        <h3 className="font-medium break-words">{source.citation}</h3>
-                        <p className="text-sm whitespace-pre-wrap break-words">{source.text}</p>
-                      </section>
-                    ),
-                  )}
-                </Disclosure>
-              )}
               <AnswerChecks key={answer.id} answerId={answer.id} learnerId={learnerId} />
               <FurtherReading key={`reading:${answer.id}`} question={answer.request_text} />
               <div className="flex flex-wrap gap-4 mt-3">

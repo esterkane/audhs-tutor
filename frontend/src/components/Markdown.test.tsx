@@ -19,3 +19,10 @@ it('normalizes a fragment starting at a deeper heading and preserves content and
   expect(screen.getByRole('link', { name: 'Source' })).toHaveAttribute('href', 'https://example.com/source')
   expect(screen.getByText(/# not a heading/)).toBeVisible()
 })
+
+it('activates only known source markers in prose, preserving code and links', () => {
+  render(<Markdown text={'Read [source:S1], unknown [source:S9]. `inline [source:S1]`\n\n```\n[source:S1]\n```\n\n[[source:S1]](https://example.com)'} sourceKeys={['S1']} onSourceReference={() => {}} />)
+  expect(screen.getAllByRole('button')).toHaveLength(1)
+  expect(screen.getByRole('button', { name: 'Read source S1' })).toBeVisible()
+  expect(screen.getByRole('link')).toHaveAttribute('href', 'https://example.com')
+})

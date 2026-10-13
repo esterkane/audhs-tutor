@@ -25,7 +25,7 @@ async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' | 'reus
     if (mode === 'slow') { await new Promise(resolve => setTimeout(resolve, 700)); return route.abort().catch(() => undefined) }
     if (mode === 'partial' && requests.length === 1) return route.fulfill({ contentType: 'text/event-stream', body: 'event: token\ndata: {"text":"An unfinished explanation"}\n\n' })
     const id = `saved-${key}`
-    const text = 'Quantization stores each weight with fewer bits. For example, eight-bit weights use less memory than 32-bit weights. Precision can decrease.'
+    const text = 'Quantization stores each weight with fewer bits. For example, eight-bit weights use less memory than 32-bit weights. Precision can decrease.' + (body.sources ? ' [source:S1]' : '')
     const record = { ...old, id, turn_id: key, request_text: body.question, text, request: body, metadata: { parent_answer_id: body.parent_answer_id ?? null, sources: body.sources ? [{ chunk_id: 'p1', citation: 'S1: Synthetic bytes (local version 1)', text: 'Eight bits use one byte.' }] : [] } }
     records.set(id, record)
     await route.fulfill({ contentType: 'text/event-stream', body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ text, turn_id: key, model: 'local-fixture', route: 'primary', answer_id: id, conversation_id: 'example', history_turns: body.parent_answer_id ? 1 : 0 })}\n\n` })
@@ -236,8 +236,12 @@ for (const width of [390, 1280]) test(`Ask attaches explicit sources, preserves 
   await expect(page.getByRole('heading', { name: 'Explain bytes', exact: true })).toBeVisible()
   expect(calls).toHaveLength(1)
   expect(calls[0].body.sources).toEqual({ passage_ids: ['p1'], passage_hashes: { p1: createHash('sha256').update('Eight bits use one byte.').digest('hex') } })
-  await page.getByText('Passages supplied for this answer', { exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'S1: Synthetic bytes (local version 1)' })).toBeVisible()
+  const citation = page.getByRole('button', { name: 'Read source S1', exact: true })
+  await citation.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('heading', { name: 'S1: Synthetic bytes (local version 1)' })).toBeFocused()
+  await page.getByRole('button', { name: 'Back to answer citation' }).click()
+  await expect(citation).toBeFocused()
   await expect(page.getByText('Attach local sources (optional)', { exact: true })).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
   await page.screenshot({ path: info.outputPath('ask-attached-sources.png'), fullPage: true })
