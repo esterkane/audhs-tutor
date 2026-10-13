@@ -238,6 +238,7 @@ class ModelGateway:
         max_tokens: int = 1024,
         temperature: float = 0.2,
         events: EventWriter | None = None,
+        before_attempt: Callable[[], Awaitable[None]] | None = None,
     ) -> GatewayResult:
         if events is not None:
             self.events = events
@@ -279,6 +280,10 @@ class ModelGateway:
                 except SourcePolicyDenied as exc:
                     errors.append(f"{rid}: {exc}")
                     break
+                # Optional durable admission gate is shared across all repairs/fallbacks.
+                # Run before any budget reservation so denial cannot leak a reservation.
+                if before_attempt is not None:
+                    await before_attempt()
                 reservation, bound, blocked = await self._reserve(
                     spec,
                     request_id=request_id,

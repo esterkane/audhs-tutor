@@ -1,4 +1,4 @@
-"""Durable reservations only. Inference and atomic result publication follow separately."""
+"""Durable reservations and atomic worker publication; no inference in the kernel."""
 
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -8,10 +8,23 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.errors import AppError
 from app.db.base import new_id, utcnow_iso
+from app.db.models import ModelCall
 from app.db.models import VisualGenerationRequest as Generation
 from app.kernel.answer_visual_binding import validate_answer_binding
-from app.kernel.authored_visuals import canonical, digest
+from app.kernel.authored_visuals import (
+    VisualRepository,
+    canonical,
+    digest,
+    require_current_trust,
+    resolve_target,
+)
 from app.schemas.answer_visual_binding import AnswerVisualBinding
+from app.schemas.authored_visuals import (
+    AnswerRelationshipVisual,
+    SaveVisual,
+    VisualOrigin,
+    parse_command,
+)
 
 
 async def owned(db: AsyncSession, owner: str, identity: str) -> Generation:
@@ -141,3 +154,73 @@ class GenerationRequests:
                 )
             )
             return int(result.rowcount)  # type: ignore[attr-defined]
+
+    async def complete(
+        self,
+        owner: str,
+        identity: str,
+        token: str,
+        spec: AnswerRelationshipVisual,
+        model_call_id: str,
+        *,
+        quarantine_below_trust: int = 2,
+    ) -> str:
+        """Trusted worker only: publish version and terminal result in ONE transaction."""
+        async with self.transaction() as db:
+            row = await owned(db, owner, identity)
+            if row.state == "completed" and row.result_version_id:
+                return row.result_version_id
+            if row.state != "running" or row.worker_token != token or row.attempts < 1:
+                raise AppError("generation_stopped", "Generation is no longer active.", 409)
+            if canonical(spec.binding.model_dump(mode="json")) != row.binding_json:
+                raise AppError(
+                    "generation_changed", "Visual target does not match the request.", 409
+                )
+            call = await db.scalar(
+                select(ModelCall).where(
+                    ModelCall.id == model_call_id, ModelCall.learner_id == owner
+                )
+            )
+            expected = {
+                "surface": "ask_visual",
+                "generation_id": identity,
+                "binding_sha256": digest(row.binding_json),
+                "prompt_version": row.prompt_version,
+            }
+            if (
+                call is None
+                or not call.ok
+                or call.outcome != "ok"
+                or call.provider != "ollama"
+                or call.task != "format"
+                or any(call.metadata_json.get(k) != v for k, v in expected.items())
+            ):
+                raise AppError(
+                    "generation_call_mismatch", "Model result does not match this request.", 409
+                )
+            target = await resolve_target(db, owner, spec)
+            if target.grounding == "unknown":
+                raise AppError(
+                    "generation_grounding_changed", "Grounding is incomplete or changed.", 409
+                )
+            await require_current_trust(db, target.source_ids, quarantine_below_trust)
+            command = SaveVisual(action="save", expected_revision=0, spec=spec)
+            try:
+                parse_command(canonical(command.model_dump(mode="json")).encode())
+            except ValueError:
+                raise AppError(
+                    "invalid_visual", "Visual exceeds the validated content limits.", 422
+                ) from None
+            receipt = await VisualRepository(self.factory)._save(
+                db,
+                owner,
+                None,
+                command,
+                VisualOrigin(
+                    kind="model", model=call.registry_id, prompt_version=row.prompt_version
+                ),
+            )
+            assert receipt.version_id is not None
+            row.result_version_id = receipt.version_id
+            row.state, row.worker_token, row.updated_at = "completed", None, utcnow_iso()
+            return receipt.version_id
