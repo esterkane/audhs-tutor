@@ -8,6 +8,19 @@ from typing import Any
 from app.db.ddl import LEARNING_EVENT_GUARDS, drop_guard
 from app.db.models import learner_scoped_tables
 
+# These tables have no learner_id but have an attributable owner through a parent.
+# Shared corpus and representations with no owned model call are not learner data.
+INDIRECT_LEARNER_SCOPES = {
+    "representation": (
+        "model_call",
+        "model_call_id IN (SELECT id FROM model_call WHERE learner_id = ?)",
+    ),
+    "experiment_arm": (
+        "experiment",
+        "experiment_id IN (SELECT id FROM experiment WHERE learner_id = ?)",
+    ),
+}
+
 
 def export_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, list[dict[str, Any]]]:
     conn.row_factory = sqlite3.Row
@@ -17,6 +30,11 @@ def export_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, list[
             f'SELECT * FROM "{table}" WHERE learner_id = ?', (learner_id,)
         ).fetchall()
         out[table] = [dict(r) for r in rows]
+    for table, (_, predicate) in INDIRECT_LEARNER_SCOPES.items():
+        out[table] = [
+            dict(row)
+            for row in conn.execute(f'SELECT * FROM "{table}" WHERE {predicate}', (learner_id,))
+        ]
     out["assessment"] = [
         dict(r)
         for r in conn.execute("SELECT * FROM assessment WHERE owner_learner_id = ?", (learner_id,))
@@ -42,9 +60,19 @@ def wipe_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, int]:
     tables = learner_scoped_tables()
     # children before parents: sorted_tables is parent-first, so reverse it
     with conn:
+        # sqlite3's implicit transaction starts at DML, not DROP TRIGGER. Start
+        # explicitly before guard DDL so a failure restores guards as well as data.
+        conn.execute("SAVEPOINT learner_wipe")
         for name in LEARNING_EVENT_GUARDS:
             conn.execute(drop_guard(name))
         for table in reversed(tables):
+            # Dependent scoped rows have already gone by topological ordering.
+            # Remove indirectly owned children immediately before their parent.
+            for child, (parent, predicate) in INDIRECT_LEARNER_SCOPES.items():
+                if parent == table:
+                    deleted[child] = conn.execute(
+                        f'DELETE FROM "{child}" WHERE {predicate}', (learner_id,)
+                    ).rowcount
             cur = conn.execute(f'DELETE FROM "{table}" WHERE learner_id = ?', (learner_id,))
             deleted[table] = cur.rowcount
         rubric_ids = [
@@ -69,6 +97,7 @@ def wipe_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, int]:
         deleted["learner_profile"] = cur.rowcount
         for ddl in LEARNING_EVENT_GUARDS.values():
             conn.execute(ddl)
+        conn.execute("RELEASE SAVEPOINT learner_wipe")
     return deleted
 
 

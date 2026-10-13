@@ -47,3 +47,8 @@ are fixed by this schema. No production workaround was silently added here.
 Final full backend suite: **1477 passed** (3 existing dependency warnings). After
 disposable migration and test gates, live additive migration applied at
 `0a507010540e`; no authored content or review was created.
+
+Follow-up: the two indirect-ownership wipe failures and guard-rollback issue are
+repaired in slices/learner-wipe-indirect-ownership.md, with an unfiltered two-learner
+all-table regression. The earlier isolated fixture limitations above describe the
+storage slice at its original verification point.
