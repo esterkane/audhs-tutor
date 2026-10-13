@@ -24,7 +24,6 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from qdrant_client import AsyncQdrantClient  # noqa: E402
 from sqlalchemy import select  # noqa: E402
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: E402
 
@@ -35,6 +34,7 @@ from app.db.migrate import upgrade_to_head  # noqa: E402
 from app.db.session import make_engine, make_session_factory  # noqa: E402
 from app.knowledge.provenance import Provenance  # noqa: E402
 from app.knowledge.qdrant_hybrid import QdrantHybridRepository  # noqa: E402
+from app.knowledge.qdrant_transport import local_qdrant_client  # noqa: E402
 from app.knowledge.repository import ChunkRecord, SearchFilters  # noqa: E402
 from app.models_ai import registry  # noqa: E402
 from app.models_ai.budget import Budget  # noqa: E402
@@ -283,7 +283,7 @@ async def check_e_qdrant(db: AsyncSession, s: Settings) -> None:
     spec = await registry.get_spec(db, route.registry_id)
     prov = OllamaProvider(s.ollama_host)
     dims = len((await prov.embed(spec, ["probe"]))[0])
-    client = AsyncQdrantClient(url=s.qdrant_url)
+    client = local_qdrant_client(s.qdrant_url)
     repo = QdrantHybridRepository(
         client, prov, spec, dims=dims, embedding_version=900, batch_size=64
     )

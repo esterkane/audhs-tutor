@@ -10,12 +10,14 @@ from app.db.base import utcnow_iso
 from app.db.models import Chunk, ChunkProvenance, DocumentVersion, IndexState
 from app.knowledge.provenance import Provenance
 from app.knowledge.qdrant_hybrid import QdrantHybridRepository
+from app.knowledge.qdrant_transport import local_qdrant_client
 from app.knowledge.repository import ChunkRecord
 from app.knowledge.rerank import FastembedReranker
 from app.models_ai import registry
 from app.models_ai.ollama import OllamaProvider
 from app.models_ai.provider import EmbeddingProvider, ModelSpec, TaskClass
 from app.models_ai.routing import NoModelReady, Router
+from app.models_ai.source_policy import require_loopback
 
 
 async def latest_version_ids(db: AsyncSession) -> list[str]:
@@ -108,13 +110,12 @@ async def build_repo(
     embedding_version: int = 1,
     embedder: EmbeddingProvider | None = None,
 ) -> QdrantHybridRepository:
-    from qdrant_client import AsyncQdrantClient
-
+    require_loopback(settings.qdrant_url)
     spec = await embed_spec(db, settings)
     emb = embedder or OllamaProvider(settings.ollama_host)
     dims = len((await emb.embed(spec, ["probe"]))[0])
     return QdrantHybridRepository(
-        AsyncQdrantClient(url=settings.qdrant_url),
+        local_qdrant_client(settings.qdrant_url),
         emb,
         spec,
         dims=dims,
