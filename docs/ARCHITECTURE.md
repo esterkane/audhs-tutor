@@ -214,3 +214,9 @@ Short transactions reserve, claim and cancel; startup marks abandoned work inter
 without inference. Private backups and learner wipe include the metadata-only records.
 The optional result-version FK preserves ownership. Inference integration and atomic
 version/completion publication remain pending; see slices/visual-generation-requests.md.
+
+Private lesson-promotion foundation: `lesson_promotion` records immutable learner-owned
+answer/draft identity; `lesson_promotion_snapshot` contains raw generation lineage and
+is excluded from learner-only backup. Shared curriculum publication refuses linked
+promotions until private learning-object ownership is implemented. No producer API yet.
+See `slices/lesson-promotion-storage.md`.

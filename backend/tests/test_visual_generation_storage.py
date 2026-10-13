@@ -32,7 +32,7 @@ def test_request_backup_restore_and_scoped_wipe(tmp_path, scope):
 
 def test_populated_generation_downgrade_refuses_before_ddl(tmp_path):
     url = f"sqlite:///{tmp_path / 'source.db'}"
-    upgrade_to_head(url)
+    command.upgrade(alembic_config(url), "c0ff66df480b")
     fill_all_tables(url)
     before = dump_tables(url)
     with pytest.raises(RuntimeError, match="Refusing to discard visual generation"):

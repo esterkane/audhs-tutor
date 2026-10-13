@@ -1155,6 +1155,15 @@ async def publish_draft(
         raise ValueError("already published")
     if d.status != "draft":
         raise ValueError("only a draft can be published; create a new draft")
+    from app.db.models import LessonPromotion
+
+    if await db.scalar(select(LessonPromotion.id).where(LessonPromotion.draft_id == d.id)):
+        await db.rollback()
+        raise AppError(
+            "private_promotion_publication_unavailable",
+            "This answer-derived draft remains private. Private lesson activation is not available yet.",
+            409,
+        )
     payload = d.payload_json
     problems = selection_problems(payload.get("selection")) + await validate_payload(db, payload)
     errors = [p for p in problems if p.level == "error"]

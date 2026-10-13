@@ -699,6 +699,7 @@ class TutorAnswer(IdMixin, LearnerScoped, Base):
     __tablename__ = "tutor_answer"
     __table_args__ = (
         UniqueConstraint("learner_id", "turn_id", name="uq_tutor_answer_learner_turn"),
+        Index("uq_answer_owned_id", "learner_id", "id", unique=True),
     )
     turn_id: Mapped[str] = mapped_column(Text)
     session_id: Mapped[str | None] = mapped_column(Text, ForeignKey("session.id"))
@@ -750,6 +751,7 @@ class CurriculumDraft(IdMixin, LearnerScoped, Base):
     a re-publish writes a new learning_object version and new assessment rows."""
 
     __tablename__ = "curriculum_draft"
+    __table_args__ = (Index("uq_curriculum_owned_id", "learner_id", "id", unique=True),)
     course: Mapped[str | None] = mapped_column(Text, index=True)
     area_id: Mapped[str | None] = mapped_column(ForeignKey("knowledge_area.id"), index=True)
     section: Mapped[str | None] = mapped_column(Text)
@@ -765,6 +767,48 @@ class CurriculumDraft(IdMixin, LearnerScoped, Base):
     updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, onupdate=utcnow_iso)
     published_at: Mapped[str | None] = mapped_column(Text)
     model_call_id: Mapped[str | None] = mapped_column(Text)  # when a model drafted it
+
+
+class LessonPromotion(IdMixin, LearnerScoped, Base):
+    """Immutable private draft origin; not permission to publish into shared curriculum."""
+
+    __tablename__ = "lesson_promotion"
+    __table_args__ = (
+        UniqueConstraint("draft_id", name="uq_lesson_promotion_draft"),
+        UniqueConstraint("learner_id", "request_key", name="uq_lesson_promotion_request"),
+        UniqueConstraint("learner_id", "id", name="uq_lesson_promotion_owned_id"),
+        ForeignKeyConstraint(
+            ["learner_id", "draft_id"],
+            ["curriculum_draft.learner_id", "curriculum_draft.id"],
+            name="fk_lesson_promotion_owned_draft",
+        ),
+        ForeignKeyConstraint(
+            ["learner_id", "answer_id"],
+            ["tutor_answer.learner_id", "tutor_answer.id"],
+            name="fk_lesson_promotion_owned_answer",
+        ),
+    )
+    draft_id: Mapped[str] = mapped_column(Text)
+    answer_id: Mapped[str] = mapped_column(Text)
+    request_key: Mapped[str] = mapped_column(Text)
+    fingerprint: Mapped[str] = mapped_column(Text)
+    binding_json: Mapped[str] = mapped_column(Text)
+    source_state_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
+class LessonPromotionSnapshot(IdMixin, LearnerScoped, Base):
+    __tablename__ = "lesson_promotion_snapshot"
+    __table_args__ = (
+        UniqueConstraint("promotion_id", name="uq_lesson_promotion_snapshot"),
+        ForeignKeyConstraint(
+            ["learner_id", "promotion_id"],
+            ["lesson_promotion.learner_id", "lesson_promotion.id"],
+            name="fk_lesson_snapshot_owned_promotion",
+        ),
+    )
+    promotion_id: Mapped[str] = mapped_column(Text)
+    snapshot_json: Mapped[str] = mapped_column(Text)
 
 
 class QuestionFeedback(IdMixin, LearnerScoped, Base):
@@ -1040,3 +1084,8 @@ from app.db.visual_ddl import VISUAL_IMMUTABLE_GUARDS  # noqa: E402
 
 for _visual_table, _visual_ddl in VISUAL_IMMUTABLE_GUARDS.items():
     event.listen(Base.metadata.tables[_visual_table], "after_create", DDL(_visual_ddl))  # type: ignore[no-untyped-call]
+
+from app.db.lesson_ddl import LESSON_IMMUTABLE_GUARDS  # noqa: E402
+
+for _lesson_table, _lesson_ddl in LESSON_IMMUTABLE_GUARDS.items():
+    event.listen(Base.metadata.tables[_lesson_table], "after_create", DDL(_lesson_ddl))  # type: ignore[no-untyped-call]

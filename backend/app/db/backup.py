@@ -59,6 +59,7 @@ from app.db import backup_crypto
 from app.db import models as _models  # noqa: F401  (registers every table on Base.metadata)
 from app.db.base import Base
 from app.db.ddl import LEARNING_EVENT_GUARDS
+from app.db.lesson_ddl import LESSON_IMMUTABLE_GUARDS
 from app.db.migrate import alembic_config, upgrade_to_head
 from app.db.visual_ddl import VISUAL_IMMUTABLE_GUARDS
 
@@ -77,6 +78,7 @@ CORPUS_TEXT_TABLES = (
     "index_state",
     "session_checkpoint",
     "authored_visual_source_snapshot",
+    "lesson_promotion_snapshot",
 )
 EXCLUDED_SETTINGS = ("anthropic_api_key", "openai_api_key", "hf_token")
 RECONSTRUCTION_SETTINGS = (
@@ -372,7 +374,8 @@ def create_backup(
             + (
                 [
                     "corpus tables (chunk, chunk_provenance, index_state) and session checkpoints; "
-                    "raw authored-visual generation snapshots; derived learner artefacts "
+                    "raw authored-visual generation snapshots and lesson-promotion snapshots; "
+                    "derived learner artefacts "
                     "(assessment items, cached representations, visual specs/reviews) may still "
                     "quote short passages"
                 ]
@@ -638,7 +641,7 @@ def _expected_schema_objects() -> tuple[set[str], set[str]]:
     )
     triggers = (
         set(LEARNING_EVENT_GUARDS)
-        | {f"{table}_no_update" for table in VISUAL_IMMUTABLE_GUARDS}
+        | {f"{table}_no_update" for table in (VISUAL_IMMUTABLE_GUARDS | LESSON_IMMUTABLE_GUARDS)}
         | {"tutor_answer_fts_" + action for action in ("insert", "update", "delete")}
     )
     return tables, triggers
@@ -682,7 +685,9 @@ def _check_snapshot_schema(db_file: Path, revision: str) -> None:
     required = set(LEARNING_EVENT_GUARDS)
     present_tables = {name for kind, name, _ in objects if kind == "table"}
     required |= {
-        f"{table}_no_update" for table in VISUAL_IMMUTABLE_GUARDS if table in present_tables
+        f"{table}_no_update"
+        for table in (VISUAL_IMMUTABLE_GUARDS | LESSON_IMMUTABLE_GUARDS)
+        if table in present_tables
     }
     if any(kind == "table" and name == "tutor_answer_fts" for kind, name, _ in objects):
         required |= {"tutor_answer_fts_" + action for action in ("insert", "update", "delete")}
