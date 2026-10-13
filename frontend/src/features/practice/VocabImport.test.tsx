@@ -68,6 +68,47 @@ describe('VocabImport', () => {
     expect(await screen.findByText(/Imported 2 new cards; 0 already existed, 0 invalid/)).toBeInTheDocument()
   })
 
+  it.each(['network', 'unreadable', 'oversize', 'empty', 'success'])('keeps reviewed rows/source until replacement succeeds: %s', async (kind) => {
+    let previews = 0
+    let imported: unknown
+    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/import/preview')) {
+        previews += 1
+        if (previews === 1) return jsonResponse({ ...preview, rows: preview.rows.slice(0, 1) })
+        if (kind === 'network') return jsonResponse({ error: { code: 'unavailable', message: 'Preview unavailable' } }, 503)
+        if (kind === 'empty') return jsonResponse({ ...preview, rows: [], errors: ['empty file'] })
+        return jsonResponse({ ...preview, rows: [{ ...preview.rows[0], word: 'Katze', translation: 'cat' }] })
+      }
+      imported = JSON.parse(String(init?.body))
+      return jsonResponse({ lang: 'de', added: 1, reverse_added: 0, skipped_existing: 0, invalid: 0 }, 201)
+    }))
+    renderApp(<VocabImport />)
+    const original = new File(['Haus;house'], 'original.csv')
+    Object.defineProperty(original, 'text', { value: async () => 'Haus;house' })
+    fireEvent.change(screen.getByLabelText('CSV file'), { target: { files: [original] } })
+    await screen.findByLabelText('Translation, row 1')
+    fireEvent.change(screen.getByLabelText('Translation, row 1'), { target: { value: 'home' } })
+    const replacement = new File(['Katze;cat'], 'replacement.csv')
+    Object.defineProperty(replacement, 'text', { value: () => kind === 'unreadable' ? Promise.reject(new Error('Unreadable')) : Promise.resolve('Katze;cat') })
+    if (kind === 'oversize') Object.defineProperty(replacement, 'size', { value: 2_000_001 })
+    fireEvent.change(screen.getByLabelText('CSV file'), { target: { files: [replacement] } })
+    if (kind === 'success') {
+      await screen.findByText('Reviewed source: replacement.csv')
+      expect(screen.getByLabelText('Translation, row 1')).toHaveValue('cat')
+      expect(screen.queryByText(/previous reviewed rows are kept/)).not.toBeInTheDocument()
+    } else {
+      await screen.findByText(/previous reviewed rows are kept/)
+      expect(screen.getByLabelText('Translation, row 1')).toHaveValue('home')
+      expect(screen.getByText('Reviewed source: original.csv')).toBeInTheDocument()
+      expect(previews).toBe(kind === 'unreadable' || kind === 'oversize' ? 1 : 2)
+    }
+    fireEvent.click(screen.getByRole('button', { name: 'Import 1 card' }))
+    await waitFor(() => expect(imported).toMatchObject({
+      source: kind === 'success' ? 'replacement.csv' : 'original.csv',
+      rows: [{ word: kind === 'success' ? 'Katze' : 'Haus', translation: kind === 'success' ? 'cat' : 'home' }],
+    }))
+  })
+
   it('shows the failure and no success line when the import request fails; removing a row is reversible', async () => {
     vi.stubGlobal(
       'fetch',

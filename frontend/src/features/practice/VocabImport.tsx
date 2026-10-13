@@ -43,8 +43,6 @@ export function VocabImport() {
     setFileError(null)
     previewMut.reset()
     importMut.reset()
-    setRows(null)
-    setMeta(null)
     try {
       const file = typeof input === 'string' ? null : input
       if (file && file.size > 2_000_000) {
@@ -54,9 +52,13 @@ export function VocabImport() {
       let text: string
       try { text = typeof input === 'string' ? input : await input.text() }
       catch { setFileError('Could not read this file. Choose it again or paste the list.'); return }
+      const pv = await previewMut.mutateAsync({ lang, csv_text: text, reverse })
+      if (rows?.length && pv.rows.length === 0) {
+        setFileError(pv.errors.join(' ') || 'No rows found in the new preview.')
+        return
+      }
       setSource(file?.name ?? null)
       setCsvText(text)
-      const pv = await previewMut.mutateAsync({ lang, csv_text: text, reverse })
       setMeta(pv)
       setRows(pv.rows.map((r) => ({ ...r })))
     } catch {
@@ -198,6 +200,9 @@ export function VocabImport() {
           {(previewMut.error as Error).message}
         </p>
       )}
+      {rows && (fileError || previewMut.isError) && <p role="status" className="text-sm mt-2">
+        The new preview was not loaded. Your previous reviewed rows are kept below; importing uses those rows.
+      </p>}
       {meta && meta.errors.length > 0 && (
         <ul role="alert" className="text-warn text-sm mt-2 list-disc ml-5">
           {meta.errors.map((e) => (
@@ -212,6 +217,7 @@ export function VocabImport() {
       )}
       {rows && rows.length > 0 && meta && (
         <>
+          <p className="text-sm mt-3">Reviewed source: {source ?? 'Pasted list'}</p>
           <p className="text-sm mt-3">
             {meta.header ? 'Header row detected' : 'No header: first column = word, second = translation'} ·
             columns:{' '}
