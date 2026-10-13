@@ -1,0 +1,85 @@
+{
+  "domain": "ai_ml",
+  "area_title": "Fit on training data; apply to held-out data",
+  "course": null,
+  "section": null,
+  "skills": [
+    {
+      "slug": "training-only-preprocessing-transfer",
+      "title": "Fit on training data; apply to held-out data",
+      "description": "Apply the distinction between fitting and transforming to prevent held-out data from influencing a preprocessing parameter.",
+      "prerequisites": [],
+      "success_criteria": [
+        "Training-only fit: Learn the imputation median using observed ages from the training set only.",
+        "Reuse fitted parameter: Apply that same fitted training median to missing ages in both sets; do not refit using held-out records.",
+        "Explain the information boundary: Explain that using held-out feature values influences the learned preprocessing parameter even when outcome labels are excluded.",
+        "Limit the conclusion: Identify that the scenario alone cannot establish the direction or size of accuracy changes, or establish fairness across groups. Either limitation is sufficient."
+      ],
+      "assessment_requirements": {
+        "dimensions": [
+          "transfer"
+        ]
+      }
+    }
+  ],
+  "learning_objects": [
+    {
+      "skill": "training-only-preprocessing-transfer",
+      "concept": "Fit preprocessing parameters on training data only; apply the saved parameters to training and held-out data.",
+      "goal": "Apply the distinction between fitting and transforming to prevent held-out data from influencing a preprocessing parameter.",
+      "examples": [
+        "Fitting learns a parameter from data. Transforming applies the saved parameter. Held-out data is reserved for evaluation, so it must not influence the parameter being learned. You may transform held-out values using a training-only parameter. The restriction is on fitting, not on applying the transformation.",
+        "Training values are 2 and 4, so the training mean is 3. Held-out values are 8 and 10. Subtracting the saved training mean from each held-out value produces 5 and 7. If the held-out values change to 12 and 14, the fitted training mean remains 3 and the transformed values become 9 and 11. Fitting the mean on both sets instead lets held-out information change the preprocessing parameter. This example demonstrates information leakage, not a measured improvement or reduction in prediction accuracy."
+      ],
+      "exercises": [
+        "You have already split patient records into training and held-out test sets. Some ages are missing, and at least one training age is observed. A teammate proposes filling missing ages using the median of all patients, including the held-out set, because no outcome labels are used. Explain what you would fit, which data you would fit it on, and how you would fill gaps in each set. Explain what is wrong with the teammate's argument. State one thing this scenario does not tell you about model quality or fairness."
+      ],
+      "success_criteria": [
+        "Training-only fit: Learn the imputation median using observed ages from the training set only.",
+        "Reuse fitted parameter: Apply that same fitted training median to missing ages in both sets; do not refit using held-out records.",
+        "Explain the information boundary: Explain that using held-out feature values influences the learned preprocessing parameter even when outcome labels are excluded.",
+        "Limit the conclusion: Identify that the scenario alone cannot establish the direction or size of accuracy changes, or establish fairness across groups. Either limitation is sufficient."
+      ],
+      "sources": []
+    }
+  ],
+  "assessments": [
+    {
+      "skill": "training-only-preprocessing-transfer",
+      "kind": "transfer",
+      "item": {
+        "prompt": "You have already split patient records into training and held-out test sets. Some ages are missing, and at least one training age is observed. A teammate proposes filling missing ages using the median of all patients, including the held-out set, because no outcome labels are used. Explain what you would fit, which data you would fit it on, and how you would fill gaps in each set. Explain what is wrong with the teammate's argument. State one thing this scenario does not tell you about model quality or fairness.",
+        "hint": "Separate the step that learns a median from the step that fills a missing value. Which set is allowed to influence the learned median?",
+        "reference_links": [
+          "https://scikit-learn.org/stable/common_pitfalls.html#data-leakage"
+        ]
+      },
+      "rubric": [
+        {
+          "criterion": "Training-only fit: Learn the imputation median using observed ages from the training set only."
+        },
+        {
+          "criterion": "Reuse fitted parameter: Apply that same fitted training median to missing ages in both sets; do not refit using held-out records."
+        },
+        {
+          "criterion": "Explain the information boundary: Explain that using held-out feature values influences the learned preprocessing parameter even when outcome labels are excluded."
+        },
+        {
+          "criterion": "Limit the conclusion: Identify that the scenario alone cannot establish the direction or size of accuracy changes, or establish fairness across groups. Either limitation is sufficient."
+        }
+      ],
+      "auto": false,
+      "guessable": false,
+      "origin": "authored"
+    }
+  ],
+  "authoring_provenance": {
+    "candidate_id": "leakage-transfer-v1",
+    "content_origin": "project-authored synthetic",
+    "reference_links": [
+      "https://scikit-learn.org/stable/common_pitfalls.html#data-leakage"
+    ],
+    "permission_status": "unknown",
+    "owner_decision": "approved for draft preparation only"
+  }
+}
