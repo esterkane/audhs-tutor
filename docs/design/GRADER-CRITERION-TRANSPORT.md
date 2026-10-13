@@ -26,3 +26,6 @@ IDs establish correspondence, not factual correctness, calibrated confidence, va
 
 ## Foundation evidence
 Code and pedagogy design reviews found no blocker/major. The isolated `orchestrator/grader_transport.py` adapter implements immutable snapshot mapping and strict model-response validation; it has no production caller. Sixteen focused tests pass, with targeted Ruff and mypy passing. This establishes correspondence behavior only. Prompt/gateway integration, recovery tests, local semantic evaluation and deployment gates above remain open. No frontend or runtime behavior changed.
+
+## Local gate result
+The first isolated six-case sample accepted all ID mappings but failed semantic checks, including crediting a claim opposite to the criterion. Deployment is blocked by the stated quality gate. See ../slices/private-transfer-grader-evaluation.md. The experimental prompt is not selected by the runtime prompt loader; the adapter has no production caller.
