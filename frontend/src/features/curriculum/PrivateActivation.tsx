@@ -170,8 +170,8 @@ function ActivationPanel({
             {result.assessment_ids.length === 1 ? 'practice question' : 'practice questions'}. Activation does
             not award learning evidence or mark the questions reviewed.
           </p>
-          <Link className="underline text-accent" to="/">
-            Choose a lesson on Home
+          <Link className="underline text-accent" to={result.skill_ids.length === 1 ? `/?lesson=${encodeURIComponent(result.skill_ids[0])}` : "/"}>
+            {result.skill_ids.length === 1 ? "Open this lesson" : "Choose a lesson on Home"}
           </Link>
         </>
       ) : (

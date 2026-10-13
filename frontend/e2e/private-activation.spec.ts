@@ -59,7 +59,7 @@ for (const width of [1280, 390]) {
       else document.body.style.zoom = '2'
     }, width === 390)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await expect(page.getByRole('link', { name: 'Choose a lesson on Home' })).toBeVisible()
+    await expect(page.getByRole('link', { name: 'Open this lesson' })).toBeVisible()
     await page.screenshot({ path: `/tmp/audhs-private-activation-dark-zoom-${width}.png`, fullPage: true })
   })
 }

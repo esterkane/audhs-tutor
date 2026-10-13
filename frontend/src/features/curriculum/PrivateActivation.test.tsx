@@ -192,3 +192,13 @@ it('retains recovery and ignores a late response after leaving the draft', async
   expect(view.refresh).not.toHaveBeenCalled()
   expect(localStorage.getItem(activationKey('owner', 'draft'))).not.toBeNull()
 })
+
+it('links one activated lesson to explicit selection without starting a session', async () => {
+  const { posts } = setup({ value: { ...preview, command: null, receipt } })
+  expect(await screen.findByRole('link', { name: 'Open this lesson' })).toHaveAttribute('href', '/?lesson=skill')
+  expect(posts).toHaveLength(0)
+})
+it('retains the chooser for a multi-lesson activation', async () => {
+  setup({ value: { ...preview, command: null, receipt: { ...receipt, skill_ids: ['a', 'b'] } } })
+  expect(await screen.findByRole('link', { name: 'Choose a lesson on Home' })).toHaveAttribute('href', '/')
+})

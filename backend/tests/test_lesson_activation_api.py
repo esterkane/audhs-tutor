@@ -159,3 +159,38 @@ async def test_activated_lesson_can_be_selected_resumed_and_assessed(
     ended = await client.post(f"/api/sessions/{session['id']}/end", json={})
     assert ended.status_code == 200, ended.text
     assert (await client.get("/api/sessions/current")).json() is None
+
+
+async def test_private_lesson_abstention_is_checked_and_replayable(
+    client, db, learner, session_factory
+):
+    from uuid import uuid4
+
+    _, command = await prepared(db, learner, session_factory)
+    receipt = (await post(client, command)).json()
+    skill = receipt["skill_ids"][0]
+    session = (await client.post("/api/sessions", json={"skill_id": skill})).json()
+    question = (
+        await client.get(
+            "/api/assess/next", params={"session_id": session["id"], "skill_id": skill}
+        )
+    ).json()["item"]
+    payload = {
+        "session_id": session["id"],
+        "assessment_id": question["id"],
+        "content_version": question["content_version"],
+        "answer": "I don't know",
+    }
+    headers = {"Idempotency-Key": str(uuid4())}
+    result = await client.post("/api/assess/attempt", json=payload, headers=headers)
+    assert result.status_code == 200, result.text
+    value = result.json()
+    assert value["score"] == 0 and value["grader_level"] == "rubric"
+    assert value["criterion_results"] and not any(c["passed"] for c in value["criterion_results"])
+    assert value["feedback"] == "No explanation submitted."
+    repeated = await client.post("/api/assess/attempt", json=payload, headers=headers)
+    assert repeated.status_code == 200, repeated.text
+    assert repeated.json()["attempt_id"] == value["attempt_id"]
+    assert await db.scalar(select(func.count()).select_from(AssessmentAttempt)) == 1
+    assert await db.scalar(select(func.count()).select_from(AssessmentTaskReview)) == 0
+    assert await db.scalar(select(func.count()).select_from(ModelCall)) == 0
