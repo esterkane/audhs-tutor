@@ -71,7 +71,12 @@ async def snapshot(db: AsyncSession, learner_id: str, item_id: str) -> dict[str,
                         MemoryState.learner_id == learner_id,
                     ),
                 )
-                .where(ReviewItem.id == item_id, ReviewItem.learner_id == learner_id)
+                .where(
+                    ReviewItem.id == item_id,
+                    ReviewItem.learner_id == learner_id,
+                    question_state.review_parent_visible(learner_id),
+                    Assessment.id.is_(None) | question_state.visible(learner_id),
+                )
             )
         )
         .mappings()

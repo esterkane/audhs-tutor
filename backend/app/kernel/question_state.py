@@ -10,14 +10,28 @@ from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.errors import AppError
 from app.db.base import utcnow_iso
-from app.db.models import Assessment, QuestionState, QuestionTransition, ReviewItem
+from app.db.models import (
+    Assessment,
+    LearningObject,
+    QuestionState,
+    QuestionTransition,
+    ReviewItem,
+    SkillNode,
+)
+from app.kernel.content_access import object_visible, skill_visible
 from app.schemas.question_state import QuestionStateOut, QuestionTransitionIn
 
 
 def visible(learner_id: str | None) -> ColumnElement[bool]:
     """Access is separate from practice eligibility and its negation."""
     shared = Assessment.owner_learner_id.is_(None)
-    return shared if learner_id is None else or_(shared, Assessment.owner_learner_id == learner_id)
+    owned = shared if learner_id is None else or_(shared, Assessment.owner_learner_id == learner_id)
+    skill = (
+        exists()
+        .where(SkillNode.id == Assessment.skill_id, skill_visible(learner_id))
+        .correlate(Assessment)
+    )
+    return owned & skill
 
 
 async def require_visible(
@@ -50,6 +64,20 @@ def review_reference() -> ColumnElement[str]:
     )
 
 
+def review_parent_visible(learner_id: str) -> ColumnElement[bool]:
+    """Cards inherit their required skill and optional learning-object access."""
+    skill = (
+        exists()
+        .where(SkillNode.id == ReviewItem.skill_id, skill_visible(learner_id))
+        .correlate(ReviewItem)
+    )
+
+    obj = ReviewItem.object_id.is_(None) | exists().where(
+        LearningObject.id == ReviewItem.object_id, object_visible(learner_id)
+    ).correlate(ReviewItem)
+    return skill & obj
+
+
 def review_eligible(learner_id: str) -> ColumnElement[bool]:
     """Vocabulary refs are not assessment IDs, even when their strings coincide."""
     denied = (
@@ -61,12 +89,18 @@ def review_eligible(learner_id: str) -> ColumnElement[bool]:
         )
         .correlate(ReviewItem)
     )
-    return ~denied & ~exists().where(
-        QuestionState.learner_id == learner_id,
-        QuestionState.assessment_id == review_reference(),
-        QuestionState.state != "active",
-        func.coalesce(ReviewItem.prompt_json["type"].as_string(), "") != "vocab",
-    ).correlate(ReviewItem)
+    return (
+        review_parent_visible(learner_id)
+        & ~denied
+        & ~exists()
+        .where(
+            QuestionState.learner_id == learner_id,
+            QuestionState.assessment_id == review_reference(),
+            QuestionState.state != "active",
+            func.coalesce(ReviewItem.prompt_json["type"].as_string(), "") != "vocab",
+        )
+        .correlate(ReviewItem)
+    )
 
 
 async def read(db: AsyncSession, learner_id: str, assessment_id: str) -> QuestionStateOut:

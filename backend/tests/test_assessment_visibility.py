@@ -212,3 +212,73 @@ async def test_direct_api_paths_hide_foreign_private_content(client, db):
         },
     )
     assert response.status_code == 404, response.text
+
+
+async def test_assessments_and_cached_reviews_inherit_private_skill_access(db, learner):
+    shared, own, foreign, other = await setup(db, learner)
+    node = await db.get(models.SkillNode, shared.skill_id)
+    node.owner_learner_id = other.id
+    await db.commit()
+    # An unowned assessment or an owned correction cannot expose a foreign parent.
+    for assessment in [shared, own, foreign]:
+        with pytest.raises(AppError):
+            await qs.require_visible(db, learner.id, assessment.id)
+        with pytest.raises(AppError):
+            await assessment_content.snapshot(db, assessment.id, learner.id)
+    assert not list(await db.scalars(select(models.Assessment).where(qs.visible(learner.id))))
+    assert await Grader(db, None).next_item(learner.id, node.id) is None
+    for kind in ["mcq", "vocab"]:
+        card = models.ReviewItem(
+            learner_id=learner.id,
+            skill_id=node.id,
+            item_type=kind,
+            prompt_json={"type": kind, "ref": shared.id, "q": "Cached foreign text", "a": "Secret"},
+        )
+        db.add(card)
+        await db.commit()
+        assert (
+            await db.scalar(
+                select(models.ReviewItem.id).where(
+                    models.ReviewItem.id == card.id, qs.review_eligible(learner.id)
+                )
+            )
+            is None
+        )
+        with pytest.raises(AppError):
+            await review_content.snapshot(db, learner.id, card.id)
+    assert (await qs.require_visible(db, other.id, shared.id)).id == shared.id
+    assert (await qs.require_visible(db, other.id, foreign.id)).id == foreign.id
+    with pytest.raises(AppError):
+        await qs.require_visible(db, other.id, own.id)
+
+
+async def test_review_cannot_use_foreign_object_with_visible_skill(db, learner):
+    shared, _, _, other = await setup(db, learner)
+    node = models.SkillNode(
+        slug="private-object-parent", title="Secret", domain="ai_ml", owner_learner_id=other.id
+    )
+    db.add(node)
+    await db.flush()
+    obj = models.LearningObject(skill_id=node.id, concept="Secret", goal="Secret")
+    db.add(obj)
+    await db.flush()
+    for kind in ["vocab", "mcq"]:
+        card = models.ReviewItem(
+            learner_id=learner.id,
+            skill_id=shared.skill_id,
+            object_id=obj.id,
+            item_type=kind,
+            prompt_json={"type": kind, "q": "Secret"},
+        )
+        db.add(card)
+        await db.commit()
+        assert (
+            await db.scalar(
+                select(models.ReviewItem.id).where(
+                    models.ReviewItem.id == card.id, qs.review_eligible(learner.id)
+                )
+            )
+            is None
+        )
+        with pytest.raises(AppError):
+            await review_content.snapshot(db, learner.id, card.id)
