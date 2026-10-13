@@ -25,7 +25,11 @@ export type TurnMeta = {
 export type AssessmentView = Schemas['AssessmentView']
 export type NextItem = Schemas['NextItem']
 export type AttemptRequest = Schemas['AttemptRequest']
-export type AttemptResult = Schemas['AttemptResult']
+export type AssessedResult = Schemas['AttemptResult']
+export type ProvisionalFeedbackResult = Schemas['ProvisionalFeedbackResult']
+export type AttemptResult = AssessedResult | ProvisionalFeedbackResult
+export const isProvisional = (result: AttemptResult): result is ProvisionalFeedbackResult => 'outcome' in result && result.outcome === 'provisional_feedback'
+export const feedbackIdentity = (result: AttemptResult) => isProvisional(result) ? result.feedback_id : result.attempt_id
 export type DueList = Schemas['DueList']
 export type ReviewItemOut = Schemas['ReviewItemOut']
 export type ReviewOut = Schemas['ReviewOut']

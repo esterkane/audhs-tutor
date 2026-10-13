@@ -1,3 +1,4 @@
+import { feedbackIdentity } from '../../lib/api'
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { ReadAloud } from '../voice/ReadAloud'
@@ -211,7 +212,7 @@ export function AssessmentRecovery({
               <ReadAloud
                 text={`${pending.question}\n\n${lookup.result.feedback}\n\n${lookup.result.next_step}`}
               />
-              <AssessmentSaveStatus key={lookup.result.attempt_id} result={lookup.result} />
+              <AssessmentSaveStatus key={feedbackIdentity(lookup.result)} result={lookup.result} />
               {onUse && (
                 <Button
                   onClick={() => {

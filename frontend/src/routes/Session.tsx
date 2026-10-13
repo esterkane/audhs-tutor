@@ -1,3 +1,5 @@
+import { isProvisional, feedbackIdentity } from '../lib/api'
+import { ProvisionalFeedback } from '../features/assess/ProvisionalFeedback'
 import { SavedLessonReading } from '../features/tutor/SavedLessonReading'
 import { LessonFocusContext } from '../features/session/focusContext'
 import { LessonContextPanel } from '../features/session/LessonContextPanel'
@@ -415,7 +417,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             onBack={() => changePhase('teach')}
             onGraded={(r) => {
               setHintCount(0)
-              if (r.score >= 0.85) setGraspPassed(true)
+              if (!isProvisional(r) && r.score >= 0.85) setGraspPassed(true)
             }}
             onFinishBlock={() => void finishBlock('finished')}
             transitionPending={transition.pending}
@@ -995,9 +997,10 @@ function AssessPanel({
   const [confidence, setConfidence] = useState<number | null>(null)
   const [answer, setAnswer] = useState<{ identity: string; value: string } | null>(null)
   const [, refreshDraft] = useState(0)
+  const [previousFeedbackOpen, setPreviousFeedbackOpen] = useState(false)
   const [localResult, setResult] = useState<AttemptResult | null>(null)
   const savedResult = localResult ?? checked.result.data ?? null
-  const revision = useAssessmentRevision(recoveryScope, sessionId, savedResult?.attempt_id ?? null, active)
+  const revision = useAssessmentRevision(recoveryScope, sessionId, savedResult ? feedbackIdentity(savedResult) : null, active, savedResult && isProvisional(savedResult) ? 'provisional' : 'assessed')
   const result = revision.editing ? null : savedResult
   const [startedAt, setStartedAt] = useState(() => Date.now())
   const [refreshedItem, setRefreshedItem] = useState<AssessmentView | null>(null)
@@ -1017,8 +1020,8 @@ function AssessPanel({
   const restoredAttempt = useRef<string | null>(null)
   useEffect(() => {
     const restored = checked.result.data
-    if (restored && restoredAttempt.current !== restored.attempt_id) {
-      restoredAttempt.current = restored.attempt_id
+    if (restored && restoredAttempt.current !== feedbackIdentity(restored)) {
+      restoredAttempt.current = feedbackIdentity(restored)
       onGraded(restored) // local continuation readiness only; no submission or learning write
     }
   }, [checked.result.data, onGraded])
@@ -1045,7 +1048,7 @@ function AssessPanel({
     if (!item || (revision.editing && !revision.data)) return
     try {
       const res = await attempt.mutateAsync({
-        ...(revision.editing ? { revision_of_attempt_id: revision.data!.root_attempt_id } : {}),
+        ...(revision.editing ? revision.revisionRequest : {}),
         session_id: sessionId,
         assessment_id: item.id,
         content_version: item.content_version,
@@ -1158,7 +1161,7 @@ function AssessPanel({
     <>
       {recoveryPanel}
       {checked.error && <p role="alert">{checked.error}</p>}
-      {checked.saved && result && <p role="status">Restored your checked feedback. No new grading or learning progress. Scores and review dates describe that attempt.</p>}
+      {checked.saved && result && <p role="status">{isProvisional(result) ? 'Restored your provisional model feedback. No new model request or learning evidence.' : 'Restored your checked feedback. No new grading or learning progress. Scores and review dates describe that attempt.'}</p>}
       <Card>
         <p className="text-sm text-muted mb-2">
           {result
@@ -1200,7 +1203,7 @@ function AssessPanel({
           {revision.source.isFetching && <p role="status">Loading your submitted answer…</p>}
           {revision.source.isError && <p role="alert">{(revision.source.error as Error).message} <Button onClick={() => void revision.source.refetch()}>Retry loading answer</Button></p>}
           <Button onClick={() => { if (revision.clear()) setTimeout(() => document.getElementById('retry-assessment')?.focus(), 0) }} disabled={attempt.isPending || !!attempt.recovery.pending}>Cancel revision</Button>
-          {savedResult && <Disclosure label="Previous feedback"><AssessmentEvidence result={savedResult} /></Disclosure>}
+          {savedResult && <Disclosure label="Previous feedback" onToggle={event => setPreviousFeedbackOpen(event.currentTarget.open)}>{isProvisional(savedResult) ? <ProvisionalFeedback result={savedResult} active={active && !transitionPending && previousFeedbackOpen} /> : <AssessmentEvidence result={savedResult} />}</Disclosure>}
         </section>}
         {!result && (
           <>
@@ -1272,7 +1275,16 @@ function AssessPanel({
           </>
         )}
       </Card>
-      {result && (
+      {result && isProvisional(result) && <Card>
+        <ProvisionalFeedback result={result} active={active && !transitionPending} />
+        <Button id="retry-assessment" onClick={() => { revision.start(); setConfidence(null); setStartedAt(Date.now()) }} disabled={transitionPending || attempt.isPending}>Try again</Button>
+        <div className="flex flex-wrap gap-2 mt-3">
+          <Button onClick={onFinishBlock} disabled={transitionPending}>Continue</Button>
+          <Button onClick={onBack} disabled={transitionPending}>Revisit the explanation</Button>
+          <Button onClick={nextItem} disabled={transitionPending}>Try another question (optional)</Button>
+        </div>
+      </Card>}
+      {result && !isProvisional(result) && (
         <Card role="status" className={result.score >= 0.85 ? 'border-ok' : 'border-warn'}>
           <h3 className="font-medium">Feedback on your answer</h3>
           <AssessmentEvidence result={result} />
@@ -1311,7 +1323,7 @@ function AssessPanel({
       )}
       {result && (
         <AssessmentDiscussion
-          key={`discussion:${result.attempt_id}`}
+          key={`discussion:${feedbackIdentity(result)}`}
           answerId={result.answer_id}
           sessionId={sessionId}
           active={active && !transitionPending}
@@ -1319,7 +1331,7 @@ function AssessPanel({
       )}
       {result && (
         <QuestionHelp
-          key={`feedback-help:${result.attempt_id}`}
+          key={`feedback-help:${feedbackIdentity(result)}`}
           afterAnswer
           assessmentAnswerId={result.answer_id ?? null}
           active={active && !transitionPending}

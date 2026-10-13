@@ -1,3 +1,5 @@
+import { isProvisional } from '../../lib/api'
+import { ProvisionalFeedback } from '../../features/assess/ProvisionalFeedback'
 import { useQueryClient } from '@tanstack/react-query'
 import { QuestionPractice } from '../questions/QuestionPractice'
 import { boundedRead } from '../../lib/boundedRead'
@@ -362,7 +364,7 @@ function Editor({
         }}
       />
       <CardTitle>Code exercise: {exercise.title}</CardTitle>
-      {exercise.check_assessment_id && !checkResult && (solution || graded?.correct === true) &&
+      {exercise.check_assessment_id && !checkResult && (solution || (graded && !isProvisional(graded) && graded.correct === true)) &&
         <div ref={checkPanel} tabIndex={-1} aria-label="Explain-back practice choices">
           <h3 className="text-sm font-medium">Explain-back question options</h3>
           {!attempt.recovery.pending && !attempt.recovery.error && <fieldset disabled={attempt.isPending || refreshingPractice}>
@@ -560,7 +562,8 @@ function Editor({
               {(attempt.error as Error).message}
             </p>
           )}
-          {graded && (
+          {graded && isProvisional(graded) && <ProvisionalFeedback result={graded} />}
+          {graded && !isProvisional(graded) && (
             <div className="mt-3" role="status">
               <p className="text-sm">{graded.feedback}</p>
               <AssessmentSaveStatus key={graded.attempt_id} result={graded} />
@@ -588,7 +591,8 @@ function Editor({
                   pending={attempt.isPending || checkPracticeChanged || refreshingPractice}
                 />
               )}
-              {checkResult && (
+              {checkResult && isProvisional(checkResult) && <ProvisionalFeedback result={checkResult} />}
+              {checkResult && !isProvisional(checkResult) && (
                 <div className="text-sm mt-2" role="status">
                   <p>{checkResult.feedback} {checkResult.next_step}</p>
                   <AssessmentPracticeNotice result={checkResult} />

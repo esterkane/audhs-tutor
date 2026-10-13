@@ -371,7 +371,7 @@ async def test_legacy_uncertain_claim_is_not_released(client, db, monkeypatch):
         session.id,
         "assessment:" + KEY,
         AttemptRequest.model_validate(body).model_dump(
-            mode="json", exclude={"revision_of_attempt_id"}
+            mode="json", exclude={"revision_of_attempt_id", "revision_of_feedback_id"}
         ),
     )
 

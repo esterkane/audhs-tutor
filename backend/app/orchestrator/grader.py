@@ -1,9 +1,9 @@
 """Hierarchical grader (ADR-0009): deterministic → rubric checks → local LLM → hosted.
 
-Every ordinary attempt produces: an assessment_attempt row, `attempted` + `graded` events, one
-competency_evidence row (via the kernel, which emits `evidenced`), a competency refresh, and an
-FSRS review of the item (via the kernel, which emits `reviewed`). Explicit revisions retain
-attempts and feedback without another competency or FSRS update. Feedback is literal and specific.
+Deterministic and rubric-only outcomes retain assessed attempts and kernel scheduling.
+Model-checked free-text outcomes are saved as provisional feedback without competency
+or FSRS writes. Previously committed assessed outcomes replay unchanged. Revisions
+retain their original lineage; feedback is literal and specific.
 """
 
 import re
@@ -21,6 +21,7 @@ from app.db.models import (
     Assessment,
     AssessmentAttempt,
     MemoryState,
+    ProvisionalFeedback,
     ReviewItem,
     Session,
     SkillNode,
@@ -259,6 +260,15 @@ class Grader:
         last_ts: dict[str, str] = {}
         for at in attempts:
             last_ts[at.assessment_id] = max(last_ts.get(at.assessment_id, ""), at.ts)
+        # Exposure affects rotation, never competency or review evidence.
+        advisory = await self.db.execute(
+            select(ProvisionalFeedback.assessment_id, ProvisionalFeedback.created_at).where(
+                ProvisionalFeedback.learner_id == learner_id,
+                ProvisionalFeedback.assessment_id.in_([i.id for i in items]),
+            )
+        )
+        for assessment_id, created_at in advisory:
+            last_ts[assessment_id] = max(last_ts.get(assessment_id, ""), created_at)
         items.sort(
             key=lambda i: (
                 last_ts.get(i.id, ""),
@@ -348,14 +358,35 @@ class Grader:
             raise KeyError("assessment not found")
         content = await assessment_content.snapshot(db, a.id, learner_id)
         assessment_content.require_eligible(content)
-        await assessment_revisions.resolve_root(
-            db,
-            learner_id=learner_id,
-            session_id=req.session_id,
-            assessment_id=req.assessment_id,
-            content_fingerprint=assessment_content.recovery_fingerprint(content),
-            supplied_root=req.revision_of_attempt_id,
-        )
+        if self.request_claim_id is None and a.kind not in ("mcq", "cloze", "code"):
+            from uuid import uuid4
+
+            internal_claim_id, _ = await workspace_requests.claim(
+                db, learner_id, req.session_id, f"assessment:{uuid4()}", req.identity_payload()
+            )
+            # Keep a direct caller's reusable Grader free of request-specific state.
+            return await Grader(
+                db, self.gateway, recovery=self.recovery, request_claim_id=internal_claim_id
+            ).grade(req, now=now)
+        if req.revision_of_feedback_id is not None:
+            if self.request_claim_id is None:
+                raise AppError("request_required", "A saved request is required for revision.", 409)
+            await assessment_revisions.validate_provisional_root(
+                db,
+                learner_id=learner_id,
+                session_id=req.session_id,
+                assessment_id=req.assessment_id,
+                root_feedback_id=req.revision_of_feedback_id,
+            )
+        else:
+            await assessment_revisions.resolve_root(
+                db,
+                learner_id=learner_id,
+                session_id=req.session_id,
+                assessment_id=req.assessment_id,
+                content_fingerprint=assessment_content.recovery_fingerprint(content),
+                supplied_root=req.revision_of_attempt_id,
+            )
         if req.content_version is not None:
             if assessment_content.token(content) != req.content_version:
                 raise AppError(
@@ -421,7 +452,7 @@ class Grader:
                 reference = str(item["expected_answer"])[:1200]
                 if item.get("evidence_quote"):
                     reference += "\nSource excerpt: " + str(item["evidence_quote"])[:300]
-            if is_challenge:
+            if is_challenge or req.revision_of_feedback_id is not None:
                 result.confidence = 0.0  # challenges are always LLM-graded against the hidden key
             if result.confidence < LLM_ESCALATE_BELOW:
                 llm = await self._llm_grade(
@@ -495,6 +526,17 @@ class Grader:
         now: datetime | None = None,
     ) -> AssessmentOutcome:
         try:
+            if req.revision_of_feedback_id is not None or (
+                level in ("local", "hosted") and content["kind"] not in ("mcq", "cloze", "code")
+            ):
+                from app.orchestrator.provisional_feedback import persist_staged
+
+                if self.request_claim_id is None:
+                    raise AppError(
+                        "request_required", "A saved request is required for revision.", 409
+                    )
+                session = await ksession.get(self.db, req.session_id)
+                return await persist_staged(self.db, session.learner_id, self.request_claim_id)
             return await self._apply_result(
                 req,
                 content,

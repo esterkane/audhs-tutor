@@ -1,3 +1,5 @@
+import { isProvisional } from '../../lib/api'
+import { ProvisionalFeedback } from '../../features/assess/ProvisionalFeedback'
 import { Link } from 'react-router-dom'
 import { QuestionPractice } from '../questions/QuestionPractice'
 import { readDraft } from '../assess/draft'
@@ -680,7 +682,7 @@ function TaskCard({
             </p>
           )}
         </>
-      ) : (
+      ) : isProvisional(result) ? <ProvisionalFeedback result={result} /> : (
         <div className="mt-2" role="status">
           <p className="text-sm">
             {result.correct == null ? 'Partly. ' : ''}

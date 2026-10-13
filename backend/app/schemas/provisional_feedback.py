@@ -1,4 +1,4 @@
-"""Advisory model outcome contract; not yet routed by the production grader.
+"""Advisory model outcome contract for model-checked free-text explanations.
 
 Deliberately not an AttemptResult: no score, verdict, mastery or review schedule.
 The persistence layer supplies IDs and immutable content binding, never the model.
@@ -28,6 +28,8 @@ class ProvisionalFeedbackResult(BaseModel):
     session_id: str = Field(min_length=1)
     skill_id: str = Field(min_length=1)
     content_version: str = Field(min_length=1)
+    previous_assessed_attempt_id: str | None = None
+    answer_id: str | None = None
     revision_of_feedback_id: str | None = None
     feedback: str = Field(min_length=1)
     next_step: str

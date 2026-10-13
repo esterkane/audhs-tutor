@@ -154,8 +154,8 @@ def _minutes_since(started: str | None) -> float | None:
     return round(max(0.0, (datetime.now(UTC) - t0).total_seconds() / 60), 2)
 
 
-async def _graded_since(db: AsyncSession, s: Session, cp: dict[str, Any]) -> bool:
-    """Grasp evidence = any graded attempt on the active skill since this block started."""
+async def _answered_since(db: AsyncSession, s: Session, cp: dict[str, Any]) -> bool:
+    """Continuation readiness only: an answer with assessed or provisional feedback."""
     started = cp.get("block_started_at")
     skill_id = cp.get("skill_id")
     if not started or not skill_id:
@@ -164,7 +164,7 @@ async def _graded_since(db: AsyncSession, s: Session, cp: dict[str, Any]) -> boo
         select(LearningEvent.id)
         .where(
             LearningEvent.session_id == s.id,
-            LearningEvent.verb == "attempted",
+            LearningEvent.verb.in_(("attempted", "provisional_feedback_saved")),
             LearningEvent.ts >= str(started),
         )
         .limit(50)
@@ -248,9 +248,9 @@ async def end(
     b = blocks[index]
     early = switched_early if switched_early is not None else reason != "finished"
     if b.grasp_check_required and reason not in ("save_and_stop", "session_end"):
-        # new material ends with recall evidence — whatever the client calls the exit. The
-        # client's flag is a hint; the evidence itself is in the event log (survives reloads).
-        graded = bool(grasp_passed) or await _graded_since(db, s, cp)
+        # A saved answer permits continuation, including provisional model feedback.
+        # This gate never turns advisory feedback into assessed learning evidence.
+        graded = bool(grasp_passed) or await _answered_since(db, s, cp)
         if not graded:
             return _state_from(
                 cp,

@@ -8,6 +8,22 @@ function record(value: unknown): Record<string, unknown> {
 export function AssessmentHistoryDetails({ metadata }: { metadata: Record<string, unknown> }) {
   const question = record(metadata.assessment_question)
   const result = record(metadata.assessment_result)
+  if (result.outcome === 'provisional_feedback') {
+    const observations = Array.isArray(result.criterion_feedback) ? result.criterion_feedback.map(record) : []
+    return <section className="grid gap-2">
+      <h2 className="font-semibold">Saved model feedback — not an assessed result</h2>
+      <p>This feedback belongs to your submitted answer. It did not change mastery or your review schedule and may be mistaken.</p>
+      <details className="[&[open]>summary>svg]:rotate-90">
+        <DisclosureSummary>Saved question and model observations</DisclosureSummary>
+        {typeof question.question === 'string' && <p className="whitespace-pre-wrap">{question.question}</p>}
+        <ul>{observations.map((criterion, index) => <li key={index}>
+          {typeof criterion.criterion === 'string' && <strong>{criterion.criterion}</strong>}
+          {typeof criterion.observation === 'string' && <p>{criterion.observation}</p>}
+        </li>)}</ul>
+        <p>No verified solution or source passages are supplied by this feedback record.</p>
+      </details>
+    </section>
+  }
   const options = Array.isArray(question.options)
     ? question.options.filter((v): v is string => typeof v === 'string')
     : []

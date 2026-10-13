@@ -259,16 +259,8 @@ async def test_challenge_round_trip(
             },
         )
     ).json()
-    assert (
-        res["grader_level"] == "local"
-        and res["dimension"] == "application"
-        and abs(res["score"] - 2 / 3) < 1e-6
-    )
-    assert res["review"]["due"] > s["started_at"][:10]  # delayed at least 2 days
-    from datetime import UTC, datetime, timedelta
-
-    assert datetime.fromisoformat(res["review"]["due"]) >= datetime.now(UTC) + timedelta(
-        days=1, hours=23
-    )
+    assert res["outcome"] == "provisional_feedback" and res["model_route"] == "local"
+    assert "score" not in res and "review" not in res
+    assert len(res["criterion_feedback"]) == 3
     grade_call = fake_local.calls[-1]
     assert "Reference answer (hidden from the learner)" in grade_call.messages[1].content

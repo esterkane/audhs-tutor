@@ -24,3 +24,16 @@ it('shows historical question, options and criterion evidence without claiming c
   expect(screen.getByText(/Reopening does not grade again/)).toBeVisible()
   expect(screen.getByText(/Source passages were not captured/)).toBeVisible()
 })
+
+it('preserves advisory observations without presenting a recorded grade', () => {
+  renderApp(<AssessmentHistoryDetails metadata={{
+    assessment_question: { question: 'Which set fits the median?' },
+    assessment_result: { outcome: 'provisional_feedback', score: 1,
+      criterion_feedback: [{ criterion: 'Training only', observation: 'Model suggests explaining reuse.' }] },
+  }} />)
+  fireEvent.click(screen.getByText('Saved question and model observations'))
+  expect(screen.getByText('Model suggests explaining reuse.')).toBeVisible()
+  expect(screen.getByRole('heading', { name: /not an assessed result/ })).toBeVisible()
+  expect(screen.queryByText(/Score on this attempt/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/recorded grade/)).not.toBeInTheDocument()
+})

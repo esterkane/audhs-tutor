@@ -50,7 +50,7 @@ async def main():
         body = AttemptRequest.model_validate(json.loads(sys.argv[3]))
         claim, saved = await workspace_requests.claim(
             db, sys.argv[2], body.session_id, 'assessment:' + sys.argv[4],
-            body.model_dump(mode='json', exclude={'revision_of_attempt_id'})
+            body.model_dump(mode='json', exclude={'revision_of_attempt_id', 'revision_of_feedback_id'})
         )
         assert saved is None
         guard = AssessmentGuard.create(Path(sys.argv[1]), claim) if sys.argv[6] == "yes" else None

@@ -1,17 +1,19 @@
-"""Atomic advisory persistence foundation; production routing is not connected yet."""
+"""Atomic advisory persistence for model-checked free-text feedback."""
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
 from app.db import assessment_executions, workspace_requests
+from app.db.answers import save_completed
 from app.db.base import new_id
 from app.db.events import EventWriter, Verb
 from app.db.models import ProvisionalFeedback, SkillNode, WorkspaceRequest
 from app.kernel import session as ksession
-from app.orchestrator import assessment_content
+from app.orchestrator import assessment_content, assessment_revisions
+from app.orchestrator.assessment_answers import feedback_snapshot
 from app.schemas.common import ActivityType, Domain, ObjectType
-from app.schemas.grading import AttemptRequest, GradeResult
+from app.schemas.grading import AssessmentView, AttemptRequest, GradeResult
 from app.schemas.provisional_feedback import (
     PROVISIONAL_POLICY,
     ProvisionalCriterionFeedback,
@@ -64,21 +66,12 @@ async def persist_staged(
         if staged is None or staged.schema_version != 1 or staged.phase != "grade_ready":
             raise AppError("request_unresolved", "No saved model feedback is available.", 409)
         body = AttemptRequest.model_validate(staged.request_json)
-        payload = body.model_dump(mode="json")
-        if body.revision_of_attempt_id is None:
-            payload.pop("revision_of_attempt_id", None)
-        if body.content_version is None:
-            payload.pop("content_version", None)
+        payload = body.identity_payload()
         if (
             body.session_id != claim.session_id
             or workspace_requests.request_fingerprint(payload) != claim.fingerprint
         ):
             raise AppError("request_conflict", "The saved answer cannot be verified.", 409)
-        # Revision lineage needs its own provisional ID contract before routing is enabled.
-        if body.revision_of_attempt_id is not None:
-            raise AppError(
-                "revision_unavailable", "Provisional revision integration is pending.", 409
-            )
         raw = staged.grade_json or {}
         if raw.get("version") != 1 or raw.get("level") not in ("local", "hosted"):
             raise AppError("request_conflict", "This is not staged model feedback.", 409)
@@ -94,8 +87,30 @@ async def persist_staged(
                 "request_conflict", "This task does not use provisional free-text feedback.", 409
             )
         await assessment_content.guard_write(db, body.assessment_id, content, learner_id)
+        if body.revision_of_feedback_id is not None:
+            await assessment_revisions.validate_provisional_root(
+                db,
+                learner_id=learner_id,
+                session_id=body.session_id,
+                assessment_id=body.assessment_id,
+                root_feedback_id=body.revision_of_feedback_id,
+                allow_ended=True,
+            )
+        previous_assessed = None
+        if body.revision_of_feedback_id is None:
+            previous_assessed = await assessment_revisions.resolve_root(
+                db,
+                learner_id=learner_id,
+                session_id=body.session_id,
+                assessment_id=body.assessment_id,
+                content_fingerprint=staged.content_fingerprint,
+                supplied_root=body.revision_of_attempt_id,
+                allow_ended=True,
+            )
         outcome = ProvisionalFeedbackResult(
             feedback_id=new_id(),
+            previous_assessed_attempt_id=previous_assessed,
+            revision_of_feedback_id=body.revision_of_feedback_id,
             assessment_id=body.assessment_id,
             session_id=body.session_id,
             skill_id=content["skill_id"],
@@ -116,6 +131,29 @@ async def persist_staged(
                 for c in result.criterion_results
             ],
         )
+        node = await db.get(SkillNode, content["skill_id"])
+        question = AssessmentView(
+            id=body.assessment_id,
+            skill_id=content["skill_id"],
+            kind=content["kind"],
+            question=content["item_json"]["prompt"],
+            criteria=list(content["item_json"].get("criteria", []))
+            if content["kind"].startswith("challenge_")
+            else None,
+        ).model_dump()
+        saved_answer = await save_completed(
+            db,
+            **feedback_snapshot(
+                outcome,
+                body,
+                learner_id=learner_id,
+                question=question,
+                area_id=node.area_id if node else None,
+                course_label=node.course if node else None,
+            ),
+            commit=False,
+        )
+        outcome = outcome.model_copy(update={"answer_id": saved_answer.id})
         db.add(
             ProvisionalFeedback(
                 id=outcome.feedback_id,
@@ -124,6 +162,7 @@ async def persist_staged(
                 session_id=body.session_id,
                 assessment_id=body.assessment_id,
                 policy_version=PROVISIONAL_POLICY,
+                revision_of_feedback_id=body.revision_of_feedback_id,
                 content_fingerprint=staged.content_fingerprint,
                 answer=body.answer,
                 binding_json={

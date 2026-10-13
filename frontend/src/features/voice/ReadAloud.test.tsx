@@ -1,3 +1,4 @@
+import { ProvisionalFeedback } from '../assess/ProvisionalFeedback'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, expect, it, vi } from 'vitest'
 import { jsonResponse, renderApp } from '../../test/utils'
@@ -243,5 +244,32 @@ it('shared controls pause, resume and stop the same reading without regenerating
   expect(screen.getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
   expect(audio.pause).toHaveBeenCalledOnce()
   expect(audio.resume).toHaveBeenCalledOnce()
+  expect(fetcher).toHaveBeenCalledOnce()
+})
+
+it('leaving provisional feedback aborts audio and returning does not restart it', async () => {
+  let signal: AbortSignal | undefined
+  let resolve!: (response: Response) => void
+  const fetcher = vi.fn((_url: string, init: RequestInit) => {
+    signal = init.signal as AbortSignal
+    return new Promise<Response>(done => { resolve = done })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const result = {
+    outcome: 'provisional_feedback' as const, policy_version: 'model-feedback.v1' as const,
+    feedback_id: 'feedback', assessment_id: 'assessment', session_id: 'session',
+    skill_id: 'skill', content_version: 'version', feedback: 'Consider the training data.',
+    next_step: 'Explain the distinction.', criterion_feedback: [], model_route: 'local',
+  }
+  const { rerender } = renderApp(<ProvisionalFeedback result={result} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Listen to feedback' }))
+  await waitFor(() => expect(signal).toBeDefined())
+  rerender(<ProvisionalFeedback result={result} active={false} />)
+  expect(signal?.aborted).toBe(true)
+  expect(audio.close).toHaveBeenCalled()
+  await act(async () => resolve(jsonResponse({ pcm16_b64: 'AAA=', sample_rate: 24000 })))
+  expect(audio.enqueue).not.toHaveBeenCalled()
+  rerender(<ProvisionalFeedback result={result} />)
+  expect(screen.getByRole('button', { name: 'Listen to feedback' })).toBeVisible()
   expect(fetcher).toHaveBeenCalledOnce()
 })

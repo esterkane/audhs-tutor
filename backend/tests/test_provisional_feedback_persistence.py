@@ -12,8 +12,14 @@ async def staged(db, learner):
     session = models.Session(learner_id=learner.id, mode="steady", energy=3)
     db.add_all([skill, session])
     await db.flush()
+    rubric = models.AssessmentRubric(version=1, criteria_json=[{"criterion": "Train only"}])
+    db.add(rubric)
+    await db.flush()
     assessment = models.Assessment(
-        skill_id=skill.id, kind="explain_back", item_json={"prompt": "Explain fitting."}
+        rubric_id=rubric.id,
+        skill_id=skill.id,
+        kind="explain_back",
+        item_json={"prompt": "Explain fitting."},
     )
     db.add(assessment)
     await db.commit()
@@ -24,8 +30,7 @@ async def staged(db, learner):
         answer="Train only",
         content_version=assessment_content.token(content),
     )
-    payload = body.model_dump(mode="json")
-    payload.pop("revision_of_attempt_id")
+    payload = body.identity_payload()
     claim = models.WorkspaceRequest(
         learner_id=learner.id,
         session_id=session.id,
@@ -111,6 +116,7 @@ async def test_failure_before_completion_rolls_back_record_and_receipt(db, learn
         await provisional_feedback.persist_staged(db, owner, claim)
     assert await db.scalar(select(func.count()).select_from(models.ProvisionalFeedback)) == 0
     assert (await db.get(models.WorkspaceRequest, claim)).response_json is None
+    assert await db.scalar(select(func.count()).select_from(models.TutorAnswer)) == 0
     assert await db.scalar(select(func.count()).select_from(models.LearningEvent)) == 0
     monkeypatch.setattr(assessment_executions, "mark_completed", original)
     await provisional_feedback.persist_staged(db, owner, claim)
@@ -165,9 +171,105 @@ async def test_completed_provisional_response_replays_through_http(client, db, l
     session_id = row.session_id
     await db.commit()
     result = await provisional_feedback.persist_staged(db, owner, claim)
-    response = await client.get(f"/api/assess/requests/{request_id}", params={"session_id": session_id})
+    response = await client.get(
+        f"/api/assess/requests/{request_id}", params={"session_id": session_id}
+    )
     assert response.status_code == 200, response.text
     body = response.json()
     assert body["status"] == "completed"
     assert body["result"] == result.model_dump(mode="json")
     assert not ({"score", "correct", "mastery", "review"} & set(body["result"]))
+
+
+async def test_advisory_answer_allows_continuation_only_for_matching_block(db, learner):
+    from app.db.base import utcnow_iso
+    from app.kernel.blocks import _answered_since
+
+    owner = learner.id
+    claim, aid = await staged(db, learner)
+    request = await db.get(models.WorkspaceRequest, claim)
+    session = await db.get(models.Session, request.session_id)
+    assessment = await db.get(models.Assessment, aid)
+    checkpoint = {"block_started_at": utcnow_iso(), "skill_id": assessment.skill_id}
+    assert not await _answered_since(db, session, checkpoint)
+    await provisional_feedback.persist_staged(db, owner, claim)
+    assert await _answered_since(db, session, checkpoint)
+    assert not await _answered_since(db, session, {**checkpoint, "skill_id": "another"})
+
+
+async def test_advisory_history_context_is_exact_and_replay_deduplicated(db, learner):
+    from app.orchestrator.assessment_help import load_context
+
+    owner = learner.id
+    claim, aid = await staged(db, learner)
+    first = await provisional_feedback.persist_staged(db, owner, claim)
+    second = await provisional_feedback.persist_staged(db, owner, claim)
+    assert first.answer_id == second.answer_id
+    assert await db.scalar(select(func.count()).select_from(models.TutorAnswer)) == 1
+    saved = await db.get(models.TutorAnswer, first.answer_id)
+    assert "not an assessed result" in saved.text
+    assert "assessment_attempt_id" not in saved.metadata_json
+    item = await db.get(models.Assessment, aid)
+    item.item_json = {"prompt": "Edited live question"}
+    await db.commit()
+    context = await load_context(
+        db,
+        answer_id=first.answer_id,
+        learner_id=owner,
+        session_id=first.session_id,
+        skill_id=first.skill_id,
+    )
+    assert context["question"]["question"] == "Explain fitting."
+    assert context["submitted_answer"] == "Train only"
+    assert context["recorded_result"]["outcome"] == "provisional_feedback"
+    assert "not an assessed result" in context["solution_status"]
+    for field in ("learner_id", "session_id", "skill_id"):
+        args = dict(
+            answer_id=first.answer_id,
+            learner_id=owner,
+            session_id=first.session_id,
+            skill_id=first.skill_id,
+        )
+        args[field] = "foreign"
+        with pytest.raises(AppError):
+            await load_context(db, **args)
+    saved.request_json = {**saved.request_json, "learner_answer": "Forged answer"}
+    await db.flush()
+    with pytest.raises(AppError, match="could not be verified"):
+        await load_context(
+            db,
+            answer_id=first.answer_id,
+            learner_id=owner,
+            session_id=first.session_id,
+            skill_id=first.skill_id,
+        )
+
+
+async def test_tutor_help_receives_advisory_snapshot_without_grade_claims(
+    client, db, learner, fake_local
+):
+    from app.models_ai import registry
+
+    await registry.seed_defaults(db, installed_ollama_tags={"llama3.1:8b"})
+    owner = learner.id
+    claim, _ = await staged(db, learner)
+    result = await provisional_feedback.persist_staged(db, owner, claim)
+    fake_local.calls.clear()
+    response = await client.post(
+        "/api/tutor/turn",
+        json={
+            "session_id": result.session_id,
+            "skill_id": result.skill_id,
+            "assessment_answer_id": result.answer_id,
+            "action": "explain",
+            "text": "Explain the difficult part",
+        },
+    )
+    assert response.status_code == 200, response.text
+    prompt = "\n".join(message.content for call in fake_local.calls for message in call.messages)
+    assert "Provisional model feedback only, not an assessed result" in prompt
+    assert "Explain fitting." in prompt
+    assert "Train only" in prompt
+    assert "criterion_feedback" in prompt
+    assert "criterion_results" not in prompt
+    assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 0

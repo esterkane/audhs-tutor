@@ -1,3 +1,4 @@
+import { feedbackIdentity } from '../../lib/api'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import type { AssessmentView, AttemptResult, Schemas } from '../../lib/api'
@@ -67,7 +68,7 @@ export function useCheckedQuestion(
         throw new Error('The original checked feedback is unavailable. Nothing was graded again.')
       if (
         value.result.assessment_id !== saved.item.id ||
-        value.result.attempt_id !== saved.attemptId ||
+        feedbackIdentity(value.result) !== saved.attemptId ||
         value.result.skill_id !== skillId
       )
         throw new Error('The saved feedback does not match this question. Nothing was graded again.')
@@ -88,7 +89,7 @@ export function useCheckedQuestion(
         version: 1,
         sessionId,
         requestId: pending.id,
-        attemptId: outcome.attempt_id,
+        attemptId: feedbackIdentity(outcome),
         item,
       } satisfies Pointer)
       if (raw.length > 100000) throw new Error('Oversized return record')

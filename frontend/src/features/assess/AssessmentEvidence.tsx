@@ -1,7 +1,7 @@
-import type { AttemptResult } from '../../lib/api'
+import type { AssessedResult } from '../../lib/api'
 
 /** Present recorded grader evidence without inferring additional success or failure. */
-export function AssessmentEvidence({ result }: { result: Pick<AttemptResult, 'criterion_results' | 'feedback' | 'misconception' | 'next_step'> }) {
+export function AssessmentEvidence({ result }: { result: Pick<AssessedResult, 'criterion_results' | 'feedback' | 'misconception' | 'next_step'> }) {
   return (
     <div className="grid gap-3 mt-3">
       {result.criterion_results.length === 0 && (

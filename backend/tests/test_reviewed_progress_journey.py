@@ -58,7 +58,8 @@ async def test_review_answer_progress_replay_and_revocation(client, db, fake_loc
     headers = {"Idempotency-Key": str(uuid4())}
     result = await client.post("/api/assess/attempt", json=body, headers=headers)
     assert result.status_code == 200, result.text
-    assert result.json()["score"] == 1
+    assert result.json()["outcome"] == "provisional_feedback"
+    assert "score" not in result.json()
     assert len(fake_local.calls) == 1
     before = await counts(db)
 
@@ -66,28 +67,12 @@ async def test_review_answer_progress_replay_and_revocation(client, db, fake_loc
         response = await client.get(f"/api/skills/{skill.id}/evidence")
         assert response.status_code == 200, response.text
         rows = response.json()["items"]
-        assert rows and all(row["attempt_id"] == result.json()["attempt_id"] for row in rows)
-        assert all(row["reported_hint_count"] == 1 for row in rows)
+        assert rows == []  # Reviewed model output still cannot award assessed evidence.
         return rows
 
-    for row in await evidence():
-        reviewed = row["reviewed_result"]
-        if approve_before:
-            assert reviewed["label"] == "Explanation check passed"
-            assert reviewed["currently_eligible"]
-            assert reviewed["grading_method"] == "local"
-            assert reviewed["independence"] == "not_verified"
-        else:
-            assert reviewed is None
-    # No retroactive qualification; revocation preserves historical checks.
+    await evidence()
     await decision("revoke" if approve_before else "approve", int(approve_before))
-    for row in await evidence():
-        reviewed = row["reviewed_result"]
-        if approve_before:
-            assert reviewed["label"] == "Explanation check passed"
-            assert not reviewed["currently_eligible"] and reviewed["exclusion_reason"]
-        else:
-            assert reviewed is None
+    await evidence()
     replay = await client.post("/api/assess/attempt", json=body, headers=headers)
     assert replay.status_code == 200 and replay.json() == result.json()
     assert await counts(db) == before

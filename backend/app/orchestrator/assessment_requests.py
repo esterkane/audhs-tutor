@@ -50,6 +50,14 @@ async def submit(
             db, body.assessment_id, body.content_version, learner_id
         )
 
+        if body.revision_of_feedback_id is not None:
+            await assessment_revisions.validate_provisional_root(
+                db,
+                learner_id=learner_id,
+                session_id=body.session_id,
+                assessment_id=body.assessment_id,
+                root_feedback_id=body.revision_of_feedback_id,
+            )
         if body.revision_of_attempt_id is not None:
             await assessment_revisions.validate_root(
                 db,
@@ -59,12 +67,12 @@ async def submit(
                 root_attempt_id=body.revision_of_attempt_id,
             )
 
-    payload = body.model_dump(mode="json")
-    if body.revision_of_attempt_id is None:
-        payload.pop("revision_of_attempt_id", None)  # Preserve legacy request fingerprints.
-    if body.content_version is None:
-        payload.pop("content_version", None)  # Preserve pre-version completed claim fingerprints.
+    payload = body.identity_payload()
     claim_id = None
+    if identity is None:
+        from uuid import uuid4
+
+        identity = str(uuid4())
     if identity is not None:
         claim_id, saved = await workspace_requests.claim(
             db, learner_id, body.session_id, request_key(identity), payload, validate_new=validate
@@ -332,11 +340,7 @@ async def _acquire_prepared(
         body = AttemptRequest.model_validate(row.request_json)
         if claim.session_id != session_id or body.session_id != session_id:
             raise AppError("request_conflict", "The saved request belongs to another session.", 409)
-        payload = body.model_dump(mode="json")
-        if body.revision_of_attempt_id is None:
-            payload.pop("revision_of_attempt_id", None)
-        if body.content_version is None:
-            payload.pop("content_version", None)
+        payload = body.identity_payload()
         if workspace_requests.request_fingerprint(payload) != claim.fingerprint:
             raise AppError("request_conflict", "The saved answer cannot be verified.", 409)
         session = await get_owned(db, session_id, learner_id)

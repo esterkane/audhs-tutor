@@ -140,7 +140,7 @@ async def test_inference_time_suspend_and_restore_blocks_learning_commit(
     monkeypatch.setattr(Grader, "_llm_grade", changed)
     result = await client.post("/api/assess/attempt", json=body, headers={"Idempotency-Key": KEY})
     assert result.status_code == 409, result.text
-    assert result.json()["error"]["code"] == "assessment_content_changed_during_grading"
+    assert result.json()["error"]["code"] == "assessment_content_changed"
     assert await attempts(db) == 0
     assert await db.scalar(select(func.count()).select_from(models.CompetencyEvidence)) == 0
     execution = await db.scalar(select(models.AssessmentExecution))

@@ -237,10 +237,10 @@ async def test_prepared_review_binding_ignores_later_review_decisions(
         monkeypatch.setattr(grader.Grader, "grade", never_grade)
     response = await client.post(url(body, "/continue" if phase == "prepared" else "/finish"))
     assert response.status_code == 200, response.text
-    attempt = await db.get(models.AssessmentAttempt, response.json()["attempt_id"])
-    saved = attempt.llm_result_json or attempt.deterministic_result_json
-    assert saved["task_review_binding"] == original_binding
+    feedback = await db.get(models.ProvisionalFeedback, response.json()["feedback_id"])
+    saved = feedback.binding_json
+    assert saved["task_review"] == original_binding
     if before:
-        assert saved["task_review_binding"]["review"]["receipt_id"] == before.id
+        assert saved["task_review"]["review"]["receipt_id"] == before.id
     else:
-        assert saved["task_review_binding"]["review"] is None
+        assert saved["task_review"]["review"] is None

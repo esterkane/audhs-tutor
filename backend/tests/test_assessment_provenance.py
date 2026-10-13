@@ -70,10 +70,10 @@ async def test_negative_client_report_does_not_strand_application_or_replay(clie
     assert replay.json()["attempt_id"] == root.id
 
 
-async def test_local_model_result_gets_internal_facts_without_trusting_model_extras(
+async def test_local_model_result_stays_advisory_without_trusting_model_extras(
     client, db, monkeypatch
 ):
-    from app.db.models import AssessmentAttempt
+    from app.db.models import ProvisionalFeedback
     from app.orchestrator.grader import Grader, versioned_view
     from app.schemas.grading import GradeResult
     from tests.test_assessment_requests import HEADERS, prepare
@@ -99,15 +99,15 @@ async def test_local_model_result_gets_internal_facts_without_trusting_model_ext
     monkeypatch.setattr(Grader, "_llm_grade", model_grade)
     response = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
     assert response.status_code == 200, response.text
-    attempt = await db.get(AssessmentAttempt, response.json()["attempt_id"])
-    facts = attempt.llm_result_json["evidence_provenance"]
-    assert facts["task_kind"] == "explain_back"
-    assert facts["grading_method"] == "local"
-    assert facts["independence"] == "not_verified"
+    saved = await db.get(ProvisionalFeedback, response.json()["feedback_id"])
+    assert saved.policy_version == "model-feedback.v1"
+    assert saved.model_output_json["level"] == "local"
+    assert "evidence_provenance" not in saved.model_output_json["result"]
+    assert "score" not in response.json()
 
 
-async def test_review_binding_reaches_attempt_without_changing_provenance(client, db, monkeypatch):
-    from app.db.models import AssessmentAttempt, AssessmentRubric, Session
+async def test_review_binding_is_retained_without_awarding_evidence(client, db, monkeypatch):
+    from app.db.models import AssessmentRubric, ProvisionalFeedback, Session
     from app.kernel import task_reviews
     from app.orchestrator.grader import Grader, versioned_view
     from app.schemas.grading import GradeResult
@@ -143,10 +143,8 @@ async def test_review_binding_reaches_attempt_without_changing_provenance(client
     monkeypatch.setattr(Grader, "_llm_grade", model_grade)
     response = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
     assert response.status_code == 200, response.text
-    attempt = await db.get(AssessmentAttempt, response.json()["attempt_id"])
-    saved = attempt.llm_result_json or attempt.deterministic_result_json
-    assert saved["task_review_binding"]["review"]["receipt_id"] == review.id
-    assert saved["evidence_provenance"]["qualification"] == "not_evaluated"
-    assert saved["evidence_provenance"]["independence"] == "not_verified"
+    saved = await db.get(ProvisionalFeedback, response.json()["feedback_id"])
+    assert saved.binding_json["task_review"]["review"]["receipt_id"] == review.id
+    assert "score" not in response.json()
     replay = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
-    assert replay.json()["attempt_id"] == attempt.id
+    assert replay.json()["feedback_id"] == saved.id

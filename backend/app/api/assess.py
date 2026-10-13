@@ -8,7 +8,12 @@ from app.api.deps import DB, Gateway, Learner
 from app.core.errors import AppError
 from app.db.models import Assessment, AssessmentAttempt
 from app.kernel import session as ksession
-from app.orchestrator import assessment_content, assessment_requests, assessment_revisions
+from app.orchestrator import (
+    assessment_content,
+    assessment_requests,
+    assessment_revisions,
+    provisional_feedback,
+)
 from app.orchestrator.grader import Grader, versioned_view, view
 from app.schemas.grading import AssessmentOutcome, AssessmentView, AttemptRequest
 
@@ -172,5 +177,54 @@ async def revision_source(
         attempt_id=attempt.id,
         root_attempt_id=root.id,
         answer=attempt.answer,
+        item=item,
+    )
+
+
+class ProvisionalRevisionSource(BaseModel):
+    feedback_id: str
+    root_feedback_id: str
+    answer: str
+    item: AssessmentView
+
+
+@router.get("/feedback/{feedback_id}/revision", response_model=ProvisionalRevisionSource)
+async def provisional_revision_source(
+    feedback_id: str,
+    session_id: str,
+    db: DB,
+    learner: Learner,
+) -> ProvisionalRevisionSource:
+    """Read advisory work for revision without creating an assessed attempt."""
+    await ksession.get_owned(db, session_id, learner.id)
+    feedback = await provisional_feedback.get_owned(db, learner.id, feedback_id)
+    if feedback.session_id != session_id:
+        raise AppError("revision_original_unavailable", "The submitted answer is unavailable.", 404)
+    root = await assessment_revisions.validate_provisional_root(
+        db,
+        learner_id=learner.id,
+        session_id=session_id,
+        assessment_id=feedback.assessment_id,
+        root_feedback_id=feedback.revision_of_feedback_id or feedback.id,
+    )
+    if feedback.content_fingerprint != root.content_fingerprint:
+        raise AppError(
+            "revision_content_changed",
+            "The submitted answer belongs to another question version.",
+            409,
+        )
+    content = await assessment_content.snapshot(db, feedback.assessment_id, learner.id)
+    assessment_content.require_eligible(content)
+    if assessment_content.recovery_fingerprint(content) != root.content_fingerprint:
+        raise AppError(
+            "revision_content_changed", "The question changed. Return to your saved feedback.", 409
+        )
+    item = view(assessment_content.assessment(content)).model_copy(
+        update={"content_version": assessment_content.token(content)}
+    )
+    return ProvisionalRevisionSource(
+        feedback_id=feedback.id,
+        root_feedback_id=root.id,
+        answer=feedback.answer,
         item=item,
     )

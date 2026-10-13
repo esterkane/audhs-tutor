@@ -1,6 +1,6 @@
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class CriterionResult(BaseModel):
@@ -37,6 +37,7 @@ class AssessmentView(BaseModel):
 
 
 class AttemptRequest(BaseModel):
+    revision_of_feedback_id: str | None = Field(default=None, min_length=1, max_length=100)
     revision_of_attempt_id: str | None = Field(default=None, min_length=1, max_length=100)
     content_version: str | None = Field(default=None, max_length=100)
     session_id: str
@@ -45,6 +46,20 @@ class AttemptRequest(BaseModel):
     confidence_pre: int | None = Field(default=None, ge=1, le=5)
     latency_ms: int | None = None
     hint_count: int = 0
+
+    @model_validator(mode="after")
+    def one_revision_parent(self) -> "AttemptRequest":
+        if self.revision_of_attempt_id and self.revision_of_feedback_id:
+            raise ValueError("Choose one revision parent")
+        return self
+
+    def identity_payload(self) -> dict[str, Any]:
+        """Preserve historical fingerprints while adding explicit advisory lineage."""
+        payload = self.model_dump(mode="json")
+        for key in ("revision_of_attempt_id", "revision_of_feedback_id", "content_version"):
+            if payload[key] is None:
+                payload.pop(key)
+        return payload
 
 
 class AttemptResult(BaseModel):

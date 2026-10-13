@@ -8,9 +8,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import AppError
-from app.db.models import TutorAnswer
+from app.db.models import ProvisionalFeedback, TutorAnswer
 from app.orchestrator.context import escape_data
 from app.schemas.grading import AssessmentView, AttemptResult
+from app.schemas.provisional_feedback import ProvisionalFeedbackResult
 
 MAX_CONTEXT_CHARS = 16000
 
@@ -48,6 +49,8 @@ async def load_context(
     question = row.metadata_json.get("assessment_question")
     result = row.metadata_json.get("assessment_result")
     submitted = row.request_json.get("learner_answer")
+    if isinstance(result, dict) and result.get("outcome") == "provisional_feedback":
+        return await _provisional_context(db, row, question, result, submitted, skill_id)
     try:
         checked_question = AssessmentView.model_validate(question, strict=True)
         checked_result = AttemptResult.model_validate(result, strict=True)
@@ -94,4 +97,71 @@ async def load_context(
     context_block(
         context
     )  # Reject oversize snapshots rather than silently dropping essential work.
+    return context
+
+
+async def _provisional_context(
+    db: AsyncSession,
+    row: TutorAnswer,
+    question: Any,
+    result: dict[str, Any],
+    submitted: Any,
+    skill_id: str,
+) -> dict[str, Any]:
+    """Resolve advisory context only against its exact owned immutable record."""
+    try:
+        parsed = ProvisionalFeedbackResult.model_validate(result, strict=True)
+        shown = AssessmentView.model_validate(question, strict=True)
+        record = await db.scalar(
+            select(ProvisionalFeedback).where(
+                ProvisionalFeedback.id == parsed.feedback_id,
+                ProvisionalFeedback.learner_id == row.learner_id,
+                ProvisionalFeedback.session_id == row.session_id,
+            )
+        )
+        if record is None:
+            raise ValueError("Missing advisory record")
+        persisted = ProvisionalFeedbackResult.model_validate(record.outcome_json, strict=True)
+        content = record.binding_json["content"]
+        if (
+            persisted.answer_id != row.id
+            or persisted.model_dump(exclude={"answer_id"})
+            != parsed.model_dump(exclude={"answer_id"})
+            or row.metadata_json.get("provisional_feedback_id") != record.id
+            or row.metadata_json.get("assessment_id") != record.assessment_id
+            or parsed.session_id != row.session_id
+            or parsed.skill_id != skill_id
+            or shown.skill_id != skill_id
+            or shown.id != record.assessment_id
+            or shown.kind != content["kind"]
+            or shown.question != content["item_json"]["prompt"]
+            or shown.criteria
+            != (
+                list(content["item_json"].get("criteria", []))
+                if content["kind"].startswith("challenge_")
+                else None
+            )
+            or shown.options is not None
+            or submitted != record.answer
+            or row.request_json.get("learner_answer_display") != record.answer
+        ):
+            raise ValueError("Inconsistent advisory snapshot")
+    except (ValidationError, ValueError, KeyError, TypeError) as exc:
+        raise AppError(
+            "assessment_help_incomplete",
+            "The saved provisional feedback could not be verified. Your work is kept.",
+            409,
+        ) from exc
+    context = {
+        "answer_id": row.id,
+        "question": question,
+        "submitted_answer": submitted,
+        "submitted_answer_display": submitted,
+        "recorded_result": result,
+        "solution_status": (
+            "Provisional model feedback only, not an assessed result or verified solution. "
+            "It did not change mastery or review scheduling. Any new solution is tutor-generated."
+        ),
+    }
+    context_block(context)
     return context

@@ -1017,6 +1017,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/assess/feedback/{feedback_id}/revision': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Provisional Revision Source
+     * @description Read advisory work for revision without creating an assessed attempt.
+     */
+    get: operations['provisional_revision_source_api_assess_feedback__feedback_id__revision_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/authored-visuals/commands': {
     parameters: {
       query?: never
@@ -3562,7 +3582,9 @@ export interface components {
        * @enum {string}
        */
       status: 'not_found' | 'unresolved' | 'prepared_ready' | 'grade_ready' | 'completed'
-      result?: components['schemas']['AttemptResult'] | null
+      /** Result */
+      result?:
+        components['schemas']['AttemptResult'] | components['schemas']['ProvisionalFeedbackResult'] | null
       saved_grade?: components['schemas']['GradeResult'] | null
       /**
        * Local Worker Stopped
@@ -3609,6 +3631,8 @@ export interface components {
     }
     /** AttemptRequest */
     AttemptRequest: {
+      /** Revision Of Feedback Id */
+      revision_of_feedback_id?: string | null
       /** Revision Of Attempt Id */
       revision_of_attempt_id?: string | null
       /** Content Version */
@@ -6160,6 +6184,62 @@ export interface components {
       proposed_at: string
       /** Reversible */
       reversible: boolean
+    }
+    /** ProvisionalCriterionFeedback */
+    ProvisionalCriterionFeedback: {
+      /** Criterion */
+      criterion: string
+      /** Observation */
+      observation: string
+    }
+    /** ProvisionalFeedbackResult */
+    ProvisionalFeedbackResult: {
+      /**
+       * Outcome
+       * @default provisional_feedback
+       * @constant
+       */
+      outcome: 'provisional_feedback'
+      /**
+       * Policy Version
+       * @default model-feedback.v1
+       * @constant
+       */
+      policy_version: 'model-feedback.v1'
+      /** Feedback Id */
+      feedback_id: string
+      /** Assessment Id */
+      assessment_id: string
+      /** Session Id */
+      session_id: string
+      /** Skill Id */
+      skill_id: string
+      /** Content Version */
+      content_version: string
+      /** Previous Assessed Attempt Id */
+      previous_assessed_attempt_id?: string | null
+      /** Answer Id */
+      answer_id?: string | null
+      /** Revision Of Feedback Id */
+      revision_of_feedback_id?: string | null
+      /** Feedback */
+      feedback: string
+      /** Next Step */
+      next_step: string
+      /** Criterion Feedback */
+      criterion_feedback: components['schemas']['ProvisionalCriterionFeedback'][]
+      /** Model Route */
+      model_route: string
+    }
+    /** ProvisionalRevisionSource */
+    ProvisionalRevisionSource: {
+      /** Feedback Id */
+      feedback_id: string
+      /** Root Feedback Id */
+      root_feedback_id: string
+      /** Answer */
+      answer: string
+      item: components['schemas']['AssessmentView']
     }
     /** PublishCorrectionDraft */
     PublishCorrectionDraft: {
@@ -9156,7 +9236,8 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['AttemptResult']
+          'application/json':
+            components['schemas']['AttemptResult'] | components['schemas']['ProvisionalFeedbackResult']
         }
       }
       /** @description Validation Error */
@@ -9359,7 +9440,8 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['AttemptResult']
+          'application/json':
+            components['schemas']['AttemptResult'] | components['schemas']['ProvisionalFeedbackResult']
         }
       }
       /** @description Validation Error */
@@ -9458,7 +9540,8 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['AttemptResult']
+          'application/json':
+            components['schemas']['AttemptResult'] | components['schemas']['ProvisionalFeedbackResult']
         }
       }
       /** @description Validation Error */
@@ -9491,7 +9574,8 @@ export interface operations {
           [name: string]: unknown
         }
         content: {
-          'application/json': components['schemas']['AttemptResult']
+          'application/json':
+            components['schemas']['AttemptResult'] | components['schemas']['ProvisionalFeedbackResult']
         }
       }
       /** @description Validation Error */
@@ -9525,6 +9609,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AssessmentRevisionSource']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  provisional_revision_source_api_assess_feedback__feedback_id__revision_get: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        feedback_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ProvisionalRevisionSource']
         }
       }
       /** @description Validation Error */

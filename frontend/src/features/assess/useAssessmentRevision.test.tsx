@@ -94,3 +94,23 @@ it('retains a revision draft across source failure and an explicit retry', async
   await waitFor(() => expect(state.result.current.data).not.toBeNull())
   expect(state.result.current.answer).toBe('Keep my revision')
 })
+
+
+it('keeps provisional lineage separate and restores its edited draft', async () => {
+  const advisory = { feedback_id: 'advisory', root_feedback_id: 'root-advisory', answer: 'Original', item: { id: 'question' } }
+  vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify(advisory), { status: 200 })))
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>
+  const first = renderHook(() => useAssessmentRevision('advisory-block', 'session', 'advisory', true, 'provisional'), { wrapper })
+  act(() => first.result.current.start())
+  await waitFor(() => expect(first.result.current.answer).toBe('Original'))
+  expect(first.result.current.revisionRequest).toEqual({ revision_of_feedback_id: 'root-advisory' })
+  expect(vi.mocked(fetch).mock.calls[0][0]).toContain('/feedback/advisory/revision')
+  act(() => first.result.current.edit('Revised'))
+  first.unmount()
+  const restored = renderHook(() => useAssessmentRevision('advisory-block', 'session', 'advisory', true, 'provisional'), { wrapper })
+  expect(restored.result.current.answer).toBe('Revised')
+  restored.unmount()
+  const otherKind = renderHook(() => useAssessmentRevision('advisory-block', 'session', 'advisory', true, 'assessed'), { wrapper })
+  expect(otherKind.result.current.editing).toBe(false)
+})

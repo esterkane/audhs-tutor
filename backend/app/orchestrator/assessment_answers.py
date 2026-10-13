@@ -8,13 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.answer_recovery import AnswerRecovery
 from app.db.answers import save_completed
-from app.schemas.grading import AttemptRequest, AttemptResult
+from app.schemas.grading import AssessmentOutcome, AttemptRequest, AttemptResult
+from app.schemas.provisional_feedback import ProvisionalFeedbackResult
 
 logger = logging.getLogger(__name__)
 
 
 def feedback_snapshot(
-    result: AttemptResult,
+    result: AssessmentOutcome,
     request: AttemptRequest,
     *,
     learner_id: str,
@@ -22,6 +23,22 @@ def feedback_snapshot(
     area_id: str | None,
     course_label: str | None,
 ) -> dict[str, Any]:
+    provisional = isinstance(result, ProvisionalFeedbackResult)
+    if isinstance(result, ProvisionalFeedbackResult):
+        identity = result.feedback_id
+        prefix = (
+            "Model feedback — not an assessed result. Mastery and review schedule unchanged.\n\n"
+        )
+    else:
+        identity = result.attempt_id
+        prefix = (
+            (
+                "Repeated practice on a previously checked question. "
+                "Learning evidence and review schedule unchanged.\n\n"
+            )
+            if result.revision_of_attempt_id
+            else ""
+        )
     answer_display = request.answer
     options = question.get("options")
     index = request.answer.strip()
@@ -32,21 +49,20 @@ def feedback_snapshot(
     snapshot: dict[str, Any] = dict(
         learner_id=learner_id,
         session_id=request.session_id,
-        turn_id=f"assessment:{result.attempt_id}",
+        turn_id=f"provisional:{identity}" if provisional else f"assessment:{identity}",
         surface="assessment",
         request={
             "text": question["question"],
             "learner_answer": request.answer,
             "learner_answer_display": answer_display,
         },
-        text=(
-            "Repeated practice on a previously checked question. Learning evidence and review schedule unchanged.\n\n"
-            if result.revision_of_attempt_id
-            else ""
-        )
-        + f"{result.feedback}\n\n{result.next_step}",
+        text=prefix + f"{result.feedback}\n\n{result.next_step}",
         metadata={
-            "assessment_attempt_id": result.attempt_id,
+            **(
+                {"provisional_feedback_id": identity}
+                if provisional
+                else {"assessment_attempt_id": identity}
+            ),
             "assessment_id": result.assessment_id,
             "skill_id": result.skill_id,
             "area_id": area_id,

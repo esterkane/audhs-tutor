@@ -320,15 +320,9 @@ async def test_grader_pipeline_mcq_and_explain_back(world: dict) -> None:  # typ
             confidence_pre=5,
         )
     )
-    assert (
-        res2.grader_level == "local"
-        and res2.score == pytest.approx(2 / 3)
-        and res2.dimension == "explanation"
-    )
-    assert res2.criterion_results[0].criterion.startswith(
-        "Mentions that dot-product variance"
-    )  # rubric wording kept
-    assert res2.calibration == "estimate higher than result" and res2.correct is None
+    assert res2.outcome == "provisional_feedback" and res2.model_route == "local"
+    assert res2.criterion_feedback[0].criterion.startswith("Mentions that dot-product variance")
+    assert "score" not in res2.model_dump()
     grade_call = world["local"].calls[-1]
     assert (
         grade_call.response_model is not None
@@ -348,18 +342,19 @@ async def test_grader_pipeline_mcq_and_explain_back(world: dict) -> None:  # typ
     )
     assert {(e.dimension, e.grader_level) for e in ev} == {
         ("recall", "deterministic"),
-        ("explanation", "local"),
     }
     st = {c.dimension: c for c in (await db.execute(select(models.CompetencyState))).scalars()}
-    assert st["explanation"].count == 1 and st["recall"].count == 1
-    assert len((await db.execute(select(models.ReviewItem))).scalars().all()) == 2
-    assert len((await db.execute(select(models.ReviewLog))).scalars().all()) == 2
+    assert st["recall"].count == 1
+    assert "explanation" not in st or st["explanation"].count == 0
+    assert len((await db.execute(select(models.ReviewItem))).scalars().all()) == 1
+    assert len((await db.execute(select(models.ReviewLog))).scalars().all()) == 1
     verbs = [e.verb for e in (await db.execute(select(models.LearningEvent))).scalars()]
     assert (
-        verbs.count("attempted") == 2
-        and verbs.count("graded") == 2
-        and verbs.count("evidenced") == 2
-        and verbs.count("reviewed") == 2
+        verbs.count("attempted") == 1
+        and verbs.count("graded") == 1
+        and verbs.count("evidenced") == 1
+        and verbs.count("reviewed") == 1
+        and verbs.count("provisional_feedback_saved") == 1
     )
     mc = (await db.execute(select(models.ModelCall))).scalars().all()
     assert [m.task for m in mc] == ["grade_simple"]
@@ -423,7 +418,8 @@ async def test_keyword_list_uses_semantic_verdict(world: dict) -> None:  # type:
             confidence_pre=3,
         )
     )
-    assert result.grader_level == "local" and result.score == 0
+    assert result.model_route == "local" and result.outcome == "provisional_feedback"
+    assert all("more explanation" in c.observation for c in result.criterion_feedback)
     assert len(world["local"].calls) == 1
 
 
@@ -513,9 +509,9 @@ async def test_reordered_semantic_evidence_is_matched_by_criterion(world: dict) 
             confidence_pre=3,
         )
     )
-    assert [c.criterion for c in res.criterion_results] == [c["criterion"] for c in criteria]
-    assert res.criterion_results[0].passed
-    assert all(not c.passed for c in res.criterion_results[1:])
+    assert [c.criterion for c in res.criterion_feedback] == [c["criterion"] for c in criteria]
+    assert "this is addressed" in res.criterion_feedback[0].observation
+    assert all("more explanation" in c.observation for c in res.criterion_feedback[1:])
 
 
 async def test_uncertain_local_grade_can_escalate_to_valid_hosted_evidence(world: dict) -> None:  # type: ignore[type-arg]
@@ -545,7 +541,8 @@ async def test_uncertain_local_grade_can_escalate_to_valid_hosted_evidence(world
             confidence_pre=3,
         )
     )
-    assert result.grader_level == "hosted" and result.score == 1
+    assert result.model_route == "hosted" and result.outcome == "provisional_feedback"
+    assert "score" not in result.model_dump()
     assert len(world["local"].calls) == 1 and len(hosted.calls) == 1
     calls = (await db.execute(select(models.ModelCall))).scalars().all()
     assert [c.task for c in calls] == ["grade_simple", "grade_rubric"]
@@ -591,7 +588,7 @@ async def test_learning_rollback_preserves_model_accounting(
 ):
     import asyncio
 
-    from app.kernel import competency
+    from app.db import assessment_executions
 
     item, criteria = await _explanation(world)
     world["local"].structured = {
@@ -603,15 +600,15 @@ async def test_learning_rollback_preserves_model_accounting(
         "feedback": "Specific feedback.",
         "next_step": "Try another example.",
     }
-    original = competency.refresh
+    original = assessment_executions.mark_completed
 
     async def interrupted(*args, **kwargs):
         await original(*args, **kwargs)
         if cancelled:
             raise asyncio.CancelledError()
-        raise RuntimeError("after refresh")
+        raise RuntimeError("before advisory commit")
 
-    monkeypatch.setattr(competency, "refresh", interrupted)
+    monkeypatch.setattr(assessment_executions, "mark_completed", interrupted)
     failure = asyncio.CancelledError if cancelled else RuntimeError
     with pytest.raises(failure):
         await Grader(world["db"], world["gw"]).grade(
@@ -623,6 +620,8 @@ async def test_learning_rollback_preserves_model_accounting(
         )
     async with session_factory() as reopened:
         for table in [
+            models.ProvisionalFeedback,
+            models.TutorAnswer,
             models.AssessmentAttempt,
             models.CompetencyEvidence,
             models.CompetencyState,

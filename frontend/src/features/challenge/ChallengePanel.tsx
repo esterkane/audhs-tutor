@@ -1,3 +1,5 @@
+import { isProvisional } from '../../lib/api'
+import { ProvisionalFeedback } from '../../features/assess/ProvisionalFeedback'
 import { QuestionPractice } from '../questions/QuestionPractice'
 import { readDraft } from '../assess/draft'
 import { questionDrafts, questionIdentity, saveQuestionDraft, clearQuestionDraft, questionDraftFailed } from '../assess/questionDraft'
@@ -280,6 +282,8 @@ export function ChallengePanel({
             </p>
           )}
         </>
+      ) : isProvisional(result) ? (
+        <div className="mt-3"><ProvisionalFeedback result={result} /><Button className="mt-3" onClick={onDone}>Continue</Button><Button onClick={() => { cancelPracticeRefresh(); setItem(null) }}>Another mode</Button></div>
       ) : (
         <div role="status" className="mt-3">
           <p className="font-medium">

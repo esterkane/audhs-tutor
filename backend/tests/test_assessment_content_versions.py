@@ -68,7 +68,9 @@ async def test_missing_token_rejected_but_completed_legacy_replay_survives_chang
     # Simulate a completed pre-token claim using its original canonical payload shape.
     req = AttemptRequest(**body)
     result = await Grader(db, None).grade(req)
-    payload = req.model_dump(mode="json", exclude={"revision_of_attempt_id"})
+    payload = req.model_dump(
+        mode="json", exclude={"revision_of_attempt_id", "revision_of_feedback_id"}
+    )
     payload.pop("content_version")
     session = await db.get(models.Session, body["session_id"])
     db.add(
@@ -128,7 +130,7 @@ async def test_rubric_edit_during_inference_rejects_learning_commit(
     monkeypatch.setattr(Grader, "_llm_grade", changed)
     reply = await client.post("/api/assess/attempt", json=body, headers={"Idempotency-Key": KEY})
     assert reply.status_code == 409, reply.text
-    assert reply.json()["error"]["code"] == "assessment_content_changed_during_grading"
+    assert reply.json()["error"]["code"] == "assessment_content_changed"
     assert await db.scalar(select(func.count()).select_from(models.AssessmentAttempt)) == 0
     assert await db.scalar(select(func.count()).select_from(models.CompetencyEvidence)) == 0
     claim = await db.scalar(select(models.WorkspaceRequest))

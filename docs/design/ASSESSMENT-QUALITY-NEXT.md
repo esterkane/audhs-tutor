@@ -1,11 +1,11 @@
 # Assessment quality after local grader diagnostics
 
-Status: owner approved the recommended provisional-feedback policy on 2026-10-13. Implementation pending; runtime is not yet changed.
+Status: owner approved the recommended provisional-feedback policy on 2026-10-13. Implemented and enabled locally on 2026-10-13; see ../slices/provisional-feedback-integration.md.
 
-## Verified boundary
+## Pre-policy boundary (historical diagnosis)
 The current explanation grader accepts structurally valid model results at confidence >=0.6. That number is supplied by the model, not measured calibration. Initial accepted attempts can update competency and FSRS in `Grader._apply_result`; explicit task/rubric review controls separate Progress eligibility and does not verify a model's judgement. Existing model-origin disclosures remain useful but do not prevent incorrect decisions.
 
-The experimental six-case criterion-ID sample produced a false pass at confidence0.7 and a directly contradictory pass at0.2. It did not exercise production acceptance or write learner evidence. This does not establish that those exact results occurred in live learning. It establishes that structure, quote presence and model-reported confidence are insufficient quality evidence for deploying the new contract. Runtime remains unchanged.
+The experimental six-case criterion-ID sample produced a false pass at confidence0.7 and a directly contradictory pass at0.2. It did not exercise production acceptance or write learner evidence. This does not establish that those exact results occurred in live learning. It establishes that structure, quote presence and model-reported confidence are insufficient quality evidence for deploying the new contract. This diagnosis preceded the approved policy change.
 
 ## Recommended temporary policy: feedback without assessed evidence
 For future model-checked free-text explanations, preserve the submitted answer and model feedback as an explicitly provisional feedback record. Do not assign an assessed score, change competency/FSRS, or display a passed-check label from that provisional result. Keep deterministic checks, explicit learner self-report and existing historical records separate. No retroactive deletion or silent recomputation. This changes learning behavior and therefore requires owner approval under the existing Progress contract, rather than being a routine transport fix.
