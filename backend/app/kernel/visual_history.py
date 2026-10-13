@@ -8,9 +8,11 @@ from app.db.models import AuthoredVisualDocument as Document
 from app.db.models import AuthoredVisualReview as Review
 from app.db.models import AuthoredVisualSourceSnapshot as Snapshot
 from app.db.models import AuthoredVisualVersion as Version
+from app.kernel.answer_visual_binding import resolve_answer_binding
 from app.kernel.authored_visuals import digest, require_current_trust, resolve_target
 from app.schemas.authored_visuals import SPEC, VisualOrigin
 from app.schemas.visual_history import (
+    AnswerVisualTarget,
     VisualDocumentSummary,
     VisualReviewRecord,
     VisualVersionDetail,
@@ -132,3 +134,23 @@ async def detail(
         return result
     result.grounding_now = "sources_recorded" if target.source_ids else "ungrounded"
     return result
+
+
+async def answer_target(db: AsyncSession, owner: str, answer_id: str) -> AnswerVisualTarget:
+    try:
+        resolved = await resolve_answer_binding(db, owner, answer_id)
+    except KeyError:
+        raise AppError("not_found", "Ask answer unavailable.", 404) from None
+    source_ids = sorted(
+        {source.chunk_id for check in resolved.source_checks.values() for source in check.sources}
+    )
+    grounding = resolved.grounding
+    return AnswerVisualTarget(
+        binding=resolved.binding,
+        grounding="unknown"
+        if grounding == "unknown"
+        else ("sources_recorded" if grounding == "sources_recorded" else "ungrounded"),
+        source_chunk_ids=source_ids[:64],
+        sources_omitted=max(0, len(source_ids) - 64),
+        issues=list(resolved.issues),
+    )

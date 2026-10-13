@@ -1,7 +1,7 @@
 # Authored visual lifecycle — decision proposal
 
 Date: 2026-10-13. Status: Accepted by the owner on 2026-10-13.
-Implementation pending; acceptance alone activates no migration or endpoint.
+Implementation is staged; acceptance itself did not activate migrations or endpoints.
 Implements the prerequisite in slices/visual-learning-binding.md and G4 of
 CROSS-TOPIC-CONTENT-WORKSPACE.md. Retains the learning kernel and existing renderers.
 
@@ -111,3 +111,15 @@ Re-review confirmed the wipe finding resolved, with no remaining blockers/majors
 Owner acceptance was subsequently received: “Accept the proposed lifecycle”.
 The owner authorizes staged storage/API implementation under this contract; the reviewer
 did not supply that authorization.
+
+
+## Implementation status — 2026-10-13
+
+Binding, immutable storage, private backup/wipe, transactional document commands,
+read/version/review APIs and exact Ask target preview are implemented. See
+slices/authored-visual-storage.md, slices/authored-visual-commands.md,
+slices/authored-visual-history.md and slices/ask-visual-generation.md (under docs/).
+Durable generation requests, local model generation and inline Ask UI are still
+pending. Existing local single-owner access is not multi-user authentication.
+No generated content approval, public-export permission or learning evidence follows
+from completing these implementation foundations.

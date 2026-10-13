@@ -4,6 +4,7 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from app.schemas.answer_visual_binding import AnswerVisualBinding
 from app.schemas.authored_visuals import VisualOrigin, VisualSpec
 
 
@@ -48,3 +49,12 @@ class VisualVersionDetail(VisualVersionSummary):
     review_meaning: Literal["historical_presentation_review_only"] = (
         "historical_presentation_review_only"
     )
+
+
+class AnswerVisualTarget(BaseModel):
+    binding: AnswerVisualBinding
+    grounding: Literal["sources_recorded", "ungrounded", "unknown"]
+    source_chunk_ids: list[str]
+    sources_omitted: int
+    issues: list[str]
+    meaning: Literal["target_snapshot_not_approval"] = "target_snapshot_not_approval"

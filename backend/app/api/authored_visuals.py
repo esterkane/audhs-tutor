@@ -14,6 +14,7 @@ from app.kernel import visual_history
 from app.kernel.authored_visuals import VisualRepository
 from app.schemas.authored_visuals import VisualReceipt
 from app.schemas.visual_history import (
+    AnswerVisualTarget,
     VisualDocumentSummary,
     VisualReviewRecord,
     VisualVersionDetail,
@@ -140,3 +141,12 @@ async def list_reviews(
     limit: PageLimit = 20,
 ) -> list[VisualReviewRecord]:
     return await visual_history.reviews(db, learner.id, document_id, version_id, offset, limit)
+
+
+@router.get(
+    "/answer-target/{answer_id}",
+    response_model=AnswerVisualTarget,
+    summary="Resolve exact owned Ask target before explicit visual creation",
+)
+async def get_answer_target(answer_id: str, db: ReadDB, learner: Learner) -> AnswerVisualTarget:
+    return await visual_history.answer_target(db, learner.id, answer_id)

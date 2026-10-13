@@ -1102,6 +1102,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/authored-visuals/answer-target/{answer_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Resolve exact owned Ask target before explicit visual creation */
+    get: operations['get_answer_target_api_authored_visuals_answer_target__answer_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/questions/corrections': {
     parameters: {
       query?: never
@@ -3033,6 +3050,27 @@ export interface components {
       lineage_sha256: string
       /** Learning Purpose */
       learning_purpose?: string | null
+    }
+    /** AnswerVisualTarget */
+    AnswerVisualTarget: {
+      binding: components['schemas']['AnswerVisualBinding']
+      /**
+       * Grounding
+       * @enum {string}
+       */
+      grounding: 'sources_recorded' | 'ungrounded' | 'unknown'
+      /** Source Chunk Ids */
+      source_chunk_ids: string[]
+      /** Sources Omitted */
+      sources_omitted: number
+      /** Issues */
+      issues: string[]
+      /**
+       * Meaning
+       * @default target_snapshot_not_approval
+       * @constant
+       */
+      meaning: 'target_snapshot_not_approval'
     }
     /** ArchiveRoleIn */
     ArchiveRoleIn: {
@@ -9317,6 +9355,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['VisualReviewRecord'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_answer_target_api_authored_visuals_answer_target__answer_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AnswerVisualTarget']
         }
       }
       /** @description Validation Error */
