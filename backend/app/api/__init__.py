@@ -32,6 +32,7 @@ from app.api import (
     skills,
     task_reviews,
     tutor,
+    visual_generation,
     voice,
 )
 
@@ -66,6 +67,7 @@ for r in (
     listening,
     exercises,
     voice,
+    visual_generation,
     experiments,
     practice,
     curriculum,

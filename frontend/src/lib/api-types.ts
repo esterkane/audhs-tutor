@@ -2340,6 +2340,58 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/visual-generation': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Find recent requests for an owned saved answer without generating */
+    get: operations['list_requests_api_visual_generation_get']
+    put?: never
+    /** Explicitly start or recover an idempotent local visual request */
+    post: operations['start_api_visual_generation_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/visual-generation/{identity}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read owned visual request status without restarting work */
+    get: operations['get_status_api_visual_generation__identity__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/visual-generation/{identity}/cancel': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Stop visual generation without deleting an already saved result */
+    post: operations['cancel_api_visual_generation__identity__cancel_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/experiments': {
     parameters: {
       query?: never
@@ -6959,6 +7011,32 @@ export interface components {
       revision: number
       /** Archived */
       archived: boolean
+      /** Updated At */
+      updated_at: string
+    }
+    /** VisualGenerationStatus */
+    VisualGenerationStatus: {
+      /** Id */
+      id: string
+      /** Answer Id */
+      answer_id: string
+      /**
+       * State
+       * @enum {string}
+       */
+      state: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled' | 'interrupted'
+      /** Attempts */
+      attempts: number
+      /** Attempt Limit */
+      attempt_limit: number
+      /** Document Id */
+      document_id: string | null
+      /** Result Version Id */
+      result_version_id: string | null
+      /** Error Code */
+      error_code: string | null
+      /** Created At */
+      created_at: string
       /** Updated At */
       updated_at: string
     }
@@ -11727,6 +11805,137 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SpeakOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  list_requests_api_visual_generation_get: {
+    parameters: {
+      query: {
+        answer_id: string
+        limit?: number
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualGenerationStatus'][]
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  start_api_visual_generation_post: {
+    parameters: {
+      query?: never
+      header: {
+        'Idempotency-Key': string
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': {
+          binding: components['schemas']['AnswerVisualBinding']
+        }
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualGenerationStatus']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_status_api_visual_generation__identity__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        identity: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualGenerationStatus']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  cancel_api_visual_generation__identity__cancel_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        identity: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualGenerationStatus']
         }
       }
       /** @description Validation Error */
