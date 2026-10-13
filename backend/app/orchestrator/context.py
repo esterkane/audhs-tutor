@@ -245,7 +245,7 @@ def history_block(history: list[dict[str, str]]) -> str:
     )
 
 
-def render_messages(packet: ContextPacket) -> list[Message]:
+def render_messages(packet: ContextPacket, *, include_source_trust: bool = True) -> list[Message]:
     """System = byte-stable policy only. Everything per-turn goes into one user message."""
 
     def j(d: dict[str, Any]) -> str:
@@ -259,7 +259,7 @@ def render_messages(packet: ContextPacket) -> list[Message]:
             f"## Session state\n{j(packet.session_state)}",
             f"## Learning contract\n{j(packet.learning_contract)}",
             f"## Current evidence\n{j(packet.evidence)}",
-            f"## Retrieved knowledge\n{data_block(packet.retrieved)}",
+            f"## Retrieved knowledge\n{data_block(packet.retrieved, include_trust=include_source_trust)}",
             *([history_block(packet.historical)] if packet.historical else []),
             *(
                 [context_block(packet.checked_assessment)]

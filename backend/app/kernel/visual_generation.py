@@ -10,6 +10,7 @@ from app.core.errors import AppError
 from app.db.base import new_id, utcnow_iso
 from app.db.models import ModelCall
 from app.db.models import VisualGenerationRequest as Generation
+from app.db.traces import TutorTraceRecord, write_tutor_trace
 from app.kernel.answer_visual_binding import validate_answer_binding
 from app.kernel.authored_visuals import (
     VisualRepository,
@@ -219,6 +220,19 @@ class GenerationRequests:
                 VisualOrigin(
                     kind="model", model=call.registry_id, prompt_version=row.prompt_version
                 ),
+            )
+            await write_tutor_trace(
+                db,
+                TutorTraceRecord(
+                    learner_id=owner,
+                    session_id=None,
+                    turn_id=identity,
+                    action="ask_visual",
+                    prompt_version=row.prompt_version,
+                    model_call_id=call.id,
+                    latency_ms=call.latency_ms,
+                ),
+                commit=False,
             )
             assert receipt.version_id is not None
             row.result_version_id = receipt.version_id

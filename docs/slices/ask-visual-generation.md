@@ -22,7 +22,11 @@ document exists. Holding its SQLite writer transaction during inference would bl
 unrelated work; relying on process-local flags would allow duplicate inference after
 restart. Do not repurpose historical command receipts as mutable jobs.
 
-## Next implementation contract (not implemented)
+## Execution contract (partially implemented)
+
+Reservation/attempt/atomic completion and the bounded local worker are implemented;
+see visual-generation-requests.md, visual-generation-finalization.md and
+ask-visual-worker.md. Explicit API/UI integration and live quality remain pending.
 
 1. Add a separate learner-owned visual-generation request record with unique owner/
    request identity and canonical input fingerprint. Persist the exact target binding,
