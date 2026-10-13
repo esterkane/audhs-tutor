@@ -1,3 +1,4 @@
+import { Disclosure } from '../components/ui/disclosure'
 import { SourcedAnswer } from '../features/ask/SourcedAnswer'
 import { SuggestionEvidence } from '../features/ask/SuggestionEvidence'
 import { SourcePicker } from '../features/ask/SourcePicker'
@@ -235,7 +236,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
                 Saved locally · {new Date(answer.created_at).toLocaleString()} · Model explanation, not
                 fact-checked.
               </p>
-              <SourcedAnswer key={answer.id} text={answer.text} sources={Array.isArray(answer.metadata.sources) ? answer.metadata.sources : []} />
+              <SourcedAnswer key={`sources:${answer.id}`} text={answer.text} sources={Array.isArray(answer.metadata.sources) ? answer.metadata.sources : []} />
               <ReadAloud text={`${answer.request_text}\n\n${answer.text}`} />
               <AnswerChecks key={answer.id} answerId={answer.id} learnerId={learnerId} />
               <FurtherReading key={`reading:${answer.id}`} question={answer.request_text} />
@@ -290,6 +291,19 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
           <label className="block font-medium" htmlFor="ask-question">
             {parent ? 'Your follow-up question' : 'Your question'}
           </label>
+          {answer && <Disclosure label="Choose a follow-up" className="mb-3">
+            <p className="text-sm text-muted mb-2">These fill the question below. Edit it, then choose Ask follow-up.</p>
+            {draft.input.trim() && <p className="text-sm text-muted mb-2">Your draft is kept. Clear it before choosing a suggested follow-up.</p>}
+            <div className="flex flex-wrap gap-2">
+              {[
+                ['Simpler', 'Explain your previous answer more simply, using a concrete example and defining unfamiliar terms. Keep important limits and uncertainties.'],
+                ['More detail', 'Explain your previous answer in more detail. Cover the important assumptions, limitations, and how I could apply it in a new situation.'],
+                ['Show the method', 'Show a worked example for my previous question. Explain the method, why each step is needed, and how to check the result. State what cannot be checked from the available information.'],
+              ].map(([label, question]) => <Button key={label} type="button"
+                disabled={busy || !ready || !!recovery.pending || !!draft.input.trim()}
+                onClick={() => { draft.setInput(question); textarea.current?.focus() }}>{label}</Button>)}
+            </div>
+          </Disclosure>}
           <textarea
             id="ask-question"
             ref={textarea}

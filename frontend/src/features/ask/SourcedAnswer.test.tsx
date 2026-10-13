@@ -16,3 +16,9 @@ it('opens the exact saved passage and returns focus to the originating citation'
   expect(citation).toHaveFocus()
   expect(screen.getByText(/Historical snapshots/)).toBeVisible()
 })
+
+it('does not duplicate prose when its parent rerenders', () => {
+  const { rerender } = render(<SourcedAnswer text="One explanation." sources={[]} />)
+  for (let i = 0; i < 5; i++) rerender(<SourcedAnswer text="One explanation." sources={[]} />)
+  expect(screen.getAllByText('One explanation.')).toHaveLength(1)
+})
