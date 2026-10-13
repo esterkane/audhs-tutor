@@ -1000,6 +1000,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/authored-visuals/commands': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Explicitly save, review, archive or restore a private visual */
+    post: operations['command_api_authored_visuals_commands_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/questions/corrections': {
     parameters: {
       query?: never
@@ -6680,6 +6697,31 @@ export interface components {
       /** Problems */
       problems: string[]
     }
+    /** VisualReceipt */
+    VisualReceipt: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: 'save' | 'review' | 'archive'
+      /** Document Id */
+      document_id: string
+      /** Revision */
+      revision: number
+      /** Version Id */
+      version_id?: string | null
+      /** Content Sha256 */
+      content_sha256?: string | null
+      /** Snapshot Sha256 */
+      snapshot_sha256?: string | null
+      /** Review Id */
+      review_id?: string | null
+      /**
+       * Archived
+       * @default false
+       */
+      archived: boolean
+    }
     /** VocabIn */
     VocabIn: {
       /** Lang */
@@ -8751,6 +8793,42 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AssessmentRevisionSource']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  command_api_authored_visuals_commands_post: {
+    parameters: {
+      query?: never
+      header: {
+        'Idempotency-Key': string
+      }
+      path?: never
+      cookie?: never
+    }
+    /** @description Strict save/review/archive command; bounded to 131072 bytes before parsing. */
+    requestBody: {
+      content: {
+        'application/json': Record<string, never>
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['VisualReceipt']
         }
       }
       /** @description Validation Error */
