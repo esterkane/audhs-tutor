@@ -8,8 +8,8 @@ import { RequestRecoveryControls } from '../playground/RequestRecoveryControls'
 import { useVisualReviewRecovery, type PendingTutorRequest, type VisualReviewBody } from '../playground/useRequestRecovery'
 import { useLessonDraft } from '../tutor/useLessonDraft'
 
-export function VisualReview({ documentId, learnerId, version }: {
-  documentId: string; learnerId: string; version: Schemas['VisualVersionDetail']
+export function VisualReview({ documentId, learnerId, version, readOnly = false }: {
+  documentId: string; learnerId: string; version: Schemas['VisualVersionDetail']; readOnly?: boolean
 }) {
   const scope = `visual-review:${learnerId}:${documentId}:${version.id}`
   const note = useLessonDraft(scope, 'diagram review')
@@ -27,7 +27,7 @@ export function VisualReview({ documentId, learnerId, version }: {
   })
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; active.current?.abort() } }, [])
   const canAccept = version.grounding_now === 'sources_recorded' || version.grounding_now === 'ungrounded'
-  const disabled = busy || !!recovery.pending || recovery.needsDiscard || note.input.length > 4000
+  const disabled = readOnly || busy || !!recovery.pending || recovery.needsDiscard || note.input.length > 4000
 
   async function save(decision: 'accept' | 'reject', previous?: PendingTutorRequest<VisualReviewBody>) {
     if (active.current || (!previous && disabled)) return
@@ -61,19 +61,20 @@ export function VisualReview({ documentId, learnerId, version }: {
     {history.isPending && <p role="status">Loading your presentation reviews…</p>}
     {history.isError && <p role="alert">Review history is unavailable. <Button variant="secondary" onClick={() => void history.refetch()}>Retry review history</Button></p>}
     {history.data?.[0] && <p className="text-sm">Your recorded review of version {version.version}: <strong>{history.data[0].decision === 'reject' ? 'Needs correction' : 'Presentation reviewed'}</strong> · {new Date(history.data[0].created_at).toLocaleString()}. This is your presentation judgment, not a factual accuracy check.</p>}
-    <Disclosure label={`Review this diagram · version ${version.version}`}>
+    {readOnly && <p className="text-sm">Review history only. New reviews require the latest active version.</p>}
+    <Disclosure label={`${readOnly ? 'Review history' : 'Review this diagram'} · version ${version.version}`}>
       <div className="space-y-3">
         <p>Your review applies only to this version and its source snapshot. It does not verify factual accuracy or measure your learning. You can record a different review later.</p>
         <label className="block" htmlFor={fieldId}>What works or needs correction? (optional)</label>
-        <textarea id={fieldId} className="w-full rounded border border-line bg-card p-3" rows={3} maxLength={4000} value={note.input} onChange={event => note.setInput(event.target.value)} />
+        <textarea readOnly={readOnly} id={fieldId} className="w-full rounded border border-line bg-card p-3" rows={3} maxLength={4000} value={note.input} onChange={event => note.setInput(event.target.value)} />
         {note.error && <p role="alert">{note.error}</p>}
         {!canAccept && <p role="status">The source history is unavailable or changed. You can still flag a correction; a positive review needs current source checks.</p>}
         <RequestRecoveryControls saveOnly recovery={recovery} busy={busy} originalContext="diagram version, source snapshot, decision and note" retry={() => { if (recovery.pending) void save(recovery.pending.body.decision, recovery.pending) }} />
-        <div className="flex flex-wrap gap-2">
+        {!readOnly && <div className="flex flex-wrap gap-2">
           <Button variant="secondary" disabled={disabled || !canAccept || !history.isSuccess} onClick={() => void save('accept')}>I reviewed this presentation</Button>
           <Button variant="secondary" disabled={disabled || !history.isSuccess} onClick={() => void save('reject')}>Needs correction</Button>
-          {busy && <Button variant="secondary" onClick={() => active.current?.abort()}>Stop waiting for review</Button>}
-        </div>
+        </div>}
+        {busy && <Button variant="secondary" onClick={() => active.current?.abort()}>Stop waiting for review</Button>}
         {busy && <p role="status">Saving review…</p>}
         {error && <p role="alert">{error}</p>}
         {status && <p role="status">{status}</p>}
