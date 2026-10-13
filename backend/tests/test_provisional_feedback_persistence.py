@@ -77,9 +77,12 @@ async def test_atomic_replay_is_advisory_without_learning_writes(db, learner):
         models.CompetencyEvidence,
         models.MemoryState,
         models.ReviewItem,
-        models.LearningEvent,
     ):
         assert await db.scalar(select(func.count()).select_from(table)) == 0
+    events = list((await db.scalars(select(models.LearningEvent))).all())
+    assert len(events) == 1
+    assert events[0].verb == "provisional_feedback_saved"
+    assert set(events[0].result_json) == {"feedback_len"}
     assert (await assessment_executions.get_owned(db, owner, claim)).phase == "completed"
 
 
@@ -108,6 +111,7 @@ async def test_failure_before_completion_rolls_back_record_and_receipt(db, learn
         await provisional_feedback.persist_staged(db, owner, claim)
     assert await db.scalar(select(func.count()).select_from(models.ProvisionalFeedback)) == 0
     assert (await db.get(models.WorkspaceRequest, claim)).response_json is None
+    assert await db.scalar(select(func.count()).select_from(models.LearningEvent)) == 0
     monkeypatch.setattr(assessment_executions, "mark_completed", original)
     await provisional_feedback.persist_staged(db, owner, claim)
 

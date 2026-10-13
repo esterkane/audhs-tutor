@@ -6,8 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.db import assessment_executions, workspace_requests
 from app.db.base import new_id
-from app.db.models import ProvisionalFeedback, WorkspaceRequest
+from app.db.events import EventWriter, Verb
+from app.db.models import ProvisionalFeedback, SkillNode, WorkspaceRequest
+from app.kernel import session as ksession
 from app.orchestrator import assessment_content
+from app.schemas.common import ActivityType, Domain, ObjectType
 from app.schemas.grading import AttemptRequest, GradeResult
 from app.schemas.provisional_feedback import (
     PROVISIONAL_POLICY,
@@ -133,6 +136,29 @@ async def persist_staged(
             )
         )
         await db.flush()
+        session = await ksession.get(db, body.session_id)
+        node = await db.get(SkillNode, content["skill_id"])
+        domain = (
+            Domain(node.domain)
+            if node and node.domain in {d.value for d in Domain}
+            else Domain.META
+        )
+        events = EventWriter(
+            db, ksession.event_context(session, domain=domain, activity=ActivityType.RETRIEVAL)
+        )
+        await events.emit(
+            Verb.PROVISIONAL_FEEDBACK_SAVED,
+            ObjectType.ITEM,
+            body.assessment_id,
+            result={"feedback_len": len(outcome.feedback)},
+            context={
+                "feedback_id": outcome.feedback_id,
+                "policy_version": PROVISIONAL_POLICY,
+                "model_route": outcome.model_route,
+                "node_id": outcome.skill_id,
+            },
+            commit=False,
+        )
         await workspace_requests.complete(
             db, learner_id, claim_id, outcome.model_dump(mode="json"), commit=False
         )

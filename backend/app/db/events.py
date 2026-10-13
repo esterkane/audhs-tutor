@@ -24,6 +24,7 @@ class Verb(StrEnum):
     PREFERRED = "preferred"
     ATTEMPTED = "attempted"
     GRADED = "graded"
+    PROVISIONAL_FEEDBACK_SAVED = "provisional_feedback_saved"
     EVIDENCED = "evidenced"
     PROPOSED = "proposed"
     DECIDED = "decided"
@@ -86,6 +87,10 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
     Verb.ATTEMPTED: (
         _R({"correct", "confidence_pre", "latency_ms", "hint_count", "answer_len"}),
         _R({"item_type", "node_id", "attempt_id", "revision_of_attempt_id"}),
+    ),
+    Verb.PROVISIONAL_FEEDBACK_SAVED: (
+        _R({"feedback_len"}),
+        _R({"feedback_id", "policy_version", "model_route", "node_id"}),
     ),
     Verb.GRADED: (
         _R({"criterion_results", "score", "misconception", "confidence", "feedback_len"}),
