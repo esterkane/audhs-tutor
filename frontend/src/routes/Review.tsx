@@ -233,7 +233,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       revealedVersion: value ? item?.content_version : null,
     }))
   const idx = queue.reviewed.length
-  const helpKey = `audhs-review:${sessionId}:${item?.item_id ?? ''}`
+  const helpKey = `audhs-review-help:v2:${JSON.stringify([sessionId, item?.item_id, item?.content_version, item?.question, item?.options])}`
   const hintCount = readDraft(helpKey).hints
   const state = session.data?.state
   const inReviewBlock =
@@ -385,7 +385,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
         <p className="text-base mt-2">{item.question}</p>
         {!revealed && (
           <QuestionHelp
-            key={item.item_id}
+            key={helpKey}
             sessionId={sessionId}
             skillId={item.skill_id}
             question={item.question}

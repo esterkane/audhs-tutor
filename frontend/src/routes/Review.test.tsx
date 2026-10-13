@@ -678,3 +678,26 @@ describe('Review recovery focus during loading', () => {
     expect(button).toHaveFocus()
   })
 })
+
+it.each([false, true])('binds review help counts to the current version (current=%s)', async (current) => {
+  sessionStorage.clear()
+  useMode.setState({ sessionId: 'review-help-version' })
+  const helpKey = current ? `audhs-review-help:v2:${JSON.stringify(['review-help-version', 'i1', 'revised', 'Revised card?', due.items[0].options])}` : 'audhs-review:review-help-version:i1'
+  sessionStorage.setItem(helpKey, JSON.stringify({ answer: '', hints: 3 }))
+  let submitted: Record<string, unknown> | null = null
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.startsWith('/api/review/due')) return jsonResponse({ ...due, items: [{ ...due.items[0], content_version: 'revised', question: 'Revised card?' }] })
+    if (url.includes('/api/sessions/')) return jsonResponse({ ...reviewSession, id: 'review-help-version' })
+    if (url === '/api/review/i1' && init?.method === 'POST') {
+      submitted = JSON.parse(String(init.body))
+      return jsonResponse({ item_id: 'i1', due: 'later', state: 'review', stability: 1 })
+    }
+    return jsonResponse({ skills: [] })
+  }))
+  renderApp(<Review />)
+  fireEvent.click(await screen.findByRole('button', { name: 'Show answer' }))
+  if (current) expect(screen.queryByRole('button', { name: /^Good/ })).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: current ? /^Hard/ : /^Good/ }))
+  await waitFor(() => expect(submitted).toMatchObject({ content_version: 'revised', hint_count: current ? 3 : 0 }))
+  vi.unstubAllGlobals()
+})
