@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { QuestionPractice } from '../questions/QuestionPractice'
-import { readDraft, writeDraft, clearDraft } from '../assess/draft'
+import { readDraft } from '../assess/draft'
+import { questionIdentity, questionDrafts, questionDraftFailed, saveQuestionDraft, clearQuestionDraft } from '../assess/questionDraft'
+import { Disclosure } from '../../components/ui/disclosure'
 import { boundedRead } from '../../lib/boundedRead'
 import { apiFetch, type AssessmentView } from '../../lib/api'
 import { AssessmentRecovery } from '../assess/AssessmentRecovery'
@@ -428,6 +430,8 @@ function TaskCard({
 }) {
   const draftKey = `listening:${sessionId}:${task.item.id}`
   const choiceKey = `${draftKey}:choice`
+  const versionedKey = `listening-versioned:${sessionId}:${task.item.id}`
+  const initialDraft = questionDrafts(versionedKey).find(row => row.identity === questionIdentity(task.item))
   const [practiceChanged, setPracticeChanged] = useState(false)
   const [practiceRestored, setPracticeRestored] = useState(false)
   const [refreshingPractice, setRefreshingPractice] = useState(false)
@@ -441,7 +445,7 @@ function TaskCard({
   const [reported, setReported] = useState(false)
   const [validated, setValidated] = useState(false)
   const [confidence, setConfidence] = useState<number | null>(null)
-  const [answer, setAnswer] = useState(() => task.item.options ? '' : readDraft(draftKey).answer)
+  const [answer, setAnswer] = useState(() => task.item.options ? '' : initialDraft?.answer ?? '')
   const [result, setResult] = useState<AttemptResult | null>(null)
 
   async function sendReport() {
@@ -458,7 +462,7 @@ function TaskCard({
   const [refreshedItem, setRefreshedItem] = useState<AssessmentView | null>(null)
   const [initialItem] = useState(task.item)
   const item = refreshedItem ?? initialItem
-  const [previousChoice, setPreviousChoice] = useState(() => task.item.options ? readDraft(choiceKey).answer : '')
+  const [previousChoice, setPreviousChoice] = useState(() => task.item.options ? initialDraft?.answerLabel ?? readDraft(choiceKey).answer : '')
   const displayedItem = useRef(item)
   const displayedAnswer = useRef(answer)
   useLayoutEffect(() => {
@@ -469,7 +473,7 @@ function TaskCard({
   function saveAnswer(value: string) {
     setAnswer(value)
     setPreviousChoice('')
-    writeDraft(item.options ? choiceKey : draftKey, { answer: item.options?.[Number(value)] ?? value })
+    saveQuestionDraft(versionedKey, item, value, 0)
   }
 
   async function refreshPractice() {
@@ -483,12 +487,16 @@ function TaskCard({
         `/api/assess/items/${encodeURIComponent(item.id)}?session_id=${encodeURIComponent(sessionId)}`,
         controller.signal, 'Listening question',
       )
-      if (controller.signal.aborted) return
+      if (controller.signal.aborted || questionIdentity(displayedItem.current) !== questionIdentity(item)) return
       if (latest.id !== item.id) throw new Error('Different question')
       if ((item.options || latest.options) &&
           (latest.question !== item.question || JSON.stringify(latest.options) !== JSON.stringify(item.options))) {
-        setPreviousChoice(answer !== '' ? item.options?.[Number(answer)] ?? answer : previousChoice)
+        setPreviousChoice(displayedAnswer.current !== '' ? item.options?.[Number(displayedAnswer.current)] ?? displayedAnswer.current : previousChoice)
         setAnswer('')
+      } else if (latest.question !== item.question || JSON.stringify(latest.criteria) !== JSON.stringify(item.criteria)) {
+        setAnswer('')
+      } else {
+        saveQuestionDraft(versionedKey, latest, displayedAnswer.current, 0)
       }
       setRefreshedItem(latest)
       setPracticeChanged(false)
@@ -522,8 +530,7 @@ function TaskCard({
       )
         return
       if (displayedAnswer.current === answer) {
-        clearDraft(draftKey)
-        clearDraft(choiceKey)
+        clearQuestionDraft(versionedKey, item)
       }
       setResult(res)
       onGraded(res)
@@ -545,11 +552,13 @@ function TaskCard({
             `/api/assess/items/${encodeURIComponent(item.id)}?session_id=${encodeURIComponent(sessionId)}`,
             { signal },
           )
-          if (signal.aborted) throw new Error('Refresh cancelled.')
+          if (signal.aborted || questionIdentity(displayedItem.current) !== questionIdentity(item)) throw new Error('Refresh cancelled.')
           if (latest.id !== item.id) throw new Error('The refreshed question does not match.')
           if (item.options) {
-            setPreviousChoice(answer !== '' ? item.options[Number(answer)] ?? answer : previousChoice)
+            setPreviousChoice(displayedAnswer.current !== '' ? item.options[Number(displayedAnswer.current)] ?? displayedAnswer.current : previousChoice)
             setAnswer('')
+          } else {
+            saveQuestionDraft(versionedKey, latest, displayedAnswer.current, 0)
           }
           setRefreshedItem(latest)
           setResult(null)
@@ -564,8 +573,7 @@ function TaskCard({
             body.content_version !== item.content_version
           )
             return false
-          clearDraft(draftKey)
-          clearDraft(choiceKey)
+          clearQuestionDraft(versionedKey, item)
           setResult(saved)
           onGraded(saved)
           return true
@@ -577,6 +585,13 @@ function TaskCard({
         </p>
       )}
       <p className="text-sm font-medium">{item.question}</p>
+      {(questionDrafts(versionedKey).some(row => row.identity !== questionIdentity(item) && row.answer) || readDraft(draftKey).answer) && <Disclosure label="Earlier answer drafts — not applied to this question">
+        <p className="text-sm">Review the current question before answering.</p>
+        {questionDrafts(versionedKey).filter(row => row.identity !== questionIdentity(item) && row.answer).map(row => <div key={row.identity} className="mt-2">
+          <p className="text-sm font-medium">{row.question}</p><p className="text-sm whitespace-pre-wrap">{row.answerLabel}</p>
+        </div>)}
+        {readDraft(draftKey).answer && <p className="text-sm whitespace-pre-wrap">Older draft (question version unknown): {readDraft(draftKey).answer}</p>}
+      </Disclosure>}
       <div ref={practicePanel} tabIndex={-1} aria-label="Listening practice choices">
         {!attempt.recovery.pending && !attempt.recovery.error && <fieldset disabled={attempt.isPending || refreshingPractice}>
           <QuestionPractice assessmentId={item.id} onChanged={(_id, state) => {
@@ -645,6 +660,7 @@ function TaskCard({
               />
             </>
           )}
+          {questionDraftFailed(versionedKey) && <p role="alert" className="text-sm mt-2">This browser could not save your answer. Copy it before refreshing or closing the tab. You can still check it.</p>}
           <div className="mt-3">
             <OptionalConfidence value={confidence} onChange={setConfidence} />
           </div>

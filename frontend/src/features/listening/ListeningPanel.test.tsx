@@ -4,7 +4,8 @@ import { axe } from 'vitest-axe'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { useMode } from '../../stores/mode'
 import { claimReading, updateReading, useReadingControls } from '../voice/readingOwner'
-import { clearDraft, readDraft } from '../assess/draft'
+import { clearDraft } from '../assess/draft'
+import { questionDrafts } from '../assess/questionDraft'
 import { ListeningPanel } from './ListeningPanel'
 
 const lesson = {
@@ -117,6 +118,23 @@ describe('ListeningPanel', () => {
       }),
     )
   }
+
+  it('does not reuse a cloze draft for a revised question', async () => {
+    let changed = false
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/api/listening/lessons/d1')) return jsonResponse(lesson)
+      if (url.endsWith('/sections/0/task')) return jsonResponse({ ...task, item: { ...task.item, content_version: changed ? 'two' : 'one', question: changed ? 'A different blank ____.' : task.item.question } })
+      return jsonResponse({})
+    }))
+    const first = renderApp(<ListeningPanel sessionId="s1" documentId="d1" onDone={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Go to the question' }))
+    fireEvent.change(await screen.findByLabelText('The missing word'), { target: { value: 'numbers' } })
+    first.unmount(); changed = true
+    renderApp(<ListeningPanel sessionId="s1" documentId="d1" onDone={() => {}} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Go to the question' }))
+    expect(await screen.findByLabelText('The missing word')).toHaveValue('')
+    expect(screen.getByRole('button', { name: 'Check' })).toBeDisabled()
+  })
 
   it('pauses on replacement, preserves position, and counts no exposure while displaced', async () => {
     const posts: { url: string; body: unknown }[] = []
@@ -425,7 +443,7 @@ describe('ListeningPanel playback errors and keyboard', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Check' }))
     if (!choices) fireEvent.change(screen.getByLabelText('The missing word'), { target: { value: 'new edit during grading' } })
     await screen.findByRole('button', { name: 'Next clip' })
-    if (!choices) expect(readDraft('listening:s1:a1').answer).toBe('new edit during grading')
+    if (!choices) expect(questionDrafts('listening-versioned:s1:a1').at(-1)?.answer).toBe('new edit during grading')
     await waitFor(() => expect(submissions).toEqual([expect.objectContaining({ content_version: 'fresh', answer: choices ? '0' : 'numbers' })]))
   })
 
