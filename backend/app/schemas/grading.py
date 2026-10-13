@@ -70,3 +70,10 @@ class AttemptResult(BaseModel):
     calibration: str
     review: dict[str, Any]
     mastery: float
+
+
+# Historical assessed outcomes keep their original shape. Advisory outcomes never
+# fabricate the score/review/mastery fields required by AttemptResult.
+from app.schemas.provisional_feedback import ProvisionalFeedbackResult  # noqa: E402
+
+AssessmentOutcome = AttemptResult | ProvisionalFeedbackResult

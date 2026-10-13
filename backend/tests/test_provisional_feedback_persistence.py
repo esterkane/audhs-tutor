@@ -154,3 +154,20 @@ async def test_tampered_request_or_non_model_route_is_rejected(db, learner, muta
     with pytest.raises(AppError):
         await provisional_feedback.persist_staged(db, owner, claim)
     assert await db.scalar(select(func.count()).select_from(models.ProvisionalFeedback)) == 0
+
+
+async def test_completed_provisional_response_replays_through_http(client, db, learner):
+    owner = learner.id
+    claim, _ = await staged(db, learner)
+    request_id = "9eb408fa-bf60-49bb-80e2-d0c1f293efba"
+    row = await db.get(models.WorkspaceRequest, claim)
+    row.request_key = f"assessment:{request_id}"
+    session_id = row.session_id
+    await db.commit()
+    result = await provisional_feedback.persist_staged(db, owner, claim)
+    response = await client.get(f"/api/assess/requests/{request_id}", params={"session_id": session_id})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["status"] == "completed"
+    assert body["result"] == result.model_dump(mode="json")
+    assert not ({"score", "correct", "mastery", "review"} & set(body["result"]))

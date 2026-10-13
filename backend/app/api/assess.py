@@ -10,7 +10,7 @@ from app.db.models import Assessment, AssessmentAttempt
 from app.kernel import session as ksession
 from app.orchestrator import assessment_content, assessment_requests, assessment_revisions
 from app.orchestrator.grader import Grader, versioned_view, view
-from app.schemas.grading import AssessmentView, AttemptRequest, AttemptResult
+from app.schemas.grading import AssessmentOutcome, AssessmentView, AttemptRequest
 
 router = APIRouter(prefix="/assess", tags=["assess"])
 
@@ -50,7 +50,7 @@ async def next_item(
 @router.post(
     "/attempt",
     summary="Submit an answer with an optional prior confidence rating; graded hierarchically",
-    response_model=AttemptResult,
+    response_model=AssessmentOutcome,
 )
 async def attempt(
     body: AttemptRequest,
@@ -59,7 +59,7 @@ async def attempt(
     learner: Learner,
     request: Request,
     idempotency_key: Annotated[UUID | None, Header()] = None,
-) -> AttemptResult:
+) -> AssessmentOutcome:
     return await assessment_requests.submit(
         db,
         gateway,
@@ -94,7 +94,7 @@ async def refresh_item(
     return await versioned_view(db, item, learner.id)
 
 
-@router.post("/requests/{request_id}/finish", response_model=AttemptResult)
+@router.post("/requests/{request_id}/finish", response_model=AssessmentOutcome)
 async def finish_request(
     request_id: UUID,
     session_id: str,
@@ -102,7 +102,7 @@ async def finish_request(
     gateway: Gateway,
     learner: Learner,
     request: Request,
-) -> AttemptResult:
+) -> AssessmentOutcome:
     return await assessment_requests.finish(
         db,
         gateway,
@@ -113,7 +113,7 @@ async def finish_request(
     )
 
 
-@router.post("/requests/{request_id}/continue", response_model=AttemptResult)
+@router.post("/requests/{request_id}/continue", response_model=AssessmentOutcome)
 async def continue_request(
     request_id: UUID,
     session_id: str,
@@ -121,7 +121,7 @@ async def continue_request(
     gateway: Gateway,
     learner: Learner,
     request: Request,
-) -> AttemptResult:
+) -> AssessmentOutcome:
     return await assessment_requests.continue_prepared(
         db, gateway, learner.id, session_id, str(request_id), request.app.state.answer_recovery
     )

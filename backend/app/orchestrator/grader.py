@@ -38,6 +38,7 @@ from app.orchestrator.context import escape_data, learner_answer_block
 from app.schemas.assessment_provenance import AssessmentProvenance
 from app.schemas.common import ActivityType, Domain, ObjectType
 from app.schemas.grading import (
+    AssessmentOutcome,
     AssessmentView,
     AttemptRequest,
     AttemptResult,
@@ -337,7 +338,7 @@ class Grader:
         level = "hosted" if out.hosted else "local"
         return result, level
 
-    async def grade(self, req: AttemptRequest, *, now: datetime | None = None) -> AttemptResult:
+    async def grade(self, req: AttemptRequest, *, now: datetime | None = None) -> AssessmentOutcome:
         db = self.db
         now = now or datetime.now(UTC)
         session: Session = await ksession.get(db, req.session_id)
@@ -492,7 +493,7 @@ class Grader:
         level: str,
         rubric_version: int | None,
         now: datetime | None = None,
-    ) -> AttemptResult:
+    ) -> AssessmentOutcome:
         try:
             return await self._apply_result(
                 req,
@@ -517,7 +518,7 @@ class Grader:
         level: str,
         rubric_version: int | None,
         now: datetime | None = None,
-    ) -> AttemptResult:
+    ) -> AssessmentOutcome:
         """Apply an already validated grade without entering the model gateway.
 
         Recovery callers must own the exact claim write lock and verify its

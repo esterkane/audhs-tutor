@@ -19,14 +19,14 @@ from app.orchestrator import assessment_content, assessment_revisions
 from app.orchestrator.assessment_execution import AssessmentExecution
 from app.orchestrator.assessment_guard import AssessmentGuard
 from app.orchestrator.grader import Grader
-from app.schemas.grading import AttemptRequest, AttemptResult, GradeResult
+from app.schemas.grading import AssessmentOutcome, AttemptRequest, AttemptResult, GradeResult
 
 logger = logging.getLogger(__name__)
 
 
 class AssessmentRequestState(BaseModel):
     status: Literal["not_found", "unresolved", "prepared_ready", "grade_ready", "completed"]
-    result: AttemptResult | None = None
+    result: AssessmentOutcome | None = None
     saved_grade: GradeResult | None = None
     local_worker_stopped: bool = False
 
@@ -42,7 +42,7 @@ async def submit(
     body: AttemptRequest,
     recovery: AnswerRecovery,
     identity: str | None,
-) -> AttemptResult:
+) -> AssessmentOutcome:
     await get_owned(db, body.session_id, learner_id)
 
     async def validate() -> None:
@@ -202,8 +202,17 @@ async def recovered_result(
     learner_id: str,
     saved: dict[str, Any],
     recovery: AnswerRecovery | None,
-) -> AttemptResult:
+) -> AssessmentOutcome:
     """Read history status; reissue a save-only receipt from the durable original snapshot."""
+    if saved.get("outcome") == "provisional_feedback":
+        from app.orchestrator.provisional_feedback import get_owned
+        from app.schemas.provisional_feedback import ProvisionalFeedbackResult
+
+        advisory = ProvisionalFeedbackResult.model_validate(saved)
+        record = await get_owned(db, learner_id, advisory.feedback_id)
+        if record.outcome_json != advisory.model_dump(mode="json"):
+            raise AppError("request_conflict", "The saved feedback cannot be verified.", 409)
+        return advisory
     result = AttemptResult.model_validate(saved)
     snapshot = saved.get("_assessment_history_v1")
     if not isinstance(snapshot, dict):
@@ -251,7 +260,7 @@ async def finish(
     session_id: str,
     identity: str,
     recovery: AnswerRecovery,
-) -> AttemptResult:
+) -> AssessmentOutcome:
     """Explicitly save already graded work, including for an ended owned session."""
     await get_owned(db, session_id, learner_id)
     claim = await db.scalar(
@@ -362,7 +371,7 @@ async def continue_prepared(
     session_id: str,
     identity: str,
     recovery: AnswerRecovery,
-) -> AttemptResult:
+) -> AssessmentOutcome:
     """Explicit owner action; never resend ambiguous or already-started inference."""
     await get_owned(db, session_id, learner_id)
     claim = await db.scalar(

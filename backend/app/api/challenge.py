@@ -9,7 +9,7 @@ from app.kernel import session as ksession
 from app.kernel import skill_graph
 from app.orchestrator import assessment_requests, challenge
 from app.schemas.challenge import CHALLENGE_MODES, ChallengeStart, ChallengeView
-from app.schemas.grading import AttemptRequest, AttemptResult
+from app.schemas.grading import AssessmentOutcome, AttemptRequest
 
 router = APIRouter(prefix="/challenge", tags=["challenge"])
 
@@ -66,7 +66,7 @@ async def start(
 @router.post(
     "/submit",
     summary="Submit a challenge answer (graded against the hidden key; schedules a delayed item)",
-    response_model=AttemptResult,
+    response_model=AssessmentOutcome,
 )
 async def submit(
     body: AttemptRequest,
@@ -75,7 +75,7 @@ async def submit(
     learner: Learner,
     request: Request,
     idempotency_key: Annotated[UUID | None, Header()] = None,
-) -> AttemptResult:
+) -> AssessmentOutcome:
     return await assessment_requests.submit(
         db,
         gateway,
