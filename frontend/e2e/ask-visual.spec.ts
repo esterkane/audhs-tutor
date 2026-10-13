@@ -22,19 +22,32 @@ async function fixture(page: Page, lost = false) {
   })
   await page.route('**/api/visual-generation/visual-job/cancel', route => { state = 'cancelled'; return route.fulfill({ json: job() }) })
   await page.route('**/api/authored-visuals/doc/versions/ver', route => route.fulfill({ json: { id: 'ver', version: 1, target_kind: 'answer', target_id: answer.id, created_at: '2026-10-13T10:01:00Z', content_sha256: 'd'.repeat(64), snapshot_sha256: 'e'.repeat(64), spec, origin: { kind: 'model', model: 'synthetic-local', prompt_version: 'ask.visual.v1' }, grounding_now: 'ungrounded', review_meaning: 'historical_presentation_review_only' } }))
+  let archived = false
+  let loseArchiveResponse = false
+  const archiveKeys: string[] = []
   let revision = 1
   const reviews: { id: string; decision: string; note: string; content_sha256: string; snapshot_sha256: string; created_at: string }[] = []
   const reviewKeys: string[] = []
   let loseReviewResponse = false
   let reviewConflict = false
   const receipts = new Map<string, object>()
-  await page.route('**/api/authored-visuals?*', route => route.fulfill({ json: created && state === 'completed' && !new URL(route.request().url()).searchParams.get('archived')?.includes('true') ? [{ id: 'doc', title: spec.title, revision, archived: false, updated_at: '2026-10-13T10:01:00Z' }] : [] }))
+  await page.route('**/api/authored-visuals?*', route => route.fulfill({ json: created && state === 'completed' && (new URL(route.request().url()).searchParams.get('archived') === 'true') === archived ? [{ id: 'doc', title: spec.title, revision, archived, updated_at: '2026-10-13T10:01:00Z' }] : [] }))
   await page.route('**/api/authored-visuals/doc/versions?*', route => route.fulfill({ json: [{ id: 'ver', version: 1, target_kind: 'answer', target_id: answer.id, created_at: '2026-10-13T10:01:00Z', content_sha256: 'd'.repeat(64), snapshot_sha256: 'e'.repeat(64) }] }))
-  await page.route('**/api/authored-visuals/doc', route => route.fulfill({ json: { id: 'doc', title: spec.title, revision, archived: false, updated_at: '2026-10-13T10:01:00Z' } }))
+  await page.route('**/api/authored-visuals/doc', route => route.fulfill({ json: { id: 'doc', title: spec.title, revision, archived, updated_at: '2026-10-13T10:01:00Z' } }))
   await page.route('**/api/authored-visuals/doc/versions/ver/reviews', route => route.fulfill({ json: reviews }))
   await page.route('**/api/authored-visuals/commands', route => {
     const body = route.request().postDataJSON()
     const key = route.request().headers()['idempotency-key']
+    if (body.action === 'archive') {
+      archiveKeys.push(key)
+      if (!receipts.has(key)) {
+        expect(body.expected_revision).toBe(revision)
+        archived = body.archived; revision++
+        receipts.set(key, { action: 'archive', document_id: 'doc', revision, archived })
+        if (loseArchiveResponse) { loseArchiveResponse = false; return route.abort() }
+      }
+      return route.fulfill({ json: receipts.get(key) })
+    }
     reviewKeys.push(key)
     if (reviewConflict) return route.fulfill({ status: 409, json: { error: { message: 'A newer version exists. Review the latest version explicitly.' } } })
     if (!receipts.has(key)) {
@@ -51,7 +64,7 @@ async function fixture(page: Page, lost = false) {
     }
     return route.fulfill({ json: receipts.get(key) })
   })
-  return { spec, keys, reviews, reviewKeys, loseReview: () => { loseReviewResponse = true }, conflictReview: () => { reviewConflict = true }, complete: () => { state = 'completed' } }
+  return { spec, keys, reviews, reviewKeys, archiveKeys, loseArchive: () => { loseArchiveResponse = true }, loseReview: () => { loseReviewResponse = true }, conflictReview: () => { reviewConflict = true }, complete: () => { state = 'completed' } }
 }
 
 for (const width of [390, 1280]) test(`Ask local visual controls preserve answer and follow-up ${width}`, async ({ page }, info) => {
@@ -250,4 +263,35 @@ test('Lost review remains recoverable after document is archived', async ({ page
   expect(calls.reviews).toHaveLength(1)
   expect(calls.reviewKeys[0]).toBe(calls.reviewKeys[1])
   await expect(page.getByRole('button', { name: 'Needs correction', exact: true })).toHaveCount(0)
+})
+
+for (const width of [390, 1280]) test(`Archive lost response survives reload and restores without generation ${width}`, async ({ page }, info) => {
+  const calls = await fixture(page)
+  await page.setViewportSize({ width, height: 900 })
+  await page.goto('/ask?answer=visual-answer')
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Generate local diagram', exact: true }).click()
+  calls.complete()
+  await page.getByRole('button', { name: 'Refresh visual status' }).click()
+  calls.loseArchive()
+  await page.getByRole('button', { name: 'Archive diagram', exact: true }).focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Retry previous request' })).toBeVisible()
+  await page.reload()
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Training and prediction', exact: true })).toHaveCount(0)
+  await page.getByRole('button', { name: 'Retry previous request' }).click()
+  await expect(page.getByText(/Archive request confirmed/)).toBeVisible()
+  expect(calls.archiveKeys).toHaveLength(2)
+  expect(new Set(calls.archiveKeys).size).toBe(1)
+  await page.getByRole('button', { name: 'View archived diagrams' }).click()
+  await expect(page.getByRole('heading', { name: 'Training and prediction', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Restore diagram', exact: true }).click()
+  await expect(page.getByText(/Restore request confirmed/)).toBeVisible()
+  await page.getByRole('button', { name: 'View active diagrams' }).click()
+  await expect(page.getByRole('heading', { name: 'Training and prediction', exact: true })).toBeVisible()
+  expect(calls.keys).toHaveLength(1)
+  expect(calls.archiveKeys[2]).not.toBe(calls.archiveKeys[0])
+  await page.screenshot({ path: info.outputPath(`archive-${width}.png`), fullPage: true })
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
 })

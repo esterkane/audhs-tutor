@@ -6,6 +6,7 @@ export function RequestRecoveryControls({
   retry,
   originalContext = 'answer, code and material',
   saveOnly = false,
+  savedAction = 'save another review',
 }: {
   recovery: {
     pending: { view: { display: string } } | null
@@ -17,6 +18,7 @@ export function RequestRecoveryControls({
   }
   originalContext?: string
   saveOnly?: boolean
+  savedAction?: string
   busy: boolean
   retry: () => void
 }) {
@@ -44,14 +46,14 @@ export function RequestRecoveryControls({
             <summary>Start different work</summary>
             <p>
               The previous request may still finish. Discarding its retry lets your next send start a new
-              request and may {saveOnly ? 'save another review' : 'cause another model call'}.
+              request and may {saveOnly ? savedAction : 'cause another model call'}.
             </p>
             <Button onClick={() => recovery.discard()}>Discard retry and start new</Button>
           </details>
           {recovery.canUseMemoryOnly && (
             <>
               <p>
-                Storage is unavailable. Continuing without reload recovery may {saveOnly ? 'save another review' : 'start another model call'}; an
+                Storage is unavailable. Continuing without reload recovery may {saveOnly ? savedAction : 'start another model call'}; an
                 earlier request may still finish.
               </p>
               <Button onClick={recovery.continueInMemory}>Continue without reload recovery</Button>

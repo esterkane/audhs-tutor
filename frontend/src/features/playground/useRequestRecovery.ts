@@ -321,3 +321,16 @@ export function useVisualReviewRecovery(scope: string) {
   }, true, true)
   return { ...recovery, error: recovery.error.replaceAll('model call', 'saved review') }
 }
+
+export type VisualArchiveBody = { action: 'archive'; document_id: string; expected_revision: number; archived: boolean }
+export function useVisualArchiveRecovery(scope: string) {
+  const recovery = useTypedRequestRecovery<VisualArchiveBody>(scope, (body): body is VisualArchiveBody => {
+    if (!body || typeof body !== 'object') return false
+    const value = body as VisualArchiveBody
+    return value.action === 'archive' && typeof value.document_id === 'string'
+      && value.document_id.length > 0 && value.document_id.length <= 128
+      && Number.isInteger(value.expected_revision) && value.expected_revision >= 1
+      && typeof value.archived === 'boolean'
+  }, true, true)
+  return { ...recovery, error: recovery.error.replaceAll('model call', 'archive change') }
+}

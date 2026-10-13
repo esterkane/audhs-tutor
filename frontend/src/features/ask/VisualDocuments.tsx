@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
 import type { Schemas } from '../../lib/api'
 import { boundedRead } from '../../lib/boundedRead'
+import { VisualArchive } from './VisualArchive'
 import { VisualReview } from './VisualReview'
 import { VisualFallback } from '../visual-learning/VisualFallback'
 
@@ -14,6 +15,7 @@ const pageSize = 20
 
 export function VisualDocuments({ answerId, learnerId, refresh }: { answerId: string; learnerId: string; refresh: string }) {
   const [archived, setArchived] = useState(false)
+  const [locked, setLocked] = useState(false)
   const [offset, setOffset] = useState(0)
   const [selected, setSelected] = useState('')
   const cache = useQueryClient()
@@ -34,11 +36,12 @@ export function VisualDocuments({ answerId, learnerId, refresh }: { answerId: st
     {rows.length > 0 && <label className="block">Choose saved diagram<select className="block w-full min-h-11 rounded border border-line bg-card px-3" value={document?.id ?? ''} onChange={event => setSelected(event.target.value)}>{!document && <option value="">Choose a diagram</option>}{rows.map(row => <option key={row.id} value={row.id}>{row.title}</option>)}</select></label>}
     {(offset > 0 || rows.length === pageSize) && <div className="flex flex-wrap gap-2"><Button disabled={offset === 0 || documents.isFetching} onClick={() => page(Math.max(0, offset - pageSize))}>Previous diagrams</Button><Button disabled={rows.length < pageSize || documents.isFetching} onClick={() => page(offset + pageSize)}>More diagrams</Button></div>}
     {documents.isSuccess && selected && !document && <p role="status">The selected diagram is no longer on this page. Choose another diagram or check archived diagrams.</p>}
-    {document && <VisualDocument key={document.id} document={document} learnerId={learnerId} />}
+    <VisualArchive answerId={answerId} learnerId={learnerId} document={documents.isSuccess ? document : undefined} lock={setLocked} showArchived={value => { setArchived(value); page(0) }} refresh={async () => { await cache.invalidateQueries({ queryKey: ['visual-documents', learnerId, answerId] }) }} />
+    {document && <VisualDocument key={document.id} document={document} learnerId={learnerId} locked={locked || !documents.isSuccess} />}
   </section>
 }
 
-function VisualDocument({ document, learnerId }: { document: Document; learnerId: string }) {
+function VisualDocument({ document, learnerId, locked }: { document: Document; learnerId: string; locked: boolean }) {
   const [selected, setSelected] = useState('')
   const [offset, setOffset] = useState(0)
   const versions = useQuery({ queryKey: ['visual-versions', learnerId, document.id, document.revision, offset], retry: false,
@@ -52,7 +55,7 @@ function VisualDocument({ document, learnerId }: { document: Document; learnerId
   })
   const spec = detail.data?.spec?.schema_version === 'visual.answer.v1' ? detail.data.spec : null
   return <div className="space-y-3">
-    {document.archived && <p role="status">Archived diagram · history retained. Restore controls are not available here yet.</p>}
+    {document.archived && <p role="status">Archived diagram · history retained. Use Restore diagram to return it to active diagrams.</p>}
     {versions.isPending && <p role="status">Loading diagram versions…</p>}
     {versions.isError && <p role="alert">Version history unavailable. <Button onClick={() => void versions.refetch()}>Retry version history</Button></p>}
     {!!rows.length && <label className="block">Diagram version<select className="block w-full min-h-11 rounded border border-line bg-card px-3" value={versionId ?? ''} onChange={event => setSelected(event.target.value)}>{selected && !rows.some(row => row.id === selected) && <option value={selected}>Selected version {detail.data?.version ?? ""} · Historical</option>}{rows.map((row, index) => <option key={row.id} value={row.id}>Version {row.version}{offset === 0 && index === 0 ? ' · Latest' : ' · Historical'}</option>)}</select></label>}
@@ -74,7 +77,7 @@ function VisualDocument({ document, learnerId }: { document: Document; learnerId
           <ul className="list-disc pl-5 space-y-2 mt-3">{spec.edges.map(edge => <li key={edge.id}>{spec.nodes.find(node => node.id === edge.source)?.label} {spec.directed ? '→' : '—'} {spec.nodes.find(node => node.id === edge.target)?.label}: {edge.label}</li>)}</ul>
         </Disclosure>
         <p className="text-sm text-muted">Source passages, when available, are in the answer above.</p>
-        {<VisualReview readOnly={document.archived || versionId !== versions.data?.[0]?.id || offset !== 0} key={`review:${detail.data!.id}`} documentId={document.id} learnerId={learnerId} version={detail.data!} />}
+        {<VisualReview readOnly={locked || document.archived || versionId !== versions.data?.[0]?.id || offset !== 0} key={`review:${detail.data!.id}`} documentId={document.id} learnerId={learnerId} version={detail.data!} />}
       </section>}
   </div>
 }
