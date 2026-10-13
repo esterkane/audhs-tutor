@@ -82,7 +82,9 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
 
     nxt = await skill_graph.next_skill(db, learner_id)
     st = await blocks.state(db, s)
-    active = await skill_graph.get_node(db, st.skill_id) if st.skill_id else None
+    active = (
+        await skill_graph.get_node(db, st.skill_id, learner_id=learner_id) if st.skill_id else None
+    )
     cap = memory.review_cap(s.mode, s.energy)
     cp = await ksession.load_checkpoint(db, s.id) or {}
     due = await memory.due_items(
@@ -126,7 +128,7 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
 async def check_selection(skill_id: str, db: DB, learner: Learner) -> SkillView:
     from app.api.skills import _view
 
-    node = await skill_graph.get_node(db, skill_id)
+    node = await skill_graph.get_node(db, skill_id, learner_id=learner.id)
     if not skill_graph.teachable(node):
         raise AppError(
             "lesson_unavailable", "Choose an available teaching lesson.", http_status=409

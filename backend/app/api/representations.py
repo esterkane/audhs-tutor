@@ -53,10 +53,10 @@ class PreferIn(BaseModel):
     response_model=KindsOut,
 )
 async def kinds(skill_id: str, db: DB, learner: Learner) -> KindsOut:
-    obj = await krep.object_for_skill(db, skill_id)
+    obj = await krep.object_for_skill(db, skill_id, learner_id=learner.id)
     if obj is None:
         raise KeyError("no learning object for this skill")
-    cached = await krep.cached_kinds(db, obj.id)
+    cached = await krep.cached_kinds(db, obj.id, learner_id=learner.id)
     allowed = krep.allowed_kinds(await competency.mastery(db, learner.id, skill_id))
     return KindsOut(
         object_id=obj.id,
@@ -80,7 +80,8 @@ async def kinds(skill_id: str, db: DB, learner: Learner) -> KindsOut:
 )
 async def prefer(skill_id: str, body: PreferIn, db: DB, learner: Learner) -> None:
     s = await ksession.get_owned(db, body.session_id, learner.id)
-    await orep.prefer(db, s, body.chosen_id, body.rejected_id, body.reason)
+    await skill_graph.get_node(db, skill_id, learner_id=learner.id)
+    await orep.prefer(db, s, body.chosen_id, body.rejected_id, body.reason, skill_id=skill_id)
 
 
 @router.post(
@@ -99,7 +100,7 @@ async def render(
     request: Request,
 ) -> RenderOut:
     s = await ksession.get_owned(db, body.session_id, learner.id)
-    node = await skill_graph.get_node(db, skill_id)
+    node = await skill_graph.get_node(db, skill_id, learner_id=learner.id)
     out = await orep.render(
         db,
         gateway,

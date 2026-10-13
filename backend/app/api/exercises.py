@@ -54,7 +54,7 @@ async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
     check_content = await _check_content(db, learner_id, a)
     check_available = check_content is not None
     item = exercises.public_item(a.item_json)
-    node = await skill_graph.get_node(db, a.skill_id)
+    node = await skill_graph.get_node(db, a.skill_id, learner_id=learner_id)
     node_slug = node.slug
     attempts = int(
         (
@@ -102,7 +102,7 @@ async def _view(db: DB, learner_id: str, a: Assessment) -> ExerciseView:
     response_model=ExerciseView,
 )
 async def for_skill(skill_id: str, db: DB, learner: Learner) -> ExerciseView:
-    node = await skill_graph.get_node(db, skill_id)
+    node = await skill_graph.get_node(db, skill_id, learner_id=learner.id)
     a = await exercises.ensure_exercise(db, node)
     if a is None:
         raise AppError("not_found", "no code exercise for this skill yet", http_status=404)

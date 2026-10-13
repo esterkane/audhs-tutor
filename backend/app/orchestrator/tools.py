@@ -63,9 +63,12 @@ async def retrieve(
     return SearchResult(hits=merged[:k], trace=trace)
 
 
-async def get_learning_contract(db: AsyncSession, node: SkillNode) -> dict[str, Any]:
-    lo = await skill_graph.learning_object_for(db, node.id)
-    prereqs = [p.title for p in await skill_graph.prerequisites(db, node.id)]
+async def get_learning_contract(
+    db: AsyncSession, node: SkillNode, *, learner_id: str | None = None
+) -> dict[str, Any]:
+    node = await skill_graph.get_node(db, node.id, learner_id=learner_id)
+    lo = await skill_graph.learning_object_for(db, node.id, learner_id=learner_id)
+    prereqs = [p.title for p in await skill_graph.prerequisites(db, node.id, learner_id=learner_id)]
     return {
         "skill": node.title,
         "objective": lo.goal if lo else node.description,
@@ -77,9 +80,10 @@ async def get_learning_contract(db: AsyncSession, node: SkillNode) -> dict[str, 
 
 
 async def get_evidence(db: AsyncSession, learner_id: str, node: SkillNode) -> dict[str, Any]:
+    node = await skill_graph.get_node(db, node.id, learner_id=learner_id)
     state = await competency.skill_state(db, learner_id, node.id)
     mastered = []
-    for n in await skill_graph.all_nodes(db, node.domain):
+    for n in await skill_graph.all_nodes(db, node.domain, learner_id=learner_id):
         if (
             n.id != node.id
             and await competency.mastery(db, learner_id, n.id) >= skill_graph.MASTERY_DONE

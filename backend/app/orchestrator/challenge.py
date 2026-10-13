@@ -125,7 +125,9 @@ async def start(
         request=f"Create a {mode.replace('_', ' ')} challenge for the skill '{node.title}'.",
         prompt_version=prompts.PROMPT_VERSION,
         session_state=tools.session_state(session, node, block_type="challenge", hint_level=0),
-        learning_contract=await tools.get_learning_contract(db, node),
+        learning_contract=await tools.get_learning_contract(
+            db, node, learner_id=session.learner_id
+        ),
         evidence=await tools.get_evidence(db, session.learner_id, node),
         retrieved=result.hits,
         output_contract={

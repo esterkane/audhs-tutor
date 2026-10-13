@@ -217,7 +217,7 @@ async def concepts(area_id: str, db: DB, learner: Learner) -> AreaConcepts:
                 description=node.description,
                 success_criteria=[str(value) for value in node.success_criteria_json or []],
             )
-            for node in await skill_graph.all_nodes(db)
+            for node in await skill_graph.all_nodes(db, learner_id=learner.id)
             if node.area_id == area_id and skill_graph.teachable(node)
         ],
     )

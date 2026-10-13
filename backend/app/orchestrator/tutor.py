@@ -172,9 +172,9 @@ class TutorTurn:
             # spoken practice lives on the language node, never on an AI/ML skill (P9)
             node = await practice.vocab_deck(db, str(req.conversation_lang))
         elif req.skill_id:
-            node = await skill_graph.get_node(db, req.skill_id)
+            node = await skill_graph.get_node(db, req.skill_id, learner_id=learner_id)
         elif checkpoint.get("skill_id"):
-            node = await skill_graph.get_node(db, checkpoint["skill_id"])
+            node = await skill_graph.get_node(db, checkpoint["skill_id"], learner_id=learner_id)
         else:
             nxt = await skill_graph.next_skill(db, learner_id)
             if nxt is None:
@@ -345,7 +345,7 @@ class TutorTurn:
                 await db.rollback()
                 logger.warning("Lesson semantic lookup unavailable: %s", type(exc).__name__)
                 session = await ksession.get(db, req.session_id)
-                node = await skill_graph.get_node(db, node_id)
+                node = await skill_graph.get_node(db, node_id, learner_id=learner_id)
             # Literal candidates may have been reported/changed during semantic inference.
             historical = []
             try:
@@ -376,7 +376,7 @@ class TutorTurn:
             session_state=tools.session_state(
                 session, node, block_type=block_type, hint_level=hint_level, socratic=socratic
             ),
-            learning_contract=await tools.get_learning_contract(db, node),
+            learning_contract=await tools.get_learning_contract(db, node, learner_id=learner_id),
             evidence=evidence,
             retrieved=hits,
             quarantine_below_trust=self.quarantine_below_trust,

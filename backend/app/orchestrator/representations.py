@@ -12,7 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.answer_recovery import AnswerRecovery
 from app.db.answers import save_completed
 from app.db.events import EventWriter, Verb
-from app.db.models import LearningObject, Representation, Session, SkillNode, TutorAnswer
+from app.db.models import LearningObject, Session, SkillNode, TutorAnswer
+from app.kernel import content_access
 from app.kernel import representations as krep
 from app.kernel import session as ksession
 from app.knowledge.repository import RetrievalRepository
@@ -37,13 +38,15 @@ async def render(
     force: bool = False,
     recovery: AnswerRecovery | None = None,
 ) -> dict[str, Any]:
-    obj = await krep.object_for_skill(db, node.id)
+    obj = await krep.object_for_skill(db, node.id, learner_id=session.learner_id)
     if obj is None:
         raise KeyError(f"no learning object for skill {node.slug}")
     evidence = await tools.get_evidence(db, session.learner_id, node)
     if kind not in krep.allowed_kinds(float(evidence.get("mastery", 0.0))):
         raise ValueError(f"representation {kind!r} not allowed yet for this node (mastery gate)")
-    cached = None if force else await krep.get_cached(db, obj.id, kind)
+    cached = (
+        None if force else await krep.get_cached(db, obj.id, kind, learner_id=session.learner_id)
+    )
     if cached is not None:
         return await _finish(
             db,
@@ -66,7 +69,9 @@ async def render(
         prompt_version=prompts.PROMPT_VERSION,
         preferences=await tools.get_preferences(db, session.learner_id),
         session_state=tools.session_state(session, node, block_type="new_material", hint_level=0),
-        learning_contract=await tools.get_learning_contract(db, node),
+        learning_contract=await tools.get_learning_contract(
+            db, node, learner_id=session.learner_id
+        ),
         evidence=evidence,
         retrieved=result.hits,
         output_contract={
@@ -109,7 +114,13 @@ async def render(
         "route": out.route,
     }
     row = await krep.store(
-        db, obj.id, kind, content, model_call_id=out.model_call_id, provenance=provenance
+        db,
+        obj.id,
+        kind,
+        content,
+        model_call_id=out.model_call_id,
+        provenance=provenance,
+        learner_id=session.learner_id,
     )
     await events.emit(
         Verb.EXPLAINED,
@@ -246,13 +257,24 @@ def _out(
 
 
 async def prefer(
-    db: AsyncSession, session: Session, chosen_id: str, rejected_id: str, reason: str | None = None
+    db: AsyncSession,
+    session: Session,
+    chosen_id: str,
+    rejected_id: str,
+    reason: str | None = None,
+    *,
+    skill_id: str | None = None,
 ) -> None:
     """The learner chose one representation over another: a preference pair (ADR-0005 signal)."""
-    chosen = await db.get(Representation, chosen_id)
-    rejected = await db.get(Representation, rejected_id)
-    if chosen is None or rejected is None:
-        raise KeyError("representation not found")
+    chosen = await content_access.require_representation(db, session.learner_id, chosen_id)
+    rejected = await content_access.require_representation(db, session.learner_id, rejected_id)
+    if skill_id is not None:
+        for representation in (chosen, rejected):
+            obj = await content_access.require_object(
+                db, session.learner_id, representation.object_id
+            )
+            if obj.skill_id != skill_id:
+                raise ValueError("Choose representations from this lesson")
     events = EventWriter(db, ksession.event_context(session))
     await events.emit(
         Verb.PREFERRED,

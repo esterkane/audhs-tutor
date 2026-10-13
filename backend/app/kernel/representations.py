@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import LearningObject, Representation
+from app.kernel import content_access
 
 KINDS = ["analogy", "derivation", "code", "diagram", "worked_example", "problem_first", "narrative"]
 KIND_LABELS = {
@@ -20,18 +21,28 @@ def allowed_kinds(mastery: float) -> list[str]:
     return [k for k in KINDS if k != "problem_first" or mastery >= 0.6]
 
 
-async def get_cached(db: AsyncSession, object_id: str, kind: str) -> Representation | None:
+async def get_cached(
+    db: AsyncSession, object_id: str, kind: str, *, learner_id: str | None = None
+) -> Representation | None:
     stmt = (
         select(Representation)
-        .where(Representation.object_id == object_id, Representation.kind == kind)
+        .where(
+            Representation.object_id == object_id,
+            Representation.kind == kind,
+            content_access.representation_visible(learner_id),
+        )
         .order_by(Representation.created_at.desc())
         .limit(1)
     )
     return (await db.execute(stmt)).scalar_one_or_none()
 
 
-async def cached_kinds(db: AsyncSession, object_id: str) -> set[str]:
-    stmt = select(Representation.kind).where(Representation.object_id == object_id)
+async def cached_kinds(
+    db: AsyncSession, object_id: str, *, learner_id: str | None = None
+) -> set[str]:
+    stmt = select(Representation.kind).where(
+        Representation.object_id == object_id, content_access.representation_visible(learner_id)
+    )
     return set((await db.execute(stmt)).scalars().all())
 
 
@@ -43,9 +54,11 @@ async def store(
     *,
     model_call_id: str | None,
     provenance: dict[str, Any] | None = None,
+    learner_id: str | None = None,
 ) -> Representation:
     if kind not in KINDS:
         raise ValueError(f"unknown representation kind {kind!r}")
+    await content_access.require_object(db, learner_id, object_id)
     row = Representation(
         object_id=object_id,
         kind=kind,
@@ -59,7 +72,10 @@ async def store(
     return row
 
 
-async def invalidate(db: AsyncSession, object_id: str, kind: str | None = None) -> int:
+async def invalidate(
+    db: AsyncSession, object_id: str, kind: str | None = None, *, learner_id: str | None = None
+) -> int:
+    await content_access.require_object(db, learner_id, object_id)
     stmt = select(Representation).where(Representation.object_id == object_id)
     if kind:
         stmt = stmt.where(Representation.kind == kind)
@@ -70,10 +86,12 @@ async def invalidate(db: AsyncSession, object_id: str, kind: str | None = None) 
     return len(rows)
 
 
-async def object_for_skill(db: AsyncSession, skill_id: str) -> LearningObject | None:
+async def object_for_skill(
+    db: AsyncSession, skill_id: str, *, learner_id: str | None = None
+) -> LearningObject | None:
     stmt = (
         select(LearningObject)
-        .where(LearningObject.skill_id == skill_id)
+        .where(LearningObject.skill_id == skill_id, content_access.object_visible(learner_id))
         .order_by(LearningObject.version.desc())
         .limit(1)
     )

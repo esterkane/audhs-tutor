@@ -334,7 +334,11 @@ async def catalogue(db: AsyncSession, learner_id: str) -> dict[str, Any]:
         )
     ).scalars():
         drafts[str(d.area_id)].append(d.id)
-    nodes = [node for node in await skill_graph.all_nodes(db) if skill_graph.teachable(node)]
+    nodes = [
+        node
+        for node in await skill_graph.all_nodes(db, learner_id=learner_id)
+        if skill_graph.teachable(node)
+    ]
     out = []
     for a in areas:
         active = [node for node in nodes if node.area_id == a.id]

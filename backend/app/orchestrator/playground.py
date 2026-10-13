@@ -22,8 +22,8 @@ from app.db.base import new_id, utcnow_iso
 from app.db.events import EventWriter, Verb
 from app.db.models import Session, SessionCheckpoint, SkillNode
 from app.db.traces import TutorTraceRecord, write_retrieval_trace, write_tutor_trace
+from app.kernel import content_access, skill_graph
 from app.kernel import session as ksession
-from app.kernel import skill_graph
 from app.kernel.arithmetic_checks import VERSION as ARITHMETIC_VERSION
 from app.kernel.bin_checks import VERSION as BIN_VERSION
 from app.knowledge.repository import RetrievalRepository
@@ -86,7 +86,11 @@ async def validate_lesson_origin(
     if (
         not checkpoint
         or checkpoint.get("skill_id") != skill
-        or not await db.scalar(select(SkillNode.id).where(SkillNode.id == skill))
+        or not await db.scalar(
+            select(SkillNode.id).where(
+                SkillNode.id == skill, content_access.skill_visible(learner_id)
+            )
+        )
     ):
         raise AppError(
             "lesson_context_changed",
@@ -254,9 +258,9 @@ async def respond(
     )
     if lesson_lookup and repo is not None:
         assert body.lesson_origin is not None
-        node = await db.get(SkillNode, body.lesson_origin.skill_id)
+        node = await skill_graph.get_node(db, body.lesson_origin.skill_id, learner_id=learner_id)
         assert node is not None
-        lo = await skill_graph.learning_object_for(db, node.id)
+        lo = await skill_graph.learning_object_for(db, node.id, learner_id=learner_id)
         goal = lo.goal if lo else node.description or node.title
         try:
             result = await asyncio.wait_for(

@@ -55,7 +55,7 @@ async def start(
         if nxt is None:
             raise KeyError("no skills")
         skill_id = nxt.id
-    node = await skill_graph.get_node(db, skill_id)
+    node = await skill_graph.get_node(db, skill_id, learner_id=learner.id)
     saved = await challenge.reusable(db, s, node, body.mode)
     if saved is not None:
         return saved
