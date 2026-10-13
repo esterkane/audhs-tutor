@@ -84,7 +84,7 @@ async def test_retry_returns_creation_receipt_after_edit_and_source_change(
     assert await repo.create(learner.id, "key", raw(command)) == original
     with pytest.raises(AppError, match="different content"):
         await repo.create(learner.id, "key", raw({**command, "title": "New request"}))
-    with pytest.raises(ValueError, match="changed"):
+    with pytest.raises(AppError, match="changed"):
         await repo.create(learner.id, "new-key", raw(command))
     async with session_factory() as check:
         draft = await check.get(CurriculumDraft, original.draft_id)

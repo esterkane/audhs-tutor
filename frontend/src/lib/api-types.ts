@@ -1119,6 +1119,40 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/lesson-promotions/answers/{answer_id}/preview': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Preview private lesson source identity without creating a draft */
+    get: operations['preview_api_lesson_promotions_answers__answer_id__preview_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/lesson-promotions/drafts': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Explicitly create an inactive private lesson draft from a saved answer */
+    post: operations['create_api_lesson_promotions_drafts_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/questions/corrections': {
     parameters: {
       query?: never
@@ -2987,6 +3021,25 @@ export interface components {
       session_id: string
       /** Question */
       question: string
+    }
+    /** AnswerLessonBinding */
+    AnswerLessonBinding: {
+      /**
+       * Schema Version
+       * @default answer-lesson-binding.v1
+       * @constant
+       */
+      schema_version: 'answer-lesson-binding.v1'
+      /** Answer Id */
+      answer_id: string
+      /** Question Sha256 */
+      question_sha256: string
+      /** Answer Sha256 */
+      answer_sha256: string
+      /** Lineage Sha256 */
+      lineage_sha256: string
+      /** Source State Sha256 */
+      source_state_sha256: string
     }
     /** AnswerPage */
     AnswerPage: {
@@ -5192,6 +5245,42 @@ export interface components {
       block_index: number
       /** Block Started At */
       block_started_at: string
+    }
+    /** LessonDraftPreview */
+    LessonDraftPreview: {
+      binding: components['schemas']['AnswerLessonBinding']
+      /**
+       * Grounding
+       * @enum {string}
+       */
+      grounding: 'unknown' | 'ungrounded' | 'sources_recorded'
+      /** Issues */
+      issues: string[]
+      /**
+       * Publication Available
+       * @default false
+       * @constant
+       */
+      publication_available: false
+    }
+    /** LessonDraftReceipt */
+    LessonDraftReceipt: {
+      /**
+       * Action
+       * @default create_private_draft
+       * @constant
+       */
+      action: 'create_private_draft'
+      /** Draft Id */
+      draft_id: string
+      /** Promotion Id */
+      promotion_id: string
+      /**
+       * Created Version
+       * @default 1
+       * @constant
+       */
+      created_version: 1
     }
     /** LessonList */
     LessonList: {
@@ -9465,6 +9554,73 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['AnswerVisualTarget']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  preview_api_lesson_promotions_answers__answer_id__preview_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        answer_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LessonDraftPreview']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  create_api_lesson_promotions_drafts_post: {
+    parameters: {
+      query?: never
+      header: {
+        'Idempotency-Key': string
+      }
+      path?: never
+      cookie?: never
+    }
+    /** @description Strict CreateLessonDraft command; 65536 streamed bytes maximum. */
+    requestBody: {
+      content: {
+        'application/json': Record<string, never>
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LessonDraftReceipt']
         }
       }
       /** @description Validation Error */

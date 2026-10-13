@@ -49,7 +49,14 @@ class LessonPromotionRepository:
                     await db.rollback()
                     return receipt
                 # No external await/inference. Resolution and writes share this reservation.
-                target = await validate_lesson_binding(db, learner_id, command.binding)
+                try:
+                    target = await validate_lesson_binding(db, learner_id, command.binding)
+                except ValueError:
+                    raise AppError(
+                        "promotion_target_changed",
+                        "Answer or source history changed. Preview again.",
+                        409,
+                    ) from None
                 draft_id, promotion_id = new_id(), new_id()
                 slug = f"private-answer-{promotion_id.lower()}"
                 payload = DraftPayload.model_validate(

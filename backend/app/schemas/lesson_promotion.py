@@ -42,3 +42,13 @@ class LessonDraftReceipt(BaseModel):
     promotion_id: Identifier
     created_version: Literal[1] = 1
     # Receipt of creation, not the draft's current state after later edits/discard.
+
+
+class LessonDraftPreview(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    binding: AnswerLessonBinding
+    grounding: Literal["unknown", "ungrounded", "sources_recorded"]
+    issues: tuple[str, ...]
+    # Neither a factual accuracy review nor a permission decision.
+    publication_available: Literal[False] = False
