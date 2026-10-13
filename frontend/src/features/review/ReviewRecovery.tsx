@@ -59,9 +59,10 @@ export function ReviewRecovery({
     }
   }
   if (!pending && !recovery.previousRating && !recovery.error && !recovery.memoryOnly) return null
+  const needsRecovery = !!pending || !!recovery.error || recovery.memoryOnly
   return (
-    <section aria-label="Review submission recovery" className="border border-warn rounded p-3 grid gap-2">
-      <h3 className="font-semibold">Check your earlier rating</h3>
+    <section aria-label={needsRecovery ? 'Review submission recovery' : 'Previous review ratings'} className={`border ${needsRecovery ? 'border-warn' : 'border-line'} rounded p-3 grid gap-2`}>
+      <h3 className="font-semibold">{needsRecovery ? 'Check your earlier rating' : 'Previous review ratings'}</h3>
       {recovery.memoryOnly && (
         <p role="status">
           Recovery is in page memory only. Reloading or closing this page loses its identity and review queue.
@@ -175,7 +176,9 @@ export function ReviewRecovery({
         </>
       )}
       {error && <p role="alert">{error}</p>}
-      <p className="text-sm text-muted">You can stop or change activity without completing recovery.</p>
+      <p className="text-sm text-muted">{needsRecovery
+        ? 'You can stop or change activity without completing recovery.'
+        : 'These earlier choices are kept for reference. No action is needed; continue with the current card.'}</p>
     </section>
   )
 }

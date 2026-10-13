@@ -64,6 +64,8 @@ for (const narrow of [false, true]) {
       await page.getByRole('button', { name: 'Show answer', exact: true }).click()
       const good = page.getByRole('button', { name: /^Good/ })
       await expect(good).toBeEnabled()
+      await expect(page.getByRole('region', { name: 'Previous review ratings' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Check your earlier rating' })).toHaveCount(0)
       await expect(page.getByText(/check the earlier submission before trying again/)).toHaveCount(0)
       await good.focus()
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
