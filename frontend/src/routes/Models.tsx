@@ -465,10 +465,17 @@ export function Models() {
       <Card>
         <div ref={modelList} tabIndex={-1} role="region" aria-label="Model registry"><CardTitle as="h1">Models</CardTitle></div>
         <p className="text-sm text-muted">
-          OpenAI uses OPENAI_API_KEY; Claude uses ANTHROPIC_API_KEY in your local .env. Restart the backend
-          after saving a key. Ready means a key is configured, not that access or tutoring quality has been
-          verified. Hosted benchmarks make paid requests within the shared daily budget. Benchmark and review
-          a model before assigning it to a task.
+          Use an installed local model for tutoring. Hosted inference and benchmarks are currently blocked
+          by the source policy. The app first needs a way to verify that the complete request contains
+          only your own reviewed material.
+          A configured API key or Ready status does not authorize sending content.
+          Hosted benchmark attempts will report a source-policy error, without sending the request.
+          Benchmark and review a local model before assigning it to a task.
+        </p>
+        <p className="text-sm text-muted">
+          OpenAI key setup uses OPENAI_API_KEY; Claude uses ANTHROPIC_API_KEY in your local .env.
+          Restart the backend after changing keys. This checks configuration only; it does not unlock
+          hosted inference or verify tutoring quality. Historical cost records remain available in Hosted spend.
         </p>
         <p className="text-sm text-muted mb-2">
           Everything the tutor can run, where it comes from, whether it is downloaded and benchmarked, and

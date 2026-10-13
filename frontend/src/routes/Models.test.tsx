@@ -180,7 +180,7 @@ describe('Models', () => {
     expect(screen.getByText(/47.5 tok\/s · first token 120 ms · tutoring checks 4\/5/)).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Download' })).toHaveLength(1) // only the available one
     expect(screen.getByRole('button', { name: 'Check key setup' })).toBeInTheDocument()
-    expect(screen.getByText(/Ready means a key is configured/)).toBeInTheDocument()
+    expect(screen.getByText(/Hosted inference and benchmarks are currently blocked/)).toBeInTheDocument()
     expect(pulls).toHaveLength(0)
     fireEvent.click(screen.getByRole('button', { name: 'Download' }))
     await waitFor(() => expect(pulls).toHaveLength(1))

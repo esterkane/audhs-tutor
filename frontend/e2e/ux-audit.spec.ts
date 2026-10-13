@@ -4,7 +4,12 @@ import axe from 'axe-core'
 
 // Evidence collection, not a conformance gate: inspect findings, not the pass count.
 test.skip(process.env.AUDHS_UX_AUDIT !== '1', 'Opt-in Phase 2 audit.')
-const routes = ['/', '/areas', '/programs', '/playground', '/playground/visualizer', '/answers', '/map', '/together', '/experiments', '/vocab', '/corpus', '/curriculum', '/models', '/preferences', '/session', '/review', '/recap']
+const routes = [
+  '/', '/ask', '/learn', '/practice', '/progress', '/explore', '/search', '/sources',
+  '/areas', '/programs', '/playground', '/playground/visual-learning', '/playground/visualizer',
+  '/answers', '/map', '/together', '/experiments', '/vocab', '/corpus', '/curriculum',
+  '/models', '/preferences', '/task-review', '/corrections', '/session', '/review', '/recap',
+]
 for (const width of [390, 800, 1280, 1920]) {
   test(`screen inventory ${width}px`, async ({ page }, info) => {
     test.setTimeout(180_000)
@@ -31,7 +36,7 @@ for (const width of [390, 800, 1280, 1920]) {
         }
       })
       findings.push({ path, ...result })
-      if (['/', '/preferences', '/playground', '/models'].includes(path))
+      if (['/', '/ask', '/progress', '/preferences', '/playground', '/models'].includes(path))
         await page.screenshot({ path:info.outputPath(`${path.replaceAll('/','') || 'home'}.png`),fullPage:true })
     }
     await writeFile(info.outputPath('inventory.json'), JSON.stringify(findings,null,2))
