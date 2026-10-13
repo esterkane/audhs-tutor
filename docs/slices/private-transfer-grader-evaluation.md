@@ -17,3 +17,8 @@ Latest sanitized CI run 38456160636 did not start its required gate due to accou
 
 ## Next bounded step
 Compare an already available local model on the same four cases before changing routing, then extend contrastive cases and repeatability checks for any promising candidate. Separate criterion identity transport from semantic correctness; do not add task-specific phrase matching or award evidence from this evaluation. Current grader quality remains unresolved, and this rollback does not prove the baseline reliable.
+
+## Follow-up: installed 27B baseline
+Gemma3-27B (installed Ollama tag, GPU) was tested on the same four synthetic responses through the unchanged v1/600-token runtime on 2026-10-13. All four returned no accepted grade: correct45.50s, misconception24.97s, partial22.49s, injection18.50s. No exceptions were exposed to this harness. These null results do not distinguish transport/schema failure from criterion validation; no raw-output diagnosis was run for this comparison. They cannot support a semantic accuracy claim. The run ended normally, with no hosted calls or production routing changes.
+
+The bounded comparison stops here. Increasing model size alone is not an evidenced remedy. Next implementation candidate is an isolated, versioned criterion-ID output contract that preserves exact server-owned rubric text, with fail-closed unknown/duplicate/missing IDs and unchanged learner evidence rules. Document and review that contract before runtime edits; then evaluate semantic correctness separately using these cases and contrastive qualifications. Do not weaken validation or adopt the rejected prompt based on this result.
