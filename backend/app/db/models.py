@@ -1092,3 +1092,19 @@ from app.db.lesson_ddl import LESSON_IMMUTABLE_GUARDS  # noqa: E402
 
 for _lesson_table, _lesson_ddl in LESSON_IMMUTABLE_GUARDS.items():
     event.listen(Base.metadata.tables[_lesson_table], "after_create", DDL(_lesson_ddl))  # type: ignore[no-untyped-call]
+
+from app.db.content_ddl import CONTENT_GUARDS  # noqa: E402
+
+for _guard_name, _content_ddl in CONTENT_GUARDS.items():
+    _guard_table = (
+        SkillEdge
+        if _guard_name.startswith("skill_edge")
+        else SkillNode
+        if _guard_name.startswith("skill_owner")
+        else LearningObject
+        if _guard_name.startswith("object")
+        else Representation
+        if _guard_name.startswith("representation")
+        else Assessment
+    )
+    event.listen(_guard_table.__table__, "after_create", DDL(_content_ddl))  # type: ignore[no-untyped-call]

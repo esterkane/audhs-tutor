@@ -1,7 +1,7 @@
 from uuid import uuid4
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app.core.content_versions import token
 from app.core.errors import AppError
@@ -117,6 +117,8 @@ async def test_review_is_owner_scoped_and_rollback_safe(db, learner):
     assert await db.get(AssessmentTaskReview, receipt.id) is None
     task_id = receipt.assessment_id
     task = await db.get(Assessment, task_id)
+    # Deliberate fixture corruption to retain defensive access checks.
+    await db.execute(text("DROP TRIGGER assessment_owner_immutable"))
     task.owner_learner_id = other_id
     await db.commit()
     with pytest.raises(AppError):
@@ -337,6 +339,8 @@ async def test_review_api_rejects_another_learners_private_task(client, db):
     other = LearnerProfile(display_name="Private author")
     db.add(other)
     await db.flush()
+    # Deliberate fixture corruption to retain defensive access checks.
+    await db.execute(text("DROP TRIGGER assessment_owner_immutable"))
     task.owner_learner_id = other.id
     await db.commit()
     assert (await client.get(path)).status_code == 404

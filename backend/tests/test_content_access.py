@@ -107,7 +107,7 @@ def test_ownership_migration_preserves_shared_and_refuses_private_downgrade(tmp_
             "assessment_requirements_json,example_applications_json,created_at) "
             "VALUES ('s','s','ai_ml','Shared','','[]','{}','[]','now')"
         )
-    command.upgrade(config, "head")
+    command.upgrade(config, "41332c2fe9b8")
     with sqlite3.connect(path) as conn:
         assert conn.execute("SELECT owner_learner_id FROM skill_node").fetchone()[0] is None
         conn.execute("UPDATE skill_node SET owner_learner_id='a'")
@@ -119,4 +119,4 @@ def test_ownership_migration_preserves_shared_and_refuses_private_downgrade(tmp_
         )
         conn.execute("UPDATE skill_node SET owner_learner_id=NULL")
     command.downgrade(config, "30221b1ed8a7")
-    command.upgrade(config, "head")
+    command.upgrade(config, "41332c2fe9b8")

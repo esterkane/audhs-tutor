@@ -120,3 +120,13 @@ qualification remain separate.
 ## Review
 Bounded architecture review found no major gap; its explicit wipe-discovery concern
 is incorporated above. This is a plan, not proof that private activation is safe yet.
+
+
+## Storage implementation update — 2026-10-13
+
+Revision52443d30fac9 adds immutable skill/assessment ownership, inherited owner protection
+on object/representation reparenting, and edge/assessment relationship guards. Migration refuses
+invalid existing relationships; backup validation recognizes guards by revision and checks their
+definitions, then rechecks relationships after upgrade. See slices/private-content-storage-guards.md
+for verification. These constraints do not authorize callers; scoped consumers, remaining
+experiment/retrieval boundaries and activation lineage are still required before the producer opens.

@@ -4,7 +4,7 @@ import sqlite3
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.core.errors import AppError
 from app.db import models
@@ -217,6 +217,7 @@ async def test_direct_api_paths_hide_foreign_private_content(client, db):
 async def test_assessments_and_cached_reviews_inherit_private_skill_access(db, learner):
     shared, own, foreign, other = await setup(db, learner)
     node = await db.get(models.SkillNode, shared.skill_id)
+    await db.execute(text("DROP TRIGGER skill_owner_immutable"))
     node.owner_learner_id = other.id
     await db.commit()
     # An unowned assessment or an owned correction cannot expose a foreign parent.

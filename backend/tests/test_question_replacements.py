@@ -3,7 +3,7 @@
 import sqlite3
 
 import pytest
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 
 from app.core.errors import AppError
 from app.db import models
@@ -59,6 +59,8 @@ async def test_owned_chain_and_original_snapshot_identity(db, learner):
 )
 async def test_broken_lineage_never_falls_back(db, learner, fault):
     original, own, foreign, _ = await setup(db, learner)
+    # Deliberate lineage corruption, independent of storage protection.
+    await db.execute(text("DROP TRIGGER assessment_owner_immutable"))
     target = foreign if fault == "foreign" else own
     if fault == "shared":
         own.owner_learner_id = None

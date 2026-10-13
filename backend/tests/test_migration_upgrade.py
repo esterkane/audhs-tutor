@@ -167,7 +167,7 @@ def test_revision_provenance_migration_preserves_legacy_and_guards_downgrade(tmp
     command.upgrade(alembic_config(url), "c146f830ad92")
     fill_all_tables(url)
     before = dump_rows(url)["assessment_attempt"]
-    command.upgrade(alembic_config(url), "head")
+    command.upgrade(alembic_config(url), "d257a941be03")
     after = dump_rows(url)["assessment_attempt"]
     assert [{k: row[k] for k in before[0]} for row in after] == before
     assert all(row["content_fingerprint"] is None for row in after)

@@ -1,7 +1,7 @@
 """Skill graph scope must apply before ranking, traversal and direct selection."""
 
 import pytest
-from sqlalchemy import select
+from sqlalchemy import select, text
 
 from app.db.models import LearnerProfile, LearningObject, SkillEdge, SkillNode
 from app.kernel import skill_graph
@@ -42,6 +42,8 @@ async def test_graph_scope_and_hidden_prerequisites(db, learner):
     assert await skill_graph.next_skill(db, learner.id, goals={"goal.course": "foreign"}) is None
     assert await skill_graph.goal_scope(db, learner.id, goals={"goal.course": "foreign"}) == []
     assert (await skill_graph.selection(db, learner.id, "own"))[0].id == "own"
+    # Deliberately bypass the storage guard to exercise defensive reads.
+    await db.execute(text("DROP TRIGGER skill_edge_owner_insert"))
     # Before storage guards land, a malformed hidden dependency must fail closed.
     db.add(SkillEdge(from_skill_id="foreign", to_skill_id="own", kind="prerequisite"))
     await db.commit()

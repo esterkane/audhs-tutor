@@ -26,7 +26,11 @@ def test_complete_export_and_wipe_includes_indirect_rows_without_affecting_other
     other = second["learner_profile"]["id"]
     with sync_connect(url) as conn:
         # This fixture intentionally exercises shared curriculum, independent of private skills.
+        from app.db.content_ddl import CONTENT_GUARDS
+
+        conn.execute("DROP TRIGGER skill_owner_immutable")
         conn.execute("UPDATE skill_node SET owner_learner_id=NULL")
+        conn.execute(CONTENT_GUARDS["skill_owner_immutable"])
         # A representation without an attributable model call on shared content remains shared.
         row = first["representation"]
         conn.execute(

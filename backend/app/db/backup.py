@@ -58,6 +58,12 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from app.db import backup_crypto
 from app.db import models as _models  # noqa: F401  (registers every table on Base.metadata)
 from app.db.base import Base
+from app.db.content_ddl import (
+    CONTENT_GUARD_REVISION,
+    CONTENT_GUARDS,
+    INVALID_ASSESSMENT,
+    INVALID_EDGE,
+)
 from app.db.ddl import LEARNING_EVENT_GUARDS
 from app.db.lesson_ddl import LESSON_IMMUTABLE_GUARDS
 from app.db.migrate import alembic_config, upgrade_to_head
@@ -641,6 +647,7 @@ def _expected_schema_objects() -> tuple[set[str], set[str]]:
     )
     triggers = (
         set(LEARNING_EVENT_GUARDS)
+        | set(CONTENT_GUARDS)
         | {f"{table}_no_update" for table in (VISUAL_IMMUTABLE_GUARDS | LESSON_IMMUTABLE_GUARDS)}
         | {"tutor_answer_fts_" + action for action in ("insert", "update", "delete")}
     )
@@ -683,6 +690,22 @@ def _check_snapshot_schema(db_file: Path, revision: str) -> None:
         else:
             raise BackupError(f"snapshot contains an unexpected {kind} {name!r}")
     required = set(LEARNING_EVENT_GUARDS)
+    script = ScriptDirectory.from_config(alembic_config("sqlite://"))
+    guarded = any(
+        r.revision == CONTENT_GUARD_REVISION
+        for r in script.walk_revisions(base="base", head=revision)
+    )
+    if guarded:
+        required |= set(CONTENT_GUARDS)
+        with closing(sqlite3.connect(db_file)) as conn:
+            for name, expected in CONTENT_GUARDS.items():
+                row = conn.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='trigger' AND name=?", (name,)
+                ).fetchone()
+                if row is None or " ".join(row[0].split()).rstrip(";") != " ".join(
+                    expected.split()
+                ).rstrip(";"):
+                    raise BackupError("snapshot has altered private content guards")
     present_tables = {name for kind, name, _ in objects if kind == "table"}
     required |= {
         f"{table}_no_update"
@@ -699,6 +722,9 @@ def _check_after_upgrade(db_file: Path) -> None:
     conn = sqlite3.connect(db_file)
     try:
         conn.execute("PRAGMA foreign_keys=ON")
+        for query in (INVALID_EDGE, INVALID_ASSESSMENT):
+            if conn.execute(query).fetchone():
+                raise BackupError("restored database has invalid private content relationships")
         bad = conn.execute("PRAGMA foreign_key_check").fetchall()
         if bad:
             raise BackupError(f"restored database has {len(bad)} broken foreign-key row(s)")
