@@ -46,7 +46,7 @@ export function Curriculum() {
     return (
       <li key={d.id} className="flex flex-wrap justify-between items-center gap-2 border-b border-line py-3">
         <div>
-          <p className="font-medium">{d.section ?? 'Course introduction'}</p>
+          <p className="font-medium">{d.course ? (d.section ?? 'Course introduction') : d.title}</p>
           <p className="text-sm text-muted">
             {statusLabel(d.status)} · {((d.payload as Payload).skills ?? []).length} lessons
           </p>
@@ -54,7 +54,7 @@ export function Curriculum() {
         <Button
           disabled={dirty}
           onClick={() => setSelected(d.id)}
-          aria-label={`Review ${d.section ?? 'Course introduction'}`}
+          aria-label={`Review ${d.course ? (d.section ?? 'Course introduction') : d.title}`}
         >
           {d.status === 'draft' ? 'Review lessons' : 'View lessons'}
         </Button>
@@ -65,18 +65,18 @@ export function Curriculum() {
   return (
     <div className="grid gap-4">
       <Card>
-        <CardTitle as="h1">Turn course material into lessons</CardTitle>
+        <CardTitle as="h1">Review lesson drafts</CardTitle>
         <p className="text-sm text-muted mt-2">
-          Your imported files are already searchable. Here you review lesson drafts and activate the sections
-          you want to study.
+          Review drafts across topics below, or choose an imported course to review its sections.
+          Activate only the lessons you want to study.
         </p>
         <p className="text-sm mt-2">
           Activation adds lessons to your tutor app. It does not post or share your course material online.
         </p>
         <ol className="flex flex-wrap gap-4 text-sm mt-4" aria-label="Lesson setup steps">
-          <li aria-current={!course ? 'step' : undefined}>1. Choose a course</li>
-          <li aria-current={course && !draft ? 'step' : undefined}>2. Choose a section</li>
-          <li aria-current={draft ? 'step' : undefined}>3. Review and activate</li>
+          <li aria-current={!course ? 'step' : undefined}>1. Choose a draft or course</li>
+          <li aria-current={course && !draft ? 'step' : undefined}>2. Review the lesson</li>
+          <li aria-current={draft ? 'step' : undefined}>3. Activate when ready</li>
         </ol>
       </Card>
       <Card>
@@ -134,10 +134,10 @@ export function Curriculum() {
           </p>
         )}
       </Card>
-      {course && !draft && (
+      {!draft && (
         <>
           <Card>
-            <CardTitle>Choose a section to review</CardTitle>
+            <CardTitle>{course ? 'Choose a section to review' : 'Drafts across topics'}</CardTitle>
             <p className="text-sm text-muted mt-2">
               Open an existing draft to see its lessons. Reviewing a draft does not activate it.
             </p>
@@ -154,7 +154,7 @@ export function Curriculum() {
               (openDrafts.length ? (
                 <ul aria-label="Draft sections">{openDrafts.map(draftButton)}</ul>
               ) : (
-                <p className="text-sm mt-3">No drafts waiting for review. You can create one below.</p>
+                <p className="text-sm mt-3">{course ? 'No drafts waiting for review. You can create one below.' : 'No drafts across topics yet. You can also choose a course above.'}</p>
               ))}
             {history.length > 0 && (
               <details className="mt-4">
@@ -165,7 +165,7 @@ export function Curriculum() {
               </details>
             )}
           </Card>
-          <Card>
+          {course && <><Card>
             <details>
               <summary className="cursor-pointer font-medium">Create a new section draft</summary>
               <p className="text-sm text-muted my-2">
@@ -226,14 +226,14 @@ export function Curriculum() {
               )}
             </details>
           </Card>
-          <SourcesPanel key={course} course={course} />
+          <SourcesPanel key={course} course={course} /></>}
         </>
       )}
       {draft && (
         <>
           <div>
             <Button disabled={dirty} onClick={() => setSelected(null)}>
-              Back to sections
+              {course ? 'Back to sections' : 'Back to drafts'}
             </Button>
           </div>
           <DraftEditor key={draft.id} draft={draft} onDirtyChange={setDirty} />
@@ -408,7 +408,7 @@ export function DraftEditor({
     <Card>
       <p className="text-xs text-muted mb-1">{statusLabel(draft.status)}</p>
       <h2 ref={heading} tabIndex={-1} className="text-lg font-semibold mb-2">
-        {draft.area_id ? draft.title : (draft.section ?? 'Course introduction')}
+        {!draft.course || draft.area_id ? draft.title : (draft.section ?? 'Course introduction')}
       </h2>
       <p className="text-sm text-muted mt-2">
         {skills.length} lessons · {assessments.length} knowledge checks

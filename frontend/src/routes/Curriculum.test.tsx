@@ -314,8 +314,9 @@ it('reports course loading failures instead of showing an empty course list', as
     vi.fn(async () => jsonResponse({ error: { code: 'offline', message: 'Offline' } }, 503)),
   )
   renderApp(<Curriculum />)
-  expect(screen.getByRole('status')).toHaveTextContent('Loading courses')
-  expect(await screen.findByRole('alert')).toHaveTextContent('Courses could not load')
+  expect(screen.getByText('Loading courses…')).toBeVisible()
+  expect(await screen.findByText(/Courses could not load/)).toBeVisible()
+  expect(screen.getByRole('button', { name: 'Retry drafts' })).toBeEnabled()
   expect(screen.getByRole('button', { name: 'Retry courses' })).toBeEnabled()
   expect(screen.queryByText(/No course material yet/)).not.toBeInTheDocument()
 })
