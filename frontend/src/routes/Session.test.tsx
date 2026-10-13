@@ -87,6 +87,7 @@ describe('Session', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
         if (url.endsWith('/api/sessions/s1')) return jsonResponse(session(running0))
         if (url.endsWith('/api/practice/activities'))
           return jsonResponse({ activities: { movement: ['Walk'], guitar: [] } })
@@ -150,6 +151,7 @@ describe('Session', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
         if (url.endsWith('/api/sessions/s1')) return jsonResponse(session({}))
         if (url.endsWith('/api/plan/blocks/start')) {
           starts.push(JSON.parse(String(init?.body)))
@@ -193,6 +195,7 @@ it('preserves the assessment answer and confidence after a grading error and all
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
       if (url.includes('/api/exercises/'))
         return jsonResponse({ error: { code: 'not_found', message: 'No exercise' } }, 404)
       if (url.endsWith('/api/sessions/s1')) return jsonResponse(session(state))
@@ -249,6 +252,7 @@ it('guides explanation to a question with optional controls collapsed and access
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
       if (url.endsWith('/representations/worked_example')) return new Promise<Response>(() => {})
       if (url.endsWith('/representations')) return jsonResponse({ kinds: [{ kind: 'worked_example', label: 'Worked example', allowed: true, cached: false }] })
       if (url.includes('/api/exercises/'))
@@ -282,7 +286,7 @@ it('guides explanation to a question with optional controls collapsed and access
   expect(screen.getByRole('button', { name: 'End session' })).toBeVisible()
   expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
   expect(screen.queryByRole('button', { name: 'Listen to explanation' })).not.toBeInTheDocument()
-  expect(screen.getByText(/No explanation has been prepared yet/)).toBeVisible()
+  expect(await screen.findByText(/No explanation has been prepared yet/)).toBeVisible()
   expect(screen.getByRole('link', { name: 'Read saved explanations' })).toHaveAttribute('href', '/answers?skill_id=k1&surface=tutor')
   expect(screen.queryByRole('button', { name: 'Let me try' })).not.toBeInTheDocument()
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/tutor/stream'))).toBe(false)
@@ -337,6 +341,7 @@ it('offers continuing the plan after feedback without requiring another question
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
       if (url.includes('/api/exercises/'))
         return jsonResponse({ error: { code: 'not_found', message: 'No exercise' } }, 404)
       if (url.endsWith('/api/sessions/s1')) return jsonResponse(session(state))
@@ -402,6 +407,7 @@ it('does not apply recovered hint metadata to the current assessment and keeps t
   }
   let submitted: Record<string, unknown> | null = null
   const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
     if (url.endsWith('/api/sessions/s1'))
       return jsonResponse({ ...session(state), checkpoint: { hint_level: 2 } })
     if (url.includes('/api/exercises/')) return jsonResponse({}, 404)
@@ -470,6 +476,7 @@ it('offers retry and Home when loading the session fails', async () => {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
       if (url.endsWith('/api/sessions/s1'))
         return failed
           ? jsonResponse({ error: { code: 'unavailable', message: 'Backend unavailable' } }, 503)
@@ -497,6 +504,7 @@ it('keeps an unsaved answer mounted when background session refresh fails', asyn
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
       if (url.endsWith('/api/sessions/s1'))
         return fail
           ? jsonResponse({ error: { code: 'offline', message: 'Offline' } }, 503)
@@ -555,6 +563,7 @@ describe('Pause before Session unmounts', () => {
         return <><h1>Paused Home</h1><Link to="/session">Resume saved session</Link></>
       }
       vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.endsWith('/reading')) return jsonResponse(null)
         if (url === '/api/sessions/s1') return jsonResponse(saved)
         if (url === '/api/practice/activities') return jsonResponse({ activities: { movement: ['Walk'], guitar: [] } })
         if (url === `/api/plan/blocks/${action}`) return new Promise<Response>(resolve => { finish = resolve })

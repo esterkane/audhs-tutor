@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Gateway, Learner, Repo
-from app.kernel import competency, skill_graph
+from app.kernel import competency, lesson_reading, skill_graph
 from app.kernel import representations as krep
 from app.kernel import session as ksession
 from app.orchestrator import representations as orep
@@ -112,3 +112,12 @@ async def render(
         recovery=request.app.state.answer_recovery,
     )
     return RenderOut.model_validate(out)
+
+
+@router.get(
+    "/{skill_id}/reading",
+    summary="Read owned saved lesson text without generation",
+    response_model=lesson_reading.LessonReading | None,
+)
+async def reading(skill_id: str, db: DB, learner: Learner) -> lesson_reading.LessonReading | None:
+    return await lesson_reading.read(db, learner.id, skill_id)

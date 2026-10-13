@@ -1,3 +1,4 @@
+import { SavedLessonReading } from '../features/tutor/SavedLessonReading'
 import { LessonFocusContext } from '../features/session/focusContext'
 import { LessonContextPanel } from '../features/session/LessonContextPanel'
 import { SessionContext } from '../features/session/SessionContext'
@@ -36,7 +37,7 @@ import { ChallengePanel } from '../features/challenge/ChallengePanel'
 import { PlanStrip } from '../features/plan/PlanStrip'
 import { BLOCK_LABELS, type Block } from '../features/plan/api'
 import { skipNote, startLabel } from '../features/plan/labels'
-import { useKinds, usePrefer, useRender, type RenderOut } from '../features/representations/api'
+import { useKinds, usePrefer, useRender, useSavedReading, type RenderOut } from '../features/representations/api'
 import {
   REVIEW_BLOCK_TYPES,
   firstIndex,
@@ -532,6 +533,7 @@ function TeachPanel({
   useEffect(() => {
     if (!active) stop()
   }, [active, stop])
+  const savedReading = useSavedReading(skillId)
   const kinds = useKinds(skillId)
   const render = useRender()
   const prefer = usePrefer()
@@ -609,6 +611,7 @@ function TeachPanel({
   )
   return (
     <>
+      <SavedLessonReading reading={savedReading} active={active} hasReply={!!text || !!alt || busy} />
       {busy && (
         <Card role="region" aria-label="Explanation in progress">
           <TutorResponseStatus status={status} startedAt={startedAt} />
@@ -788,7 +791,7 @@ function TeachPanel({
           )}
         </Card>
       )}
-      {!busy && (done || alt || hasQuestion) && (
+      {!busy && (done || alt || hasQuestion || savedReading.data) && (
         <Card>
           <p className="text-sm font-medium mb-2">
             {hasQuestion ? 'Your current question and any checked feedback are kept.' : 'Next: try one question about this idea.'}
@@ -853,15 +856,15 @@ function TeachPanel({
         </Card>
       )}
       <Card>
-        <CardTitle>{text || alt ? 'Ask the tutor' : 'Your explanation'}</CardTitle>
+        <CardTitle>{text || alt || savedReading.data ? 'Ask the tutor' : 'Your explanation'}</CardTitle>
         <p className="text-sm mb-2">Start with the idea and a worked example. No question is required.</p>
         <div className="flex gap-2 flex-wrap mb-2">
           <Button
-            variant={done || alt || input.trim() ? 'secondary' : 'primary'}
+            variant={done || alt || savedReading.data || input.trim() ? 'secondary' : 'primary'}
             disabled={busy}
             onClick={() => void run({ ...base, text: 'Explain the next idea for this skill in three short sections with Markdown headings: The idea, A worked example, and Try one step. Give enough context to attempt that step. Keep code blocks complete. Do not require a confidence rating.', action: 'explain' })}
           >
-            {busy ? 'Preparing explanation…' : text ? 'Explain again' : 'Start explanation'}
+            {busy ? 'Preparing explanation…' : text ? 'Explain again' : savedReading.data ? 'Ask for another explanation' : 'Start explanation'}
           </Button>
           {!(done || alt || hasQuestion) && <Disclosure label="More ways to learn">{helpActions}</Disclosure>}
         </div>
@@ -903,7 +906,7 @@ function TeachPanel({
             </Button>
           )}
         </div>
-        {!text && !busy && !error && status !== 'stopped' && (
+        {!text && !savedReading.data && !savedReading.isFetching && !busy && !error && status !== 'stopped' && (
           <p className="mt-2">No explanation has been prepared yet.</p>
         )}
         <p className="text-sm text-muted mt-2">

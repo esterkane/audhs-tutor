@@ -1,10 +1,11 @@
 import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from '@playwright/test'
+import axe from 'axe-core'
 import { API, endOpenSession, expectOk } from './helpers'
 
 // Only the starting saved answer is a fixture. Draft, activation and session use real HTTP/storage.
-test('saved answer becomes an explicitly selected private lesson', async ({ page, request }, info) => {
+for (const width of [390, 1280]) test(`saved answer becomes an explicitly selected private lesson ${width}`, async ({ page, request }, info) => {
   await endOpenSession(request)
   const root = fileURLToPath(new URL('../../', import.meta.url))
   const id = execFileSync('uv', ['run', '--directory', 'backend', 'python', '-c', `
@@ -33,7 +34,7 @@ async def main():
 asyncio.run(main())
 `, root], { cwd: root, encoding: 'utf8' }).trim()
   try {
-    await page.setViewportSize({ width: 390, height: 900 })
+    await page.setViewportSize({ width, height: 900 })
     await page.goto(`/ask?answer=${id}`)
     await page.locator('summary').filter({ hasText: 'Create lesson draft (optional)' }).click()
     await page.getByLabel('Lesson title', { exact: true }).fill('Private preprocessing journey')
@@ -63,7 +64,38 @@ asyncio.run(main())
     await page.reload()
     await expect(page.getByText('Private preprocessing journey', { exact: false }).first()).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-    await page.screenshot({ path: info.outputPath('private-lesson-started.png'), fullPage: true })
+    const session = await (await request.get(`${API}/api/sessions/current`)).json()
+    // Enter the teaching block directly; movement/plan choices have separate journeys.
+    await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index: session.plan.findIndex((b: { type: string }) => b.type === 'new_material') } }))
+    let generations = 0
+    page.on('request', r => { if (r.url().endsWith('/api/tutor/stream')) generations++ })
+    await page.reload()
+    await expect(page.getByText('Fit preprocessing on training records only.', { exact: false })).toBeVisible()
+    await page.getByRole('combobox', { name: 'Choose a section' }).selectOption({ label: '2. Worked example 1' })
+    await expect(page.getByText('Training ages 20 and 40 give median 30.', { exact: false })).toBeVisible()
+    await page.getByLabel('Your notes for this section (optional)').fill('Reuse the training median.')
+    await page.reload()
+    await expect(page.getByLabel('Your notes for this section (optional)')).toHaveValue('Reuse the training median.')
+    await page.getByRole('button', { name: 'Let me try', exact: true }).focus()
+    await page.keyboard.press('Enter')
+    // ASCII apostrophe matches the explicit deterministic abstention contract.
+    await page.getByLabel('Your answer', { exact: true }).fill("I don't know")
+    const checked = page.waitForResponse(r => r.url().endsWith('/api/assess/attempt'))
+    await page.getByRole('button', { name: 'Check my answer', exact: true }).click()
+    const checkedResponse = await checked
+    await expectOk(checkedResponse)
+    expect((await checkedResponse.json()).score).toBe(0)
+    await expect(page.getByRole('heading', { name: 'Feedback on your answer' })).toBeVisible()
+    await page.getByRole('button', { name: 'Revisit the explanation', exact: true }).click()
+    await expect(page.getByLabel('Your notes for this section (optional)')).toHaveValue('Reuse the training median.')
+    expect(generations).toBe(0)
+    await page.addScriptTag({ content: axe.source })
+    expect(await page.evaluate(async () => (await (window as unknown as { axe: typeof axe }).axe.run('main')).violations)).toEqual([])
+    await expect(page.getByText('No explanation has been prepared yet.', { exact: true })).toHaveCount(0)
+    await page.screenshot({ path: info.outputPath('private-lesson-reading.png'), fullPage: true })
+    await page.evaluate(() => { document.documentElement.dataset.theme = 'dark'; document.documentElement.style.fontSize = '200%' })
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+    await page.screenshot({ path: info.outputPath('private-lesson-reading-dark-zoom.png'), fullPage: true })
   } finally {
     await endOpenSession(request)
   }

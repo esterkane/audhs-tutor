@@ -775,6 +775,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/objects/{skill_id}/reading': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Read owned saved lesson text without generation */
+    get: operations['reading_api_objects__skill_id__reading_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/challenge/modes': {
     parameters: {
       query?: never
@@ -5450,6 +5467,29 @@ export interface components {
       /** Next Index */
       next_index: number | null
     }
+    /** LessonReading */
+    LessonReading: {
+      /** Object Id */
+      object_id: string
+      /** Object Version */
+      object_version: number
+      /** Content Sha256 */
+      content_sha256: string
+      /** Concept */
+      concept: string
+      /** Goal */
+      goal: string
+      /** Passages */
+      passages: string[]
+      /** Source Ids */
+      source_ids: string[]
+      /** Activation Id */
+      activation_id: string
+      /** Draft Id */
+      draft_id: string
+      /** Answer Id */
+      answer_id: string
+    }
     /** LessonSummary */
     LessonSummary: {
       /** Document Id */
@@ -8998,6 +9038,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['RenderOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  reading_api_objects__skill_id__reading_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        skill_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LessonReading'] | null
         }
       }
       /** @description Validation Error */
