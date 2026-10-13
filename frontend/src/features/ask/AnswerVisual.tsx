@@ -6,6 +6,7 @@ import type { Schemas } from '../../lib/api'
 import { boundedRead } from '../../lib/boundedRead'
 import { RequestRecoveryControls } from '../playground/RequestRecoveryControls'
 import { useVisualRequestRecovery, type PendingTutorRequest, type VisualGenerationBody } from '../playground/useRequestRecovery'
+import { VisualReview } from './VisualReview'
 import { VisualFallback } from '../visual-learning/VisualFallback'
 
 const RelationshipGraph = lazy(() => import('../visual-learning/RelationshipGraph'))
@@ -123,6 +124,7 @@ export function AnswerVisual({ answerId, learnerId }: { answerId: string; learne
           <ul className="list-disc pl-5 space-y-2 mt-3">{spec.edges.map(edge => <li key={edge.id}>{spec.nodes.find(node => node.id === edge.source)?.label} {spec.directed ? '→' : '—'} {spec.nodes.find(node => node.id === edge.target)?.label}: {edge.label}</li>)}</ul>
         </Disclosure>
         <p className="text-sm text-muted">Source passages, when available, are in the answer above.</p>
+        <VisualReview key={`review:${detail.data!.id}`} documentId={job!.document_id!} learnerId={learnerId} version={detail.data!} />
       </section>}
     </div>
   </Disclosure>

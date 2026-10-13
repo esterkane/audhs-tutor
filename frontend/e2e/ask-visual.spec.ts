@@ -22,7 +22,34 @@ async function fixture(page: Page, lost = false) {
   })
   await page.route('**/api/visual-generation/visual-job/cancel', route => { state = 'cancelled'; return route.fulfill({ json: job() }) })
   await page.route('**/api/authored-visuals/doc/versions/ver', route => route.fulfill({ json: { id: 'ver', version: 1, target_kind: 'answer', target_id: answer.id, created_at: '2026-10-13T10:01:00Z', content_sha256: 'd'.repeat(64), snapshot_sha256: 'e'.repeat(64), spec, origin: { kind: 'model', model: 'synthetic-local', prompt_version: 'ask.visual.v1' }, grounding_now: 'ungrounded', review_meaning: 'historical_presentation_review_only' } }))
-  return { keys, complete: () => { state = 'completed' } }
+  let revision = 1
+  const reviews: { id: string; decision: string; note: string; content_sha256: string; snapshot_sha256: string; created_at: string }[] = []
+  const reviewKeys: string[] = []
+  let loseReviewResponse = false
+  let reviewConflict = false
+  const receipts = new Map<string, object>()
+  await page.route('**/api/authored-visuals/doc', route => route.fulfill({ json: { id: 'doc', title: spec.title, revision, archived: false, updated_at: '2026-10-13T10:01:00Z' } }))
+  await page.route('**/api/authored-visuals/doc/versions/ver/reviews', route => route.fulfill({ json: reviews }))
+  await page.route('**/api/authored-visuals/commands', route => {
+    const body = route.request().postDataJSON()
+    const key = route.request().headers()['idempotency-key']
+    reviewKeys.push(key)
+    if (reviewConflict) return route.fulfill({ status: 409, json: { error: { message: 'A newer version exists. Review the latest version explicitly.' } } })
+    if (!receipts.has(key)) {
+      expect(body.version_id).toBe('ver')
+      expect(body.content_sha256).toBe('d'.repeat(64))
+      expect(body.snapshot_sha256).toBe('e'.repeat(64))
+      expect(body.expected_revision).toBe(revision)
+      expect(body.confirm).toBe(true)
+      revision++
+      const review = { id: `review-${revision}`, decision: body.decision, note: body.note, content_sha256: body.content_sha256, snapshot_sha256: body.snapshot_sha256, created_at: '2026-10-13T10:02:00Z' }
+      reviews.unshift(review)
+      receipts.set(key, { action: 'review', document_id: 'doc', revision, version_id: 'ver', review_id: review.id, archived: false })
+      if (loseReviewResponse) { loseReviewResponse = false; return route.abort() }
+    }
+    return route.fulfill({ json: receipts.get(key) })
+  })
+  return { keys, reviews, reviewKeys, loseReview: () => { loseReviewResponse = true }, conflictReview: () => { reviewConflict = true }, complete: () => { state = 'completed' } }
 }
 
 for (const width of [390, 1280]) test(`Ask local visual controls preserve answer and follow-up ${width}`, async ({ page }, info) => {
@@ -111,4 +138,50 @@ test('History failure offers recovery and never enables duplicate blind generati
   await expect(page.getByRole('button', { name: 'Generate local diagram', exact: true })).toHaveCount(0)
   expect(calls.keys).toHaveLength(0)
   await expect(page.getByRole('textbox', { name: /question/i }).first()).toBeVisible()
+})
+
+for (const width of [390, 1280]) test(`Exact-version review preserves note and retries lost response ${width}`, async ({ page }, info) => {
+  const fixtureState = await fixture(page)
+  await page.setViewportSize({ width, height: 900 })
+  await page.goto('/ask?answer=visual-answer')
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await page.getByRole('button', { name: 'Generate local diagram', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Stop generation', exact: true })).toBeVisible()
+  fixtureState.complete()
+  await page.getByRole('button', { name: 'Refresh visual status' }).click()
+  const reviewToggle = page.locator('summary').filter({ hasText: 'Review this diagram · version 1' })
+  await reviewToggle.focus(); await page.keyboard.press('Enter')
+  const note = page.getByRole('textbox', { name: 'What works or needs correction? (optional)' })
+  await note.fill('Separate fitting the parameter from applying it to held-out values.')
+  fixtureState.loseReview()
+  const reject = page.getByRole('button', { name: 'Needs correction', exact: true })
+  await reject.focus(); await page.keyboard.press('Enter')
+  await expect(page.getByRole('button', { name: 'Retry previous request' })).toBeVisible()
+  expect(fixtureState.reviews).toHaveLength(1)
+  await note.fill('Later unsent note: keep the qualification about held-out data.')
+  await page.reload()
+  await page.getByText('Visual explanation (optional)', { exact: true }).click()
+  await reviewToggle.click()
+  await expect(note).toHaveValue('Later unsent note: keep the qualification about held-out data.')
+  await page.getByRole('button', { name: 'Retry previous request' }).click()
+  await expect(page.getByText('Review saved for version 1. Your note is kept below.')).toBeVisible()
+  expect(fixtureState.reviewKeys).toHaveLength(2)
+  expect(new Set(fixtureState.reviewKeys).size).toBe(1)
+  expect(fixtureState.reviews).toHaveLength(1)
+  await expect(page.getByText(/Your recorded review of version 1:/)).toContainText('Needs correction')
+  expect(fixtureState.keys).toHaveLength(1)
+  await page.screenshot({ path: info.outputPath(`review-${width}.png`), fullPage: true })
+  await page.addScriptTag({ content: axe.source })
+  expect(await page.evaluate(async () => (await (window as unknown as { axe: typeof axe }).axe.run('main')).violations)).toEqual([])
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
+  await page.getByRole('button', { name: 'I reviewed this presentation' }).click()
+  await expect(page.getByText(/Your recorded review of version 1:/)).toContainText('Presentation reviewed')
+  expect(fixtureState.reviews).toHaveLength(2)
+  expect(fixtureState.reviews[1].note).toBe('Separate fitting the parameter from applying it to held-out values.')
+  expect(fixtureState.reviews[0].note).toBe('Later unsent note: keep the qualification about held-out data.')
+  fixtureState.conflictReview()
+  await page.getByRole('button', { name: 'Needs correction', exact: true }).click()
+  await expect(page.getByText('A newer version exists. Review the latest version explicitly.')).toBeVisible()
+  await expect(note).toHaveValue('Later unsent note: keep the qualification about held-out data.')
+  expect(fixtureState.reviews).toHaveLength(2)
 })

@@ -303,3 +303,21 @@ export function useVisualRequestRecovery(scope: string) {
       && (binding.learning_purpose == null || (typeof binding.learning_purpose === 'string' && binding.learning_purpose.length <= 4000))
   }, true, true)
 }
+
+export type VisualReviewBody = {
+  action: 'review'; document_id: string; expected_revision: number; version_id: string;
+  content_sha256: string; snapshot_sha256: string; decision: 'accept' | 'reject'; confirm: true; note: string
+}
+export function useVisualReviewRecovery(scope: string) {
+  const recovery = useTypedRequestRecovery<VisualReviewBody>(scope, (body): body is VisualReviewBody => {
+    if (!body || typeof body !== 'object') return false
+    const value = body as VisualReviewBody
+    return value.action === 'review' && value.confirm === true
+      && ['accept', 'reject'].includes(value.decision)
+      && [value.document_id, value.version_id].every(id => typeof id === 'string' && id.length > 0 && id.length <= 128)
+      && Number.isInteger(value.expected_revision) && value.expected_revision >= 1
+      && [value.content_sha256, value.snapshot_sha256].every(hash => typeof hash === 'string' && /^[a-f0-9]{64}$/.test(hash))
+      && typeof value.note === 'string' && value.note.length <= 4000
+  }, true, true)
+  return { ...recovery, error: recovery.error.replaceAll('model call', 'saved review') }
+}

@@ -35,3 +35,19 @@ it('keeps a visual binding and retry identity across remount without resending',
   act(() => second.result.current.accept(key))
   expect(second.result.current.pending).toBeNull()
 })
+
+it('retains an exact visual review across navigation without changing the decision or note', async () => {
+  const { useVisualReviewRecovery } = await import('../playground/useRequestRecovery')
+  const scope = `visual-review:${crypto.randomUUID()}`
+  const body = { action: 'review' as const, document_id: 'doc', version_id: 'version', expected_revision: 2,
+    content_sha256: 'a'.repeat(64), snapshot_sha256: 'b'.repeat(64), decision: 'reject' as const, confirm: true as const, note: 'Do not conflate fitting with applying.' }
+  const first = renderHook(() => useVisualReviewRecovery(scope))
+  let key = ''
+  act(() => { key = first.result.current.prepare(body, { display: 'Needs correction', submitted: '', snapshot: '', mode: 'explicit' }).key })
+  first.unmount()
+  const restored = renderHook(() => useVisualReviewRecovery(scope))
+  expect(restored.result.current.pending?.key).toBe(key)
+  expect(restored.result.current.pending?.body).toEqual(body)
+  act(() => restored.result.current.accept(key))
+  expect(restored.result.current.pending).toBeNull()
+})

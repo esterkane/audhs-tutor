@@ -5,6 +5,7 @@ export function RequestRecoveryControls({
   busy,
   retry,
   originalContext = 'answer, code and material',
+  saveOnly = false,
 }: {
   recovery: {
     pending: { view: { display: string } } | null
@@ -15,6 +16,7 @@ export function RequestRecoveryControls({
     continueInMemory: () => void
   }
   originalContext?: string
+  saveOnly?: boolean
   busy: boolean
   retry: () => void
 }) {
@@ -36,20 +38,20 @@ export function RequestRecoveryControls({
           )}
           <p className="text-sm text-muted">
             Retry uses the original {originalContext}. Your later edits are not sent. It can recover a
-            completed result without generating again. An interrupted request may remain unavailable.
+            completed result without {saveOnly ? 'saving it twice' : 'generating again'}. An interrupted request may remain unavailable.
           </p>
           <details>
             <summary>Start different work</summary>
             <p>
               The previous request may still finish. Discarding its retry lets your next send start a new
-              request and may cause another model call.
+              request and may {saveOnly ? 'save another review' : 'cause another model call'}.
             </p>
             <Button onClick={() => recovery.discard()}>Discard retry and start new</Button>
           </details>
           {recovery.canUseMemoryOnly && (
             <>
               <p>
-                Storage is unavailable. Continuing without reload recovery may start another model call; an
+                Storage is unavailable. Continuing without reload recovery may {saveOnly ? 'save another review' : 'start another model call'}; an
                 earlier request may still finish.
               </p>
               <Button onClick={recovery.continueInMemory}>Continue without reload recovery</Button>
