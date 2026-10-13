@@ -68,6 +68,7 @@ from app.db.content_ddl import (
 from app.db.ddl import LEARNING_EVENT_GUARDS
 from app.db.lesson_ddl import LESSON_IMMUTABLE_GUARDS
 from app.db.migrate import alembic_config, upgrade_to_head
+from app.db.provisional_ddl import INVALID_PROVISIONAL_OWNERSHIP, PROVISIONAL_GUARDS
 from app.db.visual_ddl import VISUAL_IMMUTABLE_GUARDS
 
 FORMAT = "audhs-tutor-backup"
@@ -648,6 +649,7 @@ def _expected_schema_objects() -> tuple[set[str], set[str]]:
     )
     triggers = (
         set(LEARNING_EVENT_GUARDS)
+        | set(PROVISIONAL_GUARDS)
         | set(ACTIVATION_GUARDS)
         | set(CONTENT_GUARDS)
         | {f"{table}_no_update" for table in (VISUAL_IMMUTABLE_GUARDS | LESSON_IMMUTABLE_GUARDS)}
@@ -723,6 +725,17 @@ def _check_snapshot_schema(db_file: Path, revision: str) -> None:
 
                 if row is None or normalize(row[0]) != normalize(expected):
                     raise BackupError("snapshot has altered activation guards")
+    if any(r.revision == "a71f2039c4de" for r in script.walk_revisions(base="base", head=revision)):
+        required |= set(PROVISIONAL_GUARDS)
+        with closing(sqlite3.connect(db_file)) as conn:
+            for name, expected in PROVISIONAL_GUARDS.items():
+                row = conn.execute(
+                    "SELECT sql FROM sqlite_master WHERE type='trigger' AND name=?", (name,)
+                ).fetchone()
+                if row is None or " ".join(row[0].split()).rstrip(";") != " ".join(
+                    expected.split()
+                ).rstrip(";"):
+                    raise BackupError("snapshot has altered provisional feedback guards")
     present_tables = {name for kind, name, _ in objects if kind == "table"}
     required |= {
         f"{table}_no_update"
@@ -739,7 +752,12 @@ def _check_after_upgrade(db_file: Path) -> None:
     conn = sqlite3.connect(db_file)
     try:
         conn.execute("PRAGMA foreign_keys=ON")
-        for query in (INVALID_EDGE, INVALID_ASSESSMENT, *INVALID_ACTIVATION):
+        for query in (
+            INVALID_EDGE,
+            INVALID_ASSESSMENT,
+            *INVALID_ACTIVATION,
+            INVALID_PROVISIONAL_OWNERSHIP,
+        ):
             if conn.execute(query).fetchone():
                 raise BackupError("restored database has invalid private content relationships")
         bad = conn.execute("PRAGMA foreign_key_check").fetchall()

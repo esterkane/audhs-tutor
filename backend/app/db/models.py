@@ -113,6 +113,26 @@ class AssessmentExecution(LearnerScoped, Base):
     updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
 
 
+class ProvisionalFeedback(IdMixin, LearnerScoped, Base):
+    """Private advisory output, deliberately separate from assessment evidence."""
+
+    __tablename__ = "provisional_feedback"
+    __table_args__ = (UniqueConstraint("claim_id", name="uq_provisional_feedback_claim"),)
+    claim_id: Mapped[str] = mapped_column(Text, ForeignKey("workspace_request.id"))
+    session_id: Mapped[str] = mapped_column(Text, ForeignKey("session.id"))
+    assessment_id: Mapped[str] = mapped_column(Text, ForeignKey("assessment.id"))
+    revision_of_feedback_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("provisional_feedback.id")
+    )
+    policy_version: Mapped[str] = mapped_column(Text)
+    content_fingerprint: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str] = mapped_column(Text)
+    binding_json: Mapped[JsonDict] = mapped_column(JSON)
+    model_output_json: Mapped[JsonDict] = mapped_column(JSON)
+    outcome_json: Mapped[JsonDict] = mapped_column(JSON)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+
+
 class SessionCheckpoint(IdMixin, LearnerScoped, Base):
     __tablename__ = "session_checkpoint"
     session_id: Mapped[str] = mapped_column(Text, ForeignKey("session.id"), index=True)
@@ -1193,3 +1213,9 @@ from app.db.activation_ddl import ACTIVATION_GUARDS  # noqa: E402
 
 for _activation_ddl in ACTIVATION_GUARDS.values():
     event.listen(Base.metadata, "after_create", DDL(_activation_ddl))  # type: ignore[no-untyped-call]
+
+
+from app.db.provisional_ddl import PROVISIONAL_GUARDS  # noqa: E402
+
+for _provisional_ddl in PROVISIONAL_GUARDS.values():
+    event.listen(Base.metadata, "after_create", DDL(_provisional_ddl))  # type: ignore[no-untyped-call]
