@@ -61,10 +61,11 @@ upgrade and no hosted call. Check desktop/narrow keyboard review and recovery.
 Tests do not establish transfer effectiveness; actual learner checks remain separate.
 
 ## Current pilot
-The approved fit/transform transfer lesson is an inactive local draft. Browser
-inspection confirms the explanation, arithmetic, question and full rubric render;
-its missing-source warning is visible. Explicit activation is pending. This pilot
-must not be described as end-to-end G5 completion or removal of course dependencies.
+The approved fit/transform transfer lesson was activated after the owner’s explicit
+decision. The exact approved draft produced one skill, lesson and transfer assessment
+with four rubric criteria. Its missing-source warning remains; no task review or
+learning evidence was awarded. This standalone authored pilot is not end-to-end G5
+completion or removal of course dependencies. Private answer-derived activation remains blocked.
 
 ## Review
 Architecture review confirmed the projection gap and identified shared publication

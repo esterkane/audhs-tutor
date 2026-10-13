@@ -87,8 +87,8 @@ same draft twice. Storage failure leaves no partial curriculum.
 
 Source status changes require an explicit current review path; they must not silently
 upgrade permissions or erase historical lineage. Missing sources remain disclosed.
-Activation is neither a task/rubric review nor competency/FSRS evidence. The existing
-synthetic pilot approval for drafting is not authorization to activate it.
+Activation is neither a task/rubric review nor competency/FSRS evidence. The synthetic pilot received a separate explicit activation decision; that does not
+authorize activation of other drafts or qualify its persisted assessment.
 
 ## Bounded execution sequence
 

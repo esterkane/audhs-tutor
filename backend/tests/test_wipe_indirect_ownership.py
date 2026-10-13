@@ -25,7 +25,9 @@ def test_complete_export_and_wipe_includes_indirect_rows_without_affecting_other
     owner = first["learner_profile"]["id"]
     other = second["learner_profile"]["id"]
     with sync_connect(url) as conn:
-        # A representation without an attributable model call remains shared.
+        # This fixture intentionally exercises shared curriculum, independent of private skills.
+        conn.execute("UPDATE skill_node SET owner_learner_id=NULL")
+        # A representation without an attributable model call on shared content remains shared.
         row = first["representation"]
         conn.execute(
             "INSERT INTO representation (id, object_id, kind, content, model_call_id, "

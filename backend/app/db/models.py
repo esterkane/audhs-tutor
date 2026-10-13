@@ -135,6 +135,9 @@ class KnowledgeArea(IdMixin, Base):
 
 class SkillNode(IdMixin, Base):
     __tablename__ = "skill_node"
+    owner_learner_id: Mapped[str | None] = mapped_column(
+        Text, ForeignKey("learner_profile.id", ondelete="RESTRICT"), index=True
+    )
     domain: Mapped[str] = mapped_column(Text, index=True)
     area_id: Mapped[str | None] = mapped_column(ForeignKey("knowledge_area.id"), index=True)
     course: Mapped[str | None] = mapped_column(Text, index=True)  # published-from course (P4 goal)

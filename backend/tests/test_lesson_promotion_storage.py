@@ -119,7 +119,7 @@ def test_owned_foreign_keys_and_downgrade(stored):
     before = dump_tables(url)
     with sync_connect(url) as conn:
         revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
-    with pytest.raises(RuntimeError, match="populated private lesson history"):
+    with pytest.raises(RuntimeError, match="populated private lesson history|private skills exist"):
         command.downgrade(alembic_config(url), "c0ff66df480b")
     assert dump_tables(url) == before
     with sync_connect(url) as conn:
@@ -133,3 +133,19 @@ def test_owned_foreign_keys_and_downgrade(stored):
     assert "lesson_promotion" not in dump_tables(url)
     upgrade_to_head(url)
     assert dump_tables(url)["lesson_promotion"] == []
+
+
+def test_lesson_history_guard_at_its_own_revision(tmp_path):
+    """Later guards must not mask removal of the original lineage downgrade guard."""
+    url = f"sqlite:///{tmp_path / 'pinned-lesson.db'}"
+    config = alembic_config(url)
+    command.upgrade(config, "30221b1ed8a7")
+    fill_all_tables(url)
+    before = dump_tables(url)
+    with pytest.raises(RuntimeError, match="populated private lesson history"):
+        command.downgrade(config, "c0ff66df480b")
+    assert dump_tables(url) == before
+    with sync_connect(url) as conn:
+        assert (
+            conn.execute("SELECT version_num FROM alembic_version").fetchone()[0] == "30221b1ed8a7"
+        )

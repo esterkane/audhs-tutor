@@ -22,6 +22,17 @@ INDIRECT_LEARNER_SCOPES = {
 }
 
 
+# Inherited private curriculum content. Ordered children first for wipe.
+PRIVATE_CONTENT_SCOPES = {
+    "representation": "object_id IN (SELECT id FROM learning_object WHERE skill_id IN "
+    "(SELECT id FROM skill_node WHERE owner_learner_id = ?))",
+    "learning_object": "skill_id IN (SELECT id FROM skill_node WHERE owner_learner_id = ?)",
+    "skill_edge": "to_skill_id IN (SELECT id FROM skill_node WHERE owner_learner_id = ?) "
+    "OR from_skill_id IN (SELECT id FROM skill_node WHERE owner_learner_id = ?)",
+    "skill_node": "owner_learner_id = ?",
+}
+
+
 def export_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, list[dict[str, Any]]]:
     conn.row_factory = sqlite3.Row
     out: dict[str, list[dict[str, Any]]] = {}
@@ -47,6 +58,14 @@ def export_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, list[
             (learner_id,),
         )
     ]
+    for table, predicate in PRIVATE_CONTENT_SCOPES.items():
+        owned_rows = conn.execute(
+            f'SELECT * FROM "{table}" WHERE {predicate}',
+            (learner_id,) * predicate.count("?"),
+        )
+        merged = {r["id"]: r for r in out.get(table, [])}
+        merged.update({r["id"]: dict(r) for r in owned_rows})
+        out[table] = list(merged.values())
     out["learner_profile"] = [
         dict(r) for r in conn.execute("SELECT * FROM learner_profile WHERE id = ?", (learner_id,))
     ]
@@ -93,6 +112,12 @@ def wipe_learner(conn: sqlite3.Connection, learner_id: str) -> dict[str, int]:
                 (rubric_id, rubric_id),
             )
             deleted["assessment_rubric"] += cur.rowcount
+        for table, predicate in PRIVATE_CONTENT_SCOPES.items():
+            count = conn.execute(
+                f'DELETE FROM "{table}" WHERE {predicate}',
+                (learner_id,) * predicate.count("?"),
+            ).rowcount
+            deleted[table] = deleted.get(table, 0) + count
         cur = conn.execute("DELETE FROM learner_profile WHERE id = ?", (learner_id,))
         deleted["learner_profile"] = cur.rowcount
         for ddl in LEARNING_EVENT_GUARDS.values():
