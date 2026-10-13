@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.deps import DB, Learner
-from app.db.models import Experiment, ExperimentAssignment, SkillNode
+from app.db.models import Experiment, SkillNode
 from app.kernel import experiments
 from app.kernel.content_access import skill_visible
 from app.schemas.experiments import (
@@ -28,9 +28,8 @@ router = APIRouter(prefix="/experiments", tags=["experiments"])
 async def _out(db: AsyncSession, exp: Experiment) -> ExperimentOut:
     arms = await experiments.arms_of(db, exp.id)
     counts: dict[str, int] = {a.id: 0 for a in arms}
-    stmt = select(ExperimentAssignment.arm_id).where(ExperimentAssignment.experiment_id == exp.id)
-    for arm_id in (await db.execute(stmt)).scalars():
-        counts[arm_id] = counts.get(arm_id, 0) + 1
+    for assignment in await experiments.visible_assignments(db, exp.learner_id, exp.id):
+        counts[assignment.arm_id] += 1
     return ExperimentOut(
         id=exp.id,
         name=exp.name,
@@ -111,10 +110,9 @@ async def stop(experiment_id: str, db: DB, learner: Learner) -> ExperimentOut:
 )
 async def results(experiment_id: str, db: DB, learner: Learner, record: bool = False) -> ResultsOut:
     res = await experiments.results(db, learner.id, experiment_id, record=record)
-    stmt = select(ExperimentAssignment).where(ExperimentAssignment.experiment_id == experiment_id)
     arm_names = {a.id: a.name for a in res.arms}
     units: list[dict[str, Any]] = []
-    for a in (await db.execute(stmt)).scalars():
+    for a in await experiments.visible_assignments(db, learner.id, experiment_id):
         label = a.unit_id
         if a.unit_type == "node":
             node = await db.scalar(

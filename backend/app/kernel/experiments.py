@@ -13,10 +13,11 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import exists, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.base import utcnow_iso
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import (
@@ -26,6 +27,7 @@ from app.db.models import (
     ExperimentObservation,
     LearningEvent,
     Session,
+    SkillNode,
 )
 from app.schemas.common import Mode, ObjectType
 
@@ -175,7 +177,7 @@ async def from_template(db: AsyncSession, learner_id: str, template: str) -> Exp
 
 
 async def get(db: AsyncSession, learner_id: str, experiment_id: str) -> Experiment:
-    exp = await db.get(Experiment, experiment_id)
+    exp = await db.get(Experiment, experiment_id, populate_existing=True)
     if exp is None or exp.learner_id != learner_id:
         raise KeyError(experiment_id)
     return exp
@@ -224,14 +226,49 @@ async def stop(db: AsyncSession, learner_id: str, experiment_id: str) -> Experim
 
 
 # ----------------------------------------------------------------------------- assignment
-async def assignment_for(
-    db: AsyncSession, experiment_id: str, unit_id: str
-) -> ExperimentAssignment | None:
-    stmt = select(ExperimentAssignment).where(
-        ExperimentAssignment.experiment_id == experiment_id,
-        ExperimentAssignment.unit_id == unit_id,
+async def visible_assignments(
+    db: AsyncSession, learner_id: str, experiment_id: str
+) -> list[ExperimentAssignment]:
+    exp = await get(db, learner_id, experiment_id)
+    # Missing historical unit IDs remain readable; known foreign units never count.
+    foreign_node = (
+        exists()
+        .where(
+            SkillNode.id == ExperimentAssignment.unit_id,
+            SkillNode.owner_learner_id.is_not(None),
+            SkillNode.owner_learner_id != learner_id,
+        )
+        .correlate(ExperimentAssignment)
     )
-    return (await db.execute(stmt)).scalar_one_or_none()
+    foreign_session = (
+        exists()
+        .where(Session.id == ExperimentAssignment.unit_id, Session.learner_id != learner_id)
+        .correlate(ExperimentAssignment)
+    )
+    stmt = select(ExperimentAssignment).where(
+        ExperimentAssignment.experiment_id == exp.id,
+        ExperimentAssignment.learner_id == learner_id,
+        ExperimentAssignment.unit_type == exp.unit_type,
+        ExperimentAssignment.arm_id.in_(
+            select(ExperimentArm.id).where(ExperimentArm.experiment_id == exp.id)
+        ),
+        or_(ExperimentAssignment.unit_type != "node", ~foreign_node),
+        or_(ExperimentAssignment.unit_type != "session", ~foreign_session),
+    )
+    return list((await db.scalars(stmt)).all())
+
+
+async def assignment_for(
+    db: AsyncSession, experiment_id: str, unit_id: str, *, learner_id: str
+) -> ExperimentAssignment | None:
+    return next(
+        (
+            a
+            for a in await visible_assignments(db, learner_id, experiment_id)
+            if a.unit_id == unit_id
+        ),
+        None,
+    )
 
 
 async def assign(
@@ -244,17 +281,33 @@ async def assign(
 ) -> ExperimentArm:
     """Balanced: the arm with the fewest units so far; ties broken by a hash of the unit id so the
     choice is reproducible. Idempotent per unit."""
-    existing = await assignment_for(db, experiment.id, unit_id)
+    experiment = await get(db, learner_id, experiment.id)
+    node = (
+        await db.get(SkillNode, unit_id, populate_existing=True)
+        if experiment.unit_type == "node"
+        else None
+    )
+    target_session = (
+        await db.get(Session, unit_id, populate_existing=True)
+        if experiment.unit_type == "session"
+        else None
+    )
+    if (node is not None and node.owner_learner_id not in (None, learner_id)) or (
+        target_session is not None and target_session.learner_id != learner_id
+    ):
+        raise AppError("not_found", "This learning material is unavailable.", 404)
+    if session is not None:
+        persisted_session = await db.get(Session, session.id, populate_existing=True)
+        if persisted_session is None or persisted_session.learner_id != learner_id:
+            raise AppError("not_found", "Session unavailable.", 404)
+    existing = await assignment_for(db, experiment.id, unit_id, learner_id=learner_id)
     arms = await arms_of(db, experiment.id)
     by_id = {a.id: a for a in arms}
     if existing is not None:
         return by_id[existing.arm_id]
     counts = {a.id: 0 for a in arms}
-    stmt = select(ExperimentAssignment.arm_id).where(
-        ExperimentAssignment.experiment_id == experiment.id
-    )
-    for arm_id in (await db.execute(stmt)).scalars():
-        counts[arm_id] = counts.get(arm_id, 0) + 1
+    for assignment in await visible_assignments(db, learner_id, experiment.id):
+        counts[assignment.arm_id] += 1
     least = min(counts.values())
     candidates = [a for a in arms if counts[a.id] == least]
     pick = candidates[int(hashlib.sha256(unit_id.encode()).hexdigest(), 16) % len(candidates)]
@@ -267,13 +320,15 @@ async def assign(
             unit_id=unit_id,
         )
     )
+    experiment_id = experiment.id
     try:
         await db.commit()
     except IntegrityError:  # a concurrent first contact won the unique (experiment, unit) race
         await db.rollback()
-        winner = await assignment_for(db, experiment.id, unit_id)
-        assert winner is not None
-        return by_id[winner.arm_id]
+        winner = await assignment_for(db, experiment_id, unit_id, learner_id=learner_id)
+        if winner is None:
+            raise AppError("conflict", "This experiment assignment is unavailable.", 409) from None
+        return next(a for a in await arms_of(db, experiment_id) if a.id == winner.arm_id)
     ctx = _ctx(learner_id)
     if session is not None:
         ctx = EventContext(
@@ -479,10 +534,9 @@ async def unit_outcomes(
     runs; delayed reviews and evidence for already-assigned units keep counting for
     OUTCOME_WINDOW_DAYS after Stop — that delay *is* the outcome. Nothing is counted twice; a unit
     with no events contributes nothing."""
-    stmt = select(ExperimentAssignment).where(ExperimentAssignment.experiment_id == exp.id)
     units = {
         a.unit_id: UnitOutcome(unit_id=a.unit_id, arm_id=a.arm_id, assigned_at=a.ts)
-        for a in (await db.execute(stmt)).scalars()
+        for a in await visible_assignments(db, learner_id, exp.id)
     }
     unavailable = UNAVAILABLE_FOR_UNIT.get(exp.unit_type, {})
     ev_stmt = (

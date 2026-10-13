@@ -74,11 +74,23 @@ async def test_foreign_competency_and_reminder_links_are_denied(db, learner, cli
 
     # Historical experiment assignments must not resolve foreign titles.
     exp = await experiments.from_template(db, learner.id, "socratic-vs-explicit")
-    await experiments.assign(db, learner.id, exp, unit_id=node.id)
+    from app.db.models import ExperimentAssignment
+
+    arm = (await experiments.arms_of(db, exp.id))[0]
+    db.add(
+        ExperimentAssignment(
+            learner_id=learner.id,
+            experiment_id=exp.id,
+            arm_id=arm.id,
+            unit_type="node",
+            unit_id=node.id,
+        )
+    )
+    await db.commit()
     response = await client.get(f"/api/experiments/{exp.id}/results")
     assert response.status_code == 200
     assert "Secret title" not in response.text
-    assert response.json()["units"][0]["label"] == node.id
+    assert response.json()["units"] == []
 
 
 async def test_competency_writes_reject_foreign_skills_without_evidence(db, learner):
