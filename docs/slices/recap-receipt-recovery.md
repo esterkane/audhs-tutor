@@ -16,3 +16,6 @@ Full lint/types/build pass. Code and pedagogy reviews: no blockers/majors. Nativ
 
 ## Limits and next work
 Browser drafts remain tab-lifetime recovery, not durable published notes. This slice adds no edit/replace operation for an ended recap. Historical missing receipts remain unverified. Outer end API recall scheduling/block closure/checkpoint pruning still use separate boundaries. Broader R3/R4 and human acceptance remain open; proceed from the reconciled current checklist rather than redoing delivered checks.
+
+
+Follow-up2026-10-14: session-end-transaction.md closes the previously recorded outer API transaction gap for recall creation, block closure and checkpoint pruning. Receipt recovery remains necessary for postcommit delivery failures.

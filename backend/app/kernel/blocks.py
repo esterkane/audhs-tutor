@@ -137,9 +137,11 @@ async def state(db: AsyncSession, s: Session) -> BlockState:
     return _state_from(cp, blocks_of(s))
 
 
-async def _save(db: AsyncSession, s: Session, cp: dict[str, Any], update: dict[str, Any]) -> None:
-    """Commit the checkpoint together with any event emitted with `commit=False` before it."""
-    await ksession.save_checkpoint(db, s, {**cp, **update})
+async def _save(
+    db: AsyncSession, s: Session, cp: dict[str, Any], update: dict[str, Any], *, commit: bool = True
+) -> None:
+    """Save the checkpoint with pending events; optionally defer commit to the caller."""
+    await ksession.save_checkpoint(db, s, {**cp, **update}, commit=commit)
 
 
 def _minutes_since(started: str | None) -> float | None:
@@ -234,6 +236,7 @@ async def end(
     switched_early: bool | None = None,
     grasp_passed: bool | None = None,
     actual_min: float | None = None,
+    commit: bool = True,
 ) -> BlockState:
     """End the running block `index`. Idempotent: not running / already ended → current state,
     no event. An early switch out of new material needs the grasp check (planner rule)."""
@@ -282,7 +285,7 @@ async def end(
         commit=False,
     )
     update = {"block_status": "ended"}
-    await _save(db, s, cp, update)
+    await _save(db, s, cp, update, commit=commit)
     return _state_from({**cp, **update}, blocks, message="ended")
 
 
@@ -338,11 +341,13 @@ async def extend(db: AsyncSession, s: Session, index: int, minutes: int) -> Bloc
     return _state_from({**cp, **update}, blocks, message="extended")
 
 
-async def end_running(db: AsyncSession, s: Session, *, reason: str = "session_end") -> None:
+async def end_running(
+    db: AsyncSession, s: Session, *, reason: str = "session_end", commit: bool = True
+) -> None:
     """Session end / stop: close the running block exactly once so no block stays half-open."""
     cp = await ksession.load_checkpoint(db, s.id) or {}
     if cp.get("block_status") == "running" and isinstance(cp.get("block_index"), int):
-        await end(db, s, int(cp["block_index"]), reason=reason, switched_early=True)
+        await end(db, s, int(cp["block_index"]), reason=reason, switched_early=True, commit=commit)
 
 
 async def bump_plan_version(db: AsyncSession, s: Session) -> int:

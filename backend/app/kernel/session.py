@@ -83,6 +83,24 @@ async def get_owned(db: AsyncSession, session_id: str, learner_id: str) -> Sessi
     return s
 
 
+async def lock_for_end(db: AsyncSession, session_id: str, learner_id: str) -> Session:
+    """Serialize end preparation across SQLite writers without changing learner state.
+
+    The caller owns commit/rollback. Refresh after acquiring the write lock so a
+    second worker observes the first worker's completed transaction.
+    """
+    await db.execute(
+        update(Session)
+        .where(Session.id == session_id, Session.learner_id == learner_id)
+        .values(ended_at=Session.ended_at)
+        .execution_options(synchronize_session=False)
+    )
+    s = await db.get(Session, session_id, populate_existing=True)
+    if s is None or s.learner_id != learner_id:
+        raise KeyError("session not found")
+    return s
+
+
 async def end(
     db: AsyncSession,
     session_id: str,
@@ -93,7 +111,7 @@ async def end(
 ) -> Session:
     """Own the end-state/recap transaction; concurrent retries preserve the first completion.
 
-    API block cleanup and recall scheduling precede this boundary and remain separate.
+    API callers may stage block cleanup and recall scheduling in this same transaction.
     """
     try:
         won = await db.scalar(
@@ -158,7 +176,9 @@ async def save_checkpoint(
     return cp
 
 
-async def prune_checkpoints(db: AsyncSession, session_id: str, *, keep: int = 1) -> int:
+async def prune_checkpoints(
+    db: AsyncSession, session_id: str, *, keep: int = 1, commit: bool = True
+) -> int:
     """Remove older duplicate rows (pre-P1 sessions could have several); newest `keep` stay."""
     rows = list(
         (
@@ -174,7 +194,10 @@ async def prune_checkpoints(db: AsyncSession, session_id: str, *, keep: int = 1)
         await db.delete(cp)
         n += 1
     if n:
-        await db.commit()
+        if commit:
+            await db.commit()
+        else:
+            await db.flush()
     return n
 
 

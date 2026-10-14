@@ -387,16 +387,22 @@ async def end(
 
 async def _end_session(session_id: str, body: SessionEnd, db: DB, learner: Learner) -> SessionOut:
     await _owned_session(db, session_id, learner.id)
-    await ensure_recall_item_for_explained_skill(db, learner.id, session_id)
-    await blocks.end_running(db, await ksession.get(db, session_id), reason="session_end")
-    await ksession.prune_checkpoints(db, session_id)
-    s = await ksession.end(
-        db,
-        session_id,
-        energy_after=body.energy_after,
-        self_report=body.self_report,
-        notes=body.notes,
-    )
+    try:
+        s = await ksession.lock_for_end(db, session_id, learner.id)
+        if s.ended_at is None:
+            await ensure_recall_item_for_explained_skill(db, learner.id, session_id, commit=False)
+            await blocks.end_running(db, s, reason="session_end", commit=False)
+            await ksession.prune_checkpoints(db, session_id, commit=False)
+        s = await ksession.end(
+            db,
+            session_id,
+            energy_after=body.energy_after,
+            self_report=body.self_report,
+            notes=body.notes,
+        )
+    except BaseException:
+        await db.rollback()
+        raise
     if body.confirm_recap:
         receipt = await _completion(db, s)
         requested = SavedRecap(
@@ -412,7 +418,9 @@ async def _end_session(session_id: str, body: SessionEnd, db: DB, learner: Learn
     return await _out(db, learner.id, s)
 
 
-async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, session_id: str) -> None:
+async def ensure_recall_item_for_explained_skill(
+    db: DB, learner_id: str, session_id: str, *, commit: bool = True
+) -> None:
     """Pedagogy guardrail: any explain flow ends with a recall item in FSRS. If the session's skill has
     no review items yet, schedule its first assessment (due now) so the queue is never empty."""
     cp = await ksession.load_checkpoint(db, session_id) or {}
@@ -474,5 +482,10 @@ async def ensure_recall_item_for_explained_skill(db: DB, learner_id: str, sessio
             # Optional recall creation must never prevent the learner from stopping.
             return
         await memory.ensure_item(
-            db, learner_id, skill_id, first.kind, {"ref": first.id, "assessment_id": first.id}
+            db,
+            learner_id,
+            skill_id,
+            first.kind,
+            {"ref": first.id, "assessment_id": first.id},
+            commit=commit,
         )

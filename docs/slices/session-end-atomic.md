@@ -17,3 +17,6 @@ This is deliberately NOT a claim that the entire HTTP end operation is atomic. R
 
 ## Next
 Reconcile competing recap Save/End/Change-topic controls and unknown save responses before closing the recap recovery flow. Human audio/assistive-technology acceptance and broader R3/R4 remain open.
+
+
+Follow-up2026-10-14: session-end-transaction.md closes the previously recorded outer API transaction gap for recall creation, block closure and checkpoint pruning. Receipt recovery remains necessary for postcommit delivery failures.

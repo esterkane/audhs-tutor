@@ -1,0 +1,7 @@
+# Complete session-end transaction
+
+Failure injection before recap persistence leaves the open session's block ended because API cleanup commits independently. The learner cannot resume the same running activity. This extends the already accepted recap atomicity contract; it changes transaction ownership, not recall eligibility, scheduling calculations, grading or stop requirements.
+
+Atomic write set: optional eligible recall item and memory row, running-block end event/checkpoint, old checkpoint pruning, session ended_at/energy and its exact recap event. A learner-owned database write lock must serialize workers before any cleanup reads; the in-process request lock alone is insufficient. Already-ended retries preserve the first recap and do not create new cleanup effects. Keep commit defaults for existing standalone kernel callers; the API suppresses intermediate commits and rolls back all precommit errors/cancellation. The final kernel end commit remains the single durability boundary. Response assembly and exact-recap confirmation occur after commit, so failed delivery still requires the existing completion receipt rather than automatic retry.
+
+Likely files: api/sessions.py, kernel/session.py, kernel/blocks.py, focused API/kernel tests. No migration, external calls, frontend control changes or policy changes. Verify failure after each preparation stage, cancellation/commit failure, duplicate/concurrent independent workers and successful retry. Preserve event order and direct-call compatibility.
