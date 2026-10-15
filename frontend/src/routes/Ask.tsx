@@ -1,3 +1,4 @@
+import { ConversationContext } from '../features/ask/ConversationContext'
 import { Disclosure } from '../components/ui/disclosure'
 import { SourcedAnswer } from '../features/ask/SourcedAnswer'
 import { SuggestionEvidence } from '../features/ask/SuggestionEvidence'
@@ -238,6 +239,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
                 Saved locally · {new Date(answer.created_at).toLocaleString()} · Model explanation, not
                 fact-checked.
               </p>
+              <ConversationContext metadata={answer.metadata} />
               <SourcedAnswer key={`sources:${answer.id}`} text={answer.text} sources={Array.isArray(answer.metadata.sources) ? answer.metadata.sources : []} />
               <ReadAloud text={`${answer.request_text}\n\n${answer.text}`} />
               <AnswerChecks key={answer.id} answerId={answer.id} learnerId={learnerId} />
@@ -322,7 +324,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
           />
           <p id="ask-context" className="text-sm text-muted">
             {parent
-              ? 'Uses up to three previous replies in this branch. Start a new topic to leave that context behind.'
+              ? 'Uses up to three recent exchanges and the opening question when available. Earlier details may need restating. Start a new topic to leave that context behind.'
               : 'No lesson, webpage or course material is attached automatically.'}{' '}
             Model explanations are not fact-checked. Source review is available after saving.
           </p>

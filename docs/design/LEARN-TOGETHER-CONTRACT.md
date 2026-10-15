@@ -58,3 +58,7 @@ LT1 starts with a storage/context design against existing answer records. Do not
 - The learner wants a direct answer, stops, returns, changes topic or uses only keyboard/audio; mode and context remain understandable.
 
 No learning-outcome claim can be closed by prompt-string checks or simulated learners alone. Keep the owner's task/rubric review and provisional model-feedback policies.
+
+## Instructional-design quality supplement
+
+The owner-supplied instructional-design report is assessed in [Instructional design quality](INSTRUCTIONAL-DESIGN-QUALITY.md). Carry diagnosis before content generation, objective/practice/assessment alignment, independent factual checks, evidence-sensitive disagreement and application-based evaluation into LT1/LT3/LT5. These are acceptance requirements, not evidence that this app or a particular model already meets them. Preserve learner choice and the existing provisional-feedback policy.

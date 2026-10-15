@@ -378,3 +378,35 @@ for (const width of [390, 1280]) test(`Suggested follow-ups remain editable and 
   await expect.poll(() => calls.length).toBe(1)
   expect(calls[0].body.parent_answer_id).toBe('saved-example')
 })
+
+
+for (const width of [390, 1280]) test(`Ask opening-context disclosure survives reload and keyboard ${width}`, async ({ page }, info) => {
+  await fixture(page)
+  await page.route('**/api/answers/context-example', route => route.fulfill({ json: {
+    id: 'context-example', turn_id: 'context-turn', session_id: null, surface: 'ask',
+    created_at: '2026-10-15T10:00:00Z', text: 'The model adjusts parameters using training examples.',
+    request_text: 'Return to the learning question', request: { question: 'Return to the learning question' },
+    metadata: { context_window: { version: 1, older_exchanges_omitted: true },
+      opening_context: { question: 'How does a model learn its weights?' }, sources: [] },
+  } }))
+  await page.setViewportSize({ width, height: 900 })
+  await page.goto('/ask?answer=context-example')
+  const disclosure = page.locator('summary').filter({ hasText: 'Context used for this answer' })
+  await disclosure.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('How does a model learn its weights?', { exact: true })).toBeVisible()
+  await expect(page.getByText(/Older intervening exchanges were omitted/)).toBeVisible()
+  await expect(page.getByText(/Historical learner input, not verified source evidence/)).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  await disclosure.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: info.outputPath(`opening-context-${width}.png`), fullPage: true })
+  await page.keyboard.press('Space')
+  await expect(page.getByText('How does a model learn its weights?', { exact: true })).not.toBeVisible()
+  await page.reload()
+  await disclosure.focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByText('How does a model learn its weights?', { exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'New topic or question' }).click()
+  await expect(page.getByLabel('Your question', { exact: true })).toHaveValue('')
+  await expect(disclosure).toHaveCount(0)
+})
