@@ -10,6 +10,8 @@ from pathlib import Path
 from urllib.request import urlopen
 from uuid import uuid4
 
+# Bootstrap the backend import path before importing app modules.
+# isort: off
 from eval_local_runtime import local_settings, pinned_gateway
 
 from app.core.config import get_settings
@@ -17,6 +19,7 @@ from app.db import answers
 from app.evals.harness import open_world
 from app.orchestrator.ask import respond
 from app.schemas.ask import AskQuestion
+# isort: on
 
 
 class CandidateGateway:
@@ -26,6 +29,7 @@ class CandidateGateway:
         self.candidate = candidate
         self.packets = []
         self.generation_settings = []
+        self.responses = []
 
     async def complete(self, task, messages, **kwargs):
         packet = list(messages)
@@ -41,7 +45,11 @@ class CandidateGateway:
                 "seed": "not pinned",
             }
         )
-        return await self.gateway.complete(task, packet, **kwargs)
+        result = await self.gateway.complete(task, packet, **kwargs)
+        # Retain the returned proposal before downstream semantic/binding checks can reject it.
+        # Provider transport payloads are deliberately excluded by ProviderResult's serializer.
+        self.responses.append(result.result.model_dump(mode="json"))
+        return result
 
 
 def load_inputs(candidate_path: Path | None):
@@ -104,29 +112,50 @@ async def run(output: Path, candidate_path: Path | None):
                             },
                         )
                         parent = saved.id
-                    reply = await asyncio.wait_for(
-                        respond(
-                            db,
-                            gateway,
-                            world.learner_id,
-                            AskQuestion(question=case["question"], parent_answer_id=parent),
-                            str(uuid4()),
-                        ),
-                        180,
-                    )
-                    report["results"].append(
-                        {
-                            "id": case["id"],
-                            "criteria": case["criteria"],
-                            "reply": reply.model_dump(mode="json"),
-                            "packet": gateway.packets[-1],
-                            "generation_settings": gateway.generation_settings[-1],
-                        }
-                    )
-                    artifact.seek(0)
-                    json.dump(report, artifact, indent=2)
-                    artifact.truncate()
-                    artifact.flush()
+                    packet_start = len(gateway.packets)
+                    response_start = len(gateway.responses)
+                    entry = {"id": case["id"], "criteria": case["criteria"]}
+                    try:
+                        reply = await asyncio.wait_for(
+                            respond(
+                                db,
+                                gateway,
+                                world.learner_id,
+                                AskQuestion(question=case["question"], parent_answer_id=parent),
+                                str(uuid4()),
+                            ),
+                            180,
+                        )
+                        entry.update(outcome="completed", reply=reply.model_dump(mode="json"))
+                    except BaseException as error:
+                        entry.update(
+                            outcome="failed",
+                            error={"type": type(error).__name__, "message": str(error)},
+                        )
+                        raise
+                    finally:
+                        # Do not accidentally attribute the previous case's response to an
+                        # attempt rejected before inference or before a provider returned.
+                        entry.update(
+                            packet=gateway.packets[-1]
+                            if len(gateway.packets) > packet_start
+                            else None,
+                            generation_settings=(
+                                gateway.generation_settings[-1]
+                                if len(gateway.packets) > packet_start
+                                else None
+                            ),
+                            provider_response=(
+                                gateway.responses[-1]
+                                if len(gateway.responses) > response_start
+                                else None
+                            ),
+                        )
+                        report["results"].append(entry)
+                        artifact.seek(0)
+                        json.dump(report, artifact, indent=2)
+                        artifact.truncate()
+                        artifact.flush()
         finally:
             await world.close()
 
