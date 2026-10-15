@@ -84,6 +84,10 @@ async def test_effective_brief_inherits_and_clear_does_not_resurrect(client, db,
 @pytest.mark.parametrize(
     "raw",
     [
+        {"mode": [], "value": None},
+        {"mode": {}, "value": None},
+        {"mode": [], "value": {}},
+        {"mode": {}, "value": {}},
         {"value": {}},
         {
             "mode": "supplied",
@@ -111,6 +115,37 @@ def test_null_keeps_legacy_inheritance_semantics():
         "conversation_brief"
         not in AskQuestion(question="Continue", conversation_brief=None).model_dump()
     )
+
+
+async def test_followup_survives_malformed_saved_context_mode(client, db, fake_local):
+    from uuid import uuid4
+
+    from app.db.models import TutorAnswer
+    from app.models_ai import registry
+
+    await registry.seed_defaults(db, installed_ollama_tags={"llama3.1:8b"})
+    root = await client.post(
+        "/api/ask",
+        json={"question": "Explain training"},
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert root.status_code == 200, root.text
+    parent_id = root.json()["answer_id"]
+    parent = await db.get(TutorAnswer, parent_id)
+    parent.metadata_json = {
+        **parent.metadata_json,
+        "conversation_brief": {"mode": [], "value": {"task": "CORRUPT_CONTEXT"}},
+    }
+    await db.commit()
+    response = await client.post(
+        "/api/ask",
+        json={"question": "Explain the next step", "parent_answer_id": parent_id},
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert response.status_code == 200, response.text
+    saved = (await client.get(f"/api/answers/{response.json()['answer_id']}")).json()
+    assert saved["metadata"]["conversation_brief"] == {"mode": "unavailable", "value": None}
+    assert all("CORRUPT_CONTEXT" not in message.content for message in fake_local.calls[-1].messages)
 
 
 async def test_brief_branch_identity_and_exact_replay(client, db, fake_local):

@@ -17,13 +17,13 @@ def resolve(supplied: ConversationBrief | None, parent: TutorAnswer | None) -> d
         if raw is not None:
             if (
                 isinstance(raw, dict)
-                and raw.get("mode") in {"absent", "unavailable"}
+                and raw.get("mode") in ("absent", "unavailable")
                 and raw.get("value") is None
             ):
                 return {"mode": raw["mode"], "value": None}
             if (
                 not isinstance(raw, dict)
-                or raw.get("mode") not in {"supplied", "inherited", "cleared"}
+                or raw.get("mode") not in ("supplied", "inherited", "cleared")
                 or raw.get("origin") != "learner_supplied_unverified"
                 or not isinstance(raw.get("value"), dict)
                 or set(raw["value"]) != {"version", "task", "notes", "examples", "unresolved"}

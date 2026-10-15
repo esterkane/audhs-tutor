@@ -40,8 +40,8 @@ Start with the existing quantity-role fixtures and Learn Together scenarios; avo
 
 ## Execution order and open work
 
-1. Finish and verify the current LT1 opening-context foundation; it is not yet a full source-aware conversation brief.
-2. Design the remaining LT1 fact/example/evidence boundaries and LT2 explicit guided choice without increasing compulsory interaction.
+1. Build on the verified LT1 explicit opening/context controls and previous-passage reselection; automatic source-aware context proposals remain open.
+2. Keep the locally implemented LT2 explicit guided choice unpublished until its teaching-quality gate is resolved. UI and persistence tests passed, but local unsourced correctness and contradiction-checking diagnostics failed; supplied-source improvements do not establish general accuracy. Do not repeat prompt sweeps or switch providers based on this article.
 3. Add the above paired correctness/pressure cases with LT3 response-to-reasoning work, one behavior change at a time.
 4. Apply objective/practice/rubric alignment to the existing authoring review flow; retain explicit task review and activation gates.
 5. Run LT5 integrated evaluation, including human transfer and re-entry checks. Report quality and latency separately.
