@@ -40,7 +40,7 @@
         }
       ]
     },
-    "criteria": "Keep30 retained,50 removed,total80,37.5%; explain assumption."
+    "criteria": "State a coherent interpretation or ask one focused clarification. If 30 remains retained and 50 now means removed, total80 and37.5%. If keeping the original total50 and removing all50, explicitly acknowledge replacing retained30 with0 and use original total50 as denominator. Do not silently change quantity roles or call zero remaining rows impossible. Explain percent scaling; no execution or mastery claim."
   },
   {
     "case": "explicit_replacement",
