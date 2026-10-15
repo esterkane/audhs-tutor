@@ -394,10 +394,10 @@ async def end_running(
         await end(db, s, int(cp["block_index"]), reason=reason, switched_early=True, commit=commit)
 
 
-async def bump_plan_version(db: AsyncSession, s: Session) -> int:
+async def bump_plan_version(db: AsyncSession, s: Session, *, commit: bool = True) -> int:
     """Called when an accepted (or undone) re-plan replaced `planned_blocks_json`: clients
     compare `plan_version` to refetch; the running block keeps its start time."""
     cp = await ksession.load_checkpoint(db, s.id) or {}
     v = int(cp.get("plan_version") or 1) + 1
-    await _save(db, s, cp, {"plan_version": v})
+    await _save(db, s, cp, {"plan_version": v}, commit=commit)
     return v

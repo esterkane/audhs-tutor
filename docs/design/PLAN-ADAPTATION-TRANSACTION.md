@@ -1,0 +1,9 @@
+# Plan adaptation acceptance and undo
+
+Inspection found multiple commits between replacing a plan, updating its checkpoint version, saving a decision and emitting audit events. Both acceptance and undo can rewrite completed-session history. This is a larger transaction boundary than the preceding checkpoint fix and is documented before implementation.
+
+Bounded implementation: only session.plan acceptance/undo acquire the existing owned open-session transaction. Refresh the proposal under that lock, preserve current decision validation, and defer plan/version/decision/event commits to one final commit. Reject a mismatched supplied session rather than logging changes against another session. Validate supplied API session ownership. Keep preference adaptations and trial expiry behavior unchanged. Negative plan decisions also serialize against acceptance and use the proposal session for their audit context; they remain allowed after Finish. Reject sessionless malformed plan proposals rather than accepting an unbound change that cannot be undone.
+
+Files: kernel/adaptation.py, kernel/blocks.py (deferred version write), api/adaptations.py (owned context), regression tests. No schema, model or grading changes. Test both Finish orderings, duplicate decisions, staged failures/cancellation, commit failure, source ownership and ordinary accept/undo flows.
+
+Important remaining architecture: proposals and undo values are whole-plan snapshots. Applying an old snapshot after activity advancement or a later plan change may replace completed/running blocks. The transaction alone does not resolve that semantic conflict. A follow-up must define stale-plan rejection or a source/version-bound remaining-plan merge before claiming complete safe adaptation. No silent rebasing is introduced here; same-block timing/plan semantic changes remain separate.

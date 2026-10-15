@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.api.deps import DB, Learner
 from app.db.models import Adaptation, Session
 from app.kernel import adaptation
+from app.kernel import session as ksession
 from app.schemas.adaptation import DecideIn, HistoryList, HistoryOut, ProposalList, ProposalOut
 
 router = APIRouter(prefix="/adaptations", tags=["adaptations"])
@@ -26,8 +27,8 @@ def _proposal(a: Adaptation) -> ProposalOut:
     )
 
 
-async def _session(db: AsyncSession, session_id: str | None) -> Session | None:
-    return await db.get(Session, session_id) if session_id else None
+async def _session(db: AsyncSession, session_id: str | None, learner_id: str) -> Session | None:
+    return await ksession.get_owned(db, session_id, learner_id) if session_id else None
 
 
 @router.get("", summary="Open proposal cards", response_model=ProposalList)
@@ -41,7 +42,9 @@ async def pending(db: DB, learner: Learner) -> ProposalList:
     response_model=ProposalList,
 )
 async def observe(db: DB, learner: Learner, session_id: str | None = None) -> ProposalList:
-    cards = await adaptation.observe(db, learner.id, session=await _session(db, session_id))
+    cards = await adaptation.observe(
+        db, learner.id, session=await _session(db, session_id, learner.id)
+    )
     return ProposalList(proposals=[_proposal(a) for a in cards])
 
 
@@ -52,7 +55,11 @@ async def observe(db: DB, learner: Learner, session_id: str | None = None) -> Pr
 )
 async def decide(adaptation_id: str, body: DecideIn, db: DB, learner: Learner) -> HistoryList:
     await adaptation.decide(
-        db, learner.id, adaptation_id, body.decision, session=await _session(db, body.session_id)
+        db,
+        learner.id,
+        adaptation_id,
+        body.decision,
+        session=await _session(db, body.session_id, learner.id),
     )
     return await log(db, learner)
 

@@ -14,9 +14,11 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import Adaptation, AdaptationDecision, LearningEvent, Session
 from app.kernel import blocks, competency, memory, preferences
+from app.kernel import session as ksession
 from app.kernel.skill_graph import MASTERY_DONE
 from app.schemas.common import Mode, ObjectType
 
@@ -367,13 +369,21 @@ async def history(db: AsyncSession, learner_id: str, *, limit: int = 50) -> list
     out = []
     for a in rows:
         d = await _latest_decision(db, a.id)
+        in_effect = bool(d and d.decision in ("try", "default") and d.undone_at is None)
+        if in_effect and a.apply_json.get("pref") == "session.plan":
+            target = (
+                await db.get(Session, a.session_id, populate_existing=True)
+                if a.session_id
+                else None
+            )
+            in_effect = target is not None and target.ended_at is None
         out.append(
             HistoryEntry(
                 adaptation=a,
                 decision=d.decision if d else None,
                 decided_at=d.decided_at if d else None,
                 undone_at=d.undone_at if d else None,
-                in_effect=bool(d and d.decision in ("try", "default") and d.undone_at is None),
+                in_effect=in_effect,
             )
         )
     return out
@@ -386,6 +396,49 @@ async def decide(
     decision: str,
     *,
     session: Session | None = None,
+) -> AdaptationDecision:
+    a = await db.get(Adaptation, adaptation_id)
+    if a is None or a.learner_id != learner_id:
+        raise KeyError(adaptation_id)
+    if a.apply_json.get("pref") == "session.plan" and decision == "try" and session is not None:
+        if not a.session_id:
+            raise ValueError("the session of this plan proposal no longer exists")
+        target_id = a.session_id
+        if session.learner_id != learner_id or session.id != target_id:
+            raise AppError(
+                "plan_session_mismatch",
+                "This proposal belongs to a different session.",
+                http_status=409,
+            )
+        async with ksession.open_transition(db, target_id, learner_id) as target:
+            await db.refresh(a)
+            return await _decide(
+                db, learner_id, adaptation_id, decision, session=target, commit=False
+            )
+    if a.apply_json.get("pref") == "session.plan" and decision in ("no", "never") and a.session_id:
+        # Dismissal is allowed after Finish, but must not race an acceptance.
+        try:
+            target = await ksession.lock_for_transition(db, a.session_id, learner_id)
+            await db.refresh(a)
+            result = await _decide(
+                db, learner_id, adaptation_id, decision, session=target, commit=False
+            )
+            await db.commit()
+            return result
+        except BaseException:
+            await db.rollback()
+            raise
+    return await _decide(db, learner_id, adaptation_id, decision, session=session)
+
+
+async def _decide(
+    db: AsyncSession,
+    learner_id: str,
+    adaptation_id: str,
+    decision: str,
+    *,
+    session: Session | None = None,
+    commit: bool = True,
 ) -> AdaptationDecision:
     if decision not in DECISIONS:
         raise ValueError(f"decision must be one of {DECISIONS}")
@@ -407,9 +460,12 @@ async def decide(
                 raise ValueError("the session of this plan proposal no longer exists")
             a.previous_json = {"value": list(target.planned_blocks_json or [])}
             target.planned_blocks_json = list(value["blocks"])
-            await db.commit()
+            if commit:
+                await db.commit()
+            else:
+                await db.flush()
             if target.ended_at is None:
-                await blocks.bump_plan_version(db, target)
+                await blocks.bump_plan_version(db, target, commit=commit)
             await events.emit(
                 Verb.ADAPTED,
                 ObjectType.ADAPTATION,
@@ -420,6 +476,7 @@ async def decide(
                     "reversible": True,
                     "policy_version": POLICY_VERSION,
                 },
+                commit=commit,
             )
         else:
             a.previous_json = {
@@ -439,13 +496,17 @@ async def decide(
             )
     row = AdaptationDecision(learner_id=learner_id, adaptation_id=a.id, decision=decision)
     db.add(row)
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     await events.emit(
         Verb.DECIDED,
         ObjectType.ADAPTATION,
         a.id,
         result={"decision": decision},
         context={"what": a.what, "why": a.why, "origin": a.origin},
+        commit=commit,
     )
     return row
 
@@ -461,6 +522,27 @@ async def undo(
     a = await db.get(Adaptation, adaptation_id)
     if a is None or a.learner_id != learner_id:
         raise KeyError(adaptation_id)
+    if a.apply_json.get("pref") == "session.plan":
+        if not a.session_id:
+            raise ValueError("the session of this plan proposal no longer exists")
+        async with ksession.open_transition(db, a.session_id, learner_id) as target:
+            await db.refresh(a)
+            return await _undo(db, learner_id, adaptation_id, session=target, why=why, commit=False)
+    return await _undo(db, learner_id, adaptation_id, session=session, why=why)
+
+
+async def _undo(
+    db: AsyncSession,
+    learner_id: str,
+    adaptation_id: str,
+    *,
+    session: Session | None = None,
+    why: str = "undone by the learner",
+    commit: bool = True,
+) -> AdaptationDecision:
+    a = await db.get(Adaptation, adaptation_id)
+    if a is None or a.learner_id != learner_id:
+        raise KeyError(adaptation_id)
     d = await _latest_decision(db, a.id)
     if d is None or d.decision not in ("try", "default") or d.undone_at is not None:
         raise ValueError("nothing to undo")
@@ -471,20 +553,27 @@ async def undo(
         target = await db.get(Session, a.session_id) if a.session_id else None
         if target is not None and isinstance(previous, list):
             target.planned_blocks_json = previous
-            await db.commit()
+            if commit:
+                await db.commit()
+            else:
+                await db.flush()
             if target.ended_at is None:
-                await blocks.bump_plan_version(db, target)
+                await blocks.bump_plan_version(db, target, commit=commit)
     elif previous is None or prev.get("was_set") is False:
         await preferences.reset(db, learner_id, pref)  # it was the default before: back to default
     else:
         await preferences.set_pref(db, learner_id, pref, previous, origin="explicit")
     d.undone_at = datetime.now(UTC).isoformat(timespec="seconds")
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     await EventWriter(db, _ctx(learner_id, session)).emit(
         Verb.UNDONE,
         ObjectType.ADAPTATION,
         a.id,
         context={"what": a.what, "why": why, "reversible": True, "policy_version": POLICY_VERSION},
+        commit=commit,
     )
     return d
 
