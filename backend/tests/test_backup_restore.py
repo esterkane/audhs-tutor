@@ -463,3 +463,31 @@ def test_restore_invalidates_assessment_ownership(tmp_path: Path, source, scope)
         )
     with sqlite3.connect(path) as db:
         assert db.execute("SELECT owner_json FROM assessment_execution").fetchone()[0] == receipt
+
+
+@pytest.mark.parametrize("scope", ["learner", "full"])
+def test_ask_receipt_payload_survives_backup_without_becoming_an_answer(tmp_path, source, scope):
+    url, _ = source
+    path = Path(url.removeprefix("sqlite:///"))
+    payload = {
+        "operation": "synthetic_context_fixture",
+        "notes": "Retain this hypothetical example",
+        "references": [{"turn_id": "synthetic-turn", "text_hash": "a" * 64}],
+    }
+    with sqlite3.connect(path) as conn:
+        row = conn.execute("SELECT id FROM ask_request LIMIT 1").fetchone()
+        assert row is not None
+        conn.execute(
+            "UPDATE ask_request SET response_json=? WHERE id=?", (json.dumps(payload), row[0])
+        )
+        answer_count = conn.execute("SELECT count(*) FROM tutor_answer").fetchone()[0]
+    archive = tmp_path / f"receipts-{scope}.zip"
+    create_backup(url, archive, scope=scope)
+    target = tmp_path / f"restored-receipts-{scope}"
+    restore_backup(archive, target)
+    with sqlite3.connect(target / "data/dev.db") as conn:
+        restored = conn.execute(
+            "SELECT response_json FROM ask_request WHERE id=?", (row[0],)
+        ).fetchone()
+        assert json.loads(restored[0]) == payload
+        assert conn.execute("SELECT count(*) FROM tutor_answer").fetchone()[0] == answer_count

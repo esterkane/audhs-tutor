@@ -1,3 +1,4 @@
+import json
 import sqlite3
 from pathlib import Path
 
@@ -72,6 +73,22 @@ async def _seed(db: AsyncSession, name: str) -> models.LearnerProfile:
         )
     )
     db.add(models.TutorAnswerReplacement(learner_id=lp.id, answer_id=saved.id, replacement_id=None))
+    db.add(
+        models.AskRequest(
+            learner_id=lp.id,
+            request_key=f"completed-{name}",
+            fingerprint=f"receipt-{name}",
+            response_json={"operation": "synthetic_context_fixture", "notes": f"Notes by {name}"},
+        )
+    )
+    db.add(
+        models.AskRequest(
+            learner_id=lp.id,
+            request_key=f"pending-{name}",
+            fingerprint=f"pending-{name}",
+            response_json=None,
+        )
+    )
     await db.commit()
     return lp
 
@@ -89,7 +106,15 @@ async def test_export_then_wipe_keeps_other_learners(db: AsyncSession, db_path: 
     assert exported["learning_event"][0]["verb"] == "started"
 
     assert exported["tutor_answer"][0]["text"] == "Answer for A"
+    receipts = {row["request_key"]: row for row in exported["ask_request"]}
+    assert json.loads(receipts["completed-A"]["response_json"])["notes"] == "Notes by A"
+    assert receipts["pending-A"]["response_json"] in (None, "null")
     deleted = wipe_learner(conn, a.id)
+    assert deleted["ask_request"] == 2
+    assert {row["request_key"] for row in export_learner(conn, b.id)["ask_request"]} == {
+        "completed-B",
+        "pending-B",
+    }
     assert deleted["tutor_answer"] == 1
     assert deleted["tutor_answer_vector"] == 1
     assert exported["tutor_answer_vector"][0]["model_key"] == "synthetic:v1"
