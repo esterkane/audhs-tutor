@@ -89,3 +89,10 @@ Next: implement owned bounded input resolution and durable proposal receipt enve
 Review identified blank parent IDs bypassing the lookup and mutated brief models bypassing field validation; both are rejected at entry, and source selections are revalidated. Tests cover branch isolation, ownership/surface, invalid links, cycles, area conflicts, oversized input, changed sources, missing parent identity and mutated notes. Alongside reference-binding tests,27 tests pass, targeted Ruff and strict mypy pass. Ownership is scoped to conversation rows; corpus source eligibility follows existing shared-corpus policy, not a new per-document ownership claim.
 
 Remaining before service integration: validate/bind opening context, retain exact record/version/origin maps in durable receipts, inherited accepted-note restrictions, local-only generation and explicit acceptance/UI gates. No semantic-quality or full feature-completion claim.
+
+
+## Durable proposal receipts — 2026-10-15
+
+Added an internal operation-separated receipt layer using existing AskRequest storage. Completion binds learner, request fingerprint, parent, area, unsent brief hash and selected source hashes; an atomic pending-only update prevents overwrite. Receipts retain every input record/version/origin and text hash, including unquoted influences, without raw input snapshots. Historical replay survives parent removal. Local-only/public-export restrictions are policy labels, not proof of transport or semantic correctness; future callers must enforce them. No generation, endpoint, acceptance or learning-state changes.
+
+Verification: 33 combined receipt/input/binding tests passed, followed by all seven receipt tests after adding an independent-session race. Targeted Ruff and mypy passed; bounded code review found no blockers. Tests exposed JSON null versus SQL NULL pending storage and the guard now handles both. Rollback leaves the original claim pending; two competing completions preserve exactly one result. No browser checks apply to this unexposed helper. Opening-context binding, local service, inherited restrictions and review/acceptance UI remain open.

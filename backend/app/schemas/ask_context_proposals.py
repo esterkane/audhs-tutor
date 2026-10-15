@@ -66,3 +66,41 @@ class ContextProposal(BaseModel):
         if len({change.field for change in self.changes}) != len(self.changes):
             raise ValueError("Propose each field at most once")
         return self
+
+
+class InputProvenance(BaseModel):
+    """Server-resolved lineage without raw source text."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    record_id: Identifier
+    version_hash: Digest
+    text_hash: Digest
+    characters: int = Field(ge=1, le=24000)
+    origin: Literal["learner_statement", "unverified_tutor_reply", "selected_source"]
+
+
+class ProposalReceipt(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    operation: Literal["context_proposal.v1"] = "context_proposal.v1"
+    proposal_id: Identifier
+    parent_answer_id: Identifier
+    area_id: Identifier | None
+    base_brief_hash: Digest
+    inputs: dict[Identifier, InputProvenance] = Field(max_length=13)
+    proposal: ContextProposal
+    status: Literal["unverified_proposal"] = "unverified_proposal"
+    transport: Literal["local_only"] = "local_only"
+    public_export: Literal["not_authorized"] = "not_authorized"
+
+    @model_validator(mode="after")
+    def retained_references(self) -> "ProposalReceipt":
+        for change in self.proposal.changes:
+            for reference in change.references:
+                source = self.inputs.get(reference.input_id)
+                if (
+                    source is None
+                    or source.text_hash != reference.text_hash
+                    or reference.end > source.characters
+                ):
+                    raise ValueError("Proposal reference does not match recorded input")
+        return self
