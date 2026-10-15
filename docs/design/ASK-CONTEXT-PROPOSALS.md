@@ -81,3 +81,11 @@ Implemented isolated strict proposal/reference schemas and pure binding validati
 15 offline tests, targeted Ruff and strict mypy pass. Code review found no blockers and clarified that the service must retain the server-resolved input map (record/version/origin) alongside references in durable receipts. The helper returns a detached validated proposal but does not certify meaning, ownership, branch, permissions or full provenance. A deliberate meaning-changing paraphrase test demonstrates this limit. No API, UI, provider, storage or learning-state behavior changed; no browser/model tests are implied.
 
 Next: implement owned bounded input resolution and durable proposal receipt envelopes, preserving unsent draft identity and provenance. The new types are not an enabled feature and do not complete increment2.
+
+## Owned recent-input resolver — 2026-10-15
+
+`ask_context_inputs.resolve` now reads up to three owned Ask ancestor turns, rejects area conflicts, malformed/cyclic links and unavailable turns, captures exact unsent notes, and uses the existing explicit source/hash/trust resolver. Input text plus serialized notes is capped at24000 characters, without truncation. It does not resolve an opening question beyond this window yet; `older_history_omitted` makes that limit explicit. No implicit source reuse, generation, API exposure or learning writes.
+
+Review identified blank parent IDs bypassing the lookup and mutated brief models bypassing field validation; both are rejected at entry, and source selections are revalidated. Tests cover branch isolation, ownership/surface, invalid links, cycles, area conflicts, oversized input, changed sources, missing parent identity and mutated notes. Alongside reference-binding tests,27 tests pass, targeted Ruff and strict mypy pass. Ownership is scoped to conversation rows; corpus source eligibility follows existing shared-corpus policy, not a new per-document ownership claim.
+
+Remaining before service integration: validate/bind opening context, retain exact record/version/origin maps in durable receipts, inherited accepted-note restrictions, local-only generation and explicit acceptance/UI gates. No semantic-quality or full feature-completion claim.
