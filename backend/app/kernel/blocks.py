@@ -372,14 +372,16 @@ async def _advance(
     return await start(db, s, nxt, commit=False)
 
 
-async def extend(db: AsyncSession, s: Session, index: int, minutes: int) -> BlockState:
+async def extend(
+    db: AsyncSession, s: Session, index: int, minutes: int, *, commit: bool = True
+) -> BlockState:
     """Soft-timer '+N minutes' for the running block; recorded so a reload keeps the deadline."""
     blocks = blocks_of(s)
     cp = await ksession.load_checkpoint(db, s.id) or {}
     if cp.get("block_index") != index or cp.get("block_status") != "running":
         return _state_from(cp, blocks, message="block not running")
     update = {"timer_extension_min": int(cp.get("timer_extension_min") or 0) + int(minutes)}
-    await _save(db, s, cp, update)
+    await _save(db, s, cp, update, commit=commit)
     return _state_from({**cp, **update}, blocks, message="extended")
 
 

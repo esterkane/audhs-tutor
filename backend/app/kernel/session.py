@@ -1,11 +1,14 @@
 """Sessions, checkpoints and the EventContext every event is stamped with."""
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.base import utcnow_iso
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import Session, SessionCheckpoint
@@ -99,6 +102,24 @@ async def lock_for_transition(db: AsyncSession, session_id: str, learner_id: str
     if s is None or s.learner_id != learner_id:
         raise KeyError("session not found")
     return s
+
+
+@asynccontextmanager
+async def open_transition(
+    db: AsyncSession, session_id: str, learner_id: str
+) -> AsyncIterator[Session]:
+    """Own a short, local open-session mutation; inner writers must defer commits."""
+    try:
+        s = await lock_for_transition(db, session_id, learner_id)
+        if s.ended_at is not None:
+            raise AppError(
+                "session_ended", "This session has ended. Return Home to continue.", http_status=409
+            )
+        yield s
+        await db.commit()
+    except BaseException:
+        await db.rollback()
+        raise
 
 
 async def end(

@@ -283,6 +283,7 @@ async def propose(
     pattern: str = "",
     evidence: dict[str, Any] | None = None,
     session: Session | None = None,
+    commit: bool = True,
 ) -> Adaptation:
     """A card raised by the planner (or any kernel component) rather than by a rule.
     `pref` may be a preference key, or the literal "session.plan" with `value` = a plan (dict):
@@ -315,13 +316,17 @@ async def propose(
         session_id=session.id if session else None,
     )
     db.add(row)
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     await EventWriter(db, _ctx(learner_id, session)).emit(
         Verb.PROPOSED,
         ObjectType.ADAPTATION,
         row.id,
         result={"decision": None},
         context={"what": what, "why": why, "origin": origin},
+        commit=commit,
     )
     return row
 

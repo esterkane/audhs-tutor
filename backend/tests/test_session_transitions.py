@@ -484,6 +484,7 @@ async def test_start_after_end_and_continue_after_stop(
     assert r.json()["block_index"] == 1 and r.json()["first_started_index"] == 0
     await client.post(f"/api/sessions/{sid}/end", json={"energy_after": 3, "self_report": 3})
     r = await client.post("/api/plan/blocks/start", json={"session_id": sid, "index": 2})
-    assert r.status_code == 400, r.text  # session already ended
+    assert r.status_code == 409, r.text  # completed session conflicts with a new start
+    assert r.json()["error"]["code"] == "session_ended"
     started = await _events(db, sid, "block_started")
     assert [e.object_id for e in started] == [f"{sid}:0", f"{sid}:1"]

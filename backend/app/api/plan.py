@@ -140,9 +140,8 @@ async def block_state(session_id: str, db: DB, learner: Learner) -> BlockOut:
 )
 async def start_block(body: BlockEvent, request: Request, db: DB, learner: Learner) -> BlockOut:
     async with session_lock(request, body.session_id):
-        return await blocks.start(
-            db, await ksession.get_owned(db, body.session_id, learner.id), body.index
-        )
+        async with ksession.open_transition(db, body.session_id, learner.id) as s:
+            return await blocks.start(db, s, body.index, commit=False)
 
 
 @router.post(
@@ -152,15 +151,17 @@ async def start_block(body: BlockEvent, request: Request, db: DB, learner: Learn
 )
 async def end_block(body: BlockEvent, request: Request, db: DB, learner: Learner) -> BlockOut:
     async with session_lock(request, body.session_id):
-        return await blocks.end(
-            db,
-            await ksession.get_owned(db, body.session_id, learner.id),
-            body.index,
-            reason=body.reason or "finished",
-            switched_early=body.switched_early,
-            grasp_passed=body.grasp_passed,
-            actual_min=body.actual_min,
-        )
+        async with ksession.open_transition(db, body.session_id, learner.id) as s:
+            return await blocks.end(
+                db,
+                s,
+                body.index,
+                reason=body.reason or "finished",
+                switched_early=body.switched_early,
+                grasp_passed=body.grasp_passed,
+                actual_min=body.actual_min,
+                commit=False,
+            )
 
 
 @router.post(
@@ -186,9 +187,8 @@ async def next_block(body: BlockAdvance, request: Request, db: DB, learner: Lear
     response_model=BlockOut,
 )
 async def extend_block(body: BlockExtend, db: DB, learner: Learner) -> BlockOut:
-    return await blocks.extend(
-        db, await ksession.get_owned(db, body.session_id, learner.id), body.index, body.minutes
-    )
+    async with ksession.open_transition(db, body.session_id, learner.id) as s:
+        return await blocks.extend(db, s, body.index, body.minutes, commit=False)
 
 
 def _blocks(s: Session) -> list[planner.Block]:
@@ -218,9 +218,11 @@ class ReplanOut(BaseModel):
     response_model=ReplanOut,
 )
 async def replan(body: ReplanIn, db: DB, learner: Learner) -> ReplanOut:
-    s = await ksession.get_owned(db, body.session_id, learner.id)
-    if s.ended_at is not None:
-        raise ValueError("session already ended")
+    async with ksession.open_transition(db, body.session_id, learner.id) as s:
+        return await _replan(body, db, learner, s)
+
+
+async def _replan(body: ReplanIn, db: DB, learner: Learner, s: Session) -> ReplanOut:
     current = planner.Plan(
         mode=s.mode,
         energy=s.energy,
@@ -230,7 +232,6 @@ async def replan(body: ReplanIn, db: DB, learner: Learner) -> ReplanOut:
     )
     new = planner.replan(current, from_index=body.from_index, energy=body.energy)
     s.energy = body.energy  # the learner said so: explicit, not an adaptation
-    await db.commit()
     if [b.model_dump() for b in new.blocks] == [b.model_dump() for b in current.blocks]:
         return ReplanOut(proposal_id=None, energy=body.energy, plan=current, changed=False)
     remaining_old = sum(b.planned_min for b in current.blocks[body.from_index :])
@@ -246,5 +247,6 @@ async def replan(body: ReplanIn, db: DB, learner: Learner) -> ReplanOut:
         pattern=f"planner:replan:{s.id}",
         evidence={"energy_before": current.energy, "energy_after": body.energy},
         session=s,
+        commit=False,
     )
     return ReplanOut(proposal_id=card.id, energy=body.energy, plan=new, changed=True)
