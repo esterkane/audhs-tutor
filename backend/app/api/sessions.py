@@ -329,42 +329,42 @@ SUB_PHASES = {"new_material": {"teach", "assess"}}
     response_model=dict[str, Any],
 )
 async def checkpoint(
-    session_id: str, body: CheckpointIn, request: Request, db: DB
+    session_id: str, body: CheckpointIn, request: Request, db: DB, learner: Learner
 ) -> dict[str, Any]:
-    s = await ksession.get(db, session_id)
     async with session_lock(request, session_id):
-        cp = await ksession.load_checkpoint(db, s.id) or {}
-        current = cp.get("block_index") if cp.get("block_status") == "running" else None
-        if body.block_index is not None and current is not None and body.block_index != current:
-            raise AppError(
-                "stale_block",
-                f"block {current} is running; a checkpoint for block {body.block_index} is stale",
-                http_status=409,
-            )
-        update: dict[str, Any] = {}
-        if body.phase is not None:
-            block_type = str(cp.get("block_type") or "")
-            allowed = SUB_PHASES.get(
-                block_type, {blocks.phase_for(block_type)} if block_type else None
-            )
-            if current is not None and allowed is not None and body.phase not in allowed:
+        async with ksession.open_transition(db, session_id, learner.id) as s:
+            cp = await ksession.load_checkpoint(db, s.id) or {}
+            current = cp.get("block_index") if cp.get("block_status") == "running" else None
+            if body.block_index is not None and current is not None and body.block_index != current:
                 raise AppError(
-                    "invalid_phase",
-                    f"phase {body.phase!r} is not valid inside a {block_type} block",
+                    "stale_block",
+                    f"block {current} is running; a checkpoint for block {body.block_index} is stale",
                     http_status=409,
                 )
-            update["phase"] = body.phase
-        if body.skill_id is not None:
-            update["skill_id"] = body.skill_id
-        extra = {k: v for k, v in body.extra.items() if k not in RESERVED_CHECKPOINT_KEYS}
-        merged = {**cp, **extra, **update}
-        await ksession.save_checkpoint(db, s, merged)
+            update: dict[str, Any] = {}
+            if body.phase is not None:
+                block_type = str(cp.get("block_type") or "")
+                allowed = SUB_PHASES.get(
+                    block_type, {blocks.phase_for(block_type)} if block_type else None
+                )
+                if current is not None and allowed is not None and body.phase not in allowed:
+                    raise AppError(
+                        "invalid_phase",
+                        f"phase {body.phase!r} is not valid inside a {block_type} block",
+                        http_status=409,
+                    )
+                update["phase"] = body.phase
+            if body.skill_id is not None:
+                update["skill_id"] = body.skill_id
+            extra = {k: v for k, v in body.extra.items() if k not in RESERVED_CHECKPOINT_KEYS}
+            merged = {**cp, **extra, **update}
+            await ksession.save_checkpoint(db, s, merged, commit=False)
     return merged
 
 
 @router.get("/{session_id}", summary="Session state", response_model=SessionOut)
 async def get(session_id: str, db: DB, learner: Learner) -> SessionOut:
-    return await _out(db, learner.id, await ksession.get(db, session_id))
+    return await _out(db, learner.id, await ksession.get_owned(db, session_id, learner.id))
 
 
 @router.get("/{session_id}/completion", response_model=SessionCompletionOut)
