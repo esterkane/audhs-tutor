@@ -2073,6 +2073,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/adaptations/{adaptation_id}/refresh-plan': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Refresh Plan */
+    post: operations['refresh_plan_api_adaptations__adaptation_id__refresh_plan_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/models': {
     parameters: {
       query?: never
@@ -4948,6 +4965,8 @@ export interface components {
       in_effect: boolean
       /** Trial */
       trial: boolean
+      /** Plan State */
+      plan_state?: ('ready' | 'stale' | 'ended' | 'superseded') | null
     }
     /** ImportIn */
     ImportIn: {
@@ -6204,6 +6223,17 @@ export interface components {
       proposed_at: string
       /** Reversible */
       reversible: boolean
+      /** Session Id */
+      session_id?: string | null
+      /** Plan Blocks */
+      plan_blocks?: components['schemas']['Block'][]
+      /**
+       * Protected Blocks
+       * @default 0
+       */
+      protected_blocks: number
+      /** Plan State */
+      plan_state?: ('ready' | 'stale' | 'ended' | 'superseded') | null
     }
     /** ProvisionalCriterionFeedback */
     ProvisionalCriterionFeedback: {
@@ -6561,6 +6591,11 @@ export interface components {
       plan: components['schemas']['Plan']
       /** Changed */
       changed: boolean
+      /**
+       * Message
+       * @default
+       */
+      message: string
     }
     /** ReportIn */
     ReportIn: {
@@ -11737,6 +11772,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HistoryList']
+        }
+      }
+    }
+  }
+  refresh_plan_api_adaptations__adaptation_id__refresh_plan_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        adaptation_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ProposalOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
         }
       }
     }

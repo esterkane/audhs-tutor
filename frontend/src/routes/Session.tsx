@@ -470,6 +470,8 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
                   </Button>
                 ))}
               </div>
+              {replan.isSuccess && replan.data.message && <p role="status">{replan.data.message}</p>}
+              {replan.isError && <p role="alert">Could not update the plan. {replan.error.message}</p>}
               <span className="text-muted">
                 A change re-plans the remaining blocks as a suggestion, never silently; the review cap follows
                 your energy at once (undo: "Show all" on the review screen).

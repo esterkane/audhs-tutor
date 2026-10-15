@@ -13,6 +13,7 @@ from app.kernel import (
     blocks,
     competency,
     memory,
+    plan_versions,
     planner,
     practice,
     preferences,
@@ -210,6 +211,7 @@ class ReplanOut(BaseModel):
     energy: int
     plan: planner.Plan
     changed: bool
+    message: str = ""
 
 
 @router.post(
@@ -230,7 +232,9 @@ async def _replan(body: ReplanIn, db: DB, learner: Learner, s: Session) -> Repla
         minimum_viable=["retrieval", "recap"],
         total_min=sum(b.planned_min for b in _blocks(s)),
     )
-    new = planner.replan(current, from_index=body.from_index, energy=body.energy)
+    before = await plan_versions.binding(db, s)
+    from_index = max(body.from_index, plan_versions.protected_count(before))
+    new = planner.replan(current, from_index=from_index, energy=body.energy)
     s.energy = body.energy  # the learner said so: explicit, not an adaptation
     if [b.model_dump() for b in new.blocks] == [b.model_dump() for b in current.blocks]:
         return ReplanOut(proposal_id=None, energy=body.energy, plan=current, changed=False)
@@ -245,8 +249,33 @@ async def _replan(body: ReplanIn, db: DB, learner: Learner, s: Session) -> Repla
         value={"blocks": [b.model_dump() for b in new.blocks], "energy": body.energy},
         origin="planner",
         pattern=f"planner:replan:{s.id}",
-        evidence={"energy_before": current.energy, "energy_after": body.energy},
+        evidence={
+            "energy_before": current.energy,
+            "energy_after": body.energy,
+            "plan_binding": await plan_versions.binding(db, s),
+        },
         session=s,
         commit=False,
     )
-    return ReplanOut(proposal_id=card.id, energy=body.energy, plan=new, changed=True)
+    if not await adaptation.proposal_is_pending(db, card):
+        return ReplanOut(
+            proposal_id=None,
+            energy=body.energy,
+            plan=current.model_copy(update={"energy": body.energy}),
+            changed=False,
+            message="Energy saved. No new plan was suggested because of your earlier suggestion choice.",
+        )
+    stored = planner.Plan(
+        mode=s.mode,
+        energy=card.apply_json["value"]["energy"],
+        blocks=card.apply_json["value"]["blocks"],
+        minimum_viable=current.minimum_viable,
+        total_min=sum(b["planned_min"] for b in card.apply_json["value"]["blocks"]),
+    )
+    return ReplanOut(
+        proposal_id=card.id,
+        energy=body.energy,
+        plan=stored,
+        changed=True,
+        message="Energy saved. Review the proposed remaining activities before applying them.",
+    )

@@ -9,7 +9,7 @@ Trials expire when the next session starts. Nothing here calls a model."""
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.db.events import EventContext, EventWriter, Verb
 from app.db.models import Adaptation, AdaptationDecision, LearningEvent, Session
-from app.kernel import blocks, competency, memory, preferences
+from app.kernel import blocks, competency, memory, plan_versions, planner, preferences
 from app.kernel import session as ksession
 from app.kernel.skill_graph import MASTERY_DONE
 from app.schemas.common import Mode, ObjectType
@@ -230,6 +230,8 @@ async def _blocked(db: AsyncSession, learner_id: str, pattern: str) -> bool:
     )
     cutoff = (datetime.now(UTC) - timedelta(days=RE_ASK_AFTER_DAYS)).isoformat(timespec="seconds")
     for a in rows:
+        if a.evidence_json.get("superseded_by"):
+            continue
         d = await _latest_decision(db, a.id)
         if d is None or d.decision == "never":
             return True
@@ -296,7 +298,35 @@ async def propose(
     else:
         preferences.validate(pref, value)
     pattern = pattern or f"{origin}:{pref}"
-    if await _blocked(db, learner_id, pattern):
+    supersede: list[Adaptation] = []
+    if pref == "session.plan" and evidence and evidence.get("plan_binding"):
+        candidates = list(
+            (
+                await db.scalars(
+                    select(Adaptation)
+                    .where(Adaptation.learner_id == learner_id, Adaptation.pattern == pattern)
+                    .order_by(Adaptation.proposed_at.desc(), Adaptation.id.desc())
+                )
+            ).all()
+        )
+        cutoff = (datetime.now(UTC) - timedelta(days=RE_ASK_AFTER_DAYS)).isoformat(
+            timespec="seconds"
+        )
+        decisions = [(existing, await _latest_decision(db, existing.id)) for existing in candidates]
+        for existing, prior in decisions:
+            if prior and (
+                prior.decision == "never" or (prior.decision == "no" and prior.decided_at >= cutoff)
+            ):
+                return existing  # preserve explicit suggestion preferences
+        for existing, prior in decisions:
+            if prior is None and not existing.evidence_json.get("superseded_by"):
+                if (
+                    existing.evidence_json.get("plan_binding") == evidence["plan_binding"]
+                    and existing.apply_json.get("value") == value
+                ):
+                    return existing
+                supersede.append(existing)
+    elif await _blocked(db, learner_id, pattern):
         # one card per pattern: open, in effect (trial/default), 'never', or a recent 'no'
         stmt = (
             select(Adaptation)
@@ -318,10 +348,11 @@ async def propose(
         session_id=session.id if session else None,
     )
     db.add(row)
+    await db.flush()
+    for old in supersede:
+        old.evidence_json = {**old.evidence_json, "superseded_by": row.id}
     if commit:
         await db.commit()
-    else:
-        await db.flush()
     await EventWriter(db, _ctx(learner_id, session)).emit(
         Verb.PROPOSED,
         ObjectType.ADAPTATION,
@@ -343,7 +374,11 @@ async def pending(db: AsyncSession, learner_id: str) -> list[Adaptation]:
             )
         ).scalars()
     )
-    return [a for a in rows if await _latest_decision(db, a.id) is None]
+    return [
+        a
+        for a in rows
+        if not a.evidence_json.get("superseded_by") and await _latest_decision(db, a.id) is None
+    ]
 
 
 @dataclass
@@ -376,7 +411,11 @@ async def history(db: AsyncSession, learner_id: str, *, limit: int = 50) -> list
                 if a.session_id
                 else None
             )
-            in_effect = target is not None and target.ended_at is None
+            in_effect = bool(
+                target is not None
+                and target.ended_at is None
+                and target.planned_blocks_json == a.apply_json.get("value", {}).get("blocks")
+            )
         out.append(
             HistoryEntry(
                 adaptation=a,
@@ -445,6 +484,12 @@ async def _decide(
     a = await db.get(Adaptation, adaptation_id)
     if a is None or a.learner_id != learner_id:
         raise KeyError(adaptation_id)
+    if a.evidence_json.get("superseded_by"):
+        raise AppError(
+            "stale_plan",
+            "This proposal was replaced. Review the updated plan before deciding.",
+            http_status=409,
+        )
     if await _latest_decision(db, a.id) is not None:
         raise ValueError("this proposal was already decided")
     if decision == "try" and session is None:
@@ -458,14 +503,32 @@ async def _decide(
             target = await db.get(Session, a.session_id) if a.session_id else session
             if target is None:
                 raise ValueError("the session of this plan proposal no longer exists")
-            a.previous_json = {"value": list(target.planned_blocks_json or [])}
-            target.planned_blocks_json = list(value["blocks"])
+            current = await plan_versions.require_current(
+                db, target, a.evidence_json.get("plan_binding")
+            )
+            candidate = list(value["blocks"])
+            protected = plan_versions.protected_count(current)
+            if candidate[:protected] != current["plan"][:protected]:
+                raise AppError(
+                    "stale_plan",
+                    "This proposal would change your current activity. Review an updated plan.",
+                    http_status=409,
+                )
+            a.previous_json = {
+                "value": list(target.planned_blocks_json or []),
+                "energy": a.evidence_json.get("energy_before"),
+            }
+            target.planned_blocks_json = candidate
             if commit:
                 await db.commit()
             else:
                 await db.flush()
             if target.ended_at is None:
                 await blocks.bump_plan_version(db, target, commit=commit)
+            a.previous_json = {
+                **(a.previous_json or {}),
+                "undo_binding": await plan_versions.binding(db, target),
+            }
             await events.emit(
                 Verb.ADAPTED,
                 ObjectType.ADAPTATION,
@@ -552,6 +615,7 @@ async def _undo(
     if pref == "session.plan":
         target = await db.get(Session, a.session_id) if a.session_id else None
         if target is not None and isinstance(previous, list):
+            await plan_versions.require_current(db, target, prev.get("undo_binding"))
             target.planned_blocks_json = previous
             if commit:
                 await db.commit()
@@ -600,3 +664,140 @@ async def expire_trials(db: AsyncSession, learner_id: str, *, current_session: S
             await undo(db, learner_id, a.id, session=current_session, why="trial session ended")
             n += 1
     return n
+
+
+async def plan_state(
+    db: AsyncSession, a: Adaptation, *, undo: bool = False
+) -> Literal["ready", "stale", "ended", "superseded"] | None:
+    if a.apply_json.get("pref") != "session.plan":
+        return None
+    if a.evidence_json.get("superseded_by") and not undo:
+        return "superseded"
+    target = await db.get(Session, a.session_id, populate_existing=True) if a.session_id else None
+    if target is None or target.learner_id != a.learner_id or target.ended_at is not None:
+        return "ended"
+    expected = (
+        (a.previous_json or {}).get("undo_binding") if undo else a.evidence_json.get("plan_binding")
+    )
+    return "ready" if expected == await plan_versions.binding(db, target) else "stale"
+
+
+async def refresh_plan(db: AsyncSession, learner_id: str, adaptation_id: str) -> Adaptation:
+    """Explicit preview only. Keep history and never fabricate an acceptance or decline."""
+    source = await db.get(Adaptation, adaptation_id)
+    if source is None or source.learner_id != learner_id:
+        raise KeyError(adaptation_id)
+    if source.apply_json.get("pref") != "session.plan" or not source.session_id:
+        raise ValueError("this adjustment has no session plan to update")
+    async with ksession.open_transition(db, source.session_id, learner_id) as target:
+        await db.refresh(source)
+        current = await plan_versions.binding(db, target)
+        d = await _latest_decision(db, source.id)
+        if d is not None and (d.decision != "try" or d.undone_at is not None):
+            raise ValueError("this adjustment is not available to refresh")
+        # Repeat the explicit preview request without producing duplicate cards.
+        link_key = "undo_preview_id" if d else "superseded_by"
+        linked_id = source.evidence_json.get(link_key)
+        if linked_id:
+            seen = {source.id}
+            linked = None
+            while linked_id:
+                if linked_id in seen or len(seen) >= 50:
+                    raise AppError(
+                        "plan_history_invalid",
+                        "The plan history could not be followed. Your current activity is unchanged.",
+                        http_status=409,
+                    )
+                seen.add(linked_id)
+                linked = await db.get(Adaptation, linked_id)
+                if not linked or linked.learner_id != learner_id or linked.session_id != target.id:
+                    raise AppError(
+                        "plan_history_invalid",
+                        "The plan history could not be verified.",
+                        http_status=409,
+                    )
+                successor = linked.evidence_json.get("superseded_by")
+                if not successor:
+                    break
+                linked_id = successor
+            if linked:
+                if await _latest_decision(db, linked.id) is not None:
+                    raise AppError(
+                        "plan_preview_decided",
+                        "This updated plan was already decided. Return to the session to review its current plan.",
+                        http_status=409,
+                    )
+                if linked.evidence_json.get("plan_binding") == current:
+                    return linked
+        undo_adjustment = (
+            d is not None or source.evidence_json.get("refresh_kind") == "undo_adjustment"
+        )
+        energy = (
+            (source.previous_json or {}).get("energy")
+            if d
+            else source.apply_json.get("value", {}).get("energy")
+            if undo_adjustment
+            else target.energy
+        )
+        if not isinstance(energy, int) or not 1 <= energy <= 5:
+            raise AppError(
+                "plan_settings_unknown",
+                "The earlier energy setting was not saved. Choose an energy level in the session to review a new plan.",
+                http_status=409,
+            )
+        plan = planner.Plan(
+            mode=target.mode,
+            energy=target.energy,
+            blocks=blocks.blocks_of(target),
+            minimum_viable=["retrieval", "recap"],
+            total_min=sum(b.planned_min for b in blocks.blocks_of(target)),
+        )
+        boundary = plan_versions.protected_count(current)
+        updated = planner.replan(plan, from_index=boundary, energy=energy)
+        row = Adaptation(
+            learner_id=learner_id,
+            session_id=target.id,
+            what="Review an updated plan for the remaining activities",
+            why=(
+                "Use the earlier energy setting for future activities. "
+                "Completed and current activities stay unchanged; removed activities are not restored. "
+                "Your current energy setting stays unchanged."
+                if undo_adjustment
+                else "The session moved on. Review this new proposal before applying it; "
+                "completed and current activities stay unchanged."
+            ),
+            origin="planner",
+            policy_version=POLICY_VERSION,
+            pattern=source.pattern,
+            apply_json={
+                "pref": "session.plan",
+                "value": {"blocks": [b.model_dump() for b in updated.blocks], "energy": energy},
+            },
+            evidence_json={
+                "plan_binding": current,
+                "energy_before": target.energy,
+                "energy_after": energy,
+                "refreshed_from": source.id,
+                "refresh_kind": "undo_adjustment" if undo_adjustment else "updated_plan",
+            },
+        )
+        db.add(row)
+        await db.flush()
+        source.evidence_json = {**source.evidence_json, link_key: row.id}
+        if linked_id:
+            prior = await db.get(Adaptation, linked_id)
+            if prior and prior.learner_id == learner_id and prior.session_id == target.id:
+                prior.evidence_json = {**prior.evidence_json, "superseded_by": row.id}
+        await EventWriter(db, _ctx(learner_id, target)).emit(
+            Verb.PROPOSED,
+            ObjectType.ADAPTATION,
+            row.id,
+            result={"decision": None},
+            context={"what": row.what, "why": row.why, "origin": row.origin},
+            commit=False,
+        )
+        return row
+
+
+async def proposal_is_pending(db: AsyncSession, a: Adaptation) -> bool:
+    return not a.evidence_json.get("superseded_by") and await _latest_decision(db, a.id) is None

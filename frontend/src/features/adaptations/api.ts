@@ -40,3 +40,10 @@ export function useAdaptationLog() {
   })
   return { log, decide, undo }
 }
+
+/** Preview only: deliberately keep the parent mounted until the learner accepts or leaves. */
+export function useRefreshPlan() {
+  return useMutation({
+    mutationFn: (id: string) => apiFetch<ProposalOut>(`/api/adaptations/${id}/refresh-plan`, { method: 'POST' }),
+  })
+}

@@ -2,7 +2,9 @@
 
 from typing import Any, Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
+
+from app.kernel.planner import Block
 
 Decision = Literal["try", "default", "no", "never"]
 
@@ -18,6 +20,10 @@ class ProposalOut(BaseModel):
     evidence: dict[str, Any]
     proposed_at: str
     reversible: bool
+    session_id: str | None = None
+    plan_blocks: list[Block] = Field(default_factory=list)
+    protected_blocks: int = 0
+    plan_state: Literal["ready", "stale", "ended", "superseded"] | None = None
 
 
 class ProposalList(BaseModel):
@@ -44,6 +50,7 @@ class HistoryOut(BaseModel):
     undone_at: str | None
     in_effect: bool
     trial: bool
+    plan_state: Literal["ready", "stale", "ended", "superseded"] | None = None
 
 
 class HistoryList(BaseModel):
