@@ -7,6 +7,7 @@ from app.core.config import PROJECT_ROOT
 
 PROMPTS_DIR = PROJECT_ROOT / "prompts"
 BASE_VERSION = "pedagogy.v2"
+WORKSPACE_POLICY_VERSION = "workspace.v1"
 TUTOR_VERSION = "tutor.v2"
 GRADER_VERSION = "grader.explain_back.v1"
 CURRICULUM_VERSION = "curriculum.draft.v2"
@@ -24,6 +25,11 @@ def _read(rel: str) -> str:
 def base_policy() -> str:
     """Byte-stable system prompt. Never add timestamps or per-turn data here (prompt caching)."""
     return _read(f"_base/{BASE_VERSION}.md")
+
+
+def workspace_policy() -> str:
+    """Workspace-only policy; legacy session and grading composition stays unchanged."""
+    return _read(f"_base/{WORKSPACE_POLICY_VERSION}.md")
 
 
 def tutor_task(name: str) -> str:

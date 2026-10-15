@@ -1,6 +1,6 @@
 # Workspace prompt contract reconciliation
 
-Status: source-confirmed conflict; implementation/evaluation pending. 2026-10-15.
+Status: bounded implementation and local evaluation completed2026-10-15; see ../slices/workspace-policy-contract.md for evidence and limits.
 
 ## Concrete problem
 

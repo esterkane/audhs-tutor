@@ -264,7 +264,8 @@ def test_stale_output_is_historical_not_current_execution_evidence():
     assert '"output": "old-result"' in current[1].content
 
 
-async def test_previous_prompt_version_cannot_replay_stale_answer(client, db):
+@pytest.mark.parametrize("old_version", ["playground.tutor.v10", "playground.tutor.v14"])
+async def test_previous_prompt_version_cannot_replay_stale_answer(client, db, old_version):
     from app.db.answer_memory import exact_saved
     from app.orchestrator.playground import VERSION
 
@@ -286,13 +287,13 @@ async def test_previous_prompt_version_cannot_replay_stale_answer(client, db):
         text="Old answer",
         fingerprint="old-stale",
         metadata_json={
-            "prompt_version": "playground.tutor.v10",
+            "prompt_version": old_version,
             "learning_context": body.learning_context.model_dump(),
         },
     )
     db.add(row)
     await db.commit()
-    assert await exact_saved(db, owner, body, "playground.tutor.v10") is not None
+    assert await exact_saved(db, owner, body, old_version) is not None
     assert await exact_saved(db, owner, body, VERSION) is None
 
 

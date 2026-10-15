@@ -29,3 +29,6 @@ Evals: any prompt change needs an eval run (`/tutor-eval`). Evals live in `evals
 
 
 Owner decision (2026-09-24): confidence ratings are optional and collapsed by default. Never block feedback, revealing a review answer, stopping, or changing topic on confidence or a grasp check. Omitted confidence stays null; clear/later labels are self-report, not mastery evidence. This supersedes mandatory-confidence guidance above.
+
+## Workspace composition exception — 2026-10-15
+The workspace responder uses the cached `prompts/_base/workspace.v1.md` plus its existing task contracts. This bounded exception removes contradictory representation-prefix and hint-first instructions from workspace explicit mode; session tutoring and graders retain the shared pedagogy.v2 composition. Version workspace policy changes in saved-answer identity. See docs/design/WORKSPACE-PROMPT-CONTRACT.md. Do not infer a general license to fork policies or change grading/mode defaults. The new owner teaching reference is reconciled separately in docs/design/LEARN-TOGETHER-CONTRACT.md; do not enable guided Ask mode silently.

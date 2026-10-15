@@ -54,7 +54,7 @@ from app.schemas.starter import StarterPlan
 
 logger = logging.getLogger(__name__)
 
-VERSION = "playground.tutor.v14"
+VERSION = f"playground.tutor.v15+{prompts.WORKSPACE_POLICY_VERSION}"
 
 
 async def validate_lesson_origin(
@@ -143,7 +143,7 @@ def messages(
     packet = [
         Message(
             role="system",
-            content=prompts.base_policy()
+            content=prompts.workspace_policy()
             + "\n\n"
             + prompts.playground_task(grounded=evidence is not None)
             + (
