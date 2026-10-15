@@ -2,19 +2,22 @@ import { useEffect, useRef, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
 import { apiFetch, type Schemas } from '../../lib/api'
-import { useSelectedPassages } from './useSelectedPassages'
+import { previousPassages, type SelectablePassage, useSelectedPassages } from './useSelectedPassages'
 
-type Hit = Schemas['SearchHit']
 
 export function SourcePicker({
   selection,
   disabled,
+  previousSources,
 }: {
   selection: ReturnType<typeof useSelectedPassages>
   disabled: boolean
+  previousSources?: unknown
 }) {
   const [query, setQuery] = useState('')
-  const [hits, setHits] = useState<Hit[]>([])
+  const [hits, setHits] = useState<SelectablePassage[]>([])
+  const [historical, setHistorical] = useState(false)
+  const previous = previousPassages(previousSources)
   const [searched, setSearched] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -27,6 +30,7 @@ export function SourcePicker({
     setBusy(true)
     setError('')
     setHits([])
+    setHistorical(false)
     setSearched(false)
     try {
       const result = await apiFetch<Schemas['SearchOut']>('/api/corpus/search', {
@@ -54,6 +58,12 @@ export function SourcePicker({
         Choose up to six passages for this reply. They stay local. Prior replies remain conversation context;
         their sources are not automatically attached.
       </p>
+      {previous === null && <p role="status">Previous passage snapshots are unreadable. Search the local library to select sources again.</p>}
+      {!!previous?.length && <Button type="button" disabled={disabled || busy}
+        onClick={() => { setHits(previous); setHistorical(true); setSearched(false); setError('') }}>
+        Review previous passages
+      </Button>}
+      {historical && <p role="status" className="text-sm text-muted">Saved snapshots from the previous reply. Select passages to attach them; nothing is attached automatically. Availability, text changes and source trust are checked when you send.</p>}
       {selection.invalid && (
         <p role="alert">
           Saved source selection is unreadable.{' '}
@@ -75,6 +85,7 @@ export function SourcePicker({
         onChange={(e) => {
           setQuery(e.target.value)
           setHits([])
+          setHistorical(false)
           setSearched(false)
         }}
         onKeyDown={(e) => {

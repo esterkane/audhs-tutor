@@ -357,6 +357,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
             </label>
           )}
           <SourcePicker
+            previousSources={answer?.metadata?.sources}
             selection={selection}
             disabled={busy || !ready || !!recovery.pending || recovery.needsDiscard}
           />
