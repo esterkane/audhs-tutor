@@ -19,4 +19,11 @@ UI previews list future activities/durations, focus the preview heading, disting
 
 ## Limits / next work
 
-This is bounded recovery coverage, not complete lifecycle acceptance. Broader concurrent progression/refresh permutations, legacy-data browser recovery, reload journeys, VoiceOver and human re-entry remain to be exercised. Internal tutor checkpoint writers and unrelated preference transactions remain outside this slice. Continue integrated daily-learning acceptance; do not claim the complete UX queue finished.
+This is bounded recovery coverage, not complete lifecycle acceptance. Broader concurrent progression/refresh permutations, legacy-data browser recovery, VoiceOver and human re-entry remain to be exercised. Reload/return is now covered below. Internal tutor checkpoint writers and unrelated preference transactions remain outside this slice. Continue integrated daily-learning acceptance; do not claim the complete UX queue finished.
+
+
+## Recovery acceptance follow-up — 2026-10-15
+
+17 focused backend cases now pass, adding unbound legacy proposal rejection with whole-database no-write comparison, explicit refresh/acceptance, and two independent concurrent refresh workers returning one preview with no decision rows. Four real-backend browser journeys now reload/return Home before acceptance; persisted plan/checkpoint remain unchanged and exactly one Apply action is offered. Both proposal and stale Undo previews retain the separate keyboard acceptance step at 1280/390px. Targeted lint, format and frontend types pass. Code review clear. No production or learning-logic change.
+
+GitHub run 38707917662 (sanitized 08c9fc4) failed before runtime jobs started. Its check annotation explicitly reports recent payment failure or a spending limit requiring adjustment. Local checks do not establish hosted CI success; no rerun or billing changes performed.

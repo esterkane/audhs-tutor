@@ -176,3 +176,58 @@ async def test_refresh_after_finish_is_rejected_without_writes(client, db_path):
     before = dump_tables(f"sqlite:///{db_path}")
     assert (await client.post(f"/api/adaptations/{aid}/refresh-plan")).status_code == 409
     assert dump_tables(f"sqlite:///{db_path}") == before
+
+
+async def test_legacy_unbound_proposal_requires_review(client, session_factory, db_path):
+    from app.db.models import Adaptation
+    from tests._rows import dump_tables
+
+    sid = (await client.post("/api/sessions", json={"energy": 5})).json()["id"]
+    aid = (await client.post("/api/plan/replan", json={"session_id": sid, "energy": 1})).json()[
+        "proposal_id"
+    ]
+    async with session_factory() as db:
+        row = await db.get(Adaptation, aid)
+        row.evidence_json = {k: v for k, v in row.evidence_json.items() if k != "plan_binding"}
+        await db.commit()
+    before = dump_tables(f"sqlite:///{db_path}")
+    response = await client.post(
+        f"/api/adaptations/{aid}/decide", json={"decision": "try", "session_id": sid}
+    )
+    assert response.status_code == 409
+    assert dump_tables(f"sqlite:///{db_path}") == before
+    refreshed = await client.post(f"/api/adaptations/{aid}/refresh-plan")
+    assert refreshed.status_code == 200
+    preview = refreshed.json()
+    assert preview["plan_state"] == "ready"
+    accepted = await client.post(
+        f"/api/adaptations/{preview['id']}/decide", json={"decision": "try", "session_id": sid}
+    )
+    assert accepted.status_code == 200
+
+
+async def test_concurrent_refresh_creates_one_preview(client, session_factory, db_path):
+    import asyncio
+    import sqlite3
+
+    from app.db.models import Session
+    from app.kernel import adaptation
+
+    sid = (await client.post("/api/sessions", json={"energy": 5})).json()["id"]
+    aid = (await client.post("/api/plan/replan", json={"session_id": sid, "energy": 1})).json()[
+        "proposal_id"
+    ]
+
+    async def worker():
+        async with session_factory() as db:
+            session = await db.get(Session, sid)
+            return (await adaptation.refresh_plan(db, session.learner_id, aid)).id
+
+    ids = await asyncio.wait_for(asyncio.gather(worker(), worker()), 10)
+    assert ids[0] == ids[1] and ids[0] != aid
+    with sqlite3.connect(db_path) as conn:
+        assert (
+            conn.execute("SELECT count(*) FROM adaptation WHERE session_id=?", (sid,)).fetchone()[0]
+            == 2
+        )
+        assert conn.execute("SELECT count(*) FROM adaptation_decision").fetchone()[0] == 0
