@@ -73,3 +73,11 @@ Likely files: a new context-proposal schema/service and tests; `api/ask.py`; exi
 ## Lifecycle evidence from the existing implementation
 
 Three targeted tests pass: owned completed/pending request export and wipe (other learner preserved), and exact synthetic proposal-shaped receipt roundtrips through both learner and full backup scopes without adding a TutorAnswer. Targeted Ruff passes. These prove existing receipt storage behavior, not an implemented proposal service or public-export eligibility. Existing raw receipt content is copied by backup; therefore the proposed receipt must itself omit raw source snapshots. No live database or model calls were used.
+
+## Reference-contract foundation — 2026-10-15
+
+Implemented isolated strict proposal/reference schemas and pure binding validation in `schemas/ask_context_proposals.py` and `orchestrator/ask_context_binding.py`. Rejects duplicate fields/references, excessive lengths, unknown inputs, changed hashes, invalid/whitespace ranges and coerced version/offset types. Offsets use original Python Unicode code points; they are not JavaScript UTF-16 indexes. An empty changes list represents no useful suggestion.
+
+15 offline tests, targeted Ruff and strict mypy pass. Code review found no blockers and clarified that the service must retain the server-resolved input map (record/version/origin) alongside references in durable receipts. The helper returns a detached validated proposal but does not certify meaning, ownership, branch, permissions or full provenance. A deliberate meaning-changing paraphrase test demonstrates this limit. No API, UI, provider, storage or learning-state behavior changed; no browser/model tests are implied.
+
+Next: implement owned bounded input resolution and durable proposal receipt envelopes, preserving unsent draft identity and provenance. The new types are not an enabled feature and do not complete increment2.
