@@ -26,7 +26,11 @@ from app.models_ai.provider import safe_structured_reason
 from app.models_ai.registry import get_row, get_spec
 from app.orchestrator import playground
 from app.schemas.common import Mode
-from app.schemas.playground import PlaygroundContext, PlaygroundMessage, PlaygroundRequest
+from app.schemas.playground import (
+    PlaygroundContext,
+    PlaygroundMessage,
+    PlaygroundRequest,
+)
 
 
 def local_settings(settings: Settings) -> Settings:
@@ -497,6 +501,16 @@ def teaching_cases(session_id):
 
 
 def cases(session_id, suite="basic"):
+    if suite == "followup":
+        path = Path(__file__).resolve().parents[1] / "evals/cases/followup-quantity-roles.json"
+        return [
+            (
+                item["case"],
+                PlaygroundRequest(**{**item["request"], "session_id": session_id}),
+                item["criteria"],
+            )
+            for item in json.loads(path.read_text())
+        ]
     if suite == "basic":
         return basic_cases(session_id)
     if suite == "notebook":
@@ -642,7 +656,9 @@ async def run(output, model, suite="basic"):
                         from app.models_ai.factory import installed_models
 
                         await register_experimental_candidate(
-                            db, model, await installed_models(local_settings(world.settings))
+                            db,
+                            model,
+                            await installed_models(local_settings(world.settings)),
                         )
                     gateway = await pinned_gateway(world, db, model)
                     session = await sessions.start(db, world.learner_id, mode=Mode.STEADY, energy=3)
@@ -675,7 +691,7 @@ if __name__ == "__main__":
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument(
         "--suite",
-        choices=["basic", "notebook", "reasoning", "teaching"],
+        choices=["basic", "notebook", "reasoning", "teaching", "followup"],
         default="basic",
     )
     parser.add_argument(

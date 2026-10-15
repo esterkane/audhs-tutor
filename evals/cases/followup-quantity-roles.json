@@ -1,0 +1,88 @@
+[
+  {
+    "case": "preserve_retained",
+    "request": {
+      "prefer_saved": false,
+      "questioning_style": "explicit",
+      "learning_context": null,
+      "learner_question": null,
+      "learner_answer": null,
+      "intent": "explain",
+      "question": "Now explain in more detail why dividing by 50 and multiplying by 100 works. What would change if 50 were the number removed instead?",
+      "exercise": "A synthetic table starts with 50 rows and keeps 30 rows. What percentage is retained?",
+      "code": "",
+      "output": "",
+      "output_stale": false,
+      "history": [
+        {
+          "role": "user",
+          "text": "Review my reasoning.\nMy answer: 30 out of 50 is 90%."
+        },
+        {
+          "role": "assistant",
+          "text": "The learner's answer is \"30 out of 50 is 90%.\" To review this reasoning, let's break it down. The learner is calculating the percentage of rows retained, which is a simple fraction. To find the percentage, we need to divide the number of retained rows (30) by the total number of rows (50), and then multiply by 100.\n\nThe calculation is: (30 / 50) * 100 = 60%\n\nSo, the correct answer is 60%, not 90%."
+        },
+        {
+          "role": "user",
+          "text": "I still think it is 90%, because 30 plus 50 is 80 and then I add 10. What am I missing?\nMy answer: 30 out of 50 is 90%."
+        },
+        {
+          "role": "assistant",
+          "text": "You're close, but there's a misunderstanding in your calculation. You mentioned that 30 plus 50 is 80, and then you add 10, which gives you 90. However, this calculation doesn't accurately represent the percentage of rows retained.\n\nTo find the percentage, you need to divide the number of retained rows (30) by the total number of rows (50), and then multiply by 100. This calculation is: (30 / 50) * 100 = 60%.\n\nThe issue with your original calculation is that you're not actually calculating the percentage of rows retained. Instead, you're adding 10 to the sum of 30 and 50, which doesn't make sense in this context.\n\nTry reevaluating the calculation by focusing on the ratio of retained rows to total rows, and then multiplying by 100 to get the percentage."
+        },
+        {
+          "role": "user",
+          "text": "I do not understand. Explain it much more simply with one small example."
+        },
+        {
+          "role": "assistant",
+          "text": "Let's break it down simply. To find the percentage of rows retained, you need to divide the number of retained rows by the total number of rows, and then multiply by 100.\n\nFor example, if 20 rows are retained out of 50 total rows, the calculation would be: (20 / 50) * 100 = 40%\n\nIn your case, 30 rows are retained out of 50 total rows, so the calculation would be: (30 / 50) * 100 = 60%\n\nDoes this explanation help clarify the concept?"
+        }
+      ]
+    },
+    "criteria": "Keep30 retained,50 removed,total80,37.5%; explain assumption."
+  },
+  {
+    "case": "explicit_replacement",
+    "request": {
+      "prefer_saved": false,
+      "questioning_style": "explicit",
+      "learning_context": null,
+      "learner_question": null,
+      "learner_answer": null,
+      "intent": "explain",
+      "question": "New scenario: change the retained count to 40 and the removed count to 60. What percentage is retained?",
+      "exercise": "A synthetic table starts with 50 rows and keeps 30 rows. What percentage is retained?",
+      "code": "",
+      "output": "",
+      "output_stale": false,
+      "history": [
+        {
+          "role": "user",
+          "text": "Review my reasoning.\nMy answer: 30 out of 50 is 90%."
+        },
+        {
+          "role": "assistant",
+          "text": "The learner's answer is \"30 out of 50 is 90%.\" To review this reasoning, let's break it down. The learner is calculating the percentage of rows retained, which is a simple fraction. To find the percentage, we need to divide the number of retained rows (30) by the total number of rows (50), and then multiply by 100.\n\nThe calculation is: (30 / 50) * 100 = 60%\n\nSo, the correct answer is 60%, not 90%."
+        },
+        {
+          "role": "user",
+          "text": "I still think it is 90%, because 30 plus 50 is 80 and then I add 10. What am I missing?\nMy answer: 30 out of 50 is 90%."
+        },
+        {
+          "role": "assistant",
+          "text": "You're close, but there's a misunderstanding in your calculation. You mentioned that 30 plus 50 is 80, and then you add 10, which gives you 90. However, this calculation doesn't accurately represent the percentage of rows retained.\n\nTo find the percentage, you need to divide the number of retained rows (30) by the total number of rows (50), and then multiply by 100. This calculation is: (30 / 50) * 100 = 60%.\n\nThe issue with your original calculation is that you're not actually calculating the percentage of rows retained. Instead, you're adding 10 to the sum of 30 and 50, which doesn't make sense in this context.\n\nTry reevaluating the calculation by focusing on the ratio of retained rows to total rows, and then multiplying by 100 to get the percentage."
+        },
+        {
+          "role": "user",
+          "text": "I do not understand. Explain it much more simply with one small example."
+        },
+        {
+          "role": "assistant",
+          "text": "Let's break it down simply. To find the percentage of rows retained, you need to divide the number of retained rows by the total number of rows, and then multiply by 100.\n\nFor example, if 20 rows are retained out of 50 total rows, the calculation would be: (20 / 50) * 100 = 40%\n\nIn your case, 30 rows are retained out of 50 total rows, so the calculation would be: (30 / 50) * 100 = 60%\n\nDoes this explanation help clarify the concept?"
+        }
+      ]
+    },
+    "criteria": "Use explicit replacement40 retained,60 removed,total100,40%, not original30."
+  }
+]

@@ -428,3 +428,19 @@ async def test_experimental_candidate_requires_installed_tag_and_stays_local(db)
         )
     await db.rollback()
     assert await db.get(ModelRegistry, diagnostic.EXPERIMENTAL_MODEL) is None
+
+
+def test_followup_manifest_preserves_history_and_current_counterfactuals():
+    diagnostic = module()
+    fixtures = diagnostic.cases("new-session", "followup")
+    assert len(fixtures) == 2
+    preserve, replace = fixtures
+    assert preserve[1].session_id == replace[1].session_id == "new-session"
+    assert preserve[1].history == replace[1].history
+    assert len(preserve[1].history) == 6
+    assert "keeps 30 rows" in preserve[1].exercise
+    assert "number removed" in preserve[1].question
+    assert "retained count to 40" in replace[1].question
+    assert "removed count to 60" in replace[1].question
+    assert "37.5%" in preserve[2] and "40%" in replace[2]
+    assert all(body.questioning_style == "explicit" and body.code == "" for _, body, _ in fixtures)
