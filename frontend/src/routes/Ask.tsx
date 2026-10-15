@@ -1,3 +1,5 @@
+import { ConversationBriefEditor } from '../features/ask/ConversationBriefEditor'
+import { emptyBrief, parseBriefDraft, useSavedBrief, type Brief } from '../features/ask/conversationBrief'
 import { ConversationContext } from '../features/ask/ConversationContext'
 import { Disclosure } from '../components/ui/disclosure'
 import { SourcedAnswer } from '../features/ask/SourcedAnswer'
@@ -41,6 +43,7 @@ export function Ask() {
 function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string }) {
   const scope = `ask:${learnerId}:${parent || 'new'}`
   const draft = useLessonDraft(`${scope}:question`, 'question')
+  const briefDraft = useLessonDraft(`${scope}:brief`, 'conversation notes')
   const area = useLessonDraft(`${scope}:area`, 'area')
   const preview = useLessonDraft(`${scope}:preview`, 'unfinished reply')
   const previewQuestion = useLessonDraft(`${scope}:preview-question`, 'submitted question')
@@ -62,6 +65,12 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
     retry: false,
   })
   const answer = saved.data?.surface === 'ask' ? saved.data : undefined
+  let briefInvalid = false
+  let editedBrief: Brief | null = null
+  try { editedBrief = parseBriefDraft(briefDraft.input) } catch { briefInvalid = true }
+  const retainedBrief = useSavedBrief(answer?.metadata)
+  const inheritedBrief = retainedBrief.value
+  const effectiveBrief = editedBrief ?? inheritedBrief ?? emptyBrief()
   const areaId = parent ? (typeof answer?.area_id === 'string' ? answer.area_id : '') : area.input
   const location = useLocation()
   const [preferSaved, setPreferSaved] = useState(false)
@@ -97,10 +106,10 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
     enabled: !parent && !busy,
     retry: false,
   })
-  const ready = !parent || !!answer
+  const ready = !parent || (!!answer && retainedBrief.ready)
 
   async function submit(pending?: PendingTutorRequest<Schemas['AskQuestion']>) {
-    if (controller.current || preparing.current || (!pending && (!ready || selection.invalid))) return
+    if (controller.current || preparing.current || (!pending && (!ready || selection.invalid || briefInvalid))) return
     preparing.current = true
     setBusy(true)
     const preparationToken = generation.current
@@ -122,6 +131,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
         recovery.prepare(
           {
             question: draft.input,
+            ...(editedBrief ? { conversation_brief: editedBrief } : {}),
             area_id: areaId || null,
             parent_answer_id: parent || null,
             ...(sources ? { sources } : {}),
@@ -175,6 +185,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
         )
       recovery.accept(intent.key)
       if (draft.input === intent.body.question) draft.setInput('')
+      if (JSON.stringify(editedBrief) === JSON.stringify(intent.body.conversation_brief ?? null)) briefDraft.setInput('')
       preview.setInput('')
       previewQuestion.setInput('')
       selection.set([])
@@ -328,6 +339,9 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
               : 'No lesson, webpage or course material is attached automatically.'}{' '}
             Model explanations are not fact-checked. Source review is available after saving.
           </p>
+          <ConversationBriefEditor value={effectiveBrief} disabled={busy || !ready} invalid={briefInvalid}
+            change={value => briefDraft.setInput(JSON.stringify(value))} />
+          {briefInvalid && <p role="alert">Open Keep context to clear the unreadable notes before asking.</p>}
           {selection.invalid && (
             <p role="alert">
               The saved source selection needs attention. Open Attach local sources to clear it before asking.
@@ -430,7 +444,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
             Draft kept in this browser tab. Completed replies are saved in the local database.
           </p>
         </form>
-        {[draft.error, area.error, preview.error, previewQuestion.error]
+        {[draft.error, area.error, briefDraft.error, preview.error, previewQuestion.error]
           .filter(Boolean)
           .slice(0, 1)
           .map((e) => (
@@ -446,7 +460,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
         <RequestRecoveryControls
           recovery={recovery}
           busy={busy}
-          originalContext="question and conversation branch"
+          originalContext="question, retained notes and conversation branch"
           retry={() => {
             if (recovery.pending) void submit(recovery.pending)
           }}

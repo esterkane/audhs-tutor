@@ -62,3 +62,5 @@ No learning-outcome claim can be closed by prompt-string checks or simulated lea
 ## Instructional-design quality supplement
 
 The owner-supplied instructional-design report is assessed in [Instructional design quality](INSTRUCTIONAL-DESIGN-QUALITY.md). Carry diagnosis before content generation, objective/practice/assessment alignment, independent factual checks, evidence-sensitive disagreement and application-based evaluation into LT1/LT3/LT5. These are acceptance requirements, not evidence that this app or a particular model already meets them. Preserve learner choice and the existing provisional-feedback policy.
+
+Remaining LT1 implementation design: [source-aware conversation brief](ASK-CONVERSATION-BRIEF.md). Explicit retained context is an initial control, not a substitute for the planned low-burden, source-linked context proposals.

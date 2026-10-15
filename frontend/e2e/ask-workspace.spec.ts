@@ -1,11 +1,12 @@
 import { createHash } from 'node:crypto'
 import { expect, test, type Page } from '@playwright/test'
 import { API } from './helpers'
+import { emptyBrief, type Brief } from '../src/features/ask/conversationBrief'
 
 async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' | 'reuse' = 'complete') {
   await page.route('**/api/references/*', route => route.fulfill({ json: { snapshot: null } }))
   const records = new Map<string, Record<string, unknown>>()
-  const requests: { key: string; body: { question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } } }[] = []
+  const requests: { key: string; body: { question: string; conversation_brief?: Brief; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } } }[] = []
   const old = { id: 'saved-example', turn_id: 'old', session_id: null, surface: 'ask', created_at: '2026-10-12T10:00:00Z', request_text: 'Why does quantization reduce memory?', learner_question: null, target_label: null, suggestion_reason: 'Local question match · You marked it helpful (not a correctness check)', source_check: { sources: [{ chunk_id: 'p1', status: 'unchanged', newer_version: true }], omitted: 0 }, context_dependent: true, preview: 'Fewer bits per weight.', skill_id: null, area_id: null, text: 'Fewer bits per weight reduce the storage required.', request: { question: 'Why does quantization reduce memory?' }, metadata: {} }
   records.set(old.id, old)
   await page.route('**/api/areas', route => route.fulfill({ json: { areas: [], total_documents: 0, unassigned_documents: 0 } }))
@@ -18,7 +19,7 @@ async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' | 'reus
     return records.has(id) ? route.fulfill({ json: records.get(id) }) : route.fulfill({ status: 404, json: { error: { message: 'Not found' } } })
   })
   await page.route('**/api/ask/stream', async route => {
-    const body = route.request().postDataJSON() as { prefer_saved?: boolean; question: string; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } }
+    const body = route.request().postDataJSON() as { prefer_saved?: boolean; question: string; conversation_brief?: Brief; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } }
     const key = route.request().headers()['idempotency-key']
     requests.push({ key, body })
     if (mode === 'reuse' && body.prefer_saved) return route.fulfill({ contentType: 'text/event-stream', body: `event: done\ndata: ${JSON.stringify({ text: old.text, turn_id: key, model: 'local-fixture', route: 'saved', reused: true, answer_id: old.id, saved_at: old.created_at, conversation_id: old.id })}\n\n` })
@@ -26,7 +27,7 @@ async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' | 'reus
     if (mode === 'partial' && requests.length === 1) return route.fulfill({ contentType: 'text/event-stream', body: 'event: token\ndata: {"text":"An unfinished explanation"}\n\n' })
     const id = `saved-${key}`
     const text = 'Quantization stores each weight with fewer bits. For example, eight-bit weights use less memory than 32-bit weights. Precision can decrease.' + (body.sources ? ' [source:S1]' : '')
-    const record = { ...old, id, turn_id: key, request_text: body.question, text, request: body, metadata: { parent_answer_id: body.parent_answer_id ?? null, sources: body.sources ? [{ chunk_id: 'p1', citation: 'S1: Synthetic bytes (local version 1)', text: 'Eight bits use one byte.' }] : [] } }
+    const record = { ...old, id, turn_id: key, request_text: body.question, text, request: body, metadata: { conversation_brief: body.conversation_brief ? { mode: 'supplied', origin: 'learner_supplied_unverified', value: body.conversation_brief, hash: createHash('sha256').update(JSON.stringify(body.conversation_brief)).digest('hex') } : undefined, parent_answer_id: body.parent_answer_id ?? null, sources: body.sources ? [{ chunk_id: 'p1', citation: 'S1: Synthetic bytes (local version 1)', text: 'Eight bits use one byte.' }] : [] } }
     records.set(id, record)
     await route.fulfill({ contentType: 'text/event-stream', body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ text, turn_id: key, model: 'local-fixture', route: 'primary', answer_id: id, conversation_id: 'example', history_turns: body.parent_answer_id ? 1 : 0 })}\n\n` })
   })
@@ -409,4 +410,65 @@ for (const width of [390, 1280]) test(`Ask opening-context disclosure survives r
   await page.getByRole('link', { name: 'New topic or question' }).click()
   await expect(page.getByLabel('Your question', { exact: true })).toHaveValue('')
   await expect(disclosure).toHaveCount(0)
+})
+
+
+for (const width of [390, 1280]) test(`Ask retained notes clear undo reload and retry ${width}`, async ({ page }, info) => {
+  const calls = await fixture(page, 'partial')
+  await page.setViewportSize({ width, height: 900 })
+  await page.goto('/ask')
+  const toggle = page.locator('summary').filter({ hasText: 'Keep context for this conversation' })
+  await toggle.focus(); await page.keyboard.press('Enter')
+  const task = page.getByLabel('Current task', { exact: true })
+  await task.fill('Understand training weights')
+  await page.getByLabel('Hypothetical examples or assumptions').fill('Imaginary salary 80000')
+  await page.getByLabel('Your question', { exact: true }).fill('Explain parameters')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).click()
+  await expect(page.getByText('An unfinished explanation', { exact: true })).toBeVisible()
+  await task.fill('New task after interruption')
+  await page.getByRole('button', { name: 'Clear retained notes' }).click()
+  await expect(task).toHaveValue('')
+  await page.getByRole('button', { name: 'Undo clear' }).click()
+  await expect(task).toHaveValue('New task after interruption')
+  await page.getByRole('button', { name: 'Clear retained notes' }).click()
+  await page.reload()
+  await toggle.focus(); await page.keyboard.press('Enter')
+  await expect(task).toHaveValue('')
+  await expect(page.getByText(/Retry uses the original question, retained notes/)).toBeVisible()
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  await toggle.scrollIntoViewIfNeeded()
+  await page.screenshot({ path: info.outputPath(`brief-editor-${width}.png`), fullPage: true })
+  await page.getByRole('button', { name: 'Retry previous request' }).click()
+  await expect(page.getByRole('heading', { name: 'Explain parameters', exact: true })).toBeVisible()
+  expect(calls[1]).toEqual(calls[0])
+  expect(calls[1].body.conversation_brief?.task).toBe('Understand training weights')
+  await toggle.click()
+  await expect(task).toHaveValue('Understand training weights')
+  await page.getByRole('button', { name: 'Clear retained notes' }).click()
+  await page.getByLabel('Your follow-up question').fill('Explain a different example')
+  await page.getByRole('button', { name: 'Ask follow-up', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Explain a different example', exact: true })).toBeVisible()
+  expect(calls[2].body.conversation_brief).toEqual(emptyBrief())
+  await page.getByRole('link', { name: 'New topic or question' }).click()
+  await toggle.click()
+  await expect(task).toHaveValue('')
+})
+
+test('Ask consumed notes do not carry into a new topic', async ({ page }) => {
+  const calls = await fixture(page)
+  await page.goto('/ask')
+  const toggle = page.locator('summary').filter({ hasText: 'Keep context for this conversation' })
+  await toggle.click()
+  await page.getByLabel('Current task', { exact: true }).fill('Understand training weights')
+  await page.getByLabel('Your question', { exact: true }).fill('Explain weights')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Explain weights', exact: true })).toBeVisible()
+  await page.getByRole('link', { name: 'New topic or question' }).click()
+  await toggle.click()
+  await expect(page.getByLabel('Current task', { exact: true })).toHaveValue('')
+  await page.getByLabel('Your question', { exact: true }).fill('Explain sound waves')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Explain sound waves', exact: true })).toBeVisible()
+  expect(calls[1].body.parent_answer_id).toBeNull()
+  expect(calls[1].body.conversation_brief).toBeUndefined()
 })

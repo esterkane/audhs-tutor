@@ -1,3 +1,4 @@
+import { validBrief } from '../ask/conversationBrief'
 import { validLessonBody, type LessonBody } from '../ask/lessonDraft'
 import { applyVisualEdits, editableFields, type visualSaveBody } from '../ask/visualEditing'
 import { useRef, useState } from 'react'
@@ -256,6 +257,7 @@ export function useAskRequestRecovery(scope: string) {
           sources.passage_ids.every((id) => /^[a-f0-9]{64}$/.test(sources.passage_hashes[id] ?? '')))
       return (
         validSources &&
+        (value.conversation_brief == null || validBrief(value.conversation_brief)) &&
         typeof value.question === 'string' &&
         !!value.question.trim() &&
         value.question.length <= 2000 &&

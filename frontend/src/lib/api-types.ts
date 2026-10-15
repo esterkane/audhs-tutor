@@ -3513,6 +3513,7 @@ export interface components {
     }
     /** AskQuestion */
     AskQuestion: {
+      conversation_brief?: components['schemas']['ConversationBrief'] | null
       sources?: components['schemas']['AskSources'] | null
       /** Prefer Saved */
       prefer_saved?: boolean | null
@@ -4045,6 +4046,38 @@ export interface components {
       detail: string
       /** Action */
       action?: string | null
+    }
+    /**
+     * ConversationBrief
+     * @description Learner-supplied context; never a source or a verification assertion.
+     */
+    ConversationBrief: {
+      /**
+       * Version
+       * @default 1
+       * @constant
+       */
+      version: 1
+      /**
+       * Task
+       * @default
+       */
+      task: string
+      /**
+       * Notes
+       * @default
+       */
+      notes: string
+      /**
+       * Examples
+       * @default
+       */
+      examples: string
+      /**
+       * Unresolved
+       * @default
+       */
+      unresolved: string
     }
     /** CorpusStats */
     CorpusStats: {

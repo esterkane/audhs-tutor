@@ -1,6 +1,6 @@
 """Independent questions carry no implicit lesson/course/page context."""
 
-from typing import Annotated, Any, cast
+from typing import Annotated, Any, Literal, cast
 
 from pydantic import (
     BaseModel,
@@ -34,13 +34,27 @@ class AskSources(BaseModel):
         return self
 
 
+class ConversationBrief(BaseModel):
+    """Learner-supplied context; never a source or a verification assertion."""
+
+    model_config = ConfigDict(extra="forbid")
+    version: Literal[1] = 1
+    task: str = Field(default="", max_length=500)
+    notes: str = Field(default="", max_length=1500)
+    examples: str = Field(default="", max_length=1000)
+    unresolved: str = Field(default="", max_length=500)
+
+
 class AskQuestion(BaseModel):
+    conversation_brief: ConversationBrief | None = None
     sources: AskSources | None = None
     prefer_saved: bool | None = None
 
     @model_serializer(mode="wrap")
     def serialize(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data = cast(dict[str, Any], handler(self))
+        if self.conversation_brief is None:
+            data.pop("conversation_brief", None)
         if self.sources is None:
             data.pop("sources", None)  # Retain existing request fingerprints/retries.
         if not self.prefer_saved:
