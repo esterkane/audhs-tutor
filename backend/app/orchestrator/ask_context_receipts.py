@@ -85,6 +85,9 @@ async def complete(
         parent_answer_id=inputs.parent_answer_id,
         area_id=inputs.area_id,
         base_brief_hash=inputs.brief_hash,
+        history_turns=inputs.history_turns,
+        older_history_omitted=inputs.older_history_omitted,
+        opening_unavailable=inputs.opening_unavailable,
         inputs={
             key: InputProvenance(
                 record_id=item.record_id,

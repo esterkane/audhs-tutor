@@ -113,3 +113,49 @@ async def test_mutated_brief_is_revalidated_before_resolution(db, learner):
     brief.task = "x" * 501
     with pytest.raises(ValidationError):
         await resolve(db, learner.id, "parent", None, brief)
+
+
+async def test_opening_question_retained_without_old_answer(db, learner):
+    root = await turn(db, learner, text="Old answer must not be included")
+    parent = root
+    for _ in range(4):
+        parent = await turn(db, learner, parent.id)
+        parent.metadata_json = {**parent.metadata_json, "conversation_id": root.turn_id}
+    await db.commit()
+    result = await resolve(db, learner.id, parent.id, None, ConversationBrief())
+    assert result.inputs["opening:question"].record_id == root.id
+    assert result.inputs["opening:question"].origin == "learner_statement"
+    assert not result.opening_unavailable
+    assert all(i.text != root.text for i in result.inputs.values())
+    assert result.older_history_omitted
+    root.request_json = {"question": "Changed opening"}
+    await db.commit()
+    updated = await resolve(db, learner.id, parent.id, None, ConversationBrief())
+    assert (
+        updated.inputs["opening:question"].version_hash
+        != result.inputs["opening:question"].version_hash
+    )
+
+
+@pytest.mark.parametrize("invalid", ["foreign", "area", "not_root", "blank", "oversized"])
+async def test_invalid_opening_is_disclosed_without_including_text(db, learner, invalid):
+    root = await turn(db, learner)
+    parent = root
+    for _ in range(4):
+        parent = await turn(db, learner, parent.id)
+        parent.metadata_json = {**parent.metadata_json, "conversation_id": root.turn_id}
+    if invalid == "foreign":
+        other = LearnerProfile(display_name="Other")
+        db.add(other)
+        await db.flush()
+        root.learner_id = other.id
+    elif invalid == "area":
+        root.metadata_json = {**root.metadata_json, "area_id": "elsewhere"}
+    elif invalid == "not_root":
+        root.metadata_json = {**root.metadata_json, "parent_answer_id": "other"}
+    else:
+        root.request_json = {"question": " " if invalid == "blank" else "x" * 2001}
+    await db.commit()
+    result = await resolve(db, learner.id, parent.id, None, ConversationBrief())
+    assert result.opening_unavailable
+    assert "opening:question" not in result.inputs

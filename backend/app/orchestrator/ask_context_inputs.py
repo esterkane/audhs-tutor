@@ -22,6 +22,7 @@ class ProposalInputs:
     inputs: dict[str, ContextInput]
     history_turns: int
     older_history_omitted: bool
+    opening_unavailable: bool = False
 
 
 async def resolve(
@@ -54,6 +55,7 @@ async def resolve(
     cursor: str | None = parent_answer_id
     seen: set[str] = set()
     count = 0
+    conversation_id: str | None = None
     while cursor and count < 3:
         if cursor in seen:
             raise AppError("context_invalid", "Conversation links could not be resolved.", 409)
@@ -71,6 +73,10 @@ async def resolve(
             raise AppError("not_found", "This conversation is unavailable.", 404)
         if row.metadata_json.get("area_id") != area_id:
             raise AppError("topic_conflict", "Choose a conversation in the current area.", 409)
+        if count == 0:
+            candidate = row.metadata_json.get("conversation_id")
+            if isinstance(candidate, str) and candidate.strip() and len(candidate) <= 128:
+                conversation_id = candidate
         question = row.request_json.get("question")
         if not isinstance(question, str) or not question.strip() or not row.text.strip():
             raise AppError("context_invalid", "A saved conversation turn is incomplete.", 409)
@@ -93,6 +99,34 @@ async def resolve(
         count += 1
     if cursor in seen:
         raise AppError("context_invalid", "Conversation links could not be resolved.", 409)
+    opening_unavailable = False
+    if cursor:
+        root = None
+        if conversation_id:
+            root = await db.scalar(
+                select(TutorAnswer)
+                .where(
+                    TutorAnswer.turn_id == conversation_id,
+                    TutorAnswer.learner_id == learner_id,
+                    TutorAnswer.surface == "ask",
+                )
+                .execution_options(populate_existing=True)
+            )
+        opening = root.request_json.get("question") if root else None
+        if (
+            root is not None
+            and root.metadata_json.get("parent_answer_id") is None
+            and root.metadata_json.get("area_id") == area_id
+            and isinstance(opening, str)
+            and opening.strip()
+            and len(opening) <= 2000
+        ):
+            if root.id not in seen:
+                inputs["opening:question"] = ContextInput(
+                    opening, "learner_statement", root.id, text_hash(opening)
+                )
+        else:
+            opening_unavailable = True
     for source in await ask_sources.resolve(db, sources, quarantine_below_trust):
         inputs[source["source_key"]] = ContextInput(
             source["text"],
@@ -103,5 +137,12 @@ async def resolve(
     if len(brief_json) + sum(len(item.text) for item in inputs.values()) > 24000:
         raise AppError("context_too_large", "Choose fewer passages or shorten retained notes.", 422)
     return ProposalInputs(
-        parent_answer_id, area_id, brief_json, text_hash(brief_json), inputs, count, bool(cursor)
+        parent_answer_id,
+        area_id,
+        brief_json,
+        text_hash(brief_json),
+        inputs,
+        count,
+        bool(cursor),
+        opening_unavailable,
     )

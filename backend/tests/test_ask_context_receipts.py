@@ -57,6 +57,9 @@ async def test_receipt_replay_survives_parent_deletion_and_omits_raw_text(db, le
     await db.commit()
     replay = await receipts.replay(db, learner.id, key, payload)
     assert replay == result
+    assert replay.history_turns == 1
+    assert not replay.older_history_omitted
+    assert not replay.opening_unavailable
     assert await db.scalar(select(func.count()).select_from(TutorAnswer)) == 0
     assert await receipts.owned(db, learner.id, identity) == result
     with pytest.raises(AppError):

@@ -86,6 +86,9 @@ class ProposalReceipt(BaseModel):
     parent_answer_id: Identifier
     area_id: Identifier | None
     base_brief_hash: Digest
+    history_turns: int = Field(ge=1, le=3)
+    older_history_omitted: bool
+    opening_unavailable: bool
     inputs: dict[Identifier, InputProvenance] = Field(max_length=13)
     proposal: ContextProposal
     status: Literal["unverified_proposal"] = "unverified_proposal"
