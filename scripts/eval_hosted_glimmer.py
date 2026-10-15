@@ -119,7 +119,9 @@ def validate_catalog(payload: dict[str, Any]) -> None:
         raise ValueError('Endpoint contract changed; do not spend')
 
 
-async def stream_reply(client: httpx.AsyncClient, body: dict[str, Any]) -> dict[str, Any]:
+async def stream_reply(
+    client: httpx.AsyncClient, body: dict[str, Any], *, output_limit: int = OUTPUT_LIMIT,
+) -> dict[str, Any]:
     started = time.perf_counter()
     text = ''
     first = None
@@ -166,7 +168,7 @@ async def stream_reply(client: httpx.AsyncClient, body: dict[str, Any]) -> dict[
     tokens_out = usage.get('completion_tokens')
     if (not cost.is_finite() or cost < 0
             or type(tokens_in) is not int or not 0 <= tokens_in <= CONTEXT_LIMIT
-            or type(tokens_out) is not int or not 0 <= tokens_out <= OUTPUT_LIMIT
+            or type(tokens_out) is not int or not 0 <= tokens_out <= output_limit
             or finish not in {'stop', 'length'}):
         raise ValueError('Invalid billing or completion limits')
     reasoning = (usage.get('completion_tokens_details') or {}).get('reasoning_tokens')
