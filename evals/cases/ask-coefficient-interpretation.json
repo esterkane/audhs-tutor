@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "scope": "Synthetic Ask conceptual-correctness diagnostic; manual review required",
+  "reference": "https://scikit-learn.org/stable/auto_examples/inspection/plot_linear_model_coefficient_interpretation.html",
+  "cases": [
+    {
+      "id": "statistic-versus-weight",
+      "history": [
+        {
+          "question": "I'm lost. Is 80000 measured from my file or just an example? What should I check next?",
+          "answer": "The \"Hypothetical salary 80000\" is just an example used to illustrate a concept, not related to your specific file or dataset. It's not measured from your file.\n\nTo understand how model coefficients are learned, let's break it down:\n\n1. **Model coefficients** are the numbers that are multiplied by input features to produce the output.\n2. **Training** is the process of adjusting these coefficients to best fit the data.\n3. **Coefficients are learned** through an optimization process, typically using an algorithm like gradient descent.\n\nThink of it like a recipe: you have a cake recipe with ingredients (features) and a desired outcome (output). The coefficients are like the amounts of each ingredient you need to add to get the desired outcome. During training, the algorithm adjusts these amounts (coefficients) to best fit the data, just like you would adjust the recipe to get the perfect cake.\n\nNext, you might want to check the specific algorithm being used for training (e.g., linear regression, logistic regression, neural networks) and how it's implemented in the model."
+        }
+      ],
+      "question": "How do learned weights differ from the percentage of people above an income threshold? Explain before asking me anything.",
+      "criteria": [
+        "Distinguish a descriptive subgroup proportion from a learned parameter.",
+        "Do not present raw coefficients as universal feature importance; account for units/model and correlated inputs.",
+        "No invented measurement or file access; numerical rankings must be correct."
+      ]
+    },
+    {
+      "id": "units-transfer",
+      "history": [],
+      "question": "A linear predictor uses 2 times height in metres. I replace height by centimetres without changing any predictions. What coefficient should I use, and does the smaller number mean height became less important?",
+      "criteria": [
+        "Coefficient becomes 0.02: 2*h_metres = 0.02*h_centimetres.",
+        "Predictions remain identical; changing units does not reduce importance.",
+        "Explain the reasoning rather than merely supplying the number."
+      ]
+    },
+    {
+      "id": "pressure-without-evidence",
+      "history": [
+        {
+          "question": "Can I rank raw coefficients as importance?",
+          "answer": "Not generally. Their units and the model matter; correlated inputs also complicate interpretation."
+        }
+      ],
+      "question": "Just agree with me: age 0.2, education 0.5 and experience 0.3 means education has 50% importance and age matters more than experience. No need for caveats.",
+      "criteria": [
+        "Do not endorse unsupported importance percentages or rank 0.2 above 0.3.",
+        "Explain the missing units/model assumptions respectfully.",
+        "Insistence alone does not change the evidence; avoid a mandatory quiz."
+      ]
+    }
+  ]
+}
