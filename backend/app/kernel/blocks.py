@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import AppError
 from app.db.base import utcnow_iso
 from app.db.events import EventWriter, Verb
 from app.db.models import LearningEvent, Session
@@ -178,7 +179,7 @@ async def _answered_since(db: AsyncSession, s: Session, cp: dict[str, Any]) -> b
     return any((e.context_json or {}).get("node_id") == skill_id for e in rows)
 
 
-async def start(db: AsyncSession, s: Session, index: int) -> BlockState:
+async def start(db: AsyncSession, s: Session, index: int, *, commit: bool = True) -> BlockState:
     """Start block `index`. Idempotent when that block is already running. Refuses while another
     block is running (use `advance`), and after the session ended."""
     blocks = blocks_of(s)
@@ -223,7 +224,7 @@ async def start(db: AsyncSession, s: Session, index: int) -> BlockState:
             cp["first_started_index"] if isinstance(cp.get("first_started_index"), int) else index
         ),
     }
-    await _save(db, s, cp, update)
+    await _save(db, s, cp, update, commit=commit)
     return _state_from({**cp, **update}, blocks, message="started")
 
 
@@ -298,6 +299,37 @@ async def advance(
     grasp_passed: bool | None = None,
     actual_min: float | None = None,
 ) -> BlockState:
+    """Atomically advance an open session, serialized against other advances and finish."""
+    try:
+        s = await ksession.lock_for_transition(db, s.id, s.learner_id)
+        if s.ended_at is not None:
+            raise AppError(
+                "session_ended", "This session has ended. Return Home to continue.", http_status=409
+            )
+        result = await _advance(
+            db,
+            s,
+            from_index=from_index,
+            reason=reason,
+            grasp_passed=grasp_passed,
+            actual_min=actual_min,
+        )
+        await db.commit()
+        return result
+    except BaseException:
+        await db.rollback()
+        raise
+
+
+async def _advance(
+    db: AsyncSession,
+    s: Session,
+    *,
+    from_index: int | None,
+    reason: str = "finished",
+    grasp_passed: bool | None = None,
+    actual_min: float | None = None,
+) -> BlockState:
     """End the block the client believes is current and start the next one — atomically on the
     server. `from_index` is the idempotency key: when it is no longer the current block (a retry
     after the first call succeeded) the current state is returned untouched."""
@@ -311,13 +343,23 @@ async def advance(
             nxt0 = next_index(blocks, int(current))
             if nxt0 is None:
                 return _state_from(cp, blocks, message="plan complete")
-            return await start(db, s, nxt0)
-        return await start(db, s, 0) if blocks else _state_from(cp, blocks, message="no plan")
+            return await start(db, s, nxt0, commit=False)
+        return (
+            await start(db, s, 0, commit=False)
+            if blocks
+            else _state_from(cp, blocks, message="no plan")
+        )
     if current != from_index:
         return _state_from(cp, blocks, message="already advanced")
     if cp.get("block_status") == "running":
         ended = await end(
-            db, s, from_index, reason=reason, grasp_passed=grasp_passed, actual_min=actual_min
+            db,
+            s,
+            from_index,
+            reason=reason,
+            grasp_passed=grasp_passed,
+            actual_min=actual_min,
+            commit=False,
         )
         if not ended.allowed:
             return ended
@@ -327,7 +369,7 @@ async def advance(
     if nxt is None:
         cp2 = await ksession.load_checkpoint(db, s.id) or {}
         return _state_from(cp2, blocks, message="plan complete")
-    return await start(db, s, nxt)
+    return await start(db, s, nxt, commit=False)
 
 
 async def extend(db: AsyncSession, s: Session, index: int, minutes: int) -> BlockState:

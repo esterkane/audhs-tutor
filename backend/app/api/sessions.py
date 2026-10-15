@@ -388,7 +388,7 @@ async def end(
 async def _end_session(session_id: str, body: SessionEnd, db: DB, learner: Learner) -> SessionOut:
     await _owned_session(db, session_id, learner.id)
     try:
-        s = await ksession.lock_for_end(db, session_id, learner.id)
+        s = await ksession.lock_for_transition(db, session_id, learner.id)
         if s.ended_at is None:
             await ensure_recall_item_for_explained_skill(db, learner.id, session_id, commit=False)
             await blocks.end_running(db, s, reason="session_end", commit=False)

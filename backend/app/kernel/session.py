@@ -83,8 +83,8 @@ async def get_owned(db: AsyncSession, session_id: str, learner_id: str) -> Sessi
     return s
 
 
-async def lock_for_end(db: AsyncSession, session_id: str, learner_id: str) -> Session:
-    """Serialize end preparation across SQLite writers without changing learner state.
+async def lock_for_transition(db: AsyncSession, session_id: str, learner_id: str) -> Session:
+    """Serialize session transition preparation across SQLite writers without changing learner state.
 
     The caller owns commit/rollback. Refresh after acquiring the write lock so a
     second worker observes the first worker's completed transaction.
