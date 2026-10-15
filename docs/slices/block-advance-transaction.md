@@ -13,4 +13,4 @@ Failure injection proved that starting the next block could fail after the previ
 
 Only competing advance/finish workers are covered. Direct start/extend/replan writers need separate lifecycle validation. Postcommit response loss remains uncertain until state recovery or the explicit same-from_index replay; no automatic resend is introduced.
 
-The lock predicates on the existing session owner; it does not authenticate the caller. Review found inherited raw session-ID lookups in block endpoints. Next: caller-ownership validation for block read/start/end/next/extend/replan, tested for no foreign writes. No broader security certification follows from transaction tests.
+The lock predicates on the existing session owner; it does not authenticate the caller. Review found inherited raw session-ID lookups in block endpoints. Follow-up delivered: caller-ownership validation for block read/start/end/next/extend/replan, tested for no foreign writes; see plan-session-ownership.md. No broader security certification follows from transaction tests.

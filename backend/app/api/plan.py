@@ -129,8 +129,8 @@ def session_lock(request: Request, session_id: str) -> asyncio.Lock:
     summary="Where the session is: block, phase, active skill",
     response_model=BlockOut,
 )
-async def block_state(session_id: str, db: DB) -> BlockOut:
-    return await blocks.state(db, await ksession.get(db, session_id))
+async def block_state(session_id: str, db: DB, learner: Learner) -> BlockOut:
+    return await blocks.state(db, await ksession.get_owned(db, session_id, learner.id))
 
 
 @router.post(
@@ -138,9 +138,11 @@ async def block_state(session_id: str, db: DB) -> BlockOut:
     summary="Start a planned block (emits block_started once; idempotent)",
     response_model=BlockOut,
 )
-async def start_block(body: BlockEvent, request: Request, db: DB) -> BlockOut:
+async def start_block(body: BlockEvent, request: Request, db: DB, learner: Learner) -> BlockOut:
     async with session_lock(request, body.session_id):
-        return await blocks.start(db, await ksession.get(db, body.session_id), body.index)
+        return await blocks.start(
+            db, await ksession.get_owned(db, body.session_id, learner.id), body.index
+        )
 
 
 @router.post(
@@ -148,11 +150,11 @@ async def start_block(body: BlockEvent, request: Request, db: DB) -> BlockOut:
     summary="End the running block (emits block_ended once; early switches out of new material need a grasp check)",
     response_model=BlockOut,
 )
-async def end_block(body: BlockEvent, request: Request, db: DB) -> BlockOut:
+async def end_block(body: BlockEvent, request: Request, db: DB, learner: Learner) -> BlockOut:
     async with session_lock(request, body.session_id):
         return await blocks.end(
             db,
-            await ksession.get(db, body.session_id),
+            await ksession.get_owned(db, body.session_id, learner.id),
             body.index,
             reason=body.reason or "finished",
             switched_early=body.switched_early,
@@ -166,11 +168,11 @@ async def end_block(body: BlockEvent, request: Request, db: DB) -> BlockOut:
     summary="End the current block and start the next one atomically (idempotent on from_index)",
     response_model=BlockOut,
 )
-async def next_block(body: BlockAdvance, request: Request, db: DB) -> BlockOut:
+async def next_block(body: BlockAdvance, request: Request, db: DB, learner: Learner) -> BlockOut:
     async with session_lock(request, body.session_id):
         return await blocks.advance(
             db,
-            await ksession.get(db, body.session_id),
+            await ksession.get_owned(db, body.session_id, learner.id),
             from_index=body.from_index,
             reason=body.reason,
             grasp_passed=body.grasp_passed,
@@ -183,9 +185,9 @@ async def next_block(body: BlockAdvance, request: Request, db: DB) -> BlockOut:
     summary="Soft timer: give the running block N more minutes (kept across reloads)",
     response_model=BlockOut,
 )
-async def extend_block(body: BlockExtend, db: DB) -> BlockOut:
+async def extend_block(body: BlockExtend, db: DB, learner: Learner) -> BlockOut:
     return await blocks.extend(
-        db, await ksession.get(db, body.session_id), body.index, body.minutes
+        db, await ksession.get_owned(db, body.session_id, learner.id), body.index, body.minutes
     )
 
 
@@ -216,7 +218,7 @@ class ReplanOut(BaseModel):
     response_model=ReplanOut,
 )
 async def replan(body: ReplanIn, db: DB, learner: Learner) -> ReplanOut:
-    s = await ksession.get(db, body.session_id)
+    s = await ksession.get_owned(db, body.session_id, learner.id)
     if s.ended_at is not None:
         raise ValueError("session already ended")
     current = planner.Plan(
