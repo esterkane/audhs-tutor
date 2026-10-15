@@ -1,0 +1,157 @@
+{
+  "synthetic": true,
+  "campaign_sha256": "24bd2a619d741c1a176c45706b86046d9f22e4c207bdf4f986a9c8734be3491d",
+  "ceiling_usd": "0.32",
+  "accounted_with_allowance_usd": "0.00884640710",
+  "results": [
+    {
+      "case": "generate-explicit",
+      "state": "settled",
+      "charge_usd": "0.0018360165",
+      "result": {
+        "text": "No. Computing the imputation statistic on the held-out evaluation set is leakage even though you are not using outcome labels. Preprocessing must be fit only on training data and then applied to the test set, otherwise the test set influences the training process.\n\nImputation is a learned parameter of your pipeline. If that parameter is estimated with information from the test set, the training data and the model are no longer independent of the test set, and your evaluation will be optimistically biased.\n\nTiny example\n\nTrain rows:\nA: age = 25, y = 0\nB: age = missing, y = 1\n\nTest rows:\nC: age = 70, y = 0\nD: age = 75, y = 1\n\nObserved ages in training only: {25}. Training median = 25.\nObserved ages in training + test: {25,70,75}. Median = 70.\n\nIf you fit the imputer on training only:\nB is imputed to 25. The training distribution you learn from is ages {25,25}.\n\nIf you fit the imputer on both sets as you propose:\nB is imputed to 70. The training distribution you learn from is now ages {25,70}, which was determined in part by test patients C and D.\n\nThe model therefore sees information about the test age distribution during training. In this case the imputed training age is pulled up toward the test ages 70-75. With a simple age-based rule the model will appear to fit better on the test set than it would on truly unseen data.\n\nThe same problem occurs if the test set itself has missing ages. Imputing test missing values with a median that was computed using the test set means the imputed value is a function of the other test rows. The test set is no longer held out.\n\nCorrect practice: fit the median imputer on the training observed ages only, e.g. median = 25, impute B = 25 in training, and then apply that same imputer, with the same 25, to the test set. If you want a population median, estimate it from external data or from training only, never from the evaluation split.",
+        "finish_reason": "stop",
+        "status": "completed",
+        "first_visible_seconds": 6.760286249977071,
+        "total_seconds": 9.729140207986347,
+        "tokens_in": 281,
+        "tokens_out": 1380,
+        "reasoning_tokens": 1146,
+        "usage_detail_warning": null,
+        "cached_tokens": 0,
+        "cost_usd": "0.0017403",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "request_sha256": "09f2d7c689de6e0de18e1c7888c41199d094ce5af547290817f4fe7fdcdc2b9c"
+      }
+    },
+    {
+      "case": "generate-guided",
+      "state": "settled",
+      "charge_usd": "0.00194790980",
+      "result": {
+        "text": "No. Using the held-out evaluation set to choose the imputation value leaks information from the evaluation set into training preprocessing, even though age is a feature and not the target and you are not using outcome labels.\n\nImputation is part of the training procedure. The median you pick becomes a parameter learned from data. If that parameter is learned from the held-out set, the training data is indirectly influenced by the held-out distribution, and evaluation on that same set will be optimistic.\n\nTiny example\n\nTraining rows:\n* A: age 20\n* B: age 30\n* C: age missing\n\nHeld-out evaluation rows:\n* D: age 80\n* E: age 90\n* F: age missing\n\nTrue training-only median of observed ages = median(20,30) = 25.\nIf you fit only on training, you would impute C with 25.\n\nIf you compute the median from both sets as you suggest, observed ages are 20,30,80,90. Median = (30+80)/2 = 55.\nYou would then impute C with 55 instead of 25.\n\nNow the training set you actually train on contains an age value that was pulled up by the test distribution 80,90. The model learns a feature distribution that is a mixture of train and test. When you then evaluate on D,E,F, the evaluation data helped set the imputation value used during training, so performance looks better than it would on truly unseen data.\n\nThe same leakage happens with any statistic used for preprocessing: mean, median, mode, scaling parameters, etc. The rule is fit the imputer on training only, then apply the same fitted imputer to train and to held-out data.\n\nIf you need a single number for imputation, compute it from training observed ages only, e.g. 25 in the example, and use 25 to fill missing ages in both training and evaluation.",
+        "finish_reason": "stop",
+        "status": "completed",
+        "first_visible_seconds": 7.62491112499265,
+        "total_seconds": 10.237336583988508,
+        "tokens_in": 458,
+        "tokens_out": 1438,
+        "reasoning_tokens": 1295,
+        "usage_detail_warning": null,
+        "cached_tokens": 64,
+        "cost_usd": "0.00184636",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "request_sha256": "5b8dc84b62e0ffec36ab471b26ad60e2dc697a2cc2dbe358e74c96adfb2c0c33"
+      }
+    },
+    {
+      "case": "check-observed-false",
+      "state": "settled",
+      "charge_usd": "0.002876985",
+      "result": {
+        "text": "",
+        "finish_reason": "length",
+        "status": "invalid_review",
+        "total_seconds": 10.62061262500356,
+        "tokens_in": 898,
+        "tokens_out": 2048,
+        "reasoning_tokens": 2371,
+        "usage_detail_warning": "inconsistent_reasoning_breakdown",
+        "cached_tokens": 0,
+        "cost_usd": "0.002727",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "first_json_seconds": null,
+        "target_claim_coverage": "requires_human_review",
+        "schema_and_quote_binding": "failed",
+        "request_sha256": "1a3ae1b041ef66b45928d47e4cafdae36cb0c94d9933b14d23e31bd5210a83aa"
+      }
+    },
+    {
+      "case": "check-supported",
+      "state": "settled",
+      "charge_usd": "0.00126492390",
+      "result": {
+        "text": "{\"claims\": [\n  {\n    \"claim_quote\": \"Compute the replacement median using only observed training ages.\",\n    \"verdict\": \"supported\",\n    \"explanation\": \"The passage states the same instruction.\",\n    \"evidence\": [\n      {\n        \"passage_id\": \"01M4ZJ55P7QKGGKY7DRR3AZRQ4\",\n        \"quote\": \"Compute the replacement median using only observed training ages.\"\n      }\n    ]\n  },\n  {\n    \"claim_quote\": \"Reuse that same training median to fill missing ages in both training and held-out rows.\",\n    \"verdict\": \"supported\",\n    \"explanation\": \"The passage states the same instruction.\",\n    \"evidence\": [\n      {\n        \"passage_id\": \"01M4ZJ55P7QKGGKY7DRR3AZRQ4\",\n        \"quote\": \"Reuse that same training median to fill missing ages in both training and held-out rows.\"\n      }\n    ]\n  }\n],\n\"limitations\": [\n  \"Only the two sentences present in the answer were checked. Other guidance in the source passage, e.g., about not fitting a new median on held-out data, splitting patients before fitting preprocessing, and the example with ages [20, 30, 40], was not checked against the answer.\"\n]}",
+        "finish_reason": "stop",
+        "status": "completed",
+        "total_seconds": 5.556558958021924,
+        "tokens_in": 603,
+        "tokens_out": 890,
+        "reasoning_tokens": 794,
+        "usage_detail_warning": null,
+        "cached_tokens": 192,
+        "cost_usd": "0.00119898",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "first_json_seconds": 4.115699540998321,
+        "target_claim_coverage": "requires_human_review",
+        "schema_and_quote_binding": "passed_not_semantic_verification",
+        "request_sha256": "41f6ed6347d18702a752eea2f8d6f82af0de4968e2fb08baf6836124ccce8c22"
+      }
+    },
+    {
+      "case": "check-irrelevant",
+      "state": "settled",
+      "charge_usd": "0.00092057190",
+      "result": {
+        "text": "{\"claims\": [\n  {\n    \"claim_quote\": \"Compute the replacement median using only observed training ages.\",\n    \"verdict\": \"insufficient\",\n    \"explanation\": \"The supplied source does not address the claim.\",\n    \"evidence\": [\n      {\n        \"passage_id\": \"01M4ZJ5EC1A96M1QVE784HQH1F\",\n        \"quote\": \"An audio waveform represents amplitude over time. A spectrum describes how signal energy is distributed across frequencies.\"\n      }\n    ]\n  }\n] }",
+        "finish_reason": "stop",
+        "status": "completed",
+        "total_seconds": 4.430788833007682,
+        "tokens_in": 411,
+        "tokens_out": 666,
+        "reasoning_tokens": 717,
+        "usage_detail_warning": "inconsistent_reasoning_breakdown",
+        "cached_tokens": 192,
+        "cost_usd": "0.00087258",
+        "accounting_valid": true,
+        "provider": "DeepInfra",
+        "model": "meta/muse-glimmer-30b",
+        "semantic_review": "not_reviewed",
+        "first_json_seconds": 3.8049813749967143,
+        "target_claim_coverage": "requires_human_review",
+        "schema_and_quote_binding": "passed_not_semantic_verification",
+        "request_sha256": "33d55fe4ea1554653ace81257605ac5015627eccba924358adc6ea2a89572358"
+      }
+    }
+  ],
+  "provider_reported_total_usd": "0.00838522",
+  "review": {
+    "method": "manual inspection plus independent pedagogy agent review; not learner-outcome validation",
+    "production_adoption": "not_justified",
+    "scope": "Five fixed single samples; no general accuracy or p95 claim",
+    "cases": {
+      "generate-explicit": {
+        "verdict": "fails_quality_gate",
+        "finding": "Correct train-only fitting, shared transform and median arithmetic, but claims evaluation will be optimistic and an unspecified model will perform better. Direction/magnitude is not established by the example."
+      },
+      "generate-guided": {
+        "verdict": "fails_quality_gate",
+        "finding": "Same unsupported certainty about performance despite correct preprocessing and arithmetic. No question is acceptable because the learner requested an explanation."
+      },
+      "check-observed-false": {
+        "verdict": "no_usable_review",
+        "finding": "Empty response at 2048-token cap. Neither a contradiction-detection pass nor a false support verdict."
+      },
+      "check-supported": {
+        "verdict": "passes_this_case",
+        "finding": "Both targeted claims supported with exact quotations and limited coverage."
+      },
+      "check-irrelevant": {
+        "verdict": "passes_this_case",
+        "finding": "Correct insufficient verdict; quoted audio passage identifies irrelevant inspected material, not supporting evidence."
+      }
+    }
+  }
+}

@@ -1,6 +1,6 @@
 # Bounded Ask hosted comparison
 
-Status: prepared 2026-10-15; owner authorized preparation, not execution or spending. No production routing change. This is separate from the completed earlier hosted trial and must never reuse or reset that trial's journal.
+Status: completed 2026-10-15 after explicit owner approval of five synthetic calls up to $0.32. No production routing change. This is separate from the completed earlier hosted trial and must never reuse or reset that trial's journal.
 
 ## Question and frozen cases
 
@@ -52,3 +52,17 @@ Official references:
 `scripts/eval_ask_hosted.py` defaults to an offline preflight. Full frozen campaign SHA-256: `24bd2a619d741c1a176c45706b86046d9f22e4c207bdf4f986a9c8734be3491d`. Execution requires that digest as an explicit argument after owner spending approval; knowledge of the digest is not authorization. The journal is separate from the earlier completed campaign.
 
 39 offline tests pass across the new campaign and reused transport/preflight suites, including complete mocked execution twice with only five requests, pending restart, concurrent reservations, unknown/excess charges, changed input/schema, and invalid quote retention. Ruff and strict script mypy pass. Independent code review found no blockers or majors. No UI changed, so no browser or accessibility pass is claimed. No real model calls ran; semantic review and target-claim coverage remain pending.
+
+## Approved execution and result — 2026-10-15
+
+All five attempts settled with known billing; no retries or fallback. Provider-reported total **$0.00838522**, or **$0.00884640710** including the conservative 5.5% accounting allowance. Both are below the approved $0.32 ceiling. Remaining allowance does not authorize another campaign. The durable journal remains at its fixed path; a private consistent snapshot is retained for recovery. No live learner database or routing changed.
+
+Results are recorded in `evals/results/ask-hosted-20261015.json`, with manual and independent pedagogy review separate from raw provider results:
+
+- Direct and guided explanations correctly require fitting the median on training observations and applying the same value to both sets. Their example medians are correct. Both nevertheless assert optimistic evaluation/better performance without establishing the direction or magnitude of the effect. Both fail the complete teaching-quality rubric.
+- The critical contradiction check returns no visible JSON before its 2048-token limit. This is a failed usable-output gate, not an observed incorrect verdict.
+- Supported and irrelevant-source controls return correct verdicts and exact bound quotations for their targeted claims. These two cases pass; they do not validate general checking.
+
+Generation time to first visible text was 6.76s / 7.62s, completion 9.73s / 10.24s. Reviewer JSON timing is recorded separately. The contradiction case took 10.62s with no visible output; do not count it as a fast answer. Two usage records report reasoning counts above completion totals; preserve the provider warning and reported cost rather than estimating hidden/visible token proportions.
+
+**No production adoption.** The campaign improves on the observed local core leakage error but does not satisfy the accuracy/checker gates or demonstrate a fast conversational path. No additional paid calls, cap increases or routing changes follow automatically. Retain these failure cases for future bounded comparisons, including a hardware-local comparison once the PC GPU is known. Continue independently useful context/provenance work while keeping generated feedback provisional.
