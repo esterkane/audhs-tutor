@@ -33,6 +33,14 @@ export function useDrafts() {
   return useQuery({
     queryKey: ['curriculum', 'drafts'],
     queryFn: () => apiFetch<DraftList>('/api/curriculum/drafts'),
+    structuralSharing: (oldData, newData) => {
+      const previous = oldData as DraftList | undefined
+      const incoming = newData as DraftList
+      return { ...incoming, drafts: incoming.drafts.map(row => {
+        const known = previous?.drafts.find(d => d.id === row.id)
+        return known && (known.version > row.version || (known.version === row.version && known.status !== 'draft' && row.status === 'draft')) ? known : row
+      }) }
+    },
   })
 }
 
@@ -43,6 +51,7 @@ export function useDraftActions() {
     void qc.invalidateQueries({ queryKey: ['areas'] })
     void qc.invalidateQueries({ queryKey: ['skills'] })
     void qc.invalidateQueries({ queryKey: ['session-current'] })
+    void qc.invalidateQueries({ queryKey: ['accepted-knowledge'] })
   }
   const create = useMutation({
     mutationFn: (body: { course: string; section: string | null; use_model?: boolean }) =>
@@ -60,7 +69,13 @@ export function useDraftActions() {
   const publish = useMutation({
     mutationFn: ({ id, expected_version }: { id: string; expected_version: number }) =>
       apiFetch<PublishOut>(`/api/curriculum/drafts/${id}/publish`, { method: 'POST', body: JSON.stringify({ expected_version }) }),
-    onSuccess: invalidate,
+    onSuccess: result => {
+      qc.setQueryData<DraftList>(['curriculum', 'drafts'], previous => {
+        if (!previous) return { drafts: [result.draft] }
+        return { drafts: previous.drafts.map(d => d.id === result.draft.id && d.version <= result.draft.version ? result.draft : d) }
+      })
+      invalidate()
+    },
   })
   const reject = useMutation({
     mutationFn: ({ id, expected_version }: { id: string; expected_version: number }) => apiFetch<DraftOut>(`/api/curriculum/drafts/${id}/reject`, { method: 'POST', body: JSON.stringify({ expected_version }) }),

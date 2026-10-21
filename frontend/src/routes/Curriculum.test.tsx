@@ -151,6 +151,36 @@ async function chooseCourse() {
 beforeEach(() => sessionStorage.clear())
 afterEach(() => vi.unstubAllGlobals())
 
+it('activates the latest knowledge-editor save without a second manual refresh', async () => {
+  const form = { title: 'My knowledge', domain: 'ai_ml', notes: 'My source notes', upload_id: null,
+    objective: 'Explain a concept', explanation: 'My explanation', worked_example: 'My example', question: 'Apply it', criteria: ['Explains it'], research: null }
+  let current = { ...draft, course: null, origin: 'knowledge_authored', title: form.title,
+    payload: { ...draft.payload, authoring: form }, problems: [] } as unknown as DraftOut
+  let publishVersion: number | undefined
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url === '/api/learner/me') return jsonResponse({ id: 'owner' })
+    if (url.endsWith('/material')) return jsonResponse(material)
+    if (url.endsWith('/drafts')) return jsonResponse({ drafts: [current] })
+    if (url.startsWith('/api/knowledge-material/drafts/') && init?.method === 'PUT') {
+      const body = JSON.parse(init.body as string)
+      current = { ...current, version: current.version + 1, payload: { ...current.payload, authoring: body } }
+      return jsonResponse(current)
+    }
+    if (url.endsWith('/publish')) {
+      publishVersion = JSON.parse(init!.body as string).expected_version
+      return jsonResponse({ draft: { ...current, version: current.version + 1, status: 'published' }, skills: 1, assessments: 1 })
+    }
+    return jsonResponse({})
+  }))
+  renderApp(<Curriculum />, { route: '/curriculum?draft=d1' })
+  fireEvent.click(await screen.findByText('4. Review'))
+  fireEvent.click(screen.getByText('Save knowledge material'))
+  await screen.findByText('Knowledge material saved. You can return later or shape it into a lesson.')
+  fireEvent.click(screen.getByRole('button', { name: 'Activate lessons' }))
+  await waitFor(() => expect(publishVersion).toBe(2))
+  await waitFor(() => expect(screen.queryByRole('button', { name: 'Save knowledge material' })).not.toBeInTheDocument())
+})
+
 describe('Curriculum', () => {
   it('guides draft creation, blocks invalid or unsaved activation, then activates explicitly', async () => {
     const { container, calls } = setup()
@@ -314,6 +344,7 @@ it('reports course loading failures instead of showing an empty course list', as
     vi.fn(async () => jsonResponse({ error: { code: 'offline', message: 'Offline' } }, 503)),
   )
   renderApp(<Curriculum />)
+  fireEvent.click(screen.getByText('Browse saved drafts and imported courses'))
   expect(screen.getByText('Loading courses…')).toBeVisible()
   expect(await screen.findByText(/Courses could not load/)).toBeVisible()
   expect(screen.getByRole('button', { name: 'Retry drafts' })).toBeEnabled()
@@ -386,4 +417,44 @@ it('keeps restored edits blocked against a newer saved revision until explicitly
   fireEvent.click(screen.getByRole('button', { name: 'Discard unsaved edits' }))
   expect(screen.getByLabelText('Draft JSON')).toHaveValue(JSON.stringify(latest.payload, null, 2))
   expect(dirty).toHaveBeenLastCalledWith(false)
+})
+
+
+it('does not show a new editor while a saved knowledge draft link is loading', async () => {
+  let resolveDrafts!: (response: Response) => void
+  const pending = new Promise<Response>(resolve => {resolveDrafts = resolve})
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/api/curriculum/drafts') return pending
+    if (url === '/api/learner/me') return jsonResponse({id:'owner'})
+    return jsonResponse({courses:[]})
+  }))
+  renderApp(<Curriculum />, {route:'/curriculum?draft=notes'})
+  expect(await screen.findByText('Loading drafts…')).toBeVisible()
+  expect(screen.queryByLabelText('Material title')).not.toBeInTheDocument()
+  await act(async () => resolveDrafts(jsonResponse({drafts:[]})))
+  expect(await screen.findByText(/The requested draft is unavailable/)).toBeVisible()
+  expect(screen.queryByLabelText('Material title')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button',{name:'Create new knowledge material'}))
+  expect(await screen.findByLabelText('Material title')).toHaveValue('')
+})
+
+
+it('opens the requested saved knowledge form once its delayed draft response arrives', async () => {
+  let resolveDrafts!: (response: Response) => void
+  const pending = new Promise<Response>(resolve => {resolveDrafts = resolve})
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    expect(init?.method ?? 'GET').toBe('GET')
+    if (url === '/api/curriculum/drafts') return pending
+    if (url === '/api/learner/me') return jsonResponse({id:'owner'})
+    return jsonResponse({courses:[]})
+  }))
+  renderApp(<Curriculum />, {route:'/curriculum?draft=saved-notes'})
+  expect(await screen.findByText('Loading drafts…')).toBeVisible()
+  expect(screen.queryByLabelText('Material title')).not.toBeInTheDocument()
+  await act(async () => resolveDrafts(jsonResponse({drafts:[{...draft,id:'saved-notes',course:null,
+    title:'Saved personal notes',origin:'knowledge_authored',payload:{skills:[],authoring:{
+      title:'Saved personal notes',notes:'Keep this exact note',domain:'programming',upload_id:null,
+      objective:'',explanation:'',worked_example:'',question:'',criteria:[]}}}]})))
+  expect(await screen.findByLabelText('Material title')).toHaveValue('Saved personal notes')
+  expect(screen.getByLabelText('Your notes and selected source content')).toHaveValue('Keep this exact note')
 })

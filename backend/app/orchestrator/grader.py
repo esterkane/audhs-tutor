@@ -45,6 +45,7 @@ from app.schemas.grading import (
     AttemptResult,
     CriterionResult,
     GradeResult,
+    rubric_grade_model,
 )
 
 DIMENSION_FOR_KIND = {
@@ -300,7 +301,9 @@ class Grader:
                 ),
                 "## Rubric criteria\n" + "\n".join(f"- {c}" for c in criteria),
                 "## Learner answer\n" + learner_answer_block(answer),
-                "Return criterion_results in the same order as the rubric.",
+                "Return criterion_results in the same order as the rubric. Copy each entire "
+                "criterion string verbatim, including all text after a colon; do not shorten "
+                "it to a heading or paraphrase it.",
             ]
         )
         messages = [
@@ -320,11 +323,11 @@ class Grader:
             out = await self.gateway.complete(
                 task,
                 messages,
-                response_model=GradeResult,
+                response_model=rubric_grade_model(criteria),
                 learner_id=learner_id,
                 session_id=session_id,
                 metadata={"prompt_version": prompts.GRADER_VERSION},
-                max_tokens=600,
+                max_tokens=2400,
             )
         except (GatewayError, NoModelReady):
             return None

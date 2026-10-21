@@ -1,4 +1,6 @@
+import { Disclosure } from '../components/ui/disclosure'
 import { PrivateActivation } from '../features/curriculum/PrivateActivation'
+import { KnowledgeAuthoring } from '../features/curriculum/KnowledgeAuthoring'
 import { ApiError } from '../lib/api'
 import { useDraftRecovery } from '../features/curriculum/useDraftRecovery'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
@@ -35,6 +37,7 @@ export function Curriculum() {
   const [course, setCourse] = useState<string | null>(null)
   const [searchParams, setSearchParams] = useSearchParams()
   const selected = searchParams.get('draft')
+  const [authoredDraft, setAuthoredDraft] = useState<DraftOut | null>(null)
   function setSelected(id: string | null) {
     setSearchParams(previous => {
       const next = new URLSearchParams(previous)
@@ -46,7 +49,9 @@ export function Curriculum() {
   const [useModel, setUseModel] = useState(false)
   const sections = useSections(course)
   const courseDrafts = (drafts.data?.drafts ?? []).filter((d) => d.course === course)
-  const draft = drafts.data?.drafts.find((d) => d.id === selected) ?? null
+  const listedDraft = drafts.data?.drafts.find((d) => d.id === selected) ?? null
+  const confirmedDraft = authoredDraft?.id === selected ? authoredDraft : null
+  const draft = confirmedDraft && (!listedDraft || confirmedDraft.version > listedDraft.version) ? confirmedDraft : listedDraft
   const current = material.data?.courses.find((m) => m.course === course)
   const openDrafts = courseDrafts.filter((d) => d.status === 'draft')
   const history = courseDrafts.filter((d) => d.status !== 'draft')
@@ -73,21 +78,9 @@ export function Curriculum() {
 
   return (
     <div className="grid gap-4">
-      <Card>
-        <CardTitle as="h1">Review lesson drafts</CardTitle>
-        <p className="text-sm text-muted mt-2">
-          Review drafts across topics below, or choose an imported course to review its sections.
-          Activate only the lessons you want to study.
-        </p>
-        <p className="text-sm mt-2">
-          Activation adds lessons to your tutor app. It does not post or share your course material online.
-        </p>
-        <ol className="flex flex-wrap gap-4 text-sm mt-4" aria-label="Lesson setup steps">
-          <li aria-current={!course ? 'step' : undefined}>1. Choose a draft or course</li>
-          <li aria-current={course && !draft ? 'step' : undefined}>2. Review the lesson</li>
-          <li aria-current={draft ? 'step' : undefined}>3. Activate when ready</li>
-        </ol>
-      </Card>
+      <h1 className="text-xl font-semibold">Knowledge material</h1>
+      {(!selected || draft) && <KnowledgeAuthoring draft={draft?.payload.authoring ? draft : undefined} onOpen={setSelected} onSaved={setAuthoredDraft} review={draft?.payload.authoring ? (((draft.payload as Payload).skills ?? []).length ? <DraftEditor key={draft.id} draft={draft} onDirtyChange={setDirty} /> : <p>Your knowledge notes are saved. You can keep researching and writing without creating or activating a lesson.</p>) : undefined} />}
+      <Disclosure label="Browse saved drafts and imported courses" open={!draft?.payload.authoring && (material.isError || drafts.isError || (!!selected && !draft))}>
       <Card>
         <label htmlFor="lesson-course" className="block font-medium mb-2">
           Course
@@ -159,7 +152,7 @@ export function Curriculum() {
                 </Button>
               </p>
             )}
-            {selected && drafts.isSuccess && !draft && <p role="status">The requested draft is unavailable. Choose another draft below.</p>}
+            {selected && drafts.isSuccess && !draft && <p role="status">The requested draft is unavailable. Choose another draft below. <Button size="sm" onClick={() => setSelected(null)}>Create new knowledge material</Button></p>}
             {drafts.isSuccess &&
               (openDrafts.length ? (
                 <ul aria-label="Draft sections">{openDrafts.map(draftButton)}</ul>
@@ -239,14 +232,17 @@ export function Curriculum() {
           <SourcesPanel key={course} course={course} /></>}
         </>
       )}
-      {draft && (
+      </Disclosure>
+      {draft && !draft.payload.authoring && (
         <>
           <div>
             <Button disabled={dirty} onClick={() => setSelected(null)}>
               {course ? 'Back to sections' : 'Back to drafts'}
             </Button>
           </div>
-          <DraftEditor key={draft.id} draft={draft} onDirtyChange={setDirty} />
+          {draft.payload.authoring && !((draft.payload as Payload).skills ?? []).length
+            ? <Card><p>Your knowledge notes are saved. Return whenever you want to add an objective, example and application question, or prepare a local proposal above. Activation becomes available when the lesson is complete.</p></Card>
+            : <DraftEditor key={draft.id} draft={draft} onDirtyChange={setDirty} />}
         </>
       )}
     </div>

@@ -38,7 +38,7 @@ function NotebookLabPanel({ courseId }: { courseId: string }) {
     <section aria-label="Complete local notebook" className="grid gap-3">
       <h3 className="font-semibold">Complete notebook with datasets and scientific libraries</h3>
       <p>
-        Prepare a private working copy and start Jupyter on this Mac. Existing edits are preserved. The
+        Prepare a private working copy and start Jupyter on this computer. Existing edits are preserved. The
         notebook opens with its datasets alongside it; no upload or terminal command is needed.
       </p>
       <Button disabled={busy} onClick={() => void start(false)}>

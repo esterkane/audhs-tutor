@@ -59,8 +59,8 @@ export function VoiceSetup() {
       <CardTitle>Voice</CardTitle>
       <AudioControls />
       <p className="text-sm text-muted mb-2">
-        Talk to the tutor and hear the answer. Speech recognition runs on this Mac (MLX Whisper); the voice
-        comes from a Kokoro server you start yourself. Four separate steps, all yours to click: install,
+        Talk to the tutor and hear the answer. Speech recognition runs locally on this computer; the voice
+        comes from your local Kokoro server. Four separate steps, all yours to click: install,
         verify, test, activate. Recordings are deleted after transcription unless you turn retention on.
       </p>
       <ul className="text-sm grid gap-1" aria-label="Voice components">

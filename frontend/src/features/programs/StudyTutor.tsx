@@ -540,7 +540,7 @@ function Conversation({
       )}
       <p className="text-sm text-muted mt-2">
         Tutor feedback is guidance, not a verified grade. Answer checks send your work and study context to
-        the selected feedback model (OpenAI by default). <Link to="/models">Choose models</Link>
+        the selected feedback model. <Link to="/models">Choose models</Link>
       </p>
       <details className="text-sm text-muted mt-2">
         <summary>What is sent to the tutor?</summary>

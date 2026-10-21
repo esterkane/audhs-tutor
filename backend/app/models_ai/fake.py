@@ -4,7 +4,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.models_ai.provider import (
     Message,
@@ -14,6 +14,7 @@ from app.models_ai.provider import (
     StreamEvent,
     StreamUsage,
     StructuredOutputError,
+    structured_reason,
 )
 
 
@@ -71,7 +72,17 @@ class FakeProvider:
                     tokens_out=self.tokens_out,
                     last_text="{not json",
                 )
-            parsed = response_model.model_validate(self.structured)
+            try:
+                parsed = response_model.model_validate(self.structured)
+            except ValidationError as exc:
+                raise StructuredOutputError(
+                    str(exc),
+                    attempts=1,
+                    tokens_in=self.tokens_in,
+                    tokens_out=self.tokens_out,
+                    last_text="",
+                    reason_code=structured_reason(exc),
+                ) from exc
             text = parsed.model_dump_json()
         return ProviderResult(
             text=text,

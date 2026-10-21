@@ -497,3 +497,40 @@ async def test_structured_success_keeps_its_existing_validation_policy(seeded, m
     assert result.result.parsed == Grade(passed=True)
     assert len(local.calls) == 1
     assert (await _calls(seeded))[0].outcome == "ok"
+
+
+@pytest.mark.parametrize("hosted_call", [False, True])
+async def test_buffered_cancellation_logs_once_and_reconciles_unknown_usage(seeded, hosted_call):
+    entered = asyncio.Event()
+
+    class Pending(FakeProvider):
+        async def complete(self, *args, **kwargs):
+            entered.set()
+            await asyncio.Event().wait()
+
+    provider = Pending()
+    budget = Budget(1.0)
+    gateway = _gw(seeded, provider, provider, budget)
+    task = asyncio.create_task(
+        gateway.complete(
+            TaskClass.TUTOR_DEEP if hosted_call else TaskClass.EXPLAIN_SIMPLE,
+            MSGS,
+            response_model=Grade,
+        )
+    )
+    await entered.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    calls = await _calls(seeded)
+    assert len(calls) == 1 and calls[0].outcome == "cancelled" and not calls[0].ok
+    assert calls[0].usage_source == "unavailable"
+    assert calls[0].cost_status == ("unknown" if hosted_call else "free")
+    assert calls[0].tokens_in == calls[0].tokens_out == 0
+    spend = await budget.spend_today(seeded)
+    assert spend.open_reservations == 0
+    if hosted_call:
+        reservations = await _reservations(seeded)
+        assert len(reservations) == 1 and reservations[0].status == "reconciled"
+        assert spend.unknown_reserved == pytest.approx(calls[0].reserved_usd)
+        assert reservations[0].settled_usd == pytest.approx(calls[0].reserved_usd)

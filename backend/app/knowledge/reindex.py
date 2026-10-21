@@ -108,6 +108,7 @@ async def build_repo(
     settings: Settings,
     *,
     embedding_version: int = 1,
+    collection: str | None = None,
     embedder: EmbeddingProvider | None = None,
 ) -> QdrantHybridRepository:
     require_loopback(settings.qdrant_url)
@@ -119,6 +120,7 @@ async def build_repo(
         emb,
         spec,
         dims=dims,
+        collection=collection,
         embedding_version=embedding_version,
         reranker=await reranker_for(db, settings),
         max_per_document=settings.retrieval_max_per_document,

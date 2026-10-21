@@ -148,3 +148,33 @@ async def test_qdrant_rerank_and_cap() -> None:
         assert res.trace.reranked and res.trace.fused and res.trace.latency_ms >= 0
     finally:
         await client.delete_collection(repo.collection)
+
+
+def test_sparse_encoder_prefers_installed_assets_and_falls_back_only_when_missing(monkeypatch):
+    from app.knowledge.qdrant_hybrid import SparseEncoder
+
+    calls = []
+    asset = object()
+
+    def cached(**kwargs):
+        calls.append(kwargs)
+        return asset
+
+    monkeypatch.setattr("fastembed.SparseTextEmbedding", cached)
+    encoder = SparseEncoder()
+    assert encoder._load() is asset and encoder._load() is asset
+    assert calls == [{"model_name": "Qdrant/bm25", "local_files_only": True}]
+    calls.clear()
+
+    def missing(**kwargs):
+        calls.append(kwargs)
+        if kwargs.get("local_files_only"):
+            raise ValueError("Assets missing")
+        return asset
+
+    monkeypatch.setattr("fastembed.SparseTextEmbedding", missing)
+    assert SparseEncoder()._load() is asset
+    assert calls == [
+        {"model_name": "Qdrant/bm25", "local_files_only": True},
+        {"model_name": "Qdrant/bm25"},
+    ]

@@ -26,6 +26,7 @@ claude-code-implementation-prompts.md
 
 # Private local acquisition and execution records
 private/
+private-state/
 local-only/
 *scraper*
 *scraping*

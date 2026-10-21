@@ -71,6 +71,17 @@ class SqliteHybridRepository:
             c.execute(f"{ddl}(id TEXT PRIMARY KEY, embedding float[{self.dims}])")
         c.commit()
 
+    async def existing_ids(self, ids: list[str]) -> set[str]:
+        found: set[str] = set()
+        for start in range(0, len(ids), 256):
+            batch = ids[start : start + 256]
+            marks = ",".join("?" for _ in batch)
+            found.update(
+                row[0]
+                for row in self.conn.execute(f"SELECT id FROM chunks WHERE id IN ({marks})", batch)
+            )
+        return found
+
     async def upsert(self, chunks: list[ChunkRecord]) -> int:
         vectors = await self.embedder.embed(self.embed_spec, [c.text for c in chunks])
         cur = self.conn.cursor()

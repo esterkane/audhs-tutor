@@ -21,6 +21,43 @@ from app.schemas.provisional_feedback import (
 )
 
 
+def verified_excerpt(evidence: str, answer: str) -> str | None:
+    """Remove only our known data wrapper, then require a verbatim learner excerpt."""
+    quote = evidence.strip().strip('"“”').strip()
+    opening, closing = "<learner_answer>", "</learner_answer>"
+    if quote.startswith(opening) and quote.endswith(closing):
+        quote = quote[len(opening) : -len(closing)].strip()
+    if not quote or quote.casefold() == "absent" or quote not in answer:
+        return None
+    return quote
+
+
+def addressed_summary(result: GradeResult, answer: str) -> tuple[str, str]:
+    """Render consistent advisory feedback from complete, quoted rubric evidence.
+
+    Do not alter criterion judgments or the preserved raw model output. Errors,
+    omissions, misconceptions and unverified quotations retain specific model help.
+    """
+    original = result.feedback, result.next_step
+    if (
+        not result.criterion_results
+        or any(not row.passed for row in result.criterion_results)
+        or (result.misconception and result.misconception.strip())
+    ):
+        return original
+    quotes = [verified_excerpt(row.evidence, answer) for row in result.criterion_results]
+    if any(quote is None for quote in quotes):
+        return original
+    quote = quotes[0]
+    assert quote is not None
+    if len(quote) > 240:
+        quote = quote[:237].rstrip() + "…"
+    return (
+        f"The model found evidence for each listed criterion. For example, you wrote: “{quote}”.",
+        "Continue with this lesson, or try another question on the same idea.",
+    )
+
+
 async def get_owned(db: AsyncSession, learner_id: str, feedback_id: str) -> ProvisionalFeedback:
     row = await db.scalar(
         select(ProvisionalFeedback).where(
@@ -107,6 +144,7 @@ async def persist_staged(
                 supplied_root=body.revision_of_attempt_id,
                 allow_ended=True,
             )
+        feedback, next_step = addressed_summary(result, body.answer)
         outcome = ProvisionalFeedbackResult(
             feedback_id=new_id(),
             previous_assessed_attempt_id=previous_assessed,
@@ -115,8 +153,8 @@ async def persist_staged(
             session_id=body.session_id,
             skill_id=content["skill_id"],
             content_version=assessment_content.token(content),
-            feedback=result.feedback,
-            next_step=result.next_step,
+            feedback=feedback,
+            next_step=next_step,
             model_route=str(raw["level"]),
             criterion_feedback=[
                 ProvisionalCriterionFeedback(
@@ -126,7 +164,7 @@ async def persist_staged(
                         if c.passed
                         else "Model suggests more explanation is needed. "
                     )
-                    + c.evidence,
+                    + (verified_excerpt(c.evidence, body.answer) or c.evidence),
                 )
                 for c in result.criterion_results
             ],

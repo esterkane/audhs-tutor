@@ -27,6 +27,7 @@ def settings(db_path: Path, tmp_path_factory: pytest.TempPathFactory) -> Setting
     return Settings(
         database_url=f"sqlite+aiosqlite:///{db_path}",
         auto_migrate=False,
+        routing_profile="default",  # isolate model contracts from machine routing overrides
         anthropic_api_key="",
         openai_api_key="",
         daily_budget_usd=1.0,

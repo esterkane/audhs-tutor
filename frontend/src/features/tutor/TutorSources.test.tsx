@@ -66,3 +66,16 @@ it('separates earlier answers from source evidence', () => {
   expect(screen.getByText(/they are not verified evidence/)).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Earlier answer 1' })).toHaveAttribute('href', '/answers/earlier')
 })
+
+
+it('warns when a generated citation number has no matching retrieved passage', () => {
+  renderApp(<TutorSources turn={{ ...turn, sources: [], flagged: ['unsupported_numeric_citation'] }} />)
+  expect(screen.getByRole('alert')).toHaveTextContent('does not match a retrieved passage')
+  expect(screen.getByText('No course source for this explanation.')).toBeVisible()
+})
+
+it('discloses a Socratic format failure without claiming a factual check', () => {
+  renderApp(<TutorSources turn={{ ...turn, flagged: ['socratic_format_mismatch'] }} />)
+  expect(screen.getByRole('alert')).toHaveTextContent('will not be reused')
+  expect(screen.getByRole('alert')).toHaveTextContent('does not verify factual accuracy')
+})

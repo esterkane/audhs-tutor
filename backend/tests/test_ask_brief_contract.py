@@ -145,7 +145,9 @@ async def test_followup_survives_malformed_saved_context_mode(client, db, fake_l
     assert response.status_code == 200, response.text
     saved = (await client.get(f"/api/answers/{response.json()['answer_id']}")).json()
     assert saved["metadata"]["conversation_brief"] == {"mode": "unavailable", "value": None}
-    assert all("CORRUPT_CONTEXT" not in message.content for message in fake_local.calls[-1].messages)
+    assert all(
+        "CORRUPT_CONTEXT" not in message.content for message in fake_local.calls[-1].messages
+    )
 
 
 async def test_brief_branch_identity_and_exact_replay(client, db, fake_local):

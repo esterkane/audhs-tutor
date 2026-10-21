@@ -50,6 +50,13 @@ stt = [
     "scipy>=1.18.1",
 ]
 
+stt-cuda = [
+    "faster-whisper>=1.2.1",
+    "nvidia-cublas-cu12",
+    "nvidia-cudnn-cu12>=9,<10",
+    "scipy>=1.18.1",
+]
+
 [tool.uv]
 package = false
 

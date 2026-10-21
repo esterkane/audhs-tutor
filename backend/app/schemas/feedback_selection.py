@@ -1,6 +1,8 @@
 """Request-bound passage selection; only application code reconstructs literal quotes."""
 
 import hashlib
+import re
+from decimal import Decimal
 from typing import Literal, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -43,8 +45,38 @@ def build_passages(answer: str) -> list[dict[str, str | int]]:
 class SelectionPoint(BaseModel):
     model_config = ConfigDict(extra="forbid")
     passage_id: str = Field(min_length=1, max_length=64)
-    finding: Literal["supported", "needs_revision", "needs_more_information"]
-    explanation: str = Field(min_length=1, max_length=600)
+    finding: Literal["supported", "needs_revision", "needs_more_information"] = Field(
+        description=(
+            "Judge the current learner conclusion against the task: supported means correct, "
+            "needs_revision means an identified error, needs_more_information means missing "
+            "required evidence. Quoting a claim does not make that claim supported."
+        )
+    )
+    explanation: str = Field(
+        min_length=1,
+        max_length=600,
+        description="Explain the finding consistently, evaluating the current answer rather than old history.",
+    )
+
+    @model_validator(mode="after")
+    def correction_changes_value(self) -> Self:
+        # A narrow consistency check, not a semantic grader. Do not silently turn
+        # the finding into supported: the gateway must obtain a repaired response.
+        number = r"([+-]?(?:\d+(?:\.\d+)?|\.\d+))\s*(%?)"
+        pattern = rf"(?:\b(?:equals?|is)|=)\s*{number}\s*,?\s*(?:not|rather than)\s*{number}"
+        # Quoting a self-contradiction to discuss it is legitimate feedback.
+        assertions = re.sub(r"""`[^`]*`|"[^"]*"|'[^']*' """, "", self.explanation, flags=re.VERBOSE)
+        if self.finding != "needs_revision":
+            return self
+        for match in re.finditer(pattern, assertions, re.IGNORECASE):
+            left, left_unit, right, right_unit = match.groups()
+            if Decimal(left) == Decimal(right) and left_unit == right_unit:
+                raise PydanticCustomError(
+                    "correction_unchanged",
+                    "The proposed correction repeats the same numeric value. Recheck the current "
+                    "answer and arithmetic; do not invent an error or an unsupplied format requirement.",
+                )
+        return self
 
 
 class FeedbackSelection(BaseModel):

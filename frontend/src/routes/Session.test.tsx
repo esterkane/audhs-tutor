@@ -239,7 +239,7 @@ it('preserves the assessment answer and confidence after a grading error and all
   vi.unstubAllGlobals()
 })
 
-it('guides explanation to a question with optional controls collapsed and accessible', async () => {
+it.each(['primary', 'template'])('guides explanation with honest route provenance (%s)', async (route) => {
   useMode.setState({ sessionId: 's1', skillId: 'k1', mode: 'steady' })
   const state = {
     ...running0,
@@ -265,6 +265,7 @@ it('guides explanation to a question with optional controls collapsed and access
             'done',
             {
               turn_id: 't1',
+              route,
               sources: [],
               outcome: 'ok',
               text: 'A dot product combines matching components.',
@@ -284,7 +285,7 @@ it('guides explanation to a question with optional controls collapsed and access
   expect(screen.getByText('More ways to learn').closest('details')).not.toHaveAttribute('open')
   fireEvent.click(screen.getByText('Session options'))
   expect(screen.getByRole('button', { name: 'End session' })).toBeVisible()
-  expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Listen to learning goal' })).toBeVisible())
   expect(screen.queryByRole('button', { name: 'Listen to explanation' })).not.toBeInTheDocument()
   expect(await screen.findByText(/No explanation has been prepared yet/)).toBeVisible()
   expect(screen.getByRole('link', { name: 'Read saved explanations' })).toHaveAttribute('href', '/answers?skill_id=k1&surface=tutor')
@@ -293,6 +294,17 @@ it('guides explanation to a question with optional controls collapsed and access
   expect(vi.mocked(fetch).mock.calls.some(([url]) => String(url).includes('/api/voice/speak'))).toBe(false)
   fireEvent.click(screen.getByRole('button', { name: 'Start explanation' }))
   await screen.findByText('A dot product combines matching components.')
+  if (route === 'template') {
+    expect(screen.getByText('Question prepared from your expression. No model was used.')).toBeVisible()
+    expect(screen.queryByText(/Answered by a fallback model/)).not.toBeInTheDocument()
+  } else {
+    expect(screen.queryByText('Question prepared from your expression. No model was used.')).not.toBeInTheDocument()
+  }
+  const startCall = vi.mocked(fetch).mock.calls.find(([url]) => String(url).includes('/api/tutor/stream'))
+  const startBody = JSON.parse(String(startCall?.[1]?.body))
+  expect(startBody.text).toContain('session’s teaching mode')
+  expect(startBody.text).not.toMatch(/three short sections|Markdown headings/)
+
   const explanation = screen.getByRole('region', { name: 'Explanation reader' })
   expect(within(explanation).getByRole('button', { name: 'Listen to explanation' })).toBeVisible()
   expect(within(explanation).getByText('A dot product combines matching components.')).toBeVisible()
@@ -411,7 +423,8 @@ it('does not apply recovered hint metadata to the current assessment and keeps t
     if (url.endsWith('/api/sessions/s1'))
       return jsonResponse({ ...session(state), checkpoint: { hint_level: 2 } })
     if (url.includes('/api/exercises/')) return jsonResponse({}, 404)
-    if (url.endsWith('/api/tutor/stream'))
+    if (url.endsWith('/api/tutor/stream')) {
+      expect(JSON.parse(String(init?.body))).toMatchObject({ explanation_kind: 'follow_up', text: 'My unsent question' })
       return sseResponse([
         [
           'meta',
@@ -438,6 +451,7 @@ it('does not apply recovered hint metadata to the current assessment and keeps t
           },
         ],
       ])
+    }
     if (url.includes('/api/assess/next'))
       return jsonResponse({ item: { id: 'a1', kind: 'explain_back', question: 'Explain.' } })
     if (url.endsWith('/api/assess/attempt')) {

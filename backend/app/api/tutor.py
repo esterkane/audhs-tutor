@@ -8,7 +8,7 @@ from fastapi.responses import StreamingResponse
 
 from app.api.answer_jobs import schedule_index
 from app.api.deps import DB, Gateway, Learner, Repo, SettingsDep
-from app.api.sse import sse
+from app.api.sse import sse, with_heartbeats
 from app.core.errors import AppError
 from app.core.tutor_timing import mark as timing_mark
 from app.db import workspace_requests
@@ -23,6 +23,14 @@ TUTOR_FAILED = (
 )
 
 router = APIRouter(prefix="/tutor", tags=["tutor"])
+
+
+def _intent_payload(body: TurnRequest) -> dict[str, Any]:
+    # The default kind must retain pre-existing request identities for explicit recovery.
+    exclude = {"assessment_answer_id"} if body.assessment_answer_id is None else set()
+    if body.explanation_kind == "lesson":
+        exclude.add("explanation_kind")
+    return {"surface": "lesson_turn", **body.model_dump(mode="json", exclude=exclude)}
 
 
 @router.post("/stream", summary="One tutor turn as SSE (meta, token*, done | error)")
@@ -47,15 +55,7 @@ async def stream(
             learner_id,
             body.session_id,
             str(idempotency_key),
-            {
-                "surface": "lesson_turn",
-                **body.model_dump(
-                    mode="json",
-                    exclude={"assessment_answer_id"}
-                    if body.assessment_answer_id is None
-                    else set(),
-                ),
-            },
+            _intent_payload(body),
         )
     turn = TutorTurn(
         db,
@@ -109,7 +109,7 @@ async def stream(
             yield sse("error", {"code": "tutor_failed", "message": TUTOR_FAILED})
 
     return StreamingResponse(
-        gen(),
+        with_heartbeats(gen()),
         media_type="text/event-stream",
         background=background,
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
@@ -142,15 +142,7 @@ async def turn(
             learner_id,
             body.session_id,
             str(idempotency_key),
-            {
-                "surface": "lesson_turn",
-                **body.model_dump(
-                    mode="json",
-                    exclude={"assessment_answer_id"}
-                    if body.assessment_answer_id is None
-                    else set(),
-                ),
-            },
+            _intent_payload(body),
         )
         if saved is not None:
             return TurnDone.model_validate(saved["done"])

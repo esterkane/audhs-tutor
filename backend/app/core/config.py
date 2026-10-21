@@ -16,12 +16,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=(str(PROJECT_ROOT / ".env"), ".env"), extra="ignore")
 
+    knowledge_authoring_root: str = "./data"
     app_env: str = "dev"
     database_url: str = "sqlite+aiosqlite:///./data/dev.db"
     auto_migrate: bool = True
     ollama_host: str = "http://localhost:11434"
     ollama_keep_alive_s: int = Field(default=1800, ge=0, le=86400)
+    ollama_context_tokens: int = Field(default=16384, ge=2048, le=131072)
     ollama_prepare_on_session_start: bool = True
+    ollama_context_tokenizers: dict[str, str] = Field(default_factory=dict)
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     daily_budget_usd: float = 1.50

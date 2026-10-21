@@ -5,7 +5,7 @@ import { useRef, useState } from 'react'
 import type { TurnDone } from '../../lib/api'
 import { SourceViewer } from '../curriculum/SourceViewer'
 
-import { withheldCount } from './sourceFlags'
+import { withheldCount, hasSocraticFormatMismatch, SOCRATIC_FORMAT_WARNING } from './sourceFlags'
 
 export function TutorSources({ turn }: { turn: TurnDone }) {
   return <TurnSources key={turn.turn_id} turn={turn} />
@@ -19,6 +19,14 @@ function TurnSources({ turn }: { turn: TurnDone }) {
   return (
     <div className="text-sm mt-3">
       <AnswerSaveStatus answerId={turn.answer_id} receipt={turn.save_receipt} error={turn.save_error} text={turn.text} />
+      {turn.flagged?.includes('unsupported_numeric_citation') && (
+        <p role="alert" className="text-warn my-2">
+          This answer includes a citation number that does not match a retrieved passage. Treat that reference as unsupported.
+        </p>
+      )}
+      {hasSocraticFormatMismatch(turn.flagged) && (
+        <p role="alert" className="text-warn my-2">{SOCRATIC_FORMAT_WARNING}</p>
+      )}
       {(turn.memory_answers ?? []).length > 0 && (
         <p className="text-muted">
           Earlier answers informed this explanation; they are not verified evidence.{' '}

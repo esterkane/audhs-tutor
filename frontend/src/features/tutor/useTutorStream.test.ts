@@ -322,3 +322,23 @@ it.each(['ok', 'partial'])('restores completion identity only for a finished rep
   expect(second.result.current.recovery.pending).toBeNull()
   second.unmount()
 })
+
+
+it('keeps a live buffered reply pending on heartbeats without adding answer text', async () => {
+  vi.useFakeTimers()
+  let handlers!: StreamHandlers
+  let finish!: () => void
+  vi.mocked(streamTurn).mockImplementation((_req, h) => {
+    handlers = h
+    return new Promise(resolve => { finish = resolve })
+  })
+  const { result } = renderHook(() => useTutorStream(100))
+  act(() => { void result.current.run(request) })
+  act(() => { vi.advanceTimersByTime(90); handlers.onHeartbeat?.() })
+  act(() => { vi.advanceTimersByTime(90) })
+  expect(result.current.busy).toBe(true)
+  expect(result.current.text).toBe('')
+  act(() => { result.current.stop(); handlers.onHeartbeat?.() })
+  expect(result.current.busy).toBe(false)
+  await act(async () => finish())
+})

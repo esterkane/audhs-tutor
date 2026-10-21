@@ -133,6 +133,9 @@ export function useTutorStream(idleMs = 60_000, scope?: string) {
         await streamTurn(
           req,
           {
+            onHeartbeat: () => {
+              if (current()) touch()
+            },
             onMeta: (meta) => {
               if (current()) {
                 touch()

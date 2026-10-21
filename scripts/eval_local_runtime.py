@@ -696,7 +696,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--model",
-        choices=["llama31-8b", "gemma3-12b", "gemma3-27b", EXPERIMENTAL_MODEL],
+        choices=["llama31-8b", "gemma3-12b", "gemma3-27b", "qwen3-14b", EXPERIMENTAL_MODEL],
         default="llama31-8b",
     )
     args = parser.parse_args()

@@ -166,7 +166,7 @@ def diagnostic_metadata(model: str) -> dict[str, object]:
     }
 
 
-async def run(output: Path, model: str) -> None:
+async def run(output: Path, model: str, selected_cases: list[str] | None = None) -> None:
     if urlparse(get_settings().ollama_host).hostname not in {
         "localhost",
         "127.0.0.1",
@@ -174,6 +174,7 @@ async def run(output: Path, model: str) -> None:
     }:
         raise ValueError("Loopback Ollama required")
     metadata = diagnostic_metadata(model)
+    metadata["selected_cases"] = selected_cases or [case[0] for case in CASES]
     results = []
 
     def persist(status: str) -> None:
@@ -208,6 +209,8 @@ async def run(output: Path, model: str) -> None:
                 gateway = world.gateway(db)
                 gateway.router = BenchmarkRouter(model)
                 for name, exercise, answer, mode, criteria in CASES:
+                    if selected_cases and name not in selected_cases:
+                        continue
                     body = PlaygroundRequest(
                         session_id="eval",
                         intent="check_answer",
@@ -241,7 +244,7 @@ async def run(output: Path, model: str) -> None:
                                 packet,
                                 learner_id=world.learner_id,
                                 response_model=schema,
-                                max_tokens=650,
+                                max_tokens=2400,
                                 metadata={"task": "quoted_feedback_eval", "case": name},
                             ),
                             timeout=120,
@@ -292,7 +295,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument(
-        "--model", choices=["gemma3-12b", "gemma3-27b", "llama31-8b"], default="gemma3-12b"
+        "--model",
+        choices=["gemma3-12b", "gemma3-27b", "llama31-8b", "qwen3-14b"],
+        default="gemma3-12b",
     )
+    parser.add_argument("--case", action="append", choices=[case[0] for case in CASES])
     args = parser.parse_args()
-    asyncio.run(run(args.out, args.model))
+    asyncio.run(run(args.out, args.model, args.case))

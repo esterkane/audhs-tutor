@@ -14,7 +14,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import Settings
 from app.knowledge.ingest.archives import ARCHIVE_SUFFIXES
 from app.knowledge.ingest.converters import find_decoder, find_tool, legacy_office_tool
-from app.knowledge.ingest.media import AUDIO_SUFFIXES, VIDEO_SUFFIXES, MlxWhisperTranscriber
+from app.knowledge.ingest.faster_whisper import FasterWhisperTranscriber
+from app.knowledge.ingest.media import (
+    AUDIO_SUFFIXES,
+    VIDEO_SUFFIXES,
+    MlxWhisperTranscriber,
+    Transcriber,
+)
 from app.knowledge.ingest.service import IngestOptions
 from app.knowledge.ingest.vision import IMAGE_SUFFIXES, OllamaImageReader
 from app.models_ai import registry
@@ -38,12 +44,19 @@ def pull_hint(settings: Settings, task: TaskClass, what: str) -> str:
     return f'no ready {what} model — Models › pull {rid} (make models args="pull {rid}")'
 
 
-async def transcriber_for(db: AsyncSession, settings: Settings) -> MlxWhisperTranscriber | None:
+async def transcriber_for(db: AsyncSession, settings: Settings) -> Transcriber | None:
     try:
         route = await Router(settings.routing_profile).resolve(db, TaskClass.STT)
     except (NoModelReady, KeyError):
         return None
     row = await registry.get_row(db, route.registry_id)
+    if row.runtime == "faster-whisper":
+        local = Path(row.local_path or "")
+        if not row.local_path or not all(
+            (local / f).is_file() for f in ("config.json", "model.bin", "tokenizer.json")
+        ):
+            return None
+        return FasterWhisperTranscriber(str(local), registry_id=row.id, model=row.repo_id)
     if row.runtime != "mlx":
         return None
     local = (
@@ -68,8 +81,9 @@ async def image_reader_for(db: AsyncSession, settings: Settings) -> OllamaImageR
     return OllamaImageReader(settings.ollama_host, spec.model, registry_id=row.id)
 
 
-def stt_package_installed() -> bool:
-    return importlib.util.find_spec("mlx_whisper") is not None
+def stt_package_installed(runtime: str = "mlx") -> bool:
+    package = "faster_whisper" if runtime == "faster-whisper" else "mlx_whisper"
+    return importlib.util.find_spec(package) is not None
 
 
 async def default_options(
@@ -102,7 +116,11 @@ async def capabilities(db: AsyncSession, settings: Settings) -> dict[str, Any]:
     transcriber = await transcriber_for(db, settings)
     reader = await image_reader_for(db, settings)
     decoder = find_decoder()
-    stt_pkg = stt_package_installed()
+    stt_pkg = (
+        importlib.util.find_spec("faster_whisper") is not None
+        if isinstance(transcriber, FasterWhisperTranscriber)
+        else stt_package_installed()
+    )
     if transcriber is None:
         stt_detail = pull_hint(settings, TaskClass.STT, "speech-to-text")
     elif not stt_pkg:

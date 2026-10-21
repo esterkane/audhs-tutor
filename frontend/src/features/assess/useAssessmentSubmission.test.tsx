@@ -127,7 +127,7 @@ it('bounds an abort-resistant request and ignores its late result', async () => 
     sent = hook.result.current.mutateAsync(body).catch((error) => error)
   })
   await act(async () => {
-    await vi.advanceTimersByTimeAsync(15001)
+    await vi.advanceTimersByTimeAsync(180_001)
   })
   expect(await sent).toBeInstanceOf(Error)
   expect(sessionStorage.getItem(assessmentRecoveryKey('session'))).not.toBeNull()
@@ -448,4 +448,30 @@ it('continues only after checking, prevents duplicate sends, and rechecks after 
   expect(sessionStorage.getItem(assessmentRecoveryKey('session'))).toBe(original)
   await act(async () => { await hook.result.current.recovery.continuePrepared() })
   expect(fetcher).toHaveBeenCalledTimes(2)
+})
+
+
+it('allows slow local grading past fifteen seconds without aborting or duplicating the POST', async () => {
+  vi.useFakeTimers()
+  let release!: (response: Response) => void
+  let signal!: AbortSignal
+  const fetcher = vi.fn((_url: string, init?: RequestInit) => {
+    signal = init!.signal as AbortSignal
+    return new Promise<Response>((resolve) => { release = resolve })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  const hook = setup('slow-local-session')
+  let sent!: Promise<unknown>
+  await act(async () => {
+    sent = hook.result.current.mutateAsync({ ...body, session_id: 'slow-local-session' })
+  })
+  await act(async () => { await vi.advanceTimersByTimeAsync(30_000) })
+  expect(signal.aborted).toBe(false)
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  await act(async () => {
+    release(jsonResponse(reply))
+    await sent
+  })
+  expect(sessionStorage.getItem(assessmentRecoveryKey('slow-local-session'))).toBeNull()
+  expect(fetcher).toHaveBeenCalledTimes(1)
 })

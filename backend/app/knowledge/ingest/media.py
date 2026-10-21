@@ -382,6 +382,7 @@ def load_cached(
             duration_s=float(data.get("duration_s", 0.0)),
             decoder=data.get("decoder"),
             source_format=data.get("source_format"),
+            meta=data.get("meta", {}),
             cached=True,
         )
     except (TypeError, ValueError):
@@ -401,6 +402,7 @@ def save_cached(cache_dir: Path | None, content_hash: str, res: TranscriptResult
         "duration_s": res.duration_s,
         "decoder": res.decoder,
         "source_format": res.source_format,
+        "meta": res.meta,
     }
     target = _cache_path(cache_dir, content_hash)
     tmp = target.with_name(target.name + ".tmp")
@@ -528,7 +530,7 @@ def transcribe_media(
     except Exception as e:
         raise RuntimeCallFailed(
             task="stt",
-            provider="mlx",
+            provider=getattr(transcriber, "provider", "mlx"),
             registry_id=transcriber.registry_id,
             model=transcriber.model,
             error=f"{type(e).__name__}: {e}",

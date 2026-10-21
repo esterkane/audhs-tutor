@@ -174,3 +174,24 @@ it('filters alternative explanations and keeps unknown historical provenance exp
   expect(await screen.findByText(/Original source details were not recorded/)).toBeVisible()
   expect(screen.getByText('Old analogy [1].')).toBeVisible()
 })
+
+
+it('retains the citation mismatch warning when reopening a saved answer without generating', async () => {
+  const fetcher = vi.fn(async () => jsonResponse({ ...summary, text: 'A saved claim [999].',
+    request: {}, metadata: { flagged: ['unsupported_numeric_citation'] }, turn_id: 't1' }))
+  vi.stubGlobal('fetch', fetcher)
+  open('/answers/a1')
+  expect(await screen.findByRole('alert')).toHaveTextContent('does not match a retrieved passage')
+  expect(screen.getByText(/A saved claim/)).toBeVisible()
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})
+
+it('retains the Socratic warning in readable history without generating again', async () => {
+  const fetcher = vi.fn(async () => jsonResponse({ ...summary, text: 'An explicit explanation.',
+    request: {}, metadata: { flagged: ['socratic_format_mismatch'] }, turn_id: 't1' }))
+  vi.stubGlobal('fetch', fetcher)
+  open('/answers/a1')
+  expect(await screen.findByRole('alert')).toHaveTextContent('requested Socratic format')
+  expect(screen.getByText('An explicit explanation.')).toBeVisible()
+  expect(fetcher).toHaveBeenCalledTimes(1)
+})

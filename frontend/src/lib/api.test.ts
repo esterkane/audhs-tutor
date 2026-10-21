@@ -57,3 +57,16 @@ it('sends the identity header and exposes an unresolved claim without generic HT
   })
   vi.unstubAllGlobals()
 })
+
+
+it('dispatches heartbeats separately from answer tokens', async () => {
+  vi.stubGlobal('fetch', vi.fn(async () => sseResponse([
+    ['heartbeat', {}], ['token', { text: 'Answer' }],
+  ])))
+  const heartbeat = vi.fn()
+  const token = vi.fn()
+  await streamTurn({ session_id: 's', text: 'x' }, { onHeartbeat: heartbeat, onToken: token })
+  expect(heartbeat).toHaveBeenCalledOnce()
+  expect(token).toHaveBeenCalledExactlyOnceWith('Answer')
+  vi.unstubAllGlobals()
+})

@@ -43,6 +43,7 @@ export function useCurrentSession() {
 }
 
 export function useCheckpoint() {
+  const qc = useQueryClient()
   return useMutation({
     mutationFn: ({
       id,
@@ -51,6 +52,19 @@ export function useCheckpoint() {
       id: string
       body: { phase?: string; skill_id?: string | null; block_index?: number }
     }) => api.checkpoint(id, body),
+    onSuccess: (checkpoint, { id }) => {
+      // Resume may mount from cached data before its background refresh finishes.
+      // Publish the server-confirmed sub-phase without remounting the live lesson.
+      qc.setQueryData<SessionOut>(['session', id], (current) => {
+        if (!current || current.state.block_id !== checkpoint.block_id) return current
+        return {
+          ...current,
+          checkpoint,
+          state: { ...current.state, phase: checkpoint.phase as SessionOut['state']['phase'] },
+        }
+      })
+      void qc.invalidateQueries({ queryKey: ['session-current'] })
+    },
   })
 }
 

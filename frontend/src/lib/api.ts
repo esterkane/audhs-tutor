@@ -5,8 +5,9 @@ export type SessionOut = Schemas['SessionOut']
 export type SkillView = Schemas['SkillView']
 export type SkillList = Schemas['SkillList']
 export type TurnDone = Schemas['TurnDone']
-export type TurnRequest = Omit<Schemas['TurnRequest'], 'action' | 'spoken'> & {
+export type TurnRequest = Omit<Schemas['TurnRequest'], 'action' | 'spoken' | 'explanation_kind'> & {
   action?: Schemas['TurnRequest']['action']
+  explanation_kind?: Schemas['TurnRequest']['explanation_kind']
 }
 /** Emitted on the SSE stream only (not part of the OpenAPI response models). */
 export type TurnMeta = {
@@ -129,6 +130,7 @@ export const api = {
 }
 
 export type StreamHandlers = {
+  onHeartbeat?: () => void
   onMeta?: (m: TurnMeta) => void
   onToken?: (t: string) => void
   onDone?: (d: TurnDone) => void
@@ -186,7 +188,8 @@ function dispatch(block: string, h: StreamHandlers) {
   }
   if (!data) return
   const payload = JSON.parse(data)
-  if (event === 'meta') h.onMeta?.(payload as TurnMeta)
+  if (event === 'heartbeat') h.onHeartbeat?.()
+  else if (event === 'meta') h.onMeta?.(payload as TurnMeta)
   else if (event === 'token') h.onToken?.((payload as { text: string }).text)
   else if (event === 'done') h.onDone?.(payload as TurnDone)
   else if (event === 'error') h.onError?.(payload as { code: string; message: string })

@@ -66,6 +66,16 @@ async def seed(db: AsyncSession, settings: Settings) -> list[ModelRegistry]:
             r.status = "ready" if settings.openai_api_key else "available"
         elif r.runtime == "fastembed":
             r.status = "ready" if f"fastembed:{r.repo_id}" in installed else "available"
+        elif r.runtime == "faster-whisper":
+            local = Path(r.local_path or "")
+            r.status = (
+                "ready"
+                if r.local_path
+                and all(
+                    (local / f).is_file() for f in ("config.json", "model.bin", "tokenizer.json")
+                )
+                else "available"
+            )
         elif r.runtime == "mlx":
             r.status = "ready" if f"mlx:{r.repo_id}" in installed else "available"
             if r.status == "ready" and not r.local_path:
@@ -235,7 +245,7 @@ async def bench_reranker(model: str, cache_dir: Any) -> dict[str, float]:
     return {"ms_per_16_docs": round((time.perf_counter() - t0) / 3 * 1000, 1)}
 
 
-async def bench_stt(local_path: str, registry_id: str) -> dict[str, float]:
+async def bench_stt(local_path: str, registry_id: str, *, runtime: str = "mlx") -> dict[str, float]:
     """Ten seconds of synthetic audio through the transcriber: reports wall time per 10 s of
     audio (real-time factor = ms / 10000). Needs the optional `mlx-whisper` extra."""
     import math
@@ -243,9 +253,14 @@ async def bench_stt(local_path: str, registry_id: str) -> dict[str, float]:
     import tempfile
     import wave
 
-    from app.knowledge.ingest.media import MlxWhisperTranscriber
+    from app.knowledge.ingest.faster_whisper import FasterWhisperTranscriber
+    from app.knowledge.ingest.media import MlxWhisperTranscriber, Transcriber
 
-    tr = MlxWhisperTranscriber(local_path, registry_id=registry_id)
+    tr: Transcriber = (
+        FasterWhisperTranscriber(local_path, registry_id=registry_id)
+        if runtime == "faster-whisper"
+        else MlxWhisperTranscriber(local_path, registry_id=registry_id)
+    )
 
     def _run() -> dict[str, float]:
         with tempfile.TemporaryDirectory() as td:
@@ -280,10 +295,10 @@ async def bench(
     spec = registry.spec_from_row(row)
     if row.runtime == "fastembed":
         result = await bench_reranker(spec.model, settings.models_dir_resolved / "fastembed")
-    elif row.runtime == "mlx" and row.role == "stt":
+    elif row.runtime in ("mlx", "faster-whisper") and row.role == "stt":
         local = row.local_path or str(mlx_snapshot_dir(settings.models_dir_resolved, row.repo_id))
         _say(progress, f"transcribing 10 s of audio with {row.id} …")
-        result = await bench_stt(local, row.id)
+        result = await bench_stt(local, row.id, runtime=row.runtime)
     else:
         provider = build_providers(settings).get(spec.provider)
         if provider is None:

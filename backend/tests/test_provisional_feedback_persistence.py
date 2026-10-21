@@ -73,6 +73,12 @@ async def test_atomic_replay_is_advisory_without_learning_writes(db, learner):
     first = await provisional_feedback.persist_staged(db, owner, claim)
     second = await provisional_feedback.persist_staged(db, owner, claim)
     assert first == second
+    assert "Train only" in first.feedback
+    assert "Compare the held-out set" not in first.feedback
+    assert "same idea" in first.next_step
+    preserved = await provisional_feedback.get_owned(db, owner, first.feedback_id)
+    assert preserved.model_output_json["result"]["feedback"] == "Compare the held-out set."
+    assert preserved.outcome_json["feedback"] == first.feedback
     assert (
         await provisional_feedback.get_owned(db, owner, first.feedback_id)
     ).answer == "Train only"

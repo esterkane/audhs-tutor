@@ -25,6 +25,34 @@ class GradeResult(BaseModel):
         return sum(1 for c in self.criterion_results if c.passed) / len(self.criterion_results)
 
 
+def rubric_grade_model(criteria: list[str]) -> type[GradeResult]:
+    """Validate rubric identity inside provider parsing so logged repairs can run.
+
+    Never infer identities from list position or accept paraphrased criteria as evidence.
+    """
+    expected = {name.strip().casefold() for name in criteria}
+
+    class RubricGradeResult(GradeResult):
+        @model_validator(mode="after")
+        def complete_rubric(self) -> "RubricGradeResult":
+            returned = [row.criterion.strip().casefold() for row in self.criterion_results]
+            if (
+                not expected
+                or len(expected) != len(criteria)
+                or len(returned) != len(criteria)
+                or set(returned) != expected
+            ):
+                raise ValueError(
+                    "Return every rubric criterion exactly once, copying its entire text "
+                    "verbatim (including text after a colon): " + repr(criteria)
+                )
+            if any(not row.evidence.strip() for row in self.criterion_results):
+                raise ValueError("Every criterion requires quoted learner evidence or 'absent'.")
+            return self
+
+    return RubricGradeResult
+
+
 class AssessmentView(BaseModel):
     content_version: str | None = None
     id: str

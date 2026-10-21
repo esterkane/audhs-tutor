@@ -67,7 +67,7 @@ async def save(
         ):
             raise AppError(
                 "invalid_replacement",
-                "This correction is hidden, reported incorrect/outdated, or already replaced. "
+                "This correction is hidden, reported incorrect/outdated, replaced, or has a warning. "
                 "Review its feedback first.",
                 409,
             )

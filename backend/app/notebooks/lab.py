@@ -244,7 +244,10 @@ class NotebookLab:
                     "Notebook tools are incomplete. Install or repair the local environment.",
                 )
                 return
-            self.status, self.message = "starting", "Starting authenticated Jupyter on this Mac…"
+            self.status, self.message = (
+                "starting",
+                "Starting authenticated Jupyter on this computer…",
+            )
             if self.process is None or self.process.returncode is not None:
                 self.process = await asyncio.create_subprocess_exec(
                     str(python),

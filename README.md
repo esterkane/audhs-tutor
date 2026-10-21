@@ -80,14 +80,21 @@ Feedback does not retrain a model, silently rewrite active lessons or change mas
 - Local media extraction with guarded WAV normalization, transcript caching and a bounded, versioned vision cache.
 - Python exercises with a CodeMirror editor, textarea fallback and a pinned, locally served Pyodide runtime.
 - A model registry with inspectable task routing, usage accounting and budget limits.
-- Optional local voice using MLX Whisper and a persistent Kokoro server, including early speech at the first suitable clause.
+- Personal knowledge authoring from notes or uploads through Source → Research → Write → Review, with editable research questions, local tutor discussion, retrieved personal notes and explicit section acceptance.
+- Optional local voice using Faster Whisper on Linux/WSL or MLX Whisper on Apple Silicon and a persistent Kokoro server, including early speech at the first suitable clause.
 - Learner backups, optional authenticated password encryption and explicit private full-corpus recovery.
 
 Imported material is not automatically a reviewed or published course. Course curation and curriculum improvements remain in progress. Voice implementation is available, but the personal-recording acceptance gate remains open. See [the roadmap](docs/ROADMAP.md) and [handoff](docs/HANDOFF.md) for current evidence and outstanding work.
 
 ## Local setup
 
-The primary development target is **macOS on Apple Silicon**. The optional MLX speech stack requires that platform. CI tests the core application on Linux using fake model providers.
+The application runs on macOS and Linux, including Windows through WSL2. The optional MLX speech stack requires Apple Silicon; the `wsl` routing profile uses Faster Whisper instead. CI tests the core application on Linux using fake model providers. See the [local workflow update](docs/LOCAL-WORKFLOW-UPDATE.md) for authoring behavior and current quality limits.
+
+For local-only WSL use, set `ROUTING_PROFILE=wsl`, `DAILY_BUDGET_USD=0`, and leave
+both hosted API keys empty in your private `.env`. Models must be installed and
+assigned through the model registry; the portable speech registry entry is
+`whisper-turbo-ct2`. Databases, downloaded weights and course content are local
+runtime files, not part of a clone of this repository.
 
 Prerequisites:
 

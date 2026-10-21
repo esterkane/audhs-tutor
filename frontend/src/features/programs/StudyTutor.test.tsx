@@ -483,7 +483,7 @@ it('discloses the answer-feedback provider and sends only an explicit check acti
   active()
   vi.mocked(askTutor).mockResolvedValue(reply)
   renderApp(<StudyTutor context="30 of 50 rows remain" answer="30/50 = 0.9" reviewOnly />)
-  expect(screen.getByText(/OpenAI by default/)).toBeVisible()
+  expect(screen.getByText(/the selected feedback model\./)).toBeVisible()
   expect(askTutor).not.toHaveBeenCalled()
   fireEvent.click(screen.getByRole('button', { name: 'Check my answer' }))
   await screen.findByText(reply.text)

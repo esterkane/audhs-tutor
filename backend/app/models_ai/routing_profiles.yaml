@@ -46,6 +46,16 @@ registry_defaults:
     quant: Q4_K_M
     context_len: 131072
     licence: Gemma Terms of Use
+  - id: qwen3-14b
+    display_name: Qwen3 14B (local feedback candidate)
+    source: ollama_library
+    repo_id: qwen3
+    file_or_tag: qwen3:14b
+    runtime: ollama
+    role: chat
+    quant: Q4_K_M
+    context_len: 32768
+    licence: Apache-2.0
   - id: qwen3-coder-30b-a3b
     display_name: Qwen3-Coder 30B-A3B
     source: ollama_library
@@ -122,6 +132,14 @@ registry_defaults:
     price_in_per_mtok: 1.0
     price_out_per_mtok: 5.0
 
+  - id: whisper-turbo-ct2
+    display_name: Whisper large-v3-turbo (local CUDA)
+    source: local
+    repo_id: dropbox-dash/faster-whisper-large-v3-turbo
+    runtime: faster-whisper
+    role: stt
+    licence: MIT
+
 profiles:
   default:
     chat:          {primary: llama31-8b}
@@ -149,3 +167,91 @@ profiles:
     stt:           {primary: whisper-large-v3-turbo}
     tts:           {primary: kokoro-82m}
     vision:        {primary: gemma3-12b}   # multimodal; llama3.1 has no vision, deliberately no fallback
+
+  wsl:
+    chat:
+      primary: llama31-8b
+    chat_fast:
+      primary: llama31-8b
+    format:
+      primary: gemma3-12b
+      fallbacks:
+      - llama31-8b
+    summarize:
+      primary: gemma3-12b
+      fallbacks:
+      - llama31-8b
+    query_expand:
+      primary: gemma3-12b
+      fallbacks:
+      - llama31-8b
+    gen_items:
+      primary: gemma3-12b
+      fallbacks:
+      - llama31-8b
+    explain_simple:
+      primary: qwen3-14b
+      fallbacks:
+      - llama31-8b
+      - hosted-medium
+    # Owner-requested local workspace feedback on this Windows/WSL runtime.
+    # No automatic fallback to the weaker candidates or a hosted provider.
+    answer_feedback:
+      primary: qwen3-14b
+    hint:
+      primary: gemma3-12b
+      fallbacks:
+      - llama31-8b
+      - hosted-medium
+    code_local:
+      primary: qwen3-coder-30b-a3b
+      fallbacks:
+      - llama31-8b
+      - hosted-strong
+    grade_simple:
+      primary: gemma3-12b
+      fallbacks:
+      - llama31-8b
+      - hosted-medium
+    grade_rubric:
+      primary: hosted-strong
+      fallbacks:
+      - hosted-medium
+    tutor_deep:
+      primary: hosted-strong
+      fallbacks:
+      - llama31-8b
+    socratic:
+      primary: hosted-strong
+      fallbacks:
+      - llama31-8b
+    challenge:
+      primary: hosted-strong
+      fallbacks:
+      - llama31-8b
+    code_review:
+      primary: hosted-strong
+      fallbacks:
+      - llama31-8b
+    conflict_resolution:
+      primary: hosted-strong
+      fallbacks:
+      - llama31-8b
+    tutor_medium:
+      primary: hosted-medium
+      fallbacks:
+      - llama31-8b
+    judge:
+      primary: hosted-medium
+      fallbacks:
+      - hosted-strong
+    embed:
+      primary: nomic-embed-text
+    rerank:
+      primary: ms-marco-minilm-l6
+    stt:
+      primary: whisper-turbo-ct2
+    tts:
+      primary: kokoro-82m
+    vision:
+      primary: gemma3-12b

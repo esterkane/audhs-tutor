@@ -34,7 +34,12 @@ class SparseEncoder:
         if self._model is None:
             from fastembed import SparseTextEmbedding
 
-            self._model = SparseTextEmbedding(model_name=self.model_name)
+            try:
+                # Installed lexical assets need no Hub metadata round-trip on each process start.
+                self._model = SparseTextEmbedding(model_name=self.model_name, local_files_only=True)
+            except (ValueError, OSError):
+                # Preserve normal first-install behavior when the assets are genuinely absent.
+                self._model = SparseTextEmbedding(model_name=self.model_name)
         return self._model
 
     async def encode(self, texts: list[str]) -> list[qm.SparseVector]:
@@ -64,6 +69,7 @@ class QdrantHybridRepository:
         embed_spec: ModelSpec,
         *,
         dims: int,
+        collection: str | None = None,
         embedding_version: int = 1,
         sparse: SparseEncoder | None = None,
         on_disk: bool = True,
@@ -78,7 +84,7 @@ class QdrantHybridRepository:
         self.embed_spec = embed_spec
         self.dims = dims
         self.embedding_version = embedding_version
-        self.collection = f"corpus_v{embedding_version}"
+        self.collection = collection or f"corpus_v{embedding_version}"
         self.sparse = sparse or SparseEncoder()
         self.on_disk = on_disk
         self.quantize = quantize
@@ -127,6 +133,18 @@ class QdrantHybridRepository:
             await self.client.create_payload_index(self.collection, field, schema)
 
     # ------------------------------------------------------------------ write
+    async def existing_ids(self, ids: list[str]) -> set[str]:
+        """Persistent presence check; never re-embed already stored content after restart."""
+        await self.ensure_collection()
+        found: set[str] = set()
+        for start in range(0, len(ids), 256):
+            mapping = {point_id(cid): cid for cid in ids[start : start + 256]}
+            points = await self.client.retrieve(
+                self.collection, ids=list(mapping), with_payload=False, with_vectors=False
+            )
+            found.update(mapping[str(point.id)] for point in points if str(point.id) in mapping)
+        return found
+
     async def upsert(self, chunks: list[ChunkRecord]) -> int:
         await self.ensure_collection()
         n = 0

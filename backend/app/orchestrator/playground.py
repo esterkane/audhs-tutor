@@ -54,7 +54,7 @@ from app.schemas.starter import StarterPlan
 
 logger = logging.getLogger(__name__)
 
-VERSION = f"playground.tutor.v15+{prompts.WORKSPACE_POLICY_VERSION}"
+VERSION = f"playground.tutor.v17+{prompts.WORKSPACE_POLICY_VERSION}"
 
 
 async def validate_lesson_origin(
@@ -145,7 +145,11 @@ def messages(
             role="system",
             content=prompts.workspace_policy()
             + "\n\n"
-            + prompts.playground_task(grounded=evidence is not None)
+            + (
+                prompts.answer_feedback_task()
+                if body.intent == "check_answer"
+                else prompts.playground_task(grounded=evidence is not None)
+            )
             + (
                 "\nApplication evidence state: the workspace client marks output stale. No current execution output "
                 "is supplied. historical_execution_output belongs to an earlier code state and "
@@ -223,10 +227,6 @@ def messages(
         ),
     ]
 
-    if body.intent == "check_answer":
-        packet[0] = packet[0].model_copy(
-            update={"content": packet[0].content + "\n\n" + prompts.answer_feedback_task()}
-        )
     if body.intent == "starter":
         packet[0] = packet[0].model_copy(
             update={"content": packet[0].content + "\n\n" + prompts.starter_task()}
@@ -429,7 +429,7 @@ async def respond(
                 packet,
                 learner_id=learner_id,
                 session_id=session.id,
-                max_tokens=650 if feedback_schema else 900,
+                max_tokens=2400 if feedback_schema else 900,
                 response_model=StarterPlan if body.intent == "starter" else feedback_schema,
                 metadata={
                     "task": "playground",

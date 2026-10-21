@@ -418,7 +418,7 @@ class VoiceLoop:
             await write_model_call(
                 self.db,
                 ModelCallRecord(
-                    provider="mlx",
+                    provider=getattr(self.stt, "provider", "mlx"),
                     model=self.stt.registry_id,
                     registry_id=self.stt.registry_id,
                     task="stt",
@@ -444,7 +444,7 @@ class VoiceLoop:
         await write_model_call(
             self.db,
             ModelCallRecord(
-                provider="mlx",
+                provider=getattr(self.stt, "provider", "mlx"),
                 model=res.model,
                 registry_id=res.registry_id,
                 task="stt",

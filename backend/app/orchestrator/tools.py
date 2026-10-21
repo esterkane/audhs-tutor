@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.events import EventWriter, Verb
 from app.db.models import LearnerPreference, ParkingLotItem, Session, SkillNode
 from app.kernel import competency, skill_graph
-from app.knowledge.repository import RetrievalRepository, SearchFilters, SearchResult
+from app.knowledge.reindex import records_for_chunk_ids
+from app.knowledge.repository import RetrievalRepository, ScoredChunk, SearchFilters, SearchResult
 from app.schemas.common import ObjectType
 
 TUTOR_MIN_TRUST = 1  # tier 0 (untrusted) never leaves the index for a tutor turn
@@ -25,6 +26,7 @@ async def retrieve(
     course: str | None = None,
     k: int = 6,
     min_trust: int = TUTOR_MIN_TRUST,
+    anchors: list[ScoredChunk] | None = None,
 ) -> SearchResult:
     """Skill-filtered search first; when the node has too little material, widen to the skill's
     *course* before the whole corpus — a lesson published from a course is taught from that course
@@ -35,6 +37,26 @@ async def retrieve(
         SearchFilters(skill_ids=[skill_id] if skill_id else None, min_trust_tier=min_trust),
         k=k,
     )
+    if anchors:
+        anchored = [h for h in anchors if h.chunk.provenance.trust_tier >= min_trust]
+        seen = {h.chunk.id for h in anchored}
+        merged = (anchored + [h for h in res.hits if h.chunk.id not in seen])[:k]
+        for rank, hit in enumerate(merged):
+            hit.rank = rank
+        res = res.model_copy(
+            update={
+                "hits": merged,
+                "trace": res.trace.model_copy(
+                    update={
+                        "chunk_ids": [h.chunk.id for h in merged],
+                        "filters": {
+                            **res.trace.filters,
+                            "authored_sources": [h.chunk.id for h in anchored],
+                        },
+                    }
+                ),
+            }
+        )
     if len(res.hits) >= MIN_HITS or not skill_id:
         return res
     steps: list[tuple[str, SearchFilters]] = []
@@ -61,6 +83,19 @@ async def retrieve(
         }
     )
     return SearchResult(hits=merged[:k], trace=trace)
+
+
+async def lesson_sources(
+    db: AsyncSession, node: SkillNode, *, learner_id: str
+) -> list[ScoredChunk]:
+    """Resolve only the visible lesson's explicit source references; normal quarantine still applies."""
+    lo = await skill_graph.learning_object_for(db, node.id, learner_id=learner_id)
+    records = await records_for_chunk_ids(db, list(lo.sources_json or [])[:6] if lo else [])
+    return [
+        ScoredChunk(chunk=c, score=1.0, rank=i)
+        for i, c in enumerate(records)
+        if c.provenance.trust_tier >= TUTOR_MIN_TRUST
+    ]
 
 
 async def get_learning_contract(

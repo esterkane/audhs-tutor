@@ -108,7 +108,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
     }
   }, [key])
 
-  async function bounded<T>(work: (signal: AbortSignal) => Promise<T>): Promise<T> {
+  async function bounded<T>(work: (signal: AbortSignal) => Promise<T>, timeoutMs = 15_000): Promise<T> {
     if (operation.current) throw new Error('A submission or result check is already running.')
     const controller = new AbortController()
     operation.current = controller
@@ -120,7 +120,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
         new Promise<never>((_, reject) => {
           onAbort = () => reject(new Error('Request interrupted. Check its result before submitting again.'))
           controller.signal.addEventListener('abort', onAbort, { once: true })
-          timer = setTimeout(() => controller.abort(), 15000)
+          timer = setTimeout(() => controller.abort(), timeoutMs)
         }),
       ])
       if (operation.current !== controller || controller.signal.aborted || activeKey.current !== key)
@@ -221,6 +221,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
             headers: { 'Idempotency-Key': pending.id },
             signal,
           }),
+          180_000, // Local grading may include model loading and structured-output repair.
         )
       } catch (cause) {
         recordContentRejection(cause, pending)
@@ -282,6 +283,7 @@ export function useAssessmentSubmission(sessionId: string, endpoint = '/api/asse
           body: JSON.stringify(pending.body),
           signal,
         }),
+        180_000,
       )
       if (result.assessment_id !== pending.body.assessment_id)
         throw new Error('Mismatched assessment result.')

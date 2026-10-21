@@ -1,3 +1,5 @@
+import { AcceptedKnowledge, OptionalKnowledgeTutor } from '../features/curriculum/AcceptedKnowledge'
+import { useAcceptedKnowledge } from '../features/curriculum/acceptedKnowledgeApi'
 import { isProvisional, feedbackIdentity } from '../lib/api'
 import { ProvisionalFeedback } from '../features/assess/ProvisionalFeedback'
 import { SavedLessonReading } from '../features/tutor/SavedLessonReading'
@@ -538,6 +540,7 @@ function TeachPanel({
   useEffect(() => {
     if (!active) stop()
   }, [active, stop])
+  const authoredReading = useAcceptedKnowledge(skillId)
   const savedReading = useSavedReading(skillId)
   const kinds = useKinds(skillId)
   const render = useRender()
@@ -616,6 +619,8 @@ function TeachPanel({
   )
   return (
     <>
+      <AcceptedKnowledge reading={authoredReading} onCheck={onCheck} active={active} />
+      <OptionalKnowledgeTutor authored={!!authoredReading.data || authoredReading.isPending || authoredReading.isError}>
       <SavedLessonReading reading={savedReading} active={active} hasReply={!!text || !!alt || busy} />
       {busy && (
         <Card role="region" aria-label="Explanation in progress">
@@ -719,11 +724,16 @@ function TeachPanel({
               Hint for the next step.
             </p>
           )}
-          {done && done.route && done.route !== 'primary' && (
+          {done && done.route && done.route !== 'primary' && done.route !== 'template' && (
             <p className="text-xs text-muted mt-2" role="status">
               {done.route === 'degraded'
                 ? "Answered by a local model instead of the planned hosted one: today's hosted budget is used up. Nothing else changed."
                 : 'Answered by a fallback model: the planned model was not ready. Nothing else changed.'}
+            </p>
+          )}
+          {done?.route === 'template' && (
+            <p className="text-xs text-muted mt-2" role="status">
+              Question prepared from your expression. No model was used.
             </p>
           )}
           {done && done.registry_id && (
@@ -867,7 +877,7 @@ function TeachPanel({
           <Button
             variant={done || alt || savedReading.data || input.trim() ? 'secondary' : 'primary'}
             disabled={busy}
-            onClick={() => void run({ ...base, text: 'Explain the next idea for this skill in three short sections with Markdown headings: The idea, A worked example, and Try one step. Give enough context to attempt that step. Keep code blocks complete. Do not require a confidence rating.', action: 'explain' })}
+            onClick={() => void run({ ...base, text: 'Help me learn the next idea for this skill using this session’s teaching mode. Give enough context for the next step. Keep code complete. Do not require a confidence rating.', action: 'explain' })}
           >
             {busy ? 'Preparing explanation…' : text ? 'Explain again' : savedReading.data ? 'Ask for another explanation' : 'Start explanation'}
           </Button>
@@ -901,7 +911,7 @@ function TeachPanel({
           <Button
             variant={!done && !alt && input.trim() ? 'primary' : 'secondary'}
             disabled={busy || !input.trim() || input.length > 4000}
-            onClick={() => void run({ ...base, text: input.trim(), action: 'explain' })}
+            onClick={() => void run({ ...base, text: input.trim(), action: 'explain', explanation_kind: 'follow_up' })}
           >
             Send lesson question
           </Button>
@@ -968,6 +978,7 @@ function TeachPanel({
         </Disclosure>
       )}
 
+      </OptionalKnowledgeTutor>
     </>
   )
 }

@@ -2948,6 +2948,176 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/knowledge-material/drafts/{draft_id}/memories/search': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Search Memories */
+    post: operations['search_memories_api_knowledge_material_drafts__draft_id__memories_search_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}/prepare-tutor': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Prepare Research Tutor */
+    post: operations['prepare_research_tutor_api_knowledge_material_drafts__draft_id__prepare_tutor_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}/research-tutor': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Research Tutor */
+    post: operations['research_tutor_api_knowledge_material_drafts__draft_id__research_tutor_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}/research-questions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Research Questions */
+    post: operations['research_questions_api_knowledge_material_drafts__draft_id__research_questions_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/uploads': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Upload */
+    post: operations['upload_api_knowledge_material_uploads_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Create */
+    post: operations['create_api_knowledge_material_drafts_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Update */
+    put: operations['update_api_knowledge_material_drafts__draft_id__put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}/suggest': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Suggest */
+    post: operations['suggest_api_knowledge_material_drafts__draft_id__suggest_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}/revise': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Revise */
+    post: operations['revise_api_knowledge_material_drafts__draft_id__revise_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/skills/{skill_id}/reading': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Accepted Reading */
+    get: operations['accepted_reading_api_knowledge_material_skills__skill_id__reading_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -4583,6 +4753,11 @@ export interface components {
       /** Ingested At */
       ingested_at: string | null
     }
+    /**
+     * Domain
+     * @enum {string}
+     */
+    Domain: 'ai_ml' | 'programming' | 'language' | 'guitar' | 'movement' | 'meta'
     /** DraftCreate */
     DraftCreate: {
       /** Course */
@@ -5195,7 +5370,7 @@ export interface components {
     IngestJobRequest: {
       /**
        * Path
-       * @description local file or folder (Course/Section/Lecture layout)
+       * @description local file or folder (course layout: Course/Section/Lecture)
        */
       path: string
       /** Course */
@@ -5269,7 +5444,7 @@ export interface components {
     IngestRequest: {
       /**
        * Path
-       * @description local file or folder (Course/Section/Lecture layout)
+       * @description local file or folder (course layout: Course/Section/Lecture)
        */
       path: string
       /** Course */
@@ -5360,6 +5535,141 @@ export interface components {
       kinds: {
         [key: string]: unknown
       }[]
+    }
+    /** KnowledgeMaterialInput */
+    KnowledgeMaterialInput: {
+      /** Title */
+      title: string
+      /**
+       * Workflow Step
+       * @default source
+       * @enum {string}
+       */
+      workflow_step: 'source' | 'research' | 'write' | 'review'
+      /** @default ai_ml */
+      domain: components['schemas']['Domain']
+      /** Notes */
+      notes: string
+      research?: components['schemas']['KnowledgeResearch'] | null
+      /** Upload Id */
+      upload_id?: string | null
+      /**
+       * Objective
+       * @default
+       */
+      objective: string
+      /**
+       * Explanation
+       * @default
+       */
+      explanation: string
+      /**
+       * Worked Example
+       * @default
+       */
+      worked_example: string
+      /**
+       * Question
+       * @default
+       */
+      question: string
+      /** Criteria */
+      criteria?: string[]
+    }
+    /** KnowledgeMaterialUpdate */
+    KnowledgeMaterialUpdate: {
+      /** Title */
+      title: string
+      /**
+       * Workflow Step
+       * @default source
+       * @enum {string}
+       */
+      workflow_step: 'source' | 'research' | 'write' | 'review'
+      /** @default ai_ml */
+      domain: components['schemas']['Domain']
+      /** Notes */
+      notes: string
+      research?: components['schemas']['KnowledgeResearch'] | null
+      /** Upload Id */
+      upload_id?: string | null
+      /**
+       * Objective
+       * @default
+       */
+      objective: string
+      /**
+       * Explanation
+       * @default
+       */
+      explanation: string
+      /**
+       * Worked Example
+       * @default
+       */
+      worked_example: string
+      /**
+       * Question
+       * @default
+       */
+      question: string
+      /** Criteria */
+      criteria?: string[]
+      /** Expected Version */
+      expected_version: number
+    }
+    /** KnowledgeReadingOut */
+    KnowledgeReadingOut: {
+      /** Draft Id */
+      draft_id: string
+      /** Title */
+      title: string
+      /** Objective */
+      objective: string
+      /** Explanation */
+      explanation: string
+      /** Worked Example */
+      worked_example: string
+      /** Question */
+      question: string
+      /** Notes */
+      notes: string
+      /** Sources */
+      sources: string[]
+      /** Learning Object Version */
+      learning_object_version: number
+    }
+    /** KnowledgeResearch */
+    KnowledgeResearch: {
+      /** Passage */
+      passage: string
+      /** Topic */
+      topic: string
+      /** Questions */
+      questions: components['schemas']['ResearchQuestion'][]
+      /**
+       * Current
+       * @default 0
+       */
+      current: number
+    }
+    /** KnowledgeSuggestIn */
+    KnowledgeSuggestIn: {
+      /** Expected Version */
+      expected_version: number
+    }
+    /** KnowledgeUploadOut */
+    KnowledgeUploadOut: {
+      /** Document Id */
+      document_id: string
+      /** Filename */
+      filename: string
+      /** Text */
+      text: string
+      /** Sha256 */
+      sha256: string
+      /** Characters */
+      characters: number
     }
     /** LearnerOut */
     LearnerOut: {
@@ -5679,6 +5989,16 @@ export interface components {
       /** Status */
       status: string
     }
+    /** MemorySearchIn */
+    MemorySearchIn: {
+      /** Query */
+      query: string
+    }
+    /** MemorySearchOut */
+    MemorySearchOut: {
+      /** Memories */
+      memories: components['schemas']['PersonalMemory'][]
+    }
     /** MetricOut */
     MetricOut: {
       /** Metric */
@@ -5863,6 +6183,21 @@ export interface components {
       passage_id: string
       /** Quote */
       quote: string
+    }
+    /** PersonalMemory */
+    PersonalMemory: {
+      /** Id */
+      id: string
+      /** Draft Id */
+      draft_id: string
+      /** Version */
+      version: number
+      /** Title */
+      title: string
+      /** Kind */
+      kind: string
+      /** Text */
+      text: string
     }
     /** Plan */
     Plan: {
@@ -6674,6 +7009,146 @@ export interface components {
       /** Created At */
       created_at: string
     }
+    /** ResearchQuestion */
+    ResearchQuestion: {
+      /** Id */
+      id: string
+      /** Prompt */
+      prompt: string
+      /** Source Quote */
+      source_quote?: string | null
+      /**
+       * Findings
+       * @default
+       */
+      findings: string
+      /**
+       * Evidence
+       * @default
+       */
+      evidence: string
+      /**
+       * Unresolved
+       * @default
+       */
+      unresolved: string
+      /**
+       * Section
+       * @default
+       */
+      section: string
+      /** Memory Ids */
+      memory_ids?: string[]
+      /**
+       * Tutor Request
+       * @default
+       */
+      tutor_request: string
+      /**
+       * Tutor Basis
+       * @default
+       */
+      tutor_basis: string
+      /** Tutor Exchanges */
+      tutor_exchanges?: components['schemas']['ResearchTutorExchange'][]
+    }
+    /** ResearchTutorAnswer */
+    ResearchTutorAnswer: {
+      /**
+       * Discussion
+       * @default
+       */
+      discussion: string
+      /**
+       * Needs Check
+       * @default
+       */
+      needs_check: string
+      /** Source Quotes */
+      source_quotes?: string[]
+      /**
+       * Next Question
+       * @default
+       */
+      next_question: string
+      /**
+       * Section
+       * @default
+       */
+      section: string
+    }
+    /** ResearchTutorExchange */
+    ResearchTutorExchange: {
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: 'discuss' | 'draft'
+      /** Request */
+      request: string
+      answer: components['schemas']['ResearchTutorAnswer']
+      /** Model Call Id */
+      model_call_id: string
+      /** Memories */
+      memories?: components['schemas']['PersonalMemory'][]
+      /** Cache Token */
+      cache_token?: string | null
+    }
+    /** ResearchTutorIn */
+    ResearchTutorIn: {
+      /** Expected Version */
+      expected_version: number
+      /** Question Id */
+      question_id: string
+      /**
+       * Action
+       * @enum {string}
+       */
+      action: 'discuss' | 'draft'
+      /**
+       * Refresh
+       * @default false
+       */
+      refresh: boolean
+    }
+    /** ResearchTutorOut */
+    ResearchTutorOut: {
+      /** Id */
+      id: string
+      /** Area Id */
+      area_id?: string | null
+      /** Course */
+      course: string | null
+      /** Section */
+      section: string | null
+      /** Title */
+      title: string
+      /** Status */
+      status: string
+      /** Origin */
+      origin: string
+      /** Version */
+      version: number
+      /** Payload */
+      payload: {
+        [key: string]: unknown
+      }
+      /** Problems */
+      problems: components['schemas']['ProblemOut'][]
+      /** Created At */
+      created_at: string
+      /** Updated At */
+      updated_at: string
+      /** Published At */
+      published_at: string | null
+      /** Model Call Id */
+      model_call_id?: string | null
+      /**
+       * Reused
+       * @default false
+       */
+      reused: boolean
+    }
     /** ResultsOut */
     ResultsOut: {
       experiment: components['schemas']['ExperimentOut']
@@ -7380,6 +7855,12 @@ export interface components {
     }
     /** TurnRequest */
     TurnRequest: {
+      /**
+       * Explanation Kind
+       * @default lesson
+       * @enum {string}
+       */
+      explanation_kind: 'lesson' | 'follow_up'
       /** Assessment Answer Id */
       assessment_answer_id?: string | null
       /** Session Id */
@@ -13573,6 +14054,348 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ReportOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  search_memories_api_knowledge_material_drafts__draft_id__memories_search_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['MemorySearchIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['MemorySearchOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  prepare_research_tutor_api_knowledge_material_drafts__draft_id__prepare_tutor_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: string
+          }
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  research_tutor_api_knowledge_material_drafts__draft_id__research_tutor_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ResearchTutorIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ResearchTutorOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  research_questions_api_knowledge_material_drafts__draft_id__research_questions_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['KnowledgeSuggestIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  upload_api_knowledge_material_uploads_post: {
+    parameters: {
+      query?: never
+      header: {
+        'X-Filename': string
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['KnowledgeUploadOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  create_api_knowledge_material_drafts_post: {
+    parameters: {
+      query?: never
+      header: {
+        'Idempotency-Key': string
+      }
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['KnowledgeMaterialInput']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  update_api_knowledge_material_drafts__draft_id__put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['KnowledgeMaterialUpdate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  suggest_api_knowledge_material_drafts__draft_id__suggest_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['KnowledgeSuggestIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  revise_api_knowledge_material_drafts__draft_id__revise_post: {
+    parameters: {
+      query?: never
+      header: {
+        'Idempotency-Key': string
+      }
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['KnowledgeSuggestIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  accepted_reading_api_knowledge_material_skills__skill_id__reading_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        skill_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['KnowledgeReadingOut'] | null
         }
       }
       /** @description Validation Error */

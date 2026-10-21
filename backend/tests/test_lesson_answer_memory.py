@@ -21,6 +21,7 @@ async def test_lesson_memory_requires_same_scope_and_current_sources(client, db)
     for identifier in (
         "good",
         "hidden",
+        "unsupported",
         "recursive",
         "style",
         "action",
@@ -36,6 +37,8 @@ async def test_lesson_memory_requires_same_scope_and_current_sources(client, db)
             "sources": [{"chunk_id": "source"}],
             "source_text_hashes": {"source": hashlib.sha256(chunk.text.encode()).hexdigest()},
         }
+        if identifier == "unsupported":
+            metadata["flagged"] = ["unsupported_numeric_citation"]
         if identifier == "recursive":
             metadata["answer_memory"] = [{"answer_id": "parent"}]
         if identifier == "style":

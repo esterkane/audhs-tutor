@@ -33,21 +33,36 @@ from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import GatewayError, ModelGateway, StreamHandle
 from app.models_ai.provider import ProviderError, TaskClass
 from app.models_ai.routing import NoModelReady
-from app.orchestrator import actions, assessment_help, lesson_semantic, prompts, tools
-from app.orchestrator.context import QUARANTINE_BELOW_TRUST, build_packet, render_messages
+from app.orchestrator import (
+    actions,
+    assessment_help,
+    lesson_semantic,
+    literal_probe,
+    prompts,
+    tools,
+)
+from app.orchestrator.context import (
+    QUARANTINE_BELOW_TRUST,
+    build_packet,
+    quarantine,
+    render_messages,
+)
+from app.orchestrator.socratic_lesson import stream_reply as stream_socratic_reply
 from app.schemas.common import ActivityType, Actor, Domain, ObjectType
 from app.schemas.tutor import SourceRef, TurnDone, TurnMeta, TurnRequest
 
 logger = logging.getLogger(__name__)
 
 MAX_TOKENS_FOR_ACTION = {  # Safety ceilings, not target answer lengths.
-    actions.Action.EXPLAIN: 384,
+    actions.Action.EXPLAIN: 1600,
     actions.Action.HINT: 95,
     actions.Action.FULL_SOLUTION: 700,
     actions.Action.SUMMARIZE: 160,
 }
 SPOKEN_EXPLAIN_MAX_TOKENS = 190
-SOCRATIC_MAX_TOKENS = 120
+# Thinking models count internal reasoning against this ceiling too.
+# Brevity is a prompt/output contract, not a reason to truncate the final question.
+SOCRATIC_MAX_TOKENS = 1600
 TASK_FOR_ACTION = {
     actions.Action.EXPLAIN: TaskClass.EXPLAIN_SIMPLE,
     actions.Action.HINT: TaskClass.HINT,
@@ -131,6 +146,7 @@ class TutorTurn:
         representation: str | None,
         block_type: str,
         mastery: float,
+        lesson_discussion: bool = False,
     ) -> dict[str, Any]:
         contract = actions.output_contract(
             action,
@@ -140,6 +156,57 @@ class TutorTurn:
             block_type=block_type,
             mastery=mastery,
         )
+        if (
+            action == actions.Action.EXPLAIN
+            and socratic
+            and lesson_discussion
+            and not req.spoken
+            and not req.conversation_lang
+        ):
+            contract.update(
+                instructions=prompts.tutor_task("explain_socratic").strip(),
+                response_kind="socratic_turn",
+                max_sentences=3,
+                shape_example=(
+                    "Brief factual setup and exactly one unanswered narrowing question "
+                    "in separate JSON fields."
+                ),
+                end_with="exactly one unanswered narrowing question",
+            )
+            if req.explanation_kind == "follow_up":
+                contract.update(
+                    instructions=prompts.tutor_task("explain_socratic_probe").strip(),
+                    response_kind="socratic_follow_up",
+                    max_sentences=1,
+                    shape_example=(
+                        "Concrete situation and one focus in JSON; app renders one open question."
+                    ),
+                    scaffold="one_open_probe",
+                    socratic_rule="one open question, no answer in its premise",
+                    end_with="one open question rendered by the app",
+                )
+        if (
+            action == actions.Action.EXPLAIN
+            and req.explanation_kind == "follow_up"
+            and lesson_discussion
+            and not socratic
+            and not req.conversation_lang
+        ):
+            contract.update(
+                instructions=prompts.tutor_task("explain_followup").strip(),
+                response_kind="follow_up",
+                max_sentences=4,
+                shape_example="Answer the specific question directly.",
+                end_with="the requested result and reason; no extra practice task",
+            )
+            if not req.spoken and re.search(
+                r"\b(why|causes?|because)\b|\bhow come\b", req.text, re.IGNORECASE
+            ):
+                contract.update(
+                    instructions=prompts.tutor_task("explain_causal").strip(),
+                    shape_example=("Input -> condition -> operation -> result. Immediate reason."),
+                    end_with="the requested result and its immediate reason",
+                )
         if req.spoken and not req.conversation_lang:
             # read aloud (P9): brevity for the ear; citations stay in the written answer
             contract["max_sentences"] = min(int(contract["max_sentences"]), 4)
@@ -265,13 +332,40 @@ class TutorTurn:
             ).model_dump(),
         )
 
+        probe = (
+            literal_probe.from_request(req.text)
+            if (
+                action == actions.Action.EXPLAIN
+                and socratic
+                and req.explanation_kind == "follow_up"
+                and not req.spoken
+                and not conversation
+                and checked_assessment is None
+                and checkpoint.get("phase") == "teach"
+            )
+            else None
+        )
+        learning_contract = await tools.get_learning_contract(db, node, learner_id=learner_id)
+        retrieval_query = "\n".join(
+            [
+                node.title,
+                str(learning_contract.get("objective", "")),
+                str(learning_contract.get("success_criteria", "")),
+                req.text,
+            ]
+        )
         timing_mark("retrieval_started")
-        if conversation:
+        if conversation or probe is not None:
             hits: list[Any] = []  # no course sources in conversation practice: nothing to cite
             rtrace_id: str | None = None
         else:
             result = await tools.retrieve(
-                self.repo, f"{node.title}: {req.text}", skill_id=node.id, course=node.course, k=6
+                self.repo,
+                retrieval_query,
+                skill_id=node.id,
+                course=node.course,
+                k=6,
+                anchors=await tools.lesson_sources(db, node, learner_id=learner_id),
             )
             hits = list(result.hits)
             rtrace = await write_retrieval_trace(
@@ -290,7 +384,13 @@ class TutorTurn:
             representation=representation,
             block_type=block_type,
             mastery=mastery,
+            lesson_discussion=checkpoint.get("phase") == "teach" and checked_assessment is None,
         )
+        if not conversation and not quarantine(hits, [], below_trust=self.quarantine_below_trust):
+            teaching_contract["citation_format"] = (
+                "No numbered sources were supplied. Do not use numeric citation markers; "
+                "say no course source for this."
+            )
         if checked_assessment is not None:
             teaching_contract = {
                 **teaching_contract,
@@ -301,7 +401,13 @@ class TutorTurn:
         ).hexdigest()
         timing_mark("literal_history_started")
         historical = []
-        if not conversation:
+        # A fresh Socratic question must come from the current lesson, not a copied
+        # previous question or an unverified tutor explanation. History remains readable.
+        fresh_socratic = teaching_contract.get("response_kind") in {
+            "socratic_turn",
+            "socratic_follow_up",
+        }
+        if not conversation and not fresh_socratic:
             try:
                 async with db.begin_nested():
                     historical = await lesson_memory(
@@ -316,7 +422,12 @@ class TutorTurn:
             except SQLAlchemyError as exc:
                 logger.warning("Lesson answer lookup unavailable: %s", type(exc).__name__)
         timing_mark("literal_history_finished")
-        if not conversation and self.settings is not None and len(historical) < 2:
+        if (
+            not conversation
+            and not fresh_socratic
+            and self.settings is not None
+            and len(historical) < 2
+        ):
             timing_mark("semantic_history_started")
             node_id = node.id
             related: list[dict[str, str]] = []
@@ -376,7 +487,7 @@ class TutorTurn:
             session_state=tools.session_state(
                 session, node, block_type=block_type, hint_level=hint_level, socratic=socratic
             ),
-            learning_contract=await tools.get_learning_contract(db, node, learner_id=learner_id),
+            learning_contract=learning_contract,
             evidence=evidence,
             retrieved=hits,
             quarantine_below_trust=self.quarantine_below_trust,
@@ -388,26 +499,43 @@ class TutorTurn:
         handle = StreamHandle()
         text = ""
         completed = False
-        stream = self.gateway.stream(
-            TaskClass.CHAT_FAST if conversation else TASK_FOR_ACTION[action],
-            messages,
-            handle=handle,
-            learner_id=learner_id,
-            session_id=session.id,
-            metadata={
-                "prompt_version": prompts.PROMPT_VERSION,
-                "skill_id": node.id,
-                "turn_id": turn_id,
-            },
-            max_tokens=(
-                SOCRATIC_MAX_TOKENS
-                if socratic
-                else SPOKEN_EXPLAIN_MAX_TOKENS
-                if (req.spoken or conversation) and action == actions.Action.EXPLAIN
-                else MAX_TOKENS_FOR_ACTION[action]
-            ),
-            events=events,
+        max_tokens = (
+            SOCRATIC_MAX_TOKENS
+            if socratic
+            else SPOKEN_EXPLAIN_MAX_TOKENS
+            if (req.spoken or conversation) and action == actions.Action.EXPLAIN
+            else MAX_TOKENS_FOR_ACTION[action]
         )
+        generation_metadata = {
+            "prompt_version": prompts.PROMPT_VERSION,
+            "skill_id": node.id,
+            "turn_id": turn_id,
+        }
+        if probe is not None:
+            stream = literal_probe.stream(probe, handle)
+        elif fresh_socratic:
+            stream = stream_socratic_reply(
+                self.gateway,
+                messages,
+                handle=handle,
+                learner_id=learner_id,
+                session_id=session.id,
+                metadata=generation_metadata,
+                max_tokens=max_tokens,
+                events=events,
+                question_only=teaching_contract.get("response_kind") == "socratic_follow_up",
+            )
+        else:
+            stream = self.gateway.stream(
+                TaskClass.CHAT_FAST if conversation else TASK_FOR_ACTION[action],
+                messages,
+                handle=handle,
+                learner_id=learner_id,
+                session_id=session.id,
+                metadata=generation_metadata,
+                max_tokens=max_tokens,
+                events=events,
+            )
         partial = False
         try:
             try:
@@ -426,8 +554,22 @@ class TutorTurn:
             # close the model stream first so its model_call row exists before the trace links to it
             await stream.aclose()
             timing_mark("generation_closed")
-            trimmed = actions.trim_incomplete_tail(text) if completed else text
-            text = trimmed
+            # Keep the actual model output. A normal stop may end with a code fence,
+            # equation or list; sentence heuristics must never delete its tail.
+            # Length/error interruptions are already disclosed through outcome=partial.
+            citation_flags = (
+                ["unsupported_numeric_citation"]
+                if actions.has_unsupported_citation(text, len(packet.retrieved))
+                else []
+            )
+            if (
+                completed
+                and socratic
+                and not conversation
+                and action == actions.Action.EXPLAIN
+                and actions.has_socratic_format_mismatch(text)
+            ):
+                citation_flags.append("socratic_format_mismatch")
             cited_idx = actions.cited_indices(text, len(packet.retrieved))
             sources = [
                 SourceRef(
@@ -538,10 +680,17 @@ class TutorTurn:
                     "course_label": node.course,
                     "model": handle.registry_id,
                     "route": handle.route,
+                    "generation_kind": literal_probe.VERSION if probe is not None else "model",
                     "prompt_version": prompts.PROMPT_VERSION,
                     "model_call_id": handle.model_call_id,
                     "questioning_style": "socratic" if socratic else "explicit",
+                    "socratic_format_checked": (
+                        socratic and not conversation and action == actions.Action.EXPLAIN
+                    ),
                     "sources": [source.model_dump() for source in sources],
+                    "flagged": sorted(
+                        {f for c in packet.retrieved for f in c.flagged} | set(citation_flags)
+                    ),
                     "source_text_hashes": {
                         c.chunk_id: hashlib.sha256(c.text.encode()).hexdigest()
                         for c in packet.retrieved
@@ -579,7 +728,9 @@ class TutorTurn:
                 sentences=sentences,
                 representation=representation,
                 sources=sources,
-                flagged=sorted({f for c in packet.retrieved for f in c.flagged}),
+                flagged=sorted(
+                    {f for c in packet.retrieved for f in c.flagged} | set(citation_flags)
+                ),
                 dropped=packet.dropped,
                 latency_ms=latency_ms,
                 text=text,

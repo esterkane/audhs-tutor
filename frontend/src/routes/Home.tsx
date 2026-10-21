@@ -308,7 +308,8 @@ function HomeOverview() {
           <Button asChild variant="secondary" aria-describedby="home-ask-description">
             <Link to="/ask">Ask a question</Link>
           </Button>
-          <p id="home-ask-description" className="text-sm text-muted">Explore any area. Keeps your saved session in place.</p>
+          <Link className="text-sm underline" to="/curriculum">Create knowledge material</Link>
+            <p id="home-ask-description" className="text-sm text-muted">Explore any area. Keeps your saved session in place.</p>
         </div>
       </header>
       {resumable && <Card lift aria-label="Saved session">

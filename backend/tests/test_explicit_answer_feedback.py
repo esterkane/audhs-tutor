@@ -105,6 +105,104 @@ def test_quotes_cannot_create_active_markdown_and_labels_are_fallible():
     assert "not a verified grade" in rendered
 
 
+def test_feedback_uses_its_own_task_contract_and_keeps_current_answer_and_history():
+    from app.orchestrator import playground, prompts
+
+    body = PlaygroundRequest(
+        session_id="s",
+        intent="check_answer",
+        exercise="Find the retained proportion",
+        code="",
+        learner_answer="I revised my answer: 60%.",
+        history=[{"role": "assistant", "text": "The old answer was 90%."}],
+    )
+    packet = playground.messages(body)
+    assert packet[0].content.count(prompts.answer_feedback_task()) == 1
+    assert prompts.playground_task() not in packet[0].content
+    assert "I revised my answer: 60%." in packet[1].content
+    assert "The old answer was 90%." in packet[1].content
+    assert "Selected questioning_style: explicit" in packet[1].content
+
+
+async def test_wsl_feedback_routes_locally_without_an_override_or_hosted_fallback(
+    client, db, fake_local
+):
+    await seed_defaults(db, installed_ollama_tags={"qwen3:14b"})
+    app = client._transport.app
+    app.state.settings = app.state.settings.model_copy(update={"routing_profile": "wsl"})
+    assert Router("wsl").chain_for(TaskClass.ANSWER_FEEDBACK) == ["qwen3-14b"]
+    session = (await client.post("/api/sessions", json={"mode": "steady", "energy": 3})).json()
+    answer = "30/50 = 0.9"
+    fake_local.structured = selection(answer)
+    response = await client.post(
+        "/api/playground/tutor",
+        json={
+            "session_id": session["id"],
+            "intent": "check_answer",
+            "exercise": "30 of 50 rows remain.",
+            "code": "",
+            "learner_answer": answer,
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert fake_local.calls
+    assert await db.scalar(select(func.count()).select_from(AssessmentAttempt)) == 0
+    assert await db.scalar(select(func.count()).select_from(CompetencyEvidence)) == 0
+
+
+def test_self_contradictory_correction_requires_repair_without_grading_the_answer():
+    from app.schemas.feedback_selection import SelectionPoint
+
+    base = {"passage_id": "p-example", "finding": "needs_revision"}
+    with pytest.raises(ValidationError, match="correction repeats the same numeric value"):
+        SelectionPoint(**base, explanation="30/40 equals 75%, not 75% as stated.")
+    SelectionPoint(**base, explanation="30/40 equals 75%, not 90% as stated.")
+    SelectionPoint(**base, explanation='Your claim "30/40 equals 75%, not 75%" contradicts itself.')
+    SelectionPoint(
+        **base, explanation="The rates are correct, but equal rules do not establish fairness."
+    )
+
+
+async def test_self_contradictory_feedback_is_repaired_before_it_is_saved(
+    client, db, fake_local, monkeypatch
+):
+    import copy
+
+    from app.models_ai.provider import structured_reason
+    from app.schemas.feedback_selection import SelectionPoint
+
+    body = await prepare(client, db)
+    body["learner_answer"] = "A retains 90%, B retains 75%, a difference of 15 percentage points."
+    good = selection(body["learner_answer"])
+    good["points"][0].update(
+        finding="supported", explanation="Both rates and the difference are correct."
+    )
+    original = fake_local.complete
+
+    async def scripted(*args, **kwargs):
+        fake_local.structured = copy.deepcopy(good)
+        if not fake_local.calls:
+            fake_local.structured["points"][0].update(
+                finding="needs_revision", explanation="30/40 equals 75%, not 75% as stated."
+            )
+        return await original(*args, **kwargs)
+
+    monkeypatch.setattr(fake_local, "complete", scripted)
+    response = await client.post("/api/playground/tutor", json=body)
+    assert response.status_code == 200, response.text
+    assert len(fake_local.calls) == 2
+    assert (
+        "proposed numeric correction repeats the same value"
+        in fake_local.calls[1].messages[-1].content
+    )
+    assert "75%, not 75%" not in response.json()["text"]
+    with pytest.raises(ValidationError) as caught:
+        SelectionPoint(
+            passage_id="p", finding="needs_revision", explanation="30/40 equals 75%, not 75%."
+        )
+    assert structured_reason(caught.value) == "correction_unchanged"
+
+
 async def test_feedback_persists_exact_work_and_reuses_without_generation(client, db, fake_local):
     body = await prepare(client, db)
     fake_local.structured = selection(body["learner_answer"])

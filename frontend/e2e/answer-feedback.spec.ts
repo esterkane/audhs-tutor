@@ -61,7 +61,7 @@ test(`checks the selected answer and offers question and feedback audio at ${wid
   const check = page.getByRole('button', { name: 'Check my answer', exact: true })
   await expect(check).toBeDisabled()
   await page.getByLabel('Your explanation').fill('Different proportions remain')
-  await expect(page.getByText(/OpenAI by default/)).toBeVisible()
+  await expect(page.getByText(/the selected feedback model\./)).toBeVisible()
   await check.focus()
   await page.keyboard.press('Enter')
   await expect(

@@ -68,6 +68,17 @@ class ModelSpec(BaseModel):
         )
 
 
+class InferenceTiming(BaseModel):
+    """Content-free runtime measurements, separate from usage/budget accounting."""
+
+    load_ms: float = Field(ge=0, le=1e12, allow_inf_nan=False)
+    prompt_ms: float = Field(ge=0, le=1e12, allow_inf_nan=False)
+    generation_ms: float = Field(ge=0, le=1e12, allow_inf_nan=False)
+    total_ms: float = Field(ge=0, le=1e12, allow_inf_nan=False)
+    prompt_tokens: int = Field(ge=0, le=10**9, strict=True)
+    generated_tokens: int = Field(ge=0, le=10**9, strict=True)
+
+
 class ProviderResult(BaseModel):
     text: str = ""
     parsed: Any | None = None
@@ -81,6 +92,7 @@ class ProviderResult(BaseModel):
     provider: str
     reported_cost_usd: float | None = None
     raw: dict[str, Any] = Field(default_factory=dict, exclude=True)
+    inference_timing: InferenceTiming | None = Field(default=None, exclude=True)
 
 
 class StreamUsage(BaseModel):
@@ -112,6 +124,7 @@ STRUCTURED_REASON_CODES = frozenset(
         "quote_not_literal",
         "quote_duplicate",
         "explicit_followup_forbidden",
+        "correction_unchanged",
         "invalid_json",
         "schema_validation",
     }
@@ -142,6 +155,7 @@ def structured_reason(error: BaseException) -> str:
                 "quote_not_literal",
                 "quote_duplicate",
                 "explicit_followup_forbidden",
+                "correction_unchanged",
             ):
                 if code in types:
                     return code

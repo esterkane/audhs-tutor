@@ -142,3 +142,35 @@ async def test_failed_terminal_save_keeps_received_text_and_does_not_restart(
     repeated = await client.post("/api/tutor/stream", json=body, headers=headers)
     assert repeated.status_code == 409
     assert len(fake_local.calls) == calls
+
+
+@pytest.mark.parametrize("endpoint", ["/api/tutor/turn", "/api/tutor/stream"])
+async def test_default_lesson_kind_retains_legacy_recovery_identity(
+    client, db, fake_local, endpoint
+):
+    from app.db.models import WorkspaceRequest
+    from app.db.workspace_requests import request_fingerprint
+    from app.schemas.tutor import TurnRequest
+
+    body = await setup(client, db)
+    key = "c3b879da-d57c-4e36-8885-7a24612256b4"
+    headers = {"Idempotency-Key": key}
+    response = await client.post(endpoint, json=body, headers=headers)
+    assert response.status_code == 200
+    legacy = {
+        "surface": "lesson_turn",
+        **TurnRequest(**body).model_dump(
+            mode="json", exclude={"assessment_answer_id", "explanation_kind"}
+        ),
+    }
+    stored = await db.scalar(select(WorkspaceRequest).where(WorkspaceRequest.request_key == key))
+    assert stored.fingerprint == request_fingerprint(legacy)
+    calls = len(fake_local.calls)
+    replay = await client.post(
+        endpoint, json={**body, "explanation_kind": "lesson"}, headers=headers
+    )
+    assert replay.status_code == 200 and len(fake_local.calls) == calls
+    conflict = await client.post(
+        endpoint, json={**body, "explanation_kind": "follow_up"}, headers=headers
+    )
+    assert conflict.status_code == 409 and len(fake_local.calls) == calls

@@ -73,3 +73,51 @@ def stream_reply(
         background=background,
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+async def with_heartbeats(
+    source: AsyncIterator[bytes], *, interval_s: float = 10.0
+) -> AsyncIterator[bytes]:
+    """Keep a live, buffered producer reachable; cancellation still stops it exactly once."""
+    queue: asyncio.Queue[bytes | Exception | None] = asyncio.Queue(maxsize=32)
+
+    async def work() -> None:
+        try:
+            try:
+                async for part in source:
+                    await queue.put(part)
+            finally:
+                close = getattr(source, "aclose", None)
+                if close is not None:
+                    await close()
+        except Exception as exc:
+            await queue.put(exc)
+        else:
+            await queue.put(None)
+
+    task = asyncio.create_task(work())
+    try:
+        while True:
+            try:
+                part = await asyncio.wait_for(queue.get(), timeout=interval_s)
+            except TimeoutError:
+                if task.done():
+                    await (
+                        task
+                    )  # propagate an unexpected cancellation; never heartbeat a dead worker
+                    break
+                yield sse("heartbeat", {})
+                continue
+            if part is None:
+                break
+            if isinstance(part, Exception):
+                raise part
+            yield part
+    finally:
+        # Match the existing preview transport: the producer owns DB/model cleanup.
+        # Shield its join from Starlette's already-cancelled disconnect scope.
+        with anyio.CancelScope(shield=True):
+            if not task.done():
+                task.cancel()
+            with suppress(asyncio.CancelledError):
+                await task

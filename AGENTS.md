@@ -13,6 +13,17 @@ Owner update 2026-10-11: this sanitized repository and the separate original arc
 
 
 ## Efficient execution — owner request 2026-10-05
+
+Owner update 2026-10-21: reviewed, tested code and sanitized documentation may be
+committed and pushed continuously. The owner explicitly authorized making
+`audhs-tutor` public again after publication review and a private backup followed
+by sanitization of its historical excluded identifier. This supersedes the
+2026-10-11 private-only policy for this code repository. The separate repository
+whose name contains `private-archive` remains PRIVATE and unchanged. Databases,
+personal material, local configuration, credentials and private runtime state
+remain excluded from commits and publication. A passing index check does not
+replace review of all history that would become public.
+
 - Start with the current checklist and relevant slice records; read matching handoff sections and recent continuation entries, not the full accumulated history each turn. Preserve all applicable architecture, safety and learning invariants.
 - Batch related changes into one coherent, reviewable slice and one final validation/publication cycle. Do not create separate cycles for every small copy/layout adjustment.
 - Keep full command logs locally; return concise outcomes and relevant failure excerpts. Batch independent reads and avoid repeating unchanged file dumps.

@@ -521,7 +521,7 @@ async def _log_runtime_call(db: AsyncSession, doc: SourceDoc) -> None:
         await write_model_call(
             db,
             ModelCallRecord(
-                provider="mlx",
+                provider=str(tr.get("meta", {}).get("provider", "mlx")),
                 model=str(tr.get("model") or ""),
                 registry_id=str(tr["registry_id"]),
                 task="stt",

@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+
 from app.models_ai.provider import Message, ProviderResult
 
 

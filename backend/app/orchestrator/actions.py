@@ -134,3 +134,25 @@ def cited_indices(text: str, n_sources: int) -> set[int]:
             if 1 <= i <= n_sources:
                 found.add(i)
     return found
+
+
+def has_unsupported_citation(text: str, n_sources: int) -> bool:
+    """Check single-number prose references; comma lists may be literal data arrays."""
+    # Mask fenced and inline code before interpreting bracketed numbers.
+    prose = re.sub(r"(?ms)^ {0,3}(`{3,}|~{3,})[^\n]*\n.*?(?:^ {0,3}\1[ \t]*$|\Z)", "", text)
+    prose = re.sub(r"(`+).*?\1", "", prose, flags=re.DOTALL)
+    for match in re.finditer(r"\[(\d+)\]", prose):
+        if any(not 1 <= int(part) <= n_sources for part in match.group(1).split(",")):
+            return True
+    return False
+
+
+def has_socratic_format_mismatch(text: str) -> bool:
+    """Detect clear format failures only; this does not verify facts or answer leakage."""
+    prose = re.sub(r"```[\s\S]*?```|`[^`\n]*`", "", text)
+    prose = re.sub(r"https?://\S+", "", prose)
+    return (
+        prose.count("?") != 1
+        or bool(re.search(r"(?m)^\s*#{1,6}\s+", prose))
+        or count_sentences(prose) > 6
+    )

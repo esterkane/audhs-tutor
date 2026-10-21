@@ -45,7 +45,7 @@ from app.models_ai.routing import NoModelReady, Router
 from app.models_ai.source_policy import SourcePolicyDenied, validate_transport
 from app.schemas.common import Actor, ObjectType
 
-REPAIR_POLICY_VERSION = "structured-repair.v3"
+REPAIR_POLICY_VERSION = "structured-repair.v4"
 MAX_REPAIRS = 2  # structured output: 1 attempt + up to 2 repairs per model, then escalate
 REPAIR_INSTRUCTION = (
     "Your previous reply did not match the required JSON schema: {errors}\n"
@@ -61,6 +61,12 @@ def repair_errors(text: str) -> str:
 
 
 _TYPED_REPAIR_GUIDANCE = {
+    "correction_unchanged": (
+        "Your proposed numeric correction repeats the same value on both sides of 'not'. "
+        "Recalculate from the supplied task, then judge the learner's current conclusion. "
+        "If the calculation and comparison are correct, mark supported. Do not invent "
+        "an error, missing calculation or required format to justify needs_revision."
+    ),
     "selection_unknown": (
         "Choose passage_id only from answer_passages in the current request. "
         "Copy its ID exactly. Do not invent an ID or copy one from history. "
@@ -316,6 +322,7 @@ class ModelGateway:
                         reservation=reservation,
                     )
                     break
+                attempt_started = time.perf_counter()
                 try:
                     result = await provider.complete(
                         spec,
@@ -326,6 +333,33 @@ class ModelGateway:
                         metadata=meta,
                         max_retries=1,
                     )
+                except asyncio.CancelledError:
+                    # Buffered structured lessons are stoppable too. Usage is unknown;
+                    # reconcile any reservation and log the attempt without a retry.
+                    cost, status = _accounting(spec, 0, 0, None, usage_source="unavailable")
+                    await self._log(
+                        spec,
+                        task,
+                        kind,
+                        ProviderResult(
+                            latency_ms=int((time.perf_counter() - attempt_started) * 1000),
+                            model=spec.model,
+                            provider=spec.provider,
+                        ),
+                        learner_id,
+                        session_id,
+                        meta,
+                        request_id=request_id,
+                        attempt=attempt,
+                        outcome="cancelled",
+                        usage_source="unavailable",
+                        cost_status=status,
+                        cost_usd=cost,
+                        reserved_usd=bound,
+                        error="cancelled (client disconnected)",
+                        reservation=reservation,
+                    )
+                    raise
                 except StructuredOutputError as e:
                     errors.append(f"{rid}: {e}")
                     source = "reported" if (e.tokens_in or e.tokens_out) else "unavailable"
@@ -752,7 +786,14 @@ class ModelGateway:
             cached=bool(result and result.cached_tokens),
             ok=outcome == "ok",
             error=error,
-            metadata=meta,
+            metadata={
+                **meta,
+                **(
+                    {"inference_timing": result.inference_timing.model_dump()}
+                    if result and result.inference_timing
+                    else {}
+                ),
+            },
             learner_id=learner_id,
             session_id=session_id,
             request_id=request_id,

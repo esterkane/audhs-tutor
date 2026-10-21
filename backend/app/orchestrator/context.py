@@ -25,11 +25,11 @@ class SectionBudget(BaseModel):
     historical: int = 512
     preferences: int = 300
     session_state: int = 150
-    learning_contract: int = 400
+    learning_contract: int = 2800
     evidence: int = 300
     retrieved: int = 1800
     request: int = 400
-    output_contract: int = 600
+    output_contract: int = 1200
 
 
 DEFAULT_BUDGET = SectionBudget()
@@ -126,6 +126,8 @@ def quarantine(
 
 
 NEVER_DROP = {
+    "citation_format",
+    "response_kind",
     "action",
     "instructions",
     "hint_level",
@@ -133,6 +135,10 @@ NEVER_DROP = {
     "socratic_rule",
     "scaffold",
     "max_sentences",
+    "representation",
+    "questioning_style",
+    "objective",
+    "success_criteria",
 }
 
 

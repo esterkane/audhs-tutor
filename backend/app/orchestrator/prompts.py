@@ -8,8 +8,8 @@ from app.core.config import PROJECT_ROOT
 PROMPTS_DIR = PROJECT_ROOT / "prompts"
 BASE_VERSION = "pedagogy.v2"
 WORKSPACE_POLICY_VERSION = "workspace.v1"
-TUTOR_VERSION = "tutor.v2"
-GRADER_VERSION = "grader.explain_back.v1"
+TUTOR_VERSION = "tutor.v8"
+GRADER_VERSION = "grader.explain_back.v3"
 CURRICULUM_VERSION = "curriculum.draft.v2"
 LISTENING_VERSION = "listening.comprehension.v1"
 VOICE_VERSION = "voice.conversation.v1"
@@ -33,12 +33,13 @@ def workspace_policy() -> str:
 
 
 def tutor_task(name: str) -> str:
-    version = "v2" if name == "explain" else "v1"
+    version = "v3" if name == "explain" else "v1"
     return _read(f"tutor/{name}.{version}.md")
 
 
 def grader_task(name: str) -> str:
-    return _read(f"grader/{name}.v1.md")
+    version = "v3" if name == "explain_back" else "v1"
+    return _read(f"grader/{name}.{version}.md")
 
 
 def challenge_task(mode: str) -> str:
@@ -62,7 +63,7 @@ def playground_task(*, grounded: bool = False) -> str:
 
 
 def answer_feedback_task() -> str:
-    return _read("playground/quoted-feedback.v3.md")
+    return _read("playground/quoted-feedback.v4.md")
 
 
 def starter_task() -> str:

@@ -29,6 +29,10 @@ class Stt(Protocol):
 
 
 class MlxWhisperStt:
+    from app.knowledge.ingest.media import Transcriber
+
+    _t: Transcriber
+
     def __init__(self, snapshot_path: str, *, registry_id: str) -> None:
         from app.knowledge.ingest.media import MlxWhisperTranscriber
 
@@ -50,6 +54,16 @@ class MlxWhisperStt:
             model=res.model,
             registry_id=self.registry_id,
         )
+
+
+class FasterWhisperStt(MlxWhisperStt):
+    provider = "faster-whisper"
+
+    def __init__(self, snapshot_path: str, *, registry_id: str, model: str | None = None) -> None:
+        from app.knowledge.ingest.faster_whisper import FasterWhisperTranscriber
+
+        self._t = FasterWhisperTranscriber(snapshot_path, registry_id=registry_id, model=model)
+        self.registry_id = registry_id
 
 
 class FakeStt:

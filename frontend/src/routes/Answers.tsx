@@ -13,7 +13,7 @@ import { Markdown } from '../components/Markdown'
 import { Button } from '../components/ui/button'
 import { Card } from '../components/ui/card'
 import { SourceViewer } from '../features/curriculum/SourceViewer'
-import { withheldCount } from '../features/tutor/sourceFlags'
+import { hasUnsupportedCitation, withheldCount, hasSocraticFormatMismatch, SOCRATIC_FORMAT_WARNING } from '../features/tutor/sourceFlags'
 import { ReadAloud } from '../features/voice/ReadAloud'
 import { ApiError, type Schemas } from '../lib/api'
 import { boundedRead } from '../lib/boundedRead'
@@ -283,7 +283,15 @@ function Answer({ id }: { id: string }) {
               <p className="whitespace-pre-wrap">{data.request_text || 'Explanation requested'}</p>
             </Card>
             <Card>
-              <Markdown text={data.text} />
+              {hasSocraticFormatMismatch(data.metadata.flagged) && (
+                <p role="alert" className="text-warn my-2">{SOCRATIC_FORMAT_WARNING}</p>
+              )}
+              {hasUnsupportedCitation(data.metadata.flagged) && (
+              <p role="alert" className="text-warn my-2">
+                This answer includes a citation number that does not match a retrieved passage. Treat that reference as unsupported.
+              </p>
+            )}
+            <Markdown text={data.text} />
               <ReadAloud text={['assessment', 'ask'].includes(data.surface) ? `${data.request_text}\n\n${data.text}` : data.text} />
             </Card>
             {data.metadata.followup_purpose === 'correction' && <p role="status">This is a proposed correction, not a verified replacement. Review its reasoning and sources alongside the original answer.</p>}

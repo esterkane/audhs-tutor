@@ -22,7 +22,7 @@ from app.kernel import preferences
 from app.models_ai.manage import KOKORO_SETUP
 from app.models_ai.provider import TaskClass
 from app.models_ai.routing import Router
-from app.voice.stt import FakeStt, MlxWhisperStt, Stt
+from app.voice.stt import FakeStt, FasterWhisperStt, MlxWhisperStt, Stt
 from app.voice.tts import (
     LANG_TO_KOKORO,
     FakeTts,
@@ -107,6 +107,19 @@ async def readiness(db: AsyncSession, settings: Settings, learner_id: str) -> Re
             "MLX Whisper snapshot not downloaded",
             f"Models › pull {sid} (about 1.6 GB, mlx-community, MIT)",
         )
+    elif stt_row.runtime == "faster-whisper":
+        complete = all(
+            (Path(stt_row.local_path) / f).is_file()
+            for f in ("config.json", "model.bin", "tokenizer.json")
+        )
+        ready = complete and _importable("faster_whisper")
+        stt = Component(
+            ready,
+            "ready" if ready else "unavailable",
+            f"Local faster-whisper at {stt_row.local_path}"
+            if ready
+            else "CTranslate2 snapshot or faster-whisper package missing",
+        )
     elif not _importable("mlx_whisper"):
         stt = Component(
             False,
@@ -187,7 +200,14 @@ async def readiness(db: AsyncSession, settings: Settings, learner_id: str) -> Re
 def stt_for(settings: Settings, stt_row: ModelRegistry | None) -> Stt | None:
     if stt_row is None or stt_row.status != "ready" or not stt_row.local_path:
         return None
-    if not _importable("mlx_whisper"):
+    if stt_row.runtime == "faster-whisper":
+        if not _importable("faster_whisper") or not all(
+            (Path(stt_row.local_path) / f).is_file()
+            for f in ("config.json", "model.bin", "tokenizer.json")
+        ):
+            return None
+        return FasterWhisperStt(stt_row.local_path, registry_id=stt_row.id, model=stt_row.repo_id)
+    if stt_row.runtime != "mlx" or not _importable("mlx_whisper"):
         return None
     return MlxWhisperStt(stt_row.local_path, registry_id=stt_row.id)
 
@@ -245,7 +265,7 @@ async def verify_stt(
         await write_model_call(
             db,
             ModelCallRecord(
-                provider="mlx",
+                provider=getattr(stt, "provider", "mlx"),
                 model=stt.registry_id,
                 registry_id=stt.registry_id,
                 task="stt",
@@ -263,7 +283,7 @@ async def verify_stt(
     await write_model_call(
         db,
         ModelCallRecord(
-            provider="mlx",
+            provider=getattr(stt, "provider", "mlx"),
             model=res.model,
             registry_id=res.registry_id,
             task="stt",
