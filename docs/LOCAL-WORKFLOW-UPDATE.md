@@ -33,3 +33,15 @@ discussion and section drafting, explicit acceptance, save, API restart/resume,
 retained raw history and evidence, Review and lesson activation. The final
 neutral-source replies used one attempt each; this does not establish a
 general latency or factual-accuracy guarantee.
+
+Browser compatibility follow-up: saved/imported drafts are reached through the
+explicit Browse disclosure. The review, conflict and reload journeys now open
+that native disclosure while retaining keyboard focus, exact edit preservation,
+version conflict, no automatic writes and accessibility checks. Lesson-entry
+checks assert the current mode-preserving explanation request rather than an
+obsolete section template. The Knowledge material page uses the shared 22px page
+heading style. Nine affected Chromium journeys pass at their existing wide and
+narrow sizes, with 14 curriculum component tests, scoped lint and TypeScript.
+The preceding remote run passed backend, frontend and migrations, with 467
+browser journeys passing and these nine failing; a fresh full CI run is still
+required for this follow-up. No learner data, grading or inference setting changes.

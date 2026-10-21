@@ -31,7 +31,7 @@ test('general explanation preserves a restored question without sending it', asy
     await page.keyboard.press('Enter')
     await expect(page.getByText('A useful explanation.', { exact: true })).toBeVisible()
     expect(sent).toHaveLength(1)
-    expect(sent[0]).toContain('The idea, A worked example, and Try one step')
+    expect(sent[0]).toContain('using this session’s teaching mode')
     expect(sent[0]).not.toContain('My specific saved question')
     await expect(input).toHaveValue('My specific saved question')
     await input.focus()

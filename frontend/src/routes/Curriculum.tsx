@@ -78,7 +78,7 @@ export function Curriculum() {
 
   return (
     <div className="grid gap-4">
-      <h1 className="text-xl font-semibold">Knowledge material</h1>
+      <h1 className="text-page-title font-semibold">Knowledge material</h1>
       {(!selected || draft) && <KnowledgeAuthoring draft={draft?.payload.authoring ? draft : undefined} onOpen={setSelected} onSaved={setAuthoredDraft} review={draft?.payload.authoring ? (((draft.payload as Payload).skills ?? []).length ? <DraftEditor key={draft.id} draft={draft} onDirtyChange={setDirty} /> : <p>Your knowledge notes are saved. You can keep researching and writing without creating or activating a lesson.</p>) : undefined} />}
       <Disclosure label="Browse saved drafts and imported courses" open={!draft?.payload.authoring && (material.isError || drafts.isError || (!!selected && !draft))}>
       <Card>

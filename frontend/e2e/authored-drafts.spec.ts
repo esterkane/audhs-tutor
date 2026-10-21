@@ -25,6 +25,8 @@ for (const width of [1280, 390]) {
     await expect(page.getByRole('button', { name: 'Retry drafts' })).toBeVisible()
     failed = false
     await page.getByRole('button', { name: 'Retry drafts' }).click()
+    await expect(page.getByRole('button', { name: 'Retry drafts' })).toHaveCount(0)
+    await page.locator('summary').filter({ hasText: 'Browse saved drafts and imported courses' }).click()
     const review = page.getByRole('button', { name: 'Review Training-only preprocessing' })
     await expect(review).toBeVisible()
     await review.focus()
@@ -35,6 +37,7 @@ for (const width of [1280, 390]) {
     await page.keyboard.press('Enter')
     await expect(review).toBeVisible()
     await page.reload()
+    await page.locator('summary').filter({ hasText: 'Browse saved drafts and imported courses' }).click()
     await expect(review).toBeVisible()
     expect(writes).toBe(0)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)

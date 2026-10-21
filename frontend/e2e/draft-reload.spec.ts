@@ -29,6 +29,7 @@ for (const width of [1280, 390]) {
       return route.continue()
     })
     await page.goto('/curriculum')
+    await page.locator('summary').filter({ hasText: 'Browse saved drafts and imported courses' }).click()
     await openDraft(page)
     await page.getByText('Advanced: edit draft data', { exact: true }).click()
     const input = page.getByLabel('Draft JSON')

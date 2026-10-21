@@ -24,6 +24,7 @@ for (const width of [1280, 390]) {
       return route.fulfill({ json: latest })
     })
     await page.goto('/curriculum')
+    await page.locator('summary').filter({ hasText: 'Browse saved drafts and imported courses' }).click()
     await page.getByLabel('Course', { exact: true }).selectOption(original.course)
     await page.getByRole('button', { name: 'Review One section' }).click()
     await page.getByText('Advanced: edit draft data', { exact: true }).click()
