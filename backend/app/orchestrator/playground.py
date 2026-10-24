@@ -30,7 +30,7 @@ from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import GatewayError, ModelGateway, OutputLimitError
 from app.models_ai.provider import Message, ProviderError, TaskClass
 from app.models_ai.routing import NoModelReady
-from app.orchestrator import answer_semantic, prompts, tools
+from app.orchestrator import answer_semantic, personas, prompts, tools
 from app.orchestrator.bin_feedback import respond_bins
 from app.orchestrator.context import escape_data
 from app.orchestrator.feedback_render import render_feedback
@@ -288,12 +288,18 @@ async def respond(
             )
             retrieval_trace_id = trace.id
         await validate_lesson_origin(db, learner_id, body)
+    presentation = (
+        (await personas.load(db, learner_id))
+        if body.intent != "check_answer"
+        else personas.TutorPresentation()
+    )
     evidence_identity = evidence.identity() if evidence else None
     prompt_version = VERSION + ".lesson.v2" if evidence is not None else VERSION
     if body.group_counts is not None:
         prompt_version += ".counts.v2"
     if body.intent == "starter":
         prompt_version += "." + STARTER_VERSION
+    prompt_version += presentation.suffix
     source_status: Literal["supplied", "empty", "unavailable", "not_requested"] = (
         "supplied"
         if evidence and evidence.passages
@@ -391,7 +397,7 @@ async def respond(
             logger.warning("Saved answer recheck unavailable: %s", type(exc).__name__)
         seen = {item["answer_id"] for item in memory}
         memory = (memory + [item for item in related if item["answer_id"] not in seen])[:2]
-    packet = messages(body, historical, memory, evidence)
+    packet = presentation.apply(messages(body, historical, memory, evidence))
     events = EventWriter(db, ksession.event_context(session, activity=ActivityType.CHAT))
     await events.emit(
         Verb.ASKED, ObjectType.TURN, turn_id, context={"text_len": len(body.question)}
@@ -536,6 +542,10 @@ async def respond(
             "model": out.registry_id,
             "route": out.route,
             "prompt_version": prompt_version,
+            "tutor_presentation": {
+                "persona": presentation.persona,
+                "language": presentation.language,
+            },
             "model_call_id": out.model_call_id,
             "source_status": source_status,
             "sources": source_values,

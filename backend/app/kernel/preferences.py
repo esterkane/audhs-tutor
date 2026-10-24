@@ -26,6 +26,20 @@ PREFERENCES: dict[str, PrefSpec] = {
     p.key: p
     for p in [
         PrefSpec(
+            key="tutor.persona",
+            type="enum",
+            default="none",
+            choices=["none", "kangaroo", "guide", "coach"],
+            description="Optional tutor persona (all courses)",
+        ),
+        PrefSpec(
+            key="tutor.response_language",
+            type="enum",
+            default="unchanged",
+            choices=["unchanged", "en", "de"],
+            description="Tutor response language (all courses)",
+        ),
+        PrefSpec(
             key="learning.material_marks",
             type="material_marks",
             default={},

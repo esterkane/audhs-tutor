@@ -16,6 +16,7 @@ from app.models_ai import registry
 from app.models_ai.budget import Budget
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
+from app.orchestrator import personas
 from app.orchestrator.context import escape_data
 from app.orchestrator.prompts import PROMPTS_DIR
 from app.schemas.knowledge_authoring import (
@@ -87,6 +88,7 @@ async def help_research(
         "unresolved": question.unresolved,
         "section": question.section,
     }
+    presentation = await personas.load(db, learner_id)
     memories = await selected(db, learner_id, draft_id, question.memory_ids)
     # All source characters remain available; the model selects ids instead of copying quotations.
     passages = [research.passage[i : i + 1800] for i in range(0, len(research.passage), 1800)]
@@ -113,6 +115,8 @@ async def help_research(
             for x in ([] if command.refresh else question.tutor_exchanges[-2:])
         ],
     }
+    if presentation.language == "de":
+        verified = None  # English literal-result prose must not override an explicit German choice.
     if verified:
         with_results = {**data, "verified_repetition": verified.context()}
         if len(json.dumps(with_results, ensure_ascii=False)) <= 24000:
@@ -159,6 +163,7 @@ async def help_research(
             )
         ).read_text()
     )
+    policy += presentation.instruction
     response_type = (
         ResearchRepetitionRule
         if verified
@@ -227,6 +232,10 @@ async def help_research(
             "question_id": question.id,
             "action": command.action,
             "prompt_version": "curriculum." + policy_name.rsplit("/", 1)[-1].removesuffix(".md"),
+            "tutor_presentation": {
+                "persona": presentation.persona,
+                "language": presentation.language,
+            },
             "memory_policy_version": "curriculum.research-memory.v1",
             "feedback_contract_version": "grounded-explanation.v5",
             "source_claim_contract": "neutral-observation.v2" if neutral_note else None,

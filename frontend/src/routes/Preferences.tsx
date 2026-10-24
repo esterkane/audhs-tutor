@@ -31,6 +31,8 @@ function sectionFor(key: string) {
 }
 
 function optionLabel(key: string, value: string) {
+  if (key === 'tutor.persona') return ({ none: 'No persona', kangaroo: 'Känguru / Kangaroo', guide: 'Calm guide', coach: 'Technical coach' } as Record<string, string>)[value] ?? value
+  if (key === 'tutor.response_language') return ({ unchanged: 'Follow the conversation', en: 'English', de: 'Deutsch' } as Record<string, string>)[value] ?? value
   if (key === 'tutor.representation_default' && value === '') return 'No preferred format'
   const labels: Record<string, string> = {
     low_capacity: 'Low capacity',
@@ -47,6 +49,7 @@ const numericUnits: Record<string, string> = {
 }
 
 function effectHint(key: string): string | undefined {
+  if (key === 'tutor.persona' || key === 'tutor.response_language') return 'Applies to new tutor replies across courses, Ask and research. Optional and reversible; saved material, sources, teaching mode and grading stay unchanged.'
   if (key.startsWith('questions.')) return 'Guides newly drafted learning-area questions. Does not rewrite saved questions or change every live tutor reply.'
   if (key.startsWith('planner.')) return 'Used when planning a new session. Saving this does not change the plan of a session already started.'
   if (['ui.theme', 'ui.density', 'ui.font_scale', 'ui.reduced_motion'].includes(key)) return 'Updates the display after saving. Your learning progress is unchanged.'

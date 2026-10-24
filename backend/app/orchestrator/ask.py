@@ -17,7 +17,7 @@ from app.db.traces import (
 )
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
-from app.orchestrator import ask_brief, ask_reuse, ask_sources
+from app.orchestrator import ask_brief, ask_reuse, ask_sources, personas
 from app.orchestrator.answer_check_binding import text_hash
 from app.orchestrator.context import escape_data
 from app.orchestrator.prompts import _read, base_policy
@@ -104,6 +104,8 @@ async def respond(
     opening_added = bool(
         opening_context and opening_context["answer_id"] not in {r.id for r in previous}
     )
+    presentation = await personas.load(db, learner_id)
+    prompt_version += presentation.suffix
     inherited_mode = previous[0].metadata_json.get("teaching_mode") if previous else None
     teaching_mode = body.teaching_mode or (
         inherited_mode if inherited_mode in ("explicit", "guided") else "explicit"
@@ -122,6 +124,7 @@ async def respond(
             else _read("ask/explain.v1.md"),
         )
     ]
+    packet = presentation.apply(packet)
     if teaching_mode == "guided":
         packet[0] = packet[0].model_copy(
             update={"content": packet[0].content + "\n" + _read("ask/guided.v1.md")}
@@ -390,6 +393,10 @@ async def respond(
                 "origin_status": "source_derived" if sources or previous else "unknown",
                 "history_turns": len(previous),
                 "teaching_mode": teaching_mode,
+                "tutor_presentation": {
+                    "persona": presentation.persona,
+                    "language": presentation.language,
+                },
                 "conversation_brief": brief_context,
                 "opening_context": opening_context
                 or (

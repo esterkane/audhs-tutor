@@ -38,6 +38,7 @@ from app.orchestrator import (
     assessment_help,
     lesson_semantic,
     literal_probe,
+    personas,
     prompts,
     tools,
 )
@@ -272,6 +273,8 @@ class TutorTurn:
         evidence = await tools.get_evidence(db, learner_id, node)
         mastery = float(evidence.get("mastery", 0.0))
         prefs = await tools.get_preferences(db, learner_id)
+        presentation = personas.from_preferences(prefs)
+        presentation_version = prompts.PROMPT_VERSION + presentation.suffix
         allowed = set(representations.allowed_kinds(mastery))
         representation = req.representation
         detected: str | None = None
@@ -325,7 +328,7 @@ class TutorTurn:
                 skill_title=node.title,
                 action=str(action),
                 hint_level=hint_level,
-                prompt_version=prompts.PROMPT_VERSION,
+                prompt_version=presentation_version,
                 questioning_style="socratic" if socratic else "explicit",
                 experiment_arm=experiment_arm_id,
                 arm_not_applied=arm_not_applied,
@@ -336,6 +339,7 @@ class TutorTurn:
             literal_probe.from_request(req.text)
             if (
                 action == actions.Action.EXPLAIN
+                and presentation.language != "de"
                 and socratic
                 and req.explanation_kind == "follow_up"
                 and not req.spoken
@@ -397,7 +401,7 @@ class TutorTurn:
                 "checked_assessment_answer_id": req.assessment_answer_id,
             }
         contract_key = hashlib.sha256(
-            json.dumps([prompts.PROMPT_VERSION, teaching_contract], sort_keys=True).encode()
+            json.dumps([presentation_version, teaching_contract], sort_keys=True).encode()
         ).hexdigest()
         timing_mark("literal_history_started")
         historical = []
@@ -478,11 +482,11 @@ class TutorTurn:
             ]
         timing_mark("context_started")
         packet = build_packet(
-            policy=prompts.base_policy(),
+            policy=prompts.base_policy() + presentation.instruction,
             historical=historical,
             checked_assessment=checked_assessment,
             request=req.text,
-            prompt_version=prompts.PROMPT_VERSION,
+            prompt_version=presentation_version,
             preferences=prefs,
             session_state=tools.session_state(
                 session, node, block_type=block_type, hint_level=hint_level, socratic=socratic
@@ -507,8 +511,12 @@ class TutorTurn:
             else MAX_TOKENS_FOR_ACTION[action]
         )
         generation_metadata = {
-            "prompt_version": prompts.PROMPT_VERSION,
+            "prompt_version": presentation_version,
             "skill_id": node.id,
+            "tutor_presentation": {
+                "persona": presentation.persona,
+                "language": presentation.language,
+            },
             "turn_id": turn_id,
         }
         if probe is not None:
@@ -595,7 +603,7 @@ class TutorTurn:
                     session_id=session.id,
                     turn_id=turn_id,
                     action=str(action) if completed else f"{action}:partial",
-                    prompt_version=prompts.PROMPT_VERSION,
+                    prompt_version=presentation_version,
                     sections=packet.section_tokens,
                     dropped=packet.dropped,
                     model_call_id=handle.model_call_id,
@@ -614,7 +622,7 @@ class TutorTurn:
                     "hint_count": hint_level,
                     "model": handle.registry_id,
                     "route": handle.route if completed else "partial",
-                    "prompt_version": prompts.PROMPT_VERSION,
+                    "prompt_version": presentation_version,
                     "latency_ms": latency_ms,
                     "tokens_in": handle.tokens_in,
                     "tokens_out": handle.tokens_out,
@@ -674,6 +682,10 @@ class TutorTurn:
                     "skill_id": node.id,
                     "teaching_action": str(action),
                     "teaching_contract_key": contract_key,
+                    "tutor_presentation": {
+                        "persona": presentation.persona,
+                        "language": presentation.language,
+                    },
                     "memory_context_version": "lesson.v1",
                     "answer_memory": packet.historical,
                     "area_id": node.area_id,
@@ -681,7 +693,7 @@ class TutorTurn:
                     "model": handle.registry_id,
                     "route": handle.route,
                     "generation_kind": literal_probe.VERSION if probe is not None else "model",
-                    "prompt_version": prompts.PROMPT_VERSION,
+                    "prompt_version": presentation_version,
                     "model_call_id": handle.model_call_id,
                     "questioning_style": "socratic" if socratic else "explicit",
                     "socratic_format_checked": (
