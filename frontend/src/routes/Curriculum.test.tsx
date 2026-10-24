@@ -87,6 +87,8 @@ function setup(initial: DraftOut[] = [], publishError = false) {
   vi.stubGlobal(
     'fetch',
     vi.fn(async (url: string, init?: RequestInit) => {
+      if (url.endsWith('/authoring/setup')) return jsonResponse({ enabled: false, key_configured: false, model_id: 'openai-luna', daily_budget_usd: 0, counted_today_usd: 0 })
+      if (url.endsWith('/factual-review')) return jsonResponse(null)
       const method = init?.method ?? 'GET'
       const body = init?.body ? JSON.parse(String(init.body)) : undefined
       if (method !== 'GET') calls.push({ url, method, body })
@@ -158,6 +160,8 @@ it('activates the latest knowledge-editor save without a second manual refresh',
     payload: { ...draft.payload, authoring: form }, problems: [] } as unknown as DraftOut
   let publishVersion: number | undefined
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/authoring/setup')) return jsonResponse({ enabled: false, key_configured: false, model_id: 'openai-luna', daily_budget_usd: 0, counted_today_usd: 0 })
+    if (url.endsWith('/factual-review')) return jsonResponse(null)
     if (url === '/api/learner/me') return jsonResponse({ id: 'owner' })
     if (url.endsWith('/material')) return jsonResponse(material)
     if (url.endsWith('/drafts')) return jsonResponse({ drafts: [current] })
@@ -443,6 +447,8 @@ it('opens the requested saved knowledge form once its delayed draft response arr
   let resolveDrafts!: (response: Response) => void
   const pending = new Promise<Response>(resolve => {resolveDrafts = resolve})
   vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.endsWith('/authoring/setup')) return jsonResponse({ enabled: false, key_configured: false, model_id: 'openai-luna', daily_budget_usd: 0, counted_today_usd: 0 })
+    if (url.endsWith('/factual-review')) return jsonResponse(null)
     expect(init?.method ?? 'GET').toBe('GET')
     if (url === '/api/curriculum/drafts') return pending
     if (url === '/api/learner/me') return jsonResponse({id:'owner'})

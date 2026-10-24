@@ -1219,3 +1219,24 @@ from app.db.provisional_ddl import PROVISIONAL_GUARDS  # noqa: E402
 
 for _provisional_ddl in PROVISIONAL_GUARDS.values():
     event.listen(Base.metadata, "after_create", DDL(_provisional_ddl))  # type: ignore[no-untyped-call]
+
+
+class KnowledgeReview(IdMixin, LearnerScoped, Base):
+    __tablename__ = "knowledge_review"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["learner_id", "draft_id"], ["curriculum_draft.learner_id", "curriculum_draft.id"]
+        ),
+        UniqueConstraint("learner_id", "draft_id", name="uq_knowledge_review_draft"),
+        CheckConstraint(
+            "interval_days >= 1 AND interval_days <= 365", name="ck_knowledge_review_interval"
+        ),
+        Index("ix_knowledge_review_due", "enabled", "next_due_at"),
+    )
+    draft_id: Mapped[str] = mapped_column(Text)
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+    interval_days: Mapped[int] = mapped_column(Integer, default=30)
+    urls_json: Mapped[JsonList] = mapped_column(JSON, default=list)
+    next_due_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    running_until: Mapped[str | None] = mapped_column(Text)
+    history_json: Mapped[JsonList] = mapped_column(JSON, default=list)

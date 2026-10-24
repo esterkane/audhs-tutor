@@ -8,6 +8,12 @@ Before continuing, read the current checklist in `docs/CURRENT-WORK.md`, relevan
 
 For each bounded implementation slice, test it, record exact verification and outstanding work in the shared handoff/slice docs, and distinguish the new delta from inherited changes. Follow existing manual-only commit/ADR conventions. Do not mark a whole stage complete from a partial review.
 
+Owner update (2026-10-24): explicitly enabled OpenAI knowledge authoring and scheduled factual
+reviews may use their separate owner-selected daily cap. Ordinary study and accepted-material
+reading remain local. See `docs/adr/0021-hybrid-knowledge-authoring.md`. Preserve the private
+authoring credential file and current authoring preferences; older blank-key/budget-zero handoffs
+describe ordinary hosted study routing and must not silently undo this scoped authoring choice.
+
 ## Owner visibility policy — 2026-10-01
 Owner update 2026-10-24 (current): `esterkane/audhs-tutor`, this sanitized repository, is PUBLIC and stays
 public; the owner confirmed this after the Mac branch publication. The separate repository whose name

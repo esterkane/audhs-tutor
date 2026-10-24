@@ -1,3 +1,5 @@
+import { useAuthoringSetup } from '../features/curriculum/hybridAuthoringApi'
+import { AuthoringSetup, FactualReviews } from '../features/curriculum/HybridAuthoring'
 import { Disclosure } from '../components/ui/disclosure'
 import { PrivateActivation } from '../features/curriculum/PrivateActivation'
 import { KnowledgeAuthoring } from '../features/curriculum/KnowledgeAuthoring'
@@ -31,6 +33,7 @@ const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((v): v is string => typeof v === 'string') : []
 
 export function Curriculum() {
+  const authoringSetup = useAuthoringSetup()
   const material = useMaterial()
   const drafts = useDrafts()
   const actions = useDraftActions()
@@ -79,7 +82,9 @@ export function Curriculum() {
   return (
     <div className="grid gap-4">
       <h1 className="text-page-title font-semibold">Knowledge material</h1>
-      {(!selected || draft) && <KnowledgeAuthoring draft={draft?.payload.authoring ? draft : undefined} onOpen={setSelected} onSaved={setAuthoredDraft} review={draft?.payload.authoring ? (((draft.payload as Payload).skills ?? []).length ? <DraftEditor key={draft.id} draft={draft} onDirtyChange={setDirty} /> : <p>Your knowledge notes are saved. You can keep researching and writing without creating or activating a lesson.</p>) : undefined} />}
+      <AuthoringSetup />
+      {draft?.status === 'published' && !!draft.payload.authoring && <FactualReviews key={draft.id} draftId={draft.id} onOpen={setSelected} />}
+      {(!selected || draft) && <KnowledgeAuthoring authoringReady={!!authoringSetup.data} hosted={!!authoringSetup.data?.enabled} draft={draft?.payload.authoring ? draft : undefined} onOpen={setSelected} onSaved={setAuthoredDraft} review={draft?.payload.authoring ? (((draft.payload as Payload).skills ?? []).length ? <DraftEditor key={draft.id} draft={draft} onDirtyChange={setDirty} /> : <p>Your knowledge notes are saved. You can keep researching and writing without creating or activating a lesson.</p>) : undefined} />}
       <Disclosure label="Browse saved drafts and imported courses" open={!draft?.payload.authoring && (material.isError || drafts.isError || (!!selected && !draft))}>
       <Card>
         <label htmlFor="lesson-course" className="block font-medium mb-2">

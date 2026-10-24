@@ -1,4 +1,4 @@
-"""Explicit local help over one learner-owned, versioned research question."""
+"""Explicit authoring help over one learner-owned, versioned research question."""
 
 import hashlib
 import hmac
@@ -7,16 +7,17 @@ import secrets
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.models import CurriculumDraft
 from app.kernel import curriculum
 from app.kernel.repetition_results import repetition_results
 from app.knowledge.personal_memory import selected
 from app.models_ai import registry
-from app.models_ai.budget import Budget
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.orchestrator import checked_research, personas
+from app.orchestrator.authoring_gateway import AuthoringGateway, choose
 from app.orchestrator.context import escape_data
 from app.orchestrator.prompts import PROMPTS_DIR
 from app.schemas.knowledge_authoring import (
@@ -50,6 +51,7 @@ async def help_research(
     learner_id: str,
     draft_id: str,
     command: ResearchTutorIn,
+    settings: Settings | None = None,
 ) -> tuple[CurriculumDraft, bool]:
     draft = await curriculum.get_draft(db, learner_id, draft_id)
     authoring = draft.payload_json.get("authoring") or {}
@@ -218,7 +220,13 @@ async def help_research(
         response_type = (
             NeutralObservationSection if command.action == "draft" else NeutralObservationDiscussion
         )
-    route = await gateway.router.resolve(db, TaskClass.EXPLAIN_SIMPLE, learner_id)
+    authoring_gateway = await choose(gateway, settings, learner_id, draft_id, draft.version)
+    inference = (
+        authoring_gateway.gateway
+        if isinstance(authoring_gateway, AuthoringGateway)
+        else authoring_gateway
+    )
+    route = await inference.router.resolve(db, TaskClass.EXPLAIN_SIMPLE, learner_id)
     spec = await registry.get_spec(db, route.registry_id)
     binding = json.dumps(
         {
@@ -249,10 +257,7 @@ async def help_research(
         and hmac.compare_digest(latest.cache_token, reuse_token(binding, latest))
     ):
         return draft, True
-    local = ModelGateway(
-        db, gateway.router, {k: v for k, v in gateway.providers.items() if k == "ollama"}, Budget(0)
-    )
-    out = await local.complete(
+    out = await authoring_gateway.complete(
         TaskClass.EXPLAIN_SIMPLE,
         [
             Message(
@@ -342,7 +347,7 @@ async def help_research(
         model_call_id=out.model_call_id,
         memories=memories,
     )
-    if out.registry_id == route.registry_id and not out.hosted:
+    if out.registry_id == route.registry_id:
         exchange.cache_token = reuse_token(binding, exchange)
     question.tutor_exchanges.append(exchange)
     question.tutor_basis = json.dumps(basis, ensure_ascii=False, separators=(",", ":"))

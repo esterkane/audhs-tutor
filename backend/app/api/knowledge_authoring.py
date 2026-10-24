@@ -107,6 +107,7 @@ async def research_tutor(
     gateway: Gateway,
     learner: Learner,
     request: Request,
+    settings: SettingsDep,
 ) -> ResearchTutorOut:
     from app.orchestrator.research_tutor import help_research
 
@@ -114,7 +115,7 @@ async def research_tutor(
         getattr(request.app.state, "research_tutor_active", 0) + 1
     )
     try:
-        draft, reused = await help_research(db, gateway, learner.id, draft_id, body)
+        draft, reused = await help_research(db, gateway, learner.id, draft_id, body, settings)
         return ResearchTutorOut(**_draft_out(draft).model_dump(), reused=reused)
     finally:
         request.app.state.research_tutor_active -= 1
@@ -127,11 +128,12 @@ async def research_questions(
     db: DB,
     gateway: Gateway,
     learner: Learner,
+    settings: SettingsDep,
 ) -> DraftOut:
     from app.orchestrator.knowledge_authoring import suggest_research_questions
 
     draft = await suggest_research_questions(
-        db, gateway, learner.id, draft_id, body.expected_version
+        db, gateway, learner.id, draft_id, body.expected_version, settings
     )
     return _draft_out(draft)
 
@@ -250,12 +252,17 @@ async def update(
 
 @router.post("/drafts/{draft_id}/suggest", response_model=DraftOut)
 async def suggest(
-    draft_id: str, body: KnowledgeSuggestIn, db: DB, learner: Learner, gateway: Gateway
+    draft_id: str,
+    body: KnowledgeSuggestIn,
+    db: DB,
+    learner: Learner,
+    gateway: Gateway,
+    settings: SettingsDep,
 ) -> DraftOut:
     from app.orchestrator.knowledge_authoring import suggest_material
 
     return _draft_out(
-        await suggest_material(db, gateway, learner.id, draft_id, body.expected_version)
+        await suggest_material(db, gateway, learner.id, draft_id, body.expected_version, settings)
     )
 
 

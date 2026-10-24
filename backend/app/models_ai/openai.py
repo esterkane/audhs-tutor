@@ -27,7 +27,7 @@ from app.models_ai.provider import (
     usage_of,
 )
 from app.models_ai.routing import load_profiles
-from app.models_ai.source_policy import deny_external
+from app.models_ai.source_policy import check_authoring_messages, deny_external
 
 litellm.suppress_debug_info = True
 
@@ -88,6 +88,7 @@ class OpenAIProvider:
         max_retries: int = 1,
     ) -> ProviderResult:
         await self.validate_local_transport(spec)
+        check_authoring_messages(spec, messages)
         self._validate(spec, messages, response_model)
         t0 = time.perf_counter()
         kwargs: dict[str, Any] = dict(
@@ -101,7 +102,6 @@ class OpenAIProvider:
             store=False,
             temperature=temperature,
             timeout=self.timeout_s,
-            metadata=metadata or {},
         )
         try:
             if response_model is not None:
@@ -141,6 +141,7 @@ class OpenAIProvider:
         temperature: float = 0.2,
     ) -> AsyncIterator[StreamEvent]:
         await self.validate_local_transport(spec)
+        check_authoring_messages(spec, messages)
         self._validate(spec, messages)
         usage: Any | None = None
         response: Any | None = None

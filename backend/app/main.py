@@ -1,7 +1,8 @@
 """FastAPI entrypoint. `make dev` runs `uvicorn app.main:app`."""
 
+import asyncio
 from collections.abc import AsyncIterator
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI
 
@@ -36,7 +37,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             from app.knowledge.ingest.recovery import reconcile_abandoned_runs
 
             await reconcile_abandoned_runs(app.state.session_factory)
-            yield
+            from app.core.factual_review_jobs import worker
+
+            app.state.budget_lock = asyncio.Lock()
+            review_task = asyncio.create_task(worker(app))
+            try:
+                yield
+            finally:
+                review_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await review_task
         finally:
             await app.state.visual_jobs.close()
             await app.state.notebook_lab.close()

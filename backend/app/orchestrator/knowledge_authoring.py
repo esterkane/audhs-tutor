@@ -5,12 +5,14 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.models import CurriculumDraft
 from app.kernel import curriculum, knowledge_authoring
-from app.models_ai.budget import Budget
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
+from app.orchestrator import personas
+from app.orchestrator.authoring_gateway import choose
 from app.orchestrator.context import escape_data
 from app.orchestrator.prompts import PROMPTS_DIR
 from app.schemas.knowledge_authoring import (
@@ -23,11 +25,13 @@ from app.schemas.knowledge_authoring import (
 
 
 async def suggest_research_questions(
-    db: AsyncSession, gateway: ModelGateway, learner_id: str, draft_id: str, expected_version: int
+    db: AsyncSession,
+    gateway: ModelGateway,
+    learner_id: str,
+    draft_id: str,
+    expected_version: int,
+    settings: Settings | None = None,
 ) -> CurriculumDraft:
-    gateway = ModelGateway(
-        db, gateway.router, {k: v for k, v in gateway.providers.items() if k == "ollama"}, Budget(0)
-    )
     draft = await curriculum.get_draft(db, learner_id, draft_id)
     authoring = draft.payload_json.get("authoring") or {}
     if (
@@ -50,12 +54,15 @@ async def suggest_research_questions(
         raise AppError(
             "source_changed", "Restore the selected passage before preparing questions.", 409
         )
-    out = await gateway.complete(
+    selected = await choose(gateway, settings, learner_id, draft_id, expected_version)
+    presentation = await personas.load(db, learner_id)
+    out = await selected.complete(
         TaskClass.GEN_ITEMS,
         [
             Message(
                 role="system",
-                content=(PROMPTS_DIR / "curriculum/research-questions.v1.md").read_text(),
+                content=(PROMPTS_DIR / "curriculum/research-questions.v1.md").read_text()
+                + presentation.instruction,
             ),
             Message(
                 role="user",
@@ -112,12 +119,13 @@ async def suggest_research_questions(
 
 
 async def suggest_material(
-    db: AsyncSession, gateway: ModelGateway, learner_id: str, draft_id: str, expected_version: int
+    db: AsyncSession,
+    gateway: ModelGateway,
+    learner_id: str,
+    draft_id: str,
+    expected_version: int,
+    settings: Settings | None = None,
 ) -> CurriculumDraft:
-    # Retain the selected route but never construct a hosted authoring call.
-    gateway = ModelGateway(
-        db, gateway.router, {k: v for k, v in gateway.providers.items() if k == "ollama"}, Budget(0)
-    )
     draft = await curriculum.get_draft(db, learner_id, draft_id)
     authoring = draft.payload_json.get("authoring")
     if not authoring or draft.status != "draft" or draft.version != expected_version:
@@ -129,12 +137,15 @@ async def suggest_material(
             422,
         )
     version = draft.version
-    out = await gateway.complete(
+    selected = await choose(gateway, settings, learner_id, draft_id, expected_version)
+    presentation = await personas.load(db, learner_id)
+    out = await selected.complete(
         TaskClass.GEN_ITEMS,
         [
             Message(
                 role="system",
-                content=(PROMPTS_DIR / "curriculum/knowledge-authoring.v1.md").read_text(),
+                content=(PROMPTS_DIR / "curriculum/knowledge-authoring.v1.md").read_text()
+                + presentation.instruction,
             ),
             Message(
                 role="user",

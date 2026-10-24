@@ -10,7 +10,8 @@ type Research = Schemas['KnowledgeResearch']
 const field = 'block w-full rounded border border-line bg-card p-2'
 
 
-export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, onMemorySearch }: {
+export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, onMemorySearch, hosted = false }: {
+  hosted?: boolean;
   phase?: 'research' | 'write'; onMemorySearch?: (query: string) => Promise<Schemas['PersonalMemory'][]>
   form: Form; disabled: boolean; onChange: (next: Form) => void
   onTutor?: (action: 'discuss' | 'draft-section', refresh?: boolean) => void
@@ -72,7 +73,7 @@ export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, on
       </div>
       <p className="text-sm text-muted">Use Save knowledge material below to keep all questions, findings and your current place in the library. You may move on with unresolved questions. Shape a lesson when ready.</p>
       {onMemorySearch && <Disclosure label="Find earlier personal notes"><PersonalMemoryPanel ids={q.memory_ids ?? []} disabled={disabled} onSearch={onMemorySearch} onChange={ids => update({ ...r, questions: r.questions.map((v, i) => i === index ? { ...v, memory_ids: ids } : v) })} /></Disclosure>}
-      <div ref={tutorContainer}><Disclosure label="Ask the local tutor (optional)" open={tutorOpen} onToggle={e => setTutorOpen(e.currentTarget.open)}><ResearchTutorPanel onUseDraft={() => { setNotice('Draft copied to your editable section. Review it in Write.'); setTutorOpen(false); tutorContainer.current?.querySelector('summary')?.focus() }} research={r} question={q} disabled={disabled} sourceChanged={stale} onTutor={onTutor} onChange={next => update({ ...r, questions: r.questions.map((v, i) => i === index ? next : v) })} /></Disclosure></div>
+      <div ref={tutorContainer}><Disclosure label={hosted ? "Ask the authoring tutor (OpenAI)" : "Ask the local tutor (optional)"} open={tutorOpen} onToggle={e => setTutorOpen(e.currentTarget.open)}><ResearchTutorPanel hosted={hosted} onUseDraft={() => { setNotice('Draft copied to your editable section. Review it in Write.'); setTutorOpen(false); tutorContainer.current?.querySelector('summary')?.focus() }} research={r} question={q} disabled={disabled} sourceChanged={stale} onTutor={onTutor} onChange={next => update({ ...r, questions: r.questions.map((v, i) => i === index ? next : v) })} /></Disclosure></div>
     </>}
     {notice && <p role="status">{notice}</p>}
   </section>

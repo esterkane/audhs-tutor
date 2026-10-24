@@ -42,7 +42,11 @@ from app.models_ai.provider import (
     TaskClass,
 )
 from app.models_ai.routing import NoModelReady, Router
-from app.models_ai.source_policy import SourcePolicyDenied, validate_transport
+from app.models_ai.source_policy import (
+    SourcePolicyDenied,
+    bind_authoring_repair,
+    validate_transport,
+)
 from app.schemas.common import Actor, ObjectType
 
 REPAIR_POLICY_VERSION = "structured-repair.v4"
@@ -282,7 +286,7 @@ class ModelGateway:
             repairs = 0
             while True:
                 try:
-                    await validate_transport(provider, spec)
+                    await validate_transport(provider, spec, messages=msgs)
                 except SourcePolicyDenied as exc:
                     errors.append(f"{rid}: {exc}")
                     break
@@ -404,6 +408,7 @@ class ModelGateway:
                                 content=repair_instruction(e),
                             ),
                         ]
+                        bind_authoring_repair(spec, msgs)
                         continue
                     await self._emit(
                         Verb.INVALID_OUTPUT,
@@ -543,7 +548,7 @@ class ModelGateway:
                 "degraded" if degraded else ("primary" if route.position + pos == 0 else "fallback")
             )
             try:
-                await validate_transport(provider, spec)
+                await validate_transport(provider, spec, messages=messages)
             except SourcePolicyDenied as exc:
                 errors.append(f"{rid}: {exc}")
                 continue

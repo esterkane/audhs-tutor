@@ -27,6 +27,39 @@ class Settings(BaseSettings):
     ollama_context_tokenizers: dict[str, str] = Field(default_factory=dict)
     anthropic_api_key: str = ""
     openai_api_key: str = ""
+    authoring_key_file: str = "./private-state/openai-authoring.key"
+
+    def read_authoring_key(self) -> str:
+        path = Path(self.authoring_key_file)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        if path.is_symlink():
+            return ""
+        return path.read_text().strip() if path.is_file() else self.openai_api_key
+
+    def save_authoring_key(self, key: str) -> None:
+        import os
+        import tempfile
+
+        path = Path(self.authoring_key_file)
+        if not path.is_absolute():
+            path = PROJECT_ROOT / path
+        path.parent.mkdir(parents=True, exist_ok=True)
+        if any(parent.is_symlink() for parent in (path, *path.parents)):
+            raise ValueError("Key path is not a regular local path")
+        temporary = None
+        try:
+            with tempfile.NamedTemporaryFile(dir=path.parent, mode="w", delete=False) as file:
+                temporary = file.name
+                os.chmod(file.name, 0o600)
+                file.write(key)
+                file.flush()
+                os.fsync(file.fileno())
+            os.replace(file.name, path)
+        finally:
+            if temporary is not None:
+                Path(temporary).unlink(missing_ok=True)
+
     daily_budget_usd: float = 1.50
     routing_profile: str = "default"
     embed_model: str = "nomic-embed-text"

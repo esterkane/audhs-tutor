@@ -3118,6 +3118,92 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/authoring/setup': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Setup */
+    get: operations['setup_api_authoring_setup_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/authoring/key': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Save Key */
+    post: operations['save_key_api_authoring_key_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}/factual-review': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Review */
+    get: operations['get_review_api_knowledge_material_drafts__draft_id__factual_review_get']
+    /** Configure */
+    put: operations['configure_api_knowledge_material_drafts__draft_id__factual_review_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}/factual-review/run': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Run */
+    post: operations['run_api_knowledge_material_drafts__draft_id__factual_review_run_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/knowledge-material/drafts/{draft_id}/factual-review/revisions/{run_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Revise */
+    post: operations['revise_api_knowledge_material_drafts__draft_id__factual_review_revisions__run_id__post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -3935,6 +4021,19 @@ export interface components {
        * @enum {string}
        */
       lesson: 'amplitude' | 'frequency' | 'harmonics' | 'sampling' | 'mapping' | 'create'
+    }
+    /** AuthoringSetup */
+    AuthoringSetup: {
+      /** Enabled */
+      enabled: boolean
+      /** Key Configured */
+      key_configured: boolean
+      /** Model Id */
+      model_id: string
+      /** Daily Budget Usd */
+      daily_budget_usd: number
+      /** Counted Today Usd */
+      counted_today_usd: number
     }
     /** Block */
     Block: {
@@ -4972,6 +5071,49 @@ export interface components {
       ended_at: string | null
       /** Arms */
       arms: components['schemas']['ArmOut'][]
+    }
+    /** FactFinding */
+    FactFinding: {
+      /** Claim */
+      claim: string
+      /**
+       * Verdict
+       * @enum {string}
+       */
+      verdict: 'supported' | 'needs_revision' | 'insufficient'
+      /** Source Index */
+      source_index: number
+      /** Quote */
+      quote: string
+      /** Explanation */
+      explanation: string
+    }
+    /** FactualProposal */
+    FactualProposal: {
+      /** Findings */
+      findings: components['schemas']['FactFinding'][]
+      /**
+       * Proposed Explanation
+       * @default
+       */
+      proposed_explanation: string
+    }
+    /** FactualReviewOut */
+    FactualReviewOut: {
+      /** Id */
+      id: string
+      /** Draft Id */
+      draft_id: string
+      /** Enabled */
+      enabled: boolean
+      /** Interval Days */
+      interval_days: number
+      /** Urls */
+      urls: string[]
+      /** Next Due At */
+      next_due_at: string
+      /** History */
+      history: components['schemas']['ReviewRecord'][]
     }
     /** FeedbackIn */
     FeedbackIn: {
@@ -7245,6 +7387,21 @@ export interface components {
       /** Predicted Retrievability */
       predicted_retrievability: number | null
     }
+    /** ReviewPolicyIn */
+    ReviewPolicyIn: {
+      /**
+       * Enabled
+       * @default true
+       */
+      enabled: boolean
+      /**
+       * Interval Days
+       * @default 30
+       */
+      interval_days: number
+      /** Urls */
+      urls: string[]
+    }
     /** ReviewRating */
     ReviewRating: {
       /** Content Version */
@@ -7263,6 +7420,33 @@ export interface components {
       /** Latency Ms */
       latency_ms?: number | null
     }
+    /** ReviewRecord */
+    ReviewRecord: {
+      /** Id */
+      id: string
+      /** Draft Id */
+      draft_id: string
+      /** Draft Version */
+      draft_version: number
+      /** Checked At */
+      checked_at: string
+      /**
+       * Outcome
+       * @enum {string}
+       */
+      outcome: 'reviewed' | 'sources_unchanged' | 'failed'
+      /** Sources */
+      sources?: components['schemas']['ReviewSource'][]
+      proposal?: components['schemas']['FactualProposal'] | null
+      /** Model Call Id */
+      model_call_id?: string | null
+      /** Revision Id */
+      revision_id?: string | null
+      /** Error */
+      error?: string | null
+      /** Error Message */
+      error_message?: string | null
+    }
     /** ReviewRequestState */
     ReviewRequestState: {
       /**
@@ -7271,6 +7455,17 @@ export interface components {
        */
       status: 'not_found' | 'unresolved' | 'completed'
       result?: components['schemas']['ReviewOut'] | null
+    }
+    /** ReviewSource */
+    ReviewSource: {
+      /** Url */
+      url: string
+      /** Sha256 */
+      sha256: string
+      /** Excerpt */
+      excerpt: string
+      /** Fetched At */
+      fetched_at: string
     }
     /** RouteRow */
     RouteRow: {
@@ -14400,6 +14595,175 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['KnowledgeReadingOut'] | null
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  setup_api_authoring_setup_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AuthoringSetup']
+        }
+      }
+    }
+  }
+  save_key_api_authoring_key_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AuthoringSetup']
+        }
+      }
+    }
+  }
+  get_review_api_knowledge_material_drafts__draft_id__factual_review_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FactualReviewOut'] | null
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  configure_api_knowledge_material_drafts__draft_id__factual_review_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ReviewPolicyIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FactualReviewOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  run_api_knowledge_material_drafts__draft_id__factual_review_run_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['FactualReviewOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  revise_api_knowledge_material_drafts__draft_id__factual_review_revisions__run_id__post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        draft_id: string
+        run_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DraftOut']
         }
       }
       /** @description Validation Error */

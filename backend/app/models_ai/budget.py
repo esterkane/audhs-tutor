@@ -73,6 +73,9 @@ class Budget:
         self.daily_cap_usd = daily_cap_usd
         self._lock = lock or asyncio.Lock()
 
+    def with_cap(self, cap: float) -> "Budget":
+        return Budget(cap, lock=self._lock)
+
     async def expire_stale(self, db: AsyncSession) -> int:
         """Open reservations past their TTL are stale (process died mid-call) → `expired`."""
         res = await db.execute(

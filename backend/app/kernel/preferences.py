@@ -26,6 +26,26 @@ PREFERENCES: dict[str, PrefSpec] = {
     p.key: p
     for p in [
         PrefSpec(
+            key="authoring.enabled",
+            type="bool",
+            default=False,
+            description="Use OpenAI for knowledge authoring and factual reviews",
+        ),
+        PrefSpec(
+            key="authoring.daily_budget_cents",
+            type="int",
+            default=0,
+            min=0,
+            max=100000,
+            description="Maximum daily hosted authoring spend (US cents)",
+        ),
+        PrefSpec(
+            key="authoring.model",
+            type="str",
+            default="openai-luna",
+            description="OpenAI authoring registry model ID",
+        ),
+        PrefSpec(
             key="tutor.persona",
             type="enum",
             default="none",

@@ -21,6 +21,7 @@ from app.models_ai.provider import Message, ModelSpec, ProviderError, StreamUsag
 def isolated_protocol_transport(monkeypatch):
     """These protocol tests mock inference; real policy is tested in test_source_policy."""
     monkeypatch.setattr(OpenAIProvider, "validate_local_transport", AsyncMock())
+    monkeypatch.setattr("app.models_ai.openai.check_authoring_messages", lambda *_: None)
 
 
 MESSAGES = [Message(role="system", content="Tutor policy"), Message(role="user", content="hint")]

@@ -6,7 +6,8 @@ import { Markdown } from '../../components/Markdown'
 type Research = Schemas['KnowledgeResearch']
 type Question = Schemas['ResearchQuestion']
 
-export function ResearchTutorPanel({ research, question, disabled, sourceChanged, onChange, onTutor, onUseDraft }: {
+export function ResearchTutorPanel({ research, question, disabled, sourceChanged, onChange, onTutor, onUseDraft, hosted = false }: {
+  hosted?: boolean;
   research: Research; question: Question; disabled: boolean; sourceChanged: boolean
   onUseDraft?: () => void; onChange: (question: Question) => void; onTutor?: (action: 'discuss' | 'draft-section', refresh?: boolean) => void
 }) {
@@ -30,12 +31,12 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
     </div>
   }
   return <section aria-label="Local research tutor" className="space-y-3 rounded border border-line p-3">
-    <h4 className="font-semibold">Discuss and build with your local tutor</h4>
+    <h4 className="font-semibold">Discuss and build with your {hosted ? 'OpenAI authoring' : 'local'} tutor</h4>
     <p>Write your findings first. Ask about one point, or request one editable paragraph. The tutor uses this passage and your notes; saved links are not opened or independently verified.</p>
     <label>What I want help with<textarea className="block w-full rounded border border-line bg-card p-2" rows={2} maxLength={2000} value={question.tutor_request ?? ''} disabled={disabled} onChange={e => onChange({ ...question, tutor_request: e.target.value })} /></label>
     {onTutor && <div className="flex flex-wrap gap-2">
-      <Button disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('discuss')}>Discuss my findings locally</Button>
-      <Button variant="secondary" disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('draft-section')}>Draft one section locally</Button>
+      <Button disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('discuss')}>{hosted ? 'Discuss my findings with OpenAI' : 'Discuss my findings locally'}</Button>
+      <Button variant="secondary" disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('draft-section')}>{hosted ? 'Draft one section with OpenAI' : 'Draft one section locally'}</Button>
       {latest && !latest.calculation && <Button variant="secondary" disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss', true)}>Ask for another reply</Button>}
     </div>}
     <p className="text-sm text-muted">{latest?.calculation ? 'These exact results are calculated locally. Add a request above to discuss a broader question with the tutor.' : 'An unchanged request can reuse its saved reply. Choose Ask for another reply to generate a fresh alternative.'}</p>

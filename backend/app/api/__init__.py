@@ -16,6 +16,7 @@ from app.api import (
     experiments,
     health,
     knowledge_authoring,
+    knowledge_reviews,
     learner,
     lesson_activation,
     lesson_promotion,
@@ -77,5 +78,6 @@ for r in (
     practice,
     curriculum,
     knowledge_authoring,
+    knowledge_reviews,
 ):
     api_router.include_router(r.router)

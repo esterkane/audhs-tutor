@@ -22,13 +22,13 @@ function fromDraft(draft?: Draft): Form {
   return Object.fromEntries(Object.keys(empty()).map(key => [key, data[key as keyof Form] ?? empty()[key as keyof Form]])) as Form
 }
 
-export function KnowledgeAuthoring({ draft, onOpen, onSaved, onStepChange, review }: { draft?: Draft; onOpen: (id: string | null) => void; onSaved?: (draft: Draft) => void; onStepChange?: (step: Step) => void; review?: React.ReactNode }) {
+export function KnowledgeAuthoring({ draft, onOpen, onSaved, onStepChange, review, hosted = false, authoringReady = true }: { hosted?: boolean; authoringReady?: boolean; draft?: Draft; onOpen: (id: string | null) => void; onSaved?: (draft: Draft) => void; onStepChange?: (step: Step) => void; review?: React.ReactNode }) {
   const learner = useQuery({ queryKey: ['learner'], queryFn: () => apiFetch<Schemas['LearnerOut']>('/api/learner/me') })
   if (!learner.data) return <p role="status">{learner.error ? 'Knowledge editor could not load. Reload to retry.' : 'Loading knowledge editor…'}</p>
-  return <Editor key={`${learner.data.id}:${draft?.id ?? 'new'}`} learnerId={learner.data.id} draft={draft} onOpen={onOpen} onSaved={onSaved} onStepChange={onStepChange} review={review} />
+  return <Editor key={`${learner.data.id}:${draft?.id ?? 'new'}`} learnerId={learner.data.id} draft={draft} onOpen={onOpen} onSaved={onSaved} onStepChange={onStepChange} review={review} hosted={hosted} authoringReady={authoringReady} />
 }
 
-function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review }: { learnerId: string; draft?: Draft; onOpen: (id: string | null) => void; onSaved?: (draft: Draft) => void; onStepChange?: (step: Step) => void; review?: React.ReactNode }) {
+function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review, hosted = false, authoringReady = true }: { hosted?: boolean; authoringReady?: boolean; learnerId: string; draft?: Draft; onOpen: (id: string | null) => void; onSaved?: (draft: Draft) => void; onStepChange?: (step: Step) => void; review?: React.ReactNode }) {
   const stored = useLessonDraft(`knowledge:${learnerId}:${draft?.id ?? 'new'}`, 'knowledge material', 1_000_000)
   const [initial] = useState(() => {
     try {
@@ -68,13 +68,13 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review }: { l
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; active.current?.abort() } }, [])
   const readOnly = damaged || draft?.status === 'published' || draft?.status === 'rejected' || current?.status === 'published' || current?.status === 'rejected'
   useEffect(() => {
-    if (readOnly || !current?.id || (step !== 'research' && step !== 'write')) return
+    if (hosted || readOnly || !current?.id || (step !== 'research' && step !== 'write')) return
     const controller = new AbortController()
     const timer = setTimeout(() => {
       void apiFetch(`/api/knowledge-material/drafts/${current.id}/prepare-tutor`, { method: 'POST', signal: controller.signal }).catch(() => { /* Optional readiness never blocks writing or real tutor error handling. */ })
     }, 800)
     return () => { clearTimeout(timer); controller.abort() }
-  }, [current?.id, readOnly, step])
+  }, [current?.id, readOnly, step, hosted])
 
   const [needsSave, setNeedsSave] = useState(!!stored.input && !sameKnowledgeMaterial(initial.form, fromDraft(draft)))
   function change(next: Form, version = editVersion, contentChanged = true) {
@@ -108,9 +108,10 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review }: { l
     return result
   }
   async function run(kind: 'save' | 'suggest' | 'research' | 'discuss' | 'draft-section', file?: File, refresh = false) {
+    if (!authoringReady && ['discuss', 'draft-section', 'research', 'suggest'].includes(kind)) { setError('Authoring settings could not load. Reload before using the tutor; your writing is kept.'); return }
     if (active.current || readOnly) return
     const controller = new AbortController(); active.current = controller
-    setBusy(file ? 'Reading upload…' : kind === 'discuss' || kind === 'draft-section' ? 'Asking your local research tutor…' : kind === 'research' ? 'Preparing source-specific questions locally…' : kind === 'suggest' ? 'Preparing local proposal…' : 'Saving material…')
+    setBusy(file ? 'Reading upload…' : kind === 'discuss' || kind === 'draft-section' ? 'Asking your research tutor…' : kind === 'research' ? 'Preparing source-specific questions…' : kind === 'suggest' ? 'Preparing lesson proposal…' : 'Saving material…')
     setError(''); setStatus('')
     const timer = setTimeout(() => controller.abort(), 180_000)
     try {
@@ -199,21 +200,21 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review }: { l
       <p className="text-sm text-muted">TXT, Markdown, PDF or DOCX; up to 10 MiB. One upload per material. Text-only extraction; scanned PDFs require OCR. Uploads are not executed.</p></>}
       {form.upload_id && <p>Uploaded source linked. Its passages remain attached to the lesson.</p>}
       <label>Your notes and selected source content<textarea className={field} rows={8} maxLength={120000} value={form.notes} disabled={!!busy || readOnly} onChange={e => change({ ...form, notes: e.target.value })} /></label>
-      <p className="text-sm text-muted">Keep questions, examples and corrections here. For a local proposal, select or shorten this to 16,000 characters. Longer material can still be saved.</p>
+      <p className="text-sm text-muted">Keep questions, examples and corrections here. For a generated proposal, select or shorten this to 16,000 characters. Longer material can still be saved.</p>
       </div>
       <div hidden={step !== 'research' && step !== 'write'}>
-      <ResearchWorkspace phase={step === 'write' ? 'write' : 'research'} onMemorySearch={lookupMemories} form={form} disabled={!!busy || readOnly} onChange={change} onTutor={(action, refresh) => void run(action, undefined, refresh)} />
-      {form.research && !readOnly && <Button variant="secondary" disabled={!!busy || !form.title.trim() || form.research.questions.some(q => q.findings || q.evidence || q.unresolved || q.section || q.tutor_exchanges?.length)} onClick={() => void run('research')}>Prepare source-specific questions locally</Button>}
+      <ResearchWorkspace hosted={hosted} phase={step === 'write' ? 'write' : 'research'} onMemorySearch={lookupMemories} form={form} disabled={!!busy || readOnly} onChange={change} onTutor={(action, refresh) => void run(action, undefined, refresh)} />
+      {form.research && !readOnly && <Button variant="secondary" disabled={!!busy || !form.title.trim() || form.research.questions.some(q => q.findings || q.evidence || q.unresolved || q.section || q.tutor_exchanges?.length)} onClick={() => void run('research')}>{hosted ? 'Prepare source-specific questions with OpenAI' : 'Prepare source-specific questions locally'}</Button>}
       </div>
       <div hidden={step !== 'review'} className="space-y-4">
       <article aria-label="Knowledge material preview" className="space-y-3"><h3 className="font-semibold">{form.title || 'Untitled material'}</h3><p className="whitespace-pre-wrap">{form.explanation || form.research?.questions.map(q => q.section).filter(Boolean).join('\n\n') || form.notes}</p></article>
       <Disclosure label="Shape a lesson (optional)">
-        <p className="mb-2">Write these yourself or generate an editable local proposal. Include a distinct worked example and an application question. Neither generation nor activation verifies factual accuracy.</p>
+        <p className="mb-2">Write these yourself or generate an editable proposal. Include a distinct worked example and an application question. Neither generation nor activation verifies factual accuracy.</p>
         {([['objective', 'Learning objective'], ['explanation', 'Explanation'], ['worked_example', 'Worked example'], ['question', 'Application question']] as const).map(([key, label]) => <label className="block my-2" key={key}>{label}<textarea className={field} rows={3} maxLength={key === 'objective' ? 1000 : 4000} value={form[key]} disabled={!!busy || readOnly} onChange={e => change({ ...form, [key]: e.target.value })} /></label>)}
         <label>Success criteria — one per line<textarea className={field} rows={3} value={form.criteria?.join('\n') ?? ''} disabled={!!busy || readOnly} onChange={e => change({ ...form, criteria: e.target.value.split('\n') })} /></label>
       </Disclosure>
       {needsSave ? <p role="status">Save your latest writing before activating the lesson.</p> : review}
-      {!readOnly && <Disclosure label="Prepare a local lesson proposal (optional)"><Button disabled={!!busy || !form.title.trim() || !form.notes.trim() || form.notes.length > 16000} onClick={() => void run('suggest')}>Prepare local lesson proposal</Button></Disclosure>}
+      {!readOnly && <Disclosure label={hosted ? "Prepare an OpenAI lesson proposal (optional)" : "Prepare a local lesson proposal (optional)"}><Button disabled={!!busy || !form.title.trim() || !form.notes.trim() || form.notes.length > 16000} onClick={() => void run('suggest')}>{hosted ? 'Prepare lesson proposal with OpenAI' : 'Prepare local lesson proposal'}</Button></Disclosure>}
       {current && <Link className="underline text-sm" to={`/curriculum?draft=${current.id}`}>Saved draft link</Link>}
 
       </div>

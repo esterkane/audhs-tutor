@@ -30,6 +30,7 @@ def settings(db_path: Path, tmp_path_factory: pytest.TempPathFactory) -> Setting
         routing_profile="default",  # isolate model contracts from machine routing overrides
         anthropic_api_key="",
         openai_api_key="",
+        authoring_key_file=str(db_path.parent / "authoring.key"),
         daily_budget_usd=1.0,
         ingest_roots=f"{Path(__file__).resolve().parents[2]},{tmp_path_factory.getbasetemp()}",
         voice_dir=str(
