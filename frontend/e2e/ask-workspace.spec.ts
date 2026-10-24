@@ -6,7 +6,7 @@ import { emptyBrief, type Brief } from '../src/features/ask/conversationBrief'
 async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' | 'reuse' = 'complete') {
   await page.route('**/api/references/*', route => route.fulfill({ json: { snapshot: null } }))
   const records = new Map<string, Record<string, unknown>>()
-  const requests: { key: string; body: { question: string; conversation_brief?: Brief; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } } }[] = []
+  const requests: { key: string; body: { question: string; teaching_mode?: 'explicit' | 'guided'; conversation_brief?: Brief; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } } }[] = []
   const old = { id: 'saved-example', turn_id: 'old', session_id: null, surface: 'ask', created_at: '2026-10-12T10:00:00Z', request_text: 'Why does quantization reduce memory?', learner_question: null, target_label: null, suggestion_reason: 'Local question match · You marked it helpful (not a correctness check)', source_check: { sources: [{ chunk_id: 'p1', status: 'unchanged', newer_version: true }], omitted: 0 }, context_dependent: true, preview: 'Fewer bits per weight.', skill_id: null, area_id: null, text: 'Fewer bits per weight reduce the storage required.', request: { question: 'Why does quantization reduce memory?' }, metadata: {} }
   records.set(old.id, old)
   await page.route('**/api/areas', route => route.fulfill({ json: { areas: [], total_documents: 0, unassigned_documents: 0 } }))
@@ -19,7 +19,7 @@ async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' | 'reus
     return records.has(id) ? route.fulfill({ json: records.get(id) }) : route.fulfill({ status: 404, json: { error: { message: 'Not found' } } })
   })
   await page.route('**/api/ask/stream', async route => {
-    const body = route.request().postDataJSON() as { prefer_saved?: boolean; question: string; conversation_brief?: Brief; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } }
+    const body = route.request().postDataJSON() as { prefer_saved?: boolean; question: string; teaching_mode?: 'explicit' | 'guided'; conversation_brief?: Brief; parent_answer_id?: string; sources?: { passage_ids: string[]; passage_hashes: Record<string, string> } }
     const key = route.request().headers()['idempotency-key']
     requests.push({ key, body })
     if (mode === 'reuse' && body.prefer_saved) return route.fulfill({ contentType: 'text/event-stream', body: `event: done\ndata: ${JSON.stringify({ text: old.text, turn_id: key, model: 'local-fixture', route: 'saved', reused: true, answer_id: old.id, saved_at: old.created_at, conversation_id: old.id })}\n\n` })
@@ -27,7 +27,7 @@ async function fixture(page: Page, mode: 'complete' | 'partial' | 'slow' | 'reus
     if (mode === 'partial' && requests.length === 1) return route.fulfill({ contentType: 'text/event-stream', body: 'event: token\ndata: {"text":"An unfinished explanation"}\n\n' })
     const id = `saved-${key}`
     const text = 'Quantization stores each weight with fewer bits. For example, eight-bit weights use less memory than 32-bit weights. Precision can decrease.' + (body.sources ? ' [source:S1]' : '')
-    const record = { ...old, id, turn_id: key, request_text: body.question, text, request: body, metadata: { conversation_brief: body.conversation_brief ? { mode: 'supplied', origin: 'learner_supplied_unverified', value: body.conversation_brief, hash: createHash('sha256').update(JSON.stringify(body.conversation_brief)).digest('hex') } : undefined, parent_answer_id: body.parent_answer_id ?? null, sources: body.sources ? [{ chunk_id: 'p1', citation: 'S1: Synthetic bytes (local version 1)', text: 'Eight bits use one byte.' }] : [] } }
+    const record = { ...old, id, turn_id: key, request_text: body.question, text, request: body, metadata: { teaching_mode: body.teaching_mode ?? 'explicit', conversation_brief: body.conversation_brief ? { mode: 'supplied', origin: 'learner_supplied_unverified', value: body.conversation_brief, hash: createHash('sha256').update(JSON.stringify(body.conversation_brief)).digest('hex') } : undefined, parent_answer_id: body.parent_answer_id ?? null, sources: body.sources ? [{ chunk_id: 'p1', citation: 'S1: Synthetic bytes (local version 1)', text: 'Eight bits use one byte.' }] : [] } }
     records.set(id, record)
     await route.fulfill({ contentType: 'text/event-stream', body: `event: token\ndata: ${JSON.stringify({ text })}\n\nevent: done\ndata: ${JSON.stringify({ text, turn_id: key, model: 'local-fixture', route: 'primary', answer_id: id, conversation_id: 'example', history_turns: body.parent_answer_id ? 1 : 0 })}\n\n` })
   })
@@ -471,6 +471,61 @@ test('Ask consumed notes do not carry into a new topic', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Explain sound waves', exact: true })).toBeVisible()
   expect(calls[1].body.parent_answer_id).toBeNull()
   expect(calls[1].body.conversation_brief).toBeUndefined()
+})
+
+for (const width of [390, 1280]) test(`Ask teaching choice survives retry and preserves drafts ${width}`, async ({ page }, info) => {
+  await page.setViewportSize({ width, height: 900 })
+  const calls = await fixture(page, 'partial')
+  await page.goto('/ask')
+  const mode = page.getByLabel('How should the tutor respond?')
+  await expect(mode).toHaveValue('explicit')
+  await mode.focus()
+  await expect(mode).toBeFocused()
+  await page.keyboard.press('l')
+  await page.keyboard.press('Enter')
+  await page.keyboard.press('Tab')
+  await expect(mode).toHaveValue('guided')
+  await page.getByLabel('Your question', { exact: true }).fill('Explain weights')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).click()
+  await expect(page.getByText('An unfinished explanation', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Explain instead', exact: true }).click()
+  await expect(page.getByLabel('Your question', { exact: true })).toHaveValue('Explain weights')
+  await expect(page.getByLabel('Your question', { exact: true })).toBeFocused()
+  await page.reload()
+  await expect(mode).toHaveValue('explicit')
+  await page.getByRole('button', { name: 'Retry previous request' }).click()
+  await expect(page.getByText('Teaching mode: Learn together', { exact: true })).toBeVisible()
+  expect(calls[1]).toEqual(calls[0])
+  expect(calls[1].body.teaching_mode).toBe('guided')
+  await expect(mode).toHaveValue('guided')
+  await page.getByRole('button', { name: 'Explain instead', exact: true }).click()
+  await expect(page.getByLabel('Your follow-up question')).not.toHaveValue('')
+  expect(calls).toHaveLength(2)
+  await expect(mode).toHaveValue('explicit')
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
+  await page.screenshot({ path: info.outputPath(`teaching-choice-${width}.png`), fullPage: true })
+})
+
+test('Ask completed guided choice is inherited but a new topic defaults to direct', async ({ page }) => {
+  const calls = await fixture(page)
+  await page.goto('/ask?answer=saved-example')
+  await expect(page.getByText('Teaching mode: Not recorded for this saved answer')).toBeVisible()
+  await expect(page.getByLabel('How should the tutor respond?')).toHaveValue('explicit')
+  await page.getByRole('link', { name: 'New topic or question' }).click()
+  // Choose in the new-topic workspace, not in the saved-answer one it replaces.
+  await expect(page.getByText('Teaching mode: Not recorded for this saved answer')).toBeHidden()
+  await page.getByLabel('How should the tutor respond?').selectOption('guided')
+  await page.getByLabel('Your question', { exact: true }).fill('Explain fitting')
+  await page.getByRole('button', { name: 'Ask question', exact: true }).click()
+  await expect(page.getByText('Teaching mode: Learn together', { exact: true })).toBeVisible()
+  await page.reload()
+  await expect(page.getByLabel('How should the tutor respond?')).toHaveValue('guided')
+  await page.getByLabel('Your follow-up question').fill('Give another example')
+  await page.getByRole('button', { name: 'Ask follow-up', exact: true }).click()
+  await expect(page.getByRole('heading', { name: 'Give another example', exact: true })).toBeVisible()
+  expect(calls[1].body.teaching_mode).toBe('guided')
+  await page.getByRole('link', { name: 'New topic or question' }).click()
+  await expect(page.getByLabel('How should the tutor respond?')).toHaveValue('explicit')
 })
 
 for (const width of [390, 1280]) test(`Ask previous evidence requires explicit reselection ${width}`, async ({ page }, info) => {

@@ -58,6 +58,7 @@ async def test_opt_in_reuses_original_with_atomic_receipt_and_no_new_model_or_le
     "change",
     [
         "fresh",
+        "teaching_mode",
         "question",
         "followup",
         "hidden",
@@ -76,6 +77,8 @@ async def test_changed_or_unqualified_answers_generate_instead(db, learner, fake
     body = body.model_copy(update={"prefer_saved": True})
     if change == "fresh":
         body = body.model_copy(update={"prefer_saved": False})
+    elif change == "teaching_mode":
+        body = body.model_copy(update={"teaching_mode": "guided"})
     elif change == "question":
         body = body.model_copy(update={"question": body.question + " in detail"})
     elif change == "followup":

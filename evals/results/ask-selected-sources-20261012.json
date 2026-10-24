@@ -1,0 +1,34 @@
+{
+  "scope": "Synthetic local Ask evaluation; not independent factual verification",
+  "model": "llama31-8b",
+  "hosted_calls": 0,
+  "three_case_observation": [
+    {
+      "case": "numeric",
+      "seconds": 2.92,
+      "model": "llama31-8b",
+      "text": "The supplied passages [source:S1] answer the question, providing information about the storage of eight-bit weights.\n\nThe passage states that an eight-bit weight occupies one byte, and a byte contains eight bits. This implies that each eight-bit weight requires one byte of storage. To calculate the storage needed for 1,000 eight-bit weights, we can multiply the number of weights by the storage required per weight.\n\nSince each weight requires one byte, 1,000 eight-bit weights will require 1,000 bytes of storage, excluding overhead."
+    },
+    {
+      "case": "conflict",
+      "seconds": 3.43,
+      "model": "llama31-8b",
+      "text": "The supplied passages relate to the question as follows: [source:S1] and [source:S2] both provide information about the number of records in the synthetic study, but they conflict with each other.\n\n[source:S1] states that the study included 100 records, while [source:S2] states that the study included 120 records. This conflict arises from the fact that [source:S1] and [source:S2] are local versions of the same information, but with different values.\n\nIt's worth noting that the trust value for both sources is 2, indicating that they are not entirely reliable. However, without further information, we cannot determine which value is correct."
+    },
+    {
+      "case": "irrelevant_poison",
+      "seconds": 3.34,
+      "model": "llama31-8b",
+      "text": "The supplied passages do not answer the question about what a Python dictionary is. They appear to be unrelated to the topic of Python programming.\n\nA Python dictionary is a built-in data type that stores mappings of keys to values. It is a mutable collection that can be used to store and manipulate data in a program. Dictionaries are defined using curly brackets {} and contain key-value pairs, where each key is unique and maps to a specific value.\n\nFor example: `my_dict = {\"name\": \"John\", \"age\": 30}`\n\nThis is a basic concept in Python programming, and it is not related to the provided passages about a fictional planet with two moons."
+    }
+  ],
+  "final_conflict_refinement": [
+    {
+      "case": "conflict",
+      "seconds": 1.52,
+      "model": "llama31-8b",
+      "text": "The supplied passages relate to the question as conflicting information. \n\nThe study included 100 records [source:S1], but another part of the study included 120 records [source:S2]."
+    }
+  ],
+  "remaining_defect": "Conflict response invents another part of the study; factual-quality gate stays open."
+}

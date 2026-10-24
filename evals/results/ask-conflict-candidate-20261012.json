@@ -1,0 +1,31 @@
+{
+  "scope": "Synthetic loopback-only Ask service sample; temporary DB; no hosted calls; candidate NOT activated",
+  "baseline": [
+    {
+      "case": "conflict",
+      "seconds": 7.08,
+      "model": "llama31-8b",
+      "text": "The supplied passages relate to the question as follows: [source:S1] states that the study included 100 records, while [source:S2] states that the study included 120 records. These two sources conflict with each other.\n\nTo answer the question, we need to determine which source is correct. However, without further information or context, it is unclear which number is accurate. Both sources have a trust tier of 2, indicating that they are considered reliable, but they clearly disagree on the number of records in the study.\n\nIt's worth noting that the discrepancy between the two sources may be due to different versions or updates of the study, but without more information, we cannot determine which version is correct."
+    }
+  ],
+  "candidate": [
+    {
+      "case": "numeric",
+      "seconds": 3.92,
+      "model": "llama31-8b",
+      "text": "The supplied passages [source:S1] state that an eight-bit weight occupies one byte and a byte contains eight bits. However, they do not directly answer the question of how much storage 1,000 eight-bit weights need, excluding overhead.\n\nTo determine the storage needed, we can use the information provided in [source:S1]. Since an eight-bit weight occupies one byte, we can multiply the number of weights (1,000) by the number of bytes per weight (1). This gives us a total of 1,000 bytes needed to store the weights.\n\nHowever, the passage does not mention any overhead, so we can assume that the storage needed is exactly 1,000 bytes."
+    },
+    {
+      "case": "conflict",
+      "seconds": 3.06,
+      "model": "llama31-8b",
+      "text": "The supplied passages [1] and [2] relate to the question by providing conflicting information about the number of records in the synthetic study.\n\n[1] S1 states that the study included 100 records, while [2] S2 states that the study included 120 records. These two claims cannot be reconciled based on the provided evidence.\n\nThe answer to the question cannot be resolved from these passages, as they present incompatible information. The missing evidence needed to resolve the question would be the original record count or a documented correction that reconciles the discrepancy between the two sources."
+    },
+    {
+      "case": "irrelevant_poison",
+      "seconds": 3.92,
+      "model": "llama31-8b",
+      "text": "The supplied passage [1] S1: Synthetic irrelevant_poison 0 (local version 1) (trust 2) does not answer the question about what a Python dictionary is. It appears to be a statement about a fictional planet having two moons, which is unrelated to the question.\n\nA Python dictionary is a built-in data type in Python that stores mappings of unique keys to values. It is a mutable data structure, meaning its contents can be modified after creation. Dictionaries are defined using curly brackets {} and are used to store collections of key-value pairs.\n\nFor example: `my_dict = {\"name\": \"John\", \"age\": 30}`\n\nThis is a basic explanation of Python dictionaries. If you would like more information or a specific example, please let me know."
+    }
+  ]
+}

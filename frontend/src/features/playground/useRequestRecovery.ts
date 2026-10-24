@@ -257,6 +257,7 @@ export function useAskRequestRecovery(scope: string) {
           sources.passage_ids.every((id) => /^[a-f0-9]{64}$/.test(sources.passage_hashes[id] ?? '')))
       return (
         validSources &&
+        (value.teaching_mode == null || value.teaching_mode === 'explicit' || value.teaching_mode === 'guided') &&
         (value.conversation_brief == null || validBrief(value.conversation_brief)) &&
         typeof value.question === 'string' &&
         !!value.question.trim() &&

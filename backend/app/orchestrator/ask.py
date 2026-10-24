@@ -104,6 +104,12 @@ async def respond(
     opening_added = bool(
         opening_context and opening_context["answer_id"] not in {r.id for r in previous}
     )
+    inherited_mode = previous[0].metadata_json.get("teaching_mode") if previous else None
+    teaching_mode = body.teaching_mode or (
+        inherited_mode if inherited_mode in ("explicit", "guided") else "explicit"
+    )
+    if teaching_mode == "guided":
+        prompt_version += "+guided.v1"
     brief_context = ask_brief.resolve(body.conversation_brief, previous[0] if previous else None)
     if brief_context["mode"] in {"supplied", "inherited", "cleared"}:
         prompt_version += "+brief.v1"
@@ -116,6 +122,10 @@ async def respond(
             else _read("ask/explain.v1.md"),
         )
     ]
+    if teaching_mode == "guided":
+        packet[0] = packet[0].model_copy(
+            update={"content": packet[0].content + "\n" + _read("ask/guided.v1.md")}
+        )
     if cursor:
         packet[0] = packet[0].model_copy(
             update={
@@ -379,6 +389,7 @@ async def respond(
                 "check_status": "unverified",
                 "origin_status": "source_derived" if sources or previous else "unknown",
                 "history_turns": len(previous),
+                "teaching_mode": teaching_mode,
                 "conversation_brief": brief_context,
                 "opening_context": opening_context
                 or (

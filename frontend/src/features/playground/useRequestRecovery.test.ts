@@ -110,3 +110,20 @@ it('keeps Ask identity across remounts when storage writes fail', () => {
   const completed = renderHook(() => useAskRequestRecovery('ask:remount-test'))
   expect(completed.result.current.pending).toBeNull()
 })
+
+it('rejects an unknown Ask teaching mode in recovered requests without silently changing it', () => {
+  sessionStorage.setItem('tutor-request:v1:ask:bad-mode', JSON.stringify({
+    key: crypto.randomUUID(), body: { question: 'Explain', teaching_mode: 'automatic' }, view,
+  }))
+  const hook = renderHook(() => useAskRequestRecovery('ask:bad-mode'))
+  expect(hook.result.current.needsDiscard).toBe(true)
+  expect(hook.result.current.pending).toBeNull()
+})
+
+it('preserves guided mode in an exact recovered Ask request', () => {
+  const original = { key: crypto.randomUUID(), body: { question: 'Explain', teaching_mode: 'guided' }, view }
+  sessionStorage.setItem('tutor-request:v1:ask:guided-mode', JSON.stringify(original))
+  const hook = renderHook(() => useAskRequestRecovery('ask:guided-mode'))
+  expect(hook.result.current.pending).toEqual(original)
+  expect(hook.result.current.needsDiscard).toBe(false)
+})

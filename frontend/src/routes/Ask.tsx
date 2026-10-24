@@ -43,6 +43,7 @@ export function Ask() {
 function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string }) {
   const scope = `ask:${learnerId}:${parent || 'new'}`
   const draft = useLessonDraft(`${scope}:question`, 'question')
+  const modeDraft = useLessonDraft(`${scope}:teaching-mode`, 'teaching choice')
   const briefDraft = useLessonDraft(`${scope}:brief`, 'conversation notes')
   const area = useLessonDraft(`${scope}:area`, 'area')
   const preview = useLessonDraft(`${scope}:preview`, 'unfinished reply')
@@ -65,6 +66,9 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
     retry: false,
   })
   const answer = saved.data?.surface === 'ask' ? saved.data : undefined
+  const recordedMode = answer?.metadata?.teaching_mode
+  const teachingMode = modeDraft.input === 'explicit' || modeDraft.input === 'guided'
+    ? modeDraft.input : recordedMode === 'guided' ? 'guided' : 'explicit'
   let briefInvalid = false
   let editedBrief: Brief | null = null
   try { editedBrief = parseBriefDraft(briefDraft.input) } catch { briefInvalid = true }
@@ -131,6 +135,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
         recovery.prepare(
           {
             question: draft.input,
+            teaching_mode: teachingMode,
             ...(editedBrief ? { conversation_brief: editedBrief } : {}),
             area_id: areaId || null,
             parent_answer_id: parent || null,
@@ -184,6 +189,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
           'The answer has no confirmed saved record. Keep the preview and recover this request.',
         )
       recovery.accept(intent.key)
+      if (teachingMode === intent.body.teaching_mode) modeDraft.setInput('')
       if (draft.input === intent.body.question) draft.setInput('')
       if (JSON.stringify(editedBrief) === JSON.stringify(intent.body.conversation_brief ?? null)) briefDraft.setInput('')
       preview.setInput('')
@@ -250,6 +256,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
                 Saved locally · {new Date(answer.created_at).toLocaleString()} · Model explanation, not
                 fact-checked.
               </p>
+              <p className="text-sm text-muted">Teaching mode: {recordedMode === 'guided' ? 'Learn together' : recordedMode === 'explicit' ? 'Direct explanation' : 'Not recorded for this saved answer'}</p>
               <ConversationContext metadata={answer.metadata} />
               <SourcedAnswer key={`sources:${answer.id}`} text={answer.text} sources={Array.isArray(answer.metadata.sources) ? answer.metadata.sources : []} />
               <ReadAloud text={`${answer.request_text}\n\n${answer.text}`} />
@@ -339,6 +346,24 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
               : 'No lesson, webpage or course material is attached automatically.'}{' '}
             Model explanations are not fact-checked. Source review is available after saving.
           </p>
+          <label className="block font-medium" htmlFor="ask-teaching-mode">How should the tutor respond?</label>
+          <select id="ask-teaching-mode" value={teachingMode} disabled={busy || !ready}
+            aria-describedby="ask-teaching-mode-help"
+            className="w-full rounded border border-line bg-card p-2"
+            onChange={event => modeDraft.setInput(event.target.value)}>
+            <option value="explicit">Direct explanation</option>
+            <option value="guided">Learn together</option>
+          </select>
+          <p id="ask-teaching-mode-help" className="text-sm text-muted">
+            {teachingMode === 'guided' ? 'Explain the idea, then explore it with at most one question at a time.' : 'Explain the answer and method directly.'} Applies to the next reply; saved replies stay unchanged.
+            {recovery.pending && ' Retry keeps the original teaching choice.'}
+          </p>
+          {teachingMode === 'guided' && <Button type="button" disabled={busy || !ready}
+            onClick={() => {
+              modeDraft.setInput('explicit')
+              if (!draft.input.trim()) draft.setInput('Please explain the current idea directly, with a concrete example; no question needed.')
+              textarea.current?.focus()
+            }}>Explain instead</Button>}
           <ConversationBriefEditor value={effectiveBrief} disabled={busy || !ready} invalid={briefInvalid}
             change={value => briefDraft.setInput(JSON.stringify(value))} />
           {briefInvalid && <p role="alert">Open Keep context to clear the unreadable notes before asking.</p>}
@@ -445,7 +470,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
             Draft kept in this browser tab. Completed replies are saved in the local database.
           </p>
         </form>
-        {[draft.error, area.error, briefDraft.error, preview.error, previewQuestion.error]
+        {[draft.error, area.error, modeDraft.error, briefDraft.error, preview.error, previewQuestion.error]
           .filter(Boolean)
           .slice(0, 1)
           .map((e) => (

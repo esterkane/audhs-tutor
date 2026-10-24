@@ -46,6 +46,7 @@ class ConversationBrief(BaseModel):
 
 
 class AskQuestion(BaseModel):
+    teaching_mode: Literal["explicit", "guided"] | None = None
     conversation_brief: ConversationBrief | None = None
     sources: AskSources | None = None
     prefer_saved: bool | None = None
@@ -53,6 +54,8 @@ class AskQuestion(BaseModel):
     @model_serializer(mode="wrap")
     def serialize(self, handler: SerializerFunctionWrapHandler) -> dict[str, Any]:
         data = cast(dict[str, Any], handler(self))
+        if self.teaching_mode is None:
+            data.pop("teaching_mode", None)
         if self.conversation_brief is None:
             data.pop("conversation_brief", None)
         if self.sources is None:

@@ -2351,3 +2351,20 @@ enforcement remain open; next implementation is G1 independent Ask workspace.
 Live media verification also fixed Kokoro object-voice parsing (automatic voice
 selection previously returned400). 1,359 full tests passed before that correction;
 73 affected final tests and real local synthesis pass; physical audio remains open.
+
+## Mac learning-design transfer — 2026-10-24
+
+Branch `claude/mac-learning-personas`, based on the sanitized `main` (ae50e7d). Transfers the Mac-only Ask
+work that was still uncommitted on 2026-10-15: the explicit teaching choice (Direct explanation / Learn
+together, `teaching_mode`, `prompts/ask/guided.v1.md`, design record `docs/design/ASK-GUIDED-MODE.md`), the
+local context-proposal service candidate (`orchestrator/ask_context_proposals.py`, `schemas/source_registry.py`,
+`prompts/ask/context-proposal.v1/v2.md`; not exposed to the learner; its local synthetic sample still has
+invalid-offset and attribution failures, see docs/design/ASK-CONTEXT-PROPOSALS.md), request-recovery and
+cancellation fixes, and five related test modules. The Windows cancellation accounting in `gateway.py`
+already covered the Mac change and was kept unchanged. Three synthetic eval results that published slice
+docs already referenced were added. Browser journey "completed guided choice ... new topic defaults to
+direct" waited for the new-topic workspace before choosing (it previously chose in the saved-answer workspace
+being replaced); assertions unchanged. Verification on this branch, hosted keys blank, hosted budget 0,
+temporary databases: backend 2255 passed; ruff, ruff format, strict mypy clean; frontend tsc, eslint and
+768 unit tests pass; Ask browser journeys 25/25; full browser suite 479 passed, 20 skipped (pinned local
+Pyodide). Local tutor quality gates remain open; no learning rules or routing changed.

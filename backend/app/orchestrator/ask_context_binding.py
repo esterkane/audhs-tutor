@@ -9,7 +9,12 @@ from dataclasses import dataclass
 from typing import Literal
 
 from app.orchestrator.answer_check_binding import text_hash
-from app.schemas.ask_context_proposals import ContextProposal
+from app.schemas.ask_context_proposals import (
+    ContextProposal,
+    ProposalReference,
+    ProposalSelection,
+    ProposedField,
+)
 
 
 @dataclass(frozen=True)
@@ -40,3 +45,31 @@ def validate_references(
             ):
                 raise ValueError("Reference range is outside text or contains only whitespace")
     return checked
+
+
+def bind_selection(
+    selection: "ProposalSelection", inputs: Mapping[str, ContextInput]
+) -> ContextProposal:
+    """Bind whole selected inputs deterministically; selection is not entailment."""
+    checked = ProposalSelection.model_validate(selection.model_dump())
+    changes = []
+    for change in checked.changes:
+        references = []
+        for identity in change.input_ids:
+            item = inputs.get(identity)
+            if item is None:
+                raise ValueError("Selected input was not supplied to this proposal")
+            references.append(
+                ProposalReference(
+                    input_id=identity, text_hash=text_hash(item.text), start=0, end=len(item.text)
+                )
+            )
+        changes.append(
+            ProposedField(
+                field=change.field,
+                value=change.value,
+                rationale=change.rationale,
+                references=references,
+            )
+        )
+    return validate_references(ContextProposal(changes=changes), inputs)

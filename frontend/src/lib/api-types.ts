@@ -3683,6 +3683,8 @@ export interface components {
     }
     /** AskQuestion */
     AskQuestion: {
+      /** Teaching Mode */
+      teaching_mode?: ('explicit' | 'guided') | null
       conversation_brief?: components['schemas']['ConversationBrief'] | null
       sources?: components['schemas']['AskSources'] | null
       /** Prefer Saved */

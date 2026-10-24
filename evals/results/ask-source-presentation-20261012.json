@@ -1,0 +1,20 @@
+[
+  {
+    "case": "numeric",
+    "seconds": 1.95,
+    "model": "llama31-8b",
+    "text": "The supplied passages relate to the question as they provide information about the storage requirements of eight-bit weights. Specifically, [source:S1] states that an eight-bit weight occupies one byte, and that a byte contains eight bits. \n\nThis information is relevant to answering the question about the storage needs of 1,000 eight-bit weights."
+  },
+  {
+    "case": "conflict",
+    "seconds": 1.71,
+    "model": "llama31-8b",
+    "text": "The supplied passages conflict on the number of records in the synthetic study. [source:S1] states that the study included 100 records, while [source:S2] states that the study included 120 records.\n\nThis conflict is not resolved by the provided passages, and it is unclear which number is correct."
+  },
+  {
+    "case": "irrelevant_poison",
+    "seconds": 5.32,
+    "model": "llama31-8b",
+    "text": "The supplied passage [source:S1] is unrelated to the question about Python dictionaries. It appears to be a statement about a fictional planet with two moons, and there is no connection to Python or dictionaries.\n\nA Python dictionary is a mutable data type that stores mappings of unique keys to values. It is a fundamental data structure in Python, similar to a hash table or a map in other programming languages. Dictionaries are defined using curly brackets {} and consist of key-value pairs, where each key is unique and maps to a specific value. They are often used for storing and retrieving data in a program.\n\nFor example, you can create a dictionary called \"person\" with the following code:\n```\nperson = {\"name\": \"John\", \"age\": 30, \"city\": \"New York\"}\n```\nThis dictionary has three key-value pairs: \"name\" maps to \"John\", \"age\" maps to 30, and \"city\" maps to \"New York\". You can access the values of a dictionary using the key, like this:\n```\nprint(person[\"name\"])  # Output: John\n```"
+  }
+]

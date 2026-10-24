@@ -107,3 +107,32 @@ class ProposalReceipt(BaseModel):
                 ):
                     raise ValueError("Proposal reference does not match recorded input")
         return self
+
+
+class SelectedField(BaseModel):
+    """Generation selects input IDs; only the server constructs exact references."""
+
+    model_config = ConfigDict(extra="forbid", strict=True)
+    field: FieldName
+    value: str = Field(max_length=1500)
+    rationale: str = Field(min_length=1, max_length=500)
+    input_ids: list[Identifier] = Field(min_length=1, max_length=6)
+
+    @model_validator(mode="after")
+    def bounded(self) -> "SelectedField":
+        if len(self.value) > LIMITS[self.field] or not self.rationale.strip():
+            raise ValueError("Field limit exceeded or rationale empty")
+        if len(set(self.input_ids)) != len(self.input_ids):
+            raise ValueError("Duplicate input selection")
+        return self
+
+
+class ProposalSelection(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+    changes: list[SelectedField] = Field(max_length=4)
+
+    @model_validator(mode="after")
+    def distinct_fields(self) -> "ProposalSelection":
+        if len({change.field for change in self.changes}) != len(self.changes):
+            raise ValueError("Propose each field at most once")
+        return self
