@@ -16,7 +16,7 @@ from app.models_ai import registry
 from app.models_ai.budget import Budget
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
-from app.orchestrator import personas
+from app.orchestrator import checked_research, personas
 from app.orchestrator.context import escape_data
 from app.orchestrator.prompts import PROMPTS_DIR
 from app.schemas.knowledge_authoring import (
@@ -139,6 +139,48 @@ async def help_research(
             "Your saved text is kept.",
             422,
         )
+    checked = checked_research.answer(research.passage, question, presentation)
+    if checked is not None:
+        binding = json.dumps(
+            {
+                "learner": learner_id,
+                "draft": draft_id,
+                "question": question.id,
+                "basis": basis,
+                "action": command.action,
+                "calculation": checked_research.VERSION,
+                "presentation": presentation.suffix,
+                "answer": checked.model_dump(),
+            },
+            sort_keys=True,
+            ensure_ascii=False,
+        )
+        latest = question.tutor_exchanges[-1] if question.tutor_exchanges else None
+        if (
+            latest
+            and latest.cache_token
+            and hmac.compare_digest(latest.cache_token, reuse_token(binding, latest))
+        ):
+            return draft, True
+        if command.action == "draft":
+            checked = checked.model_copy(update={"section": checked.discussion, "discussion": ""})
+        exchange = ResearchTutorExchange(
+            action=command.action,
+            request=question.tutor_request,
+            answer=checked,
+            model_call_id=None,
+            calculation=checked_research.VERSION,
+        )
+        exchange.cache_token = reuse_token(binding, exchange)
+        question.tutor_exchanges.append(exchange)
+        question.tutor_basis = json.dumps(basis, ensure_ascii=False, separators=(",", ":"))
+        payload = {
+            **draft.payload_json,
+            "authoring": {**authoring, "research": research.model_dump()},
+        }
+        return await curriculum.update_draft(
+            db, learner_id, draft_id, payload, expected_version=command.expected_version
+        ), False
     # Keep domain-specific demonstrations out of unrelated research packets.
     policy_name = (
         "curriculum/research-tutor.v11.md"

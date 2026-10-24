@@ -55,15 +55,17 @@ async def test_literal_result_composition_keeps_coverage_history_and_normal_fall
     if mode == "eligible":
         for result in ["text * -3 = ''", "text * 0 = ''", "text * 2 = 'gogo'"]:
             assert result in text
-        assert "unchanged" in text and fake_local.calls[0].response_model is ResearchRepetitionRule
+        assert "unchanged" in text and not fake_local.calls
+        assert exchange["calculation"] == "python.string-repetition.v1"
+        assert exchange["model_call_id"] is None
     else:
         assert text == rule and fake_local.calls[0].response_model is not ResearchRepetitionRule
-    call = await db.get(ModelCall, exchange["model_call_id"])
-    assert bool(call.metadata_json["verified_result_count"]) == (mode == "eligible")
+        call = await db.get(ModelCall, exchange["model_call_id"])
+        assert not call.metadata_json["verified_result_count"]
     again = await client.post(
         url, json={"expected_version": saved["version"], "question_id": "q1", "action": action}
     )
-    assert again.json()["reused"] and len(fake_local.calls) == 1
+    assert again.json()["reused"] and len(fake_local.calls) == (0 if mode == "eligible" else 1)
 
 
 @pytest.mark.parametrize(

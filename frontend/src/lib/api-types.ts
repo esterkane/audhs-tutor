@@ -7090,7 +7090,9 @@ export interface components {
       request: string
       answer: components['schemas']['ResearchTutorAnswer']
       /** Model Call Id */
-      model_call_id: string
+      model_call_id: string | null
+      /** Calculation */
+      calculation?: 'python.string-repetition.v1' | null
       /** Memories */
       memories?: components['schemas']['PersonalMemory'][]
       /** Cache Token */

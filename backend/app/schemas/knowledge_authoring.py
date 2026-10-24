@@ -253,9 +253,18 @@ class ResearchTutorExchange(BaseModel):
     action: Literal["discuss", "draft"]
     request: str = Field(max_length=2000)
     answer: ResearchTutorAnswer
-    model_call_id: str = Field(max_length=128)
+    model_call_id: str | None = Field(max_length=128)
+    calculation: Literal["python.string-repetition.v1"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     memories: list[PersonalMemory] = Field(default_factory=list, max_length=3)
     cache_token: str | None = Field(default=None, max_length=128)
+
+    @model_validator(mode="after")
+    def generation_identity(self) -> "ResearchTutorExchange":
+        if (self.model_call_id is None) != (self.calculation is not None):
+            raise ValueError("A checked calculation has no model call; a model reply requires one")
+        return self
 
 
 class ResearchQuestion(BaseModel):

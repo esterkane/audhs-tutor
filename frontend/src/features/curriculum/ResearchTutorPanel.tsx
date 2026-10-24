@@ -17,10 +17,11 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
   const changed = !!latest && (question.tutor_basis !== basis || JSON.stringify(question.memory_ids ?? []) !== JSON.stringify((latest.memories ?? []).map(m => m.id)))
   function reply(exchange: Schemas['ResearchTutorExchange']) {
     return <div className="space-y-2">
+      {exchange.calculation && <p className="text-sm text-muted">Checked Python calculation; no model was used. The quoted source supplies the input, not independent verification of every source claim.</p>}
       {exchange.request && <p className="whitespace-pre-wrap">Your request: {exchange.request}</p>}
       {!!exchange.memories?.length && <Disclosure label="Earlier notes used for this reply">{exchange.memories.map(m => <div key={m.id}><p>{m.title} · saved version {m.version} · personal writing</p><blockquote className="whitespace-pre-wrap border-l-2 pl-3">{m.text}</blockquote></div>)}</Disclosure>}
       {exchange.answer.discussion && <Markdown text={exchange.answer.discussion} />}
-      {!!exchange.answer.source_quotes?.length && <Disclosure label="Source evidence">
+      {!!exchange.answer.source_quotes?.length && <Disclosure label={exchange.calculation ? 'Calculation input' : 'Source evidence'}>
         {exchange.answer.source_quotes.map((quote, i) => <blockquote key={i} className="whitespace-pre-wrap border-l-2 pl-3">{quote}</blockquote>)}
       </Disclosure>}
       {exchange.answer.needs_check && <div><p className="font-semibold">Needs checking</p><Markdown text={exchange.answer.needs_check} /></div>}
@@ -35,16 +36,16 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
     {onTutor && <div className="flex flex-wrap gap-2">
       <Button disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('discuss')}>Discuss my findings locally</Button>
       <Button variant="secondary" disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('draft-section')}>Draft one section locally</Button>
-      {latest && <Button variant="secondary" disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss', true)}>Ask for another reply</Button>}
+      {latest && !latest.calculation && <Button variant="secondary" disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss', true)}>Ask for another reply</Button>}
     </div>}
-    <p className="text-sm text-muted">An unchanged request can reuse its saved reply. Choose Ask for another reply to generate a fresh alternative.</p>
+    <p className="text-sm text-muted">{latest?.calculation ? 'These exact results are calculated locally. Add a request above to discuss a broader question with the tutor.' : 'An unchanged request can reuse its saved reply. Choose Ask for another reply to generate a fresh alternative.'}</p>
     {history.length >= 12 && <p>This question has 12 saved tutor replies. Keep them and add another research question to continue.</p>}
     {history.length > 1 && <Disclosure label={`Earlier tutor replies (${history.length - 1})`}>
       {history.slice(0, -1).map((exchange, i) => <div className="my-3 border-b border-line pb-3" key={i}><p className="font-semibold">Reply {i + 1}</p>{reply(exchange)}</div>)}
     </Disclosure>}
     {latest && <div className="space-y-3">
       <h5 className="font-semibold">Latest tutor reply</h5>
-      <p className="text-sm text-muted">Saved AI suggestion; source quotations locate its evidence and do not verify every claim.</p>
+      {!latest.calculation && <p className="text-sm text-muted">Saved AI suggestion; source quotations locate its evidence and do not verify every claim.</p>}
       {changed && <p role="status">The research text has changed since this reply. Your current writing is kept; ask again if you want an updated suggestion.</p>}
       {reply(latest)}
       {latest.answer.section && <Button disabled={disabled || sourceChanged || changed || question.section === latest.answer.section} onClick={() => { onChange({ ...question, section: latest.answer.section }); onUseDraft?.() }}>

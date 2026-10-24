@@ -1,6 +1,7 @@
 """Bounded literal-string calculations. Never execute source code or instructions."""
 
 import ast
+import keyword
 import re
 from dataclasses import dataclass
 
@@ -14,12 +15,17 @@ class RepetitionResults:
     def context(self) -> dict[str, object]:
         return {"name": self.name, "initial": self.initial, "results": dict(self.examples)}
 
-    def prose(self) -> str:
+    def prose(self, language: str = "en") -> str:
         def code(value: str) -> str:
             fence = "`" * (max((len(m[0]) for m in re.finditer(r"`+", value)), default=0) + 1)
             return f"{fence}{value}{fence}"
 
         calculations = "; ".join(code(f"{expr} = {value!r}") for expr, value in self.examples)
+        if language == "de":
+            return (
+                f"Für {code(f'{self.name} = {self.initial!r}')}: {calculations}. "
+                f"Die Wiederholung lässt {code(self.name)} unverändert."
+            )
         return (
             f"For {code(f'{self.name} = {self.initial!r}')}: {calculations}. "
             f"Repetition leaves {code(self.name)} unchanged."
@@ -49,8 +55,16 @@ def repetition_results(source: str, question: str) -> RepetitionResults | None:
         re.IGNORECASE,
     )
     if not ask:
+        ask = re.fullmatch(
+            r"was geben (.+) zurück,? und (?:ändert|verändert) sich ([a-z_]\w{0,19})\??",
+            question.strip(),
+            re.IGNORECASE,
+        )
+    if not ask:
         return None
     name = ask[2]
+    if not name.isidentifier() or keyword.iskeyword(name) or name == "__debug__":
+        return None
     literal = r"(?:'(?:\\.|[^'\\\n])*'|\"(?:\\.|[^\"\\\n])*\")"
     declaration = re.match(
         rf"\s*(?:In Python,\s*)?{re.escape(name)}\s*=\s*({literal})\s*[.;\n]",
@@ -81,10 +95,14 @@ def repetition_results(source: str, question: str) -> RepetitionResults | None:
     if not 1 <= len(matches) <= 3:
         return None
     separators = re.sub(expression, "", ask[1])
-    if re.sub(r"\band\b|[,\s]", "", separators, flags=re.IGNORECASE):
+    if re.sub(r"\b(?:and|und)\b|[,\s]", "", separators, flags=re.IGNORECASE):
         return None
     examples: list[tuple[str, str]] = []
     for match in matches:
+        # Python integer literals use ASCII digits; leading-zero nonzero literals
+        # are invalid syntax, even though int() would accept them as text.
+        if not re.fullmatch(r"[+-]?(?:0|[1-9][0-9]?)", match[1]):
+            return None
         count = int(match[1])
         if abs(count) > 8 or len(initial) * max(count, 0) > 128:
             return None

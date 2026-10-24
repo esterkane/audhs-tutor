@@ -7,13 +7,13 @@ import { ResearchTutorPanel } from './ResearchTutorPanel'
 
 afterEach(cleanup)
 const onTutor = vi.fn()
-function Harness({ draftOnly = false }: { draftOnly?: boolean }) {
+function Harness({ draftOnly = false, checked = false }: { draftOnly?: boolean; checked?: boolean }) {
   const research: Schemas['KnowledgeResearch'] = { passage: 'Sort and average the middle values.', topic: 'median', current: 0, questions: [] }
   const original = { id: 'q1', prompt: 'How?', findings: 'My findings', evidence: 'My source', unresolved: '', section: 'Existing paragraph', tutor_request: 'Help with the middle values', tutor_basis: '' }
   const [question, setQuestion] = useState<Schemas['ResearchQuestion']>({ ...original,
     tutor_basis: JSON.stringify({ passage: research.passage, topic: research.topic, question: original.prompt,
       findings: original.findings, evidence: original.evidence, unresolved: original.unresolved, section: original.section }),
-    tutor_exchanges: [{ action: 'draft', request: 'Help with the middle values', model_call_id: 'call1', answer: {
+    tutor_exchanges: [{ action: 'draft', request: 'Help with the middle values', model_call_id: checked ? null : 'call1', ...(checked ? { calculation: 'python.string-repetition.v1' as const } : {}), answer: {
       discussion: draftOnly ? '' : 'Average the two middle values.', needs_check: 'External links have not been checked.', next_question: '',
       source_quotes: ['Sort and average the middle values.'], section: 'Proposed paragraph.' } }],
   })
@@ -56,4 +56,15 @@ it('offers an explicit fresh alternative instead of silently forcing regeneratio
   render(<Harness />)
   fireEvent.click(screen.getByText('Ask for another reply'))
   expect(onTutor).toHaveBeenLastCalledWith('draft-section', true)
+})
+
+it('identifies checked calculations without pretending a model ran or offering duplicate alternatives', async () => {
+  const view = render(<Harness draftOnly checked />)
+  expect(screen.getByText(/Checked Python calculation; no model was used/)).toBeVisible()
+  expect(screen.queryByText('Ask for another reply')).not.toBeInTheDocument()
+  expect(screen.queryByText(/Saved AI suggestion/)).not.toBeInTheDocument()
+  fireEvent.click(screen.getByText('Calculation input'))
+  expect(screen.getByText('Sort and average the middle values.')).toBeVisible()
+  expect(screen.getByLabelText('my section')).toHaveTextContent('Existing paragraph')
+  expect(await axe(view.container)).toHaveNoViolations()
 })

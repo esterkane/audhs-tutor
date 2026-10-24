@@ -97,3 +97,16 @@ def test_python_identifiers_remain_case_sensitive():
     upper_question = QUESTION.replace("text", "Text")
     assert repetition_results(SOURCE, upper_question) is None
     assert repetition_results("In Python, Text = 'go'.", upper_question) is not None
+
+
+@pytest.mark.parametrize("count", ["02", "-03", "+02", "٢", "０"])
+def test_text_integer_conversion_must_not_bless_invalid_python_literals(count):
+    question = f"What do text * {count} return, and does text change?"
+    assert repetition_results(SOURCE, question) is None
+
+
+@pytest.mark.parametrize("name", ["None", "True", "async", "__debug__", "a²"])
+def test_illegal_assignment_names_defer(name):
+    source = f"In Python, {name} = 'go'."
+    question = f"What do {name} * 2 return, and does {name} change?"
+    assert repetition_results(source, question) is None
