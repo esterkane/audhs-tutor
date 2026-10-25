@@ -112,7 +112,7 @@ export function Preferences() {
         </p>
         <div className="grid grid-cols-1 gap-4">
           {preferenceSections.map(section => {
-            const sectionSpecs = specs.filter(s => s.key !== 'ui.reduced_motion' && ['bool', 'enum', 'int'].includes(s.type) && sectionFor(s.key) === section.id)
+            const sectionSpecs = specs.filter(s => (s.key !== 'ui.reduced_motion' || !specs.some(spec => spec.key === 'ui.motion')) && ['bool', 'enum', 'int'].includes(s.type) && sectionFor(s.key) === section.id)
             if (!sectionSpecs.length) return null
             return (
               <section key={section.id} aria-labelledby={`preferences-${section.id}`} className="grid grid-cols-1 gap-4">

@@ -71,3 +71,9 @@ bounded follow-up work; do not invent precise timings or rewrite stored learning
 Production entry bundle: before 2,031.34kB / 609.36kB gzip; after 2,037.41 kB / 610.48 kB gzip.
 CSS before 67.63kB / 16.86kB gzip; after 68.55kB / 17.08kB gzip. No new dependency or effect
 bundle. The existing large entry bundle warning remains; this slice is not a loading-speed claim.
+
+Legacy-response follow-up: hide ui.reduced_motion only when the returned specification also
+contains ui.motion. Older/offline cached response shapes retain their only motion switch.
+The existing320px recovery test exposed this gap; both legacy320/1280 and modern390/1280
+comfort journeys then passed (4tests). ESLint and TypeScript passed. No schema/history change.
+The bundle figures above describe d0bd787, before this small compatibility predicate.
