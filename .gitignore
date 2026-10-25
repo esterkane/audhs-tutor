@@ -38,3 +38,8 @@ frontend/public/local-learning/
 
 # Isolated design prototype browser artifacts
 frontend/test-results-design/
+
+# Private review exchanges are never publication inputs.
+docs/agent-handoffs/history/
+docs/agent-handoffs/LATEST_REVIEW.md
+docs/agent-handoffs/CLAUDE_FEEDBACK.md

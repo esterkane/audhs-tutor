@@ -91,7 +91,7 @@ body {
   line-height: 1.55;
 }
 *:focus-visible {
-  outline: 2px solid var(--color-focus-ring);
+  outline: 3px solid var(--color-focus-ring);
   outline-offset: 2px;
 }
 @media (prefers-reduced-motion: reduce) {
@@ -176,7 +176,7 @@ body {
     color-scheme: dark;
   }
 }
-:root[data-font='large'] {
+:root[data-text-size='lg'] {
   font-size: 118%;
 }
 :root[data-density='compact'] main {
@@ -434,3 +434,19 @@ body {
 .shell-focus .lesson-context-column, .shell-focus .lesson-current-content { grid-column: auto; grid-row: auto; }
 
 .shell-focus [data-focus-secondary] { display: none; }
+
+/* Comfort contract: no new font downloads or decorative rendering dependencies. */
+:root { --dur-fast: 150ms; --dur-base: 220ms; --move-max: 4px; }
+:root[data-motion='full'] { --move-max: 8px; }
+:root[data-motion='off'] { --dur-fast: 0ms; --dur-base: 0ms; --move-max: 0px; }
+:root[data-text-size='xl'] { font-size: 131%; }
+:root[data-font='readable'] { --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif; }
+:root[data-motion='off'] *, :root[data-motion='off'] *::before, :root[data-motion='off'] *::after {
+  animation: none !important; transition: none !important; scroll-behavior: auto !important;
+}
+
+/* Persistent focus keeps an exit and the parking control reachable in the header. */
+.comfort-focus > .shell-header { display: flex; }
+.comfort-focus .shell-browse-context { display: block; }
+
+:where(input, textarea, select, button, a, summary):focus-visible { outline-width: 3px; }

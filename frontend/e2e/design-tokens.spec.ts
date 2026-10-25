@@ -77,7 +77,7 @@ for (const theme of ['light', 'dark', 'system-light', 'system-dark']) {
         expect(metrics.inlineContrast).toBeGreaterThanOrEqual(4.5)
         expect(metrics.blockCodeBackground).toBe('rgba(0, 0, 0, 0)')
         expect(metrics.focusContrast).toBeGreaterThanOrEqual(3)
-        expect(metrics.outlineWidth).toBe('2px')
+        expect(metrics.outlineWidth).toBe('3px')
         expect(metrics.overflow).toBe(false)
         await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
         await page.getByRole('button', { name: /^Continue$/ }).click()

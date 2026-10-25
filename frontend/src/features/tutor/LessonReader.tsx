@@ -135,6 +135,12 @@ function Reader({ text, identity, active, sources }: Props) {
           )}
         </>
       )}
+      {initial.status === 'Saved reading position and notes restored.' && reading.selected > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <p>Continue at section {reading.selected + 1} of {sections.length}.</p>
+          <Button variant="secondary" onClick={() => move(0)}>Read from the beginning</Button>
+        </div>
+      )}
       <h3 ref={title} tabIndex={-1} className="text-lg font-semibold">
         {reading.full
           ? 'Full explanation'
@@ -144,6 +150,10 @@ function Reader({ text, identity, active, sources }: Props) {
         This is your reading position, not a completion or mastery score. Read freely and revisit any section
         before answering.
       </p>
+      <nav aria-label="Reading location" className="text-sm text-muted">
+        Explanation › {reading.full ? 'Full reading' : `Section ${reading.selected + 1} of ${sections.length}`}
+      </nav>
+      {!reading.full && <progress aria-label="Reading position" max={sections.length} value={reading.selected + 1} className="w-full" />}
       <Markdown headingLevel={4} text={visibleText} />
       {active && <ReadAloud key={`${reading.full}:${reading.selected}`} text={visibleText} />}
       {!reading.full && sections.length > 1 && (

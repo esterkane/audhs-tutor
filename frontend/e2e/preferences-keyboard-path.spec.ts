@@ -12,7 +12,7 @@ for (const width of [390, 1280]) {
     await preferences.focus()
     await page.keyboard.press('Enter')
     const main = page.getByRole('main')
-    await expect(main.getByRole('button', { name: 'large', exact: true })).toBeVisible()
+    await expect(main.getByRole('button', { name: 'Large', exact: true })).toBeVisible()
     // Anchor this scoped traversal after route loading; entry above uses keyboard activation.
     await main.focus()
     const controls = main.locator('button:visible:not(:disabled), input:visible:not(:disabled), a[href]:visible, summary:visible')

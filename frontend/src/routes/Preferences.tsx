@@ -19,10 +19,10 @@ type Spec = {
 }
 
 const preferenceSections = [
+  { id: 'display', title: 'Display and comfort', prefixes: ['ui.'], keys: [] },
   { id: 'learning', title: 'Learning and explanations', prefixes: ['questions.', 'tutor.'], keys: ['session.socratic_default'] },
   { id: 'planning', title: 'Session planning', prefixes: ['planner.', 'session.'], keys: [] },
   { id: 'voice', title: 'Voice and recordings', prefixes: ['voice.'], keys: [] },
-  { id: 'display', title: 'Display and comfort', prefixes: ['ui.'], keys: [] },
   { id: 'other', title: 'Additional preferences', prefixes: [], keys: [] },
 ]
 
@@ -31,6 +31,8 @@ function sectionFor(key: string) {
 }
 
 function optionLabel(key: string, value: string) {
+  if (key === 'ui.break_reminder') return value === '0' ? 'Off' : `${value} minutes`
+  if (key === 'ui.font_scale') return ({ normal: 'Standard', large: 'Large', xlarge: 'Extra large' } as Record<string, string>)[value] ?? value
   if (key === 'tutor.persona') return ({ none: 'No persona', kangaroo: 'Känguru / Kangaroo', guide: 'Calm guide', coach: 'Technical coach' } as Record<string, string>)[value] ?? value
   if (key === 'tutor.response_language') return ({ unchanged: 'Follow the conversation', en: 'English', de: 'Deutsch' } as Record<string, string>)[value] ?? value
   if (key === 'tutor.representation_default' && value === '') return 'No preferred format'
@@ -50,6 +52,8 @@ const numericUnits: Record<string, string> = {
 
 function effectHint(key: string): string | undefined {
   if (key === 'tutor.persona' || key === 'tutor.response_language') return 'Applies to new tutor replies across courses, Ask and research. Optional and reversible; saved material, sources, teaching mode and grading stay unchanged.'
+  if (key === 'ui.motion') return 'Your operating system’s reduced-motion setting always takes precedence. Off disables transitions; low keeps movement restrained.'
+  if (key === 'ui.break_reminder') return 'Counts active time on learning pages. Suggestions wait while you type or the tutor is working; nothing is paused or lost.'
   if (key.startsWith('questions.')) return 'Guides newly drafted learning-area questions. Does not rewrite saved questions or change every live tutor reply.'
   if (key.startsWith('planner.')) return 'Used when planning a new session. Saving this does not change the plan of a session already started.'
   if (['ui.theme', 'ui.density', 'ui.font_scale', 'ui.reduced_motion'].includes(key)) return 'Updates the display after saving. Your learning progress is unchanged.'
@@ -108,7 +112,7 @@ export function Preferences() {
         </p>
         <div className="grid grid-cols-1 gap-4">
           {preferenceSections.map(section => {
-            const sectionSpecs = specs.filter(s => ['bool', 'enum', 'int'].includes(s.type) && sectionFor(s.key) === section.id)
+            const sectionSpecs = specs.filter(s => s.key !== 'ui.reduced_motion' && ['bool', 'enum', 'int'].includes(s.type) && sectionFor(s.key) === section.id)
             if (!sectionSpecs.length) return null
             return (
               <section key={section.id} aria-labelledby={`preferences-${section.id}`} className="grid grid-cols-1 gap-4">

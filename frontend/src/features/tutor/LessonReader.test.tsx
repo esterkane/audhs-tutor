@@ -193,3 +193,18 @@ it('archives numbered source references with stable chunk identifiers and labels
   fireEvent.click(screen.getByText('Read the saved explanation'))
   expect(screen.getByText(/Source details are unavailable/)).toBeVisible()
 })
+
+it('keeps independent topic bookmarks and preserves notes when reading again from the beginning', () => {
+  let view = render(<LessonReader identity="topic-a" text={explanation} active />)
+  fireEvent.click(screen.getByRole('button', { name: 'Next section' }))
+  fireEvent.change(screen.getByLabelText('Your notes for this section (optional)'), { target: { value: 'Keep topic A notes' } })
+  view.unmount()
+  view = render(<LessonReader identity="topic-b" text={explanation} active />)
+  expect(screen.getByLabelText('Choose a section')).toHaveValue('0')
+  view.unmount()
+  render(<LessonReader identity="topic-a" text={explanation} active />)
+  expect(screen.getByText('Continue at section 2 of 2.')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Read from the beginning' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Next section' }))
+  expect(screen.getByLabelText('Your notes for this section (optional)')).toHaveValue('Keep topic A notes')
+})

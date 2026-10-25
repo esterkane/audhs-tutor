@@ -174,3 +174,21 @@ jobs:
           name: playwright-traces
           path: frontend/test-results/
           retention-days: 7
+
+
+  claude-review-bridge:
+    needs: scope
+    if: needs.scope.outputs.runtime == 'true'
+    name: Claude review MCP bridge · offline controls and stdio
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: tools/claude-review-mcp/uv.lock
+      - name: Isolated locked bridge environment
+        run: uv sync --frozen --project tools/claude-review-mcp
+      - name: No Claude account, network inference or paid API needed
+        run: uv run --frozen --project tools/claude-review-mcp pytest -q tools/claude-review-mcp/tests

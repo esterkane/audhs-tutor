@@ -18,7 +18,9 @@ export function SourcedAnswer({ text, sources }: { text: string; sources: Source
   }
   return <div ref={root}>
     <Markdown text={text} sourceKeys={keys} onSourceReference={openSource} />
-    {sources.length > 0 && <Disclosure label="Passages supplied for this answer" className="mt-3">
+    {sources.length === 0 && <p className="text-warn">Source support unavailable — no passages were supplied for this answer.</p>}
+    <Disclosure label={`Sources (${sources.length})`} className="mt-3">
+      {sources.length === 0 && <p>Check this answer against your materials before relying on it.</p>}
       <p className="text-sm text-muted">Historical snapshots supplied to the model, not proof that every claim is supported.
         Select a source marker in the answer to read its passage. Review current source status on the saved-answer page.</p>
       {sources.map((source, index) => <section key={`${source.chunk_id}-${index}`} className="mt-3 border-t border-line pt-2">
@@ -29,6 +31,6 @@ export function SourcedAnswer({ text, sources }: { text: string; sources: Source
           else root.current?.querySelector<HTMLElement>('summary')?.focus()
         }}>Back to answer citation</button>
       </section>)}
-    </Disclosure>}
+    </Disclosure>
   </div>
 }

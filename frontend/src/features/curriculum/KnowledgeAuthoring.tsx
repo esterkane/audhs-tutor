@@ -1,3 +1,4 @@
+import { useGenerationBusy } from '../sensory/generationActivity'
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
@@ -60,6 +61,7 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review, hoste
   useEffect(() => { onStepChange?.(step) }, [step, onStepChange])
   function go(next: Step) { change({ ...form, workflow_step: next }, editVersion, false); requestAnimationFrame(() => stepHeading.current?.focus()) }
   const [busy, setBusy] = useState('')
+  useGenerationBusy(!!busy)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const active = useRef<AbortController | null>(null)

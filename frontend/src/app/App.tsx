@@ -1,3 +1,5 @@
+import { useComfort } from '../features/sensory/comfortStore'
+import { BreakReminder, ComfortToggle, ComfortWelcome } from '../features/sensory/ComfortControls'
 import { TaskReview } from '../features/questions/TaskReview'
 import { lazy, Suspense } from 'react'
 const VisualLearning = lazy(() => import('../routes/VisualLearning'))
@@ -61,12 +63,13 @@ const pageTitles: Record<string, string> = {
 
 export function Shell({ children }: { children: React.ReactNode }) {
   const { mode, energy } = useMode()
+  const { focus: comfortFocus, setFocus: setComfortFocus } = useComfort()
   useSensory()
   const { pathname, key: routeKey } = useLocation()
   const [focusState, setFocusState] = useState({ key: routeKey, active: false })
   if (focusState.key !== routeKey) setFocusState({ key: routeKey, active: false })
-  const focused = pathname === '/session' && focusState.key === routeKey && focusState.active
-  const setFocused = (active: boolean) => setFocusState({ key: routeKey, active })
+  const focused = comfortFocus || (pathname === '/session' && focusState.key === routeKey && focusState.active)
+  const setFocused = (active: boolean) => { if (!active) setComfortFocus(false); setFocusState({ key: routeKey, active }) }
   useEffect(() => {
     if (!focused) return
     const escape = (event: KeyboardEvent) => {
@@ -76,13 +79,15 @@ export function Shell({ children }: { children: React.ReactNode }) {
       queueMicrotask(() => {
         if (!nested && !editor && !event.defaultPrevented) {
           if (document.activeElement?.closest('[data-focus-only]')) document.querySelector<HTMLButtonElement>('[data-focus-toggle]')?.focus()
+          setComfortFocus(false)
           setFocusState({ key: routeKey, active: false })
         }
       })
     }
     window.addEventListener('keydown', escape, true)
     return () => window.removeEventListener('keydown', escape, true)
-  }, [focused, routeKey])
+  }, [focused, routeKey, setComfortFocus])
+  useEffect(() => { document.documentElement.dataset.focus = focused ? 'on' : 'off' }, [focused])
   const routePath = pathname.replace(/\/+$/, '').toLowerCase() || '/'
   const [tutorEntry, setTutorEntry] = useState<HTMLDivElement | null>(null)
   const main = useRef<HTMLElement>(null)
@@ -98,7 +103,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
   const wide = !focused && ['/playground', '/programs', '/session'].some((path) => pathname.startsWith(path))
   return (
     <LessonFocusContext.Provider value={pathname === '/session' ? { active: focused, setActive: setFocused } : null}>
-    <div className={`min-h-screen ${focused ? 'shell-focus' : ''}`}>
+    <div className={`min-h-screen ${focused ? 'shell-focus' : ''} ${comfortFocus ? 'comfort-focus' : ''}`}>
       <a href="#main-content" className="sr-only focus:not-sr-only focus:block focus:p-3 focus:bg-card">
         Skip to learning content
       </a>
@@ -108,6 +113,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
         </Link>
         <QuickNavigation enabled={!focused} pages={[...primaryPages, ...toolPages]} />
         <ParkingLotButton statusRoot={tutorEntry} />
+        <ComfortToggle />
         <AudioControls compact header />
       </header>
       <div className="shell-workspace">
@@ -127,6 +133,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
         tabIndex={-1}
         className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto p-4 pb-24`}
       >
+        {pathname === '/' && <ComfortWelcome />}
+        <BreakReminder />
         {children}
       </main>
       </div>

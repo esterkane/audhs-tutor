@@ -41,7 +41,7 @@ it('opens an exact passage, restores focus on close, and resets selection for an
     ),
   )
   const view = renderApp(<TutorSources turn={turn} />)
-  fireEvent.click(screen.getByText('Sources for this explanation'))
+  fireEvent.click(screen.getByText('Sources (1)'))
   const trigger = screen.getByRole('button', { name: '[Example passage]' })
   fireEvent.click(trigger)
   expect(await screen.findByText('The actual source text.')).toBeInTheDocument()
@@ -58,7 +58,7 @@ it('opens an exact passage, restores focus on close, and resets selection for an
 it('labels a response without retrieved sources honestly', () => {
   renderApp(<TutorSources turn={{ ...turn, sources: [], dropped: [] }} />)
   expect(screen.getByText('No course source for this explanation.')).toBeInTheDocument()
-  expect(screen.queryByText('Sources for this explanation')).not.toBeInTheDocument()
+  expect(screen.getByText('Sources (0)')).toBeInTheDocument()
 })
 
 it('separates earlier answers from source evidence', () => {

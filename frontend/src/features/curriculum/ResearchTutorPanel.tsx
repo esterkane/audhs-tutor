@@ -21,10 +21,13 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
       {exchange.calculation && <p className="text-sm text-muted">Checked Python calculation; no model was used. The quoted source supplies the input, not independent verification of every source claim.</p>}
       {exchange.request && <p className="whitespace-pre-wrap">Your request: {exchange.request}</p>}
       {!!exchange.memories?.length && <Disclosure label="Earlier notes used for this reply">{exchange.memories.map(m => <div key={m.id}><p>{m.title} · saved version {m.version} · personal writing</p><blockquote className="whitespace-pre-wrap border-l-2 pl-3">{m.text}</blockquote></div>)}</Disclosure>}
+      {!exchange.answer.source_quotes?.length && <p className="text-warn">Source support unavailable — this reply needs checking.</p>}
       {exchange.answer.discussion && <Markdown text={exchange.answer.discussion} />}
-      {!!exchange.answer.source_quotes?.length && <Disclosure label={exchange.calculation ? 'Calculation input' : 'Source evidence'}>
-        {exchange.answer.source_quotes.map((quote, i) => <blockquote key={i} className="whitespace-pre-wrap border-l-2 pl-3">{quote}</blockquote>)}
-      </Disclosure>}
+      <Disclosure label={`Sources (${exchange.answer.source_quotes?.length ?? 0})`}>
+        {(exchange.answer.source_quotes ?? []).map((quote, i) => <blockquote key={i} className="whitespace-pre-wrap border-l-2 pl-3">{quote}</blockquote>)}
+        {!exchange.answer.source_quotes?.length && <p className="text-warn">No source passages were supplied with this reply. Check its claims against your materials before using it.</p>}
+        {!!exchange.answer.source_quotes?.length && <p className="text-sm text-muted">Quoted source content is evidence to inspect, not independent verification of every claim.</p>}
+      </Disclosure>
       {exchange.answer.needs_check && <div><p className="font-semibold">Needs checking</p><Markdown text={exchange.answer.needs_check} /></div>}
       {exchange.answer.next_question && <div><p className="font-semibold">One possible next step</p><Markdown text={exchange.answer.next_question} /></div>}
       {exchange.answer.section && <div><p className="font-semibold">Proposed section — review before using</p><Markdown text={exchange.answer.section} /></div>}

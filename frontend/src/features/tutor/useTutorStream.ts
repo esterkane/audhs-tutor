@@ -1,3 +1,4 @@
+import { useGenerationBusy } from '../sensory/generationActivity'
 import { useLessonRequestRecovery, type PendingTutorRequest } from '../playground/useRequestRecovery'
 import { cacheWarning, readTextCache, writeTextCache } from './streamCache'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -41,6 +42,7 @@ export function useTutorStream(idleMs = 60_000, scope?: string) {
       : empty,
   )
   const [state, setState] = useState<State>(initial)
+  useGenerationBusy(state.status === 'streaming')
   const [storageError, setStorageError] = useState(cached.error)
   const snapshot = useRef<State>(initial)
   const storageTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)

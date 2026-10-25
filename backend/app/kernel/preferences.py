@@ -224,8 +224,28 @@ PREFERENCES: dict[str, PrefSpec] = {
             key="ui.font_scale",
             type="enum",
             default="normal",
-            choices=["normal", "large"],
+            choices=["normal", "large", "xlarge"],
             description="Text size",
+        ),
+        PrefSpec(
+            key="ui.motion",
+            type="enum",
+            default="off",
+            choices=["off", "low", "full"],
+            description="Interface motion",
+        ),
+        PrefSpec(
+            key="ui.readable_font",
+            type="bool",
+            default=False,
+            description="Use the device's familiar system font",
+        ),
+        PrefSpec(
+            key="ui.break_reminder",
+            type="enum",
+            default="25",
+            choices=["0", "15", "25", "40"],
+            description="Gentle break reminder (active minutes)",
         ),
         PrefSpec(
             key="ui.notifications",
@@ -279,7 +299,11 @@ async def get_all(db: AsyncSession, learner_id: str) -> dict[str, Any]:
     stored = {
         p.key: p.value_json for p in (await db.execute(stmt)).scalars() if p.key in PREFERENCES
     }
-    return {k: stored.get(k, spec.default) for k, spec in PREFERENCES.items()}
+    values = {k: stored.get(k, spec.default) for k, spec in PREFERENCES.items()}
+    # Preserve explicit choices from older clients without a data migration.
+    if "ui.motion" not in stored:
+        values["ui.motion"] = "off" if stored.get("ui.reduced_motion", True) else "low"
+    return values
 
 
 async def get(db: AsyncSession, learner_id: str, key: str) -> Any:

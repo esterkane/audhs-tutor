@@ -99,6 +99,19 @@ def test_planner_rules() -> None:
 async def test_preferences_registry(db: AsyncSession, learner: models.LearnerProfile) -> None:
     prefs = await preferences.get_all(db, learner.id)
     assert prefs["planner.new_material_min"] == 20 and prefs["ui.reduced_motion"] is True
+    assert prefs["ui.motion"] == "off"
+    await preferences.set_pref(db, learner.id, "ui.reduced_motion", False)
+    assert (await preferences.get_all(db, learner.id))["ui.motion"] == "low"
+    await preferences.set_pref(db, learner.id, "ui.motion", "full")
+    assert (await preferences.get_all(db, learner.id))["ui.motion"] == "full"
+    for key, value in [
+        ("ui.motion", "loop"),
+        ("ui.break_reminder", "5"),
+        ("ui.font_scale", "tiny"),
+    ]:
+        with pytest.raises(ValueError, match="one of"):
+            preferences.validate(key, value)
+    preferences.validate("ui.font_scale", "xlarge")
     await preferences.set_pref(db, learner.id, "planner.new_material_min", 30)
     await preferences.set_pref(db, learner.id, "session.socratic_default", True, origin="explicit")
     assert (await preferences.get_all(db, learner.id))["planner.new_material_min"] == 30

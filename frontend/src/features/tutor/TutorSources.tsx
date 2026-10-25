@@ -38,7 +38,7 @@ function TurnSources({ turn }: { turn: TurnDone }) {
         </p>
       )}
       {turn.sources.length > 0 ? (
-        <Disclosure label="Sources for this explanation">
+        <Disclosure label={`Sources (${turn.sources.length})`}>
           <p className="text-muted my-2">
             Open a passage to compare it with the answer. A citation alone does not verify the explanation.
           </p>
@@ -77,7 +77,10 @@ function TurnSources({ turn }: { turn: TurnDone }) {
           )}
         </Disclosure>
       ) : (
-        <p className="text-muted">No course source for this explanation.</p>
+        <div className="text-warn">
+          <p>No course source for this explanation.</p>
+          <Disclosure label="Sources (0)"><p>No source passage was supplied. Check the explanation against your materials before relying on it.</p></Disclosure>
+        </div>
       )}
       {withheld > 0 && (
         <p className="text-muted mt-2">

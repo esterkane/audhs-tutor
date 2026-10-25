@@ -11,7 +11,7 @@ export function AssessmentEvidence({ result }: { result: Pick<AssessedResult, 'c
         const criteria = result.criterion_results.filter(c => c.passed === passed)
         if (!criteria.length) return null
         return <section key={String(passed)} aria-label={passed ? 'What was right' : 'What to reconsider'}>
-          <h4 className="font-medium">{passed ? 'What was right' : 'What to reconsider'}</h4>
+          <h4 className={passed ? 'font-medium' : 'font-medium text-warn'}>{passed ? 'What was right' : 'Not quite — what to reconsider'}</h4>
           <ul className="list-disc ml-5 mt-1">
             {criteria.map((c, index) => <li key={index}>
               <p><span className="font-medium">Criterion: </span>{c.criterion}</p>

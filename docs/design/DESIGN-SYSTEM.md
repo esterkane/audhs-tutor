@@ -1,3 +1,9 @@
+> Owner addition (2026-10-25): [comfort and learning brief](../agent-handoffs/DESIGN_SYSTEM_BRIEF.md)
+> is an authoritative design input, reconciled by [implementation and verification](COMFORT-LEARNING-ALIGNMENT.md).
+> Existing tokens, provenance, full histories and explicit learner control remain binding. The brief's
+> suggested palette is not a second theme, and diagnosis-based preference claims are not learner facts.
+> Optional CanvasUI packages/fonts remain unapproved; routine core implementation is authorized.
+
 > Current authority (2026-10-11): the owner-supplied complete design-system PDF is the consolidated target. See [COMPLETE-DESIGN-ALIGNMENT.md](COMPLETE-DESIGN-ALIGNMENT.md) for inspected alignment, gaps and precedence over historical recommendations below.
 
 > Additional owner decision, 2026-10-04: the supplied navigation/workspace document is equally authoritative for information architecture and interaction composition. See [source/README.md](source/README.md) and [workspace plan](../ux/CONTEXT-WORKSPACE-PLAN.md). Apply it together with the uploaded visual/component specifications.

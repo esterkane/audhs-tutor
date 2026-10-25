@@ -1,0 +1,13 @@
+[project]
+name = "audhs-claude-review-mcp"
+version = "0.1.0"
+description = "Approval-gated, private Claude review bridge; independent of the tutor runtime"
+requires-python = ">=3.12"
+dependencies = ["mcp>=2.0.0,<3"]
+
+[dependency-groups]
+dev = ["pytest>=9.1.1", "pytest-asyncio>=1.4.0"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]

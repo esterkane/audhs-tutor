@@ -1,4 +1,4 @@
-.PHONY: dev dev-sandbox sandbox-backend sandbox-frontend pyodide pyodide-verify ingest-runs backend frontend services qdrant models test test-backend test-frontend test-e2e lint migrate migrate-check migrate-apply backup backup-inspect backup-restore ingest evals eval-retrieval bench gen-api seed
+.PHONY: doctor dev dev-sandbox sandbox-backend sandbox-frontend pyodide pyodide-verify ingest-runs backend frontend services qdrant models test test-backend test-frontend test-e2e lint migrate migrate-check migrate-apply backup backup-inspect backup-restore ingest evals eval-retrieval bench gen-api seed
 
 dev: qdrant
 	@echo "backend :8000 | frontend :5173 | qdrant :6333"
@@ -113,3 +113,8 @@ seed:
 # Optional full local Python/Jupyter environment, separate from the backend.
 notebooks:
 	python3 scripts/notebook_lab.py $(if $(filter 1 yes true,$(install)),--install,)
+
+# Read-only diagnostics; pass args="--mode authoring --json" for hosted-authoring prerequisites.
+doctor:
+	@test -x backend/.venv/bin/python || { echo "Backend environment missing; install it explicitly first."; exit 2; }
+	cd backend && .venv/bin/python -B ../scripts/doctor.py $(args)

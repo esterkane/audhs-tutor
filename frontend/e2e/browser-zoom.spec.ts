@@ -98,7 +98,7 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     await cdp.detach()
     await page.getByRole('link', { name: 'Preferences', exact: true }).focus()
     await page.keyboard.press('Enter')
-    const largeText = page.getByRole('button', { name: 'large', exact: true })
+    const largeText = page.getByRole('button', { name: 'Large', exact: true })
     await expect(largeText).toBeVisible()
     await largeText.focus()
     await page.keyboard.press('Enter')

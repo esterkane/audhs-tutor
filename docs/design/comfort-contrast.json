@@ -1,0 +1,118 @@
+{
+  "source": "docs/design/source/tokens.json; matches index.css (browser token tests)",
+  "scope": "Opaque pairs only; not a whole-application accessibility certification",
+  "pairs": [
+    {
+      "theme": "light",
+      "foreground": "fg",
+      "background": "bg",
+      "ratio": 11.187,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "light",
+      "foreground": "fg",
+      "background": "card",
+      "ratio": 11.872,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "light",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 5.795,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "light",
+      "foreground": "warn",
+      "background": "card",
+      "ratio": 5.236,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "light",
+      "foreground": "accent-fg",
+      "background": "accent",
+      "ratio": 5.411,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "light",
+      "foreground": "focus-ring",
+      "background": "card",
+      "ratio": 5.411,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "theme": "light",
+      "foreground": "control",
+      "background": "card",
+      "ratio": 3.446,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "fg",
+      "background": "bg",
+      "ratio": 13.132,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "fg",
+      "background": "card",
+      "ratio": 11.891,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "muted",
+      "background": "card",
+      "ratio": 6.295,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "warn",
+      "background": "card",
+      "ratio": 7.618,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "accent-fg",
+      "background": "accent",
+      "ratio": 6.675,
+      "minimum": 4.5,
+      "passes": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "focus-ring",
+      "background": "card",
+      "ratio": 5.787,
+      "minimum": 3,
+      "passes": true
+    },
+    {
+      "theme": "dark",
+      "foreground": "control",
+      "background": "card",
+      "ratio": 4.167,
+      "minimum": 3,
+      "passes": true
+    }
+  ]
+}

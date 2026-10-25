@@ -1,3 +1,4 @@
+import { useGenerationBusy } from '../features/sensory/generationActivity'
 import { ConversationBriefEditor } from '../features/ask/ConversationBriefEditor'
 import { emptyBrief, parseBriefDraft, useSavedBrief, type Brief } from '../features/ask/conversationBrief'
 import { ConversationContext } from '../features/ask/ConversationContext'
@@ -80,6 +81,7 @@ function AskWorkspace({ learnerId, parent }: { learnerId: string; parent: string
   const [preferSaved, setPreferSaved] = useState(false)
   const [search, setSearch] = useState('')
   const [busy, setBusy] = useState(false)
+  useGenerationBusy(busy)
   const [error, setError] = useState('')
   const [status, setStatus] = useState('')
   const controller = useRef<AbortController | null>(null)

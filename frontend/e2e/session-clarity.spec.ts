@@ -71,7 +71,7 @@ test('context, optional confidence, saved labels and stopping without recap', as
     }),
   )
   await page.getByRole('button', { name: 'Give me a hint' }).click()
-  await page.getByText('Sources for this explanation', { exact: true }).click()
+  await page.getByText(/^Sources \(\d+\)$/).click()
   const citation = page.getByRole('button', { name: '[Example hint source]', exact: true })
   await citation.focus()
   await page.keyboard.press('Enter')
