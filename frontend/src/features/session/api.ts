@@ -115,15 +115,22 @@ export function useBlockTransition(sessionId: string | null) {
       method: 'POST',
       body: JSON.stringify({ session_id: sessionId, ...body }),
     })
-  const onSuccess = (state: BlockState) => {
-    if (sessionId)
-      qc.setQueryData<SessionOut>(['session', sessionId], (old) => (old ? { ...old, state } : old))
+  const cancelReads = async () => {
+    if (!sessionId) return
+    await Promise.all([['session', sessionId], ['session-current']].map(queryKey =>
+      qc.cancelQueries({ queryKey, exact: true }, { revert: false })))
+  }
+  const onSuccess = async (state: BlockState) => {
+    // Reads begun before or during a confirmed write must not restore its old block.
+    await cancelReads()
+    if (sessionId) for (const key of [['session', sessionId], ['session-current']])
+      qc.setQueryData<SessionOut>(key, old => old?.id === sessionId ? { ...old, state } : old)
     void qc.invalidateQueries({ queryKey: ['session-current'] })
   }
-  const start = useMutation({ mutationFn: post('start'), onSuccess, retry: false })
-  const next = useMutation({ mutationFn: post('next'), onSuccess, retry: false })
-  const end = useMutation({ mutationFn: post('end'), onSuccess, retry: false })
-  const extend = useMutation({ mutationFn: post('extend'), onSuccess, retry: false })
+  const start = useMutation({ mutationFn: post('start'), onMutate: cancelReads, onSuccess, retry: false })
+  const next = useMutation({ mutationFn: post('next'), onMutate: cancelReads, onSuccess, retry: false })
+  const end = useMutation({ mutationFn: post('end'), onMutate: cancelReads, onSuccess, retry: false })
+  const extend = useMutation({ mutationFn: post('extend'), onMutate: cancelReads, onSuccess, retry: false })
   const once = (run: () => Promise<BlockState>) => {
     if (inFlight.current) return inFlight.current
     setWaitingLong(false)
