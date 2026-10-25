@@ -208,3 +208,16 @@ it('keeps independent topic bookmarks and preserves notes when reading again fro
   fireEvent.click(screen.getByRole('button', { name: 'Next section' }))
   expect(screen.getByLabelText('Your notes for this section (optional)')).toHaveValue('Keep topic A notes')
 })
+
+it('shows the current section estimate and actual material trail without changing bookmarks or text', () => {
+  const long = '## Short\nA few words.\n## Longer\n' + 'word '.repeat(401)
+  render(<LessonReader identity="timed" text={long} active trail={['My accepted lesson', 'Version 2']} />)
+  expect(screen.getByRole('navigation', { name: 'Reading location' })).toHaveTextContent('My accepted lesson')
+  expect(screen.getByText('Reading time: about 1 min (estimate)')).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Next section' }))
+  expect(screen.getByText('Reading time: about 3 min (estimate)')).toBeVisible()
+  expect(screen.getByRole('navigation', { name: 'Reading location' })).toHaveTextContent('Section 2 of 2: Longer')
+  expect(screen.getByTestId('markdown').textContent).toBe('## Longer\n' + 'word '.repeat(401))
+  fireEvent.click(screen.getByText('Reading time: about 3 min (estimate)'))
+  expect(screen.getByText(/not your measured pace or time remaining/)).toBeVisible()
+})

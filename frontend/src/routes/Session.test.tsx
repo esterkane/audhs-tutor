@@ -125,7 +125,7 @@ describe('Session', () => {
     // the running movement block comes from the server state, not from a local guess
     expect(await screen.findByText('Movement block')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Session plan and energy settings'))
-    expect(screen.getByRole('listitem', { current: 'step' })).toHaveTextContent(/Move/)
+    expect(within(screen.getByRole('list', { name: 'Session plan' })).getByRole('listitem', { current: 'step' })).toHaveTextContent(/Move/)
     // the soft timer is derived from the server start time: 30 min ago on a 5-min block → prompt
     expect(await screen.findByText(/Planned time is up \(5 min\)/)).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /5 more minutes/i }))

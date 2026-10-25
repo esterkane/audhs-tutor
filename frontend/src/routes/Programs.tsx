@@ -1,3 +1,4 @@
+import { LearningBreadcrumbs } from '../components/LearningBreadcrumbs'
 import { RememberContext } from '../features/recent/RememberContext'
 import { useLocation, useSearchParams } from 'react-router-dom'
 import { SavedContextAnswers } from '../features/programs/SavedContextAnswers'
@@ -245,7 +246,7 @@ export function Programs() {
       {program && course && (
         <>
           <section aria-label="Current project" className="grid gap-3 border-b border-line pb-4 min-w-0">
-            <p className="text-sm text-muted break-words">{course.title}</p>
+            {(paused || notebookView || !section) && <LearningBreadcrumbs items={[course.title, notebookView ? 'Full course notebook' : section?.title ?? 'Course overview', ...(paused ? ['Paused'] : [])]} />}
             <div className="flex flex-wrap gap-3 items-center justify-between">
               <div className="min-w-0">
                 <p className="text-sm text-muted">
@@ -339,6 +340,7 @@ export function Programs() {
                 key={course.id + ':' + section.id}
                 section={section}
                 course={course.id}
+                courseTitle={course.title}
                 paused={paused || notebookView}
                 captureContext={!staleLocation}
                 requestedTask={params.get('view') === 'task'}

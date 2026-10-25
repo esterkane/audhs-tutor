@@ -21,7 +21,7 @@ export function AcceptedKnowledge({ reading, onCheck, active = true }: { reading
     <p className="text-sm mb-3">Saved lesson version {data.learning_object_version}. This shows the material you activated, without AI rewriting. Acceptance is not independent factual verification.</p>
     <LessonReader identity={`accepted-knowledge:${data.draft_id}:${data.learning_object_version}`}
       text={`## Explanation\n\n${data.explanation}\n\n## A worked example\n\n${data.worked_example}`}
-      active={active} sources={data.sources.map(id => ({chunk_id:id, citation:'Uploaded reference', cited:false}))} />
+      trail={[data.title, `Accepted lesson version ${data.learning_object_version}`]} active={active} sources={data.sources.map(id => ({chunk_id:id, citation:'Uploaded reference', cited:false}))} />
     <Disclosure label="Your notes and source references"><Markdown text={data.notes} />
       {data.sources.map((id,index)=><Button key={id} variant="secondary" onClick={()=>setSource(id)}>Read uploaded source {index+1}</Button>)}
       {source && <SourceViewer chunkId={source} citation={data.title} onClose={()=>setSource(null)} />}

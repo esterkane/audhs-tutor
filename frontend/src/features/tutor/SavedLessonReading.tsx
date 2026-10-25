@@ -23,7 +23,7 @@ export function SavedLessonReading({ reading, active, hasReply }: {
     {failure}
     <Disclosure label="Saved lesson text" open={!hasReply} onToggle={event => setOpen(event.currentTarget.open)}>
       <p className="text-sm text-muted mb-3">Saved locally · lesson version {saved.object_version}. No new answer was generated. Saving and activation do not verify accuracy or mark the questions reviewed.</p>
-      <LessonReader key={saved.content_sha256} identity={`saved-lesson:${saved.object_id}:${saved.content_sha256}`} text={text} active={active && open} sources={saved.source_ids.map(id => ({ chunk_id: id, citation: 'Linked source passage', cited: false }))} />
+      <LessonReader key={saved.content_sha256} identity={`saved-lesson:${saved.object_id}:${saved.content_sha256}`} text={text} trail={['Saved lesson', `Version ${saved.object_version}`]} active={active && open} sources={saved.source_ids.map(id => ({ chunk_id: id, citation: 'Linked source passage', cited: false }))} />
       <Disclosure label="Lesson origin and sources" className="mt-3">
         <p className="text-sm">This is the current saved lesson text. The original answer and draft may differ after edits.</p>
         <div className="flex flex-wrap gap-3">

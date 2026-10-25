@@ -77,3 +77,12 @@ contains ui.motion. Older/offline cached response shapes retain their only motio
 The existing320px recovery test exposed this gap; both legacy320/1280 and modern390/1280
 comfort journeys then passed (4tests). ESLint and TypeScript passed. No schema/history change.
 The bundle figures above describe d0bd787, before this small compatibility predicate.
+
+## Course reading follow-up — 2026-10-25
+
+[Course-reading path slice](../slices/course-reading-path.md) delivers verified manifest course/
+section/phase breadcrumbs, active-session subject/skill/activity context, material-version reading
+trails and disclosed text-only reading estimates. It preserves all existing bookmark/history keys.
+The earlier breadcrumb/timing gap above is superseded by this bounded implementation; a separate
+per-course step-selection memory beyond the existing saved route is not claimed. Optional effects
+and cross-browser/human assistive-technology acceptance remain as documented.

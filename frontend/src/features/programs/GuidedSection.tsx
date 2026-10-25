@@ -1,3 +1,5 @@
+import { LearningBreadcrumbs } from '../../components/LearningBreadcrumbs'
+import { ReadingTime } from '../tutor/ReadingTime'
 import { RememberContext } from '../recent/RememberContext'
 import { Link } from 'react-router-dom'
 import { useRef, useState } from 'react'
@@ -20,11 +22,11 @@ type Work = {
   practiceOrigin: string | null
 }
 const phases: Phase[] = ['Understand', 'Try', 'Think deeper']
-type Props = { section: Section; course: string; paused: boolean; onOpenNotebook?: () => void; captureContext?: boolean; requestedTask?: boolean; onCloseTask?: () => void }
+type Props = { section: Section; course: string; courseTitle?: string; paused: boolean; onOpenNotebook?: () => void; captureContext?: boolean; requestedTask?: boolean; onCloseTask?: () => void }
 export function GuidedSection(props: Props) {
   return <Content key={`${props.course}:${props.section.id}`} {...props} />
 }
-function Content({ section, course, paused, onOpenNotebook, requestedTask, onCloseTask, captureContext = true }: Props) {
+function Content({ section, course, courseTitle, paused, onOpenNotebook, requestedTask, onCloseTask, captureContext = true }: Props) {
   const key = `project-study:v1:${course}:${section.id}`
   const practiceOrigin = section.practice
     ? JSON.stringify([section.practice.notebook, section.practice.dataset ?? null])
@@ -127,6 +129,7 @@ function Content({ section, course, paused, onOpenNotebook, requestedTask, onClo
     return (
       <div className="grid gap-3" data-capture-query={!paused && captureContext ? new URLSearchParams({ course, step: section.id, view: "task" }).toString() : undefined}>
         {!paused && captureContext && <RememberContext context={{ version: 1, kind: 'project', course_id: course, section_id: section.id, view: 'task', label: `${section.title} — task notebook`.slice(0, 200) }} />}
+        <LearningBreadcrumbs items={[courseTitle ?? 'Project study', section.title, 'Task notebook']} />
         <p role="status">
           {saved === 'Saved work restored.'
             ? 'Your notebook view and saved project notes were restored.'
@@ -156,6 +159,8 @@ function Content({ section, course, paused, onOpenNotebook, requestedTask, onClo
   return (
     <Card className="grid grid-cols-1 min-w-0 gap-4 [overflow-wrap:anywhere]">
       {!paused && captureContext && <RememberContext context={{ version: 1, kind: 'project', course_id: course, section_id: section.id, view: 'guide', label: section.title.slice(0, 200) }} />}
+      <LearningBreadcrumbs items={[courseTitle ?? 'Project study', section.title, work.phase]} />
+      {restored.status === 'Saved work restored.' && <p className="text-sm text-muted">Continue at {work.phase}. Your saved notes and answers are kept.</p>}
       <p className="text-sm text-muted">
         {work.phase === 'Understand'
           ? 'Start here: read the idea and example. Then try one task.'
@@ -198,6 +203,7 @@ function Content({ section, course, paused, onOpenNotebook, requestedTask, onClo
             ? 'Your next project task'
             : 'Explain your reasoning'}
       </h3>
+      <ReadingTime text={activeText} />
       {work.phase === 'Understand' && (
         <>
           <Markdown text={section.explanation} />

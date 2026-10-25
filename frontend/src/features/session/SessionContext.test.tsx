@@ -37,3 +37,20 @@ describe('persisted learning context', () => {
     expect(container).toBeEmptyDOMElement()
   })
 })
+
+it('keeps the breadcrumb tied to the active session and its recorded phase', () => {
+  render(<SessionContext data={{ ...session, state: { ...session.state, phase: 'assess' } }} compact />)
+  const path = screen.getByRole('navigation', { name: 'Learning path' })
+  expect(path).toHaveTextContent('Current concept')
+  expect(path).toHaveTextContent('Understanding check')
+  expect(path).not.toHaveTextContent('Unrelated recommendation')
+})
+
+it('uses the running practice domain instead of an unrelated academic skill', () => {
+  render(<SessionContext data={{ ...session, active_skill: { ...session.active_skill!, domain: 'ai_ml' },
+    state: { ...session.state, phase: 'practice' }, plan: [{ type: 'domain_switch', domain: 'movement' }] }} compact />)
+  const path = screen.getByRole('navigation', { name: 'Learning path' })
+  expect(path).toHaveTextContent('Movement')
+  expect(path).not.toHaveTextContent('AI and machine learning')
+  expect(path).not.toHaveTextContent('Current concept')
+})

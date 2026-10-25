@@ -1,3 +1,4 @@
+import { LearningBreadcrumbs } from '../../components/LearningBreadcrumbs'
 import type { SessionOut } from '../../lib/api'
 import { BLOCK_LABELS, type Block } from '../plan/api'
 
@@ -10,7 +11,13 @@ export function SessionContext({ data, compact = false }: { data: SessionOut; co
   const block = plan[index]
   const skill = data.active_skill?.id === state.skill_id ? data.active_skill : null
   const conceptActivity = ['teach', 'assess', 'challenge'].includes(state.phase ?? '')
+  const subject = conceptActivity ? skill?.domain : block.domain
   return <div className="grid gap-2 mb-3" role="region" aria-label={compact ? 'Current activity summary' : 'Current learning context'}>
+    {compact && <LearningBreadcrumbs items={[
+      subject ? (({ ai_ml: 'AI and machine learning', programming: 'Programming', language: 'Language', guitar: 'Guitar', movement: 'Movement' } as Record<string, string>)[subject] ?? subject.replaceAll('_', ' ')) : 'Learning session',
+      conceptActivity ? (skill?.title || 'Concept unavailable') : (BLOCK_LABELS[block.type] ?? block.type),
+      ({ teach: 'Explanation', assess: 'Understanding check', challenge: 'Challenge', practice: 'Practice', review: 'Review', recap: 'Recap' } as Record<string, string>)[state.phase ?? ''] ?? 'Current activity',
+    ]} />}
     {conceptActivity && <>
       {!compact && <div>
         <h3 className="text-xs text-muted">Learning goal</h3>

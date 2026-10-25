@@ -1,3 +1,5 @@
+import { LearningBreadcrumbs } from '../../components/LearningBreadcrumbs'
+import { ReadingTime } from './ReadingTime'
 import { Disclosure } from '../../components/ui/disclosure'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Markdown } from '../../components/Markdown'
@@ -6,7 +8,7 @@ import { ReadAloud } from '../voice/ReadAloud'
 import { SourceViewer } from '../curriculum/SourceViewer'
 
 type Source = { chunk_id: string; citation: string; cited: boolean }
-type Props = { text: string; identity: string; active: boolean; sources?: Source[] }
+type Props = { text: string; identity: string; active: boolean; sources?: Source[]; trail?: string[] }
 type Section = { title: string; text: string }
 type Reading = { selected: number; full: boolean; notes: Record<string, string> }
 
@@ -43,7 +45,7 @@ function sectionsFor(text: string): Section[] {
 export function LessonReader(props: Props) {
   return <Reader key={JSON.stringify([props.identity, props.text])} {...props} />
 }
-function Reader({ text, identity, active, sources }: Props) {
+function Reader({ text, identity, active, sources, trail }: Props) {
   const sections = sectionsFor(text)
   let hash = 2166136261
   for (let i = 0; i < text.length; i += 1) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619)
@@ -150,9 +152,8 @@ function Reader({ text, identity, active, sources }: Props) {
         This is your reading position, not a completion or mastery score. Read freely and revisit any section
         before answering.
       </p>
-      <nav aria-label="Reading location" className="text-sm text-muted">
-        Explanation › {reading.full ? 'Full reading' : `Section ${reading.selected + 1} of ${sections.length}`}
-      </nav>
+      <LearningBreadcrumbs label="Reading location" items={[...(trail ?? ['Explanation']), reading.full ? 'Full reading' : `Section ${reading.selected + 1} of ${sections.length}: ${sections[reading.selected].title}`]} />
+      <ReadingTime text={visibleText} />
       {!reading.full && <progress aria-label="Reading position" max={sections.length} value={reading.selected + 1} className="w-full" />}
       <Markdown headingLevel={4} text={visibleText} />
       {active && <ReadAloud key={`${reading.full}:${reading.selected}`} text={visibleText} />}

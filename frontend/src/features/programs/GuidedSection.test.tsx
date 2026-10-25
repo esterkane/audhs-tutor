@@ -133,3 +133,17 @@ it('pairs the selected question with its answer check and spoken question, hint 
   expect(audio).toHaveTextContent('Think variance.')
   expect(audio).toHaveTextContent('Explain uncertainty.')
 })
+
+it('restores each course phase and renders its verified course title without losing notes', () => {
+  let view = renderApp(<GuidedSection section={section} course="course-a" courseTitle="Course A" paused={false} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Try' }))
+  view.unmount()
+  view = renderApp(<GuidedSection section={section} course="course-b" courseTitle="Course B" paused={false} />)
+  expect(screen.getByRole('navigation', { name: 'Learning path' })).toHaveTextContent('Course B')
+  expect(screen.getByRole('navigation', { name: 'Learning path' })).toHaveTextContent('Understand')
+  view.unmount()
+  renderApp(<GuidedSection section={section} course="course-a" courseTitle="Course A" paused={false} />)
+  expect(screen.getByRole('navigation', { name: 'Learning path' })).toHaveTextContent('Course A')
+  expect(screen.getByRole('navigation', { name: 'Learning path' })).toHaveTextContent('Try')
+  expect(screen.getByText(/Continue at Try/)).toBeVisible()
+})

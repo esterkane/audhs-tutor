@@ -49,7 +49,7 @@ for (const width of [320, 1280]) for (const theme of ['light', 'dark']) {
       await prose.scrollIntoViewIfNeeded()
       await page.screenshot({ path: info.outputPath('reading-type.png') })
       // Exercise the same root attribute as the existing 118% preference without leaving the lesson.
-      await page.evaluate(() => { document.documentElement.dataset.font = 'large' })
+      await page.evaluate(() => { document.documentElement.dataset.textSize = 'lg' })
       for (const [index, value] of (await sizes()).entries()) expect(value).toBeCloseTo([14, 16, 26, 13, 20][index] * 1.18, 1)
       await page.evaluate(() => { document.documentElement.style.fontSize = '200%' })
       const overflow = await page.evaluate(() => ({
