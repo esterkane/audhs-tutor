@@ -1553,6 +1553,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/notebooks/check': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Inspect prepared notebook requirements without running cells */
+    get: operations['check_api_notebooks_check_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/parking': {
     parameters: {
       query?: never
@@ -6246,6 +6263,33 @@ export interface components {
       /** Skill Id */
       skill_id: string
     }
+    /** NotebookInspection */
+    NotebookInspection: {
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'checked' | 'not_prepared' | 'environment_unavailable' | 'unavailable'
+      /** Message */
+      message: string
+      /**
+       * Code Cells
+       * @default 0
+       */
+      code_cells: number
+      /** Imports */
+      imports?: string[]
+      /** Unavailable Imports */
+      unavailable_imports?: string[]
+      /** Local Imports */
+      local_imports?: string[]
+      /** Possible Exercise Cells */
+      possible_exercise_cells?: number[]
+      /** Unparsed Cells */
+      unparsed_cells?: number[]
+      /** Install Cells */
+      install_cells?: number[]
+    }
     /** NotebookStatus */
     NotebookStatus: {
       /** Status */
@@ -7235,6 +7279,8 @@ export interface components {
       model_call_id: string | null
       /** Calculation */
       calculation?: 'python.string-repetition.v1' | null
+      /** Reference */
+      reference?: 'python.string-identity.v1' | null
       /** Memories */
       memories?: components['schemas']['PersonalMemory'][]
       /** Cache Token */
@@ -11518,6 +11564,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['NotebookStatus']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  check_api_notebooks_check_get: {
+    parameters: {
+      query: {
+        course_id: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NotebookInspection']
         }
       }
       /** @description Validation Error */

@@ -7,13 +7,13 @@ import { ResearchTutorPanel } from './ResearchTutorPanel'
 
 afterEach(cleanup)
 const onTutor = vi.fn()
-function Harness({ draftOnly = false, checked = false }: { draftOnly?: boolean; checked?: boolean }) {
+function Harness({ draftOnly = false, checked = false, reference = false }: { draftOnly?: boolean; checked?: boolean; reference?: boolean }) {
   const research: Schemas['KnowledgeResearch'] = { passage: 'Sort and average the middle values.', topic: 'median', current: 0, questions: [] }
   const original = { id: 'q1', prompt: 'How?', findings: 'My findings', evidence: 'My source', unresolved: '', section: 'Existing paragraph', tutor_request: 'Help with the middle values', tutor_basis: '' }
   const [question, setQuestion] = useState<Schemas['ResearchQuestion']>({ ...original,
     tutor_basis: JSON.stringify({ passage: research.passage, topic: research.topic, question: original.prompt,
       findings: original.findings, evidence: original.evidence, unresolved: original.unresolved, section: original.section }),
-    tutor_exchanges: [{ action: 'draft', request: 'Help with the middle values', model_call_id: checked ? null : 'call1', ...(checked ? { calculation: 'python.string-repetition.v1' as const } : {}), answer: {
+    tutor_exchanges: [{ action: 'draft', request: 'Help with the middle values', model_call_id: checked || reference ? null : 'call1', ...(reference ? { reference: 'python.string-identity.v1' as const } : {}), ...(checked ? { calculation: 'python.string-repetition.v1' as const } : {}), answer: {
       discussion: draftOnly ? '' : 'Average the two middle values.', needs_check: 'External links have not been checked.', next_question: '',
       source_quotes: ['Sort and average the middle values.'], section: 'Proposed paragraph.' } }],
   })
@@ -66,5 +66,15 @@ it('identifies checked calculations without pretending a model ran or offering d
   fireEvent.click(screen.getByText('Sources (1)'))
   expect(screen.getByText('Sort and average the middle values.')).toBeVisible()
   expect(screen.getByLabelText('my section')).toHaveTextContent('Existing paragraph')
+  expect(await axe(view.container)).toHaveNoViolations()
+})
+
+it('labels a saved reference answer accurately and keeps the explicit draft handoff', async () => {
+  const view = render(<Harness draftOnly reference />)
+  expect(screen.getByText(/Reference-based explanation; no model was used/)).toBeVisible()
+  expect(screen.getByRole('link', { name: 'Python language reference' })).toHaveAttribute('href', expect.stringContaining('docs.python.org/3.12/'))
+  expect(screen.queryByText('Ask for another reply')).not.toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Replace my section with tutor draft' }))
+  expect(screen.getByLabelText('my section')).toHaveTextContent('Proposed paragraph.')
   expect(await axe(view.container)).toHaveNoViolations()
 })

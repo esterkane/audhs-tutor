@@ -31,3 +31,30 @@ it('publishes confirmed assessment phase for an immediate cached resume', async 
   await waitFor(() => expect(vi.mocked(fetch)).toHaveBeenCalledTimes(2))
   expect(qc.getQueryData<SessionOut>(['session', 's1'])?.state.phase).toBe('recap')
 })
+
+it('ignores stale reads started during an in-flight checkpoint write', async () => {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const current = { id: 'race', checkpoint: {}, state: { block_id: 'race:0', phase: 'teach' } } as SessionOut
+  qc.setQueryData(['session', 'race'], current)
+  qc.setQueryData(['session-current'], current)
+  let confirm!: () => void
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(resolve => { confirm = () => resolve(jsonResponse({ block_id: 'race:0', phase: 'assess' })) })))
+  function Change() {
+    const mutation = useCheckpoint()
+    return <button onClick={() => mutation.mutate({ id: 'race', body: { phase: 'assess' } })}>Change phase</button>
+  }
+  render(<QueryClientProvider client={qc}><Change /></QueryClientProvider>)
+  fireEvent.click(screen.getByRole('button', { name: 'Change phase' }))
+  await waitFor(() => expect(confirm).toBeTypeOf('function'))
+  let releaseCurrent!: () => void
+  const currentRead = qc.fetchQuery({ queryKey: ['session-current'], queryFn: () => new Promise<SessionOut>(resolve => { releaseCurrent = () => resolve(current) }) }).catch(() => undefined)
+  let releaseRead!: () => void
+  const read = qc.fetchQuery({ queryKey: ['session', 'race'], queryFn: () => new Promise<SessionOut>(resolve => { releaseRead = () => resolve(current) }) }).catch(() => undefined)
+  confirm()
+  await waitFor(() => expect(qc.getQueryData<SessionOut>(['session', 'race'])?.state.phase).toBe('assess'))
+  releaseRead()
+  releaseCurrent()
+  await Promise.all([read, currentRead])
+  expect(qc.getQueryData<SessionOut>(['session', 'race'])?.state.phase).toBe('assess')
+  expect(qc.getQueryData<SessionOut>(['session-current'])?.state.phase).toBe('assess')
+})

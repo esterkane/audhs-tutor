@@ -1,3 +1,4 @@
+import type { SessionOut } from '../src/lib/api'
 import { expect, test } from '@playwright/test'
 import { API, currentSession, endOpenSession, expectOk } from './helpers'
 
@@ -120,7 +121,7 @@ for (const width of [320, 390, 1280]) test(`lesson leads before optional tools $
     const controls = page.getByRole('region', { name: 'Session controls' })
     await expect(controls.getByRole('button', { name: 'End session', exact: true })).not.toBeVisible()
     await expect(controls.getByRole('button', { name: 'Change topic' })).not.toBeVisible()
-    const checkpoint = await currentSession(request)
+    const checkpoint = await currentSession(request) as SessionOut
     const labels = controls.locator('summary').filter({ hasText: /^Session options$/ })
     await labels.focus()
     await page.keyboard.press('Enter')
@@ -138,7 +139,12 @@ for (const width of [320, 390, 1280]) test(`lesson leads before optional tools $
     await expect(controls.getByRole('status')).toHaveCount(0)
     await labels.focus()
     await page.keyboard.press('Enter')
-    expect(await currentSession(request)).toEqual(checkpoint)
+    // due_reviews is a time-dependent computed view; a due date can pass while labels are tested.
+    // Compare the persisted session/plan/checkpoint rather than freezing that derived clock.
+    expect(await currentSession(request)).toMatchObject({
+      id: checkpoint!.id, state: checkpoint!.state, checkpoint: checkpoint!.checkpoint,
+      plan: checkpoint!.plan, mode: checkpoint!.mode, energy: checkpoint!.energy, ended_at: null,
+    })
     await tools.focus()
     await page.keyboard.press('Enter')
     await expect(page.getByText('Keep this lesson open with a quiet work panel.', { exact: false })).toBeVisible()

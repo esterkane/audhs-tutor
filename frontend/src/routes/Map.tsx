@@ -40,24 +40,38 @@ function MapContent({ areaId }: { areaId: string }) {
   const nav = useNavigate()
   const ref = useRef<HTMLDivElement>(null)
   const [svgError, setSvgError] = useState<string | null>(null)
+  const [drawing, setDrawing] = useState(true)
+  const [retryDiagram, setRetryDiagram] = useState(0)
+  const drawSequence = useRef(0)
 
   useEffect(() => {
     if (!map.data || !ref.current) return
-    let cancelled = false
+    let retired = false
+    const renderId = `skill-map-${diagramId}-${++drawSequence.current}`
+    const timer = setTimeout(() => {
+      if (retired) return
+      retired = true
+      setDrawing(false)
+      setSvgError('Drawing timed out. The list below remains available.')
+    }, 10000)
     ;(async () => {
       try {
         const mermaid = (await import('mermaid')).default
+        if (retired) return
+        setDrawing(true)
+        setSvgError(null)
         mermaid.initialize({ startOnLoad: false, securityLevel: 'strict', theme: 'neutral' })
-        const { svg } = await mermaid.render(`skill-map-${diagramId}`, map.data!.mermaid)
-        if (!cancelled && ref.current) ref.current.innerHTML = svg
-      } catch (e) {
-        if (!cancelled) setSvgError((e as Error).message)
+        const { svg } = await mermaid.render(renderId, map.data!.mermaid)
+        if (!retired && ref.current) ref.current.innerHTML = svg
+      } catch {
+        if (!retired) setSvgError('The diagram could not be drawn. The list below remains available.')
+      } finally {
+        clearTimeout(timer)
+        if (!retired) setDrawing(false)
       }
     })()
-    return () => {
-      cancelled = true
-    }
-  }, [map.data, diagramId])
+    return () => { retired = true; clearTimeout(timer) }
+  }, [map.data, diagramId, retryDiagram])
 
   const readRecovery = map.isError && (
     <div className="mb-3">
@@ -98,11 +112,10 @@ function MapContent({ areaId }: { areaId: string }) {
         </p>
         {map.data.nodes.length === 0 && <p role="status">{areaId ? 'No skills are assigned to this area yet. Choose another area or show all areas.' : 'No skills are available yet.'}</p>}
         <div ref={ref} aria-hidden="true" className="overflow-x-auto" />
-        {svgError && (
-          <p className="text-sm text-muted">
-            Diagram unavailable ({svgError}); the list below has the same information.
-          </p>
-        )}
+        {drawing && <p role="status" className="text-sm text-muted">Drawing the skill map… The list is available below.</p>}
+        {svgError && <div className="text-sm text-muted"><p role="status">{svgError}</p>
+          <Button disabled={drawing} onClick={() => { setDrawing(true); setRetryDiagram(value => value + 1) }}>Retry diagram</Button>
+        </div>}
       </Card>
       <Card>
         <CardTitle>Nodes</CardTitle>

@@ -257,13 +257,22 @@ class ResearchTutorExchange(BaseModel):
     calculation: Literal["python.string-repetition.v1"] | None = Field(
         default=None, exclude_if=lambda value: value is None
     )
+    reference: Literal["python.string-identity.v1"] | None = Field(
+        default=None, exclude_if=lambda value: value is None
+    )
     memories: list[PersonalMemory] = Field(default_factory=list, max_length=3)
     cache_token: str | None = Field(default=None, max_length=128)
 
     @model_validator(mode="after")
     def generation_identity(self) -> "ResearchTutorExchange":
-        if (self.model_call_id is None) != (self.calculation is not None):
-            raise ValueError("A checked calculation has no model call; a model reply requires one")
+        if (
+            sum(
+                value is not None
+                for value in (self.model_call_id, self.calculation, self.reference)
+            )
+            != 1
+        ):
+            raise ValueError("Exactly one model, calculation or reference identity is required")
         return self
 
 

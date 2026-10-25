@@ -15,6 +15,7 @@ import { useCurrentSession } from '../session/api'
 import { ReadAloud } from '../voice/ReadAloud'
 import { DictationButton } from '../voice/DictationButton'
 import { TutorResponseStatus } from '../tutor/TutorResponseStatus'
+import { useGenerationBusy } from '../sensory/generationActivity'
 
 type Props = {
   courseId?: string
@@ -201,6 +202,7 @@ function Conversation({
   const socratic = mode === 'socratic' && replySnapshot === snapshot
   const [storageError, setStorageError] = useState(restored.error)
   const [busy, setBusy] = useState(false)
+  useGenerationBusy(busy)
   const [preferSaved, setPreferSaved] = useState(restored.preferSaved)
   const [startedAt, setStartedAt] = useState(0)
   const [ready, setReady] = useState(false)

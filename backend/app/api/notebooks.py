@@ -6,6 +6,7 @@ from uuid import UUID
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
+from app.notebooks.inspection import NotebookInspection, inspect_notebook
 from app.notebooks.lab import NotebookLab
 
 router = APIRouter(prefix="/notebooks", tags=["notebooks"])
@@ -74,3 +75,14 @@ async def start(body: StartNotebook, request: Request, response: Response) -> No
         )
     lab.start(body.course_id, body.install)
     return await status(request, response)
+
+
+@router.get(
+    "/check",
+    response_model=NotebookInspection,
+    summary="Inspect prepared notebook requirements without running cells",
+)
+async def check(course_id: str, request: Request, response: Response) -> NotebookInspection:
+    lab = local(request)
+    response.headers["Cache-Control"] = "no-store"
+    return await inspect_notebook(lab.root, course_id, lab.env)

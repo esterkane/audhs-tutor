@@ -86,3 +86,18 @@ trails and disclosed text-only reading estimates. It preserves all existing book
 The earlier breadcrumb/timing gap above is superseded by this bounded implementation; a separate
 per-course step-selection memory beyond the existing saved route is not claimed. Optional effects
 and cross-browser/human assistive-technology acceptance remain as documented.
+
+## Optional quiet designs — owner request 2026-10-25
+
+The standalone Working alongside destination now offers a Quiet break space with device-local
+Off (default), Frost and Liquid choices. These are original, lightweight SVG patterns, not the
+CanvasUI package. A keyboard-operable Change pattern button changes the still image. There are
+no timers, continuous motion, transitions, shaders, extra sound or new dependencies. Thus motion
+off and OS reduced motion retain the same still interaction. Only one design is mounted, loaded
+on demand; it unmounts when off, inactive, embedded alongside a lesson or a tracked tutor request
+is generating. StudyTutor now registers its busy state with the shared activity gate as well.
+The activity gate describes this page's tracked requests, not arbitrary external GPU work.
+
+This supersedes the earlier absence of a break design. It does not claim CanvasUI licence/API
+verification, timed breaks, cross-browser acceptance or measured tokens/sec gains. The existing
+CanvasUI dependency approval requirement remains in force if that package is proposed later.

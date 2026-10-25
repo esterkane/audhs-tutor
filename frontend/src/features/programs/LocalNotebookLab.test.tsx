@@ -80,3 +80,22 @@ it('keeps another active job visible when recovering an older course receipt', a
   const reads = fetcher.mock.calls.filter(([url]) => url.endsWith('/status')).length
   await waitFor(() => expect(fetcher.mock.calls.filter(([url]) => url.endsWith('/status')).length).toBeGreaterThan(reads), { timeout: 2000 })
 })
+
+it('checks requirements only on request and separates package gaps from possible exercises', async () => {
+  const fetcher = vi.fn(async (url: string, init?: RequestInit) => {
+    expect(init?.method ?? 'GET').toBe('GET')
+    return jsonResponse(url.includes('/check?') ? { status: 'checked', message: 'Static check only.', code_cells: 4,
+      imports: ['json', 'missing'], unavailable_imports: ['missing'], local_imports: [], possible_exercise_cells: [3], unparsed_cells: [4], install_cells: [2] }
+      : { service_id: '11111111-1111-4111-8111-111111111111', status: 'idle', message: 'Ready to prepare', url: null, course_id: '' })
+  })
+  vi.stubGlobal('fetch', fetcher)
+  renderApp(<LocalNotebookLab courseId="test" />)
+  await screen.findByText('Ready to prepare')
+  expect(fetcher).toHaveBeenCalledTimes(1)
+  fireEvent.click(screen.getByText('Notebook requirements and exercise readiness'))
+  fireEvent.click(screen.getByRole('button', { name: 'Check notebook requirements' }))
+  await screen.findByText(/Imports not found in this environment: missing/)
+  expect(screen.getByText(/Possible unfinished exercise cells: 3/)).toBeVisible()
+  expect(screen.getByText(/Installation commands appear in cells 2/)).toBeVisible()
+  expect(fetcher.mock.calls.every(([url]) => !url.endsWith('/start'))).toBe(true)
+})

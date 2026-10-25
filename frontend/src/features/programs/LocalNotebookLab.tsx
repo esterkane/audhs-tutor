@@ -32,6 +32,10 @@ function NotebookLabPanel({ courseId }: { courseId: string }) {
     await cache.cancelQueries({ queryKey: ['notebook-lab'] })
     command.start(state.data.service_id, install)
   }
+  const inspection = useQuery({
+    queryKey: ['notebook-inspection', courseId], enabled: false, retry: false,
+    queryFn: ({ signal }) => boundedRead<Schemas['NotebookInspection']>(`/api/notebooks/check?course_id=${encodeURIComponent(courseId)}`, signal, 'Notebook requirements'),
+  })
   const mine = state.data?.course_id === courseId
   const ownStatus = mine ? state.data : command.receipt
   return (
@@ -81,6 +85,23 @@ function NotebookLabPanel({ courseId }: { courseId: string }) {
           Open prepared notebook in Jupyter
         </a>
       )}
+      <details>
+        <summary>Notebook requirements and exercise readiness</summary>
+        <p className="text-sm my-2">Check the prepared working copy and package locations in the app’s notebook Python environment. This does not run cells, install packages or assess your work.</p>
+        <Button disabled={busy || inspection.isFetching} onClick={() => void inspection.refetch()}>{inspection.isFetching ? 'Checking notebook requirements…' : 'Check notebook requirements'}</Button>
+        {inspection.isError && <p role="alert">Could not check notebook requirements. Your files are unchanged; retry when the local app responds.</p>}
+        {inspection.data && <div className="grid gap-2 mt-2" aria-label="Notebook requirements result">
+          <p role="status">{inspection.data.message}</p>
+          {inspection.data.status === 'checked' && <>
+            <p>{inspection.data.code_cells} code cells inspected. Package locations do not prove that imports or cells will execute successfully.</p>
+            {(inspection.data.unavailable_imports ?? []).length > 0 ? <p className="text-warn">Imports not found in this environment: {(inspection.data.unavailable_imports ?? []).join(', ')}. Review the course requirements before installing extra packages.</p> : <p>Imported modules were found in standard package locations or local files. This is not a runtime check.</p>}
+          </>}
+          {!!(inspection.data.possible_exercise_cells ?? []).length && <p>Possible unfinished exercise cells: {(inspection.data.possible_exercise_cells ?? []).join(', ')}. These contain TODO or ellipsis markers; they are not graded. Complete earlier prerequisites before running dependent cells.</p>}
+          {!!(inspection.data.install_cells ?? []).length && <p>Installation commands appear in cells {(inspection.data.install_cells ?? []).join(', ')}. None were run by this check.</p>}
+          {!!(inspection.data.unparsed_cells ?? []).length && <p>Partial analysis: cells {(inspection.data.unparsed_cells ?? []).join(', ')} contain unsupported syntax, notebook commands or exceed analysis limits.</p>}
+          <p className="text-sm text-muted">Cell numbers count all notebook cells from 1. This is the last check; check again after editing. Jupyter readiness and completed course exercises are separate.</p>
+        </div>}
+      </details>
       <p>
         Read the instructions, then use Shift+Enter to run cells. Jupyter runs native Python with access to
         your local files; inspect downloaded code before running it. Return to this app’s tab to continue

@@ -52,11 +52,17 @@ export function useCheckpoint() {
       id: string
       body: { phase?: string; skill_id?: string | null; block_index?: number }
     }) => api.checkpoint(id, body),
-    onSuccess: (checkpoint, { id }) => {
+    onMutate: async ({ id }) => {
+      await Promise.all([['session', id], ['session-current']].map(queryKey => qc.cancelQueries({ queryKey, exact: true }, { revert: false })))
+    },
+    onSuccess: async (checkpoint, { id }) => {
+      // A read started before/during this write must not replace the confirmed phase.
+      // Keep any already-published block advance when cancelling that older read.
+      await Promise.all([['session', id], ['session-current']].map(queryKey => qc.cancelQueries({ queryKey, exact: true }, { revert: false })))
       // Resume may mount from cached data before its background refresh finishes.
       // Publish the server-confirmed sub-phase without remounting the live lesson.
-      qc.setQueryData<SessionOut>(['session', id], (current) => {
-        if (!current || current.state.block_id !== checkpoint.block_id) return current
+      for (const key of [['session', id], ['session-current']]) qc.setQueryData<SessionOut>(key, (current) => {
+        if (!current || current.id !== id || current.state.block_id !== checkpoint.block_id) return current
         return {
           ...current,
           checkpoint,

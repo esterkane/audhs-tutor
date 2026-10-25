@@ -1,7 +1,9 @@
 import { claimReading, updateReading } from '../features/voice/readingOwner'
 import { AudioControls } from '../features/audio/AudioControls'
 import { bindOutput } from '../features/audio/settings'
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useId, useRef, useState } from 'react'
+import { useComfort, type BreakDesign } from '../features/sensory/comfortStore'
+import { useGenerationActivity } from '../features/sensory/generationActivity'
 import { Link } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -16,6 +18,8 @@ type AmbientAudio = {
   releaseOwner: () => void
 }
 
+const QuietDesign = lazy(() => import('../features/sensory/BreakDesign'))
+
 function nowMs() {
   return Date.now()
 }
@@ -26,6 +30,10 @@ export function Together({ embedded = false, active = true }: { embedded?: boole
   const session = useCurrentSession()
   const { mode } = useMode()
   const { ambient } = useSensory()
+  const design = useComfort(s => s.breakDesign)
+  const setDesign = useComfort(s => s.setBreakDesign)
+  const generating = useGenerationActivity(s => s.count > 0)
+  const designId = useId()
   const [startedAt] = useState(() => nowMs())
   const [minutes, setMinutes] = useState(0)
   const [playing, setPlaying] = useState(false)
@@ -156,6 +164,20 @@ export function Together({ embedded = false, active = true }: { embedded?: boole
           {ambient === 'off' ? ' Ambient sound can be enabled under Preferences.' : ''}
         </p>
       </Card>
+      {!embedded && <Card>
+        <CardTitle as="h2">Quiet break space</CardTitle>
+        <p className="text-sm text-muted mt-2">Optional, still designs. Change the pattern whenever you like. Your choice stays on this device.</p>
+        <div className="mt-3">
+          <label htmlFor={designId}>Break design</label>
+          <select id={designId} className="ml-2 rounded border bg-surface p-2" value={design}
+            onChange={event => setDesign(event.target.value as BreakDesign)}>
+            <option value="off">Off</option><option value="frost">Frost</option><option value="liquid">Liquid</option>
+          </select>
+        </div>
+        {generating && design !== 'off' && <p role="status" className="mt-2">Design paused while the tutor responds.</p>}
+        {active && !generating && (design === 'frost' || design === 'liquid') &&
+          <Suspense fallback={<p role="status">Opening design…</p>}><QuietDesign key={design} design={design} /></Suspense>}
+      </Card>}
     </div>
   )
 }

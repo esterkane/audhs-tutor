@@ -29,9 +29,11 @@ export function validResearch(value: unknown): value is Research {
         && q.tutor_exchanges.every(x => x && ['discuss', 'draft'].includes(x.action)
           && (x.cache_token == null || typeof x.cache_token === 'string')
           && typeof x.request === 'string'
-          && (x.calculation === 'python.string-repetition.v1'
-            ? x.model_call_id === null
-            : x.calculation == null && typeof x.model_call_id === 'string') && x.answer
+          && (x.reference === 'python.string-identity.v1'
+            ? x.calculation == null && x.model_call_id === null
+            : x.reference == null && (x.calculation === 'python.string-repetition.v1'
+              ? x.model_call_id === null
+              : x.calculation == null && typeof x.model_call_id === 'string')) && x.answer
           && ['discussion', 'needs_check', 'next_question', 'section'].every(k => typeof x.answer[k as keyof typeof x.answer] === 'string')
           && Array.isArray(x.answer.source_quotes) && x.answer.source_quotes.every(quote => typeof quote === 'string'))))
       && q.prompt.length > 0 && q.prompt.length <= 2000
