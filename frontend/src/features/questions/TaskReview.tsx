@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
 import { ApiError, apiFetch, type Schemas } from '../../lib/api'
@@ -40,6 +40,12 @@ function Review({ assessment }: { assessment: string }) {
   const heading = useRef<HTMLHeadingElement>(null)
   const reveal = useRef<HTMLButtonElement>(null)
   const feedback = useRef<HTMLParagraphElement>(null)
+  const feedbackFocus = useRef<{ origin: Element | null } | null>(null)
+  useLayoutEffect(() => {
+    const intent = feedbackFocus.current
+    feedbackFocus.current = null
+    if (notice && intent && (document.activeElement === intent.origin || document.activeElement === document.body)) feedback.current?.focus()
+  }, [notice])
   const path = `/api/questions/${encodeURIComponent(assessment)}/task-review`
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; active.current?.abort() } }, [])
   async function load() {
@@ -68,7 +74,7 @@ function Review({ assessment }: { assessment: string }) {
       const receipt = await apiFetch<Schemas['TaskReviewReceipt']>(path, { method: 'POST', body: JSON.stringify(command), signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) })
       if (!mounted.current) return
       setPending(null); setConfirmed(false); setPreview(null)
-      requestAnimationFrame(() => { if (!focusMoved && mounted.current) feedback.current?.focus() })
+      feedbackFocus.current = focusMoved ? null : { origin: focusOrigin }
       setNotice(receipt.decision === 'approve' ? 'Task review saved. This does not change your grades or confirm understanding.' : 'Review revoked. Your review history and past answers are kept.')
     } catch (e) {
       if (!mounted.current) return

@@ -85,3 +85,34 @@ it('aborts an in-flight preview when leaving the screen', async () => {
   await Promise.resolve()
   expect(screen.queryByText('Explain selection bias')).not.toBeInTheDocument()
 })
+
+
+it('focuses saved feedback even when an animation frame precedes the React commit', async () => {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
+  vi.stubGlobal('fetch', vi.fn(async (_path: string, init?: RequestInit) => jsonResponse(init?.method === 'POST' ? { decision: 'revoke' } : { ...preview, current_review: { id: 'r1', revision: 1, decision: 'approve', facet: 'application', reviewed_at: '2026-10-12T10:00:00Z' } })))
+  renderApp(<TaskReview />, { route: '/task-review?assessment=a1' })
+  fireEvent.click(screen.getByRole('button', { name: 'Show task and rubric' }))
+  fireEvent.click(await screen.findByRole('checkbox'))
+  const revoke = screen.getByRole('button', { name: 'Revoke previous approval' })
+  revoke.focus()
+  fireEvent.click(revoke)
+  expect(await screen.findByText('Review revoked. Your review history and past answers are kept.')).toHaveFocus()
+})
+
+
+it('keeps focus chosen by the learner while a review is saving', async () => {
+  let resolve!: (value: Response) => void
+  vi.stubGlobal('fetch', vi.fn((_path: string, init?: RequestInit) => init?.method === 'POST'
+    ? new Promise<Response>(done => { resolve = done }) : Promise.resolve(jsonResponse(preview))))
+  renderApp(<TaskReview />, { route: '/task-review?assessment=a1' })
+  fireEvent.click(screen.getByRole('button', { name: 'Show task and rubric' }))
+  fireEvent.click(await screen.findByRole('checkbox'))
+  const approve = screen.getByRole('button', { name: 'Approve this task review' })
+  approve.focus()
+  fireEvent.click(approve)
+  const back = screen.getByRole('link', { name: 'Back to Progress' })
+  back.focus()
+  resolve(jsonResponse({ decision: 'approve' }))
+  await screen.findByText('Task review saved. This does not change your grades or confirm understanding.')
+  expect(back).toHaveFocus()
+})
