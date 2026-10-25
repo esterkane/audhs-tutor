@@ -18,9 +18,12 @@ from pathlib import Path
 names = json.loads(sys.stdin.read())
 environment = str(Path(sys.executable).parent.parent)
 locations = sysconfig.get_paths('venv', vars={'base': environment, 'platbase': environment})
-paths = list(dict.fromkeys(locations[key] for key in ('purelib', 'platlib')))
-print(json.dumps([name for name in names if name in sys.stdlib_module_names or
-    importlib.machinery.PathFinder.find_spec(name, paths) is not None]))
+paths = list(dict.fromkeys([*sys.path, *(locations[key] for key in ('purelib', 'platlib'))]))
+found = [name for name in names if name in sys.builtin_module_names or
+    importlib.machinery.FrozenImporter.find_spec(name) is not None or
+    importlib.machinery.PathFinder.find_spec(name, paths) is not None]
+print(json.dumps({'found': found, 'unavailable_standard': [name for name in names
+    if name not in found and name in sys.stdlib_module_names]}))
 """
 
 
@@ -30,6 +33,7 @@ class NotebookInspection(BaseModel):
     code_cells: int = 0
     imports: list[str] = Field(default_factory=list)
     unavailable_imports: list[str] = Field(default_factory=list)
+    unavailable_standard_imports: list[str] = Field(default_factory=list)
     local_imports: list[str] = Field(default_factory=list)
     possible_exercise_cells: list[int] = Field(default_factory=list)
     unparsed_cells: list[int] = Field(default_factory=list)
@@ -45,12 +49,20 @@ def inventory(root: Path, course_id: str) -> NotebookInspection:
     if len(raw) > 1024 * 1024:
         raise ValueError("Manifest too large")
     manifest = json.loads(raw)
-    course = next((c for c in manifest["courses"] if c["id"] == course_id), None)
+    courses = manifest.get("courses") if isinstance(manifest, dict) else None
+    if not isinstance(courses, list) or any(
+        not isinstance(item, dict) or not isinstance(item.get("id"), str) for item in courses
+    ):
+        raise ValueError("Invalid course manifest")
+    course = next((c for c in courses if c["id"] == course_id), None)
     if course is None:
         raise ValueError("Course unavailable")
-    name = next(
-        (item["name"] for item in course["lab_files"] if item["name"].endswith(".ipynb")), None
-    )
+    files = course.get("lab_files")
+    if not isinstance(files, list) or any(
+        not isinstance(item, dict) or not isinstance(item.get("name"), str) for item in files
+    ):
+        raise ValueError("Invalid notebook manifest")
+    name = next((item["name"] for item in files if item["name"].endswith(".ipynb")), None)
     if name is None:
         raise ValueError("Notebook unavailable")
     if Path(name).name != name or name in {".", ".."}:
@@ -177,11 +189,23 @@ async def inspect_notebook(root: Path, course_id: str, env: dict[str, str]) -> N
         )
         if process.returncode != 0 or len(output) > 16384:
             raise ValueError("Probe failed")
-        found = json.loads(output)
-        if not isinstance(found, list) or any(name not in report.imports for name in found):
+        metadata = json.loads(output)
+        if not isinstance(metadata, dict):
             raise ValueError("Invalid metadata")
+        found = metadata.get("found")
+        unavailable_standard = metadata.get("unavailable_standard")
+        if not isinstance(found, list) or not isinstance(unavailable_standard, list):
+            raise ValueError("Invalid metadata")
+        for values in (found, unavailable_standard):
+            if any(not isinstance(name, str) or name not in report.imports for name in values):
+                raise ValueError("Invalid metadata")
+        if set(found) & set(unavailable_standard):
+            raise ValueError("Conflicting metadata")
         report.unavailable_imports = sorted(
             set(report.imports) - set(found) - set(report.local_imports)
+        )
+        report.unavailable_standard_imports = sorted(
+            set(unavailable_standard) & set(report.unavailable_imports)
         )
         return report
     except (OSError, ValueError, TimeoutError):

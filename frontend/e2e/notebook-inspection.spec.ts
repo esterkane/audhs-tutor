@@ -13,7 +13,7 @@ for (const width of [390, 1280]) test(`notebook requirements are read-only at ${
     expect(new URL(route.request().url()).searchParams.get('course_id')).toBe('check')
     checks++
     return route.fulfill({ json: { status: 'checked', message: 'Static check only.', code_cells: 5,
-      imports: ['json', 'missing_extra'], unavailable_imports: ['missing_extra'], local_imports: [], possible_exercise_cells: [3], unparsed_cells: [2], install_cells: [2] } })
+      imports: ['json', 'missing_extra', 'winreg'], unavailable_imports: ['missing_extra', 'winreg'], unavailable_standard_imports: ['winreg'], local_imports: [], possible_exercise_cells: [3], unparsed_cells: [2], install_cells: [2] } })
   })
   await page.goto('/programs?course=check')
   await page.getByText('Full course notebook and files', { exact: true }).click()
@@ -25,6 +25,8 @@ for (const width of [390, 1280]) test(`notebook requirements are read-only at ${
   await check.focus()
   await page.keyboard.press('Enter')
   await expect(page.getByText(/Imports not found in this environment: missing_extra/)).toBeVisible()
+  await expect(page.getByText(/Standard-library modules unavailable in this Python build or platform: winreg/)).toBeVisible()
+  await expect(page.getByText(/Imported modules were found in standard package locations/)).toHaveCount(0)
   await expect(page.getByText(/Possible unfinished exercise cells: 3/)).toBeVisible()
   await expect(page.getByText(/Installation commands appear in cells 2/)).toBeVisible()
   expect(checks).toBe(1)

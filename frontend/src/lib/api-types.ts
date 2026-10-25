@@ -6281,6 +6281,8 @@ export interface components {
       imports?: string[]
       /** Unavailable Imports */
       unavailable_imports?: string[]
+      /** Unavailable Standard Imports */
+      unavailable_standard_imports?: string[]
       /** Local Imports */
       local_imports?: string[]
       /** Possible Exercise Cells */

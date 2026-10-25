@@ -36,6 +36,8 @@ function NotebookLabPanel({ courseId }: { courseId: string }) {
     queryKey: ['notebook-inspection', courseId], enabled: false, retry: false,
     queryFn: ({ signal }) => boundedRead<Schemas['NotebookInspection']>(`/api/notebooks/check?course_id=${encodeURIComponent(courseId)}`, signal, 'Notebook requirements'),
   })
+  const unavailableStandard = inspection.data?.unavailable_standard_imports ?? []
+  const unavailableOther = (inspection.data?.unavailable_imports ?? []).filter(name => !unavailableStandard.includes(name))
   const mine = state.data?.course_id === courseId
   const ownStatus = mine ? state.data : command.receipt
   return (
@@ -94,7 +96,9 @@ function NotebookLabPanel({ courseId }: { courseId: string }) {
           <p role="status">{inspection.data.message}</p>
           {inspection.data.status === 'checked' && <>
             <p>{inspection.data.code_cells} code cells inspected. Package locations do not prove that imports or cells will execute successfully.</p>
-            {(inspection.data.unavailable_imports ?? []).length > 0 ? <p className="text-warn">Imports not found in this environment: {(inspection.data.unavailable_imports ?? []).join(', ')}. Review the course requirements before installing extra packages.</p> : <p>Imported modules were found in standard package locations or local files. This is not a runtime check.</p>}
+            {!!unavailableStandard.length && <p className="text-warn">Standard-library modules unavailable in this Python build or platform: {unavailableStandard.join(', ')}. Review the course’s platform requirements; these are not ordinary pip package gaps.</p>}
+            {!!unavailableOther.length && <p className="text-warn">Imports not found in this environment: {unavailableOther.join(', ')}. Review the course requirements before installing extra packages.</p>}
+            {!(inspection.data.unavailable_imports ?? []).length && <p>Imported modules were found in standard package locations or local files. This is not a runtime check.</p>}
           </>}
           {!!(inspection.data.possible_exercise_cells ?? []).length && <p>Possible unfinished exercise cells: {(inspection.data.possible_exercise_cells ?? []).join(', ')}. These contain TODO or ellipsis markers; they are not graded. Complete earlier prerequisites before running dependent cells.</p>}
           {!!(inspection.data.install_cells ?? []).length && <p>Installation commands appear in cells {(inspection.data.install_cells ?? []).join(', ')}. None were run by this check.</p>}

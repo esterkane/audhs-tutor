@@ -99,3 +99,16 @@ it('checks requirements only on request and separates package gaps from possible
   expect(screen.getByText(/Installation commands appear in cells 2/)).toBeVisible()
   expect(fetcher.mock.calls.every(([url]) => !url.endsWith('/start'))).toBe(true)
 })
+
+it('does not report platform-only standard modules as installed or ordinary package gaps', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => jsonResponse(url.includes('/check?')
+    ? { status: 'checked', message: 'Static check only.', imports: ['winreg'], unavailable_imports: ['winreg'], unavailable_standard_imports: ['winreg'] }
+    : { service_id: '11111111-1111-4111-8111-111111111111', status: 'idle', message: 'Ready to prepare', course_id: '' })))
+  renderApp(<LocalNotebookLab courseId="test" />)
+  await screen.findByText('Ready to prepare')
+  fireEvent.click(screen.getByText('Notebook requirements and exercise readiness'))
+  fireEvent.click(screen.getByRole('button', { name: 'Check notebook requirements' }))
+  await screen.findByText(/Standard-library modules unavailable in this Python build or platform: winreg/)
+  expect(screen.queryByText(/Imports not found in this environment:/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/Imported modules were found/)).not.toBeInTheDocument()
+})

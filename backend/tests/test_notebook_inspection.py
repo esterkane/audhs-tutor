@@ -1,5 +1,6 @@
 import asyncio
 import json
+import sys
 import venv
 from pathlib import Path
 
@@ -67,6 +68,33 @@ async def test_package_locations_found_without_importing_the_package(tmp_path):
     assert report.unavailable_imports == ["missing_example"]
     assert report.local_imports == ["local_helper"]
     assert not sentinel.exists()
+
+
+async def test_standard_library_inventory_respects_actual_build_and_platform(tmp_path):
+    # sys.stdlib_module_names includes modules unavailable on the current platform.
+    unavailable = "winreg" if sys.platform != "win32" else "pwd"
+    assert unavailable in sys.stdlib_module_names
+    target = prepared(tmp_path, [f"import sys, json, math, os, {unavailable}"])
+    env_path = tmp_path / "data/notebook-env"
+    await asyncio.to_thread(venv.EnvBuilder(with_pip=False).create, env_path)
+    before = target.read_bytes()
+    report = await inspection.inspect_notebook(tmp_path, "test", {})
+    assert report.status == "checked"
+    assert report.unavailable_imports == [unavailable]
+    assert report.unavailable_standard_imports == [unavailable]
+    assert target.read_bytes() == before
+
+
+@pytest.mark.parametrize("files", [None, {}, [None], [{"name": None}], [{"name": 42}]])
+async def test_malformed_bundle_metadata_is_recoverable_without_exposing_content(tmp_path, files):
+    target = prepared(tmp_path, ["PRIVATE_SENTINEL"])
+    manifest = tmp_path / "frontend/public/local-learning/program.json"
+    manifest.write_text(json.dumps({"courses": [{"id": "test", "lab_files": files}]}))
+    before = target.read_bytes()
+    report = await inspection.inspect_notebook(tmp_path, "test", {})
+    assert report.status == "unavailable"
+    assert "PRIVATE_SENTINEL" not in report.model_dump_json()
+    assert target.read_bytes() == before
 
 
 async def test_missing_environment_retains_static_exercise_inventory(tmp_path):
