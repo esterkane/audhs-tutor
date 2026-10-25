@@ -40,3 +40,35 @@ it('shows evidence and creates an update draft only after the learner requests i
   await waitFor(()=>expect(open).toHaveBeenCalledWith('revision'))
   expect(calls).toEqual(['/api/knowledge-material/drafts/accepted/factual-review/revisions/review-run'])
 })
+
+it('explicitly saves the key without changing provider, cap or making a model request', async () => {
+  const writes: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'POST' || init?.method === 'PUT') writes.push(url)
+    return jsonResponse({ enabled: false, key_configured: writes.length > 0, model_id: 'openai-luna', daily_budget_usd: 5, counted_today_usd: 0 })
+  }))
+  wrap(<AuthoringSetup />)
+  fireEvent.click(screen.getByText('Authoring setup: OpenAI or local'))
+  await screen.findByText(/openai-luna/)
+  expect(screen.getByRole('button', { name: 'Save API key' })).toBeDisabled()
+  fireEvent.change(screen.getByLabelText('OpenAI API key'), { target: { value: 'synthetic-fixture-secret' } })
+  expect(screen.getByText(/Key entered but not saved/)).toBeVisible()
+  fireEvent.click(screen.getByRole('button', { name: 'Save API key' }))
+  await screen.findByText('API key saved on this machine. No model request was made.')
+  expect(screen.getByLabelText('OpenAI API key')).toHaveValue('')
+  expect(screen.getByText(/API key configured/)).toBeVisible()
+  expect(writes).toEqual(['/api/authoring/key'])
+})
+it('keeps an unsaved key in the input when saving fails without claiming configuration', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => init?.method === 'POST'
+    ? jsonResponse({ error: { code: 'key_invalid', message: 'Enter a valid OpenAI API key.' } }, 422)
+    : jsonResponse({ enabled: true, key_configured: false, model_id: 'openai-luna', daily_budget_usd: 5, counted_today_usd: 0 })))
+  wrap(<AuthoringSetup />)
+  fireEvent.click(screen.getByText('Authoring setup: OpenAI or local'))
+  fireEvent.change(screen.getByLabelText('OpenAI API key'), { target: { value: 'synthetic-unsaved-key' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save API key' }))
+  await screen.findByText('Enter a valid OpenAI API key.')
+  expect(screen.getByLabelText('OpenAI API key')).toHaveValue('synthetic-unsaved-key')
+  expect(screen.getByText(/Key entered but not saved/)).toBeVisible()
+  expect(screen.queryByText(/API key saved on this machine/)).not.toBeInTheDocument()
+})

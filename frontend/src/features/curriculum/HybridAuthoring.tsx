@@ -14,6 +14,22 @@ export function AuthoringSetup() {
   const cap = editedCap ?? String(query.data?.daily_budget_usd || 5)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
+  async function persistKey() {
+    const saved = await apiFetch<Schemas['AuthoringSetup']>('/api/authoring/key', {
+      method: 'POST', body: JSON.stringify({ key }),
+    })
+    setKey('')
+    cache.setQueryData(['authoring-setup'], saved)
+  }
+  async function saveKey() {
+    setBusy(true); setMessage('')
+    try {
+      await persistKey()
+      setMessage('API key saved on this machine. No model request was made.')
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'API key could not be saved.')
+    } finally { setBusy(false) }
+  }
   async function configure(enabled: boolean) {
     setBusy(true)
     setMessage('')
@@ -21,10 +37,7 @@ export function AuthoringSetup() {
       const dollars = Number(cap)
       if (!Number.isFinite(dollars) || dollars <= 0 || dollars > 1000)
         throw new Error('Set a daily limit between $0.01 and $1,000.')
-      if (key) {
-        await apiFetch('/api/authoring/key', { method: 'POST', body: JSON.stringify({ key }) })
-        setKey('')
-      }
+      if (key) await persistKey()
       for (const [name, value] of [
         ['authoring.daily_budget_cents', Math.round(dollars * 100)],
         ['authoring.enabled', enabled],
@@ -70,6 +83,8 @@ export function AuthoringSetup() {
             placeholder={data?.key_configured ? 'Leave blank to keep saved key' : 'Enter key on this machine'}
           />
         </label>
+        {key && <p role="status">Key entered but not saved. Choose Save API key to keep it on this machine.</p>}
+        <Button disabled={busy || !key} onClick={() => void saveKey()}>Save API key</Button>
         <p className="text-sm text-muted">
           Stored in a private local file, excluded from Git. Never included in a lesson, export or browser
           storage.

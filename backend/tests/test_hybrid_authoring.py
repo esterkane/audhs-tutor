@@ -448,3 +448,18 @@ async def test_hosted_research_saved_reply_and_accepted_reading_are_reused_local
         reading = await client.get(f"/api/knowledge-material/skills/{skill.id}/reading")
         assert reading.status_code == 200 and reading.json()["explanation"] == body["explanation"]
     assert len(fake.calls) == 1
+
+
+async def test_key_storage_error_is_actionable_and_does_not_echo_secret(client, monkeypatch):
+    from app.core.config import Settings
+
+    def blocked(self, key):
+        raise PermissionError("synthetic-secret-must-not-leak")
+
+    monkeypatch.setattr(Settings, "save_authoring_key", blocked)
+    result = await client.post("/api/authoring/key", json={"key": "sk-" + "synthetic-fixture-" * 3})
+    assert result.status_code == 503
+    assert result.json()["error"]["code"] == "authoring_key_storage_unavailable"
+    assert "ownership" in result.json()["error"]["message"]
+    assert "synthetic-secret-must-not-leak" not in result.text
+    assert "synthetic-fixture-" not in result.text

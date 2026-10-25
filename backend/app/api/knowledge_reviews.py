@@ -61,7 +61,15 @@ async def save_key(
             raise ValueError
     except (ValueError, KeyError, TypeError) as exc:
         raise AppError("key_invalid", "Enter a valid OpenAI API key.", 422) from exc
-    await run_in_threadpool(settings.save_authoring_key, key)
+    try:
+        await run_in_threadpool(settings.save_authoring_key, key)
+    except (OSError, ValueError) as exc:
+        raise AppError(
+            "authoring_key_storage_unavailable",
+            "The server could not save the API key. Check the private key folder's ownership "
+            "and permissions, then retry. The key has not been saved.",
+            503,
+        ) from exc
     return await setup(db, learner, settings, gateway)
 
 
