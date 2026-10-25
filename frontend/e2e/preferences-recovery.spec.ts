@@ -29,6 +29,10 @@ for (const width of [390, 1280]) {
     await expect(page.getByRole('button', { name: 'Standard', exact: true })).toHaveAttribute('aria-pressed', 'true')
     expect(writes).toEqual([])
     await page.getByRole('link', { name: 'Home', exact: true }).click()
+    // Complete the route change: an immediate second click can batch both navigations
+    // and never unmount Preferences, so no mount-triggered refresh would occur.
+    await expect(page).toHaveURL(/\/$/)
+    await expect(page.getByRole('heading', { level: 1, name: 'Preferences' })).toHaveCount(0)
     failing = true
     await page.getByRole('link', { name: 'Preferences', exact: true }).click()
     await expect(page.getByText('Could not refresh preferences. Showing the last loaded settings.', { exact: true })).toBeVisible()

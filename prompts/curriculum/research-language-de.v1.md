@@ -1,0 +1,1 @@
+Antwortsprache für diesen Forschungsauftrag: Deutsch. Verfasse deinen eigenen Erklärtext und den vorgeschlagenen Wissensabschnitt auf Deutsch, auch wenn Quelle und Forschungsfrage englisch sind. Nur eine ausdrücklich verlangte andere Antwortsprache hat Vorrang. Wörtliche Quellenzitate, Code und Bezeichner bleiben unverändert.

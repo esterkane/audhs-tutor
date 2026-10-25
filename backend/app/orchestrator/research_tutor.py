@@ -101,9 +101,11 @@ async def help_research(
         and not question.unresolved.strip()
         else None
     )
-    data = {
-        **{k: v for k, v in basis.items() if k != "passage"},
+    data: dict[str, object] = {
+        # Stable evidence first lets local inference reuse its prompt prefix as notes change.
+        # All fields, source characters and discussion history remain in the packet.
         "source_passages": {str(i + 1): text for i, text in enumerate(passages)},
+        **{k: v for k, v in basis.items() if k != "passage"},
         "earlier_personal_notes": [m.model_dump() for m in memories],
         "request": question.tutor_request,
         "action": command.action,
@@ -192,7 +194,7 @@ async def help_research(
         ), False
     # Keep domain-specific demonstrations out of unrelated research packets.
     policy_name = (
-        "curriculum/research-tutor.v11.md"
+        "curriculum/research-tutor.v12.md"
         if "python" in research.passage.casefold()
         else "curriculum/research-tutor.v10.md"
     )
@@ -215,6 +217,11 @@ async def help_research(
         ).read_text()
     )
     policy += presentation.instruction
+    language_reminder = (
+        (PROMPTS_DIR / "curriculum/research-language-de.v1.md").read_text()
+        if presentation.language == "de"
+        else ""
+    )
     response_type = (
         ResearchRepetitionRule
         if verified
@@ -245,6 +252,7 @@ async def help_research(
             "request": question.tutor_request,
             "action": command.action,
             "policy": policy,
+            "language_reminder": language_reminder,
             "verified_results": verified.context() if verified else None,
             "coverage_contract": "literal-string-repetition.v1",
             "source_claim_contract": "neutral-observation.v2" if neutral_note else None,
@@ -273,7 +281,10 @@ async def help_research(
             ),
             Message(
                 role="user",
-                content="<research_context>\n" + escape_data(encoded) + "\n</research_context>",
+                content="<research_context>\n"
+                + escape_data(encoded)
+                + "\n</research_context>"
+                + ("\n\n" + language_reminder if language_reminder else ""),
             ),
         ],
         response_model=response_type,
@@ -292,6 +303,7 @@ async def help_research(
             },
             "memory_policy_version": "curriculum.research-memory.v1",
             "feedback_contract_version": "grounded-explanation.v5",
+            "context_layout": "source-prefix.v1",
             "source_claim_contract": "neutral-observation.v2" if neutral_note else None,
             "coverage_contract": "literal-string-repetition.v1" if verified else None,
             "verified_result_count": len(verified.examples) if verified else 0,

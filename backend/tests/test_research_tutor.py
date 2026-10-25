@@ -246,6 +246,7 @@ async def test_numbered_evidence_keeps_entire_source_and_attaches_exact_saved_te
     assert answer["source_quotes"] == [passage[3600:]]
     content = fake_local.calls[0].messages[-1].content
     data = json.loads(content.split("\n", 1)[1].rsplit("\n", 1)[0])
+    assert next(iter(data)) == "source_passages"
     assert "".join(data["source_passages"].values()) == passage
 
 
@@ -271,6 +272,36 @@ async def create(client: AsyncClient, **changes):
     )
     assert response.status_code == 200, response.text
     return response.json()
+
+
+@pytest.mark.parametrize("language", ["en", "de"])
+@pytest.mark.parametrize("action", ["discuss", "draft"])
+async def test_research_language_reminder_keeps_original_evidence(
+    client, db, fake_local, language, action
+):
+    await registry.seed_defaults(db, installed_ollama_tags={"gemma3:12b", "llama3.1:8b"})
+    setting = await client.put(
+        "/api/preferences", json={"key": "tutor.response_language", "value": language}
+    )
+    assert setting.status_code == 200
+    draft = await create(client, tutor_request="Explain the two middle ranks.")
+    fake_local.structured = {
+        "section" if action == "draft" else "answer_sentence": "Average the middle values.",
+        "source_indices": [1],
+    }
+    response = await client.post(
+        f"/api/knowledge-material/drafts/{draft['id']}/research-tutor",
+        json={"expected_version": 1, "question_id": "q1", "action": action},
+    )
+    assert response.status_code == 200, response.text
+    call = fake_local.calls[0]
+    assert (
+        "Antwortsprache für diesen Forschungsauftrag: Deutsch" in call.messages[-1].content
+    ) == (language == "de")
+    assert PASSAGE in call.messages[-1].content
+    question = response.json()["payload"]["authoring"]["research"]["questions"][0]
+    assert question["findings"] == "Pick the lower middle value."
+    assert question["tutor_exchanges"][0]["answer"]["source_quotes"] == [PASSAGE]
 
 
 @pytest.mark.parametrize("action", ["discuss", "draft"])
