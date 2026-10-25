@@ -16,7 +16,7 @@ from app.knowledge.personal_memory import selected
 from app.models_ai import registry
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
-from app.orchestrator import checked_research, personas, reference_research
+from app.orchestrator import checked_research, literal_research, personas, reference_research
 from app.orchestrator.authoring_gateway import AuthoringGateway, choose
 from app.orchestrator.context import escape_data
 from app.orchestrator.prompts import PROMPTS_DIR
@@ -144,6 +144,11 @@ async def help_research(
             422,
         )
     checked = checked_research.answer(research.passage, question, presentation)
+    calculation = checked_research.VERSION if checked is not None else None
+    if checked is None:
+        checked = literal_research.answer(research.passage, question, presentation)
+        if checked is not None:
+            calculation = literal_research.VERSION
     reference = None
     if checked is None:
         checked = reference_research.answer(research.passage, question, presentation)
@@ -157,7 +162,7 @@ async def help_research(
                 "question": question.id,
                 "basis": basis,
                 "action": command.action,
-                "calculation": checked_research.VERSION if reference is None else None,
+                "calculation": calculation,
                 "reference": reference,
                 "presentation": presentation.suffix,
                 "answer": checked.model_dump(),
@@ -179,7 +184,7 @@ async def help_research(
             request=question.tutor_request,
             answer=checked,
             model_call_id=None,
-            calculation=checked_research.VERSION if reference is None else None,
+            calculation=calculation,
             reference=reference,
         )
         exchange.cache_token = reuse_token(binding, exchange)

@@ -7280,7 +7280,7 @@ export interface components {
       /** Model Call Id */
       model_call_id: string | null
       /** Calculation */
-      calculation?: 'python.string-repetition.v1' | null
+      calculation?: ('python.string-repetition.v1' | 'python.literal-expression.v1') | null
       /** Reference */
       reference?: 'python.string-identity.v1' | null
       /** Memories */

@@ -254,8 +254,8 @@ class ResearchTutorExchange(BaseModel):
     request: str = Field(max_length=2000)
     answer: ResearchTutorAnswer
     model_call_id: str | None = Field(max_length=128)
-    calculation: Literal["python.string-repetition.v1"] | None = Field(
-        default=None, exclude_if=lambda value: value is None
+    calculation: Literal["python.string-repetition.v1", "python.literal-expression.v1"] | None = (
+        Field(default=None, exclude_if=lambda value: value is None)
     )
     reference: Literal["python.string-identity.v1"] | None = Field(
         default=None, exclude_if=lambda value: value is None
