@@ -28,7 +28,7 @@ def answer(
     parts = []
     for result in results:
         if result.error:
-            verb = "löst" if german else "raises"
+            verb = "verursacht" if german else "raises"
             reason = (
                 ("mit einem Null-Divisor" if german else "with a zero divisor")
                 if result.value == "ZeroDivisionError"

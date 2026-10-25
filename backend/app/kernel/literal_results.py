@@ -96,25 +96,33 @@ def literal_results(source: str, question: str) -> tuple[list[LiteralResult], bo
     if len(source) > 1800 or len(question) > 700:
         return None
     match = re.fullmatch(
-        r"What (?:do|does) (.+) (?:return|produce|evaluate to)\?", question.strip()
+        r"What\s+(?:do|does)\s+(`[\s\S]+`)\s+(?:return|produce|evaluate\s+to)\?",
+        question.strip(),
+        re.IGNORECASE,
     )
     german = False
     if match is None:
-        match = re.fullmatch(r"Was (?:geben|gibt) (.+) zurück\?", question.strip())
+        match = re.fullmatch(
+            r"Was\s+(?:geben|gibt)\s+(`[\s\S]+`)\s+zur(?:ü|ue)ck\?",
+            question.strip(),
+            re.IGNORECASE,
+        )
         german = True
     if match is None:
         return None
-    expressions = re.findall(r"`([^`\n]{1,120})`", match[1])
-    separators = re.sub(r"`[^`\n]{1,120}`", "", match[1])
-    if not 1 <= len(expressions) <= 4 or re.sub(r"\b(?:and|und)\b|[,\s]", "", separators):
+    expressions = re.findall(r"`([^`\r\n]{1,120})`", match[1])
+    separators = re.sub(r"`[^`\r\n]{1,120}`", "", match[1])
+    if not 1 <= len(expressions) <= 4 or re.sub(
+        r"\b(?:and|und)\b|[,\s]", "", separators, flags=re.IGNORECASE
+    ):
         return None
     code = source.strip()
-    if code.startswith("```python\n") and code.endswith("\n```"):
-        code = code[len("```python\n") : -len("\n```")]
-    elif code == "Python 3:":
-        code = ""
-    elif code.startswith("Python 3:\n"):
-        code = code[len("Python 3:\n") :]
+    fence = re.fullmatch(r"```python[ \t]*\r?\n([\s\S]*?)```", code, re.IGNORECASE)
+    header = re.fullmatch(r"Python[ \t]+3:[ \t]*(?:\r?\n([\s\S]*))?", code, re.IGNORECASE)
+    if fence and (not fence[1] or fence[1].endswith("\n")):
+        code = fence[1]
+    elif header:
+        code = header[1] or ""
     else:
         return None
     try:
@@ -135,7 +143,7 @@ def literal_results(source: str, question: str) -> tuple[list[LiteralResult], bo
             names[target.id] = calculate(statement.value, {}, literal=True)
         results = []
         for expression in expressions:
-            parsed = ast.parse(expression, mode="eval")
+            parsed = ast.parse(expression.strip(" \t"), mode="eval")
             nodes = list(ast.walk(parsed))
             allowed = (
                 ast.Expression,

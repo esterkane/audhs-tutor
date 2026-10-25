@@ -81,6 +81,39 @@ def test_supported_operand_matrix_matches_python_without_mutating_inputs():
 
 
 @pytest.mark.parametrize(
+    "source,question,expected",
+    [
+        ("python 3:\r\nValue = 'Aa  Bb'\r\n", "what DOES `Value` RETURN?", "'Aa  Bb'"),
+        ("```PYTHON\r\nValue = 'Aa  Bb'\r\n```", "WHAT does `Value` produce?", "'Aa  Bb'"),
+        ("Python 3:", "what DOES ` 4 + 2 ` EVALUATE   TO?", "6"),
+        ("Python 3:", "what\ndoes `'Aa  Bb'`\nreturn?", "'Aa  Bb'"),
+        ("```python\n```", "what does `2 + 2` return?", "4"),
+    ],
+)
+def test_question_formatting_and_windows_sources_preserve_literal_contents(
+    source, question, expected
+):
+    result = literal_results(source, question)
+    assert result is not None and result[0][0].value == expected
+
+
+def test_case_folding_never_changes_variable_names_or_german_string_contents():
+    assert literal_results("Python 3:\nValue = 'Ab'", "what does `value` return?") is None
+    result = literal_results("Python 3:", "wAs GeBeN `'Über  Groß'` UnD `2 + 2` ZURUECK?")
+    assert result is not None and result[1]
+    assert [item.value for item in result[0]] == ["'Über  Groß'", "4"]
+
+
+def test_unsupported_formatting_never_becomes_a_partial_answer():
+    for question in [
+        "what does `1 + 1` return? why?",
+        "what does " + " " * 650 + "?",
+        "what does `__import__('os')` return?",
+    ]:
+        assert literal_results("Python 3:", question) is None
+
+
+@pytest.mark.parametrize(
     "expression",
     [
         "unknown + 1",

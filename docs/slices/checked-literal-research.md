@@ -58,6 +58,19 @@ returned the core results but added recap prose. These use different timing boun
 checked UI interaction versus provider gateway), so no universal speedup factor is claimed.
 The improvement is avoiding unnecessary generation for admitted calculations.
 
+Formatting follow-up: question keywords/separators and Python source headers are recognized
+without case sensitivity; LF and Windows CRLF source wrappers are supported. Multiline question
+layout, ASCII padding around an expression and German zurueck spelling are accepted without
+case-folding identifiers or collapsing whitespace inside strings/code. Unterminated fences,
+unsupported names/calls and broader questions still defer as a whole. German error prose uses
+the complete transitive form verursacht. Controlled tests preserve mixed-case names, Unicode
+string values and repeated spaces, including an empty Python fence.
+Follow-up verification: 65 calculator checks and 197 affected research/authoring tests pass;
+all 11 browser journeys pass, including CRLF/lowercase English/German save/reload/review and
+lesson/feedback/recap/resume. Checked UI replies measured 100/81 ms in those two cases. This
+expands reliable admission, not the model's raw decoding speed. No arbitrary code or wider
+context is admitted merely because grammar capitalization or line endings were changed.
+
 A separate three-case open-ended model canary exposed an evidence-qualified impossible event
 order, an unjustified randomized-study condition and an unevaluated requested numeric result.
 A targeted guidance trial corrected some points but added a source-free causal scenario and

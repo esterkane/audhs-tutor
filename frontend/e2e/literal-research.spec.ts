@@ -7,12 +7,12 @@ for (const [language, width] of [['en', 1280], ['de', 390]] as const) {
     try {
       for (const [key, value] of [['tutor.persona', 'kangaroo'], ['tutor.response_language', language]])
         await expectOk(await request.put(`${API}/api/preferences`, { data: { key, value } }))
-      const source = "Python 3:\nlabel = 'Tag '\n"
+      const source = language === 'de' ? "```PYTHON\r\nlabel = 'Tag '\r\n```" : "python 3:\r\nlabel = 'Tag '\r\n"
       const response = await request.post(`${API}/api/knowledge-material/drafts`, {
         headers: { 'Idempotency-Key': crypto.randomUUID() },
         data: { title: `Synthetic reference research ${language}`, notes: source, workflow_step: 'research', research: {
           passage: source, topic: 'Python repetition', current: 0,
-          questions: [{ id: 'q', prompt: "What do `label + 4`, `4 + 2.5` and `[1] + ['x']` return?", findings: 'I think every operation with mixed types fails.' }],
+          questions: [{ id: 'q', prompt: language === 'de' ? "was geben `label + 4`, `4 + 2.5` UND `[1] + ['x']` zurueck?" : "what do `label + 4`, `4 + 2.5` AND `[1] + ['x']` return?", findings: 'I think every operation with mixed types fails.' }],
         } },
       })
       await expectOk(response)
@@ -33,6 +33,7 @@ for (const [language, width] of [['en', 1280], ['de', 390]] as const) {
       expect(exchange.answer.section).toContain('TypeError')
       expect(exchange.answer.section).toContain("[1, 'x']")
       expect(exchange.answer.section).toContain(language === 'de' ? 'ergibt' : 'evaluates to')
+      if (language === 'de') expect(exchange.answer.section).toContain('verursacht')
       await expect(page.getByText(/Checked Python calculation; no model was used/)).toBeVisible()
       await expect(page.getByRole('button', { name: 'Ask for another reply', exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: 'Use tutor draft in my section', exact: true }).click()
