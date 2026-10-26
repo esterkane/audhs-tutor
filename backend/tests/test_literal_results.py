@@ -165,3 +165,15 @@ def test_no_calls_or_source_instructions_execute(tmp_path):
         "What does `value + 2.5` return?",
     )
     assert checked is not None and checked[0][0].value == "6.5"
+
+
+@pytest.mark.parametrize("span", ["`1``2`", "`1` `2`", "`1`and`2`", "`1`,,`2`", "`1` und and `2`"])
+def test_ambiguous_or_missing_expression_separators_defer_whole_question(span):
+    assert literal_results("Python 3:", f"What do {span} return?") is None
+
+
+@pytest.mark.parametrize("span", ["`1`, `2`", "`1` and `2`", "`1`, and `2`", "`1` UND `2`"])
+def test_explicit_expression_separators_remain_supported(span):
+    checked = literal_results("Python 3:", f"What do {span} return?")
+    assert checked is not None
+    assert [item.value for item in checked[0]] == ["1", "2"]

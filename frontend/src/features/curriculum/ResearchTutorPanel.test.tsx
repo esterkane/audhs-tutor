@@ -7,7 +7,7 @@ import { ResearchTutorPanel } from './ResearchTutorPanel'
 
 afterEach(cleanup)
 const onTutor = vi.fn()
-function Harness({ draftOnly = false, checked = false, reference = false }: { draftOnly?: boolean; checked?: boolean; reference?: boolean }) {
+function Harness({ draftOnly = false, checked = false, reference = false, hosted = false }: { draftOnly?: boolean; checked?: boolean; reference?: boolean; hosted?: boolean }) {
   const research: Schemas['KnowledgeResearch'] = { passage: 'Sort and average the middle values.', topic: 'median', current: 0, questions: [] }
   const original = { id: 'q1', prompt: 'How?', findings: 'My findings', evidence: 'My source', unresolved: '', section: 'Existing paragraph', tutor_request: 'Help with the middle values', tutor_basis: '' }
   const [question, setQuestion] = useState<Schemas['ResearchQuestion']>({ ...original,
@@ -17,18 +17,18 @@ function Harness({ draftOnly = false, checked = false, reference = false }: { dr
       discussion: draftOnly ? '' : 'Average the two middle values.', needs_check: 'External links have not been checked.', next_question: '',
       source_quotes: ['Sort and average the middle values.'], section: 'Proposed paragraph.' } }],
   })
-  return <><ResearchTutorPanel research={research} question={question} disabled={false} sourceChanged={false} onChange={setQuestion} onTutor={onTutor} />
+  return <><ResearchTutorPanel hosted={hosted} research={research} question={question} disabled={false} sourceChanged={false} onChange={setQuestion} onTutor={onTutor} />
     <output aria-label="my section">{question.section}</output>
     <button onClick={() => setQuestion({ ...question, findings: 'Changed findings' })}>Change findings</button></>
 }
 
-it('keeps the proposed section separate until explicit replacement, then marks it as earlier context', async () => {
+it('keeps the proposed section separate until explicit replacement, without falsely marking its adoption as changed research', async () => {
   const view = render(<Harness />)
   expect(screen.getByLabelText('my section')).toHaveTextContent('Existing paragraph')
   expect(screen.getByText('Needs checking')).toBeInTheDocument()
   fireEvent.click(screen.getByText('Replace my section with tutor draft'))
   expect(screen.getByLabelText('my section')).toHaveTextContent('Proposed paragraph.')
-  expect(screen.getByText(/The research text has changed/)).toBeInTheDocument()
+  expect(screen.queryByText(/The research text has changed/)).not.toBeInTheDocument()
   expect(screen.getByText('Replace my section with tutor draft')).toBeDisabled()
   expect(await axe(view.container)).toHaveNoViolations()
 })
@@ -77,4 +77,11 @@ it('labels a saved reference answer accurately and keeps the explicit draft hand
   fireEvent.click(screen.getByRole('button', { name: 'Replace my section with tutor draft' }))
   expect(screen.getByLabelText('my section')).toHaveTextContent('Proposed paragraph.')
   expect(await axe(view.container)).toHaveNoViolations()
+})
+
+
+it('names the hosted tutor truthfully for assistive technology', () => {
+  render(<Harness hosted />)
+  expect(screen.getByRole('region', { name: 'Discuss and build with your OpenAI authoring tutor' })).toBeVisible()
+  expect(screen.queryByRole('region', { name: /local/i })).not.toBeInTheDocument()
 })

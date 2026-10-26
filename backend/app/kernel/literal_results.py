@@ -110,12 +110,16 @@ def literal_results(source: str, question: str) -> tuple[list[LiteralResult], bo
         german = True
     if match is None:
         return None
-    expressions = re.findall(r"`([^`\r\n]{1,120})`", match[1])
-    separators = re.sub(r"`[^`\r\n]{1,120}`", "", match[1])
-    if not 1 <= len(expressions) <= 4 or re.sub(
-        r"\b(?:and|und)\b|[,\s]", "", separators, flags=re.IGNORECASE
-    ):
+    spans = list(re.finditer(r"`([^`\r\n]{1,120})`", match[1]))
+    if not 1 <= len(spans) <= 4 or spans[0].start() != 0 or spans[-1].end() != len(match[1]):
         return None
+    for left, right in zip(spans, spans[1:], strict=False):
+        gap = match[1][left.end() : right.start()]
+        if not re.fullmatch(
+            r"(?:\s*,\s*(?:(?:and|und)\s+)?|\s+(?:and|und)\s+)", gap, re.IGNORECASE
+        ):
+            return None
+    expressions = [span[1] for span in spans]
     code = source.strip()
     fence = re.fullmatch(r"```python[ \t]*\r?\n([\s\S]*?)```", code, re.IGNORECASE)
     header = re.fullmatch(r"Python[ \t]+3:[ \t]*(?:\r?\n([\s\S]*))?", code, re.IGNORECASE)

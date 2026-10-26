@@ -221,7 +221,7 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review, hoste
 
       </div>
       {draft?.status === 'published' && <div><p>This version is active. Create a revision to keep developing it; the current lesson stays available until you activate the revision.</p><Button disabled={!!busy} onClick={() => void revise()}>Create editable revision</Button></div>}
-      <div className="sticky bottom-0 border-t border-line bg-card py-2 space-y-1" aria-label="Save and navigate">
+      <div className="sticky bottom-[var(--shell-bottom-nav-height,0px)] border-t border-line bg-card py-2 space-y-1" aria-label="Save and navigate">
         <div className="flex flex-wrap gap-2">
           {!readOnly && <Button disabled={!!busy || !form.title.trim() || !form.notes.trim()} onClick={() => void run('save')}>Save knowledge material</Button>}
           <Button variant="secondary" disabled={!!busy || step === 'source'} onClick={() => go(steps[steps.indexOf(step) - 1])}>Back</Button>

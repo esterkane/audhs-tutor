@@ -25,7 +25,7 @@ test('mobile tools sheet preserves focus through resize and navigation', async (
   await expect(page.getByRole('main')).toBeFocused()
   await expect(page).toHaveURL(/\/programs$/)
   await page.goBack()
-  await expect(page).toHaveTitle('Lesson drafts · AuDHS Tutor')
+  await expect(page).toHaveTitle('Knowledge material · AuDHS Tutor')
   await expect(dialog).toBeHidden()
   await expect(nav).toBeVisible()
   await page.screenshot({ path: info.outputPath('mobile-tools-closed.png'), fullPage: true })

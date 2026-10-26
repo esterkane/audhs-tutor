@@ -54,7 +54,7 @@ it('keeps every existing destination available within named groups without chang
     Review: '/review', Vocabulary: '/vocab', 'Work alongside': '/together',
     'Skill map': '/map', 'Project study': '/programs',
     'Saved answers': '/answers', Playground: '/playground', 'Audio visualizer': '/playground/visualizer',
-    Materials: '/corpus', 'Lesson drafts': '/curriculum', Models: '/models',
+    Materials: '/corpus', 'Knowledge material': '/curriculum', Models: '/models',
     Experiments: '/experiments', Preferences: '/preferences',
   }
   for (const [name, href] of Object.entries(destinations)) {

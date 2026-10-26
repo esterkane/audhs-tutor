@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { API, expectOk } from './helpers'
 
 for (const [language, width] of [['en', 1280], ['de', 390]] as const) {
-  test(`reference research stays editable after reload in ${language} at ${width}`, async ({ page, request }) => {
+  test(`reference research stays editable after reload in ${language} at ${width}`, async ({ page, request }, testInfo) => {
     const preferences = (await (await request.get(`${API}/api/preferences`)).json()).values
     try {
       for (const [key, value] of [['tutor.persona', 'kangaroo'], ['tutor.response_language', language]])
@@ -31,7 +31,24 @@ for (const [language, width] of [['en', 1280], ['de', 390]] as const) {
       await expect(page.getByText(/Reference-based explanation; no model was used/)).toBeVisible()
       await expect(page.getByRole('button', { name: 'Ask for another reply', exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: 'Use tutor draft in my section', exact: true }).click()
+      await page.locator('summary').filter({ hasText: 'Ask the local tutor (optional)' }).click()
+      await expect(page.getByText(/The research text has changed since this reply/)).toHaveCount(0)
       await page.getByRole('button', { name: '3. Write', exact: true }).click()
+      await expect(page.getByLabel('My knowledge section', { exact: true })).toHaveValue(exchange.answer.section)
+      if (width < 768) {
+        const saveBounds = await page.getByLabel('Save and navigate', { exact: true }).boundingBox()
+        const navBounds = await page.getByRole('navigation', { name: 'Main navigation', exact: true }).boundingBox()
+        expect(saveBounds).not.toBeNull()
+        expect(navBounds).not.toBeNull()
+        expect(saveBounds!.y + saveBounds!.height).toBeLessThanOrEqual(navBounds!.y + 1)
+      }
+      await page.screenshot({ path: testInfo.outputPath('write-workspace.png'), fullPage: true })
+      await page.getByRole('button', { name: '1. Source', exact: true }).click()
+      await page.getByRole('textbox', { name: 'Your notes and selected source content', exact: true }).fill('Edited source notes; the original remains linked to saved research.')
+      await page.getByRole('button', { name: '3. Write', exact: true }).click()
+      await expect(page.getByRole('button', { name: 'Add section to explanation', exact: true })).toBeDisabled()
+      await page.getByRole('button', { name: 'Restore linked passage in source notes', exact: true }).click()
+      await expect(page.getByRole('alert').filter({ hasText: 'Your source notes changed' })).toHaveCount(0)
       await expect(page.getByLabel('My knowledge section', { exact: true })).toHaveValue(exchange.answer.section)
       await page.getByRole('button', { name: 'Add section to explanation', exact: true }).click()
       const write = page.waitForResponse(r => r.url().endsWith(`/drafts/${draft.id}`) && r.request().method() === 'PUT')

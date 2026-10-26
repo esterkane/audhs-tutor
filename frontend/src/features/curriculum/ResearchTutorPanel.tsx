@@ -1,3 +1,4 @@
+import { useId } from 'react'
 import type { Schemas } from '../../lib/api'
 import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
@@ -6,16 +7,25 @@ import { Markdown } from '../../components/Markdown'
 type Research = Schemas['KnowledgeResearch']
 type Question = Schemas['ResearchQuestion']
 
-export function ResearchTutorPanel({ research, question, disabled, sourceChanged, onChange, onTutor, onUseDraft, hosted = false }: {
-  hosted?: boolean;
+export function ResearchTutorPanel({ research, question, disabled, sourceChanged, sourceChangedDescription, onChange, onTutor, onUseDraft, hosted = false }: {
+  hosted?: boolean; sourceChangedDescription?: string;
   research: Research; question: Question; disabled: boolean; sourceChanged: boolean
   onUseDraft?: () => void; onChange: (question: Question) => void; onTutor?: (action: 'discuss' | 'draft-section', refresh?: boolean) => void
 }) {
+  const headingId = useId()
+  const requirementsId = useId()
   const history = question.tutor_exchanges ?? []
   const latest = history.at(-1)
   const basis = JSON.stringify({ passage: research.passage, topic: research.topic, question: question.prompt,
     findings: question.findings, evidence: question.evidence, unresolved: question.unresolved, section: question.section })
-  const changed = !!latest && (question.tutor_basis !== basis || JSON.stringify(question.memory_ids ?? []) !== JSON.stringify((latest.memories ?? []).map(m => m.id)))
+  let textChanged = question.tutor_basis !== basis
+  if (latest?.answer.section && question.section === latest.answer.section) {
+    try {
+      const saved = JSON.parse(question.tutor_basis ?? '')
+      if (saved && typeof saved === 'object' && !Array.isArray(saved)) textChanged = JSON.stringify({ ...saved, section: question.section }) !== basis
+    } catch { /* An unknown basis remains changed. */ }
+  }
+  const changed = !!latest && (textChanged || JSON.stringify(question.memory_ids ?? []) !== JSON.stringify((latest.memories ?? []).map(m => m.id)))
   function reply(exchange: Schemas['ResearchTutorExchange']) {
     return <div className="space-y-2">
       {exchange.reference && <p className="text-sm text-muted">Reference-based explanation; no model was used. <a className="underline" href="https://docs.python.org/3.12/reference/datamodel.html#objects-values-and-types" target="_blank" rel="noreferrer">Python language reference</a>. This answers the supported concept question, without predicting a particular runtime’s object identity.</p>}
@@ -34,14 +44,15 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
       {exchange.answer.section && <div><p className="font-semibold">Proposed section — review before using</p><Markdown text={exchange.answer.section} /></div>}
     </div>
   }
-  return <section aria-label="Local research tutor" className="space-y-3 rounded border border-line p-3">
-    <h4 className="font-semibold">Discuss and build with your {hosted ? 'OpenAI authoring' : 'local'} tutor</h4>
+  return <section aria-labelledby={headingId} className="space-y-3 rounded border border-line p-3">
+    <h4 id={headingId} className="font-semibold">Discuss and build with your {hosted ? 'OpenAI authoring' : 'local'} tutor</h4>
     <p>Write your findings first. Ask about one point, or request one editable paragraph. The tutor uses this passage and your notes; saved links are not opened or independently verified.</p>
     <label>What I want help with<textarea className="block w-full rounded border border-line bg-card p-2" rows={2} maxLength={2000} value={question.tutor_request ?? ''} disabled={disabled} onChange={e => onChange({ ...question, tutor_request: e.target.value })} /></label>
+    {!question.findings.trim() && <p id={requirementsId}>Add My findings in Research before asking the tutor. Your current section and earlier replies are kept.</p>}
     {onTutor && <div className="flex flex-wrap gap-2">
-      <Button disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('discuss')}>{hosted ? 'Discuss my findings with OpenAI' : 'Discuss my findings locally'}</Button>
-      <Button variant="secondary" disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('draft-section')}>{hosted ? 'Draft one section with OpenAI' : 'Draft one section locally'}</Button>
-      {latest && !latest.calculation && !latest.reference && <Button variant="secondary" disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss', true)}>Ask for another reply</Button>}
+      <Button aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('discuss')}>{hosted ? 'Discuss my findings with OpenAI' : 'Discuss my findings locally'}</Button>
+      <Button variant="secondary" aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('draft-section')}>{hosted ? 'Draft one section with OpenAI' : 'Draft one section locally'}</Button>
+      {latest && !latest.calculation && !latest.reference && <Button variant="secondary" aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || sourceChanged || !question.findings.trim() || history.length >= 12} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss', true)}>Ask for another reply</Button>}
     </div>}
     <p className="text-sm text-muted">{latest?.reference ? 'This reference answer is reused locally. Add a different request above to discuss a broader question with the tutor.' : latest?.calculation ? 'These exact results are calculated locally. Add a request above to discuss a broader question with the tutor.' : 'An unchanged request can reuse its saved reply. Choose Ask for another reply to generate a fresh alternative.'}</p>
     {history.length >= 12 && <p>This question has 12 saved tutor replies. Keep them and add another research question to continue.</p>}
@@ -53,10 +64,10 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
       {!latest.calculation && !latest.reference && <p className="text-sm text-muted">Saved AI suggestion; source quotations locate its evidence and do not verify every claim.</p>}
       {changed && <p role="status">The research text has changed since this reply. Your current writing is kept; ask again if you want an updated suggestion.</p>}
       {reply(latest)}
-      {latest.answer.section && <Button disabled={disabled || sourceChanged || changed || question.section === latest.answer.section} onClick={() => { onChange({ ...question, section: latest.answer.section }); onUseDraft?.() }}>
+      {latest.answer.section && <Button aria-describedby={sourceChanged ? sourceChangedDescription : undefined} disabled={disabled || sourceChanged || changed || question.section === latest.answer.section} onClick={() => { onChange({ ...question, section: latest.answer.section }); onUseDraft?.() }}>
         {question.section ? 'Replace my section with tutor draft' : 'Use tutor draft in my section'}
       </Button>}
-      <p className="text-sm text-muted">Edit My knowledge section above, then choose Add section to explanation. Saving or using a draft does not activate a lesson or count as mastery.</p>
+      <p className="text-sm text-muted">In Write, edit My knowledge section, then choose Add section to explanation. Saving or using a draft does not activate a lesson or count as mastery.</p>
     </div>}
   </section>
 }
