@@ -30,7 +30,6 @@ browser reload. Inline accessible validation and save/tutor guards require its r
 submission. Browser recovery explicitly allows this unfinished state; default validation and the
 server schema remain strict. Findings and histories stay intact; no old prompt is substituted.
 
-Remaining work: Exact reuse at
-the research-history cap and imported calculation provenance require separate server regression
-work. Broader local answer quality and decoding throughput remain open. Human usability,
+Exact reuse at the history cap is covered by [the follow-up](research-reuse-limits.md).
+Imported calculation provenance still requires separate server regression work. Broader local answer quality and decoding throughput remain open. Human usability,
 Firefox/Safari and screen-reader acceptance are not certified by these automated checks.

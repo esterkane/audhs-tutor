@@ -26,8 +26,9 @@ require installing CanvasUI.
 
 - Temporary empty research-question editing: implemented with browser-only recovery and strict
   save/tutor validation; verify the published commit's CI before closing release tracking.
-- Exact reply reuse at the 12-reply history limit: permit valid reuse without appending a new
-  exchange; keep caps for new answers and retain the complete history.
+- Exact reply reuse at the 12-reply history limit: implemented for authenticated unchanged
+  replies, with a dedicated UI action and caps retained for new answers. Track release CI; see
+  [verification scope](slices/research-reuse-limits.md).
 - Imported calculation provenance: reproduce whether client-supplied history can display a
   checked label without server attestation; fix supported cases without deleting old writing.
 - Page/content coherence: continue bounded review of next actions, recovery guidance and truthful

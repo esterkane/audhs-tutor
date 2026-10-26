@@ -45,6 +45,15 @@ def reuse_token(binding: str, exchange: ResearchTutorExchange) -> str:
     return hmac.new(_REUSE_KEY, (binding + serialized).encode(), hashlib.sha256).hexdigest()
 
 
+def require_history_room(count: int) -> None:
+    if count >= 12:
+        raise AppError(
+            "research_history_full",
+            "This question has 12 saved tutor replies. Keep them and add a new research question to continue.",
+            422,
+        )
+
+
 async def help_research(
     db: AsyncSession,
     gateway: ModelGateway,
@@ -130,19 +139,9 @@ async def help_research(
             # that fits the established normal path.
             verified = None
     encoded = json.dumps(data, ensure_ascii=False)
-    if len(question.tutor_exchanges) >= 12:
-        raise AppError(
-            "research_history_full",
-            "This question has 12 saved tutor replies. Keep them and add a new research question to continue.",
-            422,
-        )
-    if len(encoded) > 24000:
-        raise AppError(
-            "research_context_too_long",
-            "Select a smaller passage or shorten the current findings/evidence to focus this request. "
-            "Your saved text is kept.",
-            422,
-        )
+    # Unattested history cannot qualify for exact reuse; fail before route preparation.
+    if len(question.tutor_exchanges) >= 12 and not question.tutor_exchanges[-1].cache_token:
+        require_history_room(len(question.tutor_exchanges))
     checked = checked_research.answer(research.passage, question, presentation)
     calculation = checked_research.VERSION if checked is not None else None
     if checked is None:
@@ -177,6 +176,7 @@ async def help_research(
             and hmac.compare_digest(latest.cache_token, reuse_token(binding, latest))
         ):
             return draft, True
+        require_history_room(len(question.tutor_exchanges))
         if command.action == "draft":
             checked = checked.model_copy(update={"section": checked.discussion, "discussion": ""})
         exchange = ResearchTutorExchange(
@@ -197,6 +197,13 @@ async def help_research(
         return await curriculum.update_draft(
             db, learner_id, draft_id, payload, expected_version=command.expected_version
         ), False
+    if len(encoded) > 24000:
+        raise AppError(
+            "research_context_too_long",
+            "Select a smaller passage or shorten the current findings/evidence to focus this request. "
+            "Your saved text is kept.",
+            422,
+        )
     # Keep domain-specific demonstrations out of unrelated research packets.
     policy_name = (
         "curriculum/research-tutor.v12.md"
@@ -277,6 +284,7 @@ async def help_research(
         and hmac.compare_digest(latest.cache_token, reuse_token(binding, latest))
     ):
         return draft, True
+    require_history_room(len(question.tutor_exchanges))
     out = await authoring_gateway.complete(
         TaskClass.EXPLAIN_SIMPLE,
         [

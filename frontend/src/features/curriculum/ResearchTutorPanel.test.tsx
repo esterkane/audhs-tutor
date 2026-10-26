@@ -85,3 +85,23 @@ it('names the hosted tutor truthfully for assistive technology', () => {
   expect(screen.getByRole('region', { name: 'Discuss and build with your OpenAI authoring tutor' })).toBeVisible()
   expect(screen.queryByRole('region', { name: /local/i })).not.toBeInTheDocument()
 })
+
+
+it('offers exact reuse at capacity while keeping new-generation actions disabled', () => {
+  const question: Schemas['ResearchQuestion'] = { id: 'q', prompt: 'What does the source mean?', findings: 'My finding', evidence: 'Source', unresolved: '', section: '', tutor_request: '', tutor_basis: '', tutor_exchanges: [] }
+  const research: Schemas['KnowledgeResearch'] = { passage: 'Source', topic: 'Topic', current: 0, questions: [question] }
+  question.tutor_basis = JSON.stringify({ passage: 'Source', topic: 'Topic', question: question.prompt, findings: question.findings, evidence: 'Source', unresolved: '', section: '' })
+  question.tutor_exchanges = Array.from({ length: 12 }, () => ({ action: 'discuss', request: '', model_call_id: 'model', cache_token: 'signed-on-server', answer: { discussion: 'Saved answer', needs_check: '', next_question: '', section: '', source_quotes: ['Source'] } }))
+  const request = vi.fn()
+  const props = { research, question, disabled: false, sourceChanged: false, onChange: vi.fn(), onTutor: request }
+  const view = render(<ResearchTutorPanel {...props} />)
+  expect(screen.getByRole('button', { name: 'Discuss my findings locally' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Ask for another reply' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Reuse saved reply' }))
+  expect(request).toHaveBeenCalledExactlyOnceWith('discuss')
+  const adopted = { ...question, section: 'Proposed paragraph.', tutor_exchanges: question.tutor_exchanges.map(x => ({ ...x, answer: { ...x.answer, section: 'Proposed paragraph.' } })) }
+  view.rerender(<ResearchTutorPanel {...props} question={adopted} />)
+  expect(screen.queryByRole('button', { name: 'Reuse saved reply' })).not.toBeInTheDocument()
+  view.rerender(<ResearchTutorPanel {...props} question={{ ...question, findings: 'Changed finding' }} />)
+  expect(screen.queryByRole('button', { name: 'Reuse saved reply' })).not.toBeInTheDocument()
+})
