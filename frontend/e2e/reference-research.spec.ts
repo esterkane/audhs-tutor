@@ -35,7 +35,7 @@ for (const [language, width] of [['en', 1280], ['de', 390]] as const) {
       expect(exchange.model_call_id).toBeNull()
       expect(exchange.answer.source_quotes).toEqual([source, expect.stringContaining('https://docs.python.org/3.12/reference/datamodel.html')])
       expect(exchange.answer.section).toMatch(language === 'de' ? /^Nein\./ : /^No\./)
-      await expect(page.getByText(/Reference-based explanation; no model was used/)).toBeVisible()
+      await expect(page.getByText(/Saved reference-based reply — provenance not verified/)).toBeVisible()
       await expect(page.getByRole('button', { name: 'Ask for another reply', exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: 'Use tutor draft in my section', exact: true }).click()
       await page.locator('summary').filter({ hasText: 'Ask the local tutor (optional)' }).click()

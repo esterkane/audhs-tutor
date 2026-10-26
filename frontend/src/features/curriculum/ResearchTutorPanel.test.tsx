@@ -58,9 +58,10 @@ it('offers an explicit fresh alternative instead of silently forcing regeneratio
   expect(onTutor).toHaveBeenLastCalledWith('draft-section', true)
 })
 
-it('identifies checked calculations without pretending a model ran or offering duplicate alternatives', async () => {
+it('treats saved calculation labels as unverified history while retaining the answer', async () => {
   const view = render(<Harness draftOnly checked />)
-  expect(screen.getByText(/Checked Python calculation; no model was used/)).toBeVisible()
+  expect(screen.getByText(/Saved Python calculation — provenance not verified/)).toBeVisible()
+  expect(screen.queryByText(/no model was used/)).not.toBeInTheDocument()
   expect(screen.queryByText('Ask for another reply')).not.toBeInTheDocument()
   expect(screen.queryByText(/Saved AI suggestion/)).not.toBeInTheDocument()
   fireEvent.click(screen.getByText('Sources (1)'))
@@ -71,7 +72,8 @@ it('identifies checked calculations without pretending a model ran or offering d
 
 it('labels a saved reference answer accurately and keeps the explicit draft handoff', async () => {
   const view = render(<Harness draftOnly reference />)
-  expect(screen.getByText(/Reference-based explanation; no model was used/)).toBeVisible()
+  expect(screen.getByText(/Saved reference-based reply — provenance not verified/)).toBeVisible()
+  expect(screen.queryByText(/no model was used/)).not.toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Python language reference' })).toHaveAttribute('href', expect.stringContaining('docs.python.org/3.12/'))
   expect(screen.queryByText('Ask for another reply')).not.toBeInTheDocument()
   fireEvent.click(screen.getByRole('button', { name: 'Replace my section with tutor draft' }))

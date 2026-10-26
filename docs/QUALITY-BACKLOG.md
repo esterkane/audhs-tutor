@@ -29,8 +29,9 @@ require installing CanvasUI.
 - Exact reply reuse at the 12-reply history limit: implemented for authenticated unchanged
   replies, with a dedicated UI action and caps retained for new answers. Track release CI; see
   [verification scope](slices/research-reuse-limits.md).
-- Imported calculation provenance: reproduce whether client-supplied history can display a
-  checked label without server attestation; fix supported cases without deleting old writing.
+- Imported calculation provenance: reproduced and removed unsupported certification from
+  calculation/reference history labels, preserving writing. Durable server-owned receipts remain
+  a separate improvement; see [scope and limits](slices/research-history-provenance.md).
 - Page/content coherence: continue bounded review of next actions, recovery guidance and truthful
   saved/loading states. Human usability acceptance remains separate from code-based review.
 - Longitudinal learning outcomes: fixture tests do not establish the older planned two-week

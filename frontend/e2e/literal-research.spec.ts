@@ -34,7 +34,7 @@ for (const [language, width] of [['en', 1280], ['de', 390]] as const) {
       expect(exchange.answer.section).toContain("[1, 'x']")
       expect(exchange.answer.section).toContain(language === 'de' ? 'ergibt' : 'evaluates to')
       if (language === 'de') expect(exchange.answer.section).toContain('verursacht')
-      await expect(page.getByText(/Checked Python calculation; no model was used/)).toBeVisible()
+      await expect(page.getByText(/Saved Python calculation — provenance not verified/)).toBeVisible()
       await expect(page.getByRole('button', { name: 'Ask for another reply', exact: true })).toHaveCount(0)
       await page.getByRole('button', { name: 'Use tutor draft in my section', exact: true }).click()
       await page.getByRole('button', { name: '3. Write', exact: true }).click()

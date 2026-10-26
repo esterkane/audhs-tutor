@@ -31,5 +31,5 @@ submission. Browser recovery explicitly allows this unfinished state; default va
 server schema remain strict. Findings and histories stay intact; no old prompt is substituted.
 
 Exact reuse at the history cap is covered by [the follow-up](research-reuse-limits.md).
-Imported calculation provenance still requires separate server regression work. Broader local answer quality and decoding throughput remain open. Human usability,
+Imported calculation provenance is covered by the [honest-history follow-up](research-history-provenance.md); durable attestation remains separate. Broader local answer quality and decoding throughput remain open. Human usability,
 Firefox/Safari and screen-reader acceptance are not certified by these automated checks.
