@@ -20,3 +20,11 @@ it('restores both historical model replies and checked calculations, rejecting m
   expect(validResearch(research({ model_call_id: 'model-call', calculation: 'python.string-repetition.v1' }))).toBe(false)
   expect(validResearch(research({ model_call_id: null, calculation: 'unknown' }))).toBe(false)
 })
+
+
+it('allows a temporary empty question only for browser editing recovery', () => {
+  const value = { passage: 'Source', topic: 'Topic', current: 0, questions: [{ id: 'q', prompt: '', findings: 'Kept', evidence: '', unresolved: '', section: '' }] }
+  expect(validResearch(value)).toBe(false)
+  expect(validResearch(value, { allowBlankPrompt: true })).toBe(true)
+  expect(validResearch({ ...value, questions: [{ ...value.questions[0], prompt: 123 }] }, { allowBlankPrompt: true })).toBe(false)
+})

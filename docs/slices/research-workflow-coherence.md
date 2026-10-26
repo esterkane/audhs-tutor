@@ -25,9 +25,12 @@ verification. Browser journeys cover tutor drafting, source restoration, writing
 reload, reading, feedback, recap, navigation and session continuation. Component checks include
 axe and truthful accessible names. No real learner records are used for these checks.
 
-Remaining work: clearing a question currently snaps back instead of supporting a temporary empty
-edit. A complete fix must coordinate client recovery, required-field validation and save/tutor
-controls; do not relax the server schema or silently save the previous question. Exact reuse at
+Question-edit follow-up: clearing a question now keeps a temporary empty value, including after
+browser reload. Inline accessible validation and save/tutor guards require its replacement before
+submission. Browser recovery explicitly allows this unfinished state; default validation and the
+server schema remain strict. Findings and histories stay intact; no old prompt is substituted.
+
+Remaining work: Exact reuse at
 the research-history cap and imported calculation provenance require separate server regression
 work. Broader local answer quality and decoding throughput remain open. Human usability,
 Firefox/Safari and screen-reader acceptance are not certified by these automated checks.

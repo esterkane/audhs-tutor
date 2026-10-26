@@ -1,6 +1,6 @@
 # Tutor quality: outstanding work and open questions
 
-Current working backlog, reviewed 2026-10-25. A passing example or bounded calculation is not
+Current working backlog, reviewed 2026-10-26. A passing example or bounded calculation is not
 acceptance of the whole tutor. Preserve full saved histories, accepted material, local study
 routing and the separately authorized hosted-authoring cap during every experiment.
 
@@ -21,6 +21,23 @@ Optional follow-ups are separate from normal-use blockers: human voice-quality t
 representative recordings; any future CanvasUI package needs its licence/API and contention
 evaluation. The current dependency-free Frost/Liquid/Off designs already exist. They do not
 require installing CanvasUI.
+
+## Concrete follow-ups from the current review
+
+- Temporary empty research-question editing: implemented with browser-only recovery and strict
+  save/tutor validation; verify the published commit's CI before closing release tracking.
+- Exact reply reuse at the 12-reply history limit: permit valid reuse without appending a new
+  exchange; keep caps for new answers and retain the complete history.
+- Imported calculation provenance: reproduce whether client-supplied history can display a
+  checked label without server attestation; fix supported cases without deleting old writing.
+- Page/content coherence: continue bounded review of next actions, recovery guidance and truthful
+  saved/loading states. Human usability acceptance remains separate from code-based review.
+- Longitudinal learning outcomes: fixture tests do not establish the older planned two-week
+  experiment's real benefit. This needs real learner observations, not manufactured evidence.
+
+Lower-priority work remains optional historical recovery and older roadmap reconciliation (for
+example PDF glossary import status). Do not reopen completed encryption or voice-runtime setup
+from superseded Mac-era notes. Ordinary notebook execution/training remains learner-owned.
 
 ## Open engineering questions
 

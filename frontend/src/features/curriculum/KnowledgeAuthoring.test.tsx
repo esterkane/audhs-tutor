@@ -313,3 +313,33 @@ it('prepares the tutor while researching without blocking writing when readiness
   expect(screen.getByLabelText('Topic to investigate')).toHaveValue('My continuing research')
   expect(screen.queryByText('Optional preparation unavailable')).not.toBeInTheDocument()
 })
+
+
+it('keeps an empty question through reload, blocks submission and saves its replacement with findings intact', async () => {
+  const form = { title: 'Rewrite question', domain: 'ai_ml', notes: 'Source passage', upload_id: null,
+    objective: '', explanation: '', worked_example: '', question: '', criteria: [], workflow_step: 'research',
+    research: { passage: 'Source passage', topic: 'Example', current: 0, questions: [{ id: 'q1', prompt: 'Old question?', findings: 'Keep my findings', evidence: 'Source passage', unresolved: '', section: '', tutor_exchanges: [] }] } }
+  const draft = { id: 'rewrite1', status: 'draft', version: 1, payload: { authoring: form } } as unknown as NonNullable<Parameters<typeof KnowledgeAuthoring>[0]['draft']>
+  const writes: Array<Record<string, unknown>> = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url === '/api/learner/me') return jsonResponse({ id: 'owner' })
+    if (url.endsWith('/prepare-tutor')) return jsonResponse({})
+    const body = JSON.parse(String(init?.body)); writes.push(body)
+    return jsonResponse({ ...draft, version: 2, payload: { authoring: body } })
+  }))
+  const view = mount(draft)
+  fireEvent.change(await screen.findByLabelText('Research question'), { target: { value: '' } })
+  expect(screen.getByLabelText('Research question')).toHaveValue('')
+  expect(screen.getByLabelText('Research question')).toHaveAccessibleDescription(/required/)
+  expect(screen.getByRole('button', { name: 'Save knowledge material' })).toBeDisabled()
+  expect(screen.getByRole('button', { name: 'Discuss my findings locally' })).toBeDisabled()
+  expect(writes).toHaveLength(0)
+  view.unmount(); mount(draft)
+  expect(await screen.findByLabelText('Research question')).toHaveValue('')
+  expect(screen.queryByText(/Saved browser data could not be restored/)).not.toBeInTheDocument()
+  expect(screen.getByLabelText('My findings')).toHaveValue('Keep my findings')
+  fireEvent.change(screen.getByLabelText('Research question'), { target: { value: 'New question?' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save knowledge material' }))
+  await waitFor(() => expect(writes).toHaveLength(1))
+  expect(writes[0]).toMatchObject({ expected_version: 1, research: { questions: [{ prompt: 'New question?', findings: 'Keep my findings' }] } })
+})

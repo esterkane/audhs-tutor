@@ -16,6 +16,7 @@ export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, on
   form: Form; disabled: boolean; onChange: (next: Form) => void
   onTutor?: (action: 'discuss' | 'draft-section', refresh?: boolean) => void
 }) {
+  const questionRequiredId = useId()
   const staleId = useId()
   const [tutorOpen, setTutorOpen] = useState(false)
   const tutorContainer = useRef<HTMLDivElement>(null)
@@ -57,10 +58,11 @@ export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, on
         <blockquote className="whitespace-pre-wrap border-l-2 pl-3">{r.passage}</blockquote>
         <Button variant="secondary" disabled={disabled || `${form.notes}\n\n${r.passage}`.length > 120000} onClick={() => onChange({ ...form, notes: `${form.notes}\n\n${r.passage}` })}>Restore linked passage in source notes</Button>
       </div>}
-      <label>Research question<textarea className={field} rows={3} maxLength={2000} value={q.prompt} disabled={disabled} onChange={e => {
+      <label>Research question<textarea aria-invalid={!q.prompt.trim()} aria-describedby={!q.prompt.trim() ? questionRequiredId : undefined} className={field} rows={3} maxLength={2000} value={q.prompt} disabled={disabled} onChange={e => {
         const prompt = e.target.value
-        if (prompt.length) update({ ...r, questions: r.questions.map((v, i) => i === index ? { ...v, prompt } : v) })
+        update({ ...r, questions: r.questions.map((v, i) => i === index ? { ...v, prompt } : v) })
       }} /></label>
+      {!q.prompt.trim() && <p id={questionRequiredId}>A research question is required before saving or asking the tutor. You can continue editing; your writing is kept in this browser tab.</p>}
       {([
         ['findings', 'My findings', 'Write your answer in your own words.'],
         ['evidence', 'Evidence and references', 'Paste supporting quotations, source titles, page numbers or URLs. Links are saved as text.'],

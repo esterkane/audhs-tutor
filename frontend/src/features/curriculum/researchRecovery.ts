@@ -12,7 +12,7 @@ export function sameKnowledgeMaterial(left: Schemas['KnowledgeMaterialInput'], r
   return canonical(leftContent) === canonical(rightContent)
 }
 
-export function validResearch(value: unknown): value is Research {
+export function validResearch(value: unknown, options: { allowBlankPrompt?: boolean } = {}): value is Research {
   if (!value || typeof value !== 'object') return false
   const r = value as Research
   return typeof r.passage === 'string' && r.passage.length > 0 && r.passage.length <= 6000
@@ -36,6 +36,6 @@ export function validResearch(value: unknown): value is Research {
               : x.calculation == null && typeof x.model_call_id === 'string')) && x.answer
           && ['discussion', 'needs_check', 'next_question', 'section'].every(k => typeof x.answer[k as keyof typeof x.answer] === 'string')
           && Array.isArray(x.answer.source_quotes) && x.answer.source_quotes.every(quote => typeof quote === 'string'))))
-      && q.prompt.length > 0 && q.prompt.length <= 2000
+      && (options.allowBlankPrompt || q.prompt.length > 0) && q.prompt.length <= 2000
       && ['findings', 'evidence', 'unresolved', 'section'].every(k => typeof q[k as keyof typeof q] === 'string'))
 }

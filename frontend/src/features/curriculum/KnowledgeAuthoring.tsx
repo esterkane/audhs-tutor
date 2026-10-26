@@ -38,7 +38,7 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review, hoste
       if (saved && saved.form && typeof saved.form.notes === 'string' && typeof saved.form.title === 'string'
         && ['objective','explanation','worked_example','question'].every(k => typeof saved.form[k] === 'string')
         && Array.isArray(saved.form.criteria) && saved.form.criteria.every((c: unknown) => typeof c === 'string')
-        && (saved.form.research == null || validResearch(saved.form.research))
+        && (saved.form.research == null || validResearch(saved.form.research, { allowBlankPrompt: true }))
         && (saved.form.workflow_step === undefined || steps.includes(saved.form.workflow_step))
         && uuid(saved.requestId)
         && (saved.revisionRequestId === undefined || uuid(saved.revisionRequestId))
@@ -56,6 +56,7 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review, hoste
   const [damaged, setDamaged] = useState(initial.damaged)
   const [current, setCurrent] = useState(draft)
   const [editVersion, setEditVersion] = useState(initial.baseVersion ?? draft?.version)
+  const missingQuestions = form.research?.questions.flatMap((q, i) => q.prompt.trim() ? [] : [i + 1]) ?? []
   const step = form.workflow_step ?? 'source'
   const stepHeading = useRef<HTMLHeadingElement | null>(null)
   useEffect(() => { onStepChange?.(step) }, [step, onStepChange])
@@ -112,6 +113,7 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review, hoste
   async function run(kind: 'save' | 'suggest' | 'research' | 'discuss' | 'draft-section', file?: File, refresh = false) {
     if (!authoringReady && ['discuss', 'draft-section', 'research', 'suggest'].includes(kind)) { setError('Authoring settings could not load. Reload before using the tutor; your writing is kept.'); return }
     if (active.current || readOnly) return
+    if (!file && missingQuestions.length) { setError('Complete each research question before saving or asking the tutor. Your edits are kept in this browser tab.'); return }
     const controller = new AbortController(); active.current = controller
     setBusy(file ? 'Reading upload…' : kind === 'discuss' || kind === 'draft-section' ? 'Asking your research tutor…' : kind === 'research' ? 'Preparing source-specific questions…' : kind === 'suggest' ? 'Preparing lesson proposal…' : 'Saving material…')
     setError(''); setStatus('')
@@ -156,6 +158,7 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review, hoste
   }
   async function lookupMemories(query: string): Promise<Schemas['PersonalMemory'][]> {
     if (active.current || readOnly) return []
+    if (missingQuestions.length) { setError('Complete each research question before saving or asking the tutor. Your edits are kept in this browser tab.'); return [] }
     const controller = new AbortController(); active.current = controller
     const timer = setTimeout(() => controller.abort(), 180_000)
     setBusy('Saving and searching earlier notes locally…'); setError('')
@@ -221,9 +224,10 @@ function Editor({ learnerId, draft, onOpen, onSaved, onStepChange, review, hoste
 
       </div>
       {draft?.status === 'published' && <div><p>This version is active. Create a revision to keep developing it; the current lesson stays available until you activate the revision.</p><Button disabled={!!busy} onClick={() => void revise()}>Create editable revision</Button></div>}
+      {missingQuestions.length > 0 && <p role="status">Research question {missingQuestions.join(', ')} is required before saving or asking the tutor. Return to Research to complete it. Your edits are kept in this browser tab.</p>}
       <div className="sticky bottom-[var(--shell-bottom-nav-height,0px)] border-t border-line bg-card py-2 space-y-1" aria-label="Save and navigate">
         <div className="flex flex-wrap gap-2">
-          {!readOnly && <Button disabled={!!busy || !form.title.trim() || !form.notes.trim()} onClick={() => void run('save')}>Save knowledge material</Button>}
+          {!readOnly && <Button disabled={!!busy || missingQuestions.length > 0 || !form.title.trim() || !form.notes.trim()} onClick={() => void run('save')}>Save knowledge material</Button>}
           <Button variant="secondary" disabled={!!busy || step === 'source'} onClick={() => go(steps[steps.indexOf(step) - 1])}>Back</Button>
           <Button variant="secondary" disabled={!!busy || step === 'review'} onClick={() => go(steps[steps.indexOf(step) + 1])}>Next</Button>
         </div>
