@@ -93,6 +93,9 @@ function LoadDraft({ id }: { id: string }) {
 }
 function Editor({ initial }: { initial: View }) {
   const [server, setServer] = useState(initial)
+  // A cached mount can be followed by a newer authoritative query result.
+  // Recovery keeps dirty writing separate while clean content follows that version.
+  if (initial.revision > server.revision) setServer(initial)
   const encode = (candidate: Candidate, rationale: string) => JSON.stringify({ candidate, rationale })
   const recovery = useDraftRecovery(`correction:${initial.id}`, server.revision, encode(server.candidate, server.rationale))
   const text = useRef(recovery.text)

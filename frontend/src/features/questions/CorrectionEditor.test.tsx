@@ -1,4 +1,6 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { jsonResponse, renderApp } from '../../test/utils'
 import { CorrectionEditor } from './CorrectionEditor'
@@ -155,4 +157,21 @@ it('recovers publication after a lost response and reload without publishing twi
   expect(await screen.findByText('Correction published for your future practice. Previous answers and grades are retained.')).toBeVisible()
   expect(writes).toBe(1)
   expect(screen.getByLabelText('Question wording')).toBeDisabled()
+})
+
+
+it.each([false, true])('adopts a newer read after cached mount without losing dirty edits (%s)', async dirty => {
+  const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const old = { ...original, revision: 2, candidate: { ...candidate, item: { ...candidate.item, question: 'Older cached wording?' } } }
+  const latest = { ...old, revision: 3, candidate: { ...candidate, item: { ...candidate.item, question: 'Latest saved wording?' } } }
+  cache.setQueryData(['correction-draft', 'draft1'], old)
+  let resolve!: (value: Response) => void
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(done => { resolve = done })))
+  render(<QueryClientProvider client={cache}><MemoryRouter initialEntries={['/corrections?draft=draft1']}><CorrectionEditor /></MemoryRouter></QueryClientProvider>)
+  expect(await screen.findByLabelText('Question wording')).toHaveValue('Older cached wording?')
+  if (dirty) fireEvent.change(screen.getByLabelText('Question wording'), { target: { value: 'Keep my current edit?' } })
+  await act(async () => { resolve(jsonResponse(latest)) })
+  await waitFor(() => expect(cache.getQueryData<{ revision: number }>(['correction-draft', 'draft1'])?.revision).toBe(3))
+  expect(screen.getByLabelText('Question wording')).toHaveValue(dirty ? 'Keep my current edit?' : 'Latest saved wording?')
+  if (dirty) expect(screen.getByRole('button', { name: 'Keep my edits against this saved version' })).toBeVisible()
 })
