@@ -10,7 +10,6 @@ import asyncio
 import hashlib
 import json
 import os
-import shutil
 import sqlite3
 import sys
 from pathlib import Path
@@ -126,7 +125,21 @@ def move_asset(source: Path, root: Path, destination: Path) -> None:
     if destination.exists():
         raise ValueError("Backup destination already exists; preserve both copies")
     destination.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    shutil.move(str(source), str(destination))
+    os.rename(source, destination)  # Atomic only; never fall back to a partial copy/delete.
+
+
+def validate_asset_moves(assets: list[Path], backup_parent: Path) -> None:
+    backup_parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    device = backup_parent.stat().st_dev
+    for source in assets:
+        if source.stat().st_dev != device:
+            raise ValueError(
+                "Asset retirement requires a private backup on the application filesystem"
+            )
+        if not os.access(source.parent, os.W_OK | os.X_OK) or (
+            source.is_dir() and not os.access(source, os.W_OK | os.X_OK)
+        ):
+            raise PermissionError("An active cache needs its ownership repaired before retirement")
 
 
 async def remove_indexed_sources(
@@ -203,6 +216,8 @@ async def run(args):
             else:
                 if not args.expected_digest or selected.digest() != args.expected_digest:
                     raise ValueError("Review a fresh dry-run digest before applying")
+                assets = await asyncio.to_thread(asset_paths, application, selected.paths)
+                await asyncio.to_thread(validate_asset_moves, assets, backup_path.parent)
                 await db.rollback()
                 await asyncio.to_thread(backup, database, backup_path)
                 state = {

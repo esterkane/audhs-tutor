@@ -163,3 +163,37 @@ async def test_resume_after_database_commit_and_lost_receipt(
     assert (await command.run(args))["phase"] == "complete"
     assert not course.exists() and external.exists()
     remove.assert_awaited_once()
+
+
+def test_asset_move_permission_failure_never_creates_a_partial_copy(tmp_path, monkeypatch):
+    root = tmp_path / "application"
+    root.mkdir()
+    source = root / "cache"
+    source.mkdir()
+    (source / "content.md").write_text("Preserve all bytes")
+    destination = tmp_path / "private/cache"
+
+    def denied(*args, **kwargs):
+        raise PermissionError("Synthetic rename refusal")
+
+    monkeypatch.setattr(command.os, "rename", denied)
+    with pytest.raises(PermissionError):
+        command.move_asset(source, root, destination)
+    assert (source / "content.md").read_text() == "Preserve all bytes"
+    assert not destination.exists()
+
+
+async def test_unwritable_cache_is_rejected_before_backup_or_index_changes(
+    db, db_path, tmp_path, monkeypatch, learner
+):
+    args, root, course, external, remove = await prepared(
+        db, db_path, tmp_path, monkeypatch, learner
+    )
+    args.expected_digest = (await command.run(args))["digest"]
+    args.apply = True
+    monkeypatch.setattr(command.os, "access", lambda *args: False)
+    with pytest.raises(PermissionError):
+        await command.run(args)
+    assert course.exists() and external.exists()
+    assert not await asyncio.to_thread(Path(args.backup).exists)
+    remove.assert_not_awaited()
