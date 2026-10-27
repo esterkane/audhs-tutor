@@ -55,13 +55,13 @@ for (const newerSession of [false, true]) it(`late End cannot override navigatio
   const response = new Promise<Response>(resolve => { release = resolve })
   vi.stubGlobal('fetch', vi.fn((url: string) => url.endsWith('/end') ? response : Promise.resolve(jsonResponse({ values: {}, specs: [] }))))
   renderApp(<Routes>
-    <Route path="/session" element={<><SessionControls sessionId="s1" /><Link to="/preferences">Preferences</Link></>} />
+    <Route path="/session" element={<><SessionControls sessionId="s1" /><Link to="/preferences">Settings</Link></>} />
     <Route path="/preferences" element={<p>Preferences destination</p>} />
     <Route path="/" element={<p>Home destination</p>} />
   </Routes>, { route: '/session' })
   fireEvent.click(screen.getByRole('button', { name: 'End session' }))
   await waitFor(() => expect(fetch).toHaveBeenCalledWith('/api/sessions/s1/end', expect.anything()))
-  fireEvent.click(screen.getByRole('link', { name: 'Preferences' }))
+  fireEvent.click(screen.getByRole('link', { name: 'Settings' }))
   await screen.findByText('Preferences destination')
   if (newerSession) useMode.setState({ sessionId: 's2', skillId: 'k2' })
   await act(async () => { release(jsonResponse({ ended_at: 'now' })); await response })

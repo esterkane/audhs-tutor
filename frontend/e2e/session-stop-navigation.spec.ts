@@ -25,7 +25,7 @@ for (const width of [390, 1280]) test(`delayed end response respects navigation 
     })
     await page.getByRole('button', { name: 'End session', exact: true }).click()
     await ready
-    await page.getByRole('link', { name: 'Preferences', exact: true }).focus()
+    await page.getByRole('link', { name: 'Settings', exact: true }).focus()
     await page.keyboard.press('Enter')
     await expect(page).toHaveURL(/\/preferences$/)
     release()

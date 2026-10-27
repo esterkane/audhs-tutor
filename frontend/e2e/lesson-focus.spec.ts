@@ -17,6 +17,7 @@ for (const width of [320, 1280]) test(`focus retains work, exits and global reco
     await page.emulateMedia({ reducedMotion: 'reduce' })
     await page.goto('/')
     await page.getByRole('button', { name: 'Continue', exact: true }).click()
+    await page.locator('summary').filter({hasText:/^More session tools$/}).click()
     const draft = page.getByLabel('Ask about this lesson (optional)')
     await draft.fill('Keep this question through focus changes.')
     const alongside = page.locator('summary').filter({ hasText: /^Work alongside$/ })

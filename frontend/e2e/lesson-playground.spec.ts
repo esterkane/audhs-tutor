@@ -25,6 +25,7 @@ for (const width of [390, 1280]) {
       await expectOk(await request.post(`${API}/api/plan/blocks/start`, { data: { session_id: session.id, index } }))
       await page.goto('/')
       await page.getByRole('button', { name: /^Continue$/ }).click()
+      await page.locator('summary').filter({hasText:/^More session tools$/}).click()
       const input = page.getByLabel('Ask about this lesson (optional)')
       await input.fill('Keep my lesson question')
       await page.getByRole('main').locator('summary').filter({ hasText: /^Work alongside$/ }).focus()

@@ -1,5 +1,5 @@
 export const primaryPages = [
-  ['/', 'Home'], ['/learn', 'Learn'], ['/practice', 'Practice'], ['/progress', 'Progress'], ['/projects', 'Projects'],
+  ['/', 'Home'], ['/library', 'Library'], ['/progress', 'Progress'], ['/projects', 'Projects'], ['/ask', 'Ask'], ['/preferences', 'Settings'],
 ] as const
 export const toolPages = [
   ['/ask', 'Ask the tutor'],
@@ -10,3 +10,9 @@ export const toolPages = [
   ['/map', 'Skill map'], ['/review', 'Review'], ['/corrections', 'Correction drafts'],
   ['/preferences', 'Preferences'],
 ] as const
+
+/** One palette entry per destination, preferring the primary destination name. */
+export const navigationPages = [
+  ...primaryPages,
+  ...toolPages.filter(([href]) => !primaryPages.some(([primary]) => primary === href)),
+]

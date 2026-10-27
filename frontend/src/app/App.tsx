@@ -7,7 +7,7 @@ import { lazy, Suspense } from 'react'
 const VisualLearning = lazy(() => import('../routes/VisualLearning'))
 import { LessonFocusContext } from '../features/session/focusContext'
 import { MainNavigation } from '../components/MainNavigation'
-import { primaryPages, toolPages } from './navigation'
+import { navigationPages } from './navigation'
 import { CorrectionEditor } from '../features/questions/CorrectionEditor'
 import { Brand } from '../components/Brand'
 import { QuickNavigation } from '../components/QuickNavigation'
@@ -28,6 +28,7 @@ import { Areas } from '../routes/Areas'
 import { Curriculum } from '../routes/Curriculum'
 import { Experiments } from '../routes/Experiments'
 import { Home } from '../routes/Home'
+import { Library } from '../routes/Library'
 import { Learn } from '../routes/Learn'
 import { Practice } from '../routes/Practice'
 import { Progress } from '../routes/Progress'
@@ -50,17 +51,21 @@ const queryClient = new QueryClient({
 })
 
 const pageTitles: Record<string, string> = {
-  ...Object.fromEntries([...primaryPages, ...toolPages]),
+  ...Object.fromEntries(navigationPages),
   '/programs': 'Knowledge projects',
   '/projects': 'Knowledge projects',
   '/projects/supabase': 'Supabase and PostgreSQL',
   '/areas': 'Learning areas',
   '/explore': 'Explore',
   '/corrections': 'Correction drafts',
+  '/preferences': 'Settings',
+  '/library': 'Library',
   '/learn': 'Learn',
   '/practice': 'Practice',
   '/progress': 'Progress',
   '/session': 'Learning session',
+  '/task-review': 'Task review',
+  '/playground/visual-learning': 'Visual learning',
   '/review': 'Review',
   '/recap': 'Session recap',
 }
@@ -129,7 +134,7 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <Link to="/" className="shell-brand font-semibold no-underline text-fg">
             <Brand />
           </Link>
-          <QuickNavigation enabled={!focused} pages={[...primaryPages, ...toolPages]} />
+          <QuickNavigation enabled={!focused} pages={navigationPages} />
           <ParkingLotButton statusRoot={tutorEntry} />
           <ComfortToggle />
           <AudioControls compact header />
@@ -212,7 +217,8 @@ export default function App() {
               <Route path="/explore" element={<Explore />} />
               <Route path="/areas" element={<Areas />} />
               <Route path="/programs" element={<Projects />} />
-              <Route path="/projects" element={<Projects />} />
+              <Route path="/library" element={<Library />} />
+            <Route path="/projects" element={<Projects />} />
             <Route path="/projects/supabase" element={<SupabaseProject />} />
               <Route path="/curriculum" element={<Curriculum />} />
               <Route path="/models" element={<Models />} />

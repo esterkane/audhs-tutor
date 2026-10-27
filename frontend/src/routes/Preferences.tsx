@@ -133,7 +133,16 @@ export function Preferences() {
   if (!prefs.data)
     return (
       <Card>
-        <CardTitle as="h1">Preferences</CardTitle>
+        <CardTitle as="h1">Settings</CardTitle>
+        <details className="my-3"><summary className="cursor-pointer">Advanced settings and learning tools</summary>
+          <nav aria-label="Advanced settings and learning tools" className="grid gap-3 mt-3">
+            {[
+              ['/models', 'Models and local setup'], ['/experiments', 'Experiments'], ['/corrections', 'Correction drafts'],
+              ['/playground', 'Coding playground'], ['/playground/visual-learning', 'Visual learning'],
+              ['/vocab', 'Vocabulary'], ['/together', 'Work alongside'], ['/practice', 'Practice'], ['/review', 'Review'],
+            ].map(([href,label])=><Link key={href} className="inline-flex min-h-11 items-center underline" to={href}>{label}</Link>)}
+          </nav>
+        </details>
         {readRecovery || <p role="status">Loading preferences…</p>}
         <Link to="/" className="underline">
           Return Home
@@ -145,7 +154,16 @@ export function Preferences() {
   return (
     <div className="grid grid-cols-1 gap-4">
       <Card>
-        <CardTitle as="h1">Preferences</CardTitle>
+        <CardTitle as="h1">Settings</CardTitle>
+        <details className="my-3"><summary className="cursor-pointer">Advanced settings and learning tools</summary>
+          <nav aria-label="Advanced settings and learning tools" className="grid gap-3 mt-3">
+            {[
+              ['/models', 'Models and local setup'], ['/experiments', 'Experiments'], ['/corrections', 'Correction drafts'],
+              ['/playground', 'Coding playground'], ['/playground/visual-learning', 'Visual learning'],
+              ['/vocab', 'Vocabulary'], ['/together', 'Work alongside'], ['/practice', 'Practice'], ['/review', 'Review'],
+            ].map(([href,label])=><Link key={href} className="inline-flex min-h-11 items-center underline" to={href}>{label}</Link>)}
+          </nav>
+        </details>
         {readRecovery}
         <p className="text-sm text-muted mb-3">
           Everything here is explicit and reversible. The system never changes these silently.

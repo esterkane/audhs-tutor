@@ -24,6 +24,7 @@ export function Progress() {
   return <div className="grid gap-5">
     <div>
       <h1 className="text-page-title font-semibold">Progress</h1>
+      <p><Link className="underline" to="/map">Knowledge map</Link> · <Link className="underline" to="/explore">Explore by area</Link></p>
       <p className="mt-2 text-muted">See what has been checked and when. Reading, bookmarks and opening activities are not evidence of understanding.</p>
     </div>
     {skills.isError && <Card><p role="alert">Could not refresh your concepts.</p><Button onClick={() => void skills.refetch()} disabled={skills.isFetching}>Retry concepts</Button></Card>}

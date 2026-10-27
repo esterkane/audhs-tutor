@@ -4,7 +4,6 @@ import { isProvisional, feedbackIdentity } from '../lib/api'
 import { ProvisionalFeedback } from '../features/assess/ProvisionalFeedback'
 import { SavedLessonReading } from '../features/tutor/SavedLessonReading'
 import { LessonFocusContext } from '../features/session/focusContext'
-import { LessonContextPanel } from '../features/session/LessonContextPanel'
 import { SessionContext } from '../features/session/SessionContext'
 import { QuestionPractice } from '../features/questions/QuestionPractice'
 import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
@@ -129,22 +128,21 @@ export function Session() {
       <SessionControls compact sessionId={sessionId} skillId={st.skill_id} onPause={() => { navigationOwner.current.paused = true }}>
         <SessionContext data={session.data} compact />
       </SessionControls>
-      <div className="lesson-learning-grid">
-      <LessonContextPanel data={session.data} />
-      <div className="lesson-current-content min-w-0">
       <SessionBody
         canNavigate={canNavigate}
         key={`${session.data.id}:${st?.block_id ?? 'none'}`} // a re-plan must not wipe the screen
         sessionId={sessionId}
         data={session.data}
+        secondaryContent={(open) => <>
+          <section aria-label="Lesson context"><h2 className="font-semibold">Learning context</h2><SessionContext data={session.data} /></section>
+          <AlongsideMode sessionId={sessionId} active={open && !focus?.active} />
+          {st.skill_id && <Disclosure label="Try a coding experiment">
+            <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson.</p>
+            <Link className="underline" to={`/playground?lesson_session=${encodeURIComponent(sessionId)}&lesson_skill=${encodeURIComponent(st.skill_id)}`}>Open lesson experiment</Link>
+          </Disclosure>}
+        </>}
       />
-      </div>
-      </div>
-      <div data-focus-secondary><AlongsideMode sessionId={sessionId} active={!focus?.active} /></div>
-      {st.skill_id && <Disclosure data-focus-secondary label="Try a coding experiment">
-        <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson. Code and chat stay separate from your assessed answers; no code runs automatically.</p>
-        <Link className="underline" to={`/playground?lesson_session=${encodeURIComponent(sessionId)}&lesson_skill=${encodeURIComponent(st.skill_id)}`}>Open lesson experiment</Link>
-      </Disclosure>}
+
     </div>
   )
 }
@@ -251,7 +249,14 @@ function StartCard({ sessionId, data, canNavigate }: { sessionId: string; data: 
   )
 }
 
-function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data: SessionOut; canNavigate: () => boolean }) {
+function SessionBody({ sessionId, data, canNavigate, secondaryContent }: {
+  sessionId: string; data: SessionOut; canNavigate: () => boolean
+  secondaryContent: (open: boolean) => React.ReactNode
+}) {
+  const toolsKey = 'audhs-session-tools:' + sessionId
+  const [toolsOpen, setToolsOpen] = useState(() => {
+    try { return sessionStorage.getItem(toolsKey) === 'open' } catch { return false }
+  })
   const active = useRef(false)
   useEffect(() => {
     active.current = true
@@ -341,7 +346,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
 
   return (
     <div className="grid grid-cols-1 gap-4">
-      <div data-focus-secondary><AdaptationCards origin="planner" /></div>
+
       {stopSession.error && <p role="alert">{stopSession.error.message}</p>}
       <Card hidden={phase === 'teach' && !data.experiment && !blockNote && !transition.waitingLong && !transition.error}>
         {phase !== 'teach' && <CardTitle as={phase === 'practice' ? 'h1' : 'h2'} className="mb-2">
@@ -427,9 +432,6 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
           />
         </div>
       )}
-      {(phase === 'teach' || phase === 'assess') && activeSkillId && (
-        <OptionalExercise sessionId={sessionId} skillId={activeSkillId} mastery={skill?.mastery ?? 0} />
-      )}
       {phase === 'challenge' && (
         <ChallengePanel
           sessionId={sessionId}
@@ -449,6 +451,15 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
           onDone={() => void finishBlock('finished')}
           onSkip={() => void finishBlock('skipped')}
         />
+      )}
+      <Disclosure data-focus-secondary label="More session tools" open={toolsOpen} onToggle={event => {
+        setToolsOpen(event.currentTarget.open)
+        try { sessionStorage.setItem(toolsKey, event.currentTarget.open ? 'open' : 'closed') } catch { /* View preference only. */ }
+      }}>
+        {secondaryContent(toolsOpen)}
+        <AdaptationCards origin="planner" />
+      {(phase === 'teach' || phase === 'assess') && activeSkillId && (
+        <OptionalExercise sessionId={sessionId} skillId={activeSkillId} mastery={skill?.mastery ?? 0} />
       )}
         <Disclosure data-focus-secondary className="mt-3" label="Session plan and energy settings">
           <div className="mt-3">
@@ -482,6 +493,7 @@ function SessionBody({ sessionId, data, canNavigate }: { sessionId: string; data
             </div>
           </div>
         </Disclosure>
+      </Disclosure>
       {st?.block_started_at && (
         <SoftTimer
           key={st.block_id ?? String(blockIndex)}

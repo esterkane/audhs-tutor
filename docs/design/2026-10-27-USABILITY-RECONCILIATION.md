@@ -13,8 +13,8 @@ The immediate priorities are a single active learning task, low-effort help befo
 
 ## Remaining priorities
 
-1. Consolidate session secondary controls into one deliberate More surface; retain access to recovery, context, notes and learning supports.
-2. Simplify navigation and unify Library/material/area/activation vocabulary while retaining existing bookmarks and recovery scopes.
+1. Continue refining optional AI-help and notes inside the lesson; secondary tools are now grouped under More session tools, with critical recovery retained outside.
+2. Continue Library/search consolidation and vocabulary alignment; six-destination primary navigation and grouped secondary links are implemented, with bookmarks and recovery scopes retained.
 3. Reconcile the scoped authoring cap/status with ordinary hosted-study settings; keep separate permissions and budgets truthful.
 4. Verify the draft preview, pluralisation, browser titles, area/upload linking, confidence visibility, comfort dismissal, and other copy/heading findings against live states.
 5. Design a low-effort material path without automatic activation or loss of the optional research workflow.
@@ -22,3 +22,12 @@ The immediate priorities are a single active learning task, low-effort help befo
 7. Review progress/recap language and visible evidence thresholds without rewriting historical learning evidence.
 
 The broader information-architecture redesign and the entire review are not marked complete. This slice does not change kernel grades, mastery formulas, histories, model routing, hosted budgets or automatic adaptation policy.
+
+
+## Navigation and session composition continuation
+
+Primary navigation now has six labelled destinations: Home, Library, Progress, Projects, Ask and Settings. Library groups authoring, saved answers and source access; Progress links the knowledge map and area exploration; Settings groups advanced setup and optional tools. The palette retains secondary destinations with one entry per URL. Existing routes, browser history, learner IDs, saved-writing keys and bookmarks stay intact. Visual-learning and task-review browser titles are explicit.
+
+The session puts lesson context, plan/energy controls, optional code work, alongside work and experiment links under one More session tools disclosure. Native details keep content mounted, preserve writing and avoid restarting work on toggle. The view remembers its open state for that session in the tab; new sessions begin closed. Optional alongside activity is inactive while the disclosure is closed. Critical pause/end controls, the active reader/check, real request-recovery notices and timer actions remain reachable outside that tools disclosure. This is a composition change, not a curriculum, grading or model policy change.
+
+Remaining work includes broader authoring/Library consolidation, one search, fewer repeated caveats, quick material creation, scoped hosted-settings clarity and the other findings above. The lesson's optional AI-help and notes composition still warrants further review; do not describe the entire usability review as completed.

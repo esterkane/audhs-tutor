@@ -299,7 +299,7 @@ body {
 @media (max-width: 47.999rem) {
   .shell-rail-toggle { display: none; }
   .shell-primary-navigation { position: fixed; bottom: 0; inset-inline: 0; z-index: 20; display: flex; flex-flow: row wrap; gap: 0; padding: 0.25rem 0.25rem max(0.25rem, env(safe-area-inset-bottom)); background: var(--color-card); border-top: 1px solid var(--color-line); }
-  .shell-primary-link { flex: 1 0 20%; flex-direction: column; justify-content: center; gap: 0.25rem; padding: 0.5rem 0.25rem; font-size: var(--text-xs); min-width: max-content; text-align: center; }
+  .shell-primary-link { flex: 1 0 30%; flex-direction: column; justify-content: center; gap: 0.25rem; padding: 0.5rem 0.25rem; font-size: var(--text-xs); min-width: max-content; text-align: center; }
   .shell-primary-link .shell-primary-label { white-space: nowrap; }
   .shell-navigation-footer { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; justify-content: space-between; padding: 0.5rem 1rem; border-bottom: 1px solid var(--color-line); }
   .shell-navigation-footer .shell-preferences-link { white-space: nowrap; }

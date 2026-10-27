@@ -34,7 +34,7 @@ for (const width of [390, 1280]) {
       await page.keyboard.press('Enter')
       await expect.poll(() => saving).toBe(true)
       await page.getByRole('link', { name: 'Home', exact: true }).click()
-      await page.getByRole('link', { name: 'Preferences', exact: true }).click()
+      await page.getByRole('link', { name: 'Settings', exact: true }).click()
       await expect.poll(() => staleRead).toBe(true)
       releaseSave()
       await expect(large).toHaveAttribute('aria-pressed', 'true')

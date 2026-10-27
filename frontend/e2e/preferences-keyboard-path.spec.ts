@@ -8,7 +8,7 @@ for (const width of [390, 1280]) {
       if (request.url().endsWith('/api/preferences') && request.method() === 'PUT') writes.push(request.postData() ?? '')
     })
     await page.goto('/')
-    const preferences = page.getByRole('link', { name: 'Preferences', exact: true })
+    const preferences = page.getByRole('link', { name: 'Settings', exact: true })
     await preferences.focus()
     await page.keyboard.press('Enter')
     const main = page.getByRole('main')

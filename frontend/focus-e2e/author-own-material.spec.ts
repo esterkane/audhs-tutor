@@ -142,6 +142,12 @@ Tests the actual application role rather than the table owner.`)
   await expect(page.getByRole('navigation', { name: 'Learning path' })).toContainText(
     'Supabase grants and row visibility',
   )
+  const tools = page.locator('summary').filter({hasText:/^More session tools$/})
+  await expect(tools).toBeVisible()
+  await expect(page.getByRole('heading',{name:'Learning context',exact:true})).not.toBeVisible()
+  await tools.click()
+  await expect(page.getByRole('heading',{name:'Learning context',exact:true})).toBeVisible()
+  await tools.click()
   await page.getByRole('button', { name: 'Next section', exact: true }).click()
   await page
     .getByLabel('Your notes for this section (optional)')

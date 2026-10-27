@@ -1,19 +1,19 @@
 import { expect, test } from '@playwright/test'
 import axe from 'axe-core'
 
-for (const width of [1280, 390, 320]) test(`five destinations and tools preserve orientation ${width}`, async ({ page }, info) => {
+for (const width of [1280, 390, 320]) test(`six destinations and grouped pages preserve orientation ${width}`, async ({ page }, info) => {
   await page.setViewportSize({ width, height: 900 })
   await page.goto('/practice')
   const nav = page.getByRole('navigation', { name: 'Main navigation', exact: true })
-  await expect(nav.getByRole('link')).toHaveCount(5)
-  for (const name of ['Home', 'Learn', 'Practice', 'Progress', 'Explore']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible()
-  await expect(nav.getByRole('link', { name: 'Practice', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(nav.getByRole('link')).toHaveCount(6)
+  for (const name of ['Home', 'Library', 'Progress', 'Projects', 'Ask', 'Settings']) await expect(nav.getByRole('link', { name, exact: true })).toBeVisible()
+  await expect(nav.getByRole('link', { name: 'Home', exact: true })).toHaveAttribute('aria-current', 'page')
   if (width < 768) {
     const box = await nav.boundingBox()
     expect(box!.y + box!.height).toBeCloseTo(900, 0)
   } else {
     await page.getByRole('button', { name: 'Collapse navigation' }).click()
-    await expect(nav.getByRole('link', { name: 'Explore' })).toBeVisible()
+    await expect(nav.getByRole('link', { name: 'Library' })).toBeVisible()
     await page.getByRole('button', { name: 'Expand navigation' }).focus()
     await page.setViewportSize({ width: 390, height: 900 })
     await expect(nav.getByRole('link', { name: 'Home', exact: true })).toBeFocused()
@@ -23,7 +23,7 @@ for (const width of [1280, 390, 320]) test(`five destinations and tools preserve
   await page.getByRole('link', { name: 'Skip to learning content' }).focus()
   await page.keyboard.press('Enter')
   await expect(page.getByRole('main')).toBeFocused()
-  const ask = page.getByRole('link', { name: 'Ask tutor', exact: true })
+  const ask = page.getByRole('link', { name: 'Ask', exact: true })
   await expect(ask).toBeVisible()
   await ask.focus()
   await page.keyboard.press('Enter')
@@ -33,21 +33,14 @@ for (const width of [1280, 390, 320]) test(`five destinations and tools preserve
   await page.screenshot({ path: info.outputPath('ask-navigation.png'), fullPage: true })
   await page.goBack()
   await expect(page).toHaveTitle('Practice · AuDHS Tutor')
-  const tools = page.getByRole('button', { name: 'Tools', exact: true })
-  await tools.focus()
-  await page.keyboard.press('Enter')
-  const dialog = page.getByRole('dialog', { name: 'Tools and pages' })
-  await expect(dialog).toBeVisible()
-  await expect(dialog.getByRole('button', { name: 'Close tools' })).toBeFocused()
-  await page.keyboard.press('Escape')
-  await expect(tools).toBeFocused()
-  await tools.click()
-  await dialog.getByRole('link', { name: 'Knowledge material', exact: true }).click()
+  await nav.getByRole('link', {name:'Library', exact:true}).click()
+  await expect(page).toHaveTitle('Library · AuDHS Tutor')
+  await page.getByRole('link',{name:'Create or continue knowledge material',exact:true}).click()
   await expect(page).toHaveTitle('Knowledge material · AuDHS Tutor')
-  await expect(dialog).not.toBeVisible()
+  await expect(nav.getByRole('link',{name:'Library',exact:true})).toHaveAttribute('aria-current','page')
   await expect(page.getByRole('main')).toBeFocused()
   await page.goBack()
-  await expect(page).toHaveTitle('Practice · AuDHS Tutor')
+  await expect(page).toHaveTitle('Library · AuDHS Tutor')
   await page.goForward()
   await expect(page).toHaveTitle('Knowledge material · AuDHS Tutor')
   await page.screenshot({ path: info.outputPath('navigation-normal.png'), fullPage: true })
@@ -68,14 +61,14 @@ for (const width of [1280, 390, 320]) test(`five destinations and tools preserve
     expect(await page.getByRole('main').evaluate(el => parseFloat(getComputedStyle(el).paddingBottom))).toBeGreaterThanOrEqual(navBox.height)
     const links = nav.getByRole('link')
     await links.first().focus()
-    for (let i = 0; i < 5; i++) {
+    for (let i = 0; i < 6; i++) {
       await expect(links.nth(i)).toBeFocused()
       const box = (await links.nth(i).boundingBox())!
       expect(box.width).toBeGreaterThanOrEqual(44)
       expect(box.height).toBeGreaterThanOrEqual(44)
       expect(box.x).toBeGreaterThanOrEqual(0)
       expect(box.x + box.width).toBeLessThanOrEqual(width)
-      if (i < 4) await page.keyboard.press('Tab')
+      if (i < 5) await page.keyboard.press('Tab')
     }
     await page.screenshot({ path: info.outputPath('navigation-large-text.png') })
     if (width === 320) {
