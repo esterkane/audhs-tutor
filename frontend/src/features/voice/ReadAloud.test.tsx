@@ -233,11 +233,11 @@ it('shared controls pause, resume and stop the same reading without regenerating
   await waitFor(() => expect(audio.enqueue).toHaveBeenCalledOnce())
   fireEvent.click(screen.getAllByRole('button', { name: 'Pause reading', hidden: true })[0])
   await waitFor(() =>
-    expect(screen.getAllByRole('button', { name: 'Resume reading', hidden: true })).toHaveLength(2),
+    expect(screen.getAllByRole('button', { name: 'Resume reading', hidden: true })).toHaveLength(1),
   )
   fireEvent.click(screen.getAllByRole('button', { name: 'Resume reading', hidden: true })[0])
   await waitFor(() =>
-    expect(screen.getAllByRole('button', { name: 'Pause reading', hidden: true })).toHaveLength(2),
+    expect(screen.getAllByRole('button', { name: 'Pause reading', hidden: true })).toHaveLength(1),
   )
   fireEvent.click(screen.getAllByRole('button', { name: 'Stop reading', hidden: true })[0])
   expect(screen.queryByRole('button', { name: 'Stop reading', hidden: true })).not.toBeInTheDocument()

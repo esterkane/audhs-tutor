@@ -1,5 +1,4 @@
 import { AnswerSaveStatus } from '../programs/AnswerSaveStatus'
-import { AudioControls } from '../audio/AudioControls'
 import { useEffect, useState } from 'react'
 import { useVoiceRequestRecovery } from './useVoiceRequestRecovery'
 import { useVoiceTextRecovery } from './useVoiceTextRecovery'
@@ -56,7 +55,6 @@ function ScopedVoicePanel({
   return (
     <Card>
       <CardTitle>{title}</CardTitle>
-      <AudioControls />
       {v.audioNotice && <p role="status">{v.audioNotice}</p>}
       {recovery.restored && (
         <p role="status" className="text-sm mt-2">

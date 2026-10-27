@@ -3,7 +3,7 @@ import { BLOCK_LABELS, type Block } from './api'
 /**
  * The session plan as a strip: which block is current, what is planned, what is optional.
  * Blocks before `firstStarted` were passed over by the learner's "which first?" choice: they are
- * shown as "not started", never struck through like a finished block (honest strip).
+ * shown as skipped at start, never struck through like a finished block.
  */
 export function PlanStrip({
   blocks,
@@ -36,7 +36,7 @@ export function PlanStrip({
             }
           >
             {BLOCK_LABELS[b.type] ?? b.type} · {b.planned_min} min{b.optional ? ' · optional' : ''}
-            {passedOver ? ' · not started' : ''}
+            {passedOver ? ' · skipped at start' : ''}
           </li>
         )
       })}

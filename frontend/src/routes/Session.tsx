@@ -27,6 +27,7 @@ import { ReadAloud } from '../features/voice/ReadAloud'
 import { readDraft } from '../features/assess/draft'
 import { questionIdentity, questionDrafts, questionDraftFailed, saveQuestionDraft, clearQuestionDraft } from '../features/assess/questionDraft'
 import { QuestionHelp } from '../features/assess/QuestionHelp'
+import { isHelpRequest } from '../features/assess/helpRequest'
 import { OptionalConfidence } from '../components/OptionalConfidence'
 import { QuestionFeedback } from '../features/areas/QuestionFeedback'
 import { useContext, useCallback, useLayoutEffect, useEffect, useRef, useState } from 'react'
@@ -1057,8 +1058,17 @@ function AssessPanel({
     answerControls.current?.querySelector<HTMLElement>('textarea, button')?.focus()
   }, [revision.data, active])
 
-  async function submit() {
+  const [helpChoice, setHelpChoice] = useState<string | null>(null)
+  const helpControls = useRef<HTMLDivElement>(null)
+  const currentHelpChoice = identity + ':' + currentAnswer
+
+  async function submit(checkAsWritten = false) {
     if (!item || (revision.editing && !revision.data)) return
+    if (!checkAsWritten && item.kind !== 'mcq' && isHelpRequest(currentAnswer)) {
+      setHelpChoice(currentHelpChoice)
+      return
+    }
+    setHelpChoice(null)
     try {
       const res = await attempt.mutateAsync({
         ...(revision.editing ? revision.revisionRequest : {}),
@@ -1100,6 +1110,7 @@ function AssessPanel({
 
   const recoveryPanel = active && (
     <AssessmentRecovery
+      submitting={attempt.isPending}
       recovery={attempt.recovery}
       onRefresh={async (signal) => {
         if (attempt.recovery.pending?.body.assessment_id !== item?.id)
@@ -1189,14 +1200,14 @@ function AssessPanel({
         </p>
         <p className="text-base mb-3">{item.question}</p>
         {!result && (
-          <QuestionHelp
+          <div ref={helpControls}><QuestionHelp
             active={active}
             key={`help:${identity}`}
             sessionId={sessionId}
             skillId={skillId}
             question={item.question}
             onHint={() => { saveQuestionDraft(versionedKey, item, currentAnswer, (savedDraft?.hints ?? 0) + 1); refreshDraft(n => n + 1) }}
-          />
+          /></div>
         )}
         {previousChoice && (
           <p role="status">
@@ -1268,6 +1279,13 @@ function AssessPanel({
             <div className="mt-3">
               <OptionalConfidence value={confidence} onChange={setConfidence} />
             </div>
+            {helpChoice === currentHelpChoice && <section aria-label="Learn before checking" className="mt-3 border border-line rounded p-3">
+              <p role="status">Nothing has been submitted. You can use a hint or review the idea first; your writing is kept.</p>
+              <div className="flex gap-2 flex-wrap mt-2">
+                <Button onClick={() => helpControls.current?.querySelector<HTMLButtonElement>('button')?.focus()}>Go to hints</Button>
+                <Button variant="secondary" disabled={attempt.isPending} onClick={() => void submit(true)}>Check this answer as written</Button>
+              </div>
+            </section>}
             <div className="flex gap-2 mt-3">
               <Button
                 variant="primary"

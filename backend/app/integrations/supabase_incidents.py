@@ -136,18 +136,61 @@ INSUFFICIENT_PRIVILEGE = Diagnostic(
 )
 
 
+def mixed_plan(plans: list[Diagnostic]) -> Diagnostic:
+    """Keep distinct reported boundaries separate; never synthesize one root cause."""
+    english = "Several error boundaries were reported. Investigate them separately:\n\n"
+    german = "Es wurden mehrere Fehlergrenzen gemeldet. Untersuche sie getrennt:\n\n"
+    english += "\n\n".join(plan.english for plan in plans)
+    german += "\n\n".join(plan.german for plan in plans)
+    english += (
+        "\n\nAssociate each message with its exact statement, database, role and time. "
+        "Different messages do not establish a shared cause or prove an earlier fix succeeded."
+    )
+    german += (
+        "\n\nOrdne jede Meldung ihrer genauen Anweisung, Datenbank, Rolle und Zeit zu. "
+        "Verschiedene Meldungen beweisen weder eine gemeinsame Ursache noch eine erfolgreiche frühere Reparatur."
+    )
+    queries = list(
+        dict.fromkeys(
+            query.strip() for plan in plans for query in plan.sql.split(";") if query.strip()
+        )
+    )
+    return Diagnostic(
+        "mixed_" + "_".join(plan.key for plan in plans),
+        (),
+        english,
+        german,
+        "Which exact statement and role produced each error, and in what order?",
+        "Welche genaue Anweisung und Rolle verursachten die einzelnen Meldungen, und in welcher Reihenfolge?",
+        ";\n".join(queries) + ";",
+        "\n".join(
+            dict.fromkeys(
+                ["https://www.postgresql.org/docs/17/errcodes-appendix.html"]
+                + [plan.source for plan in plans]
+            )
+        ),
+    )
+
+
 def select_plan(text: str, state: Any) -> Diagnostic | None:
     if state.mode != "incident" or state.active_lab is not None or len(text) > 8000:
         return None
-    # A resolved/negated report is not a new failure. Mixed errors require contextual analysis.
+    # A resolved/negated report is not a new failure. Preserve distinct mixed error boundaries.
     if re.search(r"no longer|not getting|not seeing|kein.*mehr|nicht mehr", text, re.I):
         return None
     found = [plan for plan in PLANS if any(re.search(p, text, re.I) for p in plan.patterns)]
-    if len(found) == 1:
-        return found[0]
-    if not found and re.search(r"\b42501\b", text):
-        return INSUFFICIENT_PRIVILEGE
-    return None
+    codes = {code.upper() for code in re.findall(r"\b(?:42P01|42703|42501)\b", text, re.I)}
+    if "42P01" in codes and PLANS[2] not in found:
+        found.append(PLANS[2])
+    if "42703" in codes and PLANS[3] not in found:
+        found.append(PLANS[3])
+    if "42501" in codes and not any(
+        plan.key in {"table_privilege", "schema_privilege", "row_check"} for plan in found
+    ):
+        found.append(INSUFFICIENT_PRIVILEGE)
+    if len(found) > 1:
+        return mixed_plan(found)
+    return found[0] if found else None
 
 
 def incident_turn(text: str, state: Any, plan: Diagnostic) -> Any:
@@ -187,7 +230,13 @@ def incident_turn(text: str, state: Any, plan: Diagnostic) -> Any:
         mode="incident",
         language=state.language,
         persona_on=state.persona_on,
-        speech=explanation.split(". ")[0] + ".",
+        speech=(
+            "Mehrere Fehlergrenzen wurden gemeldet. Ordne jede Meldung ihrer Anweisung und Rolle zu."
+            if german
+            else "Several error boundaries were reported. Match each message to its statement and role."
+        )
+        if plan.key.startswith("mixed_")
+        else explanation.split(". ")[0] + ".",
         text=body,
         next_question=question,
     )

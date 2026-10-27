@@ -1,3 +1,5 @@
+> Usability input (2026-10-27): the owner-provided static-capture review prioritizes a focused session, help before grading, explicit skipped-block reasons and a simpler information architecture. See [verified changes and remaining work](2026-10-27-USABILITY-RECONCILIATION.md). Verify findings in current visible states; preserve learner control, provenance and recorded evidence.
+
 > Owner addition (2026-10-25): [comfort and learning brief](../agent-handoffs/DESIGN_SYSTEM_BRIEF.md)
 > is an authoritative design input, reconciled by [implementation and verification](COMFORT-LEARNING-ALIGNMENT.md).
 > Existing tokens, provenance, full histories and explicit learner control remain binding. The brief's

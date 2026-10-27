@@ -11,8 +11,10 @@ export function AssessmentRecovery({
   recovery,
   onUse,
   onRefresh,
+  submitting = false,
 }: {
   recovery: Recovery
+  submitting?: boolean
   onRefresh?: (signal: AbortSignal) => Promise<void>
   onUse?: (result: AttemptResult, body: AttemptRequest) => boolean
 }) {
@@ -63,6 +65,7 @@ export function AssessmentRecovery({
       }
     }
   }
+  if (submitting && pending && !recovery.error && !recovery.memoryOnly && !recovery.storageError) return null
   if (!pending && !recovery.previousAnswer && !recovery.error && !recovery.memoryOnly) return null
   return (
     <section aria-label="Submission recovery" className="border border-warn rounded p-3 my-3 grid gap-2">

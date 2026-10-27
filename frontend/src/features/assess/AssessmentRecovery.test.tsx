@@ -152,3 +152,21 @@ it('keeps result-check focus while busy and ignores repeated activation', () => 
   fireEvent.click(button)
   expect(state.check).not.toHaveBeenCalled()
 })
+
+
+it('does not show lost-result recovery during an ordinary in-flight submission, but preserves it afterwards',()=>{
+ const kept=recovery(); kept.stale=false
+ const {rerender}=render(<AssessmentRecovery recovery={kept} submitting />)
+ expect(screen.queryByRole('region',{name:'Submission recovery'})).not.toBeInTheDocument()
+ expect(kept.pending?.id).toBe('original')
+ rerender(<AssessmentRecovery recovery={kept} submitting={false} />)
+ expect(screen.getByRole('region',{name:'Submission recovery'})).toBeVisible()
+ expect(kept.clear).not.toHaveBeenCalled()
+})
+
+it('keeps storage-loss warnings visible during a submission',()=>{
+ const kept=recovery(); kept.memoryOnly=true
+ render(<AssessmentRecovery recovery={kept} submitting />)
+ expect(screen.getByRole('region',{name:'Submission recovery'})).toBeVisible()
+ expect(screen.getByText(/Recovery is kept in this page/)).toBeVisible()
+})

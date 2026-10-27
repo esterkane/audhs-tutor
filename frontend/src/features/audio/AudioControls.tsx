@@ -90,7 +90,7 @@ export function AudioControls({ compact = false, header = false }: { compact?: b
       oscillator.start()
       started = true
       oscillator.stop(ctx.currentTime + 0.5)
-      announce('Playing a half-second test tone through your Mac’s selected output.')
+      announce('Playing a half-second test tone through your selected system output.')
     } catch (e) {
       if (closed) return
       close()
@@ -182,8 +182,8 @@ export function AudioControls({ compact = false, header = false }: { compact?: b
           playback updates immediately. Test signals and ambient sound keep their original speed.
         </p>
         <p className="text-xs text-muted">
-          Output: your Mac’s selected device. For Bluetooth headphones, select them in macOS Control Center →
-          Sound; also check the browser tab is not muted.
+          Output uses your selected system device. Choose Bluetooth headphones in your system sound settings;
+          also check that the browser tab is not muted.
         </p>
         {status && <p role="status">{status}</p>}
         {!saved && <p role="alert">Settings work for now but could not be saved in this browser.</p>}

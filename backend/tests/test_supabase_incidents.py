@@ -46,7 +46,6 @@ def test_report_maps_to_reviewed_plan_and_preserves_incident(index, language):
     [
         "Our connection times out",
         "We no longer see permission denied for table orders",
-        'permission denied for table x; relation "y" does not exist',
     ],
 )
 def test_ambiguous_or_resolved_report_delegates(report):
@@ -97,3 +96,36 @@ def test_specific_message_takes_precedence_over_shared_sqlstate():
         "Our request: SQLSTATE 42501, permission denied for schema private_data", state()
     )
     assert plan.key == "schema_privilege"
+
+
+@pytest.mark.parametrize("language", ["en", "de"])
+def test_mixed_errors_are_explained_separately_without_invented_shared_cause(language):
+    report = 'Our query: permission denied for table x; relation "y" does not exist'
+    current = state(language=language)
+    plan = select_plan(report, current)
+    assert plan.key == "mixed_table_privilege_missing_relation"
+    turn = incident_turn(report, current, plan)
+    assert turn.incident.root_cause is None and not turn.incident.evidence
+    assert plan.sql.count("SELECT current_user;") == 1
+    assert "current_database()" in plan.sql
+    from backend.tutor.guard import GuardContext, check
+
+    assert check(turn, GuardContext()) == []
+
+
+@pytest.mark.parametrize(
+    "report,key",
+    [
+        ("Our query fails SQLSTATE 42P01", "missing_relation"),
+        ("Our query fails SQLSTATE 42703", "missing_column"),
+        ("Our requests have SQLSTATE 42P01 and 42703", "mixed_missing_relation_missing_column"),
+    ],
+)
+def test_code_only_reports_reuse_verified_catalog_plans(report, key):
+    assert select_plan(report, state()).key == key
+
+
+def test_mixed_codes_do_not_drop_the_ambiguous_permission_error():
+    plan = select_plan("Our query has SQLSTATE 42P01 and 42501", state())
+    assert plan.key == "mixed_missing_relation_insufficient_privilege"
+    assert "code alone does not distinguish" in plan.english

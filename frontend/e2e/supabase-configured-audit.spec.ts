@@ -46,6 +46,16 @@ test('real local incident response, protected learner findings, reload, project 
   expect(saved.transcript).toHaveLength(4)
   expect(saved.incident.model.root_cause).toContain('Learner hypothesis')
   expect(saved.incident.sources.root_cause).toBe('learner')
+  await input.fill(
+    'Our requests fail: permission denied for table orders; relation "orders_archive" does not exist.',
+  )
+  const mixed = page.waitForResponse((r) => r.url().endsWith('/supabase-project/turn'))
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  expect((await mixed).ok()).toBeTruthy()
+  await expect(page.getByText(/Several error boundaries were reported/)).toBeVisible()
+  const afterMixed = await (await request.get(API_URL + '/api/supabase-project/session/' + sessionId)).json()
+  expect(afterMixed.transcript).toHaveLength(6)
+  expect(afterMixed.incident.model.root_cause).toContain('Learner hypothesis')
   await page.setViewportSize({ width: 390, height: 900 })
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy()
   await page.addScriptTag({ content: axe.source })

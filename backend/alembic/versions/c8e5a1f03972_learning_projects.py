@@ -1,6 +1,7 @@
 """Learner-owned knowledge testing projects, independent from mastery."""
 
 import sqlalchemy as sa
+
 from alembic import op
 
 revision = "c8e5a1f03972"

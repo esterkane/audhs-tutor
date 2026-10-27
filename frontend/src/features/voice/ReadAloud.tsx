@@ -1,5 +1,4 @@
 import { useAudioSettings } from '../audio/settings'
-import { AudioControls } from '../audio/AudioControls'
 import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
@@ -165,7 +164,6 @@ function Speech({ text, label = 'Listen to explanation' }: { text: string; label
           {muted ? 'Audio is muted.' : 'Audio volume is zero.'} Open Audio controls to adjust playback.
         </p>
       )}
-      <AudioControls />
       <span className="text-xs text-muted ml-2">Local voice · no microphone · English voice</span>
       {error && (
         <p role="alert" className="text-sm mt-1">

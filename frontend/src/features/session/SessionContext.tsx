@@ -29,5 +29,7 @@ export function SessionContext({ data, compact = false }: { data: SessionOut; co
     <p className="text-sm text-muted">Activity {index + 1} of {plan.length} · {BLOCK_LABELS[block.type] ?? block.type}
       {block.planned_min != null && <> · about {block.planned_min} min</>}
     </p>
+    {state.first_started_index != null && state.first_started_index > 0 && plan[state.first_started_index] &&
+      <p className="text-sm text-muted">Started with {BLOCK_LABELS[plan[state.first_started_index].type] ?? plan[state.first_started_index].type}; earlier planned activities were skipped at the start.</p>}
   </div>
 }
