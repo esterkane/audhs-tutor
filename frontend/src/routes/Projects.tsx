@@ -149,6 +149,12 @@ function ProjectEditor({ project }: { project: Project }) {
         <strong>Reflect:</strong> {String(project.brief.reflect ?? '')}
       </p>
 
+      {typeof project.brief.workspace === 'string' && project.brief.workspace === '/projects/supabase' && (
+        <p>
+          <Link to={project.brief.workspace}>Open the imported Supabase/PostgreSQL lab</Link>
+        </p>
+      )}
+
       {typeof project.brief.source === 'string' && (
         <p>
           <a href={project.brief.source} target="_blank" rel="noreferrer">

@@ -41,6 +41,7 @@ import { Recap } from '../routes/Recap'
 import { Review } from '../routes/Review'
 import { Session } from '../routes/Session'
 import { Projects } from '../routes/Projects'
+import { SupabaseProject } from '../routes/SupabaseProject'
 import { Playground } from '../routes/Playground'
 import { MODE_LABELS, useMode } from '../stores/mode'
 
@@ -212,6 +213,7 @@ export default function App() {
               <Route path="/areas" element={<Areas />} />
               <Route path="/programs" element={<Projects />} />
               <Route path="/projects" element={<Projects />} />
+            <Route path="/projects/supabase" element={<SupabaseProject />} />
               <Route path="/curriculum" element={<Curriculum />} />
               <Route path="/models" element={<Models />} />
               <Route path="/experiments" element={<Experiments />} />

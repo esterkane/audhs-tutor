@@ -1,0 +1,28 @@
+{
+  "repository": "https://github.com/esterkane/kanguroo-supabase-tutor",
+  "commit": "5786968dfde6b9f1a4d5b157977b92e16d36ad69",
+  "imported_on": "2026-10-26",
+  "mode": "Owner-requested reviewed source snapshot; no upstream history or private configuration imported.",
+  "host_patches": [
+    {
+      "file": "backend/tutor/host.py",
+      "purpose": "Accept a host-supplied embedder via HostConfig.extra; never construct an environment-selected hosted embedding client when integrated."
+    },
+    {
+      "file": "kaenguru_tutor/__init__.py",
+      "purpose": "Export the existing TutorTurn schema so the host derives metadata contracts without a second handwritten schema."
+    },
+    {
+      "file": "prompts/kaenguru_master_instructions.md",
+      "purpose": "Make prerequisite onboarding platform-aware and follow an existing technical question instead of restarting macOS setup."
+    },
+    {
+      "file": "docs/DECISIONS.md",
+      "purpose": "Replace a retired source-provider reference with neutral reference-corpus wording for the sanitized public host."
+    },
+    {
+      "file": "backend/tests/test_guard.py",
+      "purpose": "Generate synthetic redaction fixtures at runtime instead of storing complete dummy key strings flagged by push protection."
+    }
+  ]
+}

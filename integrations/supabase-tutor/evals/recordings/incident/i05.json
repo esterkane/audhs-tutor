@@ -1,0 +1,135 @@
+{
+ "case_id": "i05",
+ "turn": {
+  "mode": "incident",
+  "language": "en",
+  "persona_on": true,
+  "speech": "Kleinkünstler, 500 is a symptom, not a cause. Every request failing right after a deploy points at what the deploy changed. Call one failing endpoint with curl dash i, redact the token, and tell me the sb-error-code header. What does it say?",
+  "text": "Kleinkünstler, \"500 after a deploy\" is a symptom, so we'll build the incident model before anyone touches the code. The word \"every\" already helps. If every request fails right after a deploy, the cause is probably in what the deploy changed, not in some rare data path. That's an inference from what you told me, not yet evidence.\n\n## Incident model so far\n\n| Field | State |\n|---|---|\n| Symptom | HTTP 500 from an Edge Function |\n| Expected | 2xx for the same requests before the deploy |\n| Scope | All requests (reported, not verified) |\n| Timeline | Started with a deploy (the cause of the failure is not yet shown) |\n| Environment | Hosted or local? CLI version? How was it deployed? Still open |\n\n## What \"500\" can mean here\n\nThe docs say a 500 from an Edge Function means one of two things: an unhandled JavaScript error, or your own code deliberately returning a 500 [1]. Failed Edge Function requests also carry an `sb-error-code` response header that names the specific error [2]. That header is the cheapest discriminator we have.\n\n| Rank | Hypothesis | Why it fits | What would falsify it |\n|---|---|---|---|\n| 1 | `BOOT_ERROR`: the function fails to start. The docs list syntax errors, import errors or missing dependencies, and invalid configuration as common causes [3]. | Every request fails, and a bad deploy is the usual trigger. | The header shows a different code, or the logs show handler code running. |\n| 2 | `EDGE_FUNCTION_ERROR`: the function starts, then an unhandled error is thrown or a 5xx is returned on a path every request takes [4]. Examples: a missing secret, or a changed upstream call. | Also fits \"every request\". | The logs show a boot failure before any handler log line. |\n| 3 | Your own code returns `status: 500`, for example after a failed third-party call [1]. | The docs name it as the second of the two cases. | Searching the code for `status: 500` finds nothing reachable. |\n| 4 | A resource limit (`WORKER_RESOURCE_LIMIT` / `WORKER_LIMIT`) [5]. | Possible if the deploy added heavy imports. | The logs name no exceeded limit. I rank it last because a plain 500 isn't the signature I'd expect, but I haven't verified the exact status mapping this turn. |\n\n## Next test\n\nThe test is read-only and changes nothing. Call one failing endpoint and capture the response headers:\n\n```bash\ncurl -i \"https://<project-ref>.supabase.co/functions/v1/<function-name>\" \\\n  -H \"Authorization: Bearer <your-anon-or-user-JWT>\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{}'\n```\n\nExpected output is the status line, a few headers, and possibly a short body. Redact the project ref and the token before pasting. Never paste a secret or service key.\n\nThen open the function's logs in the dashboard and find the first error entry after the deploy time. A boot failure and a runtime exception look different there. A boot failure means no handler log lines appear at all.\n\nInterpretation, once I see it: the `sb-error-code` value plus the first log line will separate hypotheses 1 and 2 from 3. I'm not declaring a root cause yet, and a redeploy or rollback would only be a mitigation, not an explanation.\n\nWhat is the value of the `sb-error-code` header on a failing request? If the header is absent, say so, because that is also evidence.",
+  "diagrams": [],
+  "citations": [
+   {
+    "n": 1,
+    "url": "https://supabase.com/docs/guides/troubleshooting/edge-function-500-error-response.md#edge-function-500-error-response",
+    "title": "Edge Function 500 error response",
+    "tier": 1,
+    "fetched_at": "2026-10-23T08:09:51.121162+00:00"
+   },
+   {
+    "n": 2,
+    "url": "https://supabase.com/docs/guides/functions/error-codes.md#error-codes",
+    "title": "Error codes",
+    "tier": 1,
+    "fetched_at": "2026-10-23T08:09:22.669329+00:00"
+   },
+   {
+    "n": 3,
+    "url": "https://supabase.com/docs/guides/functions/error-codes.md#boot-error",
+    "title": "BOOT_ERROR",
+    "tier": 1,
+    "fetched_at": "2026-10-23T08:09:22.669329+00:00"
+   },
+   {
+    "n": 4,
+    "url": "https://supabase.com/docs/guides/functions/error-codes.md#edge-function-error",
+    "title": "EDGE_FUNCTION_ERROR",
+    "tier": 1,
+    "fetched_at": "2026-10-23T08:09:22.669329+00:00"
+   },
+   {
+    "n": 5,
+    "url": "https://supabase.com/docs/guides/functions/error-codes.md#worker-resource-limit-worker-limit",
+    "title": "WORKER_RESOURCE_LIMIT, WORKER_LIMIT",
+    "tier": 1,
+    "fetched_at": "2026-10-23T08:09:22.669329+00:00"
+   }
+  ],
+  "next_question": "What is the value of the sb-error-code header on a failing request (or is it absent)?",
+  "path": {
+   "state": "main",
+   "depth": 0,
+   "return_point": "incident triage: classify the 500"
+  },
+  "ledger_delta": [],
+  "lab_action": null,
+  "incident": {
+   "symptom": "Edge Function returns HTTP 500",
+   "expected": "2xx responses as before the deploy",
+   "scope": "All requests (reported by customer, not yet verified)",
+   "timeline": "Began immediately after a deploy",
+   "environment": null,
+   "evidence": [
+    "Customer report: every request returns 500 after a deploy (unverified, no logs or headers yet)"
+   ],
+   "hypotheses": [
+    {
+     "h": "BOOT_ERROR: function fails to start (syntax/import/config)",
+     "rank": 1,
+     "test": "Check sb-error-code header and logs for startup failure with no handler log lines",
+     "status": "open"
+    },
+    {
+     "h": "EDGE_FUNCTION_ERROR: unhandled exception or 5xx on a path every request takes (e.g. missing secret, changed upstream call)",
+     "rank": 2,
+     "test": "Find first runtime error in function logs after deploy time",
+     "status": "open"
+    },
+    {
+     "h": "Code deliberately returns status 500 (e.g. after failed third-party call)",
+     "rank": 3,
+     "test": "Search code for status: 500 and trace the triggering condition",
+     "status": "open"
+    },
+    {
+     "h": "Resource limit exceeded (WORKER_RESOURCE_LIMIT / WORKER_LIMIT)",
+     "rank": 4,
+     "test": "Check logs for a named exceeded limit",
+     "status": "open"
+    }
+   ],
+   "root_cause": null,
+   "mitigation": null,
+   "permanent_fix": null,
+   "prevention": null,
+   "confidence": null
+  },
+  "session_end": null,
+  "guard_flags": [
+   "CITATION_UNUSED"
+  ]
+ },
+ "findings": [
+  "CITATION_UNUSED"
+ ],
+ "tools": [
+  {
+   "name": "search_docs",
+   "input": {
+    "query": "Edge Function returns 500 error after deploy troubleshooting logs",
+    "products": [
+     "functions",
+     "kb"
+    ],
+    "k": 8
+   }
+  },
+  {
+   "name": "search_docs",
+   "input": {
+    "query": "Edge Functions BOOT_ERROR WORKER_ERROR status codes",
+    "products": [
+     "functions"
+    ],
+    "k": 6
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 4,
+  "output_tokens": 3379,
+  "cache_creation_input_tokens": 38635,
+  "cache_read_input_tokens": 38325
+ },
+ "model": "claude-sonnet-5-5",
+ "judge": null
+}

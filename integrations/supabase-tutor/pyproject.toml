@@ -1,0 +1,43 @@
+[project]
+name = "kaenguru-tutor"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "anthropic>=0.40",
+  "httpx>=0.27",
+  "psycopg[binary,pool]>=3.2",
+  "pydantic>=2.8",
+  "supabase>=2.9",
+  "pyjwt[crypto]>=2.9",
+  "pyyaml>=6",
+  "sse-starlette>=2.1",
+  "fsrs>=6.3.2",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+# kaenguru_tutor is the host API; backend holds the implementation. Hosts install the repo editable
+# (prompts/, labs/, scripts/ are read from the checkout), see kaenguru_tutor/__init__.py.
+packages = ["backend", "kaenguru_tutor"]
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-asyncio>=0.24", "ruff>=0.6", "mypy>=1.11", "pglast>=7", "types-pyyaml"]
+
+[tool.ruff]
+line-length = 110
+extend-exclude = ["frontend", "supabase"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["backend/tests", "scripts/tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+faulthandler_timeout = 60  # a hung test dumps its traceback instead of stalling silently

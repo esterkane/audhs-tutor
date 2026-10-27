@@ -14,6 +14,10 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
+    supabase_project_db_url: str = ""
+    supabase_project_user_id: str = ""
+    supabase_project_url: str = "http://127.0.0.1:54321"
+
     model_config = SettingsConfigDict(env_file=(str(PROJECT_ROOT / ".env"), ".env"), extra="ignore")
 
     knowledge_authoring_root: str = "./data"

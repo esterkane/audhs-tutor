@@ -3292,6 +3292,211 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/supabase-project/session': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Create Session */
+    post: operations['create_session_api_supabase_project_session_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/session/{session_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Session */
+    get: operations['get_session_api_supabase_project_session__session_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/session/{session_id}/incident': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    /** Edit Incident */
+    patch: operations['edit_incident_api_supabase_project_session__session_id__incident_patch']
+    trace?: never
+  }
+  '/api/supabase-project/ledger': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Get Ledger */
+    get: operations['get_ledger_api_supabase_project_ledger_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/labs': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** List Labs */
+    get: operations['list_labs_api_supabase_project_labs_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/lab/{slug}/{action}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Lab Action */
+    post: operations['lab_action_api_supabase_project_lab__slug___action__post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/lab/sql': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Lab Sql */
+    post: operations['lab_sql_api_supabase_project_lab_sql_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/internal/refresh': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Refresh Status */
+    get: operations['refresh_status_api_supabase_project_internal_refresh_get']
+    put?: never
+    /** Start Refresh */
+    post: operations['start_refresh_api_supabase_project_internal_refresh_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/turn': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Turn */
+    post: operations['turn_api_supabase_project_turn_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/voice': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Voice Info */
+    get: operations['voice_info_api_supabase_project_voice_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/supabase-project/voice/speech': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Voice Speech */
+    post: operations['voice_speech_api_supabase_project_voice_speech_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/learning-focus/supabase': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Status */
+    get: operations['status_api_learning_focus_supabase_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -5520,6 +5725,28 @@ export interface components {
       /** Example */
       example?: string | null
     }
+    /** IncidentEdit */
+    IncidentEdit: {
+      /** Field */
+      field:
+        | (
+            | 'symptom'
+            | 'expected'
+            | 'scope'
+            | 'timeline'
+            | 'environment'
+            | 'root_cause'
+            | 'mitigation'
+            | 'permanent_fix'
+            | 'prevention'
+            | 'confidence'
+          )
+        | 'evidence'
+      /** Value */
+      value?: string | null
+      /** Index */
+      index?: number | null
+    }
     /** IndexStateOut */
     IndexStateOut: {
       /** Collection */
@@ -5934,6 +6161,38 @@ export interface components {
       sha256: string
       /** Characters */
       characters: number
+    }
+    /** LabSql */
+    LabSql: {
+      /**
+       * Session Id
+       * Format: uuid
+       */
+      session_id: string
+      /** Sql */
+      sql: string
+      /**
+       * Role
+       * @default authenticated
+       * @enum {string}
+       */
+      role: 'anon' | 'authenticated' | 'postgres'
+      /** Claims */
+      claims?: {
+        [key: string]: unknown
+      } | null
+      /**
+       * Explain
+       * @default false
+       */
+      explain: boolean
+      /**
+       * Persist
+       * @default false
+       */
+      persist: boolean
+      /** Session */
+      session?: string | null
     }
     /** LearnerOut */
     LearnerOut: {
@@ -6408,6 +6667,34 @@ export interface components {
       modes: {
         [key: string]: string
       }[]
+    }
+    /** NewSession */
+    NewSession: {
+      /** Objective */
+      objective?: string | null
+      /**
+       * Mode
+       * @default lesson
+       * @enum {string}
+       */
+      mode: 'lesson' | 'incident' | 'exam' | 'neutral' | 'rabbit_hole'
+      /**
+       * Language
+       * @default de
+       * @enum {string}
+       */
+      language: 'de' | 'en'
+      /**
+       * Persona On
+       * @default true
+       */
+      persona_on: boolean
+      /**
+       * Delivery
+       * @default socratic
+       * @enum {string}
+       */
+      delivery: 'socratic' | 'explicit'
     }
     /** NextItem */
     NextItem: {
@@ -7192,6 +7479,15 @@ export interface components {
     /** ReferenceStatus */
     ReferenceStatus: {
       snapshot?: components['schemas']['ReferenceSnapshot'] | null
+    }
+    /** RefreshRequest */
+    RefreshRequest: {
+      /**
+       * Trigger
+       * @default api
+       * @enum {string}
+       */
+      trigger: 'cron' | 'manual' | 'api'
     }
     /** RelationshipEdge */
     RelationshipEdge: {
@@ -8073,6 +8369,14 @@ export interface components {
       /** Sample Rate */
       sample_rate: number
     }
+    /** SpeechRequest */
+    SpeechRequest: {
+      /**
+       * Turn Id
+       * Format: uuid
+       */
+      turn_id: string
+    }
     /** StartNotebook */
     StartNotebook: {
       /** Course Id */
@@ -8086,6 +8390,29 @@ export interface components {
       request_id?: string | null
       /** Service Id */
       service_id?: string | null
+    }
+    /** SupabaseProjectStatus */
+    SupabaseProjectStatus: {
+      /** Ready */
+      ready: boolean
+      /** User Id */
+      user_id: string | null
+      /** Repository */
+      repository: string
+      /** Revision */
+      revision: string
+      /** Detail */
+      detail: string | null
+      /**
+       * Study Provider
+       * @default local
+       */
+      study_provider: string
+      /**
+       * Hosted Study Enabled
+       * @default false
+       */
+      hosted_study_enabled: boolean
     }
     /** TaskIn */
     TaskIn: {
@@ -8267,38 +8594,6 @@ export interface components {
       latency_ms: number
       /** Text */
       text: string
-    }
-    /** TurnRequest */
-    TurnRequest: {
-      /**
-       * Explanation Kind
-       * @default lesson
-       * @enum {string}
-       */
-      explanation_kind: 'lesson' | 'follow_up'
-      /** Assessment Answer Id */
-      assessment_answer_id?: string | null
-      /** Session Id */
-      session_id: string
-      /** Text */
-      text: string
-      /** Skill Id */
-      skill_id?: string | null
-      /**
-       * Action
-       * @default auto
-       * @enum {string}
-       */
-      action: 'auto' | 'explain' | 'hint' | 'summarize' | 'full_solution'
-      /** Representation */
-      representation?: string | null
-      /** Conversation Lang */
-      conversation_lang?: string | null
-      /**
-       * Spoken
-       * @default false
-       */
-      spoken: boolean
     }
     /** ValidateIn */
     ValidateIn: {
@@ -8599,6 +8894,54 @@ export interface components {
       done: boolean
       /** Attempts */
       attempts: number
+    }
+    /** TurnRequest */
+    app__schemas__tutor__TurnRequest: {
+      /**
+       * Explanation Kind
+       * @default lesson
+       * @enum {string}
+       */
+      explanation_kind: 'lesson' | 'follow_up'
+      /** Assessment Answer Id */
+      assessment_answer_id?: string | null
+      /** Session Id */
+      session_id: string
+      /** Text */
+      text: string
+      /** Skill Id */
+      skill_id?: string | null
+      /**
+       * Action
+       * @default auto
+       * @enum {string}
+       */
+      action: 'auto' | 'explain' | 'hint' | 'summarize' | 'full_solution'
+      /** Representation */
+      representation?: string | null
+      /** Conversation Lang */
+      conversation_lang?: string | null
+      /**
+       * Spoken
+       * @default false
+       */
+      spoken: boolean
+    }
+    /** TurnRequest */
+    backend__tutor__router__TurnRequest: {
+      /**
+       * Session Id
+       * Format: uuid
+       */
+      session_id: string
+      /** Text */
+      text: string
+      /**
+       * Input Mode
+       * @default text
+       * @enum {string}
+       */
+      input_mode: 'text' | 'voice'
     }
   }
   responses: never
@@ -10445,7 +10788,7 @@ export interface operations {
     }
     requestBody: {
       content: {
-        'application/json': components['schemas']['TurnRequest']
+        'application/json': components['schemas']['app__schemas__tutor__TurnRequest']
       }
     }
     responses: {
@@ -10480,7 +10823,7 @@ export interface operations {
     }
     requestBody: {
       content: {
-        'application/json': components['schemas']['TurnRequest']
+        'application/json': components['schemas']['app__schemas__tutor__TurnRequest']
       }
     }
     responses: {
@@ -15128,6 +15471,389 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  create_session_api_supabase_project_session_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['NewSession']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      201: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_session_api_supabase_project_session__session_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        session_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  edit_incident_api_supabase_project_session__session_id__incident_patch: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        session_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['IncidentEdit']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  get_ledger_api_supabase_project_ledger_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
+  list_labs_api_supabase_project_labs_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
+  lab_action_api_supabase_project_lab__slug___action__post: {
+    parameters: {
+      query: {
+        session_id: string
+      }
+      header?: never
+      path: {
+        slug: string
+        action: 'install' | 'reset' | 'status' | 'hint' | 'check' | 'reproduce'
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  lab_sql_api_supabase_project_lab_sql_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['LabSql']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  refresh_status_api_supabase_project_internal_refresh_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+    }
+  }
+  start_refresh_api_supabase_project_internal_refresh_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: {
+      content: {
+        'application/json': components['schemas']['RefreshRequest'] | null
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      202: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  turn_api_supabase_project_turn_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['backend__tutor__router__TurnRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': unknown
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  voice_info_api_supabase_project_voice_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+    }
+  }
+  voice_speech_api_supabase_project_voice_speech_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SpeechRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': {
+            [key: string]: unknown
+          }
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  status_api_learning_focus_supabase_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SupabaseProjectStatus']
         }
       }
     }

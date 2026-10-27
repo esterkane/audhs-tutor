@@ -1,0 +1,83 @@
+{
+ "case_id": "i01",
+ "turn": {
+  "mode": "incident",
+  "language": "de",
+  "persona_on": true,
+  "speech": "Kleinkünstler, langsam ist ein Symptom, keine Ursache. Der Vermieter sagt auch zu allem die Rohre. Wir brauchen den Umfang. Betrifft die Verlangsamung nur Datenbankabfragen, oder sind auch Auth, Storage und Edge Functions langsamer?",
+  "text": "Kleinkünstler, \"langsam\" ist ein Symptom, keine Ursache. Der Vermieter sagt auch zu jedem Problem \"die Rohre\". Wir brauchen Umfang und Belege, bevor jemand etwas hochskaliert oder neu startet.\n\n**Was wir bisher haben**\n\n- Symptom: \"langsam\", nicht quantifiziert. Wir wissen nicht, ob es Latenz, Timeouts oder Durchsatz betrifft.\n- Zeitpunkt: seit gestern (2026-10-22). Wir wissen nicht, was sich davor geändert hat.\n- Alles andere fehlt: gehostet oder lokal, betroffene Requests, Fehlercodes, Metriken.\n\n**Erste Hypothesen nach Schicht** (noch keine Evidenz, daher nur eine grobe Ordnung)\n\n| Rang | Hypothese | Kleinster Test |\n|---|---|---|\n| 1 | Einzelne langsame oder neu häufige Queries (Datenwachstum, fehlender Index, RLS-Policy) | `pg_stat_statements` nach Gesamtzeit sortieren, Zeitpunkt des letzten Resets beachten |\n| 2 | Ressourcendruck (CPU, Speicher, Disk-I/O) | Metriken der Datenbank im Zeitverlauf ansehen |\n| 3 | Verbindungsdruck oder Pooling | Anzahl aktiver und wartender Sessions, Fehlermeldungen zu Verbindungen |\n| 4 | Lock-Contention oder lange Transaktionen | `pg_stat_activity` mit Wait Events, Blocker suchen |\n| 5 | Client-, Netzwerk- oder Region-Effekt außerhalb der Datenbank | Dieselbe Anfrage von einem anderen Standort oder Client vergleichen |\n\nDiese Reihenfolge ist nur ein Startpunkt. Sie ändert sich mit der ersten Antwort. Wenn z. B. nur ein Endpunkt betroffen ist, rückt Hypothese 1 nach oben. Sind Auth, Storage und Edge Functions auch betroffen, rücken 2, 3 und 5 nach oben.\n\nDeshalb zuerst eine Frage zum Umfang. Beantworte sie nur mit dem, was du beobachtet hast, nicht mit Vermutungen.\n\n**Ist die Verlangsamung auf Datenbankabfragen (z. B. Data API/PostgREST oder direktes SQL) beschränkt, oder zeigen auch Auth, Storage oder Edge Functions höhere Latenz?**",
+  "diagrams": [],
+  "citations": [],
+  "next_question": "Ist die Verlangsamung auf Datenbankabfragen beschränkt, oder zeigen auch Auth, Storage oder Edge Functions höhere Latenz?",
+  "path": {
+   "state": "main",
+   "depth": 0,
+   "return_point": "incident: Umfang bestimmen"
+  },
+  "ledger_delta": [],
+  "lab_action": null,
+  "incident": {
+   "symptom": "Supabase wird als langsam gemeldet; nicht quantifiziert (Latenz, Timeouts oder Durchsatz offen).",
+   "expected": null,
+   "scope": null,
+   "timeline": "Beginn laut Meldung gestern (2026-10-22); vorherige Änderungen unbekannt.",
+   "environment": null,
+   "evidence": [
+    "Meldung: \"Supabase ist seit gestern langsam.\" Keine Messwerte, keine Fehlercodes."
+   ],
+   "hypotheses": [
+    {
+     "h": "Einzelne langsame oder neu häufige Queries (Datenwachstum, fehlender Index, RLS-Policy)",
+     "rank": 1,
+     "test": "pg_stat_statements nach Gesamtzeit sortieren; Zeitpunkt des letzten Resets prüfen",
+     "status": "open"
+    },
+    {
+     "h": "Ressourcendruck (CPU, Speicher, Disk-I/O)",
+     "rank": 2,
+     "test": "Datenbank-Metriken im Zeitverlauf seit gestern ansehen",
+     "status": "open"
+    },
+    {
+     "h": "Verbindungsdruck oder Pooling-Probleme",
+     "rank": 3,
+     "test": "Aktive und wartende Sessions zählen; Verbindungsfehler in Logs suchen",
+     "status": "open"
+    },
+    {
+     "h": "Lock-Contention oder lange Transaktionen",
+     "rank": 4,
+     "test": "pg_stat_activity mit Wait Events prüfen und Blocker identifizieren",
+     "status": "open"
+    },
+    {
+     "h": "Effekt außerhalb der Datenbank (Client, Netzwerk, Region)",
+     "rank": 5,
+     "test": "Dieselbe Anfrage von anderem Client oder Standort vergleichen",
+     "status": "open"
+    }
+   ],
+   "root_cause": null,
+   "mitigation": null,
+   "permanent_fix": null,
+   "prevention": null,
+   "confidence": null
+  },
+  "session_end": null,
+  "guard_flags": [
+   "QUESTION_NOT_IN_TEXT"
+  ]
+ },
+ "findings": [
+  "QUESTION_NOT_IN_TEXT"
+ ],
+ "tools": [],
+ "usage": {
+  "input_tokens": 2,
+  "output_tokens": 2271,
+  "cache_creation_input_tokens": 1159,
+  "cache_read_input_tokens": 18609
+ },
+ "model": "claude-sonnet-5-5",
+ "judge": null
+}

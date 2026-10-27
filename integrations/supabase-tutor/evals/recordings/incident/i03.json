@@ -1,0 +1,140 @@
+{
+ "case_id": "i03",
+ "turn": {
+  "mode": "incident",
+  "language": "de",
+  "persona_on": true,
+  "speech": "Kleinkünstler, zufällig ausgeloggt ist ein Symptom, keine Ursache. Laut Doku kommen Refresh-Token-Reuse, falsch gesetzte SSR-Cookies, globales signOut und Session-Timeouts in Frage. Welche Antwort liefert der Refresh-Request direkt vor dem Logout, Status und Fehlercode?",
+  "text": "Kleinkünstler, \"zufällig ausgeloggt\" ist ein Symptom und noch keine Ursache. Der Vermieter nennt auch jedes Problem \"die Rohre\". Ich habe noch keine Beweise, nur eine Hypothesenliste. Die Einordnung kommt aus der Doku, nicht aus euren Logs.\n\n## Incident-Modell (Stand jetzt)\n\n**Symptom:** Nutzer werden unvorhersehbar ausgeloggt.\n**Erwartet:** Die Session bleibt bestehen, bis der Nutzer sich abmeldet oder eine bewusst konfigurierte Grenze greift.\n**Offen:** Scope, Zeitpunkt, Umgebung, exakter Fehler.\n\n## Was die Doku über Logout-Mechaniken sagt\n\n- Eine Session endet bei Sign-out, Passwortwechsel oder sicherheitsrelevanten Aktionen, bei Inaktivitäts-Timeout, bei maximaler Lebensdauer oder bei einem Login auf einem anderen Gerät. [2]\n- Ein Refresh-Token kann nur einmal verwendet werden. Ausnahmen sind ein Reuse-Intervall (Standard 10 s) und der Fall, dass das Eltern-Token des aktiven Tokens vorgelegt wird. Fällt ein Versuch unter keine der beiden Ausnahmen, wird die gesamte Session beendet und alle Refresh-Tokens werden revoked. [1]\n- Die SSR-Doku beschreibt genau dieses Muster: Wird in zwei Stellen refreshed, sieht das wie ein zufälliger Logout aus, nicht wie ein Fehler im eigenen Code. [4]\n- `supabase.auth.signOut()` ohne `scope` ist standardmäßig `global`. Das revoked das Refresh-Token jeder Session des Nutzers, also auch andere Tabs, Geräte und SSR-Kontexte mit altem Token. [3]\n\n## Hypothesen, nach aktueller Evidenz gerankt\n\n| # | Hypothese | Warum plausibel | Kleinster Test |\n|---|---|---|---|\n| 1 | Refresh-Token-Reuse durch Race (mehrere Tabs, SSR plus Client, veralteter Cookie) | \"Zufällig\" passt zu Timing-Abhängigkeit [1][4] | Auth-Logs auf Refresh-Fehler prüfen, Häufung bei parallelen Requests suchen |\n| 2 | SSR-Proxy oder Middleware gibt die falsche Response zurück, die refreshten Cookies kommen nie im Browser an | Doku: Es muss die zuletzt von `setAll` gebaute `supabaseResponse` zurückgegeben werden, sonst folgt der Logout beim nächsten Request [4] | Middleware-Code prüfen. Bei Next.js 15 oder älter wird eine `proxy.ts` nie aufgerufen, dort heißt die Datei `middleware.ts` [5] |\n| 3 | `signOut()` ohne `scope: 'local'` irgendwo im Code | Beendet auch fremde Sessions [3] | Code durchsuchen, Auth-Audit-Log auf Logout-Events prüfen |\n| 4 | Konfigurierte Timebox oder Inaktivitäts-Timeout | Gehört zu den dokumentierten Session-Enden [2] | Auth-Settings im Dashboard lesen. Ob das auf eurem Plan verfügbar ist, ist unverified und muss live geprüft werden |\n| 5 | Gecachte Response mit `Set-Cookie` (CDN, ISR) | Die Doku warnt vor gecachten Responses mit Session-Cookies [4] | `Cache-Control` der betroffenen Responses prüfen |\n\nDie Reihenfolge ändert sich, sobald ich den Fehlertext sehe. Ein `refresh_token_already_used` stützt 1. Ein sauberes `session_not_found` ohne Reuse-Spur spricht eher für 3 oder 4.\n\n**Was Hypothese 1 widerlegen würde:** Die Logouts passieren auch bei genau einem Tab, einem Client und ohne SSR.\n\n## Nächster Schritt\n\nIch brauche das schärfste Beweisstück. Schau im Browser (Network-Tab, Request an den Auth-Endpunkt `/auth/v1/token` mit `grant_type=refresh_token`) oder im Auth-Log nach, was in dem Moment passiert, in dem ein Nutzer rausfliegt. Tokens und Mailadressen vorher schwärzen.\n\n**Welche Antwort liefert der Refresh-Request unmittelbar vor dem Logout (HTTP-Status und Fehlercode)?**",
+  "diagrams": [],
+  "citations": [
+   {
+    "n": 1,
+    "url": "https://supabase.com/docs/guides/auth/sessions.md#what-is-refresh-token-reuse-detection-and-what-does-it-protect-from",
+    "title": "What is refresh token reuse detection and what does it protect from?",
+    "tier": 1,
+    "fetched_at": "2026-10-21T18:55:12.339798+00:00"
+   },
+   {
+    "n": 2,
+    "url": "https://supabase.com/docs/guides/auth/sessions.md#what-is-a-session",
+    "title": "What is a session?",
+    "tier": 1,
+    "fetched_at": "2026-10-21T18:55:12.339798+00:00"
+   },
+   {
+    "n": 3,
+    "url": "https://supabase.com/docs/guides/auth/server-side/advanced-guide.md#my-server-is-getting-invalid-refresh-token-errors-what-s-going-on",
+    "title": "My server is getting invalid refresh token errors. What's going on?",
+    "tier": 1,
+    "fetched_at": "2026-10-21T18:55:16.612506+00:00"
+   },
+   {
+    "n": 4,
+    "url": "https://supabase.com/docs/guides/auth/server-side/creating-a-client.md#hook-up-proxy",
+    "title": "Hook up proxy",
+    "tier": 1,
+    "fetched_at": "2026-10-23T08:09:15.814098+00:00"
+   },
+   {
+    "n": 5,
+    "url": "https://supabase.com/docs/guides/auth/server-side/nextjs.md",
+    "title": "Creating a Supabase client for SSR",
+    "tier": 1,
+    "fetched_at": "2026-10-23T08:10:21.433199+00:00"
+   }
+  ],
+  "next_question": "Welche Antwort liefert der Refresh-Request unmittelbar vor dem Logout (HTTP-Status und Fehlercode)?",
+  "path": {
+   "state": "main",
+   "depth": 0,
+   "return_point": "incident: random logouts, hypothesis ranking"
+  },
+  "ledger_delta": [],
+  "lab_action": null,
+  "incident": {
+   "symptom": "Nutzer werden unvorhersehbar ausgeloggt.",
+   "expected": "Session bleibt bestehen, bis Sign-out oder eine bewusst konfigurierte Grenze (Timebox/Inaktivität) greift.",
+   "scope": null,
+   "timeline": null,
+   "environment": null,
+   "evidence": [],
+   "hypotheses": [
+    {
+     "h": "Refresh-Token-Reuse durch Race (mehrere Tabs, SSR plus Client, veralteter Cookie) beendet die ganze Session",
+     "rank": 1,
+     "test": "Auth-Logs/Network-Tab: Antwort des Refresh-Requests vor dem Logout, Häufung bei parallelen Requests",
+     "status": "open"
+    },
+    {
+     "h": "SSR-Proxy/Middleware gibt falsche Response zurück oder wird nicht aufgerufen (z.B. proxy.ts bei Next.js 15 oder älter), refreshte Cookies erreichen den Browser nicht",
+     "rank": 2,
+     "test": "Middleware-Code und Dateiname prüfen, Set-Cookie in Responses kontrollieren",
+     "status": "open"
+    },
+    {
+     "h": "signOut() ohne scope 'local' (Default global) beendet Sessions anderer Tabs/Geräte",
+     "rank": 3,
+     "test": "Code nach signOut-Aufrufen durchsuchen, Logout-Events im Auth-Audit-Log prüfen",
+     "status": "open"
+    },
+    {
+     "h": "Konfigurierte Timebox oder Inaktivitäts-Timeout im Auth-Setup",
+     "rank": 4,
+     "test": "Auth-Session-Einstellungen im Dashboard lesen (Plan-Verfügbarkeit live prüfen)",
+     "status": "open"
+    },
+    {
+     "h": "Gecachte Response mit Set-Cookie (CDN/ISR) liefert falsche oder veraltete Tokens aus",
+     "rank": 5,
+     "test": "Cache-Control/Expires/Pragma der betroffenen Responses prüfen",
+     "status": "open"
+    }
+   ],
+   "root_cause": null,
+   "mitigation": null,
+   "permanent_fix": null,
+   "prevention": null,
+   "confidence": null
+  },
+  "session_end": null,
+  "guard_flags": [
+   "CITATION_UNUSED",
+   "QUESTION_NOT_IN_TEXT"
+  ]
+ },
+ "findings": [
+  "CITATION_UNUSED",
+  "QUESTION_NOT_IN_TEXT"
+ ],
+ "tools": [
+  {
+   "name": "search_docs",
+   "input": {
+    "query": "users randomly logged out refresh token reuse session timebox inactivity",
+    "products": [
+     "auth"
+    ],
+    "k": 8
+   }
+  },
+  {
+   "name": "search_docs",
+   "input": {
+    "query": "SSR cookies middleware refresh session server-side auth getClaims getUser",
+    "products": [
+     "auth"
+    ],
+    "k": 6
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 8,
+  "output_tokens": 8279,
+  "cache_creation_input_tokens": 849240,
+  "cache_read_input_tokens": 901743
+ },
+ "model": "claude-sonnet-5-5",
+ "judge": null
+}

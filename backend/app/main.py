@@ -33,6 +33,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         await GenerationRequests(app.state.session_factory).interrupt_abandoned()
         if getattr(app.state, "providers", None) is None:
             app.state.providers = build_providers(settings)
+        from app.integrations.supabase_project import close_project, open_project
+
+        await open_project(app)
         try:
             from app.knowledge.ingest.recovery import reconcile_abandoned_runs
 
@@ -48,6 +51,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
                 with suppress(asyncio.CancelledError):
                     await review_task
         finally:
+            await close_project(app)
             await app.state.visual_jobs.close()
             await app.state.notebook_lab.close()
             task = getattr(app.state, "area_job_task", None)
@@ -72,6 +76,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.notebook_lab = NotebookLab(settings)
     register_error_handlers(app)
     app.include_router(api_router)
+    from app.integrations.supabase_project import mount
+    from app.integrations.supabase_project import router as project_status
+
+    mount(app)
+    app.include_router(project_status, prefix="/api")
     return app
 
 

@@ -68,3 +68,7 @@ def answer_feedback_task() -> str:
 
 def starter_task() -> str:
     return _read("playground/starter.v1.md")
+
+
+def supabase_project_policy() -> str:
+    return _read("tutor/supabase-project.v1.md")

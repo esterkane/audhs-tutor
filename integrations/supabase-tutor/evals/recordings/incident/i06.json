@@ -1,0 +1,137 @@
+{
+ "case_id": "i06",
+ "turn": {
+  "mode": "incident",
+  "language": "de",
+  "persona_on": true,
+  "speech": "Kleinkünstler, lokal beginnt alles bei null, remote hat eine Vorgeschichte. Bevor wir raten, brauche ich den genauen Fehler. Führe db push mit dry-run aus und poste die Ausgabe, geschwärzt. Welche Fehlermeldung samt Migrationsdatei und SQLSTATE kommt bei dir?",
+  "text": "Kleinkünstler, \"läuft lokal, nicht remote\" ist ein Symptom und noch keine Diagnose. Lokal startet `db reset` bei null und spielt alle Migrationen der Reihe nach ab. Der Remote-Stand hat dagegen eine Geschichte: Dashboard-Klicks, halb angewendete Migrationen, andere Extensions, vorhandene Daten. Ich gebe hier noch keinen Fix, weil mir die wichtigste Information fehlt: die genaue Fehlermeldung.\n\n**Was die Doku über den Mechanismus sagt**\n\n- `supabase db push` wendet nur Migrationen an, die remote noch nicht angewendet wurden. Das verfolgt es in der Tabelle `supabase_migrations.schema_migrations`. [1][2]\n- `supabase migration list` vergleicht nur die Zeitstempel zwischen lokal und remote. [3]\n- `--dry-run` zeigt vorab, was angewendet würde. [1]\n- Wenn die Historie auseinanderläuft, ist `supabase migration repair` das vorgesehene Werkzeug. Es ändert nur die Historientabelle und führt keine SQL-Migration aus. [1][4]\n- Wenn remote Änderungen existieren, die nicht in deinen Migrationen stehen, etwa im Dashboard erstellte Tabellen, empfiehlt die Doku `supabase db pull` und danach `supabase db reset`. [5]\n\n**Vorläufiges Hypothesen-Ranking (Stand: ohne Evidenz, also nur Priorisierung)**\n\n| Rang | Hypothese | Kleinster Test | Was sie widerlegt |\n|---|---|---|---|\n| 1 | Schema-Drift: remote wurde etwas außerhalb von Migrationen geändert, etwa Objekt existiert schon oder fehlt | Fehlertext lesen, `supabase migration list` | Fehler ist kein \"already exists\" und kein \"does not exist\", und die Listen sind deckungsgleich |\n| 2 | Historien-Mismatch: Zeitstempel fehlen oder liegen in falscher Reihenfolge | `supabase migration list` | LOCAL und REMOTE sind identisch |\n| 3 | Unterschiede bei Extensions, Rollen oder Berechtigungen (z. B. `CREATE EXTENSION`, `ALTER ... OWNER`) | SQLSTATE, etwa `42501` oder `0A000` | Fehler tritt bei reinem DDL auf Tabellen ohne Rechtebezug auf |\n| 4 | Daten, die nur remote existieren und `NOT NULL`, `UNIQUE` oder FK-Constraints verletzen | SQLSTATE `23xxx` | Migration enthält nur DDL ohne Constraints auf bestehende Zeilen |\n| 5 | Verbindungsproblem (Pooler-Modus, IPv6/IPv4, Timeout, Lock-Wartezeit) | Fehler kommt vor dem ersten SQL-Statement, oder Timeout | Fehlertext nennt konkret ein SQL-Statement |\n\nDas ist eine Rangfolge nach Häufigkeit im Alltag und nicht nach Beweis. Die Fehlermeldung kann sie komplett umsortieren. Bei `23xxx` oder `42501` rutscht zum Beispiel Hypothese 3 oder 4 nach oben.\n\n**Was ich jetzt von dir brauche**\n\nEine Sache, mit Absicht vor allem anderen. Nichts überstürzen und kein Repair ausprobieren. `repair` verändert die Historientabelle auf dem Remote-Projekt, und das willst du erst mit Evidenz tun.\n\nFühre das aus (nur lesend, ändert remote nichts) und poste die Ausgabe, Projekt-Ref und Passwörter geschwärzt:\n\n```bash\nsupabase db push --dry-run\n```\n\nFalls der Fehler schon dort auftritt, poste ihn vollständig. Er enthält meistens SQLSTATE, Statement und Dateiname der Migration. Wenn der Dry-Run durchläuft, aber das echte `db push` scheitert, poste beide Ausgaben. Das wäre selbst schon ein Indiz.\n\nWelche genaue Fehlermeldung kommt bei dir, inklusive Dateiname der Migration und SQLSTATE, falls vorhanden?",
+  "diagrams": [],
+  "citations": [
+   {
+    "n": 1,
+    "url": "https://supabase.com/llms/cli.txt#push-new-migrations-to-the-remote-database",
+    "title": "Push new migrations to the remote database",
+    "tier": 1,
+    "fetched_at": "2026-10-21T18:54:40.988705+00:00"
+   },
+   {
+    "n": 2,
+    "url": "https://supabase.com/docs/guides/local-development/cli-workflows.md#pushing-to-a-remote-project",
+    "title": "Pushing to a remote project",
+    "tier": 1,
+    "fetched_at": "2026-10-21T18:55:51.768291+00:00"
+   },
+   {
+    "n": 3,
+    "url": "https://supabase.com/llms/cli.txt#list-local-and-remote-migrations",
+    "title": "List local and remote migrations",
+    "tier": 1,
+    "fetched_at": "2026-10-21T18:54:40.988705+00:00"
+   },
+   {
+    "n": 4,
+    "url": "https://supabase.com/llms/cli.txt#repair-the-migration-history-table",
+    "title": "Repair the migration history table",
+    "tier": 1,
+    "fetched_at": "2026-10-21T18:54:40.988705+00:00"
+   },
+   {
+    "n": 5,
+    "url": "https://supabase.com/docs/guides/local-development/database-migrations.md#link-your-project",
+    "title": "Database migrations: Link your project",
+    "tier": 1,
+    "fetched_at": "2026-10-21T18:55:23.372234+00:00"
+   }
+  ],
+  "next_question": "Welche genaue Fehlermeldung kommt bei dir, inklusive Dateiname der Migration und SQLSTATE, falls vorhanden?",
+  "path": {
+   "state": "main",
+   "depth": 0,
+   "return_point": "incident: migration lokal ok, remote fehlgeschlagen"
+  },
+  "ledger_delta": [],
+  "lab_action": null,
+  "incident": {
+   "symptom": "Eine Migration läuft lokal erfolgreich durch, schlägt aber auf dem gehosteten Projekt fehl. Der genaue Fehler ist noch nicht bekannt.",
+   "expected": "Die Migration wird auf dem gehosteten Projekt genauso angewendet wie lokal.",
+   "scope": null,
+   "timeline": null,
+   "environment": null,
+   "evidence": [],
+   "hypotheses": [
+    {
+     "h": "Schema-Drift: Remote wurde außerhalb von Migrationen geändert (Objekt existiert schon oder fehlt)",
+     "rank": 1,
+     "test": "Fehlertext von db push --dry-run lesen und migration list vergleichen",
+     "status": "open"
+    },
+    {
+     "h": "Migrationshistorie weicht ab (fehlende oder falsch geordnete Zeitstempel)",
+     "rank": 2,
+     "test": "supabase migration list: LOCAL und REMOTE vergleichen",
+     "status": "open"
+    },
+    {
+     "h": "Unterschiede bei Extensions, Rollen oder Berechtigungen zwischen lokal und remote",
+     "rank": 3,
+     "test": "SQLSTATE prüfen (z. B. 42501, 0A000)",
+     "status": "open"
+    },
+    {
+     "h": "Remote-Daten verletzen neue Constraints (NOT NULL, UNIQUE, FK)",
+     "rank": 4,
+     "test": "SQLSTATE der Klasse 23 prüfen",
+     "status": "open"
+    },
+    {
+     "h": "Verbindungs- oder Lock-Problem (Pooler-Modus, IPv4/IPv6, Timeout)",
+     "rank": 5,
+     "test": "Prüfen, ob der Fehler vor dem ersten SQL-Statement auftritt",
+     "status": "open"
+    }
+   ],
+   "root_cause": null,
+   "mitigation": null,
+   "permanent_fix": null,
+   "prevention": null,
+   "confidence": null
+  },
+  "session_end": null,
+  "guard_flags": []
+ },
+ "findings": [],
+ "tools": [
+  {
+   "name": "search_docs",
+   "input": {
+    "query": "db push migration fails remote but works locally migration history mismatch",
+    "products": [
+     "cli",
+     "kb",
+     "database"
+    ],
+    "k": 6
+   }
+  },
+  {
+   "name": "search_docs",
+   "input": {
+    "query": "supabase db push --dry-run migration list local remote",
+    "products": [
+     "cli",
+     "local-development"
+    ],
+    "k": 6
+   }
+  }
+ ],
+ "usage": {
+  "input_tokens": 4,
+  "output_tokens": 3329,
+  "cache_creation_input_tokens": 8810,
+  "cache_read_input_tokens": 38496
+ },
+ "model": "claude-sonnet-5-5",
+ "judge": null
+}

@@ -11,6 +11,7 @@ from app.db.models import LearningProject
 BRIEFS: list[dict[str, Any]] = [
     {
         "slug": "supabase-postgres-support",
+        "workspace": "/projects/supabase",
         "title": "Supabase request and access-control lab",
         "topic": "Supabase",
         "objective": (
