@@ -1,13 +1,14 @@
-import type { components } from './api-types'
+import type { components, operations } from './api-types'
 
 export type Schemas = components['schemas']
 export type SessionOut = Schemas['SessionOut']
 export type SkillView = Schemas['SkillView']
 export type SkillList = Schemas['SkillList']
 export type TurnDone = Schemas['TurnDone']
-export type TurnRequest = Omit<Schemas['TurnRequest'], 'action' | 'spoken' | 'explanation_kind'> & {
-  action?: Schemas['TurnRequest']['action']
-  explanation_kind?: Schemas['TurnRequest']['explanation_kind']
+type StudyTurnRequest = operations['turn_api_tutor_turn_post']['requestBody']['content']['application/json']
+export type TurnRequest = Omit<StudyTurnRequest, 'action' | 'spoken' | 'explanation_kind'> & {
+  action?: StudyTurnRequest['action']
+  explanation_kind?: StudyTurnRequest['explanation_kind']
 }
 /** Emitted on the SSE stream only (not part of the OpenAPI response models). */
 export type TurnMeta = {
@@ -29,8 +30,10 @@ export type AttemptRequest = Schemas['AttemptRequest']
 export type AssessedResult = Schemas['AttemptResult']
 export type ProvisionalFeedbackResult = Schemas['ProvisionalFeedbackResult']
 export type AttemptResult = AssessedResult | ProvisionalFeedbackResult
-export const isProvisional = (result: AttemptResult): result is ProvisionalFeedbackResult => 'outcome' in result && result.outcome === 'provisional_feedback'
-export const feedbackIdentity = (result: AttemptResult) => isProvisional(result) ? result.feedback_id : result.attempt_id
+export const isProvisional = (result: AttemptResult): result is ProvisionalFeedbackResult =>
+  'outcome' in result && result.outcome === 'provisional_feedback'
+export const feedbackIdentity = (result: AttemptResult) =>
+  isProvisional(result) ? result.feedback_id : result.attempt_id
 export type DueList = Schemas['DueList']
 export type ReviewItemOut = Schemas['ReviewItemOut']
 export type ReviewOut = Schemas['ReviewOut']
@@ -89,7 +92,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  endSession: (id: string, body: { energy_after?: number; self_report?: number; notes?: string; confirm_recap?: boolean }) =>
+  endSession: (
+    id: string,
+    body: { energy_after?: number; self_report?: number; notes?: string; confirm_recap?: boolean },
+  ) =>
     apiFetch<SessionOut>(`/api/sessions/${id}/end`, {
       method: 'POST',
       body: JSON.stringify(body),

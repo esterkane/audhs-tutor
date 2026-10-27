@@ -148,6 +148,17 @@ async def drafts(db: DB, learner: Learner) -> DraftList:
     status_code=201,
 )
 async def create_draft(body: DraftCreate, db: DB, learner: Learner, gateway: Gateway) -> DraftOut:
+    from app.kernel.learning_scope import reference_before
+
+    if await reference_before(db, learner.id):
+        raise AppError(
+            "new_material_required",
+            (
+                "Create new knowledge material from your notes or uploads; "
+                "legacy course sources are accuracy-review references only."
+            ),
+            409,
+        )
     if body.use_model:
         payload, call_id, failed = await drafting.draft_with_model(
             db, gateway, learner.id, course=body.course, section=body.section

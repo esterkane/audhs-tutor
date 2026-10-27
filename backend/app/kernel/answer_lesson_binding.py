@@ -8,9 +8,12 @@ import hashlib
 import json
 from dataclasses import dataclass
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.db.models import TutorAnswer
 from app.kernel.answer_visual_binding import resolve_answer_binding
+from app.kernel.learning_scope import require_current_material
 from app.schemas.answer_lesson_binding import AnswerLessonBinding
 
 
@@ -28,6 +31,13 @@ async def resolve_lesson_binding(
     db: AsyncSession, learner_id: str, answer_id: str
 ) -> AnswerLessonResolution:
     resolved = await resolve_answer_binding(db, learner_id, answer_id)
+    created_at = await db.scalar(
+        select(TutorAnswer.created_at).where(
+            TutorAnswer.id == answer_id, TutorAnswer.learner_id == learner_id
+        )
+    )
+    if created_at is not None:
+        await require_current_material(db, learner_id, created_at)
     checks = {
         identity: {
             "omitted": check.omitted,

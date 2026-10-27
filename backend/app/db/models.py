@@ -1240,3 +1240,24 @@ class KnowledgeReview(IdMixin, LearnerScoped, Base):
     next_due_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
     running_until: Mapped[str | None] = mapped_column(Text)
     history_json: Mapped[JsonList] = mapped_column(JSON, default=list)
+
+
+class LearningProject(IdMixin, LearnerScoped, Base):
+    """Learner-owned application projects; submission is not automatic competency evidence."""
+
+    __tablename__ = "learning_project"
+    __table_args__ = (
+        UniqueConstraint("learner_id", "slug", name="uq_learning_project_owner_slug"),
+    )
+    slug: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text)
+    topic: Mapped[str] = mapped_column(Text)
+    objective: Mapped[str] = mapped_column(Text)
+    brief_json: Mapped[JsonDict] = mapped_column(JSON, default=dict)
+    notes: Mapped[str] = mapped_column(Text, default="")
+    evidence: Mapped[str] = mapped_column(Text, default="")
+    reflection: Mapped[str] = mapped_column(Text, default="")
+    status: Mapped[str] = mapped_column(Text, default="planned")
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, onupdate=utcnow_iso)

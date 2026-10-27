@@ -1,3 +1,5 @@
+import { useFocusPolicy } from '../features/focus/useFocusPolicy'
+import { FocusPolicy } from '../features/focus/FocusPolicy'
 import { useComfort } from '../features/sensory/comfortStore'
 import { BreakReminder, ComfortToggle, ComfortWelcome } from '../features/sensory/ComfortControls'
 import { TaskReview } from '../features/questions/TaskReview'
@@ -38,8 +40,7 @@ import { Preferences } from '../routes/Preferences'
 import { Recap } from '../routes/Recap'
 import { Review } from '../routes/Review'
 import { Session } from '../routes/Session'
-import { Visualizer } from '../routes/Visualizer'
-import { Programs } from '../routes/Programs'
+import { Projects } from '../routes/Projects'
 import { Playground } from '../routes/Playground'
 import { MODE_LABELS, useMode } from '../stores/mode'
 
@@ -49,7 +50,9 @@ const queryClient = new QueryClient({
 
 const pageTitles: Record<string, string> = {
   ...Object.fromEntries([...primaryPages, ...toolPages]),
-  '/programs': 'Project study',
+  '/programs': 'Knowledge projects',
+  '/projects': 'Knowledge projects',
+  '/projects/supabase': 'Supabase and PostgreSQL',
   '/areas': 'Learning areas',
   '/explore': 'Explore',
   '/corrections': 'Correction drafts',
@@ -62,14 +65,19 @@ const pageTitles: Record<string, string> = {
 }
 
 export function Shell({ children }: { children: React.ReactNode }) {
+  const learningScope = useFocusPolicy()
   const { mode, energy } = useMode()
   const { focus: comfortFocus, setFocus: setComfortFocus } = useComfort()
   useSensory()
   const { pathname, key: routeKey } = useLocation()
   const [focusState, setFocusState] = useState({ key: routeKey, active: false })
   if (focusState.key !== routeKey) setFocusState({ key: routeKey, active: false })
-  const focused = comfortFocus || (pathname === '/session' && focusState.key === routeKey && focusState.active)
-  const setFocused = (active: boolean) => { if (!active) setComfortFocus(false); setFocusState({ key: routeKey, active }) }
+  const focused =
+    comfortFocus || (pathname === '/session' && focusState.key === routeKey && focusState.active)
+  const setFocused = (active: boolean) => {
+    if (!active) setComfortFocus(false)
+    setFocusState({ key: routeKey, active })
+  }
   useEffect(() => {
     if (!focused) return
     const escape = (event: KeyboardEvent) => {
@@ -78,7 +86,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
       const editor = event.target instanceof Element && event.target.closest('.cm-editor')
       queueMicrotask(() => {
         if (!nested && !editor && !event.defaultPrevented) {
-          if (document.activeElement?.closest('[data-focus-only]')) document.querySelector<HTMLButtonElement>('[data-focus-toggle]')?.focus()
+          if (document.activeElement?.closest('[data-focus-only]'))
+            document.querySelector<HTMLButtonElement>('[data-focus-toggle]')?.focus()
           setComfortFocus(false)
           setFocusState({ key: routeKey, active: false })
         }
@@ -87,12 +96,16 @@ export function Shell({ children }: { children: React.ReactNode }) {
     window.addEventListener('keydown', escape, true)
     return () => window.removeEventListener('keydown', escape, true)
   }, [focused, routeKey, setComfortFocus])
-  useEffect(() => { document.documentElement.dataset.focus = focused ? 'on' : 'off' }, [focused])
+  useEffect(() => {
+    document.documentElement.dataset.focus = focused ? 'on' : 'off'
+  }, [focused])
   const routePath = pathname.replace(/\/+$/, '').toLowerCase() || '/'
   const [tutorEntry, setTutorEntry] = useState<HTMLDivElement | null>(null)
   const main = useRef<HTMLElement>(null)
   const lastPath = useRef(pathname)
-  const title = routePath.startsWith('/answers/') ? 'Saved answer' : (pageTitles[routePath] ?? 'Page not found')
+  const title = routePath.startsWith('/answers/')
+    ? 'Saved answer'
+    : (pageTitles[routePath] ?? 'Page not found')
   useLayoutEffect(() => {
     document.title = `${title} · AuDHS Tutor`
     if (lastPath.current !== pathname) {
@@ -100,48 +113,64 @@ export function Shell({ children }: { children: React.ReactNode }) {
       main.current?.focus()
     }
   }, [pathname, title])
-  const wide = !focused && ['/playground', '/programs', '/session'].some((path) => pathname.startsWith(path))
+  const wide =
+    !focused &&
+    ['/playground', '/programs', '/projects', '/session'].some((path) => pathname.startsWith(path))
   return (
-    <LessonFocusContext.Provider value={pathname === '/session' ? { active: focused, setActive: setFocused } : null}>
-    <div className={`min-h-screen ${focused ? 'shell-focus' : ''} ${comfortFocus ? 'comfort-focus' : ''}`}>
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:block focus:p-3 focus:bg-card">
-        Skip to learning content
-      </a>
-      <header className="shell-header border-b border-line bg-card">
-        <Link to="/" className="shell-brand font-semibold no-underline text-fg">
-          <Brand />
-        </Link>
-        <QuickNavigation enabled={!focused} pages={[...primaryPages, ...toolPages]} />
-        <ParkingLotButton statusRoot={tutorEntry} />
-        <ComfortToggle />
-        <AudioControls compact header />
-      </header>
-      <div className="shell-workspace">
-        <MainNavigation />
-      <div className="tutor-workspace min-w-0">
-      <div className="min-w-0">
-      <div role="region" aria-label="Learning context and tools" className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto px-4 pt-4 flex flex-wrap items-center justify-between gap-2 min-w-0`}>
-        <div className="shell-browse-context min-w-0">
-          <BrowseArea />
-          <p className="text-xs text-muted">{MODE_LABELS[mode].title} · energy {energy}</p>
+    <LessonFocusContext.Provider
+      value={pathname === '/session' ? { active: focused, setActive: setFocused } : null}
+    >
+      <div className={`min-h-screen ${focused ? 'shell-focus' : ''} ${comfortFocus ? 'comfort-focus' : ''}`}>
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:block focus:p-3 focus:bg-card">
+          Skip to learning content
+        </a>
+        <header className="shell-header border-b border-line bg-card">
+          <Link to="/" className="shell-brand font-semibold no-underline text-fg">
+            <Brand />
+          </Link>
+          <QuickNavigation enabled={!focused} pages={[...primaryPages, ...toolPages]} />
+          <ParkingLotButton statusRoot={tutorEntry} />
+          <ComfortToggle />
+          <AudioControls compact header />
+        </header>
+        <div className="shell-workspace">
+          <MainNavigation />
+          <div className="tutor-workspace min-w-0">
+            <div className="min-w-0">
+              <div
+                role="region"
+                aria-label="Learning context and tools"
+                className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto px-4 pt-4 flex flex-wrap items-center justify-between gap-2 min-w-0`}
+              >
+                <div className="shell-browse-context min-w-0">
+                  <BrowseArea />
+                  <p className="text-xs text-muted">
+                    {MODE_LABELS[mode].title} · energy {energy}
+                  </p>
+                </div>
+                <div ref={setTutorEntry} className="flex flex-wrap gap-2 min-w-0" />
+              </div>
+              <main
+                id="main-content"
+                ref={main}
+                tabIndex={-1}
+                className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto p-4 pb-24`}
+              >
+                {pathname === '/' && <ComfortWelcome />}
+                <BreakReminder />
+                {children}
+              </main>
+            </div>
+            {learningScope.loaded && !learningScope.error && pathname !== '/ask' && (
+              <LearningCompanion
+                key={learningScope.cutoff ?? 'original'}
+                scopeKey={learningScope.cutoff}
+                entryRoot={tutorEntry}
+              />
+            )}
+          </div>
         </div>
-        <div ref={setTutorEntry} className="flex flex-wrap gap-2 min-w-0" />
       </div>
-      <main
-        id="main-content"
-        ref={main}
-        tabIndex={-1}
-        className={`${wide ? 'max-w-7xl' : 'max-w-4xl'} w-full mx-auto p-4 pb-24`}
-      >
-        {pathname === '/' && <ComfortWelcome />}
-        <BreakReminder />
-        {children}
-      </main>
-      </div>
-      {pathname !== '/ask' && <LearningCompanion entryRoot={tutorEntry} />}
-      </div>
-      </div>
-    </div>
     </LessonFocusContext.Provider>
   )
 }
@@ -150,50 +179,59 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Shell>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/search" element={<Search />} />
-            <Route path="/sources" element={<Sources />} />
-            <Route path="/ask" element={<Ask />} />
-            <Route path="/answers" element={<Answers />} />
-            <Route path="/answers/:answerId" element={<Answers />} />
-            <Route path="/learn" element={<Learn />} />
-            <Route path="/practice" element={<Practice />} />
-            <Route path="/progress" element={<Progress />} />
-            <Route path="/session" element={<Session />} />
-            <Route path="/playground" element={<Playground />} />
-            <Route path="/playground/visual-learning" element={<Suspense fallback={<p>Loading visual experiment…</p>}><VisualLearning /></Suspense>} />
-            <Route path="/playground/visualizer" element={<Visualizer />} />
-            <Route path="/review" element={<Review />} />
-            <Route path="/recap" element={<Recap />} />
-            <Route path="/map" element={<Map />} />
-            <Route path="/preferences" element={<Preferences />} />
-            <Route path="/task-review" element={<TaskReview />} />
-            <Route path="/corrections" element={<CorrectionEditor />} />
-            <Route path="/corpus" element={<Corpus />} />
-            <Route path="/explore" element={<Explore />} />
-            <Route path="/areas" element={<Areas />} />
-            <Route path="/programs" element={<Programs />} />
-            <Route path="/curriculum" element={<Curriculum />} />
-            <Route path="/models" element={<Models />} />
-            <Route path="/experiments" element={<Experiments />} />
-            <Route path="/vocab" element={<Vocab />} />
-            <Route path="/together" element={<Together />} />
-            <Route
-              path="*"
-              element={
-                <div>
-                  <h1 className="text-page-title font-semibold">Page not found</h1>
-                  <p>This address does not match a learning page.</p>
-                  <Link to="/" className="underline">
-                    Return Home
-                  </Link>
-                </div>
-              }
-            />
-          </Routes>
-        </Shell>
+        <FocusPolicy>
+          <Shell>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/search" element={<Search />} />
+              <Route path="/sources" element={<Sources />} />
+              <Route path="/ask" element={<Ask />} />
+              <Route path="/answers" element={<Answers />} />
+              <Route path="/answers/:answerId" element={<Answers />} />
+              <Route path="/learn" element={<Learn />} />
+              <Route path="/practice" element={<Practice />} />
+              <Route path="/progress" element={<Progress />} />
+              <Route path="/session" element={<Session />} />
+              <Route path="/playground" element={<Playground />} />
+              <Route
+                path="/playground/visual-learning"
+                element={
+                  <Suspense fallback={<p>Loading visual experiment…</p>}>
+                    <VisualLearning />
+                  </Suspense>
+                }
+              />
+              <Route path="/review" element={<Review />} />
+              <Route path="/recap" element={<Recap />} />
+              <Route path="/map" element={<Map />} />
+              <Route path="/preferences" element={<Preferences />} />
+              <Route path="/task-review" element={<TaskReview />} />
+              <Route path="/corrections" element={<CorrectionEditor />} />
+              <Route path="/corpus" element={<Corpus />} />
+              <Route path="/explore" element={<Explore />} />
+              <Route path="/areas" element={<Areas />} />
+              <Route path="/programs" element={<Projects />} />
+              <Route path="/projects" element={<Projects />} />
+              <Route path="/curriculum" element={<Curriculum />} />
+              <Route path="/models" element={<Models />} />
+              <Route path="/experiments" element={<Experiments />} />
+              <Route path="/vocab" element={<Vocab />} />
+              <Route path="/together" element={<Together />} />
+              <Route
+                path="*"
+                element={
+                  <div>
+                    <h1 className="text-page-title font-semibold">Page not found</h1>
+                    <p>This address does not match a learning page.</p>
+                    <Link to="/" className="underline">
+                      Return Home
+                    </Link>
+                  </div>
+                }
+              />
+            </Routes>
+          </Shell>
+        </FocusPolicy>
       </BrowserRouter>
     </QueryClientProvider>
   )

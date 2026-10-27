@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test'
 
 const pages = [
-  ['/areas', 'Learning areas'], ['/programs', 'Project study'],
+  ['/areas', 'Learning areas'], ['/programs', 'Knowledge projects'], ['/projects', 'Knowledge projects'],
   ['/curriculum', 'Knowledge material'], ['/corpus', 'Corpus'],
   ['/models', 'Models'], ['/experiments', 'Experiments (n-of-1)'],
   ['/vocab', 'Vocabulary decks'], ['/together', 'Working alongside'],
-  ['/playground', 'Coding playground'], ['/playground/visualizer', 'Audio visualizer lab'],
+  ['/playground', 'Coding playground'],
   ['/missing-page', 'Page not found'], ['/corrections', 'Question correction drafts'],
 ]
 for (const width of [320, 1280]) test(`secondary pages identify themselves at ${width}`, async ({ page }, info) => {

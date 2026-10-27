@@ -87,7 +87,11 @@ async def get_repo(request: Request, db: DB, settings: SettingsDep) -> Retrieval
     timing_mark("repository_dependency_started")
     repo = await shared_repo(request.app, db, settings)
     timing_mark("repository_dependency_finished")
-    return repo
+    from app.kernel.learning_scope import reference_before
+    from app.knowledge.study_scope import StudyRepository
+
+    learner = await get_or_create_owner(db)
+    return StudyRepository(repo, db, learner.id) if await reference_before(db, learner.id) else repo
 
 
 Repo = Annotated[RetrievalRepository, Depends(get_repo)]

@@ -168,11 +168,15 @@ jobs:
         run: make pyodide
       - name: Journeys (fresh seeded sandbox DB, hosted providers off, code runs offline)
         run: make test-e2e
+      - name: Focused authoring after an isolated map reset
+        run: cd frontend && pnpm exec playwright test --config=playwright.focus.config.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-traces
-          path: frontend/test-results/
+          path: |
+            frontend/test-results/
+            frontend/focus-test-results/
           retention-days: 7
 
 

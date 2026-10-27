@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.errors import AppError
 from app.db.models import CurriculumDraft
 from app.db.traces import write_retrieval_trace
+from app.kernel.learning_scope import created_visible
 from app.knowledge.provenance import Provenance
 from app.knowledge.repository import ChunkRecord, RetrievalRepository, SearchFilters
 from app.schemas.knowledge_authoring import PersonalMemory
@@ -20,6 +21,7 @@ async def excerpts(db: AsyncSession, learner_id: str, exclude: str) -> list[Pers
             select(CurriculumDraft)
             .where(
                 CurriculumDraft.learner_id == learner_id,
+                created_visible(learner_id, CurriculumDraft.created_at),
                 CurriculumDraft.id != exclude,
                 CurriculumDraft.status.in_(["draft", "published"]),
                 CurriculumDraft.origin == "knowledge_authored",

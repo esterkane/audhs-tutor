@@ -20,8 +20,8 @@ const activities = [
   },
   {
     title: 'Work on a project',
-    description: 'Open a project guide with its material, notebook workspace and tutor. Choose the step you want to work on.',
-    action: 'Open project study', path: '/programs',
+    description: 'Build a small system, record test evidence and explain what you learned.',
+    action: 'Open knowledge projects', path: '/projects',
   },
 ] as const
 

@@ -169,6 +169,9 @@ class LessonActivationRepository:
                 )
                 if draft is None or draft.status != "draft":
                     raise conflict("Lesson is no longer an editable draft.")
+                from app.kernel.learning_scope import require_current_material
+
+                await require_current_material(db, learner_id, draft.created_at)
                 frozen = canonical_payload(draft.payload_json)
                 if len(frozen.encode()) > MAX_PAYLOAD_BYTES:
                     raise ValueError("Lesson payload exceeds activation size limit")

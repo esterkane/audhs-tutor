@@ -11,6 +11,7 @@ from app.db.base import Base
 from app.db.migrate import upgrade_to_head
 
 EXPECTED_TABLES = {
+    "learning_project",
     "provisional_feedback",
     "visual_generation_request",
     "lesson_activation",

@@ -4,17 +4,21 @@ These helpers are a foundation, not a global ORM policy. Consumers must use them
 before private content can be activated. Missing scope intentionally sees shared only.
 """
 
-from sqlalchemy import exists, or_, select
+from sqlalchemy import and_, exists, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.core.errors import AppError
 from app.db.models import LearningObject, Representation, SkillNode
+from app.kernel.learning_scope import created_visible
 
 
 def skill_visible(learner_id: str | None) -> ColumnElement[bool]:
     shared = SkillNode.owner_learner_id.is_(None)
-    return shared if learner_id is None else or_(shared, SkillNode.owner_learner_id == learner_id)
+    ownership = (
+        shared if learner_id is None else or_(shared, SkillNode.owner_learner_id == learner_id)
+    )
+    return and_(ownership, created_visible(learner_id, SkillNode.created_at))
 
 
 def object_visible(learner_id: str | None) -> ColumnElement[bool]:

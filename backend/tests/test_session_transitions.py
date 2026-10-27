@@ -51,7 +51,7 @@ async def test_full_journey_with_reload_at_every_boundary(
     await _seed(db, fake_repo)
     s = await _start(client)
     types = [b["type"] for b in s["plan"]]
-    assert types[0] == "movement_primer" and "domain_switch" in types and types[-1] == "recap"
+    assert types[0] == "movement_primer" and "domain_switch" not in types and types[-1] == "recap"
     st = s["state"]
     assert st["block_index"] is None and st["skill_id"] == s["next_skill"]["id"]  # active skill
     sid = s["id"]
@@ -108,7 +108,7 @@ async def test_full_journey_with_reload_at_every_boundary(
     assert ended[0].result_json["reason"] == "skipped" and ended[0].result_json["switched_early"]
     assert ended[1].result_json["actual_min"] is not None  # server-measured
     practice_events = [e for e in started if e.activity_type == "domain_switch"]
-    assert practice_events and practice_events[0].domain == "guitar"
+    assert not practice_events  # A historical guitar preference cannot restore retired learning.
     r = await client.post(f"/api/sessions/{sid}/end", json={"energy_after": 3, "self_report": 4})
     assert r.status_code == 200 and (await client.get("/api/sessions/current")).json() is None
     assert len(await _events(db, sid, "block_ended")) == len(types)  # session end added none
@@ -447,14 +447,14 @@ async def test_replan_at_energy_one_keeps_the_running_block_and_bumps_plan_versi
     s = await _start(client)
     sid = s["id"]
     types = [b["type"] for b in s["plan"]]
-    ix = types.index("domain_switch")  # optional → would be dropped at energy 1 (old bug)
+    ix = types.index("movement_primer")  # optional → would be dropped at energy 1 (old bug)
     await client.post("/api/plan/blocks/start", json={"session_id": sid, "index": ix})
     r = await client.post(
         "/api/plan/replan", json={"session_id": sid, "energy": 1, "from_index": ix}
     )
     assert r.status_code == 200 and r.json()["changed"]
     new_types = [b["type"] for b in r.json()["plan"]["blocks"]]
-    assert new_types[ix] == "domain_switch", new_types  # the running block keeps its slot
+    assert new_types[ix] == "movement_primer", new_types  # the running block keeps its slot
     card_id = r.json()["proposal_id"]
     learner_id = (await db.execute(select(models.LearnerProfile.id))).scalars().first()
     assert learner_id
@@ -462,10 +462,10 @@ async def test_replan_at_energy_one_keeps_the_running_block_and_bumps_plan_versi
     cur = (await client.get("/api/sessions/current")).json()
     st = cur["state"]
     assert st["plan_version"] == 2 and st["block_index"] == ix and st["block_status"] == "running"
-    assert st["block"]["type"] == "domain_switch" and cur["plan"][ix]["type"] == "domain_switch"
+    assert st["block"]["type"] == "movement_primer" and cur["plan"][ix]["type"] == "movement_primer"
     r = await client.post("/api/plan/blocks/next", json={"session_id": sid, "from_index": ix})
     ended = await _events(db, sid, "block_ended")
-    assert ended[-1].context_json["block_type"] == "domain_switch"  # matches its block_started
+    assert ended[-1].context_json["block_type"] == "movement_primer"  # matches its block_started
 
 
 async def test_start_after_end_and_continue_after_stop(

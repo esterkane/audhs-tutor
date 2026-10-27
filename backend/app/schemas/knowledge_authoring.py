@@ -318,6 +318,10 @@ class KnowledgeResearch(BaseModel):
 
 class KnowledgeMaterialInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    focus_topic: (
+        Literal["elasticsearch", "vector-search", "supabase", "postgresql", "qdrant", "kubernetes"]
+        | None
+    ) = None
     title: str = Field(min_length=1, max_length=300)
     workflow_step: Literal["source", "research", "write", "review"] = "source"
     domain: Domain = Domain.AI_ML

@@ -219,7 +219,9 @@ async def ws(websocket: WebSocket) -> None:
             app.state.providers,
             get_budget(websocket, settings),  # type: ignore[arg-type]
         )
-        repo = await shared_repo(app, db, settings)
+        from app.knowledge.study_scope import StudyRepository
+
+        repo = StudyRepository(await shared_repo(app, db, settings), db, learner.id)
         turn = TutorTurn(
             db,
             gateway,

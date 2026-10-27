@@ -6,7 +6,8 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Chunk, Document, DocumentVersion
+from app.db.models import Chunk, Document, DocumentVersion, KnowledgeArea
+from app.kernel.learning_scope import reference_before, require_current_material
 from app.schemas.knowledge_authoring import KnowledgeMaterialInput
 
 
@@ -18,6 +19,7 @@ async def source_ids(
     doc = await db.get(Document, upload_id)
     if doc is None or f"/knowledge-authoring/{learner_id}/" not in doc.uri:
         raise ValueError("Uploaded source is unavailable for this learner")
+    await require_current_material(db, learner_id, doc.created_at)
     latest = await db.scalar(
         select(DocumentVersion.id)
         .where(DocumentVersion.document_id == doc.id)
@@ -55,6 +57,13 @@ async def payload_for(
         earlier = (previous or {}).get("research") or {}
         if earlier.get("passage") != command.research.passage:
             raise ValueError("Select an exact passage from your source notes")
+    area_id = None
+    if command.focus_topic:
+        area_id = await db.scalar(
+            select(KnowledgeArea.id).where(KnowledgeArea.slug == "focus-" + command.focus_topic)
+        )
+    elif await reference_before(db, learner_id):
+        raise ValueError("Choose the technology for this new knowledge material")
     sources = await source_ids(db, learner_id, command.upload_id, command.notes)
     authoring = {**(previous or {}), **command.model_dump(mode="json")}
     complete = all(
@@ -63,6 +72,7 @@ async def payload_for(
     ) and bool(command.criteria)
     payload: dict[str, Any] = {
         "domain": command.domain.value,
+        "area_id": area_id,
         "area_title": command.title,
         "authoring": authoring,
         "skills": [],

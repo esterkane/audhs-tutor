@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import {
@@ -375,7 +375,8 @@ function Hit({ hit, index }: { hit: SearchHit; index: number }) {
 }
 
 function SearchPanel() {
-  const search = useSearch()
+  const [accuracyReview, setAccuracyReview] = useState(false)
+  const search = useSearch(accuracyReview)
   const [query, setQuery] = useState('')
   const [course, setCourse] = useState('')
   const [minTrust, setMinTrust] = useState(0)
@@ -384,9 +385,11 @@ function SearchPanel() {
     <Card>
       <CardTitle>Inspect retrieval</CardTitle>
       <p className="text-sm text-muted mb-3">
-        The same hybrid search the tutor uses, with its scores. By default it shows everything in the index;
-        turn on "as the tutor sees it" to apply the tutor's trust floor and mark hits it would withhold.
+        Ordinary search uses the active learning scope. Historical references are available only through
+        explicit accuracy review; those results are not sources for automatically building courses.
       </p>
+      <label className="block mb-3"><input type="checkbox" checked={accuracyReview} onChange={event => { setAccuracyReview(event.target.checked); search.reset() }} /> Search historical references for accuracy review only</label>
+      {accuracyReview && <p role="status">Accuracy review only. Review these references critically; they are not accepted course material.</p>}
       <form
         className="flex flex-wrap gap-2 items-end"
         onSubmit={(e) => {
@@ -474,6 +477,7 @@ export function Corpus() {
     <div className="grid gap-4">
       <Card>
         <CardTitle as="h1">Corpus</CardTitle>
+        <p className="text-sm text-muted">Source records support accuracy review; they are not accepted course lessons. <Link className="underline" to="/curriculum">Create your own material from notes or uploads.</Link></p>
         {stats.isLoading && <p>Loading…</p>}
         {stats.data && (
           <>

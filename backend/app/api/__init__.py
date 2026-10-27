@@ -18,6 +18,7 @@ from app.api import (
     knowledge_authoring,
     knowledge_reviews,
     learner,
+    learning_focus,
     lesson_activation,
     lesson_promotion,
     listening,
@@ -28,6 +29,7 @@ from app.api import (
     playground,
     practice,
     preferences,
+    projects,
     questions,
     references,
     representations,
@@ -42,6 +44,8 @@ from app.api import (
 
 api_router = APIRouter(prefix="/api")
 for r in (
+    projects,
+    learning_focus,
     answer_checks,
     answers,
     ask,

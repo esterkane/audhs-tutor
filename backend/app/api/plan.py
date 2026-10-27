@@ -58,7 +58,7 @@ async def build_plan(
             next_skill_mastery=await competency.mastery(db, learner_id, nxt.id) if nxt else 0.0,
             review_node_ids=sorted({item.skill_id for item, _ in due}),
             language_due=language_due,
-            guitar=bool(prefs.get("planner.guitar")),
+            guitar=False,  # Paused learning subject; retained preference is historical only.
             preferences=prefs,
         )
     )

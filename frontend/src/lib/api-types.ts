@@ -4,6 +4,57 @@
  */
 
 export interface paths {
+  '/api/projects': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Listing */
+    get: operations['listing_api_projects_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/projects/{project_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /** Save */
+    put: operations['save_api_projects__project_id__put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/learning-focus': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Focus */
+    get: operations['focus_api_learning_focus_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/answer-checks': {
     parameters: {
       query?: never
@@ -1814,6 +1865,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/corpus/accuracy-review/search': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /**
+     * Accuracy Review Search
+     * @description Explicit reference inspection only; ordinary tutor dependencies stay scope-filtered.
+     */
+    post: operations['accuracy_review_search_api_corpus_accuracy_review_search_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/areas': {
     parameters: {
       query?: never
@@ -3225,6 +3296,32 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /** AccuracyReviewSearchOut */
+    AccuracyReviewSearchOut: {
+      /** Query */
+      query: string
+      /** Hits */
+      hits: components['schemas']['SearchHit'][]
+      /** Latency Ms */
+      latency_ms: number
+      /** Reranked */
+      reranked: boolean
+      /** Flagged Patterns */
+      flagged_patterns: string[]
+      /** Collection */
+      collection: string
+      /**
+       * Purpose
+       * @default accuracy_review
+       * @constant
+       */
+      purpose: 'accuracy_review'
+      /**
+       * Eligible For Course Building
+       * @default false
+       */
+      eligible_for_course_building: boolean
+    }
     /** ActivateIn */
     ActivateIn: {
       /** Enabled */
@@ -5699,6 +5796,9 @@ export interface components {
     }
     /** KnowledgeMaterialInput */
     KnowledgeMaterialInput: {
+      /** Focus Topic */
+      focus_topic?:
+        ('elasticsearch' | 'vector-search' | 'supabase' | 'postgresql' | 'qdrant' | 'kubernetes') | null
       /** Title */
       title: string
       /**
@@ -5739,6 +5839,9 @@ export interface components {
     }
     /** KnowledgeMaterialUpdate */
     KnowledgeMaterialUpdate: {
+      /** Focus Topic */
+      focus_topic?:
+        ('elasticsearch' | 'vector-search' | 'supabase' | 'postgresql' | 'qdrant' | 'kubernetes') | null
       /** Title */
       title: string
       /**
@@ -5841,6 +5944,28 @@ export interface components {
       /** Created At */
       created_at: string
     }
+    /** LearningFocusOut */
+    LearningFocusOut: {
+      /** Reference Before */
+      reference_before: string | null
+      /** Topics */
+      topics: string[]
+      /**
+       * Sound Learning
+       * @default false
+       */
+      sound_learning: boolean
+      /**
+       * Guitar Learning
+       * @default false
+       */
+      guitar_learning: boolean
+      /**
+       * Old Corpus Role
+       * @default accuracy_review
+       */
+      old_corpus_role: string
+    }
     /** LearningObjectIn */
     LearningObjectIn: {
       /** Skill */
@@ -5865,6 +5990,33 @@ export interface components {
       sources?: string[]
     } & {
       [key: string]: unknown
+    }
+    /** LearningProjectOut */
+    LearningProjectOut: {
+      /** Id */
+      id: string
+      /** Slug */
+      slug: string
+      /** Title */
+      title: string
+      /** Topic */
+      topic: string
+      /** Objective */
+      objective: string
+      /** Brief */
+      brief: {
+        [key: string]: unknown
+      }
+      /** Notes */
+      notes: string
+      /** Evidence */
+      evidence: string
+      /** Reflection */
+      reflection: string
+      /** Status */
+      status: string
+      /** Version */
+      version: number
     }
     /** LessonActivationPreview */
     LessonActivationPreview: {
@@ -6742,6 +6894,22 @@ export interface components {
        * @enum {string}
        */
       view: 'guide' | 'notebook' | 'task'
+    }
+    /** ProjectUpdate */
+    ProjectUpdate: {
+      /** Expected Version */
+      expected_version: number
+      /** Notes */
+      notes: string
+      /** Evidence */
+      evidence: string
+      /** Reflection */
+      reflection: string
+      /**
+       * Status
+       * @enum {string}
+       */
+      status: 'planned' | 'working' | 'submitted'
     }
     /** PromoteIn */
     PromoteIn: {
@@ -8441,6 +8609,81 @@ export interface components {
 }
 export type $defs = Record<string, never>
 export interface operations {
+  listing_api_projects_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LearningProjectOut'][]
+        }
+      }
+    }
+  }
+  save_api_projects__project_id__put: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        project_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectUpdate']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LearningProjectOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  focus_api_learning_focus_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['LearningFocusOut']
+        }
+      }
+    }
+  }
   create_check_api_answer_checks_post: {
     parameters: {
       query?: never
@@ -12091,6 +12334,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SearchOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  accuracy_review_search_api_corpus_accuracy_review_search_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['SearchRequest']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['AccuracyReviewSearchOut']
         }
       }
       /** @description Validation Error */

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from app.api.deps import DB, Learner, SettingsDep
 from app.core.errors import AppError
 from app.kernel import areas, question_feedback, skill_graph
+from app.kernel.learning_scope import reference_before
 from app.orchestrator import area_drafting
 from app.schemas.areas import (
     AreaConcept,
@@ -79,8 +80,10 @@ async def edit(area_id: str, body: AreaEdit, db: DB, learner: Learner) -> AreaLi
     summary="Cross-course source candidates and why they match",
     response_model=AreaSources,
 )
-async def sources(area_id: str, db: DB) -> AreaSources:
-    return AreaSources(sources=await areas.source_rows(db, await areas.get(db, area_id)))
+async def sources(area_id: str, db: DB, learner: Learner) -> AreaSources:
+    return AreaSources(
+        sources=await areas.source_rows(db, await areas.get(db, area_id), learner.id)
+    )
 
 
 @router.get(
@@ -102,6 +105,12 @@ async def start(
     settings: SettingsDep,
     body: AreaJobIn | None = None,
 ) -> AreaJobOut:
+    if await reference_before(db, learner.id):
+        raise AppError(
+            "new_material_required",
+            "Create new knowledge material from your notes or uploads.",
+            409,
+        )
     state = getattr(request.app.state, "area_job_status", None)
     if state is not None and state.running:
         raise AppError("busy", "Area drafts are already being generated", http_status=409)

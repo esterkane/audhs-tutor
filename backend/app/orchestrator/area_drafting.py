@@ -200,7 +200,7 @@ async def create_or_generate(
             "existing",
         )  # never overwrite edits, published history or earlier reviews
     expected_version = existing.version if existing else None
-    selected, coverage = await areas.excerpts(db, area)
+    selected, coverage = await areas.excerpts(db, area, learner_id)
     payload = merge(area, selected, AreaSuggestion(), coverage)
     draft = existing or await curriculum.create_draft(
         db,

@@ -125,6 +125,8 @@ async def due_items(
 ) -> list[tuple[ReviewItem, MemoryState]]:
     """Due cards, oldest first. Domain filters keep blocks pure (ADR-0006): the AI/ML review block
     excludes language cards, the language block asks for them explicitly."""
+    from app.kernel import content_access
+
     now = now or datetime.now(UTC)
     stmt = (
         select(ReviewItem, MemoryState)
@@ -133,6 +135,7 @@ async def due_items(
         .where(
             ReviewItem.learner_id == learner_id,
             ReviewItem.active.is_(True),
+            content_access.skill_visible(learner_id),
             MemoryState.due <= _iso(now),
             question_state.review_eligible(learner_id),
         )

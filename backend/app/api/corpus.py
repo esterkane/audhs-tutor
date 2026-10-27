@@ -3,12 +3,12 @@ is a localhost owner app), re-tier or forget a document, and an inspectable sear
 
 import asyncio
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Request
 from sqlalchemy import select
 
-from app.api.deps import DB, Repo, SettingsDep
+from app.api.deps import DB, Repo, SettingsDep, shared_repo
 from app.core.errors import AppError
 from app.db.models import IngestRun, IngestRunItem
 from app.knowledge import corpus_stats
@@ -350,3 +350,18 @@ async def search(req: SearchRequest, repo: Repo, settings: SettingsDep) -> Searc
         flagged_patterns=res.trace.flagged_patterns,
         collection=res.trace.collection,
     )
+
+
+class AccuracyReviewSearchOut(SearchOut):
+    purpose: Literal["accuracy_review"] = "accuracy_review"
+    eligible_for_course_building: bool = False
+
+
+@router.post("/accuracy-review/search", response_model=AccuracyReviewSearchOut)
+async def accuracy_review_search(
+    req: SearchRequest, request: Request, db: DB, settings: SettingsDep
+) -> AccuracyReviewSearchOut:
+    """Explicit reference inspection only; ordinary tutor dependencies stay scope-filtered."""
+    base = await shared_repo(request.app, db, settings)
+    result = await search(req, base, settings)
+    return AccuracyReviewSearchOut(**result.model_dump())

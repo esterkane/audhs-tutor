@@ -51,33 +51,56 @@ function HomeOverview() {
   const homeActive = useRef(false)
   useEffect(() => {
     homeActive.current = true
-    return () => { homeActive.current = false; quickReviewRead.current?.abort() }
+    return () => {
+      homeActive.current = false
+      quickReviewRead.current?.abort()
+    }
   }, [])
 
   async function quickReview() {
-    if (quickReviewPending.current || start.isPending || prefs.isPending || prefs.isError || setPref.isPending || skills.isFetching || skills.isError) return
+    if (
+      quickReviewPending.current ||
+      start.isPending ||
+      prefs.isPending ||
+      prefs.isError ||
+      setPref.isPending ||
+      skills.isFetching ||
+      skills.isError
+    )
+      return
     // Browser history changes before React necessarily unmounts the previous route.
     // A late completion must not override a newer navigation (including away and back).
     const entryKey = window.history.state?.key
     const entryUrl = window.location.href
     let historyMoved = false
-    const onHistoryMove = () => { historyMoved = true }
+    const onHistoryMove = () => {
+      historyMoved = true
+    }
     window.addEventListener('popstate', onHistoryMove)
-    const stillHere = () => !historyMoved && homeActive.current && window.history.state?.key === entryKey && window.location.href === entryUrl
+    const stillHere = () =>
+      !historyMoved &&
+      homeActive.current &&
+      window.history.state?.key === entryKey &&
+      window.location.href === entryUrl
     quickReviewPending.current = true
     setQuickReviewBusy(true)
     setQuickReviewError('')
     try {
       const controller = new AbortController()
       quickReviewRead.current = controller
-      const fresh = await boundedRead<SessionOut | null>('/api/sessions/current', controller.signal, 'Saved session')
+      const fresh = await boundedRead<SessionOut | null>(
+        '/api/sessions/current',
+        controller.signal,
+        'Saved session',
+      )
       if (!stillHere()) return
-      const saved = fresh ?? await start.mutateAsync({ mode, energy, socratic })
+      const saved = fresh ?? (await start.mutateAsync({ mode, energy, socratic }))
       if (!stillHere()) return
       setSession(saved.id, saved.state?.skill_id ?? null)
       nav('/review')
     } catch (error) {
-      if (homeActive.current) setQuickReviewError(error instanceof Error ? error.message : 'Please try again.')
+      if (homeActive.current)
+        setQuickReviewError(error instanceof Error ? error.message : 'Please try again.')
     } finally {
       window.removeEventListener('popstate', onHistoryMove)
       quickReviewRead.current = null
@@ -194,111 +217,114 @@ function HomeOverview() {
   const emptySelection = !selectionPending && !selectionFailed && Boolean(areaGoal || goal) && !nextSkill
   const scaffold = preview.data?.blocks.find((b) => b.type === 'new_material')?.reason
   const newSessionCard = (
-      <Card lift aria-label="New session">
-        <CardTitle>Start with one useful step</CardTitle>
-        {current.isPending ? (
-          <p role="status">Checking your saved session…</p>
-        ) : current.isError ? (
-          <p role="alert">
-            Could not check your saved session. Your work has not been replaced.{' '}
-            <Button onClick={() => void current.refetch()}>Retry session check</Button>
+    <Card lift aria-label="New session">
+      <CardTitle>Start with one useful step</CardTitle>
+      {current.isPending ? (
+        <p role="status">Checking your saved session…</p>
+      ) : current.isError ? (
+        <p role="alert">
+          Could not check your saved session. Your work has not been replaced.{' '}
+          <Button onClick={() => void current.refetch()}>Retry session check</Button>
+        </p>
+      ) : (
+        <>
+          <p className="font-medium mt-2">
+            {selectionPending
+              ? 'Checking your lesson selection…'
+              : selectionFailed
+                ? 'Lesson selection unavailable'
+                : (nextSkill?.title ?? 'Choose an available lesson')}
           </p>
-        ) : (
-          <>
-            <p className="font-medium mt-2">
-              {selectionPending
-                ? 'Checking your lesson selection…'
-                : selectionFailed
-                  ? 'Lesson selection unavailable'
-                  : (nextSkill?.title ?? 'Choose an available lesson')}
-            </p>
-            <p className="text-sm text-muted">
-              {selectionPending
-                ? 'Start becomes available after your topic is saved and its lessons are checked.'
-                : selectionFailed
-                  ? 'Retry the lesson check below. Your selected topic is unchanged.'
-                  : nextSkill
-                    ? 'Start with the current settings; you can stop at any time.'
-                    : blockedSelection
-                      ? 'Review active lessons and prerequisites on the skill map. Your selected topic will not be replaced.'
-                      : 'Review your learning areas to find or activate a lesson. Your selected topic will not be replaced.'}
-            </p>
-          </>
-        )}
-        <p className="text-sm mt-2">New session topic: {topicLabel}</p>
-        <p className="text-sm text-muted">{MODE_LABELS[mode].title} · energy {energy} · {socratic ? 'Socratic questions' : 'Direct explanations'}. Adjust these in Session options.</p>
-        {emptySelection && (
-          <p role="status" className="mt-2">
-            {blockedSelection
-              ? 'No lesson is available to start. Review active lessons and prerequisites.'
-              : selectedArea?.active_lessons === 0
-                ? 'This topic has no activated lessons yet. Imported sources and drafts are preparation material; review a draft and activate its lessons to start a session.'
-                : 'No lesson is available in this selection. Review its lessons and drafts to choose the next step.'}{' '}
-            Your topic will not be replaced by another one.
+          <p className="text-sm text-muted">
+            {selectionPending
+              ? 'Start becomes available after your topic is saved and its lessons are checked.'
+              : selectionFailed
+                ? 'Retry the lesson check below. Your selected topic is unchanged.'
+                : nextSkill
+                  ? 'Start with the current settings; you can stop at any time.'
+                  : blockedSelection
+                    ? 'Review active lessons and prerequisites on the skill map. Your selected topic will not be replaced.'
+                    : 'Review your learning areas to find or activate a lesson. Your selected topic will not be replaced.'}
           </p>
-        )}
-        {(skills.isError || prefs.isError) && (
-          <p role="alert">
-            Could not load your lesson selection.{' '}
-            <Button
-              onClick={() => {
-                void skills.refetch()
-                void prefs.refetch()
-              }}
-            >
-              Retry lesson selection
-            </Button>
-          </p>
-        )}
-        <div className="flex gap-2 flex-wrap">
-          {emptySelection && areaGoal && !blockedSelection ? (
-            <HomeTopicPreparation areaId={areaGoal} secondary={Boolean(resumable)} />
-          ) : emptySelection ? (
-            <Button asChild variant={resumable ? 'secondary' : 'primary'} size="lg">
-              <Link
-                to={
-                  blockedSelection
-                    ? '/map'
-                    : areaGoal
-                      ? `/areas?area=${encodeURIComponent(areaGoal)}`
-                      : '/curriculum'
-                }
-              >
-                {blockedSelection ? 'Review active lessons' : 'Review and activate a lesson'}
-              </Link>
-            </Button>
-          ) : (
-            <Button
-              variant={resumable ? 'secondary' : 'primary'}
-              size="lg"
-              onClick={() => void begin()}
-              disabled={
-                (Boolean(resumable) && !nextSkill) ||
-                current.isPending ||
-                current.isError ||
-                prefs.isPending ||
-                prefs.isError ||
-                skills.isError ||
-                start.isPending || quickReviewBusy ||
-                setPref.isPending ||
-                selectionPending ||
-                Boolean((areaGoal || goal) && !nextSkill)
+        </>
+      )}
+      <p className="text-sm mt-2">New session topic: {topicLabel}</p>
+      <p className="text-sm text-muted">
+        {MODE_LABELS[mode].title} · energy {energy} ·{' '}
+        {socratic ? 'Socratic questions' : 'Direct explanations'}. Adjust these in Session options.
+      </p>
+      {emptySelection && (
+        <p role="status" className="mt-2">
+          {blockedSelection
+            ? 'No lesson is available to start. Review active lessons and prerequisites.'
+            : selectedArea?.active_lessons === 0
+              ? 'This topic has no activated lessons yet. Imported sources and drafts are preparation material; review a draft and activate its lessons to start a session.'
+              : 'No lesson is available in this selection. Review its lessons and drafts to choose the next step.'}{' '}
+          Your topic will not be replaced by another one.
+        </p>
+      )}
+      {(skills.isError || prefs.isError) && (
+        <p role="alert">
+          Could not load your lesson selection.{' '}
+          <Button
+            onClick={() => {
+              void skills.refetch()
+              void prefs.refetch()
+            }}
+          >
+            Retry lesson selection
+          </Button>
+        </p>
+      )}
+      <div className="flex gap-2 flex-wrap">
+        {emptySelection && areaGoal && !blockedSelection ? (
+          <HomeTopicPreparation areaId={areaGoal} secondary={Boolean(resumable)} />
+        ) : emptySelection ? (
+          <Button asChild variant={resumable ? 'secondary' : 'primary'} size="lg">
+            <Link
+              to={
+                blockedSelection
+                  ? '/map'
+                  : areaGoal
+                    ? `/areas?area=${encodeURIComponent(areaGoal)}`
+                    : '/curriculum'
               }
             >
-              {start.isPending ? 'Starting…' : resumable ? 'Choose whether to switch' : 'Start session'}
-            </Button>
-          )}
-        </div>
-        {start.isError && (
-          <p role="alert" className="text-warn">
-            Could not start: {(start.error as Error).message}
-          </p>
+              {blockedSelection ? 'Review active lessons' : 'Review and activate a lesson'}
+            </Link>
+          </Button>
+        ) : (
+          <Button
+            variant={resumable ? 'secondary' : 'primary'}
+            size="lg"
+            onClick={() => void begin()}
+            disabled={
+              (Boolean(resumable) && !nextSkill) ||
+              current.isPending ||
+              current.isError ||
+              prefs.isPending ||
+              prefs.isError ||
+              skills.isError ||
+              start.isPending ||
+              quickReviewBusy ||
+              setPref.isPending ||
+              selectionPending ||
+              Boolean((areaGoal || goal) && !nextSkill)
+            }
+          >
+            {start.isPending ? 'Starting…' : resumable ? 'Choose whether to switch' : 'Start session'}
+          </Button>
         )}
-        <p className="mt-3">
-          <Link to="/explore">Choose another topic</Link> ·{' '}
-          <Link to="/programs">Return to project notebooks</Link>
+      </div>
+      {start.isError && (
+        <p role="alert" className="text-warn">
+          Could not start: {(start.error as Error).message}
         </p>
-      </Card>
+      )}
+      <p className="mt-3">
+        <Link to="/explore">Choose another topic</Link> · <Link to="/projects">Open knowledge projects</Link>
+      </p>
+    </Card>
   )
   return (
     <div className="grid grid-cols-1 min-w-0 gap-4">
@@ -308,14 +334,26 @@ function HomeOverview() {
           <Button asChild variant="secondary" aria-describedby="home-ask-description">
             <Link to="/ask">Ask a question</Link>
           </Button>
-          <Link className="text-sm underline" to="/curriculum">Create knowledge material</Link>
-            <p id="home-ask-description" className="text-sm text-muted">Explore any area. Keeps your saved session in place.</p>
+          <Link className="text-sm underline" to="/curriculum">
+            Create knowledge material
+          </Link>
+          <p id="home-ask-description" className="text-sm text-muted">
+            Explore any area. Keeps your saved session in place.
+          </p>
         </div>
       </header>
-      {resumable && <Card lift aria-label="Saved session">
-        <CardTitle>Continue where you left off</CardTitle>
+      {resumable && (
+        <Card lift aria-label="Saved session">
+          <CardTitle>Continue where you left off</CardTitle>
           <>
-            <p id="saved-session-topic" className="font-medium mt-2"><span className="text-muted">Last time: </span><span>{current.data?.active_skill && current.data.active_skill.id === current.data.state?.skill_id ? current.data?.active_skill?.title : 'Your saved session'}</span></p>
+            <p id="saved-session-topic" className="font-medium mt-2">
+              <span className="text-muted">Last time: </span>
+              <span>
+                {current.data?.active_skill && current.data.active_skill.id === current.data.state?.skill_id
+                  ? current.data?.active_skill?.title
+                  : 'Your saved session'}
+              </span>
+            </p>
             {current.data && <ResumeContext session={current.data} />}
             <p id="saved-session-next">
               {current.data?.state?.plan_complete
@@ -328,53 +366,91 @@ function HomeOverview() {
                       ? 'Next: review your session recap.'
                       : 'Next: return to your current learning step.'}
             </p>
-            {typeof current.data?.due_reviews === 'number' && Number.isInteger(current.data.due_reviews) && current.data.due_reviews >= 0 && <p className="text-sm mt-2">
-              {current.data.due_reviews >= 100 ? 'At least ' : ''}{current.data.due_reviews} {current.data.due_reviews === 1 ? 'review is' : 'reviews are'} due for this saved session.
-            </p>}
-            <p className="text-sm text-muted">
-              Continue keeps this topic and your saved place.
-            </p>
+            {typeof current.data?.due_reviews === 'number' &&
+              Number.isInteger(current.data.due_reviews) &&
+              current.data.due_reviews >= 0 && (
+                <p className="text-sm mt-2">
+                  {current.data.due_reviews >= 100 ? 'At least ' : ''}
+                  {current.data.due_reviews} {current.data.due_reviews === 1 ? 'review is' : 'reviews are'}{' '}
+                  due for this saved session.
+                </p>
+              )}
+            <p className="text-sm text-muted">Continue keeps this topic and your saved place.</p>
           </>
-            <Button
-              variant="primary"
-              size="lg"
-              aria-describedby="saved-session-topic saved-session-next"
-              onClick={() => {
-                if (current.data) {
-                  prepareResumedTutor(current.data.id)
-                  setSession(
-                    current.data.id,
-                    current.data.state?.skill_id ?? current.data.next_skill?.id ?? null,
-                  )
-                }
-                nav(routeForPhase(current.data?.state))
-              }}
-            >
-              Continue
-            </Button>
-      </Card>}
+          <Button
+            variant="primary"
+            size="lg"
+            aria-describedby="saved-session-topic saved-session-next"
+            onClick={() => {
+              if (current.data) {
+                prepareResumedTutor(current.data.id)
+                setSession(
+                  current.data.id,
+                  current.data.state?.skill_id ?? current.data.next_skill?.id ?? null,
+                )
+              }
+              nav(routeForPhase(current.data?.state))
+            }}
+          >
+            Continue
+          </Button>
+        </Card>
+      )}
       {!resumable && newSessionCard}
       <section aria-label="Other ways to learn" className="grid gap-3 sm:grid-cols-3">
         <Card>
-          <Button onClick={() => void quickReview()} disabled={quickReviewBusy || start.isPending || current.isPending || prefs.isPending || prefs.isError || setPref.isPending || skills.isFetching || skills.isError}>
+          <Button
+            onClick={() => void quickReview()}
+            disabled={
+              quickReviewBusy ||
+              start.isPending ||
+              current.isPending ||
+              prefs.isPending ||
+              prefs.isError ||
+              setPref.isPending ||
+              skills.isFetching ||
+              skills.isError
+            }
+          >
             {quickReviewBusy ? 'Opening review…' : 'Quick review'}
           </Button>
-          <p className="text-sm text-muted mt-2">Review a short set of due cards. Keeps your saved lesson in place; if needed, starts a session with your current settings.</p>
+          <p className="text-sm text-muted mt-2">
+            Review a short set of due cards. Keeps your saved lesson in place; if needed, starts a session
+            with your current settings.
+          </p>
         </Card>
         <Card>
-          <Button asChild><Link to="/map">Learn something else</Link></Button>
-          <p className="text-sm text-muted mt-2">Choose a different concept. Review the choice before switching your saved session.</p>
+          <Button asChild>
+            <Link to="/map">Learn something else</Link>
+          </Button>
+          <p className="text-sm text-muted mt-2">
+            Choose a different concept. Review the choice before switching your saved session.
+          </p>
         </Card>
         <Card>
-          <Button asChild><Link to="/explore">Explore</Link></Button>
-          <p className="text-sm text-muted mt-2">Browse knowledge areas and available lessons without starting a session.</p>
+          <Button asChild>
+            <Link to="/explore">Explore</Link>
+          </Button>
+          <p className="text-sm text-muted mt-2">
+            Browse knowledge areas and available lessons without starting a session.
+          </p>
         </Card>
       </section>
-      {quickReviewError && <p role="alert">Could not open quick review: {quickReviewError} Your saved session has not been ended. Try Quick review again.</p>}
-      {resumable ? <Disclosure label="Start a different session">
-        <p className="text-sm text-muted my-2">Review the selected lesson before deciding whether to end your current session. Opening this does not change your saved work.</p>
-        {newSessionCard}
-      </Disclosure> : null}
+      {quickReviewError && (
+        <p role="alert">
+          Could not open quick review: {quickReviewError} Your saved session has not been ended. Try Quick
+          review again.
+        </p>
+      )}
+      {resumable ? (
+        <Disclosure label="Start a different session">
+          <p className="text-sm text-muted my-2">
+            Review the selected lesson before deciding whether to end your current session. Opening this does
+            not change your saved work.
+          </p>
+          {newSessionCard}
+        </Disclosure>
+      ) : null}
       <RecentContexts />
       <AdaptationCards collapsed />
       <PromotedReminders />
@@ -395,13 +471,18 @@ function HomeOverview() {
         ))}
       </Disclosure>
       <Disclosure label="Change new-session topic">
-        <p className="text-sm text-muted mt-2">Changing this selection affects the next session you start. Resuming keeps your saved topic and place.</p>
+        <p className="text-sm text-muted mt-2">
+          Changing this selection affects the next session you start. Resuming keeps your saved topic and
+          place.
+        </p>
         <label className="block min-w-0 text-sm font-medium mt-2">
           Knowledge area
           <select
             className="block w-full min-w-0 max-w-full border border-line rounded-md px-2 py-1 mt-1"
             value={areaGoal}
-            disabled={quickReviewBusy || setPref.isPending || skills.isFetching || areas.isPending || prefs.isPending}
+            disabled={
+              quickReviewBusy || setPref.isPending || skills.isFetching || areas.isPending || prefs.isPending
+            }
             onChange={(e) => setPref.mutate({ key: 'goal.area', value: e.target.value })}
           >
             <option value="">Whole map or course goal below</option>
@@ -438,7 +519,13 @@ function HomeOverview() {
               <select
                 className="block w-full min-w-0 max-w-full border border-line rounded-md px-2 py-1 mt-1"
                 value={goal}
-                disabled={quickReviewBusy || Boolean(areaGoal) || setPref.isPending || skills.isFetching || prefs.isPending}
+                disabled={
+                  quickReviewBusy ||
+                  Boolean(areaGoal) ||
+                  setPref.isPending ||
+                  skills.isFetching ||
+                  prefs.isPending
+                }
                 onChange={(e) => setPref.mutate({ key: 'goal.course', value: e.target.value })}
               >
                 <option value="">Whole skill map</option>
@@ -473,83 +560,87 @@ function HomeOverview() {
       </Disclosure>
       <Disclosure label="Session options">
         <fieldset disabled={quickReviewBusy}>
-        <p className="text-sm text-muted my-2">
-          Optional: adjust pace, energy and teaching style for a new session.
-        </p>
-        <Choice<Mode>
-          stackOnNarrow
-          label="State mode"
-          options={(Object.keys(MODE_LABELS) as Mode[]).map((m) => ({
-            value: m,
-            label: MODE_LABELS[m].title,
-            hint: MODE_LABELS[m].hint,
-          }))}
-          value={mode}
-          onChange={(value) => {
-            // A late saved default must not replace the learner's choice for this visit.
-            preselected.current = true
-            setMode(value)
-          }}
-        />
-        {typeof defaultMode === 'string' && defaultMode === mode && !sessionId && (
-          <p className="text-sm text-muted mt-1">
-            Preselected from your default (Preferences). Change it freely.
+          <p className="text-sm text-muted my-2">
+            Optional: adjust pace, energy and teaching style for a new session.
           </p>
-        )}
-        <div className="mt-4">
-          <Choice<number>
+          <Choice<Mode>
             stackOnNarrow
-            label="Energy (1 = running on empty, 5 = plenty)"
-            options={[1, 2, 3, 4, 5].map((n) => ({
-              value: n,
-              label: String(n),
+            label="State mode"
+            options={(Object.keys(MODE_LABELS) as Mode[]).map((m) => ({
+              value: m,
+              label: MODE_LABELS[m].title,
+              hint: MODE_LABELS[m].hint,
             }))}
-            value={energy}
-            onChange={setEnergy}
-            columns={5}
+            value={mode}
+            onChange={(value) => {
+              // A late saved default must not replace the learner's choice for this visit.
+              preselected.current = true
+              setMode(value)
+            }}
           />
-        </div>
-        <p className="text-sm text-muted mt-3" role="status">
-          {preview.data
-            ? `Planned: ${preview.data.blocks
-                .map(
-                  (b) => `${b.type.replace('_', ' ')} ${b.planned_min} min${b.optional ? ' (optional)' : ''}`,
-                )
-                .join(' → ')} · about ${preview.data.total_min} min in total.`
-            : 'Planning…'}
-        </p>
-        <Disclosure className="mt-3" label={`More options · questioning style: ${socratic ? 'Socratic (chosen for this session)' : 'Explicit (default)'}`}>
-          <div className="mt-2">
-            <Choice<'explicit' | 'socratic'>
+          {typeof defaultMode === 'string' && defaultMode === mode && !sessionId && (
+            <p className="text-sm text-muted mt-1">
+              Preselected from your default (Preferences). Change it freely.
+            </p>
+          )}
+          <div className="mt-4">
+            <Choice<number>
               stackOnNarrow
-              label="Questioning style for this session"
-              options={[
-                {
-                  value: 'explicit',
-                  label: 'Explicit (default)',
-                  hint: 'Direct explanations in short steps.',
-                },
-                {
-                  value: 'socratic',
-                  label: 'Socratic',
-                  hint: 'One narrowing question per turn.',
-                },
-              ]}
-              value={socratic ? 'socratic' : 'explicit'}
-              onChange={(v) => setSocratic(v === 'socratic')}
-              columns={2}
+              label="Energy (1 = running on empty, 5 = plenty)"
+              options={[1, 2, 3, 4, 5].map((n) => ({
+                value: n,
+                label: String(n),
+              }))}
+              value={energy}
+              onChange={setEnergy}
+              columns={5}
             />
-            {runningExperiment && (
-              <p className="text-sm text-muted mt-1" role="status">
-                An experiment is running ("{runningExperiment.name}"):{' '}
-                {runningExperiment.unit_type === 'node'
-                  ? "on assigned skills the experiment's arm replaces this choice"
-                  : 'this session may be assigned an arm that replaces this choice (the session screen says which)'}
-                . Stop it under Experiments to get full control back.
-              </p>
-            )}
           </div>
-        </Disclosure>
+          <p className="text-sm text-muted mt-3" role="status">
+            {preview.data
+              ? `Planned: ${preview.data.blocks
+                  .map(
+                    (b) =>
+                      `${b.type.replace('_', ' ')} ${b.planned_min} min${b.optional ? ' (optional)' : ''}`,
+                  )
+                  .join(' → ')} · about ${preview.data.total_min} min in total.`
+              : 'Planning…'}
+          </p>
+          <Disclosure
+            className="mt-3"
+            label={`More options · questioning style: ${socratic ? 'Socratic (chosen for this session)' : 'Explicit (default)'}`}
+          >
+            <div className="mt-2">
+              <Choice<'explicit' | 'socratic'>
+                stackOnNarrow
+                label="Questioning style for this session"
+                options={[
+                  {
+                    value: 'explicit',
+                    label: 'Explicit (default)',
+                    hint: 'Direct explanations in short steps.',
+                  },
+                  {
+                    value: 'socratic',
+                    label: 'Socratic',
+                    hint: 'One narrowing question per turn.',
+                  },
+                ]}
+                value={socratic ? 'socratic' : 'explicit'}
+                onChange={(v) => setSocratic(v === 'socratic')}
+                columns={2}
+              />
+              {runningExperiment && (
+                <p className="text-sm text-muted mt-1" role="status">
+                  An experiment is running ("{runningExperiment.name}"):{' '}
+                  {runningExperiment.unit_type === 'node'
+                    ? "on assigned skills the experiment's arm replaces this choice"
+                    : 'this session may be assigned an arm that replaces this choice (the session screen says which)'}
+                  . Stop it under Experiments to get full control back.
+                </p>
+              )}
+            </div>
+          </Disclosure>
         </fieldset>
       </Disclosure>
     </div>

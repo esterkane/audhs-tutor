@@ -15,6 +15,7 @@ from app.api.deps import DB, Gateway, Learner, SettingsDep
 from app.core.errors import AppError
 from app.db.models import CurriculumDraft
 from app.kernel import curriculum, knowledge_authoring
+from app.kernel.learning_scope import reference_before, require_current_material
 from app.knowledge.ingest.loaders import load_file
 from app.knowledge.ingest.service import ingest_source
 from app.schemas.curriculum import DraftOut
@@ -48,7 +49,7 @@ async def search_memories(
     from app.knowledge import personal_memory
     from app.knowledge.reindex import build_repo, embed_spec
 
-    await curriculum.get_draft(db, learner.id, draft_id)
+    await _current_draft(db, learner.id, draft_id)
     if not body.query.strip():
         return MemorySearchOut(memories=[])
     lock = getattr(request.app.state, "personal_memory_lock", None)
@@ -93,7 +94,7 @@ async def prepare_research_tutor(
 ) -> dict[str, str]:
     from app.api.tutor_preparation import schedule_research_preparation
 
-    draft = await curriculum.get_draft(db, learner.id, draft_id)
+    draft = await _current_draft(db, learner.id, draft_id)
     if draft.status == "draft":
         schedule_research_preparation(request, background, settings, learner.id, draft_id)
     return {"status": "accepted"}
@@ -109,6 +110,7 @@ async def research_tutor(
     request: Request,
     settings: SettingsDep,
 ) -> ResearchTutorOut:
+    await _current_draft(db, learner.id, draft_id)
     from app.orchestrator.research_tutor import help_research
 
     request.app.state.research_tutor_active = (
@@ -130,6 +132,7 @@ async def research_questions(
     learner: Learner,
     settings: SettingsDep,
 ) -> DraftOut:
+    await _current_draft(db, learner.id, draft_id)
     from app.orchestrator.knowledge_authoring import suggest_research_questions
 
     draft = await suggest_research_questions(
@@ -162,6 +165,9 @@ async def upload(
     if not storage_root.is_absolute():
         storage_root = settings.project_root / storage_root
     folder = storage_root / "knowledge-authoring" / learner.id
+    cutoff = await reference_before(db, learner.id)
+    if cutoff is not None:
+        folder = folder / hashlib.sha256(cutoff.encode()).hexdigest()[:16]
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / (digest + suffix)
     if not path.exists():
@@ -221,7 +227,13 @@ async def create(
     )
     return _draft_out(
         await curriculum.create_draft(
-            db, learner.id, course=None, section=None, payload=payload, origin="knowledge_authored"
+            db,
+            learner.id,
+            course=None,
+            section=None,
+            payload=payload,
+            origin="knowledge_authored",
+            area_id=payload.get("area_id"),
         )
     )
 
@@ -230,7 +242,7 @@ async def create(
 async def update(
     draft_id: str, body: KnowledgeMaterialUpdate, db: DB, learner: Learner
 ) -> DraftOut:
-    draft = await curriculum.get_draft(db, learner.id, draft_id)
+    draft = await _current_draft(db, learner.id, draft_id)
     previous = draft.payload_json.get("authoring")
     if not previous:
         raise AppError("invalid_authoring_draft", "Choose a knowledge material draft.", 422)
@@ -259,6 +271,7 @@ async def suggest(
     gateway: Gateway,
     settings: SettingsDep,
 ) -> DraftOut:
+    await _current_draft(db, learner.id, draft_id)
     from app.orchestrator.knowledge_authoring import suggest_material
 
     return _draft_out(
@@ -274,6 +287,7 @@ async def revise(
     learner: Learner,
     request_id: Annotated[UUID, Header(alias="Idempotency-Key")],
 ) -> DraftOut:
+    await _current_draft(db, learner.id, draft_id)
     original = await curriculum.get_draft(db, learner.id, draft_id)
     if (
         original.status != "published"
@@ -310,7 +324,13 @@ async def revise(
     )
     return _draft_out(
         await curriculum.create_draft(
-            db, learner.id, course=None, section=None, payload=payload, origin="knowledge_authored"
+            db,
+            learner.id,
+            course=None,
+            section=None,
+            payload=payload,
+            origin="knowledge_authored",
+            area_id=payload.get("area_id"),
         )
     )
 
@@ -348,3 +368,9 @@ async def accepted_reading(skill_id: str, db: DB, learner: Learner) -> Knowledge
         sources=list(lo.sources_json or []),
         learning_object_version=lo.version,
     )
+
+
+async def _current_draft(db: DB, learner_id: str, draft_id: str) -> CurriculumDraft:
+    draft = await curriculum.get_draft(db, learner_id, draft_id)
+    await require_current_material(db, learner_id, draft.created_at)
+    return draft

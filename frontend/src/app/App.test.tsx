@@ -45,21 +45,24 @@ it('recognizes a valid trailing-slash route title', () => {
   expect(document.title).toBe('Review · AuDHS Tutor')
 })
 
-it('keeps every existing destination available within named groups without changing learning state', () => {
+it('keeps supported tools and focused projects available without changing learning state', () => {
   useMode.setState({ sessionId: 'kept', skillId: 'kept-skill' })
   renderApp(<Shell><h1>Content</h1></Shell>)
   fireEvent.click(screen.getByRole('button', { name: 'Tools' }))
   const tools = within(screen.getByRole('dialog', { name: 'Tools and pages' }))
   const destinations = {
     Review: '/review', Vocabulary: '/vocab', 'Work alongside': '/together',
-    'Skill map': '/map', 'Project study': '/programs',
-    'Saved answers': '/answers', Playground: '/playground', 'Audio visualizer': '/playground/visualizer',
+    'Skill map': '/map',
+    'Saved answers': '/answers', Playground: '/playground',
     Materials: '/corpus', 'Knowledge material': '/curriculum', Models: '/models',
     Experiments: '/experiments', Preferences: '/preferences',
   }
   for (const [name, href] of Object.entries(destinations)) {
     expect(tools.getByRole('link', { name })).toHaveAttribute('href', href)
   }
+  expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('href', '/projects')
+  expect(tools.queryByRole('link', { name: 'Audio visualizer' })).toBeNull()
+  expect(tools.queryByRole('link', { name: /guitar/i })).toBeNull()
   expect(useMode.getState().sessionId).toBe('kept')
   expect(useMode.getState().skillId).toBe('kept-skill')
 })

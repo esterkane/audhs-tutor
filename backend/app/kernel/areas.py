@@ -226,11 +226,17 @@ def passage_matches(text: str, terms: list[Any]) -> bool:
     return _has_term(body, terms)
 
 
-async def source_rows(db: AsyncSession, area: KnowledgeArea) -> list[dict[str, Any]]:
+async def source_rows(
+    db: AsyncSession, area: KnowledgeArea, learner_id: str | None = None
+) -> list[dict[str, Any]]:
+    from app.kernel.learning_scope import created_visible
+
     docs = list(
         (
             await db.execute(
-                select(Document).order_by(Document.course, Document.title, Document.id)
+                select(Document)
+                .where(created_visible(learner_id, Document.created_at))
+                .order_by(Document.course, Document.title, Document.id)
             )
         ).scalars()
     )
@@ -312,10 +318,24 @@ def _catalogue_counts(
 
 
 async def catalogue(db: AsyncSession, learner_id: str) -> dict[str, Any]:
-    areas = list((await db.execute(select(KnowledgeArea).order_by(KnowledgeArea.title))).scalars())
+    from app.kernel.focus_reset import TOPIC_SLUGS
+    from app.kernel.learning_scope import created_visible, reference_before
+
+    area_scope = (
+        KnowledgeArea.slug.in_(["focus-" + slug for slug in TOPIC_SLUGS])
+        if await reference_before(db, learner_id)
+        else created_visible(learner_id, KnowledgeArea.created_at)
+    )
+    areas = list(
+        (
+            await db.execute(select(KnowledgeArea).where(area_scope).order_by(KnowledgeArea.title))
+        ).scalars()
+    )
     document_rows = (
         await db.execute(
-            select(Document.title, Document.section, Document.lecture, Document.course)
+            select(Document.title, Document.section, Document.lecture, Document.course).where(
+                created_visible(learner_id, Document.created_at)
+            )
         )
     ).all()
     documents = tuple((row.title, row.section, row.lecture, row.course) for row in document_rows)
@@ -364,9 +384,9 @@ async def catalogue(db: AsyncSession, learner_id: str) -> dict[str, Any]:
 
 
 async def excerpts(
-    db: AsyncSession, area: KnowledgeArea
+    db: AsyncSession, area: KnowledgeArea, learner_id: str | None = None
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    sources = await source_rows(db, area)
+    sources = await source_rows(db, area, learner_id)
     # Primary and supplemental can provide evidence; excluded never does. Only direct title/section
     # matches drive new area drafts, avoiding course-title topic leakage.
     eligible = [s for s in sources if s["role"] != "excluded" and s["match"] == "title/section"]

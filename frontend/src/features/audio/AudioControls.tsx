@@ -183,7 +183,7 @@ export function AudioControls({ compact = false, header = false }: { compact?: b
         </p>
         <p className="text-xs text-muted">
           Output: your Mac’s selected device. For Bluetooth headphones, select them in macOS Control Center →
-          Sound; also check the browser tab is not muted. Visualizer sound must be enabled separately.
+          Sound; also check the browser tab is not muted.
         </p>
         {status && <p role="status">{status}</p>}
         {!saved && <p role="alert">Settings work for now but could not be saved in this browser.</p>}

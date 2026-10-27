@@ -43,3 +43,6 @@ frontend/test-results-design/
 docs/agent-handoffs/history/
 docs/agent-handoffs/LATEST_REVIEW.md
 docs/agent-handoffs/CLAUDE_FEEDBACK.md
+
+# Isolated focused learning browser run
+frontend/focus-test-results/

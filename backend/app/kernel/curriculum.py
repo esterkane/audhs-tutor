@@ -289,10 +289,12 @@ def _order_key(no: int | None, label: str | None) -> tuple[int, int, str]:
 # ----------------------------------------------------------------------------- material status
 async def material_status(db: AsyncSession, learner_id: str) -> list[dict[str, Any]]:
     """Per course: imported documents, searchable chunks, the learner's drafts, published skills."""
+    from app.kernel.learning_scope import created_visible
+
     docs = (
         await db.execute(
             select(Document.course, func.count(Document.id))
-            .where(Document.course.is_not(None))
+            .where(Document.course.is_not(None), created_visible(learner_id, Document.created_at))
             .group_by(Document.course)
         )
     ).all()
@@ -1092,9 +1094,14 @@ async def get_draft(db: AsyncSession, learner_id: str, draft_id: str) -> Curricu
 
 
 async def list_drafts(db: AsyncSession, learner_id: str) -> list[CurriculumDraft]:
+    from app.kernel.learning_scope import created_visible
+
     stmt = (
         select(CurriculumDraft)
-        .where(CurriculumDraft.learner_id == learner_id)
+        .where(
+            CurriculumDraft.learner_id == learner_id,
+            created_visible(learner_id, CurriculumDraft.created_at),
+        )
         .order_by(CurriculumDraft.updated_at.desc())
     )
     return list((await db.execute(stmt)).scalars())
@@ -1118,6 +1125,9 @@ async def _locked_draft(
         )
         if row is None:
             raise KeyError("draft not found")
+        from app.kernel.learning_scope import require_current_material
+
+        await require_current_material(db, learner_id, row.created_at)
         if expected_version is not None and row.version != expected_version:
             raise AppError(
                 "draft_conflict",
@@ -1143,6 +1153,8 @@ async def update_draft(
     if d.status != "draft":
         raise ValueError(f"a {d.status} draft cannot be edited; create a new draft")
     d.payload_json = payload
+    if payload.get("area_id"):
+        d.area_id = str(payload["area_id"])
     d.validation_json = problems_json(
         selection_problems(payload.get("selection")) + await validate_payload(db, payload)
     )
@@ -1368,6 +1380,8 @@ async def passage(db: AsyncSession, chunk_id: str) -> Passage | None:
     if row is None:
         return None
     c, prov, ver, doc = row
+    if doc.source_type == "removed" or not c.text.strip():
+        return None
     neighbours = {
         ch.ordinal: ch.text
         for ch in (

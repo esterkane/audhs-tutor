@@ -46,10 +46,10 @@ export function useIngest() {
   })
 }
 
-export function useSearch() {
+export function useSearch(accuracyReview = false) {
   return useMutation({
     mutationFn: (body: SearchRequest) =>
-      apiFetch<SearchOut>('/api/corpus/search', { method: 'POST', body: JSON.stringify(body) }),
+      apiFetch<SearchOut>(accuracyReview ? '/api/corpus/accuracy-review/search' : '/api/corpus/search', { method: 'POST', body: JSON.stringify(body) }),
   })
 }
 

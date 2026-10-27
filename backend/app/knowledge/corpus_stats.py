@@ -49,8 +49,22 @@ async def course_stats(db: AsyncSession, versions: list[str]) -> list[CourseStat
 
 async def totals(db: AsyncSession, versions: list[str]) -> tuple[int, int, int, int]:
     """documents, versions, unique chunks, flagged unique chunks."""
-    n_docs = (await db.execute(select(func.count()).select_from(Document))).scalar_one()
-    n_versions = (await db.execute(select(func.count()).select_from(DocumentVersion))).scalar_one()
+    n_docs = (
+        await db.execute(
+            select(func.count()).select_from(Document).where(Document.source_type != "removed")
+        )
+    ).scalar_one()
+    n_versions = (
+        await db.execute(
+            select(func.count())
+            .select_from(DocumentVersion)
+            .where(
+                DocumentVersion.document_id.in_(
+                    select(Document.id).where(Document.source_type != "removed")
+                )
+            )
+        )
+    ).scalar_one()
     if not versions:
         return int(n_docs), int(n_versions), 0, 0
     n_chunks = (

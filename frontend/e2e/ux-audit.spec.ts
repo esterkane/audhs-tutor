@@ -6,7 +6,7 @@ import axe from 'axe-core'
 test.skip(process.env.AUDHS_UX_AUDIT !== '1', 'Opt-in Phase 2 audit.')
 const routes = [
   '/', '/ask', '/learn', '/practice', '/progress', '/explore', '/search', '/sources',
-  '/areas', '/programs', '/playground', '/playground/visual-learning', '/playground/visualizer',
+  '/areas', '/projects', '/playground', '/playground/visual-learning',
   '/answers', '/map', '/together', '/experiments', '/vocab', '/corpus', '/curriculum',
   '/models', '/preferences', '/task-review', '/corrections', '/session', '/review', '/recap',
 ]

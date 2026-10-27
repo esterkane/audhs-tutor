@@ -258,8 +258,8 @@ async def test_scaffold_start_keeps_edit_during_source_selection(
     )
     original = areas.excerpts
 
-    async def excerpts(session, row):
-        result = await original(session, row)
+    async def excerpts(session, row, learner_id=None):
+        result = await original(session, row, learner_id=learner_id)
         await curriculum.update_draft(
             session,
             learner.id,

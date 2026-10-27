@@ -8,6 +8,17 @@ from app.api.deps import get_repo
 from app.core.config import Settings
 
 
+@pytest.fixture(autouse=True)
+def unscoped_catalogue(monkeypatch):
+    # These tests isolate initialization/concurrency. Scope enforcement has real-DB tests.
+    from unittest.mock import AsyncMock
+
+    monkeypatch.setattr(
+        "app.api.deps.get_or_create_owner", AsyncMock(return_value=SimpleNamespace(id="owner"))
+    )
+    monkeypatch.setattr("app.kernel.learning_scope.reference_before", AsyncMock(return_value=None))
+
+
 @pytest.mark.asyncio
 async def test_concurrent_requests_build_one_repository(monkeypatch):
     app = Starlette()

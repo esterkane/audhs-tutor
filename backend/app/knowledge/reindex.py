@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.db.base import utcnow_iso
-from app.db.models import Chunk, ChunkProvenance, DocumentVersion, IndexState
+from app.db.models import Chunk, ChunkProvenance, Document, DocumentVersion, IndexState
 from app.knowledge.provenance import Provenance
 from app.knowledge.qdrant_hybrid import QdrantHybridRepository
 from app.knowledge.qdrant_transport import local_qdrant_client
@@ -26,9 +26,15 @@ async def latest_version_ids(db: AsyncSession) -> list[str]:
         .group_by(DocumentVersion.document_id)
         .subquery()
     )
-    stmt = select(DocumentVersion.id).join(
-        sub,
-        (sub.c.document_id == DocumentVersion.document_id) & (sub.c.v == DocumentVersion.version),
+    stmt = (
+        select(DocumentVersion.id)
+        .join(
+            sub,
+            (sub.c.document_id == DocumentVersion.document_id)
+            & (sub.c.v == DocumentVersion.version),
+        )
+        .join(Document, Document.id == DocumentVersion.document_id)
+        .where(Document.source_type != "removed")
     )
     return list((await db.execute(stmt)).scalars().all())
 
@@ -55,7 +61,7 @@ async def _records(db: AsyncSession, where: Any) -> list[ChunkRecord]:
         select(Chunk, ChunkProvenance, DocumentVersion.document_id)
         .join(ChunkProvenance, ChunkProvenance.chunk_id == Chunk.id)
         .join(DocumentVersion, DocumentVersion.id == Chunk.document_version_id)
-        .where(where, Chunk.duplicate_of.is_(None))
+        .where(where, Chunk.duplicate_of.is_(None), Chunk.text != "")
         .order_by(DocumentVersion.document_id, Chunk.ordinal)
     )
     out = []
