@@ -38,7 +38,7 @@ export function QuickNavigation({ pages, enabled = true }: { enabled?: boolean; 
   }, [enabled])
   useEffect(() => { dialog.current?.close() }, [location.key])
   const phrase = query.trim()
-  const matching = pages.filter(([, title]) => title.toLocaleLowerCase().includes(phrase.toLocaleLowerCase()))
+  const matching = pages.filter(([path, title]) => (title + (path === '/library' ? ' search sources material' : '')).toLocaleLowerCase().includes(phrase.toLocaleLowerCase()))
   return <>
     <Button variant="outline" aria-haspopup="dialog" aria-keyshortcuts="Control+k Meta+k" title="Search or go to" onClick={open}><Search aria-hidden="true" size={18} /><span className="shell-control-label">Search or go to</span></Button>
     <dialog ref={dialog} aria-labelledby="quick-navigation-title" aria-describedby="quick-navigation-help"
@@ -55,7 +55,7 @@ export function QuickNavigation({ pages, enabled = true }: { enabled?: boolean; 
       <form className="grid gap-2" onSubmit={event => {
         event.preventDefault()
         close(false)
-        navigate(`/search${phrase ? `?${new URLSearchParams({ q: phrase })}` : ''}`)
+        navigate(`/library${phrase ? `?${new URLSearchParams({ q: phrase })}` : ''}`)
         document.getElementById('main-content')?.focus()
       }}>
         <label>Search phrase or page name

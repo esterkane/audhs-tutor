@@ -168,11 +168,11 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     for (const link of await groups.getByRole('link').all()) {
       expect((await link.boundingBox())?.height).toBeGreaterThanOrEqual(44)
     }
-    await groups.getByRole('link', { name: 'Indexed sources', exact: true }).focus()
+    await groups.getByRole('link', { name: 'Source passages', exact: true }).focus()
     await page.keyboard.press('Enter')
-    await expect(page.getByRole('heading', { name: 'Indexed sources', exact: true })).toBeFocused()
+    await expect(page.getByRole('heading', { name: 'Source passages', exact: true })).toBeFocused()
     await page.keyboard.press('Tab')
-    await expect(page.getByRole('link', { name: 'A source with a long descriptive title for comparing evidence' })).toBeFocused()
+    await expect(page.getByRole('button', { name: 'Read passage: A source with a long descriptive title for comparing evidence' })).toBeFocused()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await groups.scrollIntoViewIfNeeded()
     const searchCapture = await context.newCDPSession(page)

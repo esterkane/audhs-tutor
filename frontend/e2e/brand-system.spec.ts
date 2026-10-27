@@ -57,7 +57,7 @@ test('font failure retains readable system fallback', async ({ page }, info) => 
   await page.setViewportSize({ width: 320, height: 800 })
   await page.goto('/search')
   await page.evaluate(() => document.fonts.ready)
-  await expect(page.getByRole('heading', { name: 'Search material', exact: true })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible()
   const field = page.getByRole('searchbox', { name: 'Search phrase', exact: true })
   await field.fill('still usable')
   await expect(field).toHaveValue('still usable')

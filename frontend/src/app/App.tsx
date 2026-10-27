@@ -60,6 +60,8 @@ const pageTitles: Record<string, string> = {
   '/corrections': 'Correction drafts',
   '/preferences': 'Settings',
   '/library': 'Library',
+  '/search': 'Library',
+  '/sources': 'Library',
   '/learn': 'Learn',
   '/practice': 'Practice',
   '/progress': 'Progress',

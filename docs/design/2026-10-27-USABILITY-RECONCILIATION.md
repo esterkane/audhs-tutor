@@ -14,7 +14,7 @@ The immediate priorities are a single active learning task, low-effort help befo
 ## Remaining priorities
 
 1. Continue refining optional AI-help and notes inside the lesson; secondary tools are now grouped under More session tools, with critical recovery retained outside.
-2. Continue Library/search consolidation and vocabulary alignment; six-destination primary navigation and grouped secondary links are implemented, with bookmarks and recovery scopes retained.
+2. Continue integrating imports and saved-work browsing into Library and aligning vocabulary; six-destination navigation and canonical three-group Library search are implemented, with legacy URLs and recovery scopes retained.
 3. Reconcile the scoped authoring cap/status with ordinary hosted-study settings; keep separate permissions and budgets truthful.
 4. Verify the draft preview, pluralisation, browser titles, area/upload linking, confidence visibility, comfort dismissal, and other copy/heading findings against live states.
 5. Design a low-effort material path without automatic activation or loss of the optional research workflow.
@@ -31,3 +31,10 @@ Primary navigation now has six labelled destinations: Home, Library, Progress, P
 The session puts lesson context, plan/energy controls, optional code work, alongside work and experiment links under one More session tools disclosure. Native details keep content mounted, preserve writing and avoid restarting work on toggle. The view remembers its open state for that session in the tab; new sessions begin closed. Optional alongside activity is inactive while the disclosure is closed. Critical pause/end controls, the active reader/check, real request-recovery notices and timer actions remain reachable outside that tools disclosure. This is a composition change, not a curriculum, grading or model policy change.
 
 Remaining work includes broader authoring/Library consolidation, one search, fewer repeated caveats, quick material creation, scoped hosted-settings clarity and the other findings above. The lesson's optional AI-help and notes composition still warrants further review; do not describe the entire usability review as completed.
+
+
+## Canonical Library search
+
+Library now has one local query box and three result groups: My material (personal drafts and active lesson titles), Saved answers, and Source passages. Recent personal drafts appear before searching. Source inspection keeps the result/query state mounted and restores keyboard focus on close; legacy search/source URLs redirect with their query and passage identifiers intact. The command palette uses the same canonical search and no longer lists duplicate search destinations.
+
+Results retain independently retryable errors and explicitly marked cached data. Retired project-guide manifests are not queried. Project/notebook edits, unsaved writing and the web are outside this search scope, stated in the optional details. Long result citations are shortened for scanning while full citation and context remain in the viewer; long unbroken filenames wrap without horizontal page overflow. Imports and specialist saved-answer views remain under the secondary disclosure. This is search consolidation, not a claim that every personal data store is indexed.

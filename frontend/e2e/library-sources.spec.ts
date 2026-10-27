@@ -15,11 +15,11 @@ for (const width of [390, 1280]) {
       text: 'Full passage with surrounding context.', prev_text: 'Earlier paragraph.', next_text: 'Following paragraph.', uri: 'local/source.txt', open_url: null,
     } }))
     await page.goto('/sources')
-    await expect(page.getByRole('heading', { name: 'Sources', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Library', exact: true })).toBeVisible()
     expect(searches).toEqual([])
     await expect(page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Library',exact:true})).toHaveAttribute('aria-current','page')
-    await page.getByRole('searchbox', { name: 'Search source material' }).fill('representation')
-    await page.getByRole('searchbox', { name: 'Search source material' }).press('Enter')
+    await page.getByRole('searchbox', { name: 'Search phrase' }).fill('representation')
+    await page.getByRole('searchbox', { name: 'Search phrase' }).press('Enter')
     const read = page.getByRole('button', { name: `Read passage: ${hit.citation}` })
     await expect(read).toBeVisible()
     expect(searches.length).toBeGreaterThan(0)
@@ -35,7 +35,7 @@ for (const width of [390, 1280]) {
     await page.keyboard.press('Enter')
     await expect(page).not.toHaveURL(/passage=/)
     await expect(read).toBeFocused()
-    await expect(page.getByRole('searchbox', { name: 'Search source material' })).toHaveValue('representation')
+    await expect(page.getByRole('searchbox', { name: 'Search phrase' })).toHaveValue('representation')
     await read.click()
     await page.getByRole('button', { name: 'Close', exact: true }).click()
     await expect(read).toBeFocused()
@@ -50,17 +50,19 @@ for (const width of [390, 1280]) {
   })
 }
 
-test('search failure retry, empty results and deleted passage', async ({ page }) => {
-  let failing = true
-  await page.route('**/api/corpus/search', route => failing ? route.fulfill({ status: 503, json: {} }) : route.fulfill({ json: { hits: [] } }))
-  await page.goto('/sources?q=missing&passage=gone')
-  await expect(page.getByRole('button', { name: 'Retry source search' })).toBeVisible()
-  failing = false
-  await page.getByRole('button', { name: 'Retry source search' }).click()
-  await expect(page.getByText(/No indexed passages matched/)).toBeVisible()
-  await expect(page.getByText(/selected passage is no longer/)).toBeVisible()
-  await page.getByRole('button', { name: 'Clear search' }).click()
-  await expect(page.getByText('Enter a topic or phrase to find source material.')).toBeVisible()
+test('Library retains query after a missing passage and can retry source search',async({page})=>{
+ let failing=true
+ await page.route('**/api/corpus/search',route=>route.fulfill(failing?{status:503,json:{}}:{json:{hits:[]}}))
+ await page.route('**/api/curriculum/chunks/gone',route=>route.fulfill({status:404,json:{}}))
+ await page.goto('/sources?q=missing&passage=gone')
+ await expect(page.getByText(/This passage is no longer/)).toBeVisible()
+ await page.getByRole('button',{name:'Close',exact:true}).click()
+ await expect(page.getByRole('searchbox',{name:'Search phrase'})).toHaveValue('missing')
+ await expect(page.getByRole('button',{name:'Retry source search'})).toBeVisible()
+ failing=false;await page.getByRole('button',{name:'Retry source search'}).click()
+ await expect(page.getByText('No indexed passages matched.',{exact:true})).toBeVisible()
+ await page.getByRole('button',{name:'Clear search'}).click()
+ await expect(page.getByRole('searchbox',{name:'Search phrase'})).toHaveValue('')
 })
 
 test('late source search does not replace the new query', async ({ page }) => {
@@ -76,10 +78,29 @@ test('late source search does not replace the new query', async ({ page }) => {
   })
   await page.goto('/sources?q=old')
   await started
-  await page.getByRole('searchbox', { name: 'Search source material' }).fill('new')
-  await page.getByRole('button', { name: 'Search sources', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'new', exact: true })).toBeVisible()
+  await page.getByRole('searchbox', { name: 'Search phrase' }).fill('new')
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'Read passage: new', exact: true })).toBeVisible()
   release()
   await delivered
-  await expect(page.getByRole('heading', { name: 'old', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Read passage: old', exact: true })).toHaveCount(0)
+})
+
+
+test('long source names remain readable and retain full provenance in the passage',async({page})=>{
+ const citation='uploadednotes'.repeat(35)+'.md'
+ await page.setViewportSize({width:390,height:900})
+ await page.route('**/api/corpus/search',route=>route.fulfill({json:{hits:[{...hit,chunk_id:'long-p',citation}]}}))
+ await page.route('**/api/curriculum/chunks/long-p',route=>route.fulfill({json:{chunk_id:'long-p',citation,text:'Exact uploaded source context.',source_type:'text',document_title:citation,trust_tier:2,uri:'notes.md',open_url:null}}))
+ await page.goto('/library?q=notes')
+ const open=page.getByRole('button',{name:'Read passage: '+citation,exact:true})
+ await expect(open).toBeVisible()
+ expect((await open.innerText()).length).toBeLessThan(140)
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy()
+ await open.click()
+ await expect(page.getByText(citation,{exact:true})).toBeVisible()
+ await expect(page.getByText('Exact uploaded source context.',{exact:true})).toBeVisible()
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBeTruthy()
+ await page.getByRole('button',{name:'Close',exact:true}).click()
+ await expect(open).toBeFocused()
 })

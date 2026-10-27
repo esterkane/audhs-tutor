@@ -38,11 +38,11 @@ export function SourceViewer({
   const [reporting, setReporting] = useState(false)
   const c = chunk.isError ? undefined : chunk.data
   return (
-    <Card role="region" aria-label={`Source ${citation}`} className="border-accent">
+    <Card role="region" aria-label={`Source ${citation}`} className="border-accent min-w-0 max-w-full [overflow-wrap:anywhere]">
       {c?.chunk_id === chunkId && <RememberContext context={{ version: 1, kind: 'source', chunk_id: chunkId, label: c.citation.slice(0, 200) || 'Source passage' }} />}
       <div className="flex justify-between gap-2 items-start">
-        <p className="font-medium text-sm">{c ? c.citation : citation}</p>
-        <Button size="sm" variant="ghost" onClick={onClose}>
+        <p className="font-medium text-sm min-w-0 flex-1 [overflow-wrap:anywhere]">{c ? c.citation : citation}</p>
+        <Button size="sm" variant="ghost" className="shrink-0" onClick={onClose}>
           Close
         </Button>
       </div>
@@ -61,7 +61,7 @@ export function SourceViewer({
       )}
       {c && (
         <>
-          <Button size="sm" variant="secondary" className="mt-2" onClick={event => requestCapture({ version: 1, kind: 'source', chunk_id: chunkId, label: c.citation.slice(0, 200) || 'Source passage' }, event.currentTarget)}>Save a thought about this passage</Button>
+          <Button size="sm" variant="secondary" className="mt-2 max-w-full whitespace-normal" onClick={event => requestCapture({ version: 1, kind: 'source', chunk_id: chunkId, label: c.citation.slice(0, 200) || 'Source passage' }, event.currentTarget)}>Save a thought about this passage</Button>
           <p className="text-xs text-muted mt-1">
             {c.document_title} · {c.source_type} · trust {c.trust_tier}
             {mmss(c.t_start) ? ` · at ${mmss(c.t_start)}${mmss(c.t_end) ? `–${mmss(c.t_end)}` : ''}` : ''}
