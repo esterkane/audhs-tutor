@@ -5,6 +5,7 @@ import pytest
 
 from app.core.errors import AppError
 from app.integrations import supabase_bridge as bridge
+from app.models_ai.provider import EmbeddingFormat, ModelSpec
 
 
 def setup_bridge(monkeypatch, provider="ollama", decision=None):
@@ -22,9 +23,7 @@ def setup_bridge(monkeypatch, provider="ollama", decision=None):
         bridge.registry,
         "get_spec",
         AsyncMock(
-            return_value=SimpleNamespace(
-                provider=provider, model="test-only", registry_id="test-only"
-            )
+            return_value=ModelSpec(provider=provider, model="test-only", registry_id="test-only")
         ),
     )
     call = AsyncMock(
@@ -249,3 +248,23 @@ async def test_unknown_offered_contract_stops_before_inference(monkeypatch):
     call.assert_not_awaited()
     assert not captured
     db.commit.assert_not_awaited()
+
+
+async def test_local_query_uses_the_selected_models_query_format(monkeypatch):
+    client, _, _, _ = setup_bridge(monkeypatch)
+    spec = ModelSpec(
+        registry_id="configured",
+        provider="ollama",
+        model="configured",
+        embedding=EmbeddingFormat(
+            dimensions=768, query_prefix="Instruct: Retrieve passages.\nQuery: "
+        ),
+    )
+    monkeypatch.setattr(bridge.registry, "get_spec", AsyncMock(return_value=spec))
+    provider = SimpleNamespace(embed=AsyncMock(return_value=[[0.1] * 768]))
+    monkeypatch.setattr(bridge, "write_model_call", AsyncMock())
+    embedder = bridge.LocalProjectEmbedder(client.sessions, {"ollama": provider}, client.settings)
+    await embedder.embed_query("Eine SQL-Frage")
+    assert provider.embed.call_args.args[1] == [
+        "Instruct: Retrieve passages.\nQuery: Eine SQL-Frage"
+    ]

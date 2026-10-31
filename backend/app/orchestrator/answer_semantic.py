@@ -89,7 +89,11 @@ async def ranked(
     started = time.perf_counter()
     ok = False
     try:
-        vector = (await OllamaProvider(settings.ollama_host).embed(spec, [query]))[0]
+        vector = (
+            await OllamaProvider(settings.ollama_host).embed(
+                spec, spec.embedding_inputs([query], query=True)
+            )
+        )[0]
         if not answer_vectors.valid(vector) or len(vector) != len(dims):
             raise ValueError("Invalid query embedding")
         ok = True

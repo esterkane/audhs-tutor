@@ -152,7 +152,8 @@ class QdrantHybridRepository:
             batch = chunks[i : i + self.batch_size]
             texts = [c.text for c in batch]
             dense, sparse = await asyncio.gather(
-                self.embedder.embed(self.embed_spec, texts), self.sparse.encode(texts)
+                self.embedder.embed(self.embed_spec, self.embed_spec.embedding_inputs(texts)),
+                self.sparse.encode(texts),
             )
             points = [
                 qm.PointStruct(
@@ -219,7 +220,10 @@ class QdrantHybridRepository:
     ) -> SearchResult:
         t0 = time.perf_counter()
         (dense_q,), sparse_q = await asyncio.gather(
-            self.embedder.embed(self.embed_spec, [query]), self.sparse.encode_query(query)
+            self.embedder.embed(
+                self.embed_spec, self.embed_spec.embedding_inputs([query], query=True)
+            ),
+            self.sparse.encode_query(query),
         )
         qfilter = self._filter(filters)
         candidates = candidate_count(k, reranker=self.reranker, cap=self.max_per_document)

@@ -83,7 +83,9 @@ class SqliteHybridRepository:
         return found
 
     async def upsert(self, chunks: list[ChunkRecord]) -> int:
-        vectors = await self.embedder.embed(self.embed_spec, [c.text for c in chunks])
+        vectors = await self.embedder.embed(
+            self.embed_spec, self.embed_spec.embedding_inputs([c.text for c in chunks])
+        )
         cur = self.conn.cursor()
         for ch, v in zip(chunks, vectors, strict=True):
             cur.execute("DELETE FROM chunks WHERE id=?", (ch.id,))
@@ -160,7 +162,9 @@ class SqliteHybridRepository:
         self, query: str, filters: SearchFilters | None = None, k: int = 8
     ) -> SearchResult:
         t0 = time.perf_counter()
-        (qvec,) = await self.embedder.embed(self.embed_spec, [query])
+        (qvec,) = await self.embedder.embed(
+            self.embed_spec, self.embed_spec.embedding_inputs([query], query=True)
+        )
         pre = max(k * 5, 50)
         bm25 = self._bm25(query, pre)
         dense = self._dense(qvec, pre)

@@ -36,6 +36,11 @@ def spec_from_row(row: ModelRegistry) -> ModelSpec:
         price_in_per_mtok=row.price_in_per_mtok or 0.0,
         price_out_per_mtok=row.price_out_per_mtok or 0.0,
         context_len=row.context_len,
+        embedding=(
+            load_profiles().get("embedding_formats", {}).get(row.id)
+            if row.role == "embed"
+            else None
+        ),
     )
 
 

@@ -1,5 +1,6 @@
 """Rebuild Qdrant from SQLite (latest document version per document). SQLite is the system of record."""
 
+import hashlib
 from typing import Any
 
 from sqlalchemy import func, select
@@ -7,7 +8,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.db.base import utcnow_iso
-from app.db.models import Chunk, ChunkProvenance, Document, DocumentVersion, IndexState
+from app.db.models import (
+    Chunk,
+    ChunkProvenance,
+    Document,
+    DocumentVersion,
+    IndexState,
+    LearnerProfile,
+)
 from app.knowledge.provenance import Provenance
 from app.knowledge.qdrant_hybrid import QdrantHybridRepository
 from app.knowledge.qdrant_transport import local_qdrant_client
@@ -90,7 +98,14 @@ async def _records(db: AsyncSession, where: Any) -> list[ChunkRecord]:
 
 
 async def embed_spec(db: AsyncSession, settings: Settings) -> ModelSpec:
-    route = await Router(settings.routing_profile).resolve(db, TaskClass.EMBED)
+    # Phase 1 has one owner; corpus, personal memory and project queries must agree
+    # with that owner's explicit embedding assignment.
+    owner = await db.scalar(
+        select(LearnerProfile).order_by(LearnerProfile.created_at, LearnerProfile.id).limit(1)
+    )
+    route = await Router(settings.routing_profile).resolve(
+        db, TaskClass.EMBED, owner.id if owner is not None else None
+    )
     return await registry.get_spec(db, route.registry_id)
 
 
@@ -107,6 +122,13 @@ async def reranker_for(db: AsyncSession, settings: Settings) -> FastembedReranke
     ):  # registry says ready but the artefact is gone: never download at search time
         return None
     return FastembedReranker(spec.model, cache_dir=cache, registry_id=spec.registry_id)
+
+
+def embedding_collection(spec: ModelSpec, version: int = 1) -> str:
+    if spec.embedding is None:
+        return f"corpus_v{version}"
+    identity = hashlib.sha256(spec.model_dump_json().encode()).hexdigest()[:16]
+    return f"corpus_v{version}_{identity}"
 
 
 async def build_repo(
@@ -126,7 +148,7 @@ async def build_repo(
         emb,
         spec,
         dims=dims,
-        collection=collection,
+        collection=collection or embedding_collection(spec, embedding_version),
         embedding_version=embedding_version,
         reranker=await reranker_for(db, settings),
         max_per_document=settings.retrieval_max_per_document,

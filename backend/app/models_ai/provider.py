@@ -10,7 +10,7 @@ from json import JSONDecodeError
 from typing import Any, Literal, Protocol, TypeVar
 
 from instructor.core.exceptions import InstructorRetryException
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 
 class TaskClass(StrEnum):
@@ -48,6 +48,16 @@ class Message(BaseModel):
 HOSTED_PROVIDERS = ("anthropic", "openai")
 
 
+class EmbeddingFormat(BaseModel):
+    """Registry-owned document/query format and compatible output dimension."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    dimensions: int = Field(ge=1, le=65536)
+    query_prefix: str = Field(default="", max_length=4096)
+    document_prefix: str = Field(default="", max_length=4096)
+
+
 class ModelSpec(BaseModel):
     """What a provider needs to make one call; built from a `model_registry` row."""
 
@@ -57,6 +67,16 @@ class ModelSpec(BaseModel):
     price_in_per_mtok: float = 0.0
     price_out_per_mtok: float = 0.0
     context_len: int | None = None
+    embedding: EmbeddingFormat | None = None
+
+    def embedding_inputs(
+        self, texts: list[str], *, query: bool = False, legacy_query_prefix: str = ""
+    ) -> list[str]:
+        if self.embedding is not None:
+            prefix = self.embedding.query_prefix if query else self.embedding.document_prefix
+        else:
+            prefix = legacy_query_prefix if query else ""
+        return [prefix + text for text in texts]
 
     @property
     def hosted(self) -> bool:

@@ -1,3 +1,10 @@
+# Model-specific embedding contracts; weights alone do not define a vector space.
+embedding_formats:
+  qwen3-embedding-0.6b:
+    dimensions: 768
+    query_prefix: "Instruct: Given a web search query, retrieve relevant passages that answer the query.\nQuery: "
+    document_prefix: ""
+
 # TaskClass -> registry ids (ADR-0001, ADR-0010). Inspectable, learner-overridable.
 # The router walks [learner override, primary, *fallbacks] and picks the first entry whose
 # registry status is `ready`. Anything but position 0 is logged as route=fallback.
@@ -65,6 +72,17 @@ registry_defaults:
     role: code
     quant: Q4_K_M
     context_len: 262144
+    licence: Apache-2.0
+  - id: qwen3-embedding-0.6b
+    display_name: Qwen3 Embedding 0.6B (768d)
+    source: ollama_library
+    repo_id: qwen3-embedding
+    file_or_tag: qwen3-embedding:0.6b
+    runtime: ollama
+    role: embed
+    quant: Q8_0
+    size_gb: 0.639
+    context_len: 32768
     licence: Apache-2.0
   - id: nomic-embed-text
     display_name: nomic-embed-text v1.5 (768d)

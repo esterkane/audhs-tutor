@@ -1,5 +1,6 @@
 """OllamaProvider: general local inference (chat + structured JSON) and embeddings."""
 
+import math
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -96,12 +97,19 @@ class OllamaProvider:
         keep_alive_s: int = 1800,
         context_tokens: int = 16384,
         context_tokenizers: dict[str, str] | None = None,
+        embedding_context_floor: int = 2048,
         inference_options: dict[str, OllamaInferenceOptions] | None = None,
     ) -> None:
         self.host = host.rstrip("/")
         self.timeout_s = timeout_s
         self.keep_alive_s = keep_alive_s
         self.context_tokens = context_tokens
+        if (
+            type(embedding_context_floor) is not int
+            or not 2048 <= embedding_context_floor <= 131072
+        ):
+            raise ValueError("Embedding context floor must be 2048..131072 tokens")
+        self.embedding_context_floor = embedding_context_floor
         self.context_tokenizers = dict(context_tokenizers or {})
         self.inference_options = dict(inference_options or {})
         self._instructor = cast(
@@ -438,18 +446,36 @@ class OllamaProvider:
             timeout=self.timeout_s, trust_env=False, follow_redirects=False
         ) as client:
             try:
-                r = await client.post(
-                    f"{self.host}/api/embed", json={"model": spec.model, "input": texts}
-                )
+                payload: dict[str, Any] = {"model": spec.model, "input": texts, "truncate": False}
+                if spec.embedding is not None:
+                    payload["dimensions"] = spec.embedding.dimensions
+                    if spec.context_len:
+                        # A byte bound covers tokenization without truncating Unicode or code.
+                        # Allocate enough context for this batch, rather than 32K for every query.
+                        size = max((len(text.encode("utf-8")) for text in texts), default=0) + 32
+                        context = min(
+                            spec.context_len,
+                            max(self.embedding_context_floor, 1 << (size - 1).bit_length()),
+                        )
+                        payload["options"] = {"num_ctx": context}
+                r = await client.post(f"{self.host}/api/embed", json=payload)
                 r.raise_for_status()
             except httpx.HTTPError as e:
                 raise ProviderError(f"ollama embed {spec.model}: {e}") from e
         data = r.json()
         vectors: list[list[float]] = data.get("embeddings", [])
-        if len(vectors) != len(texts):
-            raise ProviderError(
-                f"ollama embed returned {len(vectors)} vectors for {len(texts)} inputs"
-            )
+        if not isinstance(vectors, list) or len(vectors) != len(texts):
+            raise ProviderError("ollama embed returned an unexpected vector count")
+        for vector in vectors:
+            if (
+                not isinstance(vector, list)
+                or not vector
+                or (spec.embedding is not None and len(vector) != spec.embedding.dimensions)
+                or any(
+                    type(value) not in (int, float) or not math.isfinite(value) for value in vector
+                )
+            ):
+                raise ProviderError("ollama embed returned invalid values or dimensions")
         return vectors
 
     async def generate_stats(

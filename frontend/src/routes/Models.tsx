@@ -25,6 +25,10 @@ const ROLES = ['chat', 'code', 'embed', 'rerank', 'judge', 'stt', 'tts']
 
 function benchSummary(b: Record<string, unknown> | null | undefined): string {
   if (!b) return '—'
+  if (b.kind === 'embedding') {
+    const recall = b.retrieval_top1 as { passed?: number; total?: number } | undefined
+    return `${b.dimensions ?? '?'} dimensions · ${b.latency_ms_median ?? '?'} ms · retrieval ${recall?.passed ?? '?'}/${recall?.total ?? '?'}`
+  }
   if (typeof b.ms_per_16_docs === 'number') return `${b.ms_per_16_docs} ms / 16 docs`
   const parts: string[] = []
   if (typeof b.tok_per_s === 'number') parts.push(`${(b.tok_per_s as number).toFixed(1)} tok/s`)

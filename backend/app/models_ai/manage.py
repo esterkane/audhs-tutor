@@ -6,7 +6,7 @@ the API runs them as background jobs, the CLI runs them inline."""
 import asyncio
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -20,7 +20,7 @@ from app.models_ai.downloader import Downloader, dir_size_gb, hf_info, hf_search
 from app.models_ai.factory import build_providers, installed_models, mlx_snapshot_dir
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.openai import supported_model
-from app.models_ai.provider import TaskClass
+from app.models_ai.provider import EmbeddingProvider, TaskClass
 from app.models_ai.routing import Router
 
 Progress = Callable[[str], None] | None
@@ -293,7 +293,15 @@ async def bench(
     if row.status != "ready":
         raise ValueError(f"{row.id} is {row.status}; pull it first")
     spec = registry.spec_from_row(row)
-    if row.runtime == "fastembed":
+    if row.role == "embed":
+        from app.models_ai.embedding_bench import bench_embedding
+
+        provider = build_providers(settings).get(spec.provider)
+        if provider is None or not callable(getattr(provider, "embed", None)):
+            raise ValueError("No installed local embedding provider is available")
+        _say(progress, f"benchmarking {row.id} embeddings and bilingual retrieval …")
+        result = await bench_embedding(db, cast(EmbeddingProvider, provider), spec)
+    elif row.runtime == "fastembed":
         result = await bench_reranker(spec.model, settings.models_dir_resolved / "fastembed")
     elif row.runtime in ("mlx", "faster-whisper") and row.role == "stt":
         local = row.local_path or str(mlx_snapshot_dir(settings.models_dir_resolved, row.repo_id))

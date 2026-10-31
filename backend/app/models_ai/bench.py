@@ -125,6 +125,12 @@ async def bench_model(
 def summarize(bench: dict[str, Any] | None) -> str:
     if not bench:
         return "-"
+    if bench.get("kind") == "embedding":
+        recall = bench.get("retrieval_top1", {})
+        return (
+            f"{bench.get('dimensions', '?')}d, {bench.get('latency_ms_median', '?')} ms, "
+            f"retrieval {recall.get('passed', '?')}/{recall.get('total', '?')}"
+        )
     hc = bench.get("tutoring_hard_checks", {})
     return (
         f"{bench.get('tok_per_s', '?')} tok/s, ftl {bench.get('first_token_ms', '?')} ms, "

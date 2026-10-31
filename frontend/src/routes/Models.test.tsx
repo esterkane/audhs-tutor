@@ -45,6 +45,16 @@ const models = {
       updated_at: 'now',
     },
     {
+      id: 'embedding-fixture',
+      display_name: 'Local multilingual embeddings',
+      runtime: 'ollama',
+      role: 'embed',
+      status: 'ready',
+      benchmark: { kind: 'embedding', dimensions: 768, latency_ms_median: 12, retrieval_top1: { passed: 2, total: 2 } },
+      size_gb: 0.6,
+      licence: 'Apache-2.0',
+    },
+    {
       id: 'openai-luna',
       display_name: 'GPT-6 Luna',
       runtime: 'openai',
@@ -177,6 +187,7 @@ describe('Models', () => {
       { route: '/models' },
     )
     expect(await screen.findByText('Llama 3.1 8B')).toBeInTheDocument()
+    expect(screen.getByText('768 dimensions · 12 ms · retrieval 2/2')).toBeInTheDocument()
     expect(screen.getByText(/47.5 tok\/s · first token 120 ms · tutoring checks 4\/5/)).toBeInTheDocument()
     expect(screen.getAllByRole('button', { name: 'Download' })).toHaveLength(1) // only the available one
     expect(screen.getByRole('button', { name: 'Check key setup' })).toBeInTheDocument()

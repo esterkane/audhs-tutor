@@ -271,7 +271,10 @@ class LocalProjectEmbedder:
             ok = False
             error = None
             try:
-                vectors = await self.providers["ollama"].embed(spec, ["search_query: " + text])
+                vectors = await self.providers["ollama"].embed(
+                    spec,
+                    spec.embedding_inputs([text], query=True, legacy_query_prefix="search_query: "),
+                )
                 if (
                     len(vectors) != 1
                     or len(vectors[0]) != 768

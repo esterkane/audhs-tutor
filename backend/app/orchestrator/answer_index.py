@@ -3,6 +3,7 @@
 import hashlib
 import json
 import time
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -45,9 +46,10 @@ async def identity(db: AsyncSession, settings: Settings, learner_id: str) -> tup
     )
     if not isinstance(digest, str) or not digest:
         raise ValueError("Installed embedding model digest unavailable")
-    key = hashlib.sha256(
-        json.dumps([FORMAT_VERSION, spec.registry_id, spec.model, digest]).encode()
-    ).hexdigest()
+    identity_parts: list[Any] = [FORMAT_VERSION, spec.registry_id, spec.model, digest]
+    if spec.embedding is not None:
+        identity_parts.append(spec.embedding.model_dump())
+    key = hashlib.sha256(json.dumps(identity_parts).encode()).hexdigest()
     return spec, key
 
 
@@ -127,7 +129,7 @@ async def populate(
         began = time.perf_counter()
         ok = False
         try:
-            vectors = await provider.embed(spec, [item[2] for item in batch])
+            vectors = await provider.embed(spec, spec.embedding_inputs([item[2] for item in batch]))
             if (
                 len(vectors) != len(batch)
                 or len({len(v) for v in vectors}) != 1
