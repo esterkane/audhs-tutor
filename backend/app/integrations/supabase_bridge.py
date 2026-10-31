@@ -9,9 +9,10 @@ import math
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from functools import lru_cache
+from functools import lru_cache, reduce
+from operator import or_
 from types import SimpleNamespace
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, create_model
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
@@ -40,10 +41,30 @@ class LocalDecision(BaseModel):
 
 
 @lru_cache
-def decision_schema() -> type[LocalDecision]:
+def decision_schema(tool_names: tuple[str, ...] | None = None) -> type[LocalDecision]:
     from app.integrations.supabase_project import project_module
 
     turn = project_module().TutorTurn
+    from backend.tutor.tools import HANDLERS
+
+    names = tuple(sorted(HANDLERS)) if tool_names is None else tool_names
+    if len(set(names)) != len(names) or any(name not in HANDLERS for name in names):
+        raise ValueError("Project tool contract is unavailable")
+    requests = []
+    for name in names:
+        request = create_model(
+            "ProjectTool_" + name,
+            __base__=ToolRequest,
+            name=(Literal.__getitem__(name), ...),
+            input=(HANDLERS[name][0], ...),
+        )
+        requests.append(request)
+    if len(requests) == 1:
+        tool_type: Any = requests[0]
+    elif requests:
+        tool_type = Annotated[reduce(or_, requests), Field(discriminator="name")]
+    else:
+        tool_type = ToolRequest
     fields: dict[str, Any] = {
         name: (field.annotation, field)
         for name, field in turn.model_fields.items()
@@ -51,7 +72,10 @@ def decision_schema() -> type[LocalDecision]:
     }
     metadata = create_model("SupabaseTurnMetadata", __config__=ConfigDict(extra="forbid"), **fields)
     return create_model(
-        "LocalProjectDecision", __base__=LocalDecision, state=(metadata | None, None)
+        "LocalProjectDecision",
+        __base__=LocalDecision,
+        state=(metadata | None, None),
+        tools=(list[tool_type], Field(default_factory=list, max_length=6 if names else 0)),
     )
 
 
@@ -88,6 +112,12 @@ class LocalProjectClient:
 
         tools = request.get("tools", [])
         allowed = {t["name"] for t in tools}
+        try:
+            response_schema = decision_schema(tuple(sorted(allowed)))
+        except ValueError:
+            raise AppError(
+                "supabase_tool_contract_invalid", "A project tool contract is unavailable.", 422
+            ) from None
         system = request.get("system", [])
         policy = "\n\n".join(str(b.get("text", "")) for b in system)
         policy += "\n\n" + supabase_project_policy()
@@ -128,13 +158,14 @@ class LocalProjectClient:
             out = await gateway.complete(
                 TaskClass.EXPLAIN_SIMPLE,
                 messages,
-                response_model=decision_schema(),
+                response_model=response_schema,
                 learner_id=learner.id,
                 max_tokens=int(request.get("max_tokens", 16000)),
                 metadata={
                     "task": "supabase_project_tutor",
-                    "host_adapter": "local-project-tools.v2",
+                    "host_adapter": "local-project-tools.v3",
                     "structured_output": "native_schema",
+                    "schema_prompt": "compact_json.v1",
                 },
             )
             await db.commit()  # Account for actual attempts even if a tool is rejected.
@@ -147,6 +178,16 @@ class LocalProjectClient:
                     "The local tutor did not return a supported tool request.",
                     422,
                 )
+            # Typed argument models stay inside generation/repair. The imported protocol
+            # receives the same JSON dictionaries it dispatches; no tool executes here.
+            decision = LocalDecision(
+                text=decision.text,
+                state=decision.state,
+                tools=[
+                    ToolRequest.model_validate(tool.model_dump(mode="json", exclude_unset=True))
+                    for tool in decision.tools
+                ],
+            )
             blocks: list[dict[str, Any]] = []
             rendered = decision.text
             if decision.state is not None and not decision.tools:

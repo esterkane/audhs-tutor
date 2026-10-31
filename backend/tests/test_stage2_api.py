@@ -155,7 +155,7 @@ async def test_representations_keep_object_identity_and_cache(
     assert again["source_text_hashes"] == a["source_text_hashes"]
     assert again["provenance_available"] is True
     assert a["source_snapshot"] and a["source_text_hashes"]
-    # Legacy cache rows have unknown provenance, not guessed current sources.
+    # Generated legacy rows are refreshed; their historical answers stay intact.
     row = await db.get(models.Representation, a["representation_id"])
     row.provenance_json = {}
     await db.commit()
@@ -164,10 +164,13 @@ async def test_representations_keep_object_identity_and_cache(
             f"/api/objects/{skill_id}/representations/derivation", json={"session_id": s["id"]}
         )
     ).json()
-    assert legacy["content"] == a["content"]
-    assert legacy["cached"] and legacy["provenance_available"] is False
-    assert legacy["source_snapshot"] == []
-    assert legacy["sources"] == []
+    assert not legacy["cached"] and legacy["provenance_available"] is True
+    assert legacy["representation_id"] != a["representation_id"]
+    assert legacy["answer_id"] != a["answer_id"]
+    assert legacy["source_snapshot"] and legacy["sources"]
+    historical = (await client.get(f"/api/answers/{a['answer_id']}")).json()
+    assert historical["text"] == a["content"]
+    assert historical["metadata"]["sources"] == a["source_snapshot"]
     r = await client.post(
         f"/api/objects/{skill_id}/representations/problem_first", json={"session_id": s["id"]}
     )
@@ -191,7 +194,7 @@ async def test_representations_keep_object_identity_and_cache(
         "representation_rejected": "derivation",
     }
     calls = (await db.execute(select(models.ModelCall))).scalars().all()
-    assert len(calls) == 2  # third request served from cache
+    assert len(calls) == 3  # Two originals and one legacy refresh; the current cache was reused.
 
 
 async def test_challenge_round_trip(

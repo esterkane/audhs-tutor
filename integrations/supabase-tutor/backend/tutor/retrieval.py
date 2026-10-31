@@ -7,6 +7,7 @@ HNSW cosine + FTS, one row per distinct chunk text) on the local Supabase Postgr
 from __future__ import annotations
 
 import os
+import re
 from collections.abc import Sequence
 from typing import Protocol
 
@@ -104,6 +105,46 @@ def expand_products(products: Sequence[str] | None) -> list[str] | None:
     return out
 
 
+def sqlstate_codes(query: str) -> tuple[str, ...]:
+    """Explicit SQLSTATE names/lists or a bare code, never unrelated row counts."""
+    start = re.compile(r"\bSQLSTATE(?:\s+codes?)?\s*[:=]?\s*['\"\[]?([0-9a-z]{5})\b", re.I)
+    follow = re.compile(r"^\s*['\"\]]?\s*(?:,|/|and\b|or\b|und\b|oder\b)\s*['\"\[]?([0-9a-z]{5})\b", re.I)
+    found: list[str] = []
+    bare = query.strip().upper()
+    if re.fullmatch(r"[0-9A-Z]{5}", bare) and any(c.isdigit() for c in bare):
+        found.append(bare)
+    for match in start.finditer(query):
+        code = match[1].upper()
+        if not any(c.isdigit() for c in code):
+            continue
+        found.append(code)
+        rest = query[match.end():]
+        while (next_code := follow.match(rest)) is not None:
+            code = next_code[1].upper()
+            if not any(c.isdigit() for c in code):
+                break
+            found.append(code)
+            rest = rest[next_code.end():]
+    return tuple(dict.fromkeys(found))
+
+
+def sqlstate_excerpt(content: str, codes: tuple[str, ...]) -> str | None:
+    """Quote exact reference rows/header/class, preserving real source identity."""
+    labels = set(codes)
+    classes = {code[:2] for code in codes}
+    header: list[str] = []
+    selected: list[str] = []
+    for line in content.splitlines():
+        if re.match(r"^\|\s*Error\s*Code\s*\|\s*Condition\s*Name\s*\|", line, re.I):
+            header.append(line)
+        row = re.fullmatch(r"\|\s*([0-9A-Z]{5})\s*\|\s*([a-z][a-z0-9_]*)\s*\|", line, re.I)
+        category = re.match(r"^\|\s*Class\s*([0-9A-Z]{2})\b", line, re.I)
+        if ((row and row[1].upper() in labels) or (category and category[1].upper() in classes)):
+            selected.append(line)
+    return "\n".join(header[:1] + selected) if selected else None
+
+
+
 class PgHybridRetriever:
     """search_docs over tutor.hybrid_search. The pool must point at the local tutor database."""
 
@@ -113,6 +154,7 @@ class PgHybridRetriever:
         self.reranker = reranker
 
     async def search(self, query: str, k: int = 8, products: Sequence[str] | None = None) -> list[Chunk]:
+        codes = sqlstate_codes(query)
         embedding = await self.embedder.embed_query(query)
         fetch_k = max(k, RERANK_POOL) if self.reranker else k
         async with self.pool.connection() as conn:
@@ -122,6 +164,46 @@ class PgHybridRetriever:
                 (query, str(embedding), fetch_k, expand_products(products)),
             )
             chunks = [Chunk(**row) for row in await cur.fetchall()]
-        if self.reranker:
-            return await self.reranker.rerank(query, chunks, k)
-        return chunks
+            anchors: list[Chunk] = []
+            if codes:
+                code_pattern = r"(?m)^\|[ \t]*(" + "|".join(codes) + r")[ \t]*\|"
+                class_pattern = (r"(?m)^\|[ \t]*Class[ \t]*("
+                                 + "|".join(dict.fromkeys(c[:2] for c in codes)) + r")\M")
+                filters = expand_products(products)
+                await cur.execute(
+                    "select c.id as chunk_id, s.url, c.anchor, c.heading_path, c.content, "
+                    "s.tier, s.fetched_at, 1.0::float8 as score from tutor.docs_chunk c "
+                    "join tutor.docs_source s on s.id=c.source_id where s.status='active' "
+                    "and s.url='https://www.postgresql.org/docs/' || "
+                    "(current_setting('server_version_num')::int / 10000)::text || '/errcodes-appendix.html' "
+                    "and (c.content ~ %s or c.content ~ %s) "
+                    "and (%s::text[] is null or s.product=any(%s::text[])) "
+                    "order by case when c.content ~ %s then 0 else 1 end, c.ord limit %s",
+                    (code_pattern, class_pattern, filters, filters, code_pattern, fetch_k),
+                )
+                anchors = [Chunk(**row) for row in await cur.fetchall()]
+                seen = set()
+                kept: list[Chunk] = []
+                for hit in [*anchors, *chunks]:
+                    if hit.chunk_id in seen:
+                        continue
+                    seen.add(hit.chunk_id)
+                    if re.fullmatch(r"https://www\.postgresql\.org/docs/[0-9]+/errcodes-appendix\.html", hit.url):
+                        excerpt = sqlstate_excerpt(hit.content, codes)
+                        if excerpt is None:
+                            has_rows = any(re.fullmatch(
+                                r"\|\s*([0-9A-Z]{5})\s*\|\s*([a-z][a-z0-9_]*)\s*\|", line, re.I
+                            ) for line in hit.content.splitlines())
+                            if has_rows:
+                                continue  # Other codes' rows are not evidence for this identity.
+                            # Keep general explanation and unknown formats rather than suppressing them.
+                        else:
+                            hit = hit.model_copy(update={"content": excerpt})
+                    kept.append(hit)
+                anchor_ids = {hit.chunk_id for hit in anchors}
+                anchors = [hit for hit in kept if hit.chunk_id in anchor_ids][:k]
+                chunks = [hit for hit in kept if hit.chunk_id not in anchor_ids]
+        remaining = max(0, k - len(anchors))
+        if self.reranker and remaining:
+            chunks = await self.reranker.rerank(query, chunks, remaining)
+        return anchors + chunks[:remaining]

@@ -85,7 +85,7 @@ class _Extractor(HTMLParser):
         self._table = None
         if rows:
             self.blocks.append(
-                Block(text="\n".join(rows[:200]), kind="table", heading=self.heading)
+                Block(text="\n".join(rows), kind="table", heading=self.heading)
             )
 
     # -- parser callbacks

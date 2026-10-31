@@ -239,14 +239,22 @@ class OllamaProvider:
         max_tokens: int,
         temperature: float,
         max_retries: int,
+        *,
+        compact_prompt: bool = False,
     ) -> ProviderResult:
         from instructor.v2.core.response import handle_response_model
 
         # Preserve the exact established JSON-mode instructions, not merely the data.
         # The shorter schema-only variant failed paragraph completeness in evaluation.
-        _, expanded = handle_response_model(
+        prepared_model, expanded = handle_response_model(
             response_model, mode=instructor.Mode.JSON, messages=to_chat(messages)
         )
+        if compact_prompt and prepared_model is not None:
+            from app.models_ai.schema_prompt import compact_schema_instructions
+
+            expanded["messages"] = compact_schema_instructions(
+                messages, expanded["messages"], response_model
+            )
         schema_client = cast(
             instructor.AsyncInstructor,
             instructor.from_litellm(litellm.acompletion, mode=instructor.Mode.JSON_SCHEMA),
@@ -314,7 +322,13 @@ class OllamaProvider:
             and metadata.get("structured_output") == "native_schema"
         ):
             return await self._complete_schema(
-                spec, messages, response_model, max_tokens, temperature, max_retries
+                spec,
+                messages,
+                response_model,
+                max_tokens,
+                temperature,
+                max_retries,
+                compact_prompt=metadata.get("schema_prompt") == "compact_json.v1",
             )
         async with _local_sdk_client(self.timeout_s) as transport:
             t0 = time.perf_counter()

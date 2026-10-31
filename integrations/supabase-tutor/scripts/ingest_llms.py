@@ -331,13 +331,20 @@ def existing_hashes() -> dict[str, tuple[str, int]]:
         return {}
 
 
-def retire_missing(urls: list[str]) -> int:
-    """Sources no longer reachable from the index stay (old citations resolve) but stop being searched."""
+def retire_missing(urls: list[str], index_url: str = INDEX_DEFAULT) -> int:
+    """Retire absent sources only on this index's origin, preserving separate references."""
+    if not urls:
+        return 0  # An empty/failed index is not evidence that every document disappeared.
+    origin = urlparse(index_url)
+    if origin.scheme not in {"http", "https"} or not origin.hostname or origin.username or origin.password:
+        raise ValueError("Reference index must have a credential-free HTTP origin")
+    prefix = f"{origin.scheme}://{origin.netloc}/"
     import psycopg
 
     with psycopg.connect(admin_url()) as conn:
         cur = conn.execute(
-            "update tutor.docs_source set status = 'retired' where status = 'active' and url <> all(%s)", (urls,)
+            "update tutor.docs_source set status = 'retired' where status = 'active' "
+            "and starts_with(url, %s) and url <> all(%s)", (prefix, urls)
         )
         return cur.rowcount
 
@@ -421,7 +428,7 @@ async def main() -> int:
 
     retired = 0
     if not a.dry_run and not partial:
-        retired = retire_missing([d.url for d in docs + full_docs if d.status != "failed"])
+        retired = retire_missing([d.url for d in docs + full_docs], a.index)
 
     if a.verbose:
         w = max(len(r[0]) for r in rows)

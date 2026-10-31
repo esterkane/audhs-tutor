@@ -97,7 +97,7 @@ async def test_unsupported_tool_is_rejected_after_attempt_is_accounted(monkeypat
     decision = bridge.LocalDecision(tools=[bridge.ToolRequest(name="invented_shell", input={})])
     client, call, db, _ = setup_bridge(monkeypatch, decision=decision)
     with pytest.raises(AppError) as error:
-        async with client.messages.stream(system=[], messages=[], tools=[{"name": "read_lab"}]):
+        async with client.messages.stream(system=[], messages=[], tools=[{"name": "search_docs"}]):
             raise AssertionError("Invalid tool must never execute")
     assert error.value.code == "supabase_tool_invalid"
     call.assert_awaited_once()
@@ -106,16 +106,16 @@ async def test_unsupported_tool_is_rejected_after_attempt_is_accounted(monkeypat
 
 async def test_allowed_tool_is_a_request_not_a_claim_of_execution(monkeypatch):
     decision = bridge.LocalDecision(
-        tools=[bridge.ToolRequest(name="read_lab", input={"slug": "01"})]
+        tools=[bridge.ToolRequest(name="search_docs", input={"query": "row policies"})]
     )
     client, _, _, _ = setup_bridge(monkeypatch, decision=decision)
     async with client.messages.stream(
-        system=[], messages=[], tools=[{"name": "read_lab"}]
+        system=[], messages=[], tools=[{"name": "search_docs"}]
     ) as stream:
         result = await stream.get_final_message()
     assert result.stop_reason == "tool_use"
     assert result.content[0].type == "tool_use"
-    assert result.content[0].input == {"slug": "01"}
+    assert result.content[0].input == {"query": "row policies"}
 
 
 @pytest.mark.parametrize("dimensions,expected_ok", [(768, True), (384, False)])
@@ -185,3 +185,67 @@ async def test_embedding_identity_mismatch_requires_reindex_before_inference(mon
         await embedder.embed_query("Question")
     assert error.value.code == "supabase_embedding_identity"
     provider.embed.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "tool",
+    [
+        {"name": "search_docs", "input": {"query": ""}},
+        {"name": "search_docs", "input": {"query": "row policies", "k": 13}},
+        {"name": "search_docs", "input": {"query": "row policies", "products": ["invented"]}},
+        {"name": "search_docs", "input": {"query": "row policies", "sql": "SELECT 1"}},
+        {"name": "web_search", "input": {"query": "docs", "reason": "invented"}},
+        {"name": "run_lab_sql", "input": {"role": "authenticated"}},
+        {"name": "run_lab_sql", "input": {"sql": "SELECT 1", "role": "service_role"}},
+        {"name": "ledger_read", "input": {"sql": "SELECT 1"}},
+        {"name": "invented_shell", "input": {}},
+    ],
+)
+def test_generation_schema_rejects_invalid_dispatch_arguments(tool):
+    from pydantic import ValidationError
+
+    with pytest.raises(ValidationError):
+        bridge.decision_schema().model_validate({"tools": [tool]})
+
+
+def test_exact_offered_tool_subset_and_empty_tool_set():
+    from pydantic import ValidationError
+
+    schema = bridge.decision_schema(("search_docs",))
+    schema.model_validate({"tools": [{"name": "search_docs", "input": {"query": "RLS"}}]})
+    with pytest.raises(ValidationError):
+        schema.model_validate({"tools": [{"name": "ledger_read", "input": {}}]})
+    with pytest.raises(ValidationError):
+        bridge.decision_schema(()).model_validate(
+            {"tools": [{"name": "search_docs", "input": {"query": "RLS"}}]}
+        )
+    with pytest.raises(ValueError):
+        bridge.decision_schema(("invented_shell",))
+
+
+async def test_typed_input_retains_exact_supplied_arguments_without_defaults(monkeypatch):
+    schema = bridge.decision_schema(("run_lab_sql",))
+    arguments = {"sql": "SELECT  1;\n", "claims": {"sub": "synthetic-user"}}
+    parsed = schema.model_validate({"tools": [{"name": "run_lab_sql", "input": arguments}]})
+    client, call, _, _ = setup_bridge(monkeypatch, decision=parsed)
+    async with client.messages.stream(
+        system=[], messages=[], tools=[{"name": "run_lab_sql"}]
+    ) as stream:
+        result = await stream.get_final_message()
+    assert result.content[0].input == arguments
+    assert result.stop_reason == "tool_use"
+    assert call.call_args.kwargs["response_model"] is schema
+    assert call.call_args.kwargs["metadata"]["host_adapter"] == "local-project-tools.v3"
+
+
+async def test_unknown_offered_contract_stops_before_inference(monkeypatch):
+    client, call, db, captured = setup_bridge(monkeypatch)
+    with pytest.raises(AppError) as error:
+        async with client.messages.stream(
+            system=[], messages=[], tools=[{"name": "invented_shell"}]
+        ):
+            pytest.fail("Unknown contracts must not enter model inference")
+    assert error.value.code == "supabase_tool_contract_invalid"
+    call.assert_not_awaited()
+    assert not captured
+    db.commit.assert_not_awaited()

@@ -118,3 +118,5 @@
 - 2026-10-23 T3.1 prerequisites (Känguru side of AuDHS ADR 0021 draft): `kaenguru_tutor` host API with host
   identity and before_turn/on_model_call hooks, editable package layout, per-session explicit delivery, TutorApp
   host mode + delivery chooser; eval set `explicit` 2/2. AuDHS itself unchanged.
+
+- 2026-10-31 AuDHS host reference refresh: retain PostgreSQL/upstream references outside the refreshed index origin; preserve indexed sources on temporary fetch failure and avoid retirement on an empty result.
