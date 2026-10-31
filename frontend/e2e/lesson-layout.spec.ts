@@ -22,7 +22,9 @@ for(const theme of ['light','dark']) for(const width of [320,390,1280]) test(`le
   await more.click();await expect(page.getByRole('button',{name:'Energy 3',exact:true})).not.toBeVisible()
   await expect(draft).toHaveValue('Keep my question while toggling tools')
   await more.click();await expect(page.getByRole('button',{name:'Energy 3',exact:true})).toBeVisible()
-  expect(await currentSession(request)).toEqual(checkpoint)
+  const afterTools=await currentSession(request)
+  // Due reviews are computed from the current clock; every persisted session field must match.
+  expect(afterTools).toEqual({...checkpoint,due_reviews:afterTools.due_reviews})
   await page.reload();await expect(draft).toHaveValue('Keep my question while toggling tools')
   await expect(page.getByRole('heading',{name:'Learning context',exact:true})).toBeVisible()
   await more.click()

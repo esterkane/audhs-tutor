@@ -21,8 +21,11 @@ is outside this fix, as is repairing historical immutable attribution snapshots.
 
 Validation: 142 affected backend tests pass, including fresh delivery, source attribution,
 cache refresh, immutable history, private access, source checking and gateway usage/limits.
-Strict typing and backend lint pass. Six isolated browser journeys cover alternative sources,
-knowledge authoring/reading and lesson reading/resume. A real local reproduction hit the old
+Strict typing and backend lint pass. Twelve isolated browser journeys cover alternative sources,
+knowledge authoring/reading, lesson reading/resume and layout/accessibility across three widths
+and both themes. The layout checkpoint assertion now permits only the clock-derived due-review
+count to change; all other session fields still must match. This fixes a CI failure when a
+review became due during a view-only disclosure toggle, without skipping checks or adding retries. A real local reproduction hit the old
 420-token limit; the same semantic example with the ordinary allowance completed and was
 saved exactly. Those two smoke timings are not a controlled latency comparison or broad
 model-quality qualification. Existing session histories and normal routing remain unchanged.
