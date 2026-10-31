@@ -79,6 +79,32 @@ def decision_schema(tool_names: tuple[str, ...] | None = None) -> type[LocalDeci
     )
 
 
+def render_final_text(text: str, state: BaseModel) -> str:
+    """Reuse a complete, matching protocol footer; never delete learner-facing prose.
+
+    Native JSON output can still put the imported tutor's footer inside ``text``.
+    Appending it again would make the parser expose the first footer as Markdown.
+    Only a full matching metadata object is reusable; partial examples, conflicting
+    metadata, malformed blocks and blocks followed by prose stay byte-for-byte intact.
+    """
+    metadata = state.model_dump(mode="json")
+    if text.rstrip().endswith("\n```"):
+        from backend.tutor.turn_parser import split_reply
+
+        _, block = split_reply(text)
+        try:
+            raw = json.loads(block) if block is not None else None
+            if (
+                isinstance(raw, dict)
+                and raw.keys() == metadata.keys()
+                and type(state).model_validate(raw).model_dump(mode="json") == metadata
+            ):
+                return text
+        except (ValueError, TypeError):
+            pass  # Preserve the original reply; the ordinary parser/guard owns repair.
+    return text + "\n\n```json tutor_turn\n" + json.dumps(metadata, ensure_ascii=False) + "\n```"
+
+
 class LocalStream:
     def __init__(self, final: Any) -> None:
         self.final = final
@@ -191,10 +217,7 @@ class LocalProjectClient:
             blocks: list[dict[str, Any]] = []
             rendered = decision.text
             if decision.state is not None and not decision.tools:
-                state = decision.state.model_dump(mode="json")
-                rendered += (
-                    "\n\n```json tutor_turn\n" + json.dumps(state, ensure_ascii=False) + "\n```"
-                )
+                rendered = render_final_text(rendered, decision.state)
             if rendered:
                 blocks.append({"type": "text", "text": rendered})
             for i, tool in enumerate(decision.tools):
