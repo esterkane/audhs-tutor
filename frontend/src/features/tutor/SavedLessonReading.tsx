@@ -5,6 +5,7 @@ import { Card, CardTitle } from '../../components/ui/card'
 import { Disclosure } from '../../components/ui/disclosure'
 import { useSavedReading } from '../representations/api'
 import { LessonReader } from './LessonReader'
+import { PredictionReading } from './PredictionReading'
 
 
 export function SavedLessonReading({ reading, active, hasReply }: {
@@ -23,7 +24,9 @@ export function SavedLessonReading({ reading, active, hasReply }: {
     {failure}
     <Disclosure label="Saved lesson text" open={!hasReply} onToggle={event => setOpen(event.currentTarget.open)}>
       <p className="text-sm text-muted mb-3">Saved locally · lesson version {saved.object_version}. No new answer was generated. Saving and activation do not verify accuracy or mark the questions reviewed.</p>
+      <PredictionReading identity={`${saved.object_id}:${saved.content_sha256}`} title={saved.concept} resumeKeyPrefix={`lesson-reader:v1:saved-lesson:${saved.object_id}:${saved.content_sha256}:`}>
       <LessonReader key={saved.content_sha256} identity={`saved-lesson:${saved.object_id}:${saved.content_sha256}`} text={text} trail={['Saved lesson', `Version ${saved.object_version}`]} active={active && open} sources={saved.source_ids.map(id => ({ chunk_id: id, citation: 'Linked source passage', cited: false }))} />
+      </PredictionReading>
       <Disclosure label="Lesson origin and sources" className="mt-3">
         <p className="text-sm">This is the current saved lesson text. The original answer and draft may differ after edits.</p>
         <div className="flex flex-wrap gap-3">

@@ -7,7 +7,7 @@ import { SavedLessonReading } from './SavedLessonReading'
 
 vi.mock('./LessonReader', () => ({ LessonReader: ({ text, identity }: { text: string; identity: string }) => <div data-testid="reader" data-identity={identity}>{text}</div> }))
 const saved = { object_id: 'object', object_version: 1, content_sha256: 'hash', concept: 'Fit', goal: 'Protect held-out data', passages: ['Fit on training records.', 'Apply the same median.'], source_ids: [], activation_id: 'activation', draft_id: 'draft', answer_id: 'answer' }
-afterEach(() => { cleanup(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); localStorage.clear(); vi.unstubAllGlobals() })
 function setup() {
   const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   function Harness() { return <SavedLessonReading reading={useSavedReading('skill')} active hasReply={false} /> }
@@ -18,6 +18,7 @@ it('shows saved content and origin with no mutation or generation', async () => 
   const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify(saved)))
   vi.stubGlobal('fetch', fetch)
   setup()
+  fireEvent.click(await screen.findByRole('button', { name: 'Read without predicting' }))
   expect(await screen.findByTestId('reader')).toHaveTextContent('Fit on training records.')
   expect(screen.getByRole('link', { name: 'Original saved answer' })).toHaveAttribute('href', '/answers/answer')
   expect(screen.getByText(/do not verify accuracy/)).toBeInTheDocument()
@@ -28,6 +29,7 @@ it('preserves loaded reading on refresh failure and accepts explicit retry', asy
   let failed = false
   vi.stubGlobal('fetch', vi.fn(async () => failed ? new Response('{}', { status: 503 }) : new Response(JSON.stringify(saved))))
   const cache = setup()
+  fireEvent.click(await screen.findByRole('button', { name: 'Read without predicting' }))
   await screen.findByTestId('reader')
   failed = true
   await cache.invalidateQueries({ queryKey: ['lesson-reading', 'skill'] })
