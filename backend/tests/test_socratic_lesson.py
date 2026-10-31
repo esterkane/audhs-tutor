@@ -185,3 +185,47 @@ def test_open_probe_preserves_literal_question_mark_and_renders_one_neutral_targ
     assert compare.render() == "For literal0/0 versus literal0/1, what is the key difference?"
     with pytest.raises(ValidationError):
         SocraticLessonProbe(situation="division by100", focus="operation")
+
+
+@pytest.mark.parametrize(
+    ("focus", "expected"),
+    [
+        ("outcome", "Auswerten von `'?' + 'x'`: Welches Ergebnis erwartest du?"),
+        ("comparison", "Auswerten von `'?' + 'x'`: Was ist der entscheidende Unterschied?"),
+    ],
+)
+def test_german_probe_localizes_stem_without_changing_literal_inputs(focus, expected):
+    reply = SocraticLessonProbe(situation="Auswerten von `'?' + 'x'`.", focus=focus)
+    assert reply.render(language="de") == expected
+    assert reply.situation == "Auswerten von `'?' + 'x'`."
+
+
+async def test_german_followup_uses_explicit_presentation_language_and_keeps_receipt():
+    reply = SocraticLessonProbe(
+        situation="Vergleichen der beiden Transaktionsabläufe", focus="comparison"
+    )
+    gateway = SimpleNamespace(
+        complete=AsyncMock(
+            return_value=GatewayResult(
+                result=ProviderResult(
+                    text=reply.model_dump_json(),
+                    parsed=reply.model_dump(),
+                    model="test",
+                    provider="fake",
+                ),
+                model_call_id="call",
+                registry_id="local",
+                route="primary",
+                cost_usd=0,
+            )
+        )
+    )
+    handle = StreamHandle()
+    options = kwargs(handle)
+    options["metadata"] = {"tutor_presentation": {"language": "de", "persona": "none"}}
+    output = [part async for part in stream_reply(gateway, [], **options, question_only=True)]
+    assert output == [
+        "Vergleichen der beiden Transaktionsabläufe: Was ist der entscheidende Unterschied?"
+    ]
+    assert handle.model_call_id == "call"
+    assert handle.registry_id == "local"

@@ -7,12 +7,13 @@ from fastapi import APIRouter, BackgroundTasks, Header, Request
 from fastapi.responses import StreamingResponse
 
 from app.api.answer_jobs import schedule_index
-from app.api.deps import DB, Gateway, Learner, Repo, SettingsDep
+from app.api.deps import DB, Gateway, Learner, SettingsDep, get_repo
 from app.api.sse import sse, with_heartbeats
 from app.core.errors import AppError
 from app.core.tutor_timing import mark as timing_mark
 from app.db import workspace_requests
 from app.kernel import session as ksession
+from app.models_ai.routing import NoModelReady
 from app.orchestrator.tutor import TutorTurn
 from app.schemas.tutor import TurnDone, TurnMeta, TurnRequest
 
@@ -38,7 +39,6 @@ async def stream(
     body: TurnRequest,
     db: DB,
     gateway: Gateway,
-    repo: Repo,
     settings: SettingsDep,
     learner: Learner,
     request: Request,
@@ -60,9 +60,10 @@ async def stream(
     turn = TutorTurn(
         db,
         gateway,
-        repo,
+        None,
         quarantine_below_trust=settings.quarantine_below_trust,
         settings=settings,
+        repo_loader=lambda: get_repo(request, db, settings),
         recovery=request.app.state.answer_recovery,
     )
 
@@ -100,6 +101,9 @@ async def stream(
         except AppError as e:
             timing_mark("stream_error")
             yield sse("error", {"code": e.code, "message": e.message})
+        except NoModelReady as e:
+            timing_mark("stream_error")
+            yield sse("error", {"code": "no_model_ready", "message": str(e)})
         except (KeyError, ValueError) as e:
             timing_mark("stream_error")
             yield sse("error", {"code": "bad_request", "message": str(e)})
@@ -125,7 +129,6 @@ async def turn(
     body: TurnRequest,
     db: DB,
     gateway: Gateway,
-    repo: Repo,
     settings: SettingsDep,
     learner: Learner,
     request: Request,
@@ -150,9 +153,10 @@ async def turn(
     turn = TutorTurn(
         db,
         gateway,
-        repo,
+        None,
         quarantine_below_trust=settings.quarantine_below_trust,
         settings=settings,
+        repo_loader=lambda: get_repo(request, db, settings),
         recovery=request.app.state.answer_recovery,
     )
     async for kind, data in turn.run(body):

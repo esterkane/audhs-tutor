@@ -94,10 +94,18 @@ class SocraticLessonProbe(BaseModel):
             )
         return self
 
-    def render(self) -> str:
+    def render(self, *, language: Literal["en", "de"] = "en") -> str:
+        situation = self.situation.rstrip(". ")
+        if language == "de":
+            question = (
+                "Welches Ergebnis erwartest du"
+                if self.focus == "outcome"
+                else "Was ist der entscheidende Unterschied"
+            )
+            return f"{situation}: {question}?"
         question = (
             "what result would you expect"
             if self.focus == "outcome"
             else "what is the key difference"
         )
-        return f"For {self.situation.rstrip('. ')}, {question}?"
+        return f"For {situation}, {question}?"

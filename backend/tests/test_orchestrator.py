@@ -1058,10 +1058,22 @@ def test_causal_value_trace_is_scoped_to_explicit_written_lesson_questions(
         assert "counterfactual" in contract["instructions"]
 
 
-async def test_literal_probe_uses_no_model_or_retrieval_and_saves_honest_provenance(world):
+@pytest.mark.parametrize("language", ["en", "de"])
+async def test_literal_probe_uses_no_model_or_retrieval_and_saves_honest_provenance(
+    world, language
+):
     from unittest.mock import AsyncMock
 
     world["session"].socratic = True
+    world["db"].add(
+        models.LearnerPreference(
+            learner_id=world["session"].learner_id,
+            key="tutor.response_language",
+            value_json=language,
+            origin="explicit",
+        )
+    )
+    await world["db"].commit()
     await ksession.save_checkpoint(world["db"], world["session"], {"phase": "teach"})
     repo = AsyncMock()
     before = len(world["local"].calls)
@@ -1074,7 +1086,11 @@ async def test_literal_probe_uses_no_model_or_retrieval_and_saves_honest_provena
             text="Ask me one question about `'Tag ' + 2`, without giving the answer.",
         ),
     )
-    assert text == "For evaluating `'Tag ' + 2`, what result would you expect?"
+    assert text == (
+        "Auswerten von `'Tag ' + 2`: Welches Ergebnis erwartest du?"
+        if language == "de"
+        else "For evaluating `'Tag ' + 2`, what result would you expect?"
+    )
     assert len(world["local"].calls) == before
     assert not repo.mock_calls
     assert done["route"] == "template" and done["outcome"] == "ok"
@@ -1084,7 +1100,7 @@ async def test_literal_probe_uses_no_model_or_retrieval_and_saves_honest_provena
     assert trace.model_call_id is None and trace.retrieval_trace_id is None
     saved = await world["db"].get(models.TutorAnswer, done["answer_id"])
     assert saved.text == text
-    assert saved.metadata_json["generation_kind"] == "literal-probe.v1"
+    assert saved.metadata_json["generation_kind"] == "literal-probe.v2"
     assert saved.metadata_json["model"] is None
     checkpoint = await ksession.load_checkpoint(world["db"], world["session"].id)
     assert checkpoint["turn_id"] == done["turn_id"]

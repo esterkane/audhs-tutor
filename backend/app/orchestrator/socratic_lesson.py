@@ -21,6 +21,8 @@ async def stream_reply(
     events: EventWriter,
     question_only: bool = False,
 ) -> AsyncGenerator[str, None]:
+    presentation = metadata.get("tutor_presentation")
+    german = isinstance(presentation, dict) and presentation.get("language") == "de"
     response_model = SocraticLessonProbe if question_only else SocraticLessonReply
     result = await gateway.complete(
         TaskClass.EXPLAIN_SIMPLE,
@@ -46,4 +48,7 @@ async def stream_reply(
     handle.latency_ms = result.result.latency_ms
     handle.finish_reason = result.result.finish_reason
     reply = response_model.model_validate(result.result.parsed)
-    yield reply.render()
+    if isinstance(reply, SocraticLessonProbe):
+        yield reply.render(language="de" if german else "en")
+    else:
+        yield reply.render()

@@ -5,11 +5,12 @@ import io
 import re
 import tokenize
 from collections.abc import AsyncGenerator
+from typing import Literal
 
 from app.models_ai.gateway import StreamHandle
 from app.schemas.socratic import SocraticLessonProbe
 
-VERSION = "literal-probe.v1"
+VERSION = "literal-probe.v2"
 _REQUEST = re.compile(
     r"(?:please\s+)?ask(?:\s+me)?\s+(?:one|a single)\s+(?:socratic\s+)?question"
     r"\s+about\s+`(?P<expression>[^`\n]{1,180})`"
@@ -18,7 +19,7 @@ _REQUEST = re.compile(
 )
 
 
-def from_request(text: str) -> SocraticLessonProbe | None:
+def from_request(text: str, *, language: str = "unchanged") -> SocraticLessonProbe | None:
     """Recognize a complete explicit request, not a quoted/negated fragment.
 
     Unrecognized wording, multiple snippets, statements and explanations go through
@@ -42,12 +43,15 @@ def from_request(text: str) -> SocraticLessonProbe | None:
         return None
     if not isinstance(tree.body, (ast.BinOp, ast.UnaryOp, ast.Call, ast.Compare, ast.Subscript)):
         return None
-    return SocraticLessonProbe(situation=f"evaluating `{expression}`", focus="outcome")
+    operation = "Auswerten von" if language == "de" else "evaluating"
+    return SocraticLessonProbe(situation=f"{operation} `{expression}`", focus="outcome")
 
 
-async def stream(probe: SocraticLessonProbe, handle: StreamHandle) -> AsyncGenerator[str, None]:
+async def stream(
+    probe: SocraticLessonProbe, handle: StreamHandle, *, language: Literal["en", "de"] = "en"
+) -> AsyncGenerator[str, None]:
     # No model_call row or model identity: no model was invoked. The normal tutor
     # loop still records its trace, events, checkpoint and saved answer.
     handle.route = "template"
     handle.finish_reason = "stop"
-    yield probe.render()
+    yield probe.render(language=language)

@@ -11,7 +11,7 @@ import json
 import logging
 import re
 import time
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Awaitable, Callable
 from typing import Any
 
 import httpx
@@ -124,17 +124,19 @@ class TutorTurn:
         self,
         db: AsyncSession,
         gateway: ModelGateway,
-        repo: RetrievalRepository,
+        repo: RetrievalRepository | None,
         *,
         quarantine_below_trust: int = QUARANTINE_BELOW_TRUST,
         settings: Settings | None = None,
         recovery: AnswerRecovery | None = None,
+        repo_loader: Callable[[], Awaitable[RetrievalRepository]] | None = None,
     ) -> None:
         self.settings = settings
         self.recovery = recovery
         self.db = db
         self.gateway = gateway
         self.repo = repo
+        self.repo_loader = repo_loader
         self.quarantine_below_trust = quarantine_below_trust
 
     @staticmethod
@@ -178,6 +180,7 @@ class TutorTurn:
                 contract.update(
                     instructions=prompts.tutor_task("explain_socratic_probe").strip(),
                     response_kind="socratic_follow_up",
+                    probe_contract_version="socratic.probe.v2",
                     max_sentences=1,
                     shape_example=(
                         "Concrete situation and one focus in JSON; app renders one open question."
@@ -336,10 +339,9 @@ class TutorTurn:
         )
 
         probe = (
-            literal_probe.from_request(req.text)
+            literal_probe.from_request(req.text, language=presentation.language)
             if (
                 action == actions.Action.EXPLAIN
-                and presentation.language != "de"
                 and socratic
                 and req.explanation_kind == "follow_up"
                 and not req.spoken
@@ -363,6 +365,10 @@ class TutorTurn:
             hits: list[Any] = []  # no course sources in conversation practice: nothing to cite
             rtrace_id: str | None = None
         else:
+            if self.repo is None:
+                if self.repo_loader is None:
+                    raise RuntimeError("Retrieval repository is not configured")
+                self.repo = await self.repo_loader()
             result = await tools.retrieve(
                 self.repo,
                 retrieval_query,
@@ -519,8 +525,14 @@ class TutorTurn:
             },
             "turn_id": turn_id,
         }
+        if "probe_contract_version" in teaching_contract:
+            generation_metadata["probe_contract_version"] = teaching_contract[
+                "probe_contract_version"
+            ]
         if probe is not None:
-            stream = literal_probe.stream(probe, handle)
+            stream = literal_probe.stream(
+                probe, handle, language="de" if presentation.language == "de" else "en"
+            )
         elif fresh_socratic:
             stream = stream_socratic_reply(
                 self.gateway,
