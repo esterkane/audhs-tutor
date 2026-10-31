@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -341,7 +342,7 @@ function CostCard() {
   if (costs.isError)
     return (
       <Card>
-        <CardTitle>Hosted spend</CardTitle>
+        <CardTitle>Ordinary-study hosted cap and app-wide usage</CardTitle>
         <p role="alert" className="text-sm text-warn">
           Cost view unavailable: {(costs.error as Error).message}
         </p>
@@ -352,10 +353,16 @@ function CostCard() {
   const w = c.window
   return (
     <Card>
-      <CardTitle>Hosted spend</CardTitle>
+      <CardTitle>Ordinary-study hosted cap and app-wide usage</CardTitle>
       <p className="text-sm">
-        Counted toward today's cap: <span className="font-medium">{usd(t.counted)}</span> of{' '}
+        App-wide hosted usage counted today: <span className="font-medium">{usd(t.counted)}</span> of{' '}
         {usd(c.daily_cap_usd)} — {usd(t.remaining)} left. Local models cost nothing here.
+      </p>
+      <p className="text-sm mt-2">
+        This is the ordinary-study cap, not the authoring cap. Authoring and factual reviews have their own
+        explicit permission and cap in <Link className="underline" to="/preferences">Settings</Link>.
+        Both caps count this same app-wide hosted usage; they are not added together.
+        A configured key alone does not enable hosted study.
       </p>
       <dl className="text-xs text-muted mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
         <dt>Reported by the provider (never below the registry estimate)</dt>

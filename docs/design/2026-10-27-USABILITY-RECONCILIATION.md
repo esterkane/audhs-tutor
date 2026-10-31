@@ -15,7 +15,7 @@ The immediate priorities are a single active learning task, low-effort help befo
 
 1. Continue refining optional AI-help and notes inside the lesson; secondary tools are now grouped under More session tools, with critical recovery retained outside.
 2. Continue integrating imports and saved-work browsing into Library and aligning vocabulary; six-destination navigation and canonical three-group Library search are implemented, with legacy URLs and recovery scopes retained.
-3. Reconcile the scoped authoring cap/status with ordinary hosted-study settings; keep separate permissions and budgets truthful.
+3. Authoring setup is shared between Settings and the writing workspace, replacing the duplicate generic switch/cents slider. Both views explain that distinct permissions/caps count the same app-wide hosted usage. Further authoring simplification remains open.
 4. Verify the draft preview, pluralisation, browser titles, area/upload linking, confidence visibility, comfort dismissal, and other copy/heading findings against live states.
 5. Design a low-effort material path without automatic activation or loss of the optional research workflow.
 6. Reduce repeated explanatory caveats at decision points without suppressing provenance or uncertainty.
@@ -38,3 +38,16 @@ Remaining work includes broader authoring/Library consolidation, one search, few
 Library now has one local query box and three result groups: My material (personal drafts and active lesson titles), Saved answers, and Source passages. Recent personal drafts appear before searching. Source inspection keeps the result/query state mounted and restores keyboard focus on close; legacy search/source URLs redirect with their query and passage identifiers intact. The command palette uses the same canonical search and no longer lists duplicate search destinations.
 
 Results retain independently retryable errors and explicitly marked cached data. Retired project-guide manifests are not queried. Project/notebook edits, unsaved writing and the web are outside this search scope, stated in the optional details. Long result citations are shortened for scanning while full citation and context remain in the viewer; long unbroken filenames wrap without horizontal page overflow. Imports and specialist saved-answer views remain under the secondary disclosure. This is search consolidation, not a claim that every personal data store is indexed.
+
+
+## Authoring and hosted-spend clarity continuation
+
+Settings uses the existing shared authoring form instead of exposing a second generic authoring switch
+and raw cents slider. The writing workspace keeps the same form. Saving a key remains a separate
+explicit action and does not enable a provider or spend money. Models labels the ordinary-study cap
+and links to Settings; both surfaces explain that caps count the same app-wide hosted usage, not
+additive allowances. Existing permissions, accounting, saved credentials and histories are unchanged.
+An unavailable setup read displays unknown status with retry, rather than implying local mode or
+zero spending. Reads have a bounded deadline; cached settings are labelled stale on failure and
+writes stay disabled until a successful read. A stored zero cap displays zero and remains zero when
+local authoring is selected. This is not a broad model-quality or billing-system redesign.

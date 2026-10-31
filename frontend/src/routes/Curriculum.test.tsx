@@ -429,6 +429,7 @@ it('does not show a new editor while a saved knowledge draft link is loading', a
   const pending = new Promise<Response>(resolve => {resolveDrafts = resolve})
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     if (url === '/api/curriculum/drafts') return pending
+    if (url === '/api/authoring/setup') return jsonResponse({enabled:false,key_configured:false,model_id:'fixture',daily_budget_usd:0,counted_today_usd:0})
     if (url === '/api/learner/me') return jsonResponse({id:'owner'})
     return jsonResponse({courses:[]})
   }))

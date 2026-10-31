@@ -11,7 +11,7 @@ export function AuthoringSetup() {
   const cache = useQueryClient()
   const [key, setKey] = useState('')
   const [editedCap, setCap] = useState<string | null>(null)
-  const cap = editedCap ?? String(query.data?.daily_budget_usd || 5)
+  const cap = editedCap ?? String(query.data?.daily_budget_usd ?? 5)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
   async function persistKey() {
@@ -35,7 +35,7 @@ export function AuthoringSetup() {
     setMessage('')
     try {
       const dollars = Number(cap)
-      if (!Number.isFinite(dollars) || dollars <= 0 || dollars > 1000)
+      if (!Number.isFinite(dollars) || dollars < (enabled ? 0.01 : 0) || dollars > 1000)
         throw new Error('Set a daily limit between $0.01 and $1,000.')
       if (key) await persistKey()
       for (const [name, value] of [
@@ -56,21 +56,30 @@ export function AuthoringSetup() {
   return (
     <Disclosure label="Authoring setup: OpenAI or local">
       <div className="space-y-3 max-w-2xl">
-        {query.isError && <p role="alert">Authoring settings could not load. Reload to retry.</p>}
+        {query.isError && <div role="alert">
+          <p>Authoring settings could not load.{data ? ' Showing the last loaded settings; they may be out of date.' : ' Current mode, key status and spending are unknown.'}</p>
+          <Button variant="secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>Retry authoring settings</Button>
+        </div>}
+        {!data && !query.isError && <p role="status">Loading authoring settings…</p>}
         <p>
           OpenAI can help discuss research and draft material. Those requests send the selected source, your
           writing and relevant saved context to OpenAI. Accepted lessons and normal study stay local. Full
           histories stay saved here.
         </p>
-        <p>
-          {data?.enabled ? 'OpenAI authoring enabled' : 'Local authoring'} ·{' '}
+        {data && <p>
+          {data.enabled ? 'OpenAI authoring enabled' : 'Local authoring'} ·{' '}
           {data?.model_id ?? 'Loading model…'} ·{' '}
-          {data?.key_configured ? 'API key configured' : 'API key needed for OpenAI'}
-        </p>
-        <p>
-          Counted today: ${(data?.counted_today_usd ?? 0).toFixed(4)}. The app reserves estimated maximum cost
+          {data.key_configured ? 'API key configured' : 'API key needed for OpenAI'}
+        </p>}
+        {data && <p>
+          Authoring daily cap: ${data.daily_budget_usd.toFixed(2)}. App-wide hosted usage counted today: ${data.counted_today_usd.toFixed(4)}. The app reserves estimated maximum cost
           before a call; unknown billing counts conservatively. Limit resets at midnight UTC. Other
           applications using this key are outside this app’s cap.
+        </p>}
+        <p className="text-sm text-muted">
+          This cap permits only enabled authoring and factual reviews. It does not enable hosted study.
+          Models shows the separate ordinary-study cap. Both caps count the same app-wide hosted usage;
+          they are not two allowances to add together.
         </p>
         <label className="block">
           OpenAI API key
@@ -84,7 +93,7 @@ export function AuthoringSetup() {
           />
         </label>
         {key && <p role="status">Key entered but not saved. Choose Save API key to keep it on this machine.</p>}
-        <Button disabled={busy || !key} onClick={() => void saveKey()}>Save API key</Button>
+        <Button disabled={busy || !key || !data || query.isError} onClick={() => void saveKey()}>Save API key</Button>
         <p className="text-sm text-muted">
           Stored in a private local file, excluded from Git. Never included in a lesson, export or browser
           storage.
@@ -102,10 +111,10 @@ export function AuthoringSetup() {
           />
         </label>
         <div className="flex flex-wrap gap-2">
-          <Button disabled={busy} onClick={() => void configure(true)}>
+          <Button disabled={busy || !data || query.isError} onClick={() => void configure(true)}>
             Use OpenAI for authoring
           </Button>
-          <Button variant="secondary" disabled={busy} onClick={() => void configure(false)}>
+          <Button variant="secondary" disabled={busy || !data || query.isError} onClick={() => void configure(false)}>
             Use local authoring
           </Button>
         </div>

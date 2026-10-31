@@ -65,10 +65,48 @@ it('keeps an unsaved key in the input when saving fails without claiming configu
     : jsonResponse({ enabled: true, key_configured: false, model_id: 'openai-luna', daily_budget_usd: 5, counted_today_usd: 0 })))
   wrap(<AuthoringSetup />)
   fireEvent.click(screen.getByText('Authoring setup: OpenAI or local'))
+  await screen.findByText(/API key needed for OpenAI/)
   fireEvent.change(screen.getByLabelText('OpenAI API key'), { target: { value: 'synthetic-unsaved-key' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save API key' }))
   await screen.findByText('Enter a valid OpenAI API key.')
   expect(screen.getByLabelText('OpenAI API key')).toHaveValue('synthetic-unsaved-key')
   expect(screen.getByText(/Key entered but not saved/)).toBeVisible()
   expect(screen.queryByText(/API key saved on this machine/)).not.toBeInTheDocument()
+})
+
+
+it('does not invent local mode, zero spending or key status when setup cannot load and retries without writes', async () => {
+  let reads = 0
+  const writes: string[] = []
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method) writes.push(url)
+    reads++
+    return reads === 1 ? jsonResponse({error:{message:'Unavailable'}},503) : jsonResponse({enabled:true,key_configured:true,model_id:'fixture-model',daily_budget_usd:5,counted_today_usd:1.25})
+  }))
+  wrap(<AuthoringSetup />)
+  fireEvent.click(screen.getByText('Authoring setup: OpenAI or local'))
+  await screen.findByText(/Current mode, key status and spending are unknown/)
+  expect(screen.queryByText(/Local authoring ·/)).not.toBeInTheDocument()
+  expect(screen.queryByText(/usage counted today:/)).not.toBeInTheDocument()
+  expect(screen.getByRole('button',{name:'Use OpenAI for authoring'})).toBeDisabled()
+  fireEvent.click(screen.getByRole('button',{name:'Retry authoring settings'}))
+  await screen.findByText(/Authoring daily cap: \$5.00/)
+  expect(screen.getByText(/App-wide hosted usage counted today: \$1.2500/)).toBeVisible()
+  expect(screen.getByText(/not two allowances to add together/)).toBeVisible()
+  expect(writes).toEqual([])
+})
+
+it('preserves a zero authoring cap when explicitly choosing local authoring', async () => {
+  const bodies: unknown[]=[]
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if(init?.body) bodies.push(JSON.parse(String(init.body)))
+    return jsonResponse({enabled:false,key_configured:false,model_id:'fixture',daily_budget_usd:0,counted_today_usd:0})
+  }))
+  wrap(<AuthoringSetup />)
+  fireEvent.click(screen.getByText('Authoring setup: OpenAI or local'))
+  await screen.findByText(/Authoring daily cap: \$0.00/)
+  expect(screen.getByLabelText('Daily authoring limit (USD)')).toHaveValue(0)
+  fireEvent.click(screen.getByRole('button',{name:'Use local authoring'}))
+  await screen.findByText('Authoring settings saved.')
+  expect(bodies).toEqual([{key:'authoring.daily_budget_cents',value:0},{key:'authoring.enabled',value:false}])
 })

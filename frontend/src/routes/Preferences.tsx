@@ -1,3 +1,4 @@
+import { AuthoringSetup } from '../features/curriculum/HybridAuthoring'
 import { SwitchField } from '../components/ui/switch-field'
 import { CorrectionInbox } from '../features/questions/CorrectionInbox'
 import { ExcludedQuestions } from '../features/questions/QuestionPractice'
@@ -150,7 +151,7 @@ export function Preferences() {
       </Card>
     )
   const values = prefs.data.values as Record<string, unknown>
-  const specs = (prefs.data.specs as Spec[]).filter((spec) => spec.key !== 'planner.guitar')
+  const specs = (prefs.data.specs as Spec[]).filter((spec) => spec.key !== 'planner.guitar' && !spec.key.startsWith('authoring.'))
   return (
     <div className="grid grid-cols-1 gap-4">
       <Card>
@@ -165,6 +166,9 @@ export function Preferences() {
           </nav>
         </details>
         {readRecovery}
+        <section aria-label="Knowledge authoring and factual reviews" className="mb-4">
+          <AuthoringSetup />
+        </section>
         <p className="text-sm text-muted mb-3">
           Everything here is explicit and reversible. The system never changes these silently.
         </p>
