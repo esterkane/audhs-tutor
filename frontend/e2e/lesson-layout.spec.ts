@@ -23,6 +23,7 @@ for(const theme of ['light','dark']) for(const width of [320,390,1280]) test(`le
   await expect(draft).toHaveValue('Keep my question while toggling tools')
   await more.click();await expect(page.getByRole('button',{name:'Energy 3',exact:true})).toBeVisible()
   const afterTools=await currentSession(request)
+  if (!checkpoint || !afterTools) throw new Error('Open session disappeared while toggling tools')
   // Due reviews are computed from the current clock; every persisted session field must match.
   expect(afterTools).toEqual({...checkpoint,due_reviews:afterTools.due_reviews})
   await page.reload();await expect(draft).toHaveValue('Keep my question while toggling tools')

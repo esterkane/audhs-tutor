@@ -22,7 +22,7 @@ export type SessionState = {
 export async function currentSession(request: APIRequestContext) {
   const res = await request.get(`${API}/api/sessions/current`)
   await expectOk(res)
-  return (await res.json()) as null | { id: string; state?: SessionState | null }
+  return (await res.json()) as null | { id: string; due_reviews: number; state?: SessionState | null }
 }
 
 /** Every test starts and ends with no open session, so Home offers "Start session". */

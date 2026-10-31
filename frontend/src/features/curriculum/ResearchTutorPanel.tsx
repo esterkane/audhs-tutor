@@ -29,7 +29,7 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
   function reply(exchange: Schemas['ResearchTutorExchange']) {
     return <div className="space-y-2">
       {exchange.reference && <p className="text-sm text-muted">Saved reference-based reply — provenance not verified. <a className="underline" href="https://docs.python.org/3.12/reference/datamodel.html#objects-values-and-types" target="_blank" rel="noreferrer">Python language reference</a>. A saved reference label does not establish how this reply was produced or verify its claims.</p>}
-      {exchange.calculation && <p className="text-sm text-muted">Saved Python calculation — provenance not verified. History labels can be imported; they do not certify the result or how it was produced.</p>}
+      {exchange.calculation && <p className="text-sm text-muted">Saved {exchange.calculation.startsWith('vector.') ? 'vector' : 'Python'} calculation — provenance not verified. History labels can be imported; they do not certify the result or how it was produced.</p>}
       {exchange.request && <p className="whitespace-pre-wrap">Your request: {exchange.request}</p>}
       {!!exchange.memories?.length && <Disclosure label="Earlier notes used for this reply">{exchange.memories.map(m => <div key={m.id}><p>{m.title} · saved version {m.version} · personal writing</p><blockquote className="whitespace-pre-wrap border-l-2 pl-3">{m.text}</blockquote></div>)}</Disclosure>}
       {!exchange.answer.source_quotes?.length && <p className="text-warn">Source support unavailable — this reply needs checking.</p>}

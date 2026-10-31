@@ -31,7 +31,7 @@ export function validResearch(value: unknown, options: { allowBlankPrompt?: bool
           && typeof x.request === 'string'
           && (x.reference === 'python.string-identity.v1'
             ? x.calculation == null && x.model_call_id === null
-            : x.reference == null && (['python.string-repetition.v1', 'python.literal-expression.v1'].includes(x.calculation ?? '')
+            : x.reference == null && (['python.string-repetition.v1', 'python.literal-expression.v1', 'vector.dot-cosine.v1'].includes(x.calculation ?? '')
               ? x.model_call_id === null
               : x.calculation == null && typeof x.model_call_id === 'string')) && x.answer
           && ['discussion', 'needs_check', 'next_question', 'section'].every(k => typeof x.answer[k as keyof typeof x.answer] === 'string')
