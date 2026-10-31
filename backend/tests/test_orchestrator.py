@@ -1133,3 +1133,25 @@ async def test_literal_request_outside_supported_mode_keeps_model_route(
     )
     assert done["route"] != "template" and done["model_call_id"]
     assert world["local"].calls
+
+
+@pytest.mark.parametrize("prose_reference", [False, True])
+async def test_saved_source_citations_do_not_attribute_code_literals(
+    world: dict, prose_reference: bool
+) -> None:  # type: ignore[type-arg]
+    text = "(code) Use `items[1]`.\n```python\nvalues = [1, 2]\n```"
+    if prose_reference:
+        text += "\nThe explanation is supported by [1]."
+    world["local"].text = text
+    turn = TutorTurn(world["db"], world["gw"], world["repo"])
+    _, delivered, done = await _collect(
+        turn, TurnRequest(session_id=world["session"].id, text="Explain queries and keys")
+    )
+    assert delivered == text
+    assert done["sources"]
+    assert [source["cited"] for source in done["sources"]] == [
+        prose_reference and index == 0 for index in range(len(done["sources"]))
+    ]
+    saved = await world["db"].get(models.TutorAnswer, done["answer_id"])
+    assert saved is not None and saved.text == text
+    assert saved.metadata_json["sources"] == done["sources"]

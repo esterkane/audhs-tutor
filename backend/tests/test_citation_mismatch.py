@@ -1,6 +1,6 @@
 import pytest
 
-from app.orchestrator.actions import has_unsupported_citation
+from app.orchestrator.actions import cited_indices, has_unsupported_citation
 
 
 @pytest.mark.parametrize(
@@ -20,3 +20,19 @@ from app.orchestrator.actions import has_unsupported_citation
 )
 def test_unsupported_prose_citations(text: str, count: int, unsupported: bool) -> None:
     assert has_unsupported_citation(text, count) is unsupported
+
+
+@pytest.mark.parametrize(
+    "text,expected",
+    [
+        ("```python\nvalues = [1]\n```", set()),
+        ("Use `items[1]` and `[2, 3]`.", set()),
+        ("~~~json\n[1, 2]\n~~~\nA source claim [3].", {3}),
+        ("```python\nvalues = [1]\n```\nA source claim [2].", {2}),
+        ("A source claim [1, 3].", {1, 3}),
+        ("``literal `code` with [1]``; claim [2].", {2}),
+        ("```python\nvalues = [1]", set()),
+    ],
+)
+def test_cited_sources_exclude_code_literals(text: str, expected: set[int]) -> None:
+    assert cited_indices(text, 3) == expected

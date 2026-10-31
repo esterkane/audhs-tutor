@@ -20,11 +20,12 @@ from app.knowledge.repository import RetrievalRepository
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import TaskClass
 from app.orchestrator import prompts, tools
-from app.orchestrator.actions import cited_indices, count_sentences, trim_incomplete_tail
+from app.orchestrator.actions import cited_indices, count_sentences
 from app.orchestrator.context import build_packet, render_messages
 from app.schemas.common import ActivityType, Actor, ObjectType
 
 logger = logging.getLogger(__name__)
+DELIVERY_CONTRACT = "representation.complete.v1"
 
 
 async def render(
@@ -47,6 +48,14 @@ async def render(
     cached = (
         None if force else await krep.get_cached(db, obj.id, kind, learner_id=session.learner_id)
     )
+    if (
+        cached is not None
+        and cached.model_call_id is not None
+        and cached.provenance_json.get("delivery_contract") != DELIVERY_CONTRACT
+    ):
+        # Older generated cache entries may have lost code/list/formula tails. Preserve
+        # their history, but refresh on the next request rather than replay a clipped view.
+        cached = None
     if cached is not None:
         return await _finish(
             db,
@@ -93,11 +102,12 @@ async def render(
             "prompt_version": prompts.PROMPT_VERSION,
             "skill_id": node.id,
             "representation": kind,
+            "delivery_contract": DELIVERY_CONTRACT,
         },
-        max_tokens=420,
+        max_tokens=1600,
         events=events,
     )
-    content = trim_incomplete_tail(out.result.text)
+    content = out.result.text
     cited = cited_indices(content, len(packet.retrieved))
     provenance = {
         "sources": [
@@ -109,6 +119,7 @@ async def render(
             for chunk in packet.retrieved
         },
         "object_version": obj.version,
+        "delivery_contract": DELIVERY_CONTRACT,
         "prompt_version": prompts.PROMPT_VERSION,
         "model": out.registry_id,
         "route": out.route,
@@ -195,6 +206,7 @@ async def _finish(
             "representation_id": rep_id,
             "object_id": obj.id,
             "object_version": provenance.get("object_version"),
+            "delivery_contract": provenance.get("delivery_contract"),
             "representation_kind": kind,
             "model_call_id": model_call_id,
             "provenance_available": bool(provenance),

@@ -125,10 +125,17 @@ def trim_incomplete_tail(text: str) -> str:
     return t[: cut + 1] if cut > 40 else t
 
 
+def _citation_prose(text: str) -> str:
+    # Mask fenced and inline code before interpreting bracketed numbers.
+    prose = re.sub(r"(?ms)^ {0,3}(`{3,}|~{3,})[^\n]*\n.*?(?:^ {0,3}\1[ \t]*$|\Z)", "", text)
+    prose = re.sub(r"(`+).*?\1", "", prose, flags=re.DOTALL)
+    return prose
+
+
 def cited_indices(text: str, n_sources: int) -> set[int]:
-    """Numeric citations actually present in the reply, e.g. [1] or [1, 3]."""
+    """Prose citations such as [1] or [1, 3]; code literals do not cite sources."""
     found: set[int] = set()
-    for m in re.finditer(r"\[(\d+(?:\s*,\s*\d+)*)\]", text):
+    for m in re.finditer(r"\[(\d+(?:\s*,\s*\d+)*)\]", _citation_prose(text)):
         for part in m.group(1).split(","):
             i = int(part)
             if 1 <= i <= n_sources:
@@ -138,9 +145,7 @@ def cited_indices(text: str, n_sources: int) -> set[int]:
 
 def has_unsupported_citation(text: str, n_sources: int) -> bool:
     """Check single-number prose references; comma lists may be literal data arrays."""
-    # Mask fenced and inline code before interpreting bracketed numbers.
-    prose = re.sub(r"(?ms)^ {0,3}(`{3,}|~{3,})[^\n]*\n.*?(?:^ {0,3}\1[ \t]*$|\Z)", "", text)
-    prose = re.sub(r"(`+).*?\1", "", prose, flags=re.DOTALL)
+    prose = _citation_prose(text)
     for match in re.finditer(r"\[(\d+)\]", prose):
         if any(not 1 <= int(part) <= n_sources for part in match.group(1).split(",")):
             return True

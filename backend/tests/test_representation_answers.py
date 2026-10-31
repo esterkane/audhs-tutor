@@ -107,3 +107,79 @@ async def test_concurrent_cached_deliveries_share_history(client, db, fake_repo,
     assert responses[0].json()["answer_id"]
     assert await db.scalar(select(func.count()).select_from(TutorAnswer)) == 1
     assert fake_local.calls == []
+
+
+@pytest.mark.parametrize("prose_reference", [False, True])
+async def test_representation_code_literals_do_not_cite_sources(
+    client, db, fake_repo, fake_local, prose_reference
+):
+    session, url = await setup(client, db, fake_repo, fake_local)
+    text = "Use `items[1]`.\n```python\nvalues = [1, 2]\n```\nThese values are literals."
+    if prose_reference:
+        text += " The source is [1]."
+    fake_local.text = text
+    response = await client.post(url, json={"session_id": session["id"]})
+    assert response.status_code == 200, response.text
+    result = response.json()
+    assert result["content"] == text
+    sources = result["source_snapshot"]
+    assert sources and [s["cited"] for s in sources] == [
+        prose_reference and i == 0 for i in range(len(sources))
+    ]
+    restored = (await client.get("/api/answers/" + result["answer_id"])).json()
+    assert restored["text"] == text
+    assert restored["metadata"]["sources"] == sources
+
+
+@pytest.mark.parametrize(
+    "tail",
+    [
+        "```python\nvalues = [1, 2]\nprint(values[1])\n```",
+        "```sql\nSELECT 1 AS value;\n```",
+        "1. Read the vector\n2. Compare matching components",
+        r"$$q \cdot k = \sum_i q_i k_i$$",
+    ],
+)
+async def test_complete_representation_tails_survive_delivery_cache_and_history(
+    client, db, fake_repo, fake_local, tail
+):
+    session, url = await setup(client, db, fake_repo, fake_local)
+    text = "Use the following complete example to inspect each requested result.\n" + tail
+    fake_local.text = text
+    first = (await client.post(url, json={"session_id": session["id"]})).json()
+    assert first["content"] == text
+    calls = len(fake_local.calls)
+    again = (await client.post(url, json={"session_id": session["id"]})).json()
+    assert again["cached"] and again["content"] == text and again["answer_id"] == first["answer_id"]
+    restored = (await client.get("/api/answers/" + first["answer_id"])).json()
+    assert restored["text"] == text
+    assert len(fake_local.calls) == calls
+
+
+async def test_old_generated_cache_refreshes_once_without_rewriting_saved_history(
+    client, db, fake_repo, fake_local
+):
+    from app.db.models import Representation
+
+    session, url = await setup(client, db, fake_repo, fake_local)
+    old_text = "A previously generated introductory sentence without its example."
+    fake_local.text = old_text
+    first = (await client.post(url, json={"session_id": session["id"]})).json()
+    row = await db.get(Representation, first["representation_id"])
+    assert row is not None and row.model_call_id
+    row.provenance_json = {
+        key: value for key, value in row.provenance_json.items() if key != "delivery_contract"
+    }
+    await db.commit()
+    calls = len(fake_local.calls)
+    complete = "Use this complete example to inspect the result.\n```sql\nSELECT 1;\n```"
+    fake_local.text = complete
+    refreshed = (await client.post(url, json={"session_id": session["id"]})).json()
+    assert refreshed["content"] == complete and not refreshed["cached"]
+    assert refreshed["representation_id"] != first["representation_id"]
+    assert len(fake_local.calls) == calls + 1
+    old_saved = (await client.get("/api/answers/" + first["answer_id"])).json()
+    assert old_saved["text"] == old_text
+    again = (await client.post(url, json={"session_id": session["id"]})).json()
+    assert again["cached"] and again["answer_id"] == refreshed["answer_id"]
+    assert len(fake_local.calls) == calls + 1
