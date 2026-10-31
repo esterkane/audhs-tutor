@@ -32,3 +32,13 @@ assertions were retained without a speculative interface change.
 This change repairs the tests to exercise the visible workflow. It does not alter application
 behavior, grading, model routing, session history, user preferences or timeout allowances.
 Browser fixtures use isolated learner data and do not certify free-form model answer accuracy.
+
+## Follow-up: frontend type gate
+
+The next GitHub run exposed an unsupported `exact` option on a Testing Library role selector
+in the study-conditions component test. The query now uses an anchored accessible-name
+expression. Its exact match and condition-recording assertions remain unchanged.
+
+A forced whole-project TypeScript build, full ESLint check and all 828 component tests
+(162 files, 63.91s) pass after this correction. Application code and browser interactions
+are unchanged; the browser evidence above is reused, with its stated limits.

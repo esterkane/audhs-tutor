@@ -26,7 +26,7 @@ it('records only explicit self-reports without starting sound and keeps observat
   renderApp(<StudyConditions sessionId="session" />)
   fireEvent.click(screen.getByText('Study conditions and later recall (optional)'))
   await screen.findByText('No qualifying later recall yet. Nothing is ranked or recommended.')
-  fireEvent.change(screen.getByRole('combobox', { name: 'Sound condition', exact: true }), {
+  fireEvent.change(screen.getByRole('combobox', { name: /^Sound condition$/ }), {
     target: { value: 'white' },
   })
   expect(writes).toEqual([])
