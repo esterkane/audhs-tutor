@@ -28,7 +28,7 @@ class SectionBudget(BaseModel):
     learning_contract: int = 2800
     evidence: int = 300
     retrieved: int = 1800
-    request: int = 400
+    request: int = 1000  # Full 4,000-character lesson request accepted by TurnRequest.
     output_contract: int = 1200
 
 

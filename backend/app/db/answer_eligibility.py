@@ -18,6 +18,14 @@ def excluded_answer_ids(learner_id: str) -> CompoundSelect[tuple[str]]:
         .correlate(TutorAnswer)
         .exists()
     )
+    drops = func.json_each(TutorAnswer.metadata_json["dropped"]).table_valued("value")
+    truncated_request = (
+        select(1)
+        .select_from(drops)
+        .where(drops.c.value == "request:truncated")
+        .correlate(TutorAnswer)
+        .exists()
+    )
     unchecked_socratic = (
         (TutorAnswer.metadata_json["questioning_style"].as_string() == "socratic")
         & (TutorAnswer.metadata_json["teaching_action"].as_string() == "explain")
@@ -41,7 +49,10 @@ def excluded_answer_ids(learner_id: str) -> CompoundSelect[tuple[str]]:
             ),
             select(TutorAnswer.id).where(
                 TutorAnswer.learner_id == learner_id,
-                (TutorAnswer.surface == "assessment") | unsupported | unchecked_socratic,
+                (TutorAnswer.surface == "assessment")
+                | unsupported
+                | unchecked_socratic
+                | truncated_request,
             ),
         )
     )

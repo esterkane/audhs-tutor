@@ -22,6 +22,7 @@ async def test_lesson_memory_requires_same_scope_and_current_sources(client, db)
         "good",
         "hidden",
         "unsupported",
+        "truncated-request",
         "recursive",
         "style",
         "action",
@@ -39,6 +40,8 @@ async def test_lesson_memory_requires_same_scope_and_current_sources(client, db)
         }
         if identifier == "unsupported":
             metadata["flagged"] = ["unsupported_numeric_citation"]
+        if identifier == "truncated-request":
+            metadata["dropped"] = ["request:truncated"]
         if identifier == "recursive":
             metadata["answer_memory"] = [{"answer_id": "parent"}]
         if identifier == "style":

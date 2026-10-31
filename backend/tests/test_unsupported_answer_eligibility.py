@@ -54,3 +54,38 @@ async def test_legacy_socratic_explanations_need_validation_before_reuse(client,
     await db.commit()
     assert set(await db.scalars(excluded_answer_ids(owner))) == {"unchecked"}
     assert (await client.get("/api/answers/unchecked")).status_code == 200
+
+
+async def test_truncated_request_excludes_reuse_without_deleting_history_or_cached_vectors(
+    client, db
+):
+    from app.db.answer_vectors import load, put
+
+    owner = (await client.get("/api/learner/me")).json()["id"]
+    for identifier, dropped in [
+        ("lost-question", ["request:truncated"]),
+        ("other-drop", ["retrieved:unused"]),
+        ("empty-drop", []),
+        ("no-drop-field", None),
+    ]:
+        db.add(
+            TutorAnswer(
+                id=identifier,
+                learner_id=owner,
+                turn_id=identifier,
+                surface="tutor",
+                request_json={"text": "Original complete question"},
+                text="Original saved reply",
+                fingerprint=identifier,
+                metadata_json={} if dropped is None else {"dropped": dropped},
+            )
+        )
+    await db.commit()
+    assert await put(db, owner, "lost-question", "lost-question", "test-model", [1.0, 0.0])
+    assert set(await db.scalars(excluded_answer_ids(owner))) == {"lost-question"}
+    assert list(await db.scalars(excluded_answer_ids("another-owner"))) == []
+    assert await load(db, owner, ["lost-question"], "test-model", 2) == {}
+    response = await client.get("/api/answers/lost-question")
+    assert response.status_code == 200
+    assert response.json()["text"] == "Original saved reply"
+    assert response.json()["metadata"]["dropped"] == ["request:truncated"]
