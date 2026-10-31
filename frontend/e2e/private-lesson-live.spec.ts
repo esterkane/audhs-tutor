@@ -70,6 +70,8 @@ asyncio.run(main())
     let generations = 0
     page.on('request', r => { if (r.url().endsWith('/api/tutor/stream')) generations++ })
     await page.reload()
+    // A new lesson offers an optional prediction; skipping must reveal it immediately.
+    await page.getByRole('button', { name: 'Read without predicting', exact: true }).click()
     await expect(page.getByText('Fit preprocessing on training records only.', { exact: false })).toBeVisible()
     await page.getByRole('combobox', { name: 'Choose a section' }).selectOption({ label: '2. Worked example 1' })
     await expect(page.getByText('Training ages 20 and 40 give median 30.', { exact: false })).toBeVisible()

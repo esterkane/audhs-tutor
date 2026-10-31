@@ -84,7 +84,15 @@ print((int(item['answer'])+1)%len(item['options']))
     await expect(page.getByRole('button', { name: 'Try again', exact: true })).toBeEnabled()
     await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeEnabled()
     await expect(page.getByRole('link', { name: 'Open saved feedback', exact: true })).toHaveAttribute('href', `/answers/${encodeURIComponent(latestAnswer)}`)
-    expect(await currentSession(request)).toEqual(before)
+    const after = await currentSession(request)
+    if (!before || !after) throw new Error("Expected an open session before and after resume")
+    // Due reviews are a live clock-derived count, not persisted session progress.
+    // A scheduled item may become due while this journey is paused.
+    const { due_reviews: beforeDue, ...beforeProgress } = before
+    const { due_reviews: afterDue, ...afterProgress } = after
+    expect(afterProgress).toEqual(beforeProgress)
+    expect(Number.isInteger(beforeDue) && beforeDue >= 0).toBe(true)
+    expect(Number.isInteger(afterDue) && afterDue >= 0).toBe(true)
     expect(submissions).toBe(3)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
     await page.getByRole('heading', { name: 'Feedback on your answer' }).scrollIntoViewIfNeeded()

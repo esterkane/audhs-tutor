@@ -61,3 +61,15 @@ experiments with delayed recall, preserving full attempts and provenance. Next v
 contrasting error pairs and novice scaffolding before expanding richer visuals. Voice quality,
 low-capacity recognition and the fading ladder remain separate unfinished tasks; avoid
 claiming that a UI checkbox proves learning benefit. No n-of-1 experiment is enabled silently.
+
+
+## Regression coverage
+
+The saved-answer-to-private-lesson browser journey explicitly chooses “Read without
+predicting” and then checks reading, section selection, notes across reload, assessment,
+revisiting the explanation and zero tutor generations at narrow and wide widths. The
+repeated-incorrect journey compares persisted session progress across pause/resume while
+checking the live due-review count separately: that count is recomputed against the current
+clock and can change without any learner-state mutation. All other returned session fields
+remain subject to exact equality. These checks complement the prediction/correction journey;
+neither completing a prediction nor skipping one is treated as competency evidence.
