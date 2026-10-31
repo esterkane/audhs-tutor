@@ -69,7 +69,8 @@ def product_of(url: str) -> str:
     p = urlparse(url).path
     if p.startswith("/llms/"):
         name = p.split("/")[-1].replace(".txt", "")
-        return {"js": "api", "server": "api", "api": "platform", "python": "api"}.get(name, name)
+        return {"js": "api", "server": "api", "api": "platform", "python": "api",
+                "dart": "api", "swift": "api", "kotlin": "api", "csharp": "api"}.get(name, name)
     if "/docs/guides/" in p:
         return p.split("/docs/guides/")[1].split("/")[0].replace(".md", "")
     if p.startswith("/pricing"):
@@ -367,7 +368,8 @@ async def main() -> int:
     provider = os.environ.get("EMBEDDINGS_PROVIDER", "ollama")
     model = {"ollama": "nomic-embed-text", "openai": "text-embedding-3-small@768"}[provider]
     known = {} if a.dry_run else existing_hashes()
-    partial = bool(a.only or a.limit or a.no_expand)
+    # A support profile deliberately omits SDK sources; absence is not removal.
+    partial = bool(a.only or a.limit or a.no_expand or a.profile != "all")
 
     async with httpx.AsyncClient() as client:
         try:

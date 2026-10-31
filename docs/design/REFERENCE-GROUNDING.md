@@ -48,3 +48,5 @@ A larger corpus and valid tool arguments do not prove correct causal explanation
 model evaluation must still inspect answer coverage, role/grant distinctions, old/new row
 semantics, transaction chronology, language and source support before a model or inference
 configuration is promoted.
+
+SDK references share the searchable `api` product. The `support` ingestion profile is partial: it can refresh its selected sources, but cannot authorize retirement of the SDK sources it deliberately omits. Use an unfiltered `--profile all` refresh for complete-index retirement. Temporarily failed selected URLs remain eligible in that manifest.

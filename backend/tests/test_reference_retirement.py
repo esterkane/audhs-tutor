@@ -88,3 +88,70 @@ def test_actual_postgres_retirement_keeps_other_origins_and_failed_fetch_urls(in
         assert states["https://supabase.com/temporary-fetch-failure"] == "active"
         assert states["https://www.postgresql.org/docs/17/sql-grant.html"] == "active"
         assert states["https://supabase.com.evil.invalid/unrelated"] == "active"
+
+
+@pytest.mark.parametrize("sdk", ["js", "python", "dart", "swift", "kotlin", "csharp"])
+def test_sdk_sources_use_the_searchable_api_product(indexer, sdk):
+    assert indexer.product_of(f"https://supabase.com/llms/{sdk}.txt") == "api"
+
+
+@pytest.mark.parametrize(
+    "arguments,failed_sdk,should_retire,expected_count",
+    [
+        (["--profile", "support"], False, False, 1),
+        (["--profile", "all"], False, True, 2),
+        (["--profile", "all"], True, True, 1),
+        (["--profile", "all", "--only", "cli"], False, False, 1),
+    ],
+)
+async def test_refresh_retirement_respects_selected_coverage(
+    indexer, monkeypatch, arguments, failed_sdk, should_retire, expected_count
+):
+    from unittest.mock import Mock
+
+    import httpx
+
+    cli = "https://supabase.com/llms/cli.txt"
+    dart = "https://supabase.com/llms/dart.txt"
+
+    class Client:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+        async def get(self, url, **kwargs):
+            return httpx.Response(
+                200, text=f"# Index\n{cli}\n{dart}", request=httpx.Request("GET", url)
+            )
+
+    async def fetch(client, doc, semaphore):
+        if failed_sdk and doc.url == dart:
+            doc.status = "failed"
+        else:
+            doc.text = "# SDK reference\nComplete synthetic reference content."
+            doc.hash = "synthetic-hash"
+        return doc
+
+    async def embed(texts, provider, client):
+        return [[0.0] * 768 for _ in texts]
+
+    upsert = Mock(return_value=1)
+    retire = Mock(return_value=0)
+    monkeypatch.setattr(sys, "argv", ["ingest", *arguments])
+    monkeypatch.setenv("EMBEDDINGS_PROVIDER", "ollama")
+    monkeypatch.setattr(indexer.httpx, "AsyncClient", Client)
+    monkeypatch.setattr(indexer, "fetch", fetch)
+    monkeypatch.setattr(indexer, "embed", embed)
+    monkeypatch.setattr(indexer, "existing_hashes", lambda: {})
+    monkeypatch.setattr(indexer, "upsert", upsert)
+    monkeypatch.setattr(indexer, "retire_missing", retire)
+    result = await indexer.main()
+    assert result == (1 if failed_sdk else 0)
+    assert upsert.call_count == expected_count
+    assert retire.called is should_retire
+    if should_retire:
+        # Selected temporary failures stay in the manifest, not mistaken for removed docs.
+        assert set(retire.call_args.args[0]) == {cli, dart}
+        assert retire.call_args.args[1] == indexer.INDEX_DEFAULT

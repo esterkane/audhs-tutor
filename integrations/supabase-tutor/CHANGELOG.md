@@ -120,3 +120,5 @@
   host mode + delivery chooser; eval set `explicit` 2/2. AuDHS itself unchanged.
 
 - 2026-10-31 AuDHS host reference refresh: retain PostgreSQL/upstream references outside the refreshed index origin; preserve indexed sources on temporary fetch failure and avoid retirement on an empty result.
+
+- Keep all SDK reference products searchable through the API filter. A filtered support refresh no longer retires sources deliberately excluded by that profile; full retirement requires an unfiltered all-profile refresh.
