@@ -84,9 +84,7 @@ class _Extractor(HTMLParser):
         rows = [r for r in (self._table or []) if r.strip(" |")]
         self._table = None
         if rows:
-            self.blocks.append(
-                Block(text="\n".join(rows), kind="table", heading=self.heading)
-            )
+            self.blocks.append(Block(text="\n".join(rows), kind="table", heading=self.heading))
 
     # -- parser callbacks
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
