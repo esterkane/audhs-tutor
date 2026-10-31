@@ -6,11 +6,20 @@ so `./data/dev.db` means `<repo>/data/dev.db` regardless of the current working 
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Literal
 
-from pydantic import Field
+from pydantic import BaseModel, ConfigDict, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
+
+
+class OllamaInferenceOptions(BaseModel):
+    """Explicit per-registry controls; no endpoint, model, context or output overrides."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+    reasoning_effort: Literal["low", "medium", "high"] | None = None
+    temperature: float | None = Field(default=None, ge=0, le=2, allow_inf_nan=False)
 
 
 class Settings(BaseSettings):
@@ -29,6 +38,7 @@ class Settings(BaseSettings):
     ollama_context_tokens: int = Field(default=16384, ge=2048, le=131072)
     ollama_prepare_on_session_start: bool = True
     ollama_context_tokenizers: dict[str, str] = Field(default_factory=dict)
+    ollama_inference_options: dict[str, OllamaInferenceOptions] = Field(default_factory=dict)
     anthropic_api_key: str = ""
     openai_api_key: str = ""
     authoring_key_file: str = "./private-state/openai-authoring.key"

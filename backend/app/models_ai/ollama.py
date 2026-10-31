@@ -13,6 +13,7 @@ from instructor.core.exceptions import InstructorRetryException
 from litellm.llms.custom_httpx.http_handler import AsyncHTTPHandler
 from pydantic import BaseModel
 
+from app.core.config import OllamaInferenceOptions
 from app.models_ai.context_capacity import context_capacity
 from app.models_ai.provider import (
     InferenceTiming,
@@ -95,16 +96,30 @@ class OllamaProvider:
         keep_alive_s: int = 1800,
         context_tokens: int = 16384,
         context_tokenizers: dict[str, str] | None = None,
+        inference_options: dict[str, OllamaInferenceOptions] | None = None,
     ) -> None:
         self.host = host.rstrip("/")
         self.timeout_s = timeout_s
         self.keep_alive_s = keep_alive_s
         self.context_tokens = context_tokens
         self.context_tokenizers = dict(context_tokenizers or {})
+        self.inference_options = dict(inference_options or {})
         self._instructor = cast(
             instructor.AsyncInstructor,
             instructor.from_litellm(litellm.acompletion, mode=instructor.Mode.JSON),
         )
+
+    def inference_options_for(self, spec: ModelSpec) -> dict[str, Any]:
+        options = self.inference_options.get(spec.registry_id)
+        return options.model_dump(exclude_none=True) if options is not None else {}
+
+    def _generation_options(self, spec: ModelSpec, temperature: float) -> dict[str, Any]:
+        options = {"temperature": temperature, **self.inference_options_for(spec)}
+        if "reasoning_effort" in options:
+            # The API's advertised capabilities govern custom aliases too. The SDK's
+            # OpenAI-to-Ollama mapping otherwise changes unknown tags' named levels to True.
+            options["think"] = options.pop("reasoning_effort")
+        return options
 
     def _context_tokens(self, spec: ModelSpec, messages: list[Message], max_tokens: int) -> int:
         return context_capacity(
@@ -153,6 +168,14 @@ class OllamaProvider:
                 response.raise_for_status()
                 details = response.json()
             require_local_weights(details)
+            effort = self.inference_options_for(spec).get("reasoning_effort")
+            if effort is not None:
+                thinking = details.get("thinking")
+                values = thinking.get("values") if isinstance(thinking, dict) else None
+                if not isinstance(values, list) or effort not in values:
+                    raise SourcePolicyDenied(
+                        "Source policy: configured thinking level is not supported by this local model"
+                    )
         except (httpx.HTTPError, ValueError) as exc:
             raise SourcePolicyDenied("Source policy: cannot verify local model transport") from exc
 
@@ -242,7 +265,7 @@ class OllamaProvider:
                     messages=expanded["messages"],
                     api_base=self.host,
                     max_tokens=max_tokens,
-                    temperature=temperature,
+                    **self._generation_options(spec, temperature),
                     timeout=self.timeout_s,
                     keep_alive=self.keep_alive_s,
                     num_ctx=(
@@ -314,6 +337,7 @@ class OllamaProvider:
                     else self._context_tokens(spec, messages, max_tokens)
                 ),
             )
+            kwargs.update(self._generation_options(spec, temperature))
             try:
                 if response_model is not None:
                     (
@@ -365,7 +389,7 @@ class OllamaProvider:
                     messages=to_chat(messages),
                     api_base=self.host,
                     max_tokens=max_tokens,
-                    temperature=temperature,
+                    **self._generation_options(spec, temperature),
                     stream=True,
                     stream_options={"include_usage": True},
                     timeout=self.timeout_s,
@@ -419,17 +443,27 @@ class OllamaProvider:
     ) -> dict[str, float]:
         """Native /api/generate call returning Ollama's own eval counters (for benchmarks)."""
         await self.validate_local_transport(spec)
+        configured = self.inference_options_for(spec)
+        body: dict[str, Any] = {
+            "model": spec.model,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"num_predict": max_tokens},
+        }
+        if "temperature" in configured:
+            body["options"]["temperature"] = configured["temperature"]
+        if "reasoning_effort" in configured:
+            body["think"] = configured["reasoning_effort"]
+        if configured:
+            body["options"]["num_ctx"] = self._context_tokens(
+                spec, [Message(role="user", content=prompt)], max_tokens
+            )
         async with httpx.AsyncClient(
             timeout=self.timeout_s, trust_env=False, follow_redirects=False
         ) as client:
             r = await client.post(
                 f"{self.host}/api/generate",
-                json={
-                    "model": spec.model,
-                    "prompt": prompt,
-                    "stream": False,
-                    "options": {"num_predict": max_tokens},
-                },
+                json=body,
             )
             r.raise_for_status()
         d = r.json()

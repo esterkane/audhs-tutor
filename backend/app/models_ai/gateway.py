@@ -30,6 +30,7 @@ from app.db.models import BudgetReservation, ModelRegistry
 from app.db.traces import ModelCallRecord, write_model_call
 from app.models_ai import registry
 from app.models_ai.budget import Budget, BudgetExceeded, worst_case_usd
+from app.models_ai.ollama import OllamaProvider
 from app.models_ai.provider import (
     Message,
     ModelProvider,
@@ -777,6 +778,11 @@ class ModelGateway:
         error: str | None = None,
         reservation: BudgetReservation | None = None,
     ) -> Any:
+        provider = self.providers.get(spec.provider)
+        if isinstance(provider, OllamaProvider):
+            configured = provider.inference_options_for(spec)
+            if configured:
+                meta = {**meta, "requested_inference_options": configured}
         rec = ModelCallRecord(
             provider=spec.provider,
             model=spec.model,

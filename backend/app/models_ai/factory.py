@@ -24,6 +24,7 @@ def build_providers(settings: Settings) -> dict[str, ModelProvider]:
             keep_alive_s=settings.ollama_keep_alive_s,
             context_tokens=settings.ollama_context_tokens,
             context_tokenizers=settings.ollama_context_tokenizers,
+            inference_options=settings.ollama_inference_options,
         )
     }
     if settings.anthropic_api_key:

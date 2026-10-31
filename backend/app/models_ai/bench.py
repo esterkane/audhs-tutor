@@ -72,6 +72,10 @@ async def bench_model(
 ) -> dict[str, Any]:
     """Speed (tok/s, first-token ms) + tutoring hard checks. Cheap enough to run after every pull."""
     out: dict[str, Any] = {"benchmarked_at": datetime.now(UTC).isoformat(timespec="seconds")}
+    if isinstance(provider, OllamaProvider):
+        configured = provider.inference_options_for(spec)
+        if configured:
+            out["requested_inference_options"] = configured
     # --- speed
     t0 = time.perf_counter()
     first: float | None = None
