@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import { API, endOpenSession, expectOk } from './helpers'
 
 for (const [language, width] of [['de', 390], ['en', 1280]] as const) {
-  test(`literal Socratic question keeps ${language} and saved history at ${width}`, async ({ page, request }) => {
+  test(`literal Socratic question keeps ${language} and saved history at ${width}`, async ({ page, request }, testInfo) => {
     await endOpenSession(request)
     const preferences = await (await request.get(`${API}/api/preferences`)).json()
     const original = preferences.values['tutor.response_language']
@@ -23,6 +23,7 @@ for (const [language, width] of [['de', 390], ['en', 1280]] as const) {
       await page.getByRole('button', { name: /^Continue$/ }).click()
       const input = page.getByLabel('Ask about this lesson (optional)', { exact: true })
       await input.fill('Ask me one Socratic question about `a + [3]`, without giving the answer.')
+      await page.screenshot({ path: testInfo.outputPath('saved-questioning-mode.png'), fullPage: true })
       const received = page.waitForResponse(response => response.url().includes('/api/tutor/stream') && response.request().method() === 'POST')
       await page.getByRole('button', { name: 'Send lesson question', exact: true }).click()
       const response = await received

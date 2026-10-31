@@ -406,6 +406,7 @@ function SessionBody({ sessionId, data, canNavigate, secondaryContent }: {
             ])}
             active={phase === 'teach'}
             hasQuestion={assessmentEntered}
+            socratic={data.socratic}
             sessionId={sessionId}
             skillId={activeSkillId}
             learningGoal={skill ? skill.description || skill.title : undefined}
@@ -518,6 +519,7 @@ function TeachPanel({
   recoveryScope,
   active,
   hasQuestion,
+  socratic,
   sessionId,
   skillId,
   learningGoal,
@@ -527,6 +529,7 @@ function TeachPanel({
 }: {
   recoveryScope: string
   hasQuestion: boolean
+  socratic: boolean
   sessionId: string
   skillId: string | null
   learningGoal?: string
@@ -555,8 +558,14 @@ function TeachPanel({
   useEffect(() => {
     if (!active) stop()
   }, [active, stop])
+  const socraticNow = meta?.questioning_style
+    ? meta.questioning_style === 'socratic'
+    : socratic
   const authoredReading = useAcceptedKnowledge(skillId)
   const savedReading = useSavedReading(skillId)
+  const startLabel = socraticNow
+    ? text ? 'Give me another question' : 'Start with a question'
+    : text ? 'Explain again' : savedReading.data ? 'Ask for another explanation' : 'Start explanation'
   const kinds = useKinds(skillId)
   const render = useRender()
   const prefer = usePrefer()
@@ -886,15 +895,17 @@ function TeachPanel({
         </Card>
       )}
       <Card>
-        <CardTitle>{text || alt || savedReading.data ? 'Ask the tutor' : 'Your explanation'}</CardTitle>
-        <p className="text-sm mb-2">Start with the idea and a worked example. No question is required.</p>
+        <CardTitle>{text || alt || savedReading.data ? 'Ask the tutor' : socraticNow ? 'Socratic question' : 'Your explanation'}</CardTitle>
+        <p className="text-sm mb-2">{socraticNow
+          ? 'Start with one focused tutor question. You do not need to type a question first.'
+          : 'Start with the idea and a worked example. No question is required.'}</p>
         <div className="flex gap-2 flex-wrap mb-2">
           <Button
             variant={done || alt || savedReading.data || input.trim() ? 'secondary' : 'primary'}
             disabled={busy}
             onClick={() => void run({ ...base, text: 'Help me learn the next idea for this skill using this session’s teaching mode. Give enough context for the next step. Keep code complete. Do not require a confidence rating.', action: 'explain' })}
           >
-            {busy ? 'Preparing explanation…' : text ? 'Explain again' : savedReading.data ? 'Ask for another explanation' : 'Start explanation'}
+            {busy ? (socraticNow ? 'Preparing question…' : 'Preparing explanation…') : startLabel}
           </Button>
           {!(done || alt || hasQuestion) && <Disclosure label="More ways to learn">{helpActions}</Disclosure>}
         </div>
@@ -906,7 +917,7 @@ function TeachPanel({
             <p className="text-sm text-muted">Past replies for this concept. Opens without generating; sources may have changed.</p>
           </div>
         )}
-        {input.trim() && <p className="text-sm mb-2">Starting an explanation keeps your draft below without sending it. Use Send lesson question to ask it.</p>}
+        {input.trim() && <p className="text-sm mb-2">{socraticNow ? 'Starting a tutor question' : 'Starting an explanation'} keeps your draft below without sending it. Use Send lesson question to ask it.</p>}
         <label htmlFor="ask" className="text-sm font-medium">
           Ask about this lesson (optional)
         </label>
@@ -937,10 +948,10 @@ function TeachPanel({
           )}
         </div>
         {!text && !savedReading.data && !savedReading.isFetching && !busy && !error && status !== 'stopped' && (
-          <p className="mt-2">No explanation has been prepared yet.</p>
+          <p className="mt-2">{socraticNow ? 'No tutor question has been prepared yet.' : 'No explanation has been prepared yet.'}</p>
         )}
         <p className="text-sm text-muted mt-2">
-          Read at your own pace or choose Listen when the explanation is ready. Audio never starts automatically.
+          Read at your own pace or choose Listen when the {socraticNow ? 'question' : 'explanation'} is ready. Audio never starts automatically.
         </p>
         {active && learningGoal && <ReadAloud key={skillId} text={learningGoal} label="Listen to learning goal" />}
         {!busy && <TutorResponseStatus status={status} startedAt={startedAt} />}
