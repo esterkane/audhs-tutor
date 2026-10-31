@@ -118,6 +118,59 @@ PLANS = (
 )
 
 
+# Only explicit error reports; a numeric value alone is not a SQLSTATE report.
+CONCURRENCY_PLANS = (
+    Diagnostic(
+        "serialization_failure",
+        (r"\bsqlstate\s*[:=]?\s*['\"\[]?40001\b", r"could not serialize access due to"),
+        "SQLSTATE 40001 identifies a serialization failure. Retry the complete transaction, including "
+        "the application logic that chooses statements and values, rather than only the failed statement. "
+        "End the failed transaction before starting a fresh attempt. Repeatable Read as well as "
+        "Serializable can produce this error; the code does not prove which isolation level was used. "
+        "Retries can fail again, so bound attempts and handle exhaustion. Reconcile external effects "
+        "such as payments or messages before replaying them. This report does not identify the "
+        "conflicting transaction or justify changing grants, disabling RLS or lowering isolation.",
+        "SQLSTATE 40001 bezeichnet einen Serialisierungsfehler. Wiederhole die vollständige Transaktion "
+        "einschließlich der Anwendungslogik, die Anweisungen und Werte auswählt, nicht nur die "
+        "fehlgeschlagene Anweisung. Beende die fehlgeschlagene Transaktion vor einem neuen Versuch. "
+        "Auch Repeatable Read kann diesen Fehler liefern; der Code beweist keine bestimmte "
+        "Isolationsstufe. Begrenze die Versuche und behandle ihr Scheitern. Kläre externe Auswirkungen "
+        "wie Zahlungen oder Nachrichten vor deren Wiederholung. Die Meldung identifiziert weder "
+        "die konkurrierende Transaktion noch rechtfertigt sie geänderte Rechte oder abgeschaltete RLS.",
+        "Where does the complete transaction begin and end, including any external effects?",
+        "Wo beginnt und endet die vollständige Transaktion, einschließlich externer Auswirkungen?",
+        "",
+        "https://www.postgresql.org/docs/17/mvcc-serialization-failure-handling.html",
+    ),
+    Diagnostic(
+        "deadlock",
+        (r"\bsqlstate\s*[:=]?\s*['\"\[]?40p01\b", r"\bdeadlock detected\b"),
+        "SQLSTATE 40P01 identifies a detected deadlock: transactions were waiting on one another in "
+        "a cycle. PostgreSQL resolves it by aborting one transaction; do not assume which participant "
+        "will be chosen. A retry may be appropriate, but retry the complete transaction and its "
+        "statement-selection logic, not just the failed statement, after ending the failed attempt. "
+        "Bound retries and account for external effects before replaying them. Inspect the server's "
+        "deadlock detail and the order in which each transaction acquired locks. Consistent lock "
+        "ordering can prevent many deadlocks. The code alone does not identify a table, missing index "
+        "or faulty RLS policy, and it is different from a mere lock timeout.",
+        "SQLSTATE 40P01 bezeichnet einen erkannten Deadlock: Transaktionen warteten zyklisch "
+        "aufeinander. PostgreSQL bricht eine beteiligte Transaktion ab; welche gewählt wird, ist "
+        "nicht vorhersagbar. Ein erneuter Versuch kann sinnvoll sein, umfasst aber die vollständige "
+        "Transaktion mit ihrer Anweisungswahl, nicht nur die fehlgeschlagene Anweisung. Beende "
+        "zuerst den gescheiterten Versuch, begrenze Wiederholungen und berücksichtige externe "
+        "Auswirkungen. Prüfe die Deadlock-Details im Serverprotokoll und die Reihenfolge der "
+        "Sperren. Einheitliche Sperrreihenfolgen können viele Deadlocks vermeiden. Der Code beweist "
+        "weder eine bestimmte Tabelle noch einen fehlenden Index oder eine fehlerhafte RLS-Richtlinie. "
+        "Ein Deadlock ist etwas anderes als ein bloßer Sperr-Timeout.",
+        "What lock-acquisition order and deadlock detail were recorded for the participating transactions?",
+        "Welche Sperrreihenfolge und Deadlock-Details wurden für die beteiligten Transaktionen aufgezeichnet?",
+        "",
+        "https://www.postgresql.org/docs/17/explicit-locking.html#LOCKING-DEADLOCKS\n"
+        "https://www.postgresql.org/docs/17/mvcc-serialization-failure-handling.html",
+    ),
+)
+
+
 INSUFFICIENT_PRIVILEGE = Diagnostic(
     "insufficient_privilege",
     (),
@@ -162,7 +215,7 @@ def mixed_plan(plans: list[Diagnostic]) -> Diagnostic:
         german,
         "Which exact statement and role produced each error, and in what order?",
         "Welche genaue Anweisung und Rolle verursachten die einzelnen Meldungen, und in welcher Reihenfolge?",
-        ";\n".join(queries) + ";",
+        ";\n".join(queries) + ";" if queries else "",
         "\n".join(
             dict.fromkeys(
                 ["https://www.postgresql.org/docs/17/errcodes-appendix.html"]
@@ -178,7 +231,29 @@ def select_plan(text: str, state: Any) -> Diagnostic | None:
     # A resolved/negated report is not a new failure. Preserve distinct mixed error boundaries.
     if re.search(r"no longer|not getting|not seeing|kein.*mehr|nicht mehr", text, re.I):
         return None
-    found = [plan for plan in PLANS if any(re.search(p, text, re.I) for p in plan.patterns)]
+    found = [
+        plan
+        for plan in (*PLANS, *CONCURRENCY_PLANS)
+        if any(re.search(p, text, re.I) for p in plan.patterns)
+    ]
+    if any(plan in CONCURRENCY_PLANS for plan in found):
+        if getattr(state, "delivery", "explicit") != "explicit":
+            return None
+        # Don't turn a hypothetical/denied error or an unhandled code into a complete diagnosis.
+        if re.search(
+            r"\b(?:not|never|without|hypothetical|if|kein|nicht|ohne|falls)\b",
+            re.sub(r"could not serialize access due to", "serialization report", text, flags=re.I),
+            re.I,
+        ):
+            return None
+        explicit_codes = set(
+            re.findall(r"\bsqlstate\s*[:=]?\s*['\"\[]?([0-9a-z]{5})\b", text, re.I)
+        )
+        if any(
+            code.upper() not in {"40001", "40P01", "42P01", "42703", "42501"}
+            for code in explicit_codes
+        ):
+            return None
     codes = {code.upper() for code in re.findall(r"\b(?:42P01|42703|42501)\b", text, re.I)}
     if "42P01" in codes and PLANS[2] not in found:
         found.append(PLANS[2])
@@ -222,7 +297,10 @@ def incident_turn(text: str, state: Any, plan: Diagnostic) -> Any:
         "public inspect that schema; adapt the schema context when needed. An administrator test "
         "does not substitute for the actual application identity."
     )
-    body = explanation + "\n\n" + note + "\n\n```sql\n" + plan.sql + "\n```\n\n" + question
+    body = explanation
+    if plan.sql:
+        body += "\n\n" + note + "\n\n```sql\n" + plan.sql + "\n```"
+    body += "\n\n" + question
     body += "\n\n" + plan.source
     # No guessed root cause, evidence, remediation, ledger score or replacement of learner fields.
     turn = project.TutorTurn(

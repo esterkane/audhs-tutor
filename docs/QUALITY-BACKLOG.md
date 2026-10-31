@@ -57,3 +57,13 @@ No new owner decision is required for the current accuracy/performance work. A c
 proposal that changes spending, hardware, an optional graphics dependency or requires human
 voice/accessibility acceptance may need a separate decision. Existing completed authoring,
 save/resume, source provenance and notebook-setup work should not be re-listed as missing.
+
+
+## 2026-10-31 concurrency slice
+
+The Supabase incident tutor now covers reported 40001 serialization failures and 40P01 deadlocks
+with reviewed bilingual recovery explanations, preserving full transaction boundaries and refusing
+invented SQL/root causes. Synthetic local probes improved from one 47.4-second unanswered baseline
+to 22–27 ms reviewed replies with no generation. This is narrow answer reuse, not a new decoding
+throughput result. See [scope and verification](slices/supabase-concurrency-reuse.md). Broader
+open-ended factual coverage, unknown/mixed conditions and genuine model decoding remain open.

@@ -129,3 +129,86 @@ def test_mixed_codes_do_not_drop_the_ambiguous_permission_error():
     plan = select_plan("Our query has SQLSTATE 42P01 and 42501", state())
     assert plan.key == "mixed_missing_relation_insufficient_privilege"
     assert "code alone does not distinguish" in plan.english
+
+
+@pytest.mark.parametrize(
+    "report,key",
+    [
+        (
+            "Our transaction fails SQLSTATE 40001. Should I retry only the failed statement?",
+            "serialization_failure",
+        ),
+        ("Our transaction fails SQLSTATE: [40P01]", "deadlock"),
+        ("ERROR: could not serialize access due to concurrent update", "serialization_failure"),
+        ("ERROR: deadlock detected", "deadlock"),
+    ],
+)
+@pytest.mark.parametrize("language", ["en", "de"])
+def test_concurrency_reports_explain_full_transaction_retry_without_invented_sql(
+    report, key, language
+):
+    current = state(language=language)
+    plan = select_plan(report, current)
+    assert plan.key == key
+    turn = incident_turn(report, current, plan)
+    assert "```sql" not in turn.text
+    assert (
+        "complete transaction" in turn.text
+        if language == "en"
+        else "vollständige Transaktion" in turn.text
+    )
+    assert turn.incident.root_cause is None and not turn.incident.evidence
+    assert not turn.ledger_delta and turn.lab_action is None
+    from backend.tutor.guard import GuardContext, check
+
+    assert check(turn, GuardContext()) == []
+
+
+@pytest.mark.parametrize(
+    "report",
+    [
+        "The invoice number is 40001",
+        "A lock timeout occurred",
+        "SQLSTATE 57014",
+        "We never received SQLSTATE 40001",
+        "SQLSTATE 40P01 was not returned",
+        "What if SQLSTATE 40001 occurs?",
+        "SQLSTATE 40001 and SQLSTATE 23505",
+    ],
+)
+def test_concurrency_reuse_declines_unhandled_hypothetical_or_unreported_errors(report):
+    assert select_plan(report, state()) is None
+
+
+def test_mixed_concurrency_keeps_both_distinctions_without_empty_sql_block():
+    report = "Our transactions failed SQLSTATE 40001 and SQLSTATE 40P01"
+    current = state()
+    plan = select_plan(report, current)
+    turn = incident_turn(report, current, plan)
+    assert plan.key == "mixed_serialization_failure_deadlock"
+    assert "Repeatable Read" in turn.text
+    assert "cycle" in turn.text and "lock timeout" in turn.text
+    assert not plan.sql and "```sql" not in turn.text
+    assert "fixed diagnostic examples" not in turn.text
+
+
+async def test_concurrency_answer_skips_generation_and_keeps_full_history():
+    delegate = SimpleNamespace(run_turn=AsyncMock())
+    history = [{"role": "user", "content": "Earlier learner findings"}]
+    events = [
+        event
+        async for event in ReviewedOrchestrator(delegate).run_turn(
+            history=history, user_text="ERROR: deadlock detected", state=state()
+        )
+    ]
+    delegate.run_turn.assert_not_called()
+    assert history == [{"role": "user", "content": "Earlier learner findings"}]
+    assert events[-1].model == "reviewed:incident-deadlock.v1"
+    assert events[-1].new_messages[0]["content"] == "ERROR: deadlock detected"
+
+
+@pytest.mark.parametrize(
+    "changes", [{"delivery": "socratic"}, {"active_lab": object()}, {"mode": "exam"}]
+)
+def test_concurrency_does_not_bypass_chosen_teaching_mode_or_active_lab(changes):
+    assert select_plan("Our transaction fails SQLSTATE 40001", state(**changes)) is None
