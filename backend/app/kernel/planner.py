@@ -89,6 +89,22 @@ def plan_session(inp: PlanInput) -> Plan:
         type="recap", planned_min=5, base_min=5, reason="confidence-rated recap; always last"
     )
 
+    if prefs.get("planner.maintenance", False):
+        # Explicit, reversible preference; never changes an already running plan.
+        retrieval.planned_min = min(retrieval.planned_min, 5)
+        retrieval.base_min = 5
+        retrieval.node_ids = inp.review_node_ids[:3]
+        retrieval.reason = (
+            "maintenance: a few due recall items"
+            if inp.due_reviews
+            else "maintenance: optional recall; no due items were found"
+        )
+        recap.planned_min = 3
+        recap.base_min = 3
+        return _finish(inp, [retrieval, recap]).model_copy(
+            update={"policy_version": "planner.maintenance.v1"}
+        )
+
     if inp.mode == "low_capacity" or e <= 1:
         # 1 + (2 or 4, short) + 6 — the shortest useful path
         middle = (
@@ -272,3 +288,11 @@ def replan(plan: Plan, *, from_index: int, energy: int) -> Plan:
     )
     validate_plan(out)
     return out
+
+
+def is_maintenance_plan(blocks: list[dict[str, Any]]) -> bool:
+    """Read the persisted plan, never a preference changed after session start."""
+    return any(
+        b.get("type") == "retrieval" and str(b.get("reason", "")).startswith("maintenance:")
+        for b in blocks
+    )

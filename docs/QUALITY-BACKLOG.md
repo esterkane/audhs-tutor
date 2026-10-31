@@ -67,3 +67,17 @@ invented SQL/root causes. Synthetic local probes improved from one 47.4-second u
 to 22–27 ms reviewed replies with no generation. This is narrow answer reuse, not a new decoding
 throughput result. See [scope and verification](slices/supabase-concurrency-reuse.md). Broader
 open-ended factual coverage, unknown/mixed conditions and genuine model decoding remain open.
+
+
+## 2026-10-31 learning-evidence and complete discussion slice
+
+The supplied evidence review and [implementation audit](design/2026-10-31-LEARNING-EVIDENCE-AUDIT.md)
+now guide variability-first, consent-based maintenance support, next-start cues and self-reported
+condition observations. Controlled sensory N-of-1 delivery and actual long-term personal outcomes
+remain separate work; observational counts must not be promoted to causal or clinical claims.
+
+A real native research-service trial reproduced multi-part replies cut off by the 400-character
+internal discussion schema. A 1,200-character allowance and versioned complete-answer instructions
+retain requested Python outcomes; histories and model context remain unchanged. Repetition-penalty
+sampling did not establish a reliable decoding gain and was rejected. Broader answer accuracy,
+causal coverage, repetition and decoding speed remain open, not solved by this bounded repair.

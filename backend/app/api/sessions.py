@@ -16,6 +16,8 @@ from app.kernel import (
     blocks,
     experiments,
     memory,
+    planner,
+    preferences,
     question_replacements,
     question_state,
     skill_graph,
@@ -142,6 +144,9 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
         await skill_graph.get_node(db, st.skill_id, learner_id=learner_id) if st.skill_id else None
     )
     cap = memory.review_cap(s.mode, s.energy)
+    maintenance = planner.is_maintenance_plan(s.planned_blocks_json or [])
+    if maintenance:
+        cap = min(cap, 3)
     cp = await ksession.load_checkpoint(db, s.id) or {}
     due = await memory.due_items(
         db,
@@ -153,7 +158,7 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
     )
     minimum = (
         ["retrieval", "recap"]
-        if s.mode == "low_capacity" or s.energy <= 2
+        if maintenance or s.mode == "low_capacity" or s.energy <= 2
         else ["retrieval", "new_material", "recap"]
     )
     return SessionOut(
@@ -184,6 +189,13 @@ async def _out(db: DB, learner_id: str, s: Session) -> SessionOut:
 async def check_selection(skill_id: str, db: DB, learner: Learner) -> SkillView:
     from app.api.skills import _view
 
+    if await preferences.get(db, learner.id, "planner.maintenance"):
+        raise AppError(
+            "maintenance_planning",
+            "Maintenance planning is on. Change it in Settings before starting a new lesson; "
+            "your saved session stays in place.",
+            409,
+        )
     node = await skill_graph.get_node(db, skill_id, learner_id=learner.id)
     if not skill_graph.teachable(node):
         raise AppError(

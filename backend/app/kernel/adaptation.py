@@ -22,7 +22,7 @@ from app.kernel import session as ksession
 from app.kernel.skill_graph import MASTERY_DONE
 from app.schemas.common import Mode, ObjectType
 
-POLICY_VERSION = "adapt.v1"
+POLICY_VERSION = "adapt.v2"
 DECISIONS = ("try", "default", "no", "never")
 RE_ASK_AFTER_DAYS = 14
 
@@ -184,7 +184,50 @@ async def low_energy_sessions(
     )
 
 
+async def maintenance_support(
+    db: AsyncSession, learner_id: str, prefs: dict[str, Any]
+) -> Proposal | None:
+    """Offer a lighter future plan from repeated explicit check-ins, never a diagnosis."""
+    if prefs.get("planner.maintenance", False):
+        return None
+    sessions = await _recent_sessions(db, learner_id, limit=6)
+    if len(sessions) < 6:
+        return None
+    recent, earlier = sessions[:3], sessions[3:]
+    cutoff = datetime.now(UTC) - timedelta(days=14)
+    try:
+        dates = [datetime.fromisoformat(s.started_at).astimezone(UTC) for s in recent]
+    except (ValueError, TypeError):
+        return None
+    if len({d.date() for d in dates}) < 3 or any(d < cutoff for d in dates):
+        return None
+    if any(s.energy > 2 for s in recent):
+        return None
+    baseline = sum(s.energy for s in earlier) / 3
+    current = sum(s.energy for s in recent) / 3
+    if baseline - current < 1:
+        return None
+    return Proposal(
+        pattern="maintenance_support",
+        what="Use brief recall-and-recap maintenance plans for new sessions",
+        why=(
+            "Your three latest completed sessions on different days started at energy 2 or lower, "
+            "below the preceding three. This is a planning signal, not a diagnosis. "
+            "Nothing changes until you choose; current work and learning evidence stay intact."
+        ),
+        pref="planner.maintenance",
+        value=True,
+        evidence={
+            "recent_energy": [s.energy for s in recent],
+            "earlier_energy": [s.energy for s in earlier],
+            "distinct_days": 3,
+            "window_days": 14,
+        },
+    )
+
+
 RULES: list[Detector] = [
+    maintenance_support,
     hint_heavy,
     early_exit,
     movement_skipped,
@@ -437,6 +480,18 @@ async def decide(
     session: Session | None = None,
 ) -> AdaptationDecision:
     a = await db.get(Adaptation, adaptation_id)
+    if (
+        a is not None
+        and a.learner_id == learner_id
+        and a.apply_json.get("pref") == "planner.maintenance"
+        and decision == "try"
+    ):
+        raise AppError(
+            "maintenance_future_only",
+            "Choose maintenance for new sessions; the current plan stays unchanged.",
+            409,
+        )
+
     if a is None or a.learner_id != learner_id:
         raise KeyError(adaptation_id)
     if a.apply_json.get("pref") == "session.plan" and decision == "try" and session is not None:

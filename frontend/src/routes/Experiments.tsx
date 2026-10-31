@@ -1,3 +1,4 @@
+import { StudyConditions } from '../features/experiments/StudyConditions'
 import { useRef, useState } from 'react'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
@@ -162,6 +163,7 @@ export function Experiments() {
     <div ref={content} tabIndex={-1} role="region" aria-label="Experiments" className="grid gap-4">
       <Card>
         <CardTitle as="h1">Experiments (n-of-1)</CardTitle>
+        <StudyConditions />
         <p className="text-sm text-muted mb-3">
           Compare two ways of learning on matched skills or sessions. You start it, you stop it, and you read
           the result. While one runs, the session screen says which arm is active.

@@ -35,7 +35,7 @@ test.beforeAll(async ({ request }) => {
 test('fresh focused upload to authored lesson, reading, notes, feedback and resume', async ({
   page,
   request,
-}) => {
+}, testInfo) => {
   page.setDefaultTimeout(15000)
   await page.addInitScript(() => {
     sessionStorage.setItem(
@@ -152,6 +152,11 @@ Tests the actual application role rather than the table owner.`)
   await expect(page.getByRole('heading',{name:'Learning context',exact:true})).not.toBeVisible()
   await tools.click()
   await expect(page.getByRole('heading',{name:'Learning context',exact:true})).toBeVisible()
+  await page.getByText('Study conditions and later recall (optional)', {exact:true}).click()
+  await page.getByLabel('Sound condition', {exact:true}).selectOption('white')
+  await page.getByRole('button', {name:'Record conditions for this lesson',exact:true}).click()
+  await expect(page.getByText('Conditions recorded as your self-report. No benefit has been inferred.',{exact:true})).toBeVisible()
+  await page.screenshot({path:testInfo.outputPath('study-conditions.png')})
   await tools.click()
   await page.getByRole('button', { name: 'Next section', exact: true }).click()
   await page

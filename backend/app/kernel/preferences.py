@@ -26,6 +26,18 @@ PREFERENCES: dict[str, PrefSpec] = {
     p.key: p
     for p in [
         PrefSpec(
+            key="planner.maintenance",
+            type="bool",
+            default=False,
+            description="Maintenance plans: brief recall and recap only (new sessions)",
+        ),
+        PrefSpec(
+            key="session.next_start_cue",
+            type="start_cue",
+            default="",
+            description="Optional if-then cue for the next start",
+        ),
+        PrefSpec(
             key="authoring.enabled",
             type="bool",
             default=False,
@@ -270,7 +282,10 @@ def validate(key: str, value: Any) -> Any:
     spec = PREFERENCES.get(key)
     if spec is None:
         raise ValueError(f"unknown preference {key!r}")
-    if spec.type == "material_marks":
+    if spec.type == "start_cue":
+        if not isinstance(value, str) or len(value) > 300:
+            raise ValueError("A next-start cue must be text of at most 300 characters")
+    elif spec.type == "material_marks":
         if (
             not isinstance(value, dict)
             or len(value) > 10000

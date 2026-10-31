@@ -1,3 +1,4 @@
+import { NextStartCue } from '../features/session/NextStartCue'
 import { AuthoringSetup } from '../features/curriculum/HybridAuthoring'
 import { SwitchField } from '../components/ui/switch-field'
 import { CorrectionInbox } from '../features/questions/CorrectionInbox'
@@ -260,6 +261,7 @@ export function Preferences() {
       </Card>
       <CorrectionInbox />
       <ExcludedQuestions />
+      <NextStartCue editor />
       <AdaptationLog />
     </div>
   )

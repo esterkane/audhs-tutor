@@ -138,8 +138,11 @@ class ResearchDiscussion(BaseModel):
     model_config = ConfigDict(extra="forbid")
     answer_sentence: str = Field(
         min_length=1,
-        max_length=400,
-        description="One direct sentence answering the current request, without recapping or repeating its conclusion.",
+        max_length=1200,
+        description=(
+            "A brief complete answer covering each requested point. "
+            "Finish all sentences and examples; no recap or repeated conclusion."
+        ),
     )
     source_indices: list[Annotated[int, Field(ge=1, le=4)]] = Field(min_length=1, max_length=3)
 

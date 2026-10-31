@@ -39,6 +39,7 @@ class Verb(StrEnum):
     LISTENED = "listened"
     ASSIGNED = "assigned"
     MEASURED = "measured"
+    STUDY_CONDITIONS = "study_conditions"
     DEGRADED = "degraded"
     INVALID_OUTPUT = "invalid_output"
 
@@ -134,6 +135,7 @@ PAYLOAD_KEYS: dict[Verb, tuple[frozenset[str], frozenset[str]]] = {
     Verb.PRACTICED: (_R({"duration_min", "self_rating"}), _R({"domain", "activity", "notes"})),
     Verb.LISTENED: (_R({"replays", "seconds"}), _R({"document_id", "clip_index"})),
     Verb.ASSIGNED: (_R({"arm", "metric", "value", "n"}), _R({"experiment_id"})),
+    Verb.STUDY_CONDITIONS: (_R({"conditions"}), _R({"node_id", "self_reported"})),
     Verb.MEASURED: (
         _R({"arm", "metric", "value", "n", "n_units", "n_events"}),
         _R({"experiment_id", "analysis_version"}),

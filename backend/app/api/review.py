@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from app.api.deps import DB, Learner
 from app.db.events import EventWriter, Verb
-from app.kernel import memory, review_content, review_requests
+from app.kernel import memory, planner, review_content, review_requests
 from app.kernel import session as ksession
 from app.schemas.common import ActivityType, Actor, ObjectType
 from app.schemas.review import ReviewOut, ReviewRating, ReviewRequestState
@@ -89,6 +89,9 @@ async def due(
     s = await ksession.get_owned(db, session_id, learner.id)
     now = _as_of(as_of)
     cap = memory.review_cap(s.mode, s.energy)
+    maintenance = planner.is_maintenance_plan(s.planned_blocks_json or [])
+    if maintenance:
+        cap = min(cap, 3)
     cp = await ksession.load_checkpoint(db, s.id) or {}
     all_due = await memory.due_items(
         db,
@@ -109,9 +112,11 @@ async def due(
             actor=Actor.SYSTEM,
             context={
                 "what": f"review_cap={cap}",
-                "why": f"mode={s.mode} energy={s.energy}",
+                "why": "explicit maintenance plan"
+                if maintenance
+                else f"mode={s.mode} energy={s.energy}",
                 "reversible": True,
-                "policy_version": "v1",
+                "policy_version": "planner.maintenance.v1" if maintenance else "v1",
             },
         )
     items = []

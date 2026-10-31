@@ -80,3 +80,13 @@ Assessment revisions (2026-10-11): attempted and graded context may include
 feedback history but do not emit new evidenced/reviewed events. Experiment error-rate
 and latency comparisons exclude attempts marked as revisions. Original events remain
 valid without these optional context fields.
+
+
+## Optional study-condition observations
+
+`study_conditions` is learner-scoped, append-only, `object_type=session`, bound to the open
+session's active skill. Result: `conditions` (noise/presence/movement/timer enum values).
+Context: `node_id`, `self_reported=true`. It does not activate audio or a treatment and never
+updates mastery. Later observational summaries require a subsequent study event under that
+snapshot and a different-session recall at least a day later; one outcome per review item.
+The 90-day/10,000-event bounded window is not an exhaustive lifelong experiment analysis.

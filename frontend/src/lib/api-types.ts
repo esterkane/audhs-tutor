@@ -932,6 +932,40 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/study-conditions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Record */
+    post: operations['record_api_study_conditions_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/study-conditions/summary': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Summary */
+    get: operations['summary_api_study_conditions_summary_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/tutor/stream': {
     parameters: {
       query?: never
@@ -4636,6 +4670,38 @@ export interface components {
       detail: string
       /** Action */
       action?: string | null
+    }
+    /** ConditionRecall */
+    ConditionRecall: {
+      conditions: components['schemas']['StudyConditions']
+      /** Items Reviewed */
+      items_reviewed: number
+      /** Recalled */
+      recalled: number
+    }
+    /** ConditionsIn */
+    ConditionsIn: {
+      /** Session Id */
+      session_id: string
+      conditions: components['schemas']['StudyConditions']
+    }
+    /** ConditionsOut */
+    ConditionsOut: {
+      /** Id */
+      id: string
+      /** Node Id */
+      node_id: string
+      conditions: components['schemas']['StudyConditions']
+    }
+    /** ConditionsSummary */
+    ConditionsSummary: {
+      /** Groups */
+      groups: components['schemas']['ConditionRecall'][]
+      /**
+       * Reading
+       * @default Self-reported conditions with later review outcomes. These observational counts do not establish a benefit or identify the best setup. No recommendation is made without a controlled comparison; same-session performance is excluded.
+       */
+      reading: string
     }
     /**
      * ConversationBrief
@@ -8391,6 +8457,33 @@ export interface components {
       /** Service Id */
       service_id?: string | null
     }
+    /** StudyConditions */
+    StudyConditions: {
+      /**
+       * Noise
+       * @default off
+       * @enum {string}
+       */
+      noise: 'off' | 'white' | 'pink' | 'brown' | 'other'
+      /**
+       * Presence
+       * @default alone
+       * @enum {string}
+       */
+      presence: 'alone' | 'quiet_companion' | 'human'
+      /**
+       * Movement
+       * @default none
+       * @enum {string}
+       */
+      movement: 'none' | 'brief_movement'
+      /**
+       * Timer
+       * @default elapsed
+       * @enum {string}
+       */
+      timer: 'hidden' | 'elapsed' | 'remaining'
+    }
     /** SupabaseProjectStatus */
     SupabaseProjectStatus: {
       /** Ready */
@@ -10773,6 +10866,59 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  record_api_study_conditions_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ConditionsIn']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ConditionsOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  summary_api_study_conditions_summary_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['ConditionsSummary']
         }
       }
     }

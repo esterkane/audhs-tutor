@@ -51,3 +51,13 @@ An unavailable setup read displays unknown status with retry, rather than implyi
 zero spending. Reads have a bounded deadline; cached settings are labelled stale on failure and
 writes stay disabled until a successful read. A stored zero cap displays zero and remains zero when
 local authoring is selected. This is not a broad model-quality or billing-system redesign.
+
+
+## Learning-evidence continuation
+
+The owner's [supplied evidence review and seven-point audit](2026-10-31-LEARNING-EVIDENCE-AUDIT.md)
+are reconciled in ADR 0022. Optional maintenance plans, explicit next-start cues and condition
+observations extend the existing stable interfaces; they do not add automatic diagnosis, sensory
+activation, shame mechanics or inferred treatment effects. Historical progress and preferences
+remain intact. Actual controlled sensory comparisons and human accessibility/learning outcomes are
+still open; the supplied review is not presented as a blanket clinical certification.

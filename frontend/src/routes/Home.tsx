@@ -1,3 +1,4 @@
+import { NextStartCue } from '../features/session/NextStartCue'
 import { Disclosure } from '../components/ui/disclosure'
 import { boundedRead } from '../lib/boundedRead'
 import { ResumeContext } from '../features/session/ResumeContext'
@@ -342,6 +343,10 @@ function HomeOverview() {
           </p>
         </div>
       </header>
+      {prefs.data?.values?.['planner.maintenance'] === true && <Card role="status">
+        <p>Maintenance planning is on: new sessions use brief recall and recap. Saved sessions keep their existing plan.</p>
+        <Link className="underline" to="/preferences">Change maintenance planning in Settings</Link>
+      </Card>}
       {resumable && (
         <Card lift aria-label="Saved session">
           <CardTitle>Continue where you left off</CardTitle>
@@ -453,6 +458,7 @@ function HomeOverview() {
       ) : null}
       <RecentContexts />
       <AdaptationCards collapsed />
+      <NextStartCue />
       <PromotedReminders />
       <Disclosure label="Saved material · clear / ask me later">
         <p className="text-sm text-muted">

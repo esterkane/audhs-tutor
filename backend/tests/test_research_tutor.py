@@ -181,7 +181,7 @@ async def test_saved_reply_reuse_is_exact_and_cannot_trust_changed_client_histor
             "curriculum/research-tutor.v10.md",
             "curriculum/research-tutor.v9.md",
             "curriculum/research-memory.v1.md",
-            "curriculum/research-discussion.v2.md",
+            "curriculum/research-discussion.v3.md",
         ]:
             target = tmp_path / relative
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -626,3 +626,19 @@ async def test_explicit_quoted_correction_is_saved_without_repair(
         url, json={"expected_version": saved["version"], "question_id": "q1", "action": action}
     )
     assert again.json()["reused"] and len(fake_local.calls) == 1
+
+
+def test_complete_multi_part_discussion_does_not_require_squeezing_into_400_characters():
+    from app.schemas.knowledge_authoring import ResearchDiscussion
+
+    text = (
+        "Python string concatenation and arithmetic must be considered separately. "
+        "The expression 'Room ' + 2 raises TypeError because this string concatenation does not "
+        "implicitly convert the integer to text. 'Room ' + str(2) explicitly converts 2 to text "
+        "and produces 'Room 2'. Numeric 2 + 0.5 produces 2.5: int and float can participate in "
+        "this arithmetic operation. Therefore the claim that every mixed-type operation fails "
+        "is too broad; compatibility depends on the particular operation and operands."
+    )
+    assert len(text) > 400
+    parsed = ResearchDiscussion(answer_sentence=text, source_indices=[1])
+    assert parsed.answer_sentence == text

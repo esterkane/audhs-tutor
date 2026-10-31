@@ -224,7 +224,7 @@ async def help_research(
                 if verified
                 else "curriculum/research-section.v2.md"
                 if command.action == "draft"
-                else "curriculum/research-discussion.v2.md"
+                else "curriculum/research-discussion.v3.md"
             )
         ).read_text()
     )
@@ -315,7 +315,7 @@ async def help_research(
                 "language": presentation.language,
             },
             "memory_policy_version": "curriculum.research-memory.v1",
-            "feedback_contract_version": "grounded-explanation.v5",
+            "feedback_contract_version": "grounded-explanation.v6",
             "context_layout": "source-prefix.v1",
             "source_claim_contract": "neutral-observation.v2" if neutral_note else None,
             "coverage_contract": "literal-string-repetition.v1" if verified else None,

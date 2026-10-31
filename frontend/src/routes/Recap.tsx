@@ -1,3 +1,4 @@
+import { NextStartCue } from '../features/session/NextStartCue'
 import { SessionControls } from '../features/session/SessionControls'
 import { useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
@@ -121,6 +122,7 @@ export function Recap() {
         One line for next time (optional)
       </label>
       <Textarea id="notes" value={notes} onChange={(e) => draft.edit({ notes: e.target.value })} className="min-h-16" />
+      <NextStartCue editor />
       {draft.error && <p role="alert">{draft.error}</p>}
       <Button variant="primary" className="mt-3" onClick={() => void finish().catch(() => { /* Error is displayed below; keep the draft. */ })} disabled={end.isPending || ended}>
         {end.isPending ? (end.variables === undefined ? 'Ending session…' : 'Saving…') : ended ? 'Session already ended' : 'Save and finish session'}

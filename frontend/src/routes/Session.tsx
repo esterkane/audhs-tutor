@@ -1,3 +1,4 @@
+import { StudyConditions } from '../features/experiments/StudyConditions'
 import { AcceptedKnowledge, OptionalKnowledgeTutor } from '../features/curriculum/AcceptedKnowledge'
 import { useAcceptedKnowledge } from '../features/curriculum/acceptedKnowledgeApi'
 import { isProvisional, feedbackIdentity } from '../lib/api'
@@ -135,6 +136,7 @@ export function Session() {
         data={session.data}
         secondaryContent={(open) => <>
           <section aria-label="Lesson context"><h2 className="font-semibold">Learning context</h2><SessionContext data={session.data} /></section>
+          {st.skill_id && <StudyConditions sessionId={sessionId} />}
           <AlongsideMode sessionId={sessionId} active={open && !focus?.active} />
           {st.skill_id && <Disclosure label="Try a coding experiment">
             <p className="text-sm text-muted my-2">Open a separate Python workspace for this lesson.</p>

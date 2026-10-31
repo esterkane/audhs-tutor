@@ -40,6 +40,7 @@ export function AdaptationCards({ origin, collapsed = false }: { origin?: 'plann
           <div className="flex flex-wrap gap-2 mt-3">
             {CHOICES.filter(
               (ch) =>
+                !(ch.decision === 'try' && c.pref === 'planner.maintenance') &&
                 c.plan_state !== 'stale' &&
                 !(c.pref === 'session.plan' && decide.variables?.id === c.id && decide.error instanceof ApiError && decide.error.code === 'stale_plan') &&
                 !(ch.decision === 'try' && !(c.session_id ?? sessionId)) && // a trial needs a running session
@@ -54,7 +55,7 @@ export function AdaptationCards({ origin, collapsed = false }: { origin?: 'plann
                 title={ch.hint}
                 onClick={() => decide.mutate({ id: c.id, decision: ch.decision, sessionId: c.session_id ?? sessionId })}
               >
-                {c.pref === 'session.plan' && ch.decision === 'try' ? 'Apply reviewed plan' : ch.label}
+                {c.pref === 'planner.maintenance' && ch.decision === 'default' ? 'Use for new sessions' : c.pref === 'session.plan' && ch.decision === 'try' ? 'Apply reviewed plan' : ch.label}
               </Button>
             ))}
           </div>
