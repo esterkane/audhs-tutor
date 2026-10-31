@@ -54,6 +54,8 @@ for (const width of [390, 1280]) test(`authored material to resumed reading, fee
     await page.getByLabel('Your answer', { exact: true }).fill("I don't know")
     const checked = page.waitForResponse(r => r.url().endsWith('/api/assess/attempt'))
     await page.getByRole('button', { name: 'Check my answer', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Learn before checking' })).toBeVisible()
+    await page.getByRole('button', { name: 'Check this answer as written', exact: true }).click()
     await expectOk(await checked)
     await expect(path).toContainText('Understanding check')
     await expect(page.getByRole('heading', { name: 'Feedback on your answer', exact: true })).toBeVisible()

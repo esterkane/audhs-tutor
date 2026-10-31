@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, currentSession, endOpenSession, expectOk, reachLearnBlock, skillIdBySlug } from './helpers'
+import { API, currentSession, endOpenSession, expectOk, openSessionTools, reachLearnBlock, skillIdBySlug } from './helpers'
 
 /**
  * The CodeMirror exercise editor (ADR-0013) in a real browser: typing with Python auto-indent, Tab
@@ -27,6 +27,7 @@ test('the code editor indents, releases focus after Escape and keeps the draft a
   await page.reload()
   await expect(page.getByRole('heading', { name: 'Learn: Scaled dot-product attention' })).toBeVisible()
 
+  await openSessionTools(page)
   await page.getByText(/^Code exercise \(optional/).click()
   const editor = page.getByRole('textbox', { name: /Your code \(Python; Tab indents/ })
   await expect(editor).toBeVisible()
@@ -60,6 +61,7 @@ test('the code editor indents, releases focus after Escape and keeps the draft a
 
   // the draft is restored after a reload and announced
   await page.reload()
+  await openSessionTools(page)
   await page.getByText(/^Code exercise \(optional/).click()
   await expect(page.getByRole('status').filter({ hasText: 'Your saved draft was restored' })).toBeVisible()
   await expect(page.getByRole('textbox', { name: /Tab indents/ })).toContainText('return 1')

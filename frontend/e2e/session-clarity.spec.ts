@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, endOpenSession, expectOk, currentSession } from './helpers'
+import { API, endOpenSession, expectOk, currentSession, openSessionTools } from './helpers'
 
 test.beforeEach(async ({ request }) => {
   await endOpenSession(request)
@@ -28,6 +28,7 @@ test('context, optional confidence, saved labels and stopping without recap', as
   )
   await page.goto('/')
   await page.getByRole('button', { name: /^Continue$/ }).click()
+  await openSessionTools(page)
   await expect(page.getByRole('heading', { name: 'Learning goal' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Give me a hint' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Explain the idea first' })).toBeVisible()

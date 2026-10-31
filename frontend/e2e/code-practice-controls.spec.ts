@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { API, currentSession, endOpenSession, expectOk, reachLearnBlock, skillIdBySlug } from './helpers'
+import { API, currentSession, endOpenSession, expectOk, openSessionTools, reachLearnBlock, skillIdBySlug } from './helpers'
 
 for (const width of [390, 1280]) {
   test(`code exclusion keeps the editor and restores explicitly ${width}`, async ({ page, request }) => {
@@ -15,6 +15,7 @@ for (const width of [390, 1280]) {
       assessmentId = (await exercise.json()).assessment_id
       await page.setViewportSize({ width, height: 900 })
       await page.reload()
+      await openSessionTools(page)
       await page.getByText(/^Code exercise \(optional/).click()
       await page.getByRole('button', { name: 'Switch to the plain editor' }).click()
       const editor = page.getByRole('textbox', { name: /Your code/ })

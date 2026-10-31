@@ -82,6 +82,8 @@ asyncio.run(main())
     await page.getByLabel('Your answer', { exact: true }).fill("I don't know")
     const checked = page.waitForResponse(r => r.url().endsWith('/api/assess/attempt'))
     await page.getByRole('button', { name: 'Check my answer', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Learn before checking' })).toBeVisible()
+    await page.getByRole('button', { name: 'Check this answer as written', exact: true }).click()
     const checkedResponse = await checked
     await expectOk(checkedResponse)
     expect((await checkedResponse.json()).score).toBe(0)

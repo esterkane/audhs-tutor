@@ -60,6 +60,15 @@ export async function skillIdBySlug(request: APIRequestContext, slug: string) {
   return hit!.id
 }
 
+/** Open the visible session-tools disclosure before interacting with its optional children. */
+export async function openSessionTools(page: Page) {
+  const summary = page.locator('summary').filter({ hasText: /^More session tools$/ })
+  await expect(summary).toBeVisible()
+  const details = summary.locator('..')
+  if (await details.getAttribute('open') === null) await summary.click()
+  await expect(details).toHaveAttribute('open', '')
+}
+
 /** Start → movement → skip → review done → continue: the learn block on the first skill. */
 export async function reachLearnBlock(page: Page) {
   await startFromHome(page)

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs'
 import { expect, test } from '@playwright/test'
-import { API, currentSession, endOpenSession, expectOk, reachLearnBlock, skillIdBySlug } from './helpers'
+import { API, currentSession, endOpenSession, expectOk, openSessionTools, reachLearnBlock, skillIdBySlug } from './helpers'
 
 /**
  * The code exercise runs from this app's own origin only (ADR-0013): every request to another host
@@ -36,6 +36,7 @@ test('the starter code runs with every external host blocked', async ({ page, re
   })
   await expectOk(moved)
   await page.reload()
+  await openSessionTools(page)
   await page.getByText(/^Code exercise \(optional/).click()
   await expect(page.getByText(/served by this app from its own origin/)).toBeAttached()
 
@@ -76,6 +77,7 @@ test('a missing runtime is an explicit error, and nothing reaches a CDN', async 
   })
   await expectOk(moved)
   await page.reload()
+  await openSessionTools(page)
   await page.getByText(/^Code exercise \(optional/).click()
   await page.getByRole('button', { name: 'Run' }).click()
   const alert = page.getByRole('alert')
@@ -100,6 +102,7 @@ test('a runtime of another version is refused after loading', async ({ page, req
     }),
   )
   await page.reload()
+  await openSessionTools(page)
   await page.getByText(/^Code exercise \(optional/).click()
   await page.getByRole('button', { name: 'Run' }).click()
   await expect(page.getByRole('alert')).toContainText('Installed Python runtime is 0.0.0, expected 0.27.8', {
