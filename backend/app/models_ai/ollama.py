@@ -180,7 +180,9 @@ class OllamaProvider:
             if effort is not None:
                 thinking = details.get("thinking")
                 values = thinking.get("values") if isinstance(thinking, dict) else None
-                if not isinstance(values, list) or effort not in values:
+                if not isinstance(values, list) or not any(
+                    type(value) is type(effort) and value == effort for value in values
+                ):
                     raise SourcePolicyDenied(
                         "Source policy: configured thinking level is not supported by this local model"
                     )

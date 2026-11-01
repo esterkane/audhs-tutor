@@ -791,6 +791,11 @@ class ModelGateway:
             configured = provider.inference_options_for(spec)
             if configured:
                 meta = {**meta, "requested_inference_options": configured}
+        if result is not None and isinstance(result.raw, dict):
+            count = result.raw.get("reasoning_chars")
+            if type(count) is int and count >= 0:
+                # Diagnostic count only: never persist private reasoning text.
+                meta = {**meta, "reasoning_chars": count}
         rec = ModelCallRecord(
             provider=spec.provider,
             model=spec.model,

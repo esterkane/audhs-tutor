@@ -8,7 +8,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, StrictBool
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
@@ -18,7 +18,7 @@ class OllamaInferenceOptions(BaseModel):
     """Explicit per-registry controls; no endpoint, model, context or output overrides."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
-    reasoning_effort: Literal["low", "medium", "high"] | None = None
+    reasoning_effort: Literal["low", "medium", "high"] | StrictBool | None = None
     temperature: float | None = Field(default=None, ge=0, le=2, allow_inf_nan=False)
 
 

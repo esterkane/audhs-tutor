@@ -175,6 +175,9 @@ def test_settings_are_opt_in_typed_and_wired_without_hosted_changes():
     "value",
     [
         {"reasoning_effort": "unknown"},
+        {"reasoning_effort": "false"},
+        {"reasoning_effort": 0},
+        {"reasoning_effort": 1},
         {"temperature": -0.1},
         {"temperature": 2.1},
         {"temperature": float("nan")},
@@ -212,6 +215,8 @@ async def test_gateway_records_configured_options_on_each_repair_and_stream(db, 
     ).all()
     assert [call.outcome for call in calls] == ["invalid_output", "ok"]
     assert len(posts) == 2
+    assert calls[-1].metadata_json["reasoning_chars"] == len("private synthetic reasoning")
+    assert "private synthetic reasoning" not in json.dumps(calls[-1].metadata_json)
     assert all(
         call.metadata_json["requested_inference_options"]
         == {"reasoning_effort": "low", "temperature": 1.0}
@@ -232,3 +237,41 @@ async def test_gateway_records_configured_options_on_each_repair_and_stream(db, 
         "reasoning_effort": "low",
         "temperature": 1.0,
     }
+
+
+@pytest.mark.parametrize("mode", ["plain", "legacy_json", "native_schema", "stream"])
+@pytest.mark.parametrize("enabled", [False, True])
+async def test_boolean_thinking_controls_reach_native_wire_without_changing_capacity(
+    monkeypatch, mode, enabled
+):
+    posts = intercept(monkeypatch, thinking={"values": [False, True], "default": True})
+    configured = OllamaProvider(
+        "http://127.0.0.1:11434",
+        context_tokens=16384,
+        inference_options={SPEC.registry_id: OllamaInferenceOptions(reasoning_effort=enabled)},
+    )
+    if mode == "stream":
+        _ = [part async for part in configured.stream(SPEC, MESSAGES, max_tokens=1800)]
+    else:
+        await configured.complete(
+            SPEC,
+            MESSAGES,
+            max_tokens=1800,
+            response_model=ResearchDiscussion if mode != "plain" else None,
+            metadata={"structured_output": "native_schema"} if mode == "native_schema" else None,
+        )
+    assert len(posts) == 1 and posts[0]["think"] is enabled
+    assert posts[0]["options"]["num_ctx"] == 16384
+    assert posts[0]["options"]["num_predict"] == 1800
+
+
+@pytest.mark.parametrize("values", [["low", "medium", "high"], [0, 1], [], None])
+async def test_boolean_off_requires_a_matching_boolean_model_capability(monkeypatch, values):
+    posts = intercept(monkeypatch, thinking={"values": values})
+    configured = OllamaProvider(
+        "http://127.0.0.1:11434",
+        inference_options={SPEC.registry_id: OllamaInferenceOptions(reasoning_effort=False)},
+    )
+    with pytest.raises(SourcePolicyDenied):
+        await configured.complete(SPEC, MESSAGES)
+    assert posts == []
