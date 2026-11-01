@@ -105,3 +105,21 @@ test('a new draft cannot overwrite an unresolved question; explicit append prese
   expect(screen.getByRole('textbox')).toHaveValue('New notes B\n\nFailed question A')
   expect(send).not.toHaveBeenCalled()
 })
+
+
+test('literal lab shares pending-question recovery and preserves an unsent research draft', () => {
+  const send = vi.fn()
+  const view = render(<ChatPanel {...props} membershipLab chat={initialChat} onSend={send} />)
+  fireEvent.change(screen.getByLabelText(t('en').placeholder), { target: { value: 'Unsent research note' } })
+  fireEvent.change(screen.getByLabelText(t('en').membershipOuter), { target: { value: '1' } })
+  fireEvent.submit(screen.getByLabelText(t('en').membershipOuter).closest('form')!)
+  expect(send).toHaveBeenCalledOnce()
+  expect(send.mock.calls[0][0]).toContain('outer value 1 and inner values [1,null]')
+  expect(JSON.parse(localStorage.getItem(props.draftStorageKey)!).pending.text).toEqual(send.mock.calls[0][0])
+  expect(screen.getByLabelText(t('en').placeholder)).toHaveValue('Unsent research note')
+  view.unmount()
+  render(<ChatPanel {...props} membershipLab chat={{ ...initialChat, error: 'offline' }} onSend={send} />)
+  expect(screen.getByLabelText(t('en').membershipOuter)).toHaveValue('1')
+  expect(screen.getByLabelText(t('en').placeholder)).toHaveValue('Unsent research note')
+  expect(send).toHaveBeenCalledOnce()
+})

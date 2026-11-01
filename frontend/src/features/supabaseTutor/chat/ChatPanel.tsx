@@ -7,6 +7,7 @@ import { VoiceBar } from '../voice/VoiceBar'
 import { readDraft, writeDraft, type RetainedDraft } from './draftStorage'
 import { Markdown } from './Markdown'
 import { TurnView } from './TurnView'
+import { MembershipLab } from '../lab/MembershipLab'
 
 export type InputMode = 'text' | 'voice'
 
@@ -17,6 +18,7 @@ export function ChatPanel({
   onSend,
   serverTts = null,
   draftStorageKey,
+  membershipLab = false,
 }: {
   chat: ChatState
   s: Strings
@@ -24,6 +26,7 @@ export function ChatPanel({
   onSend: (text: string, inputMode: InputMode) => void
   serverTts?: ServerTts | null
   draftStorageKey?: string
+  membershipLab?: boolean
 }) {
   const [retained, setRetained] = useState(() => readDraft(draftStorageKey))
   const retainedRef = useRef(retained)
@@ -144,7 +147,7 @@ export function ChatPanel({
               </ul>
             )}
             {chat.streaming.text ? (
-              <Markdown text={chat.streaming.text} diagramFailed={s.diagramFailed} />
+              <Markdown text={chat.streaming.text} diagramFailed={s.diagramFailed} tableLabel={s.tableRegion} />
             ) : (
               <p className="text-sm text-zinc-400">{s.thinking} …</p>
             )}
@@ -212,6 +215,16 @@ export function ChatPanel({
           {s.send}
         </button>
       </form>
+      {membershipLab && <details className="border-t border-line">
+        <summary className="cursor-pointer p-3 text-sm">{s.membershipTitle}</summary>
+        <MembershipLab s={s} language={language} disabled={busy || retained.pending !== null}
+          storageKey={draftStorageKey ? `${draftStorageKey}:membership` : undefined}
+          onCompare={text => {
+            if (busy || retainedRef.current.pending) return
+            voice.cancelSpeech()
+            sendQuestion(text, 'text')
+          }} />
+      </details>}
     </section>
   )
 }

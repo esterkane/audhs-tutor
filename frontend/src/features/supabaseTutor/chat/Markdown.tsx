@@ -2,7 +2,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { MermaidBlock } from './MermaidBlock'
 
-export function Markdown({ text, diagramFailed }: { text: string; diagramFailed: string }) {
+export function Markdown({ text, diagramFailed, tableLabel }: { text: string; diagramFailed: string; tableLabel: string }) {
   return (
     <div className="prose-tutor space-y-2 text-sm leading-relaxed">
       <ReactMarkdown
@@ -14,7 +14,7 @@ export function Markdown({ text, diagramFailed }: { text: string; diagramFailed:
             </a>
           ),
           table: ({ children }) => (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0} role="group" aria-label={tableLabel}>
               <table className="my-2 border-collapse text-xs">{children}</table>
             </div>
           ),

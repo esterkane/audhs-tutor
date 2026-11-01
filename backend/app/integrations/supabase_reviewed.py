@@ -1,4 +1,4 @@
-"""Narrow reviewed reuse; no generated SQL, inferred observations or mastery updates."""
+"""Reviewed reuse and explicit fixed-query labs; no model-invented SQL or mastery updates."""
 
 import re
 from collections.abc import AsyncIterator
@@ -115,7 +115,18 @@ class ReviewedOrchestrator:
         from backend.tutor.orchestrator import Final, Token, ToolCall, ToolResultSummary
 
         from app.integrations.supabase_incidents import incident_turn, select_plan
+        from app.integrations.supabase_membership import membership_answer
         from app.integrations.supabase_reference import reference_answer
+
+        membership = await membership_answer(user_text, state, kwargs.get("ctx"))
+        if membership is not None:
+            for name, args, is_error in membership.calls:
+                yield ToolCall(name, args)
+                yield ToolResultSummary(name, is_error, "Local literal-value comparison evidence.")
+            yield Token(membership.turn.text)
+            yield Final(turn=membership.turn, new_messages=membership.messages,
+                        model="local:membership-lab.v1")
+            return
 
         reference = await reference_answer(user_text, state, kwargs.get("ctx"), kwargs.get("history"))
         if reference is not None:

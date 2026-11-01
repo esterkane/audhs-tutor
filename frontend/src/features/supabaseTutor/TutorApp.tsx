@@ -310,6 +310,7 @@ export function TutorApp({
               language={session.language}
               onSend={send}
               serverTts={serverTts}
+              membershipLab={session.mode === 'neutral' && session.delivery === 'explicit' && !incident}
             />
           </div>
           <aside className="flex min-h-0 flex-col">

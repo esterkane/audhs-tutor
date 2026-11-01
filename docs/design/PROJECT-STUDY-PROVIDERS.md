@@ -116,3 +116,23 @@ The session chooser offers an explicit "Discuss or look up facts" option for neu
 mode in English and German. The existing explicit and Socratic lesson choices and
 resumed sessions keep their modes. This is not a general generation speedup;
 broader local causal accuracy remains unqualified.
+
+
+## Explicit literal-value membership lab
+
+An optional disclosure in explicit neutral discussion compares NOT IN with a
+correlated NOT EXISTS for one integer/null value and up to 20 integer/null inner
+values, bounded to +/-1,000,000. The learner explicitly submits the form; it does
+not execute general chat questions or accept SQL. The existing lab runner executes
+a fixed scalar CTE as authenticated, inside its rolled-back transaction, with
+schema-qualified built-in functions. No project tables or model-generated commands
+are used. Actual equality, inequality and matching-row results are checked before
+a deterministic bilingual explanation is rendered. FALSE and UNKNOWN stay distinct;
+empty sets and duplicate values retain their actual semantics.
+
+The form preserves edited values per learner/session and uses the existing pending
+question recovery path, leaving an unsent research draft intact. Inputs, execution
+results, documentation results and the complete explanation are saved in ordinary
+append-only session history. Documentation retrieval can fail without replacing
+actual computation with a model guess. No mastery evidence, mode switch, hosted
+call or chat generation is added. Broader SQL and causal questions retain the tutor.

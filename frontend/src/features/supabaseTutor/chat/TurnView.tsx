@@ -56,7 +56,7 @@ export function TurnView({
 }) {
   return (
     <article className="space-y-2">
-      <Markdown text={turn.text} diagramFailed={s.diagramFailed} />
+      <Markdown text={turn.text} diagramFailed={s.diagramFailed} tableLabel={s.tableRegion} />
       {turn.diagrams.map((d) => (
         <MermaidBlock key={d.id} code={d.code} title={d.title} failedLabel={s.diagramFailed} />
       ))}

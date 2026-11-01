@@ -56,6 +56,47 @@ for (const language of ['en', 'de']) {
     const resumed = await (await request.get(`${API_URL}/api/supabase-project/session/${session.id}`)).json()
     expect(resumed.transcript).toEqual(saved.transcript)
     await expect(page.getByRole('cell', { name: 'serialization_failure', exact: true })).toBeVisible()
+    const german = language === 'de'
+    const summary = page.locator('summary').filter({ hasText: german ? 'NULL-Logik lokal vergleichen' : 'Compare NULL logic locally' })
+    await summary.click()
+    await page.addScriptTag({ content: axe.source })
+    expect(await page.evaluate(async () =>
+      (await (window as unknown as { axe: typeof axe }).axe.run('main')).violations)).toEqual([])
+    const outer = page.getByLabel(german ? 'Äußerer Wert (ganze Zahl oder null)' : 'Outer value (integer or null)')
+    const inner = page.getByLabel(german ? 'Innere Werte (JSON-Liste)' : 'Inner values (JSON array)')
+    const compare = page.getByRole('button', { name: german ? 'Lokal vergleichen' : 'Compare locally', exact: true })
+    await input.fill('Unsent research note stays in the editor')
+    for (const [index, example] of [
+      { outer: '2', inner: '[1,null]', result: 'TRUE AND UNKNOWN = UNKNOWN' },
+      { outer: '1', inner: '[1,null]', result: 'FALSE AND UNKNOWN = FALSE' },
+      { outer: 'null', inner: '[]', result: german ? 'Die innere Menge ist leer' : 'The inner set is empty' },
+    ].entries()) {
+      await outer.fill(example.outer)
+      await inner.fill(example.inner)
+      await expect(compare).toBeEnabled()
+      const calculation = page.waitForResponse(r => r.url().endsWith('/supabase-project/turn'))
+      await compare.focus()
+      await page.keyboard.press('Enter')
+      const computed = await calculation
+      expect(computed.ok()).toBe(true)
+      await expect(page.getByText(example.result, { exact: false }).last()).toBeVisible()
+      await expect(input).toHaveValue('Unsent research note stays in the editor')
+      await expect(compare).toBeEnabled()
+      const complete = await (await request.get(`${API_URL}/api/supabase-project/session/${session.id}`)).json()
+      expect(complete.transcript).toHaveLength(4 + (index + 1) * 2)
+      expect(complete.transcript.slice(0, 4)).toEqual(saved.transcript)
+    }
+    await inner.fill('[true]')
+    await compare.click()
+    await expect(page.getByRole('alert')).toContainText(german ? 'höchstens 20' : 'at most 20')
+    const calculated = await (await request.get(`${API_URL}/api/supabase-project/session/${session.id}`)).json()
+    expect(calculated.transcript).toHaveLength(10)
+    await page.reload()
+    await summary.click()
+    await expect(inner).toHaveValue('[true]')
+    await expect(input).toHaveValue('Unsent research note stays in the editor')
+    const restored = await (await request.get(`${API_URL}/api/supabase-project/session/${session.id}`)).json()
+    expect(restored.transcript).toEqual(calculated.transcript)
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
 }
