@@ -257,13 +257,30 @@ def unlabelled_community(text: str, community: set[int]) -> str | None:
     return None
 
 
-def check_uncited_claims(turn: TutorTurn) -> list[GuardFinding]:
-    prose, _ = split_markdown(turn.text)
-    bad = [s for s in sentences(prose) if CLAIM.search(s) and not MARKER.search(s) and not LABELLED.search(s)]
+def check_uncited_claims(turn: TutorTurn, ctx: GuardContext | None = None) -> list[GuardFinding]:
+    # A trailing citation scopes to its prose paragraph, never a neighbouring bullet,
+    # code block or table. This checks attribution presence, not factual entailment.
+    listed = {c.n: c for c in turn.citations}
+    bad = []
+    segments = re.split(r"```[\s\S]*?(?:```|$)|(?:^|\n)\s*\|[^\n]*", turn.text)
+    for segment in segments:
+        for para in re.split(r"\n\s*\n|\n(?=\s*(?:[-*+\d]+[.)]?\s|#{1,6}\s|>))", segment):
+            trailing = re.search(r"(?:\[\d{1,2}\]\s*)+[.!?]?\s*$", para)
+            ids = {int(n) for n in MARKER.findall(trailing.group())} if trailing else set()
+            bound = bool(ids) and ctx is not None and all(
+                n in listed
+                and (tier := ctx.sources.get(_norm(listed[n].url))) is not None
+                and listed[n].tier >= tier
+                for n in ids
+            )
+            for sentence in sentences(para):
+                if not bound and CLAIM.search(sentence) and not MARKER.search(sentence) and not LABELLED.search(sentence):
+                    bad.append(sentence)
     if not bad:
         return []
     return [_f("UNCITED_CLAIM", "block",
-               "These sentences state prices, plans, limits or versions without [n] or an 'unverified' label: "
+               "These sentences state prices, plans, limits or versions without [n], a source-bound "
+               "paragraph-ending citation or an 'unverified' label: "
                + " | ".join(f'"{s[:90]}"' for s in bad[:3]))]
 
 
@@ -369,7 +386,7 @@ def check(turn: TutorTurn, ctx: GuardContext) -> list[GuardFinding]:
     return [
         *check_questions(turn),
         *check_citations(turn, ctx),
-        *check_uncited_claims(turn),
+        *check_uncited_claims(turn, ctx),
         *check_secrets(turn, ctx),
         *check_sql(turn),
         *check_incident(turn, ctx),

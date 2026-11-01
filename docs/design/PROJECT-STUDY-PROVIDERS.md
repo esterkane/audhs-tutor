@@ -83,3 +83,15 @@ internal validation retry. Transport retries are also disabled. The gateway owns
 repairs, checks the remaining budget before another request, and records usage
 and outcome for each actual attempt. Original messages and output allowances are
 preserved. This does not change provider selection or the normal daily cap.
+
+
+## Paragraph citation scope
+
+The project tutor's price/limit/version citation-presence heuristic accepts a
+paragraph-ending marker only when its citation entry binds to a source actually
+returned by a tool, without inflating the source's trust tier. Its scope ends at
+paragraph, list item, heading, blockquote, fenced code and table boundaries.
+Unknown markers and unlabelled community evidence retain their existing guards.
+This avoids unnecessary correction requests for a cited multi-sentence paragraph;
+it does not establish that the cited source entails the claim or that the answer
+is factually correct. Full source checks and factual evaluations remain necessary.

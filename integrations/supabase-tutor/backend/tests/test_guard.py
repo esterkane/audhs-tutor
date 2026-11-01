@@ -246,3 +246,46 @@ def test_secret_the_learner_pasted_is_never_repeated() -> None:
     assert "SECRET_LEAK" not in codes(warning, CTX)  # without the learner's message it is just a word
     redacted = g.redact_secrets(warning, ctx.learner_text)
     assert "SuperGeheim123" not in redacted.text and "[REDACTED]" in redacted.text
+
+
+@pytest.mark.parametrize("text", [
+    "PostgreSQL 17 supports this distinction. The documented rule applies [1].",
+    "PostgreSQL 17 unterstützt diese Unterscheidung. Es gilt die dokumentierte Regel. [1]",
+    "- PostgreSQL 17 supports this distinction. The documented rule applies [1].",
+])
+def test_bound_paragraph_citation_avoids_unnecessary_repair(text: str) -> None:
+    assert "UNCITED_CLAIM" not in codes(turn(text=text))
+
+
+@pytest.mark.parametrize("text", [
+    "PostgreSQL 17 supports this distinction.\n\nAnother paragraph [1].",
+    "- PostgreSQL 17 supports this distinction.\n- Another item [1].",
+    "1. PostgreSQL 17 supports this distinction.\n2. Another item [1].",
+    "+ PostgreSQL 17 supports this distinction.\n+ Another item [1].",
+    "PostgreSQL 17 supports this distinction.\n## Another heading [1]",
+    "PostgreSQL 17 supports this distinction.\n> A quoted statement [1].",
+    "PostgreSQL 17 supports this distinction.\n```sql\nselect 1;\n```\nAnother sentence [1].",
+    "PostgreSQL 17 supports this distinction.\n| heading |\n| value |\nAnother sentence [1].",
+    "PostgreSQL 17 supports this distinction. Another sentence [1]. More uncited prose.",
+    "PostgreSQL 17 supports this distinction. Another sentence [2].",
+])
+def test_paragraph_citation_does_not_cross_boundaries(text: str) -> None:
+    assert codes(turn(text=text))["UNCITED_CLAIM"] == "block"
+
+
+@pytest.mark.parametrize("url,tier", [("https://example.com/invented", 1), ("https://stackoverflow.com/q/1", 1)])
+def test_paragraph_citation_must_bind_to_actual_source(url: str, tier: int) -> None:
+    t = turn(text="PostgreSQL 17 supports this distinction. Another sentence [1].",
+             citations=[{"n": 1, "url": url, "title": "Reference", "tier": tier}])
+    assert codes(t)["UNCITED_CLAIM"] == "block"
+
+
+def test_paragraph_scope_retains_community_labelling_requirement() -> None:
+    t = turn(text="PostgreSQL 17 supports this distinction. Another sentence [1].",
+             citations=[{"n": 1, "url": "https://stackoverflow.com/q/1", "title": "Report", "tier": 4}])
+    assert codes(t)["COMMUNITY_UNLABELLED"] == "block"
+
+
+def test_paragraph_scope_without_tool_context_stays_conservative() -> None:
+    t = turn(text="PostgreSQL 17 supports this distinction. Another sentence [1].")
+    assert any(f.code == "UNCITED_CLAIM" for f in g.check_uncited_claims(t))
