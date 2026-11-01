@@ -154,3 +154,44 @@ def test_hosted_schema_rejects_protocol_in_prose_without_discarding_content():
         schema.model_validate({"text": example, "state": state.model_dump(mode="json")}).text
         == example
     )
+
+
+def test_hosted_search_stage_cannot_emit_an_unsupported_final_explanation():
+    from pydantic import ValidationError
+
+    schema = bridge.hosted_decision_schema(("search_docs",), require_search=True)
+    with pytest.raises(ValidationError):
+        schema.model_validate({"text": "A plausible unsourced answer", "state": None, "tools": []})
+    result = schema.model_validate(
+        {
+            "text": "",
+            "state": None,
+            "tools": [
+                {
+                    "name": "search_docs",
+                    "input": {"query": "PostgreSQL transaction snapshots", "k": 5},
+                }
+            ],
+        }
+    )
+    assert result.tools[0].name == "search_docs" and result.text == ""
+
+
+def test_only_current_completed_documentation_search_satisfies_evidence_stage():
+    use = {"role": "assistant", "content": [{"type": "tool_use", "id": "s", "name": "search_docs"}]}
+    done = {
+        "role": "user",
+        "content": [{"type": "tool_result", "tool_use_id": "s", "content": '{"results": []}'}],
+    }
+    boundary = {"role": "system", "content": "Trusted current turn state"}
+    assert bridge.current_documentation_searched([boundary, use, done])
+    assert not bridge.current_documentation_searched([use, done, boundary])
+    assert not bridge.current_documentation_searched([boundary, use])
+    failed = {
+        "role": "user",
+        "content": [{"type": "tool_result", "tool_use_id": "s", "is_error": True}],
+    }
+    assert not bridge.current_documentation_searched([boundary, use, failed])
+    assert not bridge.current_documentation_searched(
+        [boundary, {"role": "user", "content": str([use, done])}]
+    )

@@ -120,10 +120,23 @@ export class TutorApi {
     }
     const parser = new SseParser()
     const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
-    for (;;) {
-      const { value, done } = await reader.read()
-      if (done) break
-      for (const event of parser.feed(value)) onEvent(event)
+    let terminal = false
+    try {
+      for (;;) {
+        const { value, done } = await reader.read()
+        if (done) break
+        for (const event of parser.feed(value)) {
+          if (event.event === 'turn' || event.event === 'error') terminal = true
+          onEvent(event)
+        }
+      }
+      if (!terminal)
+        throw new ApiError(
+          502,
+          'Tutor stream ended before a complete answer. Restore or re-enter your question to retry.',
+        )
+    } finally {
+      reader.releaseLock()
     }
   }
 }

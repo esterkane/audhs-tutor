@@ -534,3 +534,89 @@ async def test_buffered_cancellation_logs_once_and_reconciles_unknown_usage(seed
         assert len(reservations) == 1 and reservations[0].status == "reconciled"
         assert spend.unknown_reserved == pytest.approx(calls[0].reserved_usd)
         assert reservations[0].settled_usd == pytest.approx(calls[0].reserved_usd)
+
+
+@pytest.mark.parametrize("streamed", [False, True])
+async def test_level_cancelled_hosted_attempt_remains_counted_after_reservation_expiry(
+    seeded, session_factory, streamed
+):
+    import anyio
+
+    budget = Budget(1.0)
+    with anyio.CancelScope() as scope:
+
+        class Disconnected(FakeProvider):
+            async def complete(self, *args, **kwargs):
+                scope.cancel()
+                await anyio.lowlevel.checkpoint()
+                raise AssertionError("Cancellation must propagate")
+
+            async def stream(self, *args, **kwargs):
+                scope.cancel()
+                await anyio.lowlevel.checkpoint()
+                yield "must not be emitted"
+
+        gateway = _gw(seeded, FakeProvider(), Disconnected(), budget)
+        if streamed:
+            async for _ in gateway.stream(TaskClass.TUTOR_DEEP, MSGS, handle=StreamHandle()):
+                pass
+        else:
+            await gateway.complete(TaskClass.TUTOR_DEEP, MSGS, response_model=Grade)
+    assert scope.cancel_called
+    async with session_factory() as inspection:
+        calls = await _calls(inspection)
+        assert len(calls) == 1
+        call = calls[0]
+        assert call.outcome == "cancelled" and call.cost_status == "unknown"
+        assert call.reserved_usd > 0
+        reservations = await _reservations(inspection)
+        assert len(reservations) == 1 and reservations[0].status == "reconciled"
+        reservations[0].expires_at = (datetime.now(UTC) - timedelta(minutes=1)).isoformat()
+        await inspection.commit()
+        assert await budget.expire_stale(inspection) == 0
+        spend = await budget.spend_today(inspection)
+        assert spend.open_reservations == 0
+        assert spend.unknown_reserved == pytest.approx(call.reserved_usd)
+
+
+async def test_real_sse_disconnect_preserves_hosted_attempt_accounting(seeded, session_factory):
+    import anyio
+    from sse_starlette.sse import EventSourceResponse
+
+    entered = anyio.Event()
+
+    class Pending(FakeProvider):
+        async def complete(self, *args, **kwargs):
+            entered.set()
+            await anyio.sleep_forever()
+
+    budget = Budget(1.0)
+    gateway = _gw(seeded, FakeProvider(), Pending(), budget)
+
+    async def body():
+        await gateway.complete(TaskClass.TUTOR_DEEP, MSGS, response_model=Grade)
+        yield {"data": "must not complete after disconnect"}
+
+    async def receive():
+        await entered.wait()
+        return {"type": "http.disconnect"}
+
+    sent = []
+
+    async def send(message):
+        sent.append(message)
+
+    with anyio.fail_after(5):
+        await EventSourceResponse(body())(
+            {"type": "http", "method": "GET", "path": "/synthetic-stream", "headers": []},
+            receive,
+            send,
+        )
+    async with session_factory() as inspection:
+        calls = await _calls(inspection)
+        assert len(calls) == 1
+        assert calls[0].outcome == "cancelled" and calls[0].cost_status == "unknown"
+        spend = await budget.spend_today(inspection)
+        assert spend.open_reservations == 0
+        assert spend.unknown_reserved == pytest.approx(calls[0].reserved_usd)
+    assert not any(message.get("body") for message in sent)

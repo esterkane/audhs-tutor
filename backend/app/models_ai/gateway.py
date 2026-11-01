@@ -20,6 +20,7 @@ from collections.abc import AsyncGenerator, Awaitable, Callable
 from contextlib import suppress
 from typing import Any
 
+import anyio
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -645,61 +646,66 @@ class ModelGateway:
                 outcome = "cancelled"
                 raise
             finally:
-                close = getattr(stream, "aclose", None)
-                if close is not None:
-                    with suppress(Exception):
-                        await close()
-                if (started or usage is not None or outcome == "cancelled") and not logged:
-                    if usage is not None:
-                        source = "reported"
-                        tin, tout, cached = usage.tokens_in, usage.tokens_out, usage.cached_tokens
-                        reported = usage.reported_cost_usd
-                    else:
-                        source = "estimated"
-                        tin, tout, cached = prompt_chars // 4, max(1, out_chars // 4), 0
-                        reported = None
-                    cost, status = _accounting(spec, tin, tout, reported, usage_source=source)
-                    if spec.hosted and usage is None and outcome in ("partial", "cancelled"):
-                        source, status = "unavailable", "unknown"
-                    result = ProviderResult(
-                        text="",
-                        tokens_in=tin,
-                        tokens_out=tout,
-                        cached_tokens=cached,
-                        latency_ms=int((time.perf_counter() - t0) * 1000),
-                        model=spec.model,
-                        provider=spec.provider,
-                        reported_cost_usd=reported,
-                    )
-                    call = await self._log(
-                        spec,
-                        task,
-                        kind,
-                        result,
-                        learner_id,
-                        session_id,
-                        {
-                            **meta,
-                            "estimated_tokens": usage is None,
-                            "first_token_ms": first_token_ms,
-                            "finish_reason": handle.finish_reason,
-                        },
-                        request_id=request_id,
-                        attempt=attempt,
-                        outcome=outcome,
-                        usage_source=source,
-                        cost_status=status,
-                        cost_usd=cost,
-                        reserved_usd=bound,
-                        error=failure,
-                        reservation=reservation,
-                    )
-                    handle.model_call_id, handle.registry_id, handle.route = call.id, rid, kind
-                    handle.tokens_in, handle.tokens_out = result.tokens_in, result.tokens_out
-                    handle.cached_tokens = result.cached_tokens
-                    handle.latency_ms = result.latency_ms
-                    handle.usage_source, handle.cost_status = source, status
-                    handle.cost_usd, handle.outcome = cost, outcome
+                with anyio.CancelScope(shield=True):
+                    close = getattr(stream, "aclose", None)
+                    if close is not None:
+                        with suppress(Exception):
+                            await close()
+                    if (started or usage is not None or outcome == "cancelled") and not logged:
+                        if usage is not None:
+                            source = "reported"
+                            tin, tout, cached = (
+                                usage.tokens_in,
+                                usage.tokens_out,
+                                usage.cached_tokens,
+                            )
+                            reported = usage.reported_cost_usd
+                        else:
+                            source = "estimated"
+                            tin, tout, cached = prompt_chars // 4, max(1, out_chars // 4), 0
+                            reported = None
+                        cost, status = _accounting(spec, tin, tout, reported, usage_source=source)
+                        if spec.hosted and usage is None and outcome in ("partial", "cancelled"):
+                            source, status = "unavailable", "unknown"
+                        result = ProviderResult(
+                            text="",
+                            tokens_in=tin,
+                            tokens_out=tout,
+                            cached_tokens=cached,
+                            latency_ms=int((time.perf_counter() - t0) * 1000),
+                            model=spec.model,
+                            provider=spec.provider,
+                            reported_cost_usd=reported,
+                        )
+                        call = await self._log(
+                            spec,
+                            task,
+                            kind,
+                            result,
+                            learner_id,
+                            session_id,
+                            {
+                                **meta,
+                                "estimated_tokens": usage is None,
+                                "first_token_ms": first_token_ms,
+                                "finish_reason": handle.finish_reason,
+                            },
+                            request_id=request_id,
+                            attempt=attempt,
+                            outcome=outcome,
+                            usage_source=source,
+                            cost_status=status,
+                            cost_usd=cost,
+                            reserved_usd=bound,
+                            error=failure,
+                            reservation=reservation,
+                        )
+                        handle.model_call_id, handle.registry_id, handle.route = call.id, rid, kind
+                        handle.tokens_in, handle.tokens_out = result.tokens_in, result.tokens_out
+                        handle.cached_tokens = result.cached_tokens
+                        handle.latency_ms = result.latency_ms
+                        handle.usage_source, handle.cost_status = source, status
+                        handle.cost_usd, handle.outcome = cost, outcome
             return
         raise GatewayError(f"{task}: all routes failed: {errors}")
 
@@ -820,12 +826,15 @@ class ModelGateway:
         # the row and its reservation settle in ONE commit: no window in which both the open
         # reservation and the logged cost count toward the cap
         amount = reservation.amount_usd if reservation is not None else 0.0
-        call = await write_model_call(self.db, rec, commit=False)
-        if reservation is not None:
-            reservation.status = "reconciled"
-            reservation.settled_usd = amount if cost_status == "unknown" else round(cost_usd, 6)
-            reservation.model_call_id = call.id
-        await self.db.commit()
+        # SSE uses level cancellation: every unshielded await can be cancelled again.
+        # Finish this short atomic accounting transaction before propagating disconnect.
+        with anyio.CancelScope(shield=True):
+            call = await write_model_call(self.db, rec, commit=False)
+            if reservation is not None:
+                reservation.status = "reconciled"
+                reservation.settled_usd = amount if cost_status == "unknown" else round(cost_usd, 6)
+                reservation.model_call_id = call.id
+            await self.db.commit()
         return call
 
 

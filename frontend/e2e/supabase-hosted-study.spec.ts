@@ -32,7 +32,23 @@ test('project provider setup failure, hosted answer and full transcript resume',
   await input.fill(question)
   const response = page.waitForResponse((r) => r.url().endsWith('/supabase-project/turn'))
   await page.getByRole('button', { name: 'Send', exact: true }).click()
-  expect((await response).ok()).toBe(true)
+  const streamed = await response
+  expect(streamed.ok()).toBe(true)
+  const payload = await streamed.text()
+  expect(payload).toContain('event: tool_call')
+  const toolResults = payload
+    .replace(/\r/g, '')
+    .split('\n\n')
+    .filter((block) => block.startsWith('event: tool_result_summary'))
+    .map((block) =>
+      JSON.parse(
+        block
+          .split('\n')
+          .find((line) => line.startsWith('data:'))!
+          .slice(5),
+      ),
+    )
+  expect(toolResults.some((result) => result.name === 'search_docs' && result.is_error === false)).toBe(true)
   await expect(page.getByRole('button', { name: 'New session', exact: true })).toBeEnabled({
     timeout: 100000,
   })
@@ -45,6 +61,14 @@ test('project provider setup failure, hosted answer and full transcript resume',
   expect(id).toBeTruthy()
   const saved = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
   expect(saved.transcript).toHaveLength(2)
+  const turn = saved.transcript[1].tutor_turn
+  expect(
+    turn.citations.some((citation: { url: string }) =>
+      citation.url.startsWith('https://www.postgresql.org/docs/'),
+    ),
+  ).toBe(true)
+  expect(turn.guard_flags ?? []).not.toContain('CITATION_NOT_FROM_TOOL')
+  expect(turn.guard_flags ?? []).not.toContain('UNCITED_CLAIM')
   const answer = saved.transcript[1].content
   expect(JSON.stringify(answer)).toContain('11')
   expect(JSON.stringify(answer)).toContain('10')

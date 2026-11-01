@@ -46,3 +46,24 @@ current text in memory; copy it or keep the page open. Device drafts are not cro
 
 Session creation hides the previous editor until the new session is ready, avoiding text entry into
 an editor that is about to be replaced. Stored drafts and prior completed transcripts are preserved.
+
+
+## Disconnect accounting
+
+During an SSE disconnect, the short database transaction that records an attempted model call
+and settles its reservation is protected from the response's repeated cancellation. Unknown hosted
+usage remains counted at the reserved bound instead of disappearing when an open reservation
+expires. This cleanup does not retry generation or change the learner's transcript. Normal stop
+requests still propagate cancellation. This covers graceful application cancellation, not a guarantee
+against abrupt process or machine failure.
+
+The project stream must end with a complete turn or an explicit server error. A premature EOF
+exits the waiting state with a recoverable error; partial text is never accepted as a completed
+answer. The client makes no automatic retry, and retained question recovery remains available.
+
+Fresh hosted project turns first return a typed documentation-search request, rather than allowing
+an unsupported final explanation before retrieval. A completed search from an older turn does not
+satisfy this stage; a plain learner message cannot impersonate a tool result. Full session history
+stays intact. Empty search results do not establish facts: the normal evidence/uncertainty contract
+still applies. This adds no hosted call when the model would already search before explaining, and
+can avoid later unsupported-citation repair; it is not a universal latency guarantee.

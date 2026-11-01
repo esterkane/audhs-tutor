@@ -61,3 +61,23 @@ test('completed question clears recovery state while new notes and transcript re
   const after = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
   expect(after.transcript).toEqual(before.transcript)
 })
+
+test('premature answer stream exits waiting state and retains the question', async ({ page }) => {
+  await page.goto('/projects/supabase')
+  await page.getByRole('button', { name: /Explicit/ }).click()
+  await page.route('**/api/supabase-project/turn', (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: 'event: token\ndata: {"text":"Incomplete synthetic answer"}\n\n',
+    }),
+  )
+  const input = page.getByRole('textbox', { name: /message|question/i }).last()
+  await input.fill('Keep this question after an incomplete stream')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('before a complete answer')
+  await expect(page.getByRole('button', { name: 'New session', exact: true })).toBeEnabled()
+  await page.reload()
+  await page.getByRole('button', { name: 'Restore question to editor', exact: true }).click()
+  await expect(input).toHaveValue('Keep this question after an incomplete stream')
+})

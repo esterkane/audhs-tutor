@@ -83,7 +83,18 @@ def decision_schema(tool_names: tuple[str, ...] | None = None) -> type[LocalDeci
 
 
 @lru_cache
-def hosted_decision_schema(tool_names: tuple[str, ...]) -> type[LocalDecision]:
+def hosted_decision_schema(
+    tool_names: tuple[str, ...], require_search: bool = False
+) -> type[LocalDecision]:
+    if require_search:
+        base = decision_schema(("search_docs",))
+        return create_model(
+            "HostedDocumentationSearch",
+            __base__=base,
+            text=(Literal[""], ""),
+            state=(type(None), None),
+            tools=(base.model_fields["tools"].annotation, Field(min_length=1, max_length=1)),
+        )
     base = decision_schema(tool_names)
 
     def prose_only(value: str) -> str:
@@ -110,6 +121,35 @@ def hosted_decision_schema(tool_names: tuple[str, ...]) -> type[LocalDecision]:
             ),
         ),
     )
+
+
+def current_documentation_searched(messages: list[dict[str, Any]]) -> bool:
+    """Only completed search tool results after the latest trusted turn-state boundary count."""
+    start = max((i for i, item in enumerate(messages) if item.get("role") == "system"), default=-1)
+    if start < 0:
+        return False
+    searches: set[str] = set()
+    for item in messages[start + 1 :]:
+        content = item.get("content")
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if not isinstance(block, dict):
+                continue
+            if (
+                item.get("role") == "assistant"
+                and block.get("type") == "tool_use"
+                and block.get("name") == "search_docs"
+            ):
+                searches.add(str(block.get("id")))
+            if (
+                item.get("role") == "user"
+                and block.get("type") == "tool_result"
+                and str(block.get("tool_use_id")) in searches
+                and not block.get("is_error", False)
+            ):
+                return True
+    return False
 
 
 def render_final_text(text: str, state: BaseModel) -> str:
@@ -209,7 +249,11 @@ class LocalProjectClient:
             )
             gateway: ModelGateway | ProjectStudyGateway
             if hosted is not None:
-                response_schema = hosted_decision_schema(tuple(sorted(allowed)))
+                response_schema = hosted_decision_schema(
+                    tuple(sorted(allowed)),
+                    require_search="search_docs" in allowed
+                    and not current_documentation_searched(request.get("messages", [])),
+                )
                 gateway = hosted
                 spec = hosted.spec
             else:
