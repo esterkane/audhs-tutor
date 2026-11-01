@@ -75,3 +75,11 @@ models. The ordinary gateway records that invalid attempt and applies its existi
 repair policy; it retains the original messages and requested output allowance. An empty
 text field remains valid while requesting a tool. This protects against blank completed
 answers, not against every omitted distinction or unsupported factual claim.
+
+
+OpenAI and Anthropic adapters make one SDK generation request per gateway attempt.
+Instructor v2 uses `max_retries=0` for that boundary; `1` permits an additional
+internal validation retry. Transport retries are also disabled. The gateway owns
+repairs, checks the remaining budget before another request, and records usage
+and outcome for each actual attempt. Original messages and output allowances are
+preserved. This does not change provider selection or the normal daily cap.

@@ -86,13 +86,18 @@ class ClaudeProvider:
             api_key=self.api_key,
             max_tokens=max_tokens,
             temperature=temperature,
+            num_retries=0,
             timeout=self.timeout_s,
             metadata=metadata or {},
         )
         try:
             if response_model is not None:
                 parsed, completion = await self._instructor.chat.completions.create_with_completion(
-                    response_model=response_model, max_retries=max(max_retries, 1), **kwargs
+                    response_model=response_model,
+                    # Instructor v2 counts retries after the first request. The gateway
+                    # alone owns validation repairs and reserves/logs each attempt.
+                    max_retries=0,
+                    **kwargs,
                 )
                 text = parsed.model_dump_json()
             else:
@@ -139,6 +144,7 @@ class ClaudeProvider:
                 api_key=self.api_key,
                 max_tokens=max_tokens,
                 temperature=temperature,
+                num_retries=0,
                 stream=True,
                 stream_options={"include_usage": True},
                 timeout=self.timeout_s,

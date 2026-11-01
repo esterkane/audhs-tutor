@@ -73,7 +73,7 @@ async def test_structured_one_attempt_and_usage(monkeypatch):
     monkeypatch.setattr(p._instructor.chat.completions, "create_with_completion", call)
     out = await p.complete(SPEC, MESSAGES, response_model=Answer, max_retries=8)
     assert out.parsed.hint == "Trace x" and out.tokens_out == 15
-    assert call.call_args.kwargs["max_retries"] == 1
+    assert call.call_args.kwargs["max_retries"] == 0
 
 
 async def test_stream_final_usage_chunk(monkeypatch):
