@@ -20,6 +20,8 @@ for (const width of [390, 1280]) {
     })
     await page.route('**/api/sessions/current', (route) => route.fulfill({ json: { id: 'fixture-session' } }))
     await page.goto('/sources')
+    // The compatibility redirect focuses main; finish it before keyboard interaction.
+    await expect(page).toHaveURL(/\/library$/)
     const open = page.getByRole('button', { name: /Listen or ask about this page|Reopen learning companion/ })
     await expect(page.locator('header').getByRole('button', { name: /Listen or ask about this page|Reopen learning companion/ })).toHaveCount(0)
     await expect(open).toBeVisible()
@@ -79,6 +81,8 @@ test('companion discloses unavailable storage and preserves in-memory material',
     }
   })
   await page.goto('/sources')
+  // The compatibility redirect focuses main; finish it before keyboard interaction.
+  await expect(page).toHaveURL(/\/library$/)
   await page.getByRole('button', { name: /Listen or ask about this page|Reopen learning companion/ }).click()
   const material = page.getByRole('textbox', { name: 'Material to discuss' })
   await material.fill('Keep this draft')
@@ -117,6 +121,8 @@ test('closing a pending companion preserves exact request recovery', async ({ pa
     finish()
   })
   await page.goto('/sources')
+  // The compatibility redirect focuses main; finish it before keyboard interaction.
+  await expect(page).toHaveURL(/\/library$/)
   const open = page.getByRole('button', { name: /Listen or ask about this page|Reopen learning companion/ })
   await open.click()
   const question = page.getByRole('textbox', { name: 'Your tutor message or response' })
@@ -149,6 +155,8 @@ test('invalid companion checkpoint is disclosed without opening an unsafe return
     )
   })
   await page.goto('/sources')
+  // The compatibility redirect focuses main; finish it before keyboard interaction.
+  await expect(page).toHaveURL(/\/library$/)
   await expect(page.getByText(/Captured material could not be restored/)).toBeVisible()
   await expect(page.getByRole('link', { name: 'Unsafe', exact: true })).toHaveCount(0)
   expect(await page.evaluate(() => sessionStorage.getItem('learning-companion:context:v1'))).toContain(
@@ -178,6 +186,8 @@ test('tutor keeps one pending conversation across desktop and sheet resizing', a
     })
   })
   await page.goto('/sources')
+  // The compatibility redirect focuses main; finish it before keyboard interaction.
+  await expect(page).toHaveURL(/\/library$/)
   const open = page.getByRole('button', { name: /Listen or ask about this page|Reopen learning companion/ })
   await open.click()
   const panel = page.getByRole('dialog', { name: 'Learning companion' })
@@ -225,6 +235,8 @@ for (const width of [320, 1280]) {
       await tutorReply(route, { text: 'Retained explanation for original material', model: 'fixture', route: 'local', turn_id: 'closed-turn', source_note: 'Synthetic response only' })
     })
     await page.goto('/sources')
+    // The compatibility redirect focuses main; finish it before keyboard interaction.
+    await expect(page).toHaveURL(/\/library$/)
     const open = page.getByRole('button', { name: /Listen or ask about this page|Reopen learning companion/ })
     await open.focus()
     await page.keyboard.press('Enter')
