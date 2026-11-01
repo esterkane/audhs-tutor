@@ -159,6 +159,38 @@ class ReviewedOrchestrator:
             )
             return
 
+        from app.orchestrator.saved_evidence import answer_saved_retry
+
+        saved = await answer_saved_retry(
+            user_text, state, kwargs.get("history", []), getattr(self.delegate, "client", None)
+        )
+        if saved is not None:
+            from app.integrations.supabase_project import project_module
+
+            turn = project_module().TutorTurn(
+                mode=state.mode,
+                language=state.language,
+                persona_on=state.persona_on,
+                text=saved.text,
+                speech="\n".join(
+                    line
+                    for line in saved.text.splitlines()
+                    if not line.startswith(("Source:", "Quelle:"))
+                )
+                .replace("**", "")
+                .replace("`", ""),
+            )
+            yield Token(turn.text)
+            yield Final(
+                turn=turn,
+                new_messages=[
+                    {"role": "user", "content": user_text},
+                    {"role": "assistant", "content": saved.text},
+                ],
+                model="local:saved-evidence.v1",
+            )
+            return
+
         plan = select_plan(user_text, state)
         if plan is not None:
             turn = incident_turn(

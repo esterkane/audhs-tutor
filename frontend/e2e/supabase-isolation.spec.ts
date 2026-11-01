@@ -88,6 +88,36 @@ for (const language of ['en', 'de']) {
     await expect(input).toHaveValue('Unsent research finding stays in my draft')
     const restored = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
     expect(restored.transcript).toEqual(saved.transcript)
+    const followup = german
+      ? 'Vergleiche die Retry-Ergebnisse im ersten gespeicherten Versuch mit dem Minimum-null-Fall. Nutze gespeicherte Beobachtungen.'
+      : 'Compare retry results in the first saved experiment with the minimum-zero case. Use stored observations.'
+    await input.fill(followup)
+    const reuseResponse = page.waitForResponse(r => r.url().endsWith('/supabase-project/turn'))
+    const reuseStarted = Date.now()
+    await input.press('Enter')
+    expect((await reuseResponse).ok()).toBe(true)
+    await expect(opener).toBeEnabled()
+    const reused = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
+    expect(reused.transcript).toHaveLength(saved.transcript.length + 2)
+    expect(reused.transcript.slice(0, saved.transcript.length)).toEqual(saved.transcript)
+    const evidenceAnswer = reused.transcript.at(-1).tutor_turn
+    expect(evidenceAnswer.language).toBe(language)
+    expect(evidenceAnswer.next_question).toBeNull()
+    expect(evidenceAnswer.ledger_delta).toEqual([])
+    expect(evidenceAnswer.text).toContain('1 > 1 = false')
+    expect(evidenceAnswer.text).toContain('1 > 0 = true')
+    expect(evidenceAnswer.text).toContain('2 > 1 = true')
+    expect(evidenceAnswer.text).toContain('2 > 0 = true')
+    expect(evidenceAnswer.text).toContain(german ? 'ursprüngliche Anzahl 2 übernommen' : 'reused original count 2')
+    expect(evidenceAnswer.text).toContain('experiment1-')
+    expect(evidenceAnswer.text).toContain('experiment4-')
+    console.log(JSON.stringify({ language, saved_evidence_followup_ms: Date.now() - reuseStarted }))
+    saved = reused
+    await input.fill('Next research finding remains unsent')
+    await page.reload()
+    await expect(input).toHaveValue('Next research finding remains unsent')
+    const evidenceResumed = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
+    expect(evidenceResumed.transcript).toEqual(saved.transcript)
     if (process.env.AUDHS_HOSTED_PROJECT_AUDIT === '1') {
       try {
         await request.put(`${API_URL}/api/preferences`, {
@@ -116,13 +146,14 @@ for (const language of ['en', 'de']) {
         expect(answer.next_question).toBeNull()
         expect(answer.text).toContain('1')
         expect(answer.text).toContain('0')
-        expect(answer.citations.length).toBeGreaterThan(0)
-        console.log(JSON.stringify({ language, hosted_followup_ms: Date.now() - started }))
+        expect(answer.text).toContain('experiment1-')
+        expect(answer.text).toContain('experiment4-')
+        console.log(JSON.stringify({ language, hosted_enabled_local_reuse_ms: Date.now() - started }))
         saved = followed
         await page.reload()
         const resumed = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
         expect(resumed.transcript).toEqual(saved.transcript)
-        await expect(input).toHaveValue('Unsent research finding stays in my draft')
+        await expect(input).toHaveValue('Next research finding remains unsent')
       } finally {
         await request.put(`${API_URL}/api/learning-focus/supabase/study`, { data: { provider: 'local' } })
         await request.put(`${API_URL}/api/preferences`, { data: { key: 'authoring.daily_budget_cents', value: 0 } })
