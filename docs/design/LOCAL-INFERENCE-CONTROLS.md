@@ -30,3 +30,20 @@ bilingual answers against source-backed factual cases and executable PostgreSQL
 fixtures, including multi-part coverage and distant-history dependencies. Measure
 load, prefill and generation separately. A small extraction probe cannot establish
 a general tutor speedup or teaching qualification.
+
+
+## Preserve input when context is exceeded
+
+The local chat adapter sends native top-level `truncate: false` after the SDK has
+transformed a request. This covers plain, JSON, native-schema and streaming calls;
+putting this flag in `options` is insufficient. Original messages, source text,
+context settings and requested output limits stay unchanged.
+
+The installed Ollama 0.40.4 runtime was verified to reject an oversized request
+rather than silently remove evidence. The gateway records that provider error and
+retains its ordinary route/fallback policy; it does not ask the same model to repair
+JSON when the server explicitly rejected input capacity. Successful response text
+that happens to describe a context error is not treated as a server rejection.
+No hosted routing is enabled by this control. It neither enlarges the context
+window nor qualifies an answer as factually correct. A larger-context model must
+still pass complete-answer and history tests before activation.

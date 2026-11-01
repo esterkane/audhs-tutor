@@ -116,6 +116,7 @@ async def test_explicit_options_reach_every_chat_transport_without_reducing_limi
         )
         assert result.tokens_out == 42
     assert len(posts) == 1
+    assert posts[0]["truncate"] is False
     assert posts[0]["think"] == "low"
     assert posts[0]["options"]["temperature"] == 1.0
     assert posts[0]["options"]["num_ctx"] == 16384
@@ -275,3 +276,141 @@ async def test_boolean_off_requires_a_matching_boolean_model_capability(monkeypa
     with pytest.raises(SourcePolicyDenied):
         await configured.complete(SPEC, MESSAGES)
     assert posts == []
+
+
+@pytest.mark.parametrize("kind", ["data", "json", "positional"])
+async def test_native_input_flag_survives_sdk_body_forms_without_mutating_messages(
+    monkeypatch, kind
+):
+    from app.models_ai.ollama import _PreservingOllamaHandler
+
+    original = httpx.AsyncClient
+    seen = []
+
+    async def handle(request):
+        seen.append(json.loads(request.content))
+        return httpx.Response(200, json={"done": True})
+
+    monkeypatch.setattr(
+        "httpx.AsyncClient",
+        lambda **kw: original(**{**kw, "transport": httpx.MockTransport(handle)}),
+    )
+    handler = _PreservingOllamaHandler(timeout=10)
+    body = {
+        "model": "installed-local",
+        "truncate": True,
+        "messages": [
+            {"role": "system", "content": "Earlier instructions stay intact."},
+            {"role": "user", "content": "Evidence: α\nSQLSTATE 23514. Keep all of it."},
+        ],
+        "options": {"num_ctx": 16384, "num_predict": 16000},
+    }
+    before = json.loads(json.dumps(body))
+    try:
+        if kind == "json":
+            await handler.post("http://127.0.0.1:11434/api/chat", json=body)
+        elif kind == "positional":
+            await handler.post("http://127.0.0.1:11434/api/chat", json.dumps(body))
+        else:
+            await handler.post("http://127.0.0.1:11434/api/chat", data=json.dumps(body).encode())
+    finally:
+        await handler.client.aclose()
+    assert body == before
+    assert seen == [{**before, "truncate": False}]
+
+
+@pytest.mark.parametrize("mode", ["plain", "legacy_json", "native_schema", "stream"])
+async def test_oversized_input_is_logged_once_without_model_repair(db, monkeypatch, mode):
+    from app.models_ai.gateway import GatewayError
+
+    posts = []
+    original = httpx.AsyncClient
+    error = "request (17000 tokens) exceeds the available context size (16384 tokens), try increasing it"
+
+    async def handle(request):
+        if request.url.path == "/api/show":
+            return httpx.Response(200, json={"model_info": {"general.architecture": "local"}})
+        posts.append(json.loads(request.content))
+        return httpx.Response(400, json={"error": error})
+
+    monkeypatch.setattr(
+        "httpx.AsyncClient",
+        lambda **kw: original(**{**kw, "transport": httpx.MockTransport(handle)}),
+    )
+    await seed_defaults(db, installed_ollama_tags={"gemma3:12b"})
+    learner = await get_or_create_owner(db)
+    gateway = ModelGateway(
+        db,
+        BenchmarkRouter("gemma3-12b"),
+        {"ollama": OllamaProvider("http://127.0.0.1:11434")},
+        Budget(0),
+    )
+    with pytest.raises(GatewayError):
+        if mode == "stream":
+            _ = [
+                part
+                async for part in gateway.stream(
+                    TaskClass.EXPLAIN_SIMPLE,
+                    MESSAGES,
+                    learner_id=learner.id,
+                    max_tokens=1800,
+                    handle=StreamHandle(),
+                )
+            ]
+        else:
+            await gateway.complete(
+                TaskClass.EXPLAIN_SIMPLE,
+                MESSAGES,
+                learner_id=learner.id,
+                max_tokens=1800,
+                response_model=ResearchDiscussion if mode != "plain" else None,
+                metadata={"structured_output": "native_schema"}
+                if mode == "native_schema"
+                else None,
+            )
+    assert len(posts) == 1
+    assert posts[0]["truncate"] is False
+    assert posts[0]["options"]["num_predict"] == 1800
+    calls = (await db.scalars(select(ModelCall))).all()
+    assert len(calls) == 1
+    assert calls[0].outcome == "error"
+    assert "exceeds the available context size" in calls[0].error
+
+
+@pytest.mark.parametrize(
+    "status,native_context_error,expected",
+    [
+        (200, True, False),
+        (400, False, False),
+        (400, True, True),
+        (413, True, True),
+        (500, True, False),
+    ],
+)
+async def test_context_rejection_comes_from_http_error_not_model_text(
+    monkeypatch, status, native_context_error, expected
+):
+    from app.models_ai.ollama import _PreservingOllamaHandler
+
+    original = httpx.AsyncClient
+    error = "request (17000 tokens) exceeds the available context size (16384 tokens), try increasing it"
+
+    async def handle(request):
+        return httpx.Response(
+            status, json={"error": error if native_context_error else "Other request error"}
+        )
+
+    monkeypatch.setattr(
+        "httpx.AsyncClient",
+        lambda **kw: original(**{**kw, "transport": httpx.MockTransport(handle)}),
+    )
+    handler = _PreservingOllamaHandler(timeout=10)
+    try:
+        if status >= 400:
+            with pytest.raises(httpx.HTTPStatusError):
+                await handler.post("http://127.0.0.1:11434/api/chat", json={"messages": []})
+        else:
+            await handler.post("http://127.0.0.1:11434/api/chat", json={"messages": []})
+        assert (handler.input_context_failure is not None) is expected
+    finally:
+        await handler.client.aclose()

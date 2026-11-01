@@ -1,6 +1,8 @@
 """OllamaProvider: general local inference (chat + structured JSON) and embeddings."""
 
+import json
 import math
+import re
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -35,12 +37,62 @@ from app.models_ai.source_policy import SourcePolicyDenied, require_local_weight
 litellm.suppress_debug_info = True
 
 
+class _PreservingOllamaHandler(AsyncHTTPHandler):
+    """Set the native input-preservation flag after SDK request transformation."""
+
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
+        super().__init__(*args, **kwargs)
+        self.input_context_failure: str | None = None
+
+    async def post(self, url: str, *args: Any, **kwargs: Any) -> httpx.Response:
+        if urlparse(url).path == "/api/chat":
+            body = kwargs.get("json")
+            positional = bool(args)
+            if body is None:
+                body = args[0] if positional else kwargs.get("data")
+                if isinstance(body, (str, bytes)):
+                    body = json.loads(body)
+            if not isinstance(body, dict):
+                raise ProviderError("Native Ollama chat requires a JSON object")
+            # Ollama otherwise removes messages or prompt tokens when input exceeds
+            # its context. Never turn missing evidence into an apparently valid answer.
+            body = {**body, "truncate": False}
+            if kwargs.get("json") is not None:
+                kwargs = {**kwargs, "json": body}
+            elif positional:
+                args = (json.dumps(body, ensure_ascii=False), *args[1:])
+            else:
+                kwargs = {**kwargs, "data": json.dumps(body, ensure_ascii=False)}
+            if kwargs.get("headers") is not None:
+                kwargs = {
+                    **kwargs,
+                    "headers": {
+                        k: v for k, v in kwargs["headers"].items() if k.lower() != "content-length"
+                    },
+                }
+        try:
+            return cast(httpx.Response, await super().post(url, *args, **kwargs))
+        except httpx.HTTPStatusError as exc:
+            if urlparse(url).path == "/api/chat" and exc.response.status_code in {400, 413}:
+                try:
+                    error = exc.response.json().get("error")
+                except (ValueError, AttributeError):
+                    error = None
+                if isinstance(error, str) and re.fullmatch(
+                    r"request \(\d+ tokens\) exceeds the available context size "
+                    r"\(\d+ tokens\), try increasing it",
+                    error,
+                ):
+                    self.input_context_failure = error
+            raise
+
+
 @asynccontextmanager
 async def _local_sdk_client(
     timeout_s: float, timings: list[InferenceTiming] | None = None
-) -> AsyncIterator[AsyncHTTPHandler]:
+) -> AsyncIterator[_PreservingOllamaHandler]:
     """Pin LiteLLM/Instructor to the same no-proxy/no-redirect transport as native calls."""
-    handler = AsyncHTTPHandler(timeout=timeout_s)
+    handler = _PreservingOllamaHandler(timeout=timeout_s)
     await handler.client.aclose()
 
     async def observe(response: httpx.Response) -> None:
@@ -293,6 +345,8 @@ class OllamaProvider:
                     ),
                 )
             except InstructorRetryException as exc:
+                if transport.input_context_failure is not None:
+                    raise ProviderError(transport.input_context_failure) from exc
                 raise _structured_error(exc) from exc
             except Exception as exc:
                 raise ProviderError(f"ollama {spec.model}: {exc}") from exc
@@ -376,6 +430,8 @@ class OllamaProvider:
                     parsed = None
                     text = completion.choices[0].message.content or ""
             except InstructorRetryException as e:
+                if transport.input_context_failure is not None:
+                    raise ProviderError(transport.input_context_failure) from e
                 raise _structured_error(e) from e
             except Exception as e:  # httpx / litellm transport errors
                 raise ProviderError(f"ollama {spec.model}: {e}") from e
