@@ -372,3 +372,32 @@ it('keeps writing editable after OCR fails and allows another upload', async () 
   expect(screen.getByLabelText('Your notes and selected source content')).toBeEnabled()
   expect(screen.getByLabelText('Upload reference content (optional)')).toBeEnabled()
 })
+
+
+it('waits for authoring setup before enabling tutor requests while preserving editable findings', async () => {
+  const research = { passage: 'Original source.', topic: 'Source', current: 0,
+    questions: [{ id: 'q1', prompt: 'What follows?', findings: 'Earlier findings.', evidence: '', unresolved: '', section: '' }] }
+  const draft = { id: 'readiness', status: 'draft', version: 1, payload: { authoring: {
+    title: 'Readiness', domain: 'ai_ml', notes: research.passage, upload_id: null,
+    workflow_step: 'research', objective: '', explanation: '', worked_example: '', question: '', criteria: [], research,
+  } } } as unknown as Parameters<typeof KnowledgeAuthoring>[0]['draft']
+  vi.stubGlobal('fetch', vi.fn(async () => jsonResponse({ id: 'owner' })))
+  const cache = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const content = (ready: boolean) => <QueryClientProvider client={cache}><MemoryRouter>
+    <KnowledgeAuthoring draft={draft} onOpen={onOpen} authoringReady={ready} />
+  </MemoryRouter></QueryClientProvider>
+  const view = render(content(false))
+  const findings = await screen.findByLabelText('My findings')
+  expect(screen.getByText('Draft one section locally')).toBeDisabled()
+  expect(screen.getByText('Discuss my findings locally')).toBeDisabled()
+  expect(screen.getByText('Save knowledge material')).toBeEnabled()
+  expect(screen.getByLabelText('What I want help with')).toBeEnabled()
+  fireEvent.change(findings, { target: { value: 'New findings while setup loads.' } })
+  expect(findings).toHaveValue('New findings while setup loads.')
+  expect(screen.getByText(/Authoring setup is loading or unavailable/)).toBeInTheDocument()
+  view.rerender(content(true))
+  expect(screen.getByText('Draft one section locally')).toBeEnabled()
+  expect(screen.getByText('Discuss my findings locally')).toBeEnabled()
+  expect(screen.getByLabelText('My findings')).toHaveValue('New findings while setup loads.')
+  expect(screen.queryByText(/Authoring setup is loading or unavailable/)).not.toBeInTheDocument()
+})

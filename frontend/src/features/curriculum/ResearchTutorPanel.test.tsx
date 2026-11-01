@@ -7,7 +7,7 @@ import { ResearchTutorPanel } from './ResearchTutorPanel'
 
 afterEach(cleanup)
 const onTutor = vi.fn()
-function Harness({ draftOnly = false, checked = false, reference = false, hosted = false }: { draftOnly?: boolean; checked?: boolean; reference?: boolean; hosted?: boolean }) {
+function Harness({ draftOnly = false, checked = false, reference = false, hosted = false, tutorReady = true }: { tutorReady?: boolean; draftOnly?: boolean; checked?: boolean; reference?: boolean; hosted?: boolean }) {
   const research: Schemas['KnowledgeResearch'] = { passage: 'Sort and average the middle values.', topic: 'median', current: 0, questions: [] }
   const original = { id: 'q1', prompt: 'How?', findings: 'My findings', evidence: 'My source', unresolved: '', section: 'Existing paragraph', tutor_request: 'Help with the middle values', tutor_basis: '' }
   const [question, setQuestion] = useState<Schemas['ResearchQuestion']>({ ...original,
@@ -17,7 +17,7 @@ function Harness({ draftOnly = false, checked = false, reference = false, hosted
       discussion: draftOnly ? '' : 'Average the two middle values.', needs_check: 'External links have not been checked.', next_question: '',
       source_quotes: ['Sort and average the middle values.'], section: 'Proposed paragraph.' } }],
   })
-  return <><ResearchTutorPanel hosted={hosted} research={research} question={question} disabled={false} sourceChanged={false} onChange={setQuestion} onTutor={onTutor} />
+  return <><ResearchTutorPanel tutorReady={tutorReady} hosted={hosted} research={research} question={question} disabled={false} sourceChanged={false} onChange={setQuestion} onTutor={onTutor} />
     <output aria-label="my section">{question.section}</output>
     <button onClick={() => setQuestion({ ...question, findings: 'Changed findings' })}>Change findings</button></>
 }
@@ -106,4 +106,17 @@ it('offers exact reuse at capacity while keeping new-generation actions disabled
   expect(screen.queryByRole('button', { name: 'Reuse saved reply' })).not.toBeInTheDocument()
   view.rerender(<ResearchTutorPanel {...props} question={{ ...question, findings: 'Changed finding' }} />)
   expect(screen.queryByRole('button', { name: 'Reuse saved reply' })).not.toBeInTheDocument()
+})
+
+
+it('keeps saved sections usable while new tutor requests wait for setup', () => {
+  onTutor.mockClear()
+  render(<Harness tutorReady={false} />)
+  expect(screen.getByText('Draft one section locally')).toBeDisabled()
+  expect(screen.getByText('Discuss my findings locally')).toBeDisabled()
+  expect(screen.getByText('Ask for another reply')).toBeDisabled()
+  expect(screen.getByLabelText('What I want help with')).toBeEnabled()
+  fireEvent.click(screen.getByText('Replace my section with tutor draft'))
+  expect(screen.getByLabelText('my section')).toHaveTextContent('Proposed paragraph.')
+  expect(onTutor).not.toHaveBeenCalled()
 })

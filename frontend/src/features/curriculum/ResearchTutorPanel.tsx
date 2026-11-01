@@ -7,8 +7,8 @@ import { Markdown } from '../../components/Markdown'
 type Research = Schemas['KnowledgeResearch']
 type Question = Schemas['ResearchQuestion']
 
-export function ResearchTutorPanel({ research, question, disabled, sourceChanged, sourceChangedDescription, onChange, onTutor, onUseDraft, hosted = false }: {
-  hosted?: boolean; sourceChangedDescription?: string;
+export function ResearchTutorPanel({ research, question, disabled, sourceChanged, sourceChangedDescription, onChange, onTutor, onUseDraft, hosted = false, tutorReady = true }: {
+  hosted?: boolean; tutorReady?: boolean; sourceChangedDescription?: string;
   research: Research; question: Question; disabled: boolean; sourceChanged: boolean
   onUseDraft?: () => void; onChange: (question: Question) => void; onTutor?: (action: 'discuss' | 'draft-section', refresh?: boolean) => void
 }) {
@@ -51,12 +51,12 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
     {!question.prompt.trim() && <p>Complete the research question before asking the tutor. Earlier replies are kept.</p>}
     {!question.findings.trim() && <p id={requirementsId}>Add My findings in Research before asking the tutor. Your current section and earlier replies are kept.</p>}
     {onTutor && <div className="flex flex-wrap gap-2">
-      <Button aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || sourceChanged || !question.prompt.trim() || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('discuss')}>{hosted ? 'Discuss my findings with OpenAI' : 'Discuss my findings locally'}</Button>
-      <Button variant="secondary" aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || sourceChanged || !question.prompt.trim() || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('draft-section')}>{hosted ? 'Draft one section with OpenAI' : 'Draft one section locally'}</Button>
-      {latest && !latest.calculation && !latest.reference && <Button variant="secondary" aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || sourceChanged || !question.prompt.trim() || !question.findings.trim() || history.length >= 12} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss', true)}>Ask for another reply</Button>}
+      <Button aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || !tutorReady || sourceChanged || !question.prompt.trim() || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('discuss')}>{hosted ? 'Discuss my findings with OpenAI' : 'Discuss my findings locally'}</Button>
+      <Button variant="secondary" aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || !tutorReady || sourceChanged || !question.prompt.trim() || !question.findings.trim() || history.length >= 12} onClick={() => onTutor('draft-section')}>{hosted ? 'Draft one section with OpenAI' : 'Draft one section locally'}</Button>
+      {latest && !latest.calculation && !latest.reference && <Button variant="secondary" aria-describedby={sourceChanged ? sourceChangedDescription : !question.findings.trim() ? requirementsId : undefined} disabled={disabled || !tutorReady || sourceChanged || !question.prompt.trim() || !question.findings.trim() || history.length >= 12} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss', true)}>Ask for another reply</Button>}
     </div>}
     <p className="text-sm text-muted">{latest?.reference ? 'This saved reply is labelled as reference-based. Add a different request above to discuss a broader question with the tutor.' : latest?.calculation ? 'This saved reply is labelled as a calculation. Add a request above to discuss a broader question with the tutor.' : 'An unchanged request can reuse its saved reply. Choose Ask for another reply to generate a fresh alternative.'}</p>
-    {history.length >= 12 && latest?.cache_token && !changed && question.tutor_basis === basis && latest.request === (question.tutor_request ?? '') && onTutor && <Button disabled={disabled || sourceChanged || !question.prompt.trim() || !question.findings.trim()} aria-describedby={sourceChanged ? sourceChangedDescription : undefined} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss')}>Reuse saved reply</Button>}
+    {history.length >= 12 && latest?.cache_token && !changed && question.tutor_basis === basis && latest.request === (question.tutor_request ?? '') && onTutor && <Button disabled={disabled || !tutorReady || sourceChanged || !question.prompt.trim() || !question.findings.trim()} aria-describedby={sourceChanged ? sourceChangedDescription : undefined} onClick={() => onTutor(latest.action === 'draft' ? 'draft-section' : 'discuss')}>Reuse saved reply</Button>}
     {history.length >= 12 && <p>This question has 12 saved tutor replies. You can read them below or reuse an eligible unchanged reply. Add another research question for a new reply.</p>}
     {history.length > 1 && <Disclosure label={`Earlier tutor replies (${history.length - 1})`}>
       {history.slice(0, -1).map((exchange, i) => <div className="my-3 border-b border-line pb-3" key={i}><p className="font-semibold">Reply {i + 1}</p>{reply(exchange)}</div>)}

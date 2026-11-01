@@ -303,7 +303,7 @@ function Editor({
     refresh = false,
   ) {
     if (!authoringReady && ['discuss', 'draft-section', 'research', 'suggest'].includes(kind)) {
-      setError('Authoring settings could not load. Reload before using the tutor; your writing is kept.')
+      setError('Authoring setup is not ready. Your writing is kept; try again once setup loads.')
       return
     }
     if (active.current || readOnly) return
@@ -500,6 +500,7 @@ function Editor({
             ? 'Edit your knowledge material'
             : 'Create knowledge material'}
       </CardTitle>
+      {!authoringReady && !readOnly && <p role="status">Authoring setup is loading or unavailable. You can still edit and save your writing and use saved sections.</p>}
       {historical && (
         <p role="status">
           Historical material is retained for accuracy review only. Create new material from your notes or
@@ -645,6 +646,7 @@ function Editor({
         </div>
         <div hidden={step !== 'research' && step !== 'write'}>
           <ResearchWorkspace
+            tutorReady={authoringReady}
             hosted={hosted}
             phase={step === 'write' ? 'write' : 'research'}
             onMemorySearch={lookupMemories}
@@ -658,6 +660,7 @@ function Editor({
               variant="secondary"
               disabled={
                 !!busy ||
+                !authoringReady ||
                 !form.title.trim() ||
                 form.research.questions.some(
                   (q) => q.findings || q.evidence || q.unresolved || q.section || q.tutor_exchanges?.length,
@@ -729,7 +732,7 @@ function Editor({
               }
             >
               <Button
-                disabled={!!busy || !form.title.trim() || !form.notes.trim() || form.notes.length > 16000}
+                disabled={!!busy || !authoringReady || !form.title.trim() || !form.notes.trim() || form.notes.length > 16000}
                 onClick={() => void run('suggest')}
               >
                 {hosted ? 'Prepare lesson proposal with OpenAI' : 'Prepare local lesson proposal'}
