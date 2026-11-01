@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ChatState } from '../chatReducer'
 import type { Strings } from '../i18n'
 import type { Language } from '../types'
@@ -8,6 +8,7 @@ import { readDraft, writeDraft, type RetainedDraft } from './draftStorage'
 import { Markdown } from './Markdown'
 import { TurnView } from './TurnView'
 import { MembershipLab } from '../lab/MembershipLab'
+import { IsolationLab } from '../lab/IsolationLab'
 
 export type InputMode = 'text' | 'voice'
 
@@ -28,6 +29,9 @@ export function ChatPanel({
   draftStorageKey?: string
   membershipLab?: boolean
 }) {
+  const isolationDialog = useRef<HTMLDialogElement>(null)
+  const isolationTitleId = useId()
+  const isolationHelpId = useId()
   const [retained, setRetained] = useState(() => readDraft(draftStorageKey))
   const retainedRef = useRef(retained)
   const [storageFailed, setStorageFailed] = useState(false)
@@ -140,7 +144,7 @@ export function ChatPanel({
                           : 'border-sky-700 text-sky-300'
                     }`}
                   >
-                    {tool.name}
+                    {tool.name === 'compare_isolation_lab' ? s.isolationTitle : tool.name}
                     {typeof tool.input.query === 'string' ? `: ${tool.input.query}` : ''}
                   </li>
                 ))}
@@ -215,6 +219,31 @@ export function ChatPanel({
           {s.send}
         </button>
       </form>
+      {membershipLab && <>
+        <button type="button" aria-haspopup="dialog" disabled={busy || retained.pending !== null}
+          className="border-t border-line p-3 text-left text-sm disabled:opacity-40"
+          onClick={() => {
+            isolationDialog.current?.showModal()
+            isolationDialog.current?.querySelector<HTMLInputElement>('input')?.focus()
+          }}>{s.isolationTitle}</button>
+        <dialog ref={isolationDialog} aria-labelledby={isolationTitleId} aria-describedby={isolationHelpId}
+          className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg border border-line bg-card text-fg p-0 backdrop:bg-fg/30">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line p-3">
+            <h2 id={isolationTitleId} className="min-w-0 break-words text-base font-semibold">{s.isolationTitle}</h2>
+            <button type="button" className="rounded border border-line p-2 text-sm"
+              onClick={() => isolationDialog.current?.close()}>{s.isolationClose}</button>
+          </div>
+          <IsolationLab s={s} language={language} disabled={busy || retained.pending !== null}
+            storageKey={draftStorageKey ? `${draftStorageKey}:isolation` : undefined}
+            descriptionId={isolationHelpId}
+            onRun={text => {
+              if (busy || retainedRef.current.pending) return
+              isolationDialog.current?.close()
+              voice.cancelSpeech()
+              sendQuestion(text, 'text')
+            }} />
+        </dialog>
+      </>}
       {membershipLab && <details className="border-t border-line">
         <summary className="cursor-pointer p-3 text-sm">{s.membershipTitle}</summary>
         <MembershipLab s={s} language={language} disabled={busy || retained.pending !== null}

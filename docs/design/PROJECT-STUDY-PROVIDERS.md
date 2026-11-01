@@ -136,3 +136,36 @@ results, documentation results and the complete explanation are saved in ordinar
 append-only session history. Documentation retrieval can fail without replacing
 actual computation with a model guess. No mastery evidence, mode switch, hosted
 call or chat generation is added. Broader SQL and causal questions retain the tutor.
+
+
+## Explicit transaction isolation experiments
+
+An optional form in explicit neutral discussion runs a fixed two-transaction
+count-and-update schedule in the local disposable `lab` database. The learner sets
+2–20 initially active rows, a minimum active count, and which transaction tries to
+commit first. Each transaction counts before either writes, then updates its own,
+different row only if its observed count exceeds the minimum.
+
+Five independently reset trials compare Read Committed, Repeatable Read,
+Serializable, a full Serializable retry, and an UPDATE-only retry. Actual read
+counts, commit/error stages, SQLSTATEs, retry decisions and final counts drive the
+English/German explanation. The minimum business rule is kept separate from
+serializability; matching read values are not described as a shared snapshot.
+No model paraphrase, quiz, assessment or hosted call is needed for this path.
+General questions and other learning modes keep the configured tutor.
+
+The fixed runner validates the local `lab` target before allocating a unique
+fixture schema. Reads and updates run as `authenticated`; inputs cannot supply
+SQL, roles or object names. Statement, lock and execution limits are bounded.
+Connections are rolled back/closed on failure and cancellation. Cleanup removes
+only the fixture table and schema with restrictive dependency handling. Existing
+lab tables and role definitions remain untouched. Results are accepted only after
+cleanup is confirmed. The ordinary rollback-only named-session runner is unchanged.
+
+The form opens in a named, keyboard-dismissable dialog and closes on submission,
+leaving the answer viewport available. It uses the existing learner/session draft
+namespace and pending-question recovery. Edited parameters and unsent research notes survive reload. Inputs,
+measured evidence, documentation results and the complete explanation remain in
+append-only history. Version-matched official references are attached when found;
+a source outage does not replace measured outcomes with a generated guess.
+This experiment does not qualify broader free-form local causal generation.

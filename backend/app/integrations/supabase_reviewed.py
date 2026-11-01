@@ -115,8 +115,20 @@ class ReviewedOrchestrator:
         from backend.tutor.orchestrator import Final, Token, ToolCall, ToolResultSummary
 
         from app.integrations.supabase_incidents import incident_turn, select_plan
+        from app.integrations.supabase_isolation import isolation_answer
         from app.integrations.supabase_membership import membership_answer
         from app.integrations.supabase_reference import reference_answer
+
+        isolation = await isolation_answer(user_text, state, kwargs.get("ctx"))
+        if isolation is not None:
+            for name, args, is_error in isolation.calls:
+                yield ToolCall(name, args)
+                yield ToolResultSummary(name, is_error, "Local transaction experiment evidence.")
+            yield Token(isolation.turn.text)
+            yield Final(
+                turn=isolation.turn, new_messages=isolation.messages, model="local:isolation-lab.v1"
+            )
+            return
 
         membership = await membership_answer(user_text, state, kwargs.get("ctx"))
         if membership is not None:

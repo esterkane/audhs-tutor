@@ -71,7 +71,7 @@ export function TurnView({
                   href={c.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-sky-400 hover:underline"
+                  className="text-sky-400 underline"
                 >
                   {c.title}
                 </a>{' '}
