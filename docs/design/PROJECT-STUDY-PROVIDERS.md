@@ -67,3 +67,11 @@ satisfy this stage; a plain learner message cannot impersonate a tool result. Fu
 stays intact. Empty search results do not establish facts: the normal evidence/uncertainty contract
 still applies. This adds no hosted call when the model would already search before explaining, and
 can avoid later unsupported-citation repair; it is not a universal latency guarantee.
+
+
+A project decision without a tool request must contain non-whitespace explanation text.
+Metadata alone is rejected inside structured-output validation for both local and hosted
+models. The ordinary gateway records that invalid attempt and applies its existing bounded
+repair policy; it retains the original messages and requested output allowance. An empty
+text field remains valid while requesting a tool. This protects against blank completed
+answers, not against every omitted distinction or unsupported factual claim.

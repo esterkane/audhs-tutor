@@ -16,7 +16,7 @@ from operator import or_
 from types import SimpleNamespace
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
+from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
@@ -41,6 +41,16 @@ class LocalDecision(BaseModel):
     text: str = Field(default="", max_length=64000)
     tools: list[ToolRequest] = Field(default_factory=list, max_length=6)
     state: Any = None
+
+    @model_validator(mode="after")
+    def require_final_explanation(self) -> "LocalDecision":
+        if not self.tools and not self.text.strip():
+            raise ValueError(
+                "A final reply must include the complete learner-facing explanation in text. "
+                "Metadata alone is not an answer. Answer all requested distinctions; "
+                "use tools when more evidence is needed."
+            )
+        return self
 
 
 @lru_cache
