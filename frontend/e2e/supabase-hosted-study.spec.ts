@@ -59,7 +59,7 @@ test('project provider setup failure, hosted answer and full transcript resume',
         .map((k) => localStorage.getItem(k))[0],
   )
   expect(id).toBeTruthy()
-  const saved = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
+  let saved = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
   expect(saved.transcript).toHaveLength(2)
   const turn = saved.transcript[1].tutor_turn
   expect(
@@ -72,6 +72,25 @@ test('project provider setup failure, hosted answer and full transcript resume',
   const answer = saved.transcript[1].content
   expect(JSON.stringify(answer)).toContain('11')
   expect(JSON.stringify(answer)).toContain('10')
+  await input.fill(
+    'In pgvector, compare <->, <=> and <#>: identify each measure, explain ascending ordering and the negative sign, and whether inner-product and cosine rankings are guaranteed to agree without normalized embeddings. Answer completely with indexed sources. No SQL or quiz.',
+  )
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'New session', exact: true })).toBeEnabled({ timeout: 100000 })
+  const continued = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
+  expect(continued.transcript).toHaveLength(4)
+  expect(continued.transcript.slice(0, 2)).toEqual(saved.transcript)
+  const vectorTurn = continued.transcript[3].tutor_turn
+  expect(vectorTurn.text).toContain('<->')
+  expect(vectorTurn.text).toContain('<=>')
+  expect(vectorTurn.text).toContain('<#>')
+  expect(vectorTurn.text).toMatch(/negative|negated|negation/i)
+  expect(vectorTurn.citations.some((c: { url: string }) => c.url.startsWith(
+    'https://supabase.com/docs/guides/ai/vector-columns.md',
+  ))).toBe(true)
+  expect(vectorTurn.guard_flags ?? []).not.toContain('CITATION_NOT_FROM_TOOL')
+  expect(vectorTurn.guard_flags ?? []).not.toContain('UNCITED_CLAIM')
+  saved = continued
   await page.reload()
   await expect(page.getByText('Tutor provider: openai', { exact: true })).toBeVisible()
   const resumed = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()

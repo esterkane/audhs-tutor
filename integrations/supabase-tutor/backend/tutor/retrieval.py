@@ -256,6 +256,30 @@ class PgHybridRetriever:
                 anchors = [Chunk(**row) for row in await cur.fetchall()]
                 anchor_ids = {hit.chunk_id for hit in anchors}
                 chunks = [hit for hit in chunks if hit.chunk_id not in anchor_ids]
+            operators = [op for op in ("<->", "<=>", "<#>") if op in query]
+            if (operators and len(anchors) < k
+                    and re.search(r"\b(?:pgvector|vectors?|embeddings?|vektoren?)\b", query, re.IGNORECASE)):
+                # Punctuation is poorly represented by lexical search. Reserve actual indexed
+                # operator references without expanding product scope or synthesizing facts.
+                filters = expand_products(products)
+                patterns = [f"%{operator}%" for operator in operators]
+                await cur.execute(
+                    "select c.id as chunk_id, s.url, c.anchor, c.heading_path, c.content, "
+                    "s.tier, s.fetched_at, 1.0::float8 as score from tutor.docs_chunk c "
+                    "join tutor.docs_source s on s.id=c.source_id where s.status='active' "
+                    "and s.url=any(%s::text[]) and c.content like any(%s::text[]) "
+                    "and (%s::text[] is null or s.product=any(%s::text[])) "
+                    "order by (select count(*) from unnest(%s::text[]) as terms(term) "
+                    "where c.content like term) desc, s.url, c.ord limit %s",
+                    (["https://supabase.com/docs/guides/ai/vector-columns.md",
+                      "https://supabase.com/docs/guides/ai/vector-indexes/hnsw-indexes.md",
+                      "https://supabase.com/docs/guides/database/extensions/pgvector.md"],
+                     patterns, filters, filters, patterns, min(2, k - len(anchors))),
+                )
+                existing = {hit.chunk_id for hit in anchors}
+                anchors.extend(Chunk(**row) for row in await cur.fetchall() if row["chunk_id"] not in existing)
+                anchor_ids = {hit.chunk_id for hit in anchors}
+                chunks = [hit for hit in chunks if hit.chunk_id not in anchor_ids]
         remaining = max(0, k - len(anchors))
         if self.reranker and remaining:
             chunks = await self.reranker.rerank(query, chunks, remaining)

@@ -125,3 +125,54 @@ async def test_reranker_sees_candidate_pool_and_cuts_to_k(
     hits = await PgHybridRetriever(pool, OllamaEmbedder(), rr).search("42501", k=1, products=products)
     assert rr.seen == 3  # pool of 30 requested, only 3 fixture rows exist (needs iterative scan)
     assert len(hits) == 1
+
+
+async def test_vector_operator_reference_is_reserved_and_not_duplicated_before_reranking():
+    from contextlib import asynccontextmanager
+    from datetime import UTC, datetime
+
+    reference = {"chunk_id": uuid4(), "url": "https://supabase.com/docs/guides/ai/vector-columns.md",
+                 "anchor": "distance", "heading_path": "Vectors > Distance",
+                 "content": "<-> L2; <=> cosine; <#> negative inner product", "tier": 1,
+                 "fetched_at": datetime(2026, 11, 1, tzinfo=UTC), "score": 0.1}
+    ordinary = dict(reference, chunk_id=uuid4(), url="https://example.test/other", content="Related vector context")
+    class Cursor:
+        def __init__(self): self.calls=[]
+        async def execute(self, sql, params): self.calls.append((sql,params))
+        async def fetchall(self): return [reference,ordinary] if len(self.calls)==1 else [reference]
+    cursor=Cursor()
+    class Connection:
+        def cursor(self, **kwargs): return cursor
+    class Pool:
+        @asynccontextmanager
+        async def connection(self): yield Connection()
+    class Embedder:
+        async def embed_query(self, text): return [0.1]*768
+    reranker=ReverseReranker()
+    hits=await PgHybridRetriever(Pool(),Embedder(),reranker).search(
+        "pgvector <-> <=> <#>", k=2, products=["ai"])
+    assert [h.chunk_id for h in hits]==[reference["chunk_id"],ordinary["chunk_id"]]
+    assert hits[0].content==reference["content"] and hits[0].fetched_at==reference["fetched_at"]
+    assert hits[0].cite_url.endswith("#distance")
+    assert reranker.seen==1
+    assert cursor.calls[1][1][2:4]==(["ai","ai-tools"],["ai","ai-tools"])
+    assert cursor.calls[1][1][-1]==2
+
+
+@pytest.mark.parametrize("query", ["ordinary SQL joins", "compare <#> and <=> without a domain"])
+async def test_operator_reference_query_requires_vector_context_and_operator(query):
+    from contextlib import asynccontextmanager
+    class Cursor:
+        calls=0
+        async def execute(self, sql, params): self.calls+=1
+        async def fetchall(self): return []
+    cursor=Cursor()
+    class Connection:
+        def cursor(self, **kwargs): return cursor
+    class Pool:
+        @asynccontextmanager
+        async def connection(self): yield Connection()
+    class Embedder:
+        async def embed_query(self, text): return [0.1]*768
+    assert await PgHybridRetriever(Pool(),Embedder()).search(query)==[]
+    assert cursor.calls==1

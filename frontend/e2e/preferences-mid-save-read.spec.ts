@@ -46,6 +46,11 @@ for (const width of [390, 1280]) {
       await large.scrollIntoViewIfNeeded()
       await page.screenshot({ path: info.outputPath('saved-after-return.png') })
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1)).toBe(true)
-    } finally { releaseSave(); releaseRead() }
+    } finally {
+      releaseSave()
+      releaseRead()
+      // Keep active fetches inside this test's lifetime; do not hide fetch failures.
+      await page.unrouteAll({ behavior: 'wait' })
+    }
   })
 }
