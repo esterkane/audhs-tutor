@@ -112,9 +112,19 @@ class ReviewedOrchestrator:
 
     async def run_turn(self, **kwargs: Any) -> AsyncIterator[Any]:
         state, user_text = kwargs["state"], kwargs["user_text"]
-        from backend.tutor.orchestrator import Final, Token
+        from backend.tutor.orchestrator import Final, Token, ToolCall, ToolResultSummary
 
         from app.integrations.supabase_incidents import incident_turn, select_plan
+        from app.integrations.supabase_reference import reference_answer
+
+        reference = await reference_answer(user_text, state, kwargs.get("ctx"), kwargs.get("history"))
+        if reference is not None:
+            yield ToolCall("search_docs", reference.messages[1]["content"][0]["input"])
+            yield ToolResultSummary("search_docs", False, "Versioned PostgreSQL SQLSTATE reference.")
+            yield Token(reference.turn.text)
+            yield Final(turn=reference.turn, new_messages=reference.messages,
+                        model="reference:postgres-sqlstate.v1")
+            return
 
         plan = select_plan(user_text, state)
         if plan is not None:

@@ -95,3 +95,23 @@ Unknown markers and unlabelled community evidence retain their existing guards.
 This avoids unnecessary correction requests for a cited multi-sentence paragraph;
 it does not establish that the cited source entails the claim or that the answer
 is factually correct. Full source checks and factual evaluations remain necessary.
+
+
+## Source-extracted SQLSTATE identities
+
+In an explicit neutral discussion, a direct request for one to four SQLSTATE
+condition names can be answered by extracting the exact rows returned by the
+existing local documentation tool. The answer identifies the indexed PostgreSQL
+major version, cites the retrieved manual and retains source/tool messages in
+append-only history. No code-to-name table is built into the application and no
+chat generation, inferred cause, repair or assessment is added.
+
+This path requires all requested rows to agree in one versioned official engine
+appendix. Missing, conflicting, unversioned or mixed-version evidence falls through
+to the existing tutor. Questions containing further requests, explicit version
+constraints (including earlier learner messages and the session objective), causal
+reasoning, active labs, incidents, teaching or Socratic modes
+also retain the ordinary tutor path. It does not silently change the session mode.
+The public session API supports neutral mode; the existing UI start chooser still
+starts lesson mode, so this is not a general default-session speedup. Broader local
+causal accuracy remains unqualified.
