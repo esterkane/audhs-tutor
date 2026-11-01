@@ -112,6 +112,7 @@ to the existing tutor. Questions containing further requests, explicit version
 constraints (including earlier learner messages and the session objective), causal
 reasoning, active labs, incidents, teaching or Socratic modes
 also retain the ordinary tutor path. It does not silently change the session mode.
-The public session API supports neutral mode; the existing UI start chooser still
-starts lesson mode, so this is not a general default-session speedup. Broader local
-causal accuracy remains unqualified.
+The session chooser offers an explicit "Discuss or look up facts" option for neutral
+mode in English and German. The existing explicit and Socratic lesson choices and
+resumed sessions keep their modes. This is not a general generation speedup;
+broader local causal accuracy remains unqualified.

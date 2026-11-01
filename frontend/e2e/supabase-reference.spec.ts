@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { API_URL } from '../playwright.config'
+import axe from 'axe-core'
 
 test.skip(process.env.AUDHS_SUPABASE_CONFIGURED_AUDIT !== '1',
   'Requires isolated project data and the indexed PostgreSQL manual')
@@ -8,18 +9,23 @@ for (const language of ['en', 'de']) {
   test(`source-extracted SQLSTATE lookup and full history resume (${language})`, async ({ page, request }) => {
     const status = await (await request.get(`${API_URL}/api/learning-focus/supabase`)).json()
     expect(status.study_provider).toBe('local')
-    // Explicitly select the existing neutral discussion mode through the public session API.
-    const created = await request.post(`${API_URL}/api/supabase-project/session`, {
-      data: { mode: 'neutral', delivery: 'explicit', language, persona_on: false },
-    })
-    expect(created.ok()).toBe(true)
-    const session = await created.json()
-    await page.goto('/')
-    await page.evaluate(({ user, id }) => localStorage.setItem(`kaenguru.session.${user}`, id),
-      { user: status.user_id, id: session.id })
+    await request.put(`${API_URL}/api/preferences`, { data: { key: 'tutor.response_language', value: language } })
+    await request.put(`${API_URL}/api/preferences`, { data: { key: 'tutor.persona', value: 'neutral' } })
     await page.setViewportSize({ width: language === 'de' ? 390 : 1280, height: 900 })
     await page.goto('/projects/supabase')
+    const discussion = page.getByRole('button', { name: language === 'de' ? /Besprechen oder Fakten/ : /Discuss or look up facts/ })
+    await expect(discussion).toBeVisible()
+    await page.addScriptTag({ content: axe.source })
+    expect(await page.evaluate(async () =>
+      (await (window as unknown as { axe: typeof axe }).axe.run('main')).violations)).toEqual([])
+    await discussion.focus()
+    await page.keyboard.press('Enter')
     const input = page.getByRole('textbox', { name: /message|question|nachricht|frage/i }).last()
+    await expect(input).toBeVisible()
+    const id = await page.evaluate(() => Object.keys(localStorage)
+      .filter(key => key.startsWith('kaenguru.session.')).map(key => localStorage.getItem(key))[0])
+    expect(id).toBeTruthy()
+    const session = { id }
     await input.fill(language === 'de'
       ? 'Was bedeuten SQLSTATE 23514 und 23502?'
       : 'What do SQLSTATE 23514 and 23502 mean?')

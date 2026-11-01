@@ -21,7 +21,7 @@ export interface TutorAppProps {
   host?: { userId: string }
   /** Base path of the mounted FastAPI router, e.g. "/tutor" standalone or "/api/kaenguru" in AuDHS. */
   apiBase: string
-  /** Ask "explicit or Socratic?" at the start of each session (default: on in host mode, explicit first). */
+  /** Offer lesson delivery or neutral discussion before a new session (explicit lesson first). */
   deliveryChoice?: boolean
   language?: 'en' | 'de'
   personaOn?: boolean
@@ -48,19 +48,20 @@ function writeLastSession(userId: string, sessionId: string) {
   }
 }
 
-/** "How should the kangaroo explain today?" Explicit first: it is the default where a host asks (AuDHS rule). */
-function DeliveryChooser({
+/** Explicit lessons stay first; neutral discussion is a separate, learner-selected mode. */
+export function DeliveryChooser({
   s,
   onChoose,
   onCancel,
 }: {
   s: ReturnType<typeof t>
-  onChoose: (d: Delivery) => void
+  onChoose: (d: Delivery, mode: Session['mode']) => void
   onCancel?: () => void
 }) {
-  const options: [Delivery, string, string][] = [
-    ['explicit', s.deliveryExplicit, s.deliveryExplicitHint],
-    ['socratic', s.deliverySocratic, s.deliverySocraticHint],
+  const options: [Delivery, Session['mode'], string, string][] = [
+    ['explicit', 'lesson', s.deliveryExplicit, s.deliveryExplicitHint],
+    ['socratic', 'lesson', s.deliverySocratic, s.deliverySocraticHint],
+    ['explicit', 'neutral', s.deliveryDiscussion, s.deliveryDiscussionHint],
   ]
   return (
     <section
@@ -68,11 +69,11 @@ function DeliveryChooser({
       className="col-span-full mx-auto mt-16 w-full max-w-md space-y-3 px-4"
     >
       <h2 className="text-sm font-semibold">{s.deliveryTitle}</h2>
-      {options.map(([value, label, hint]) => (
+      {options.map(([value, mode, label, hint]) => (
         <button
-          key={value}
+          key={`${value}:${mode}`}
           type="button"
-          onClick={() => onChoose(value)}
+          onClick={() => onChoose(value, mode)}
           className="block w-full rounded border border-zinc-700 p-3 text-left hover:border-sky-600"
         >
           <span className="block text-sm">{label}</span>
@@ -139,12 +140,12 @@ export function TutorApp({
   const s = t(session?.language ?? language)
 
   const startSession = useCallback(
-    async (delivery: Delivery = 'socratic') => {
+    async (delivery: Delivery = 'socratic', mode: Session['mode'] = 'lesson') => {
       if (!userId || startingRef.current) return
       startingRef.current = true
       setStarting(true)
       try {
-        const created = await api.createSession({ delivery, language, persona_on: personaOn })
+        const created = await api.createSession({ delivery, mode, language, persona_on: personaOn })
         writeLastSession(userId, created.id)
         setSession(created)
         setIncident(null)
