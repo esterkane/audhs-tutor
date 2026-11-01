@@ -124,17 +124,27 @@ class ReviewedOrchestrator:
                 yield ToolCall(name, args)
                 yield ToolResultSummary(name, is_error, "Local literal-value comparison evidence.")
             yield Token(membership.turn.text)
-            yield Final(turn=membership.turn, new_messages=membership.messages,
-                        model="local:membership-lab.v1")
+            yield Final(
+                turn=membership.turn,
+                new_messages=membership.messages,
+                model="local:membership-lab.v1",
+            )
             return
 
-        reference = await reference_answer(user_text, state, kwargs.get("ctx"), kwargs.get("history"))
+        reference = await reference_answer(
+            user_text, state, kwargs.get("ctx"), kwargs.get("history")
+        )
         if reference is not None:
             yield ToolCall("search_docs", reference.messages[1]["content"][0]["input"])
-            yield ToolResultSummary("search_docs", False, "Versioned PostgreSQL SQLSTATE reference.")
+            yield ToolResultSummary(
+                "search_docs", False, "Versioned PostgreSQL SQLSTATE reference."
+            )
             yield Token(reference.turn.text)
-            yield Final(turn=reference.turn, new_messages=reference.messages,
-                        model="reference:postgres-sqlstate.v1")
+            yield Final(
+                turn=reference.turn,
+                new_messages=reference.messages,
+                model="reference:postgres-sqlstate.v1",
+            )
             return
 
         plan = select_plan(user_text, state)
