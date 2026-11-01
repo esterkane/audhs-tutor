@@ -1,6 +1,7 @@
 """Notes and uploads are inputs to editable, inactive knowledge drafts."""
 
 import hashlib
+import json
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import unquote
@@ -17,6 +18,7 @@ from app.db.models import CurriculumDraft
 from app.kernel import curriculum, knowledge_authoring
 from app.kernel.learning_scope import reference_before, require_current_material
 from app.knowledge.ingest.loaders import load_file
+from app.knowledge.ingest.pdf_ocr import PdfOcrError, PdfOcrOptions
 from app.knowledge.ingest.service import ingest_source
 from app.schemas.curriculum import DraftOut
 from app.schemas.knowledge_authoring import (
@@ -173,19 +175,61 @@ async def upload(
     if not path.exists():
         path.write_bytes(content)
     try:
-        doc = await run_in_threadpool(load_file, path, uri=str(path))
+        ocr = (
+            PdfOcrOptions(
+                languages=settings.pdf_ocr_languages,
+                max_pages=settings.pdf_ocr_max_pages,
+                timeout_s=settings.pdf_ocr_timeout_s,
+            )
+            if settings.pdf_ocr_enabled
+            else None
+        )
+        doc = await run_in_threadpool(
+            load_file, path, uri=str(path), pdf_ocr=ocr, pdf_ocr_required=True
+        )
+    except PdfOcrError as exc:
+        raise AppError(exc.code, str(exc), 422) from None
     except Exception:
         raise AppError(
             "unreadable_upload", "Could not extract this file. Try a text export.", 422
         ) from None
     if not doc.text.strip():
-        raise AppError("empty_upload", "No readable text found. Scanned PDFs need OCR first.", 422)
+        raise AppError(
+            "empty_upload", "No readable text found. Try clearer pages or a text export.", 422
+        )
     if len(doc.text) > 120000:
         raise AppError(
             "upload_text_too_large",
             "Choose a smaller document or export a section (120,000 characters maximum).",
             422,
         )
+    if doc.meta.get("pdf_extraction"):
+        # The original SHA stays stable; a changed transcription gets a new source
+        # version instead of returning new text linked to old indexed chunks.
+        extraction_hash = hashlib.sha256(
+            json.dumps(
+                {
+                    "sha256": digest,
+                    "text": doc.text,
+                    "ocr_version": 1,
+                    "languages": settings.pdf_ocr_languages,
+                },
+                sort_keys=True,
+                ensure_ascii=False,
+            ).encode()
+        ).hexdigest()
+        doc.content_hash = extraction_hash
+        audit = path.with_suffix(path.suffix + ".extraction-" + extraction_hash + ".json")
+        audit.write_text(
+            json.dumps(
+                {
+                    "sha256": digest,
+                    "extraction_sha256": extraction_hash,
+                    **doc.meta["pdf_extraction"],
+                }
+            )
+        )
+        audit.chmod(0o600)
     doc.title = name
     result = await ingest_source(db, doc, trust_tier=1, repo=None, dedupe=False)
     return KnowledgeUploadOut(
@@ -194,6 +238,8 @@ async def upload(
         text=doc.text,
         sha256=digest,
         characters=len(doc.text),
+        ocr_pages=doc.meta.get("pdf_extraction", {}).get("ocr_pages", []),
+        ocr_empty_pages=doc.meta.get("pdf_extraction", {}).get("empty_ocr_pages", []),
     )
 
 

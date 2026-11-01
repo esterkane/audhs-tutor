@@ -352,6 +352,9 @@ class KnowledgeUploadOut(BaseModel):
     sha256: str
     characters: int
 
+    ocr_pages: list[int] = Field(default_factory=list)
+    ocr_empty_pages: list[int] = Field(default_factory=list)
+
 
 class KnowledgeSuggestIn(BaseModel):
     expected_version: int = Field(ge=1)

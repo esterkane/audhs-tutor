@@ -117,3 +117,92 @@ def test_reviewed_answer_passes_project_guard_without_retry(language):
     from backend.tutor.guard import GuardContext, check
 
     assert check(turn, GuardContext()) == []
+
+
+@pytest.mark.parametrize(
+    "restriction",
+    [
+        "No SQL.",
+        "Without queries.",
+        "Do not propose SQL.",
+        "Don't include commands.",
+        "Bitte keine SQL-Abfragen.",
+        "Ohne SQL.",
+        "Keine Abfragen.",
+        "Kein Code.",
+    ],
+)
+async def test_reviewed_reuse_honors_no_sql_without_losing_answer_or_history(restriction):
+    delegate = SimpleNamespace(run_turn=AsyncMock())
+    question = QUESTION + " " + restriction
+    before = [{"role": "user", "content": "Keep this earlier research verbatim."}]
+    events = [
+        event
+        async for event in ReviewedOrchestrator(delegate).run_turn(
+            history=before, user_text=question, state=state()
+        )
+    ]
+    delegate.run_turn.assert_not_called()
+    turn = events[-1].turn
+    assert "Table privileges and row policies are separate checks." in turn.text
+    assert "normally returns an empty result" in turn.text
+    assert "BYPASSRLS" in turn.text
+    assert "```sql" not in turn.text and "SELECT current_user" not in turn.text
+    assert "These read-only queries" not in turn.text
+    assert not turn.ledger_delta and turn.lab_action is None
+    assert before == [{"role": "user", "content": "Keep this earlier research verbatim."}]
+    assert events[-1].new_messages[0]["content"] == question
+    from backend.tutor.guard import GuardContext, check
+
+    assert check(turn, GuardContext()) == []
+
+
+def test_no_sql_preserves_german_explanation_and_does_not_offer_absent_queries():
+    turn = reviewed_turn(state(language="de"), include_diagnostics=False)
+    assert "zwei getrennte Prüfungen" in turn.text
+    assert "normalerweise ein leeres Ergebnis" in turn.text
+    assert "Die folgenden Abfragen" not in turn.text and "```sql" not in turn.text
+
+
+@pytest.mark.parametrize(
+    "language,restriction", [("en", "Do not propose SQL."), ("de", "Bitte keine SQL-Abfragen.")]
+)
+async def test_reviewed_incident_omits_queries_only_when_requested(language, restriction):
+    delegate = SimpleNamespace(run_turn=AsyncMock())
+    user_text = "Our SELECT fails: permission denied for table orders. " + restriction
+    events = [
+        event
+        async for event in ReviewedOrchestrator(delegate).run_turn(
+            history=[], user_text=user_text, state=state(mode="incident", language=language)
+        )
+    ]
+    delegate.run_turn.assert_not_called()
+    turn = events[-1].turn
+    assert turn.mode == "incident" and turn.language == language
+    assert "```sql" not in turn.text and "SELECT current_user" not in turn.text
+    assert (
+        "table permission error" in turn.text
+        if language == "en"
+        else "Tabellenberechtigungsfehler" in turn.text
+    )
+    assert not turn.ledger_delta and turn.lab_action is None
+    assert events[-1].new_messages[0]["content"] == user_text
+
+
+@pytest.mark.parametrize("restriction", ["Do not show SQL.", "Without commands.", "Ohne SQL."])
+async def test_output_restriction_is_not_a_negated_deadlock_report(restriction):
+    from app.integrations.supabase_incidents import select_plan
+
+    report = "ERROR: deadlock detected. " + restriction
+    assert select_plan(report, state(mode="incident")).key == "deadlock"
+    assert select_plan("Not a deadlock detected. " + restriction, state(mode="incident")) is None
+    delegate = SimpleNamespace(run_turn=AsyncMock())
+    events = [
+        event
+        async for event in ReviewedOrchestrator(delegate).run_turn(
+            history=[], user_text=report, state=state(mode="incident")
+        )
+    ]
+    delegate.run_turn.assert_not_called()
+    assert "```sql" not in events[-1].turn.text
+    assert "deadlock" in events[-1].turn.text.lower()

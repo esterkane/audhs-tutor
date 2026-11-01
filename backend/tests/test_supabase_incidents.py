@@ -69,7 +69,7 @@ async def test_incident_answer_has_no_model_call_and_preserves_history():
     delegate.run_turn.assert_not_called()
     assert history[0]["content"] == "Prior research and learner correction"
     assert events[-1].new_messages[0]["content"] == REPORTS[0]
-    assert events[-1].model == "reviewed:incident-table_privilege.v1"
+    assert events[-1].model == "reviewed:incident-table_privilege.v2"
 
 
 def test_does_not_ask_for_the_role_already_reported():
@@ -203,7 +203,7 @@ async def test_concurrency_answer_skips_generation_and_keeps_full_history():
     ]
     delegate.run_turn.assert_not_called()
     assert history == [{"role": "user", "content": "Earlier learner findings"}]
-    assert events[-1].model == "reviewed:incident-deadlock.v1"
+    assert events[-1].model == "reviewed:incident-deadlock.v2"
     assert events[-1].new_messages[0]["content"] == "ERROR: deadlock detected"
 
 

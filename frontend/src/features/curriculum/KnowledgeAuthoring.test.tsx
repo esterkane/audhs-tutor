@@ -343,3 +343,32 @@ it('keeps an empty question through reload, blocks submission and saves its repl
   await waitFor(() => expect(writes).toHaveLength(1))
   expect(writes[0]).toMatchObject({ expected_version: 1, research: { questions: [{ prompt: 'New question?', findings: 'Keep my findings' }] } })
 })
+
+
+it('reports OCR and unread pages while preserving existing notes and source text', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/api/learner/me') return jsonResponse({ id: 'owner' })
+    return jsonResponse({ document_id: 'scan1', filename: 'scan.pdf', text: 'Recognized source text.', sha256: 'hash', characters: 23, ocr_pages: [2, 3], ocr_empty_pages: [3] })
+  }))
+  mount()
+  fireEvent.change(await screen.findByLabelText('Your notes and selected source content'), { target: { value: 'Keep my research.' } })
+  fireEvent.change(screen.getByLabelText('Upload reference content (optional)'), { target: { files: [new File(['%PDF'], 'scan.pdf', { type: 'application/pdf' })] } })
+  await screen.findByText(/Local OCR used on pages 2, 3/)
+  expect(screen.getByRole('status')).toHaveTextContent('No text was recognized on pages 3')
+  expect(screen.getByLabelText('Your notes and selected source content')).toHaveValue('Keep my research.\n\nRecognized source text.')
+  expect(onOpen).not.toHaveBeenCalled()
+})
+
+it('keeps writing editable after OCR fails and allows another upload', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url === '/api/learner/me') return jsonResponse({ id: 'owner' })
+    return new Response(JSON.stringify({ error: { code: 'pdf_ocr_limit', message: 'PDF OCR timed out. Upload fewer pages.' } }), { status: 422 })
+  }))
+  mount()
+  fireEvent.change(await screen.findByLabelText('Your notes and selected source content'), { target: { value: 'My writing stays.' } })
+  fireEvent.change(screen.getByLabelText('Upload reference content (optional)'), { target: { files: [new File(['%PDF'], 'scan.pdf', { type: 'application/pdf' })] } })
+  await screen.findByRole('alert')
+  expect(screen.getByLabelText('Your notes and selected source content')).toHaveValue('My writing stays.')
+  expect(screen.getByLabelText('Your notes and selected source content')).toBeEnabled()
+  expect(screen.getByLabelText('Upload reference content (optional)')).toBeEnabled()
+})

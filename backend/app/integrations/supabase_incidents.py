@@ -4,6 +4,7 @@ import re
 from dataclasses import dataclass
 from typing import Any
 
+from app.integrations.supabase_output_constraints import without_sql_output_restrictions
 from app.integrations.supabase_reviewed import DIAGNOSTICS
 
 IDENTITY = "SELECT current_database(), current_user, current_schema(), current_schemas(true);"
@@ -87,7 +88,7 @@ PLANS = (
         "The reported column reference could not be resolved in that query context. Check exact "
         "column spelling, quoted case, table aliases and the relation being queried. This does not "
         "prove the stored schema is wrong; the reference or alias scope may be wrong. The column "
-        "inventory below only shows objects visible to the current user.",
+        "inventories only show objects visible to the current user.",
         "Die gemeldete Spaltenreferenz konnte im Abfragekontext nicht aufgelöst werden. Prüfe "
         "Schreibweise, zitierte Groß-/Kleinschreibung, Tabellenaliase und die abgefragte Relation. "
         "Das beweist kein falsches Datenbankschema; auch Referenz oder Alias-Gültigkeit können falsch "
@@ -242,7 +243,12 @@ def select_plan(text: str, state: Any) -> Diagnostic | None:
         # Don't turn a hypothetical/denied error or an unhandled code into a complete diagnosis.
         if re.search(
             r"\b(?:not|never|without|hypothetical|if|kein|nicht|ohne|falls)\b",
-            re.sub(r"could not serialize access due to", "serialization report", text, flags=re.I),
+            re.sub(
+                r"could not serialize access due to",
+                "serialization report",
+                without_sql_output_restrictions(text),
+                flags=re.I,
+            ),
             re.I,
         ):
             return None
@@ -268,7 +274,9 @@ def select_plan(text: str, state: Any) -> Diagnostic | None:
     return found[0] if found else None
 
 
-def incident_turn(text: str, state: Any, plan: Diagnostic) -> Any:
+def incident_turn(
+    text: str, state: Any, plan: Diagnostic, *, include_diagnostics: bool = True
+) -> Any:
     from app.integrations.supabase_project import project_module
 
     project = project_module()
@@ -298,7 +306,7 @@ def incident_turn(text: str, state: Any, plan: Diagnostic) -> Any:
         "does not substitute for the actual application identity."
     )
     body = explanation
-    if plan.sql:
+    if plan.sql and include_diagnostics:
         body += "\n\n" + note + "\n\n```sql\n" + plan.sql + "\n```"
     body += "\n\n" + question
     body += "\n\n" + plan.source

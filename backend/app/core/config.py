@@ -30,6 +30,12 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=(str(PROJECT_ROOT / ".env"), ".env"), extra="ignore")
 
     knowledge_authoring_root: str = "./data"
+    pdf_ocr_enabled: bool = True
+    pdf_ocr_languages: str = Field(
+        default="eng+deu", pattern=r"^[a-zA-Z0-9_]+(?:\+[a-zA-Z0-9_]+)*$"
+    )
+    pdf_ocr_max_pages: int = Field(default=40, ge=1, le=200)
+    pdf_ocr_timeout_s: float = Field(default=120, ge=1, le=150)
     app_env: str = "dev"
     database_url: str = "sqlite+aiosqlite:///./data/dev.db"
     auto_migrate: bool = True

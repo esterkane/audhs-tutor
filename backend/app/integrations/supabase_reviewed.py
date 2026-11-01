@@ -4,6 +4,8 @@ import re
 from collections.abc import AsyncIterator
 from typing import Any
 
+from app.integrations.supabase_output_constraints import no_sql_requested
+
 SOURCES = (
     "https://www.postgresql.org/docs/17/ddl-rowsecurity.html",
     "https://www.postgresql.org/docs/17/functions-info.html",
@@ -45,7 +47,7 @@ def matches(text: str, state: Any) -> bool:
     )
 
 
-def reviewed_turn(state: Any) -> Any:
+def reviewed_turn(state: Any, *, include_diagnostics: bool = True) -> Any:
     from app.integrations.supabase_project import project_module
 
     module = project_module()
@@ -57,7 +59,9 @@ def reviewed_turn(state: Any) -> Any:
             "RLS-Richtlinie ohne passende Zeilen normalerweise ein leeres Ergebnis. Diese Zeilenfilterung "
             "allein erklärt keinen Fehler wegen fehlender Tabellenberechtigung.\n\n"
             "Prüfe mit der tatsächlichen Anwendungsrolle. Eigentümer und Rollen mit BYPASSRLS können "
-            "die Zeilenrichtlinien umgehen; auch Funktionen in Richtlinien können eigene Fehler auslösen. "
+            "die Zeilenrichtlinien umgehen; auch Funktionen in Richtlinien können eigene Fehler auslösen."
+        )
+        diagnostic_note = (
             "Die folgenden Abfragen sind Beispiele zur Einsicht in Berechtigungen und Richtlinien. "
             "Sie wurden nicht gegen deine Datenbank ausgeführt und simulieren keine JWT-Identität."
         )
@@ -74,16 +78,21 @@ def reviewed_turn(state: Any) -> Any:
             "an RLS policy admitting no rows normally returns an empty result. That row filtering "
             "alone does not explain a table permission-denied error.\n\n"
             "Check as the actual application role. Owners and roles with BYPASSRLS can bypass row "
-            "policies; functions inside a policy can also raise their own errors. These read-only "
-            "queries inspect privileges and policies. They have not been run against your database "
-            "and do not simulate a JWT identity."
+            "policies; functions inside a policy can also raise their own errors."
+        )
+        diagnostic_note = (
+            "These read-only queries inspect privileges and policies. "
+            "They have not been run against your database and do not simulate a JWT identity."
         )
         question = "Which check would you make first, and why?"
         speech = (
             "Table privileges permit an operation. Row policies restrict visible rows. "
             "Check both as the actual application role."
         )
-    text = explanation + "\n\n```sql\n" + DIAGNOSTICS + "\n```\n\n" + question
+    text = explanation
+    if include_diagnostics:
+        text += " " + diagnostic_note + "\n\n```sql\n" + DIAGNOSTICS + "\n```"
+    text += "\n\n" + question
     text += "\n\n" + "\n".join(SOURCES)
     return module.TutorTurn(
         mode=state.mode,
@@ -109,11 +118,13 @@ class ReviewedOrchestrator:
 
         plan = select_plan(user_text, state)
         if plan is not None:
-            turn = incident_turn(user_text, state, plan)
-            revision = "reviewed:incident-" + plan.key + ".v1"
+            turn = incident_turn(
+                user_text, state, plan, include_diagnostics=not no_sql_requested(user_text)
+            )
+            revision = "reviewed:incident-" + plan.key + ".v2"
         elif matches(user_text, state):
-            turn = reviewed_turn(state)
-            revision = "reviewed:select-privileges-row-visibility.v1"
+            turn = reviewed_turn(state, include_diagnostics=not no_sql_requested(user_text))
+            revision = "reviewed:select-privileges-row-visibility.v2"
         else:
             async for event in self.delegate.run_turn(**kwargs):
                 yield event

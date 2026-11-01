@@ -1,0 +1,98 @@
+"""Bounded, local CPU OCR for image-only PDF pages; no hosted or tutor-model calls."""
+
+import os
+import shutil
+import subprocess
+import tempfile
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+
+class PdfOcrError(RuntimeError):
+    code = "pdf_ocr_failed"
+
+
+class PdfOcrUnavailable(PdfOcrError):
+    code = "pdf_ocr_unavailable"
+
+
+class PdfOcrLimit(PdfOcrError):
+    code = "pdf_ocr_limit"
+
+
+@dataclass(frozen=True)
+class PdfOcrOptions:
+    languages: str = "eng+deu"
+    max_pages: int = 40
+    timeout_s: float = 120
+    max_side: int = 3000
+
+
+def ocr_pages(data: bytes, pages: list[int], options: PdfOcrOptions) -> dict[int, str]:
+    """Recognize selected 1-based pages, with one bounded raster in memory/on disk at a time."""
+    if len(pages) > options.max_pages:
+        raise PdfOcrLimit(
+            f"This PDF needs OCR on {len(pages)} pages. Upload at most {options.max_pages} scanned pages at a time."
+        )
+    render, recognize = shutil.which("pdftoppm"), shutil.which("tesseract")
+    if not render or not recognize:
+        raise PdfOcrUnavailable(
+            "Local PDF OCR needs Poppler and Tesseract with the configured language packs on the backend machine."
+        )
+    deadline = time.monotonic() + options.timeout_s
+
+    def run(args: list[str]) -> str:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise PdfOcrLimit("PDF OCR timed out. Upload fewer pages or a clearer scan.")
+        try:
+            result = subprocess.run(
+                args,
+                check=True,
+                capture_output=True,
+                timeout=min(30.0, remaining),
+                env={**os.environ, "OMP_THREAD_LIMIT": "1"},
+            )
+            return result.stdout.decode("utf-8", errors="replace")
+        except subprocess.TimeoutExpired:
+            raise PdfOcrLimit("PDF OCR timed out. Upload fewer pages or a clearer scan.") from None
+        except (OSError, subprocess.CalledProcessError):
+            raise PdfOcrError(
+                "Local PDF OCR could not read these pages. Try a clearer scan or a text export."
+            ) from None
+
+    available = set(run([recognize, "--list-langs"]).splitlines())
+    if not set(options.languages.split("+")).issubset(available):
+        raise PdfOcrUnavailable(
+            "OCR language packs are missing. Install the packs selected by PDF_OCR_LANGUAGES on the backend."
+        )
+    results: dict[int, str] = {}
+    with tempfile.TemporaryDirectory(prefix="audhs-pdf-ocr-") as folder:
+        root = Path(folder)
+        source, output = root / "source.pdf", root / "page"
+        source.write_bytes(data)
+        for page in pages:
+            run(
+                [
+                    render,
+                    "-f",
+                    str(page),
+                    "-l",
+                    str(page),
+                    "-singlefile",
+                    "-scale-to",
+                    str(options.max_side),
+                    "-png",
+                    str(source),
+                    str(output),
+                ]
+            )
+            image = output.with_suffix(".png")
+            results[page] = run(
+                [recognize, str(image), "stdout", "-l", options.languages, "--psm", "3"]
+            ).strip()
+            image.unlink(missing_ok=True)
+            if sum(len(text) for text in results.values()) > 120000:
+                raise PdfOcrLimit("OCR text exceeds 120,000 characters. Upload a smaller section.")
+    return results

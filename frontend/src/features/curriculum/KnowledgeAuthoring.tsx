@@ -321,7 +321,7 @@ function Editor({
     active.current = controller
     setBusy(
       file
-        ? 'Reading upload…'
+        ? 'Reading upload… Scanned PDF pages may need local OCR.'
         : kind === 'discuss' || kind === 'draft-section'
           ? 'Asking your research tutor…'
           : kind === 'research'
@@ -351,9 +351,12 @@ function Editor({
           throw new Error(
             'Your notes and this upload exceed 120,000 characters together. Your notes are unchanged. Shorten them or start another material, then upload the file again.',
           )
+        const emptyOcrNotice = upload.ocr_empty_pages?.length
+          ? `No text was recognized on pages ${upload.ocr_empty_pages.join(', ')}; check these pages in the original. `
+          : ''
         change({ ...form, title: form.title || upload.filename, upload_id: upload.document_id, notes })
         setStatus(
-          `Uploaded ${upload.filename}. Review the extracted content, then save your material. Original source is retained.`,
+          `Uploaded ${upload.filename}. ${upload.ocr_pages?.length ? `Local OCR used on pages ${upload.ocr_pages.join(', ')}. Check names, numbers and SQL identifiers against the original. ` : ''}${emptyOcrNotice}Review the extracted content, then save your material. Original source is retained.`,
         )
       } else {
         const saved = await save(controller.signal)
@@ -618,8 +621,8 @@ function Editor({
                 />
               </label>
               <p className="text-sm text-muted">
-                TXT, Markdown, PDF or DOCX; up to 10 MiB. One upload per material. Text-only extraction;
-                scanned PDFs require OCR. Uploads are not executed.
+                TXT, Markdown, PDF or DOCX; up to 10 MiB. One upload per material. Scanned PDF pages use local
+                OCR (English and German). Check the extracted text before using it. Uploads are not executed.
               </p>
             </>
           )}

@@ -44,6 +44,7 @@ from app.knowledge.ingest.normalize import strip_invisible
 from app.knowledge.ingest.notebook import notebook_blocks
 from app.knowledge.ingest.office import OFFICE_SUFFIXES, office_blocks
 from app.knowledge.ingest.pdf import pdf_blocks
+from app.knowledge.ingest.pdf_ocr import PdfOcrOptions
 from app.knowledge.ingest.rtf import rtf_blocks
 from app.knowledge.ingest.sourcecode import LANG_BY_SUFFIX, LOCKFILES, code_blocks, language_for
 from app.knowledge.ingest.structured_text import STRUCTURED_SUFFIXES, structured_blocks
@@ -365,6 +366,8 @@ def load_file(
     vision_hint: str = DEFAULT_VISION_HINT,
     vision_cache: Path | None = None,
     use_cache: bool = True,
+    pdf_ocr: PdfOcrOptions | None = None,
+    pdf_ocr_required: bool = False,
 ) -> SourceDoc:
     """Raises `ValueError` for unsupported suffixes, `SkipFile` for recognised-but-empty files,
     `PdfSupportMissing` / `SttSupportMissing` / `VisionSupportMissing` for optional runtimes and
@@ -458,7 +461,17 @@ def load_file(
         title, blocks = epub_blocks(raw_bytes)
         return done(blocks, title=title)
     if suffix == ".pdf" or st == "slides" and suffix == ".pdf":
-        return done(pdf_blocks(raw_bytes, kind="slide" if st == "slides" else "prose"))
+        extraction: dict[str, Any] = {}
+        blocks = pdf_blocks(
+            raw_bytes,
+            kind="slide" if st == "slides" else "prose",
+            ocr=pdf_ocr,
+            extraction=extraction,
+            require_complete=pdf_ocr_required,
+        )
+        if extraction:
+            meta["pdf_extraction"] = extraction
+        return done(blocks)
 
     # -- text formats
     if len(raw_bytes) > MAX_TEXT_BYTES:

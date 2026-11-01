@@ -27,3 +27,14 @@ footers became one, the written prose was unchanged, and no new inference was ne
 This framing correction does not establish factual accuracy or a general generation-speed
 improvement. Source ordering, native metadata constraints and GPU/cache experiments require
 separate factual, coverage, language, resource and history gates before deployment.
+
+
+## Reviewed answers and requested output boundaries
+
+Existing reviewed SELECT/RLS distinctions and incident plans honor explicit English/German
+requests for no SQL, queries, commands or code. They keep the explanation, qualifications,
+citations and follow-up while omitting the fixed diagnostic query block and its introductory
+note. This does not expand the reviewed-answer matcher or establish broader model accuracy.
+Output restrictions are excluded only from the concurrency report's negation check, so
+“deadlock detected; do not show SQL” stays a report and “not a deadlock” stays negated.
+Original request bytes and all prior/appended session messages remain unchanged.

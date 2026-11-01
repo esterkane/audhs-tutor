@@ -58,7 +58,7 @@ test('fresh focused upload to authored lesson, reading, notes, feedback and resu
   const areas = await request.get(API_URL + '/api/areas')
   expect((await areas.json()).areas).toHaveLength(6)
   await page.goto('/map')
-  await expect(page.getByRole('status')).toContainText('No skills are available yet')
+  await expect(page.getByRole('status').filter({ hasText: 'No skills are available yet' })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Reopen learning companion', exact: true })).toHaveCount(0)
   expect(await page.evaluate(() => sessionStorage.getItem('learning-companion:context:v1'))).toContain(
     'Synthetic retired course snapshot',
@@ -72,13 +72,39 @@ test('fresh focused upload to authored lesson, reading, notes, feedback and resu
   const source =
     'Table privileges and row visibility are separate checks. With the required SELECT privilege, a row policy that admits no rows normally gives an empty result. A missing table privilege may give permission denied. Test the application role rather than the table owner.'
   const upload = page.waitForResponse((response) => response.url().endsWith('/knowledge-material/uploads'))
+  const scan = process.env.AUDHS_TEST_PDF_OCR === '1'
+  const uploadBytes = scan
+    ? execFileSync(
+        resolve(root, 'backend/.venv/bin/python'),
+        [
+          '-c',
+          'import sys; from pathlib import Path; from tests.pdf_scan_fixture import scanned_pdf; sys.stdout.buffer.write(scanned_pdf(Path(sys.argv[1]), text=sys.argv[2]))',
+          mkdtempSync(resolve(tmpdir(), 'audhs-ocr-source-')),
+          source,
+        ],
+        { cwd: resolve(root, 'backend'), maxBuffer: 10 * 1024 * 1024 },
+      )
+    : Buffer.from(source)
   await page.getByLabel('Upload reference content (optional)').setInputFiles({
-    name: 'new-notes-'.repeat(30) + '.md',
-    mimeType: 'text/markdown',
-    buffer: Buffer.from(source),
+    name: scan ? 'scanned-source.pdf' : 'new-notes-'.repeat(30) + '.md',
+    mimeType: scan ? 'application/pdf' : 'text/markdown',
+    buffer: uploadBytes,
   })
-  expect((await upload).ok()).toBeTruthy()
-  await expect(page.getByLabel('Your notes and selected source content')).toHaveValue(source)
+  const uploaded = await upload
+  expect(uploaded.ok()).toBeTruthy()
+  if (scan) {
+    expect((await uploaded.json()).ocr_pages).toEqual([1])
+    await expect(page.getByRole('status').filter({ hasText: 'Local OCR used on pages 1.' })).toBeVisible()
+    await expect
+      .poll(async () =>
+        (await page.getByLabel('Your notes and selected source content').inputValue())
+          .replace(/\s+/g, ' ')
+          .trim(),
+      )
+      .toBe(source)
+  } else {
+    await expect(page.getByLabel('Your notes and selected source content')).toHaveValue(source)
+  }
   await page.getByRole('button', { name: '2. Research', exact: true }).click()
   await page.getByLabel('Topic to investigate').fill('Supabase grants and row visibility')
   await page.getByRole('button', { name: 'Use notes as passage', exact: true }).click()
@@ -100,11 +126,17 @@ test('fresh focused upload to authored lesson, reading, notes, feedback and resu
   await expect(page).toHaveURL(/draft=/)
   await page.reload()
   await expect(page.getByLabel('My knowledge section', { exact: true })).toHaveValue(explanation)
-  await page.getByRole('navigation', {name:'Main navigation'}).getByRole('link',{name:'Library',exact:true}).click()
-  await page.getByRole('searchbox',{name:'Search phrase'}).fill('Supabase grants and row visibility')
-  await page.getByRole('button',{name:'Search',exact:true}).click()
-  await page.getByRole('region',{name:'My material',exact:true}).getByRole('link',{name:'Supabase grants and row visibility',exact:true}).click()
-  await expect(page.getByLabel('My knowledge section',{exact:true})).toHaveValue(explanation)
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Library', exact: true })
+    .click()
+  await page.getByRole('searchbox', { name: 'Search phrase' }).fill('Supabase grants and row visibility')
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await page
+    .getByRole('region', { name: 'My material', exact: true })
+    .getByRole('link', { name: 'Supabase grants and row visibility', exact: true })
+    .click()
+  await expect(page.getByLabel('My knowledge section', { exact: true })).toHaveValue(explanation)
   await page.getByRole('button', { name: '4. Review', exact: true }).click()
   await page.locator('summary').filter({ hasText: 'Shape a lesson (optional)' }).click()
   await page
@@ -147,22 +179,28 @@ Tests the actual application role rather than the table owner.`)
   await expect(page.getByRole('navigation', { name: 'Learning path' })).toContainText(
     'Supabase grants and row visibility',
   )
-  const tools = page.locator('summary').filter({hasText:/^More session tools$/})
+  const tools = page.locator('summary').filter({ hasText: /^More session tools$/ })
   await expect(tools).toBeVisible()
-  await expect(page.getByRole('heading',{name:'Learning context',exact:true})).not.toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Learning context', exact: true })).not.toBeVisible()
   await tools.click()
-  await expect(page.getByRole('heading',{name:'Learning context',exact:true})).toBeVisible()
-  await page.getByText('Study conditions and later recall (optional)', {exact:true}).click()
-  await page.getByLabel('Sound condition', {exact:true}).selectOption('white')
-  await page.getByRole('button', {name:'Record conditions for this lesson',exact:true}).click()
-  await expect(page.getByText('Conditions recorded as your self-report. No benefit has been inferred.',{exact:true})).toBeVisible()
-  await page.screenshot({path:testInfo.outputPath('study-conditions.png')})
+  await expect(page.getByRole('heading', { name: 'Learning context', exact: true })).toBeVisible()
+  await page.getByText('Study conditions and later recall (optional)', { exact: true }).click()
+  await page.getByLabel('Sound condition', { exact: true }).selectOption('white')
+  await page.getByRole('button', { name: 'Record conditions for this lesson', exact: true }).click()
+  await expect(
+    page.getByText('Conditions recorded as your self-report. No benefit has been inferred.', { exact: true }),
+  ).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('study-conditions.png') })
   await tools.click()
-  await page.getByLabel('Your prediction (optional)').fill('I expect a row policy to supply table privileges.')
+  await page
+    .getByLabel('Your prediction (optional)')
+    .fill('I expect a row policy to supply table privileges.')
   await page.screenshot({ path: testInfo.outputPath('before-reading-prediction.png'), fullPage: true })
   await page.getByRole('button', { name: 'Save prediction and read', exact: true }).click()
   await page.getByLabel('How did your prediction compare?').selectOption('changed')
-  await page.getByLabel('What changed, and which passage helped? (optional)').fill('The explanation separates table privileges from row policies.')
+  await page
+    .getByLabel('What changed, and which passage helped? (optional)')
+    .fill('The explanation separates table privileges from row policies.')
   await page.getByRole('button', { name: 'Next section', exact: true }).click()
   await page
     .getByLabel('Your notes for this section (optional)')
@@ -170,7 +208,9 @@ Tests the actual application role rather than the table owner.`)
   await page.getByRole('button', { name: 'Pause and return Home', exact: true }).click()
   await page.getByRole('button', { name: 'Continue', exact: true }).click()
   await expect(page.getByLabel('How did your prediction compare?')).toHaveValue('changed')
-  await expect(page.getByText('I expect a row policy to supply table privileges.', { exact: true })).toBeVisible()
+  await expect(
+    page.getByText('I expect a row policy to supply table privileges.', { exact: true }),
+  ).toBeVisible()
   await expect(page.getByLabel('Your notes for this section (optional)')).toHaveValue(
     'I will compare table privileges and row filtering separately.',
   )
@@ -186,7 +226,9 @@ Tests the actual application role rather than the table owner.`)
   await page.getByRole('button', { name: 'Try this lesson', exact: true }).click()
   await page.getByLabel('Your answer', { exact: true }).fill("I don't know")
   let submissions = 0
-  page.on('request', req => { if (req.method() === 'POST' && req.url().includes('/assess/attempt')) submissions++ })
+  page.on('request', (req) => {
+    if (req.method() === 'POST' && req.url().includes('/assess/attempt')) submissions++
+  })
   await page.getByRole('button', { name: 'Check my answer', exact: true }).click()
   await expect(page.getByRole('region', { name: 'Learn before checking' })).toBeVisible()
   expect(submissions).toBe(0)
@@ -202,9 +244,15 @@ Tests the actual application role rather than the table owner.`)
     .fill('Compare grants and RLS with a disposable fixture.')
   await page.getByRole('button', { name: 'Save and finish session', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Session saved', exact: true })).toBeVisible()
-  await page.getByRole('navigation',{name:'Main navigation'}).getByRole('link',{name:'Library',exact:true}).click()
-  await page.getByRole('searchbox',{name:'Search phrase'}).fill('Supabase grants and row visibility')
-  await page.getByRole('button',{name:'Search',exact:true}).click()
-  await expect(page.getByRole('region',{name:'My material',exact:true}).getByRole('link',{name:'Supabase grants and row visibility',exact:true})).toHaveAttribute('href','/?lesson='+skill.id)
-
+  await page
+    .getByRole('navigation', { name: 'Main navigation' })
+    .getByRole('link', { name: 'Library', exact: true })
+    .click()
+  await page.getByRole('searchbox', { name: 'Search phrase' }).fill('Supabase grants and row visibility')
+  await page.getByRole('button', { name: 'Search', exact: true }).click()
+  await expect(
+    page
+      .getByRole('region', { name: 'My material', exact: true })
+      .getByRole('link', { name: 'Supabase grants and row visibility', exact: true }),
+  ).toHaveAttribute('href', '/?lesson=' + skill.id)
 })

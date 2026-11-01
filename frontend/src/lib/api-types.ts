@@ -6227,6 +6227,10 @@ export interface components {
       sha256: string
       /** Characters */
       characters: number
+      /** Ocr Pages */
+      ocr_pages?: number[]
+      /** Ocr Empty Pages */
+      ocr_empty_pages?: number[]
     }
     /** LabSql */
     LabSql: {
