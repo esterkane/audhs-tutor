@@ -86,15 +86,15 @@ export async function reachLearnBlock(page: Page) {
  */
 export async function finishReview(page: Page) {
   const done = page.getByRole('heading', { name: 'Review done' })
-  for (let i = 0; i < 20; i++) {
+  const show = page.getByRole('button', { name: 'Show answer' })
+  for (let reviewed = 0; reviewed < 20; reviewed++) {
+    // Count completed cards, not transient loading states between saved ratings.
+    await expect(done.or(show)).toBeVisible()
     if (await done.isVisible()) return
-    const show = page.getByRole('button', { name: 'Show answer' })
-    if (await show.isVisible()) {
-      await show.click()
-      await page.getByRole('button', { name: /^Good/ }).click()
-    } else {
-      await page.waitForTimeout(200)
-    }
+    await show.click()
+    const good = page.getByRole('button', { name: /^Good/ })
+    await good.click()
+    await expect(good).toBeHidden()
   }
   await expect(done).toBeVisible()
 }
