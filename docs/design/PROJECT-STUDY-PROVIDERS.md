@@ -32,3 +32,17 @@ API transport uses the same exact-request study boundary, but the project UI cur
 qualified local/OpenAI choices. The bridge still requires a specific approval for every consultation.
 
 See [ADR 0025](../adr/0025-scoped-hosted-project-study.md).
+
+
+## Interrupted questions and local drafts
+
+The project editor retains unsent text and an unanswered outgoing question on this device,
+scoped to the API, learner and session. A failed request can be restored after reload without
+reconstructing or changing the server transcript. Nothing is automatically sent again. Restore,
+append to a newer draft, or discard the saved question explicitly. A newer draft cannot overwrite
+an unresolved outgoing question. Once a later answer is saved, pending recovery state clears while
+newer unsent notes remain. If browser storage fails, the editor reports that failure and keeps the
+current text in memory; copy it or keep the page open. Device drafts are not cross-device backups.
+
+Session creation hides the previous editor until the new session is ready, avoiding text entry into
+an editor that is about to be replaced. Stored drafts and prior completed transcripts are preserved.

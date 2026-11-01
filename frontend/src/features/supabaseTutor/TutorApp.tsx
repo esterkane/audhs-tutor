@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { ApiError, TutorApi } from './api'
 import type { AuthClient, AuthSession } from './auth/authClient'
 import { LoginForm } from './auth/LoginForm'
@@ -107,6 +107,8 @@ export function TutorApp({
   const [chat, dispatch] = useReducer(chatReducer, initialChat)
   const [ledger, setLedger] = useState<LedgerEntry[]>([])
   const [tab, setTab] = useState<Tab>('lesson')
+  const [starting, setStarting] = useState(false)
+  const startingRef = useRef(false)
   const [fatal, setFatal] = useState<string | null>(null)
   const [handover, setHandover] = useState<LabOutput | null>(null)
   const [serverTts, setServerTts] = useState<ServerTts | null>(null)
@@ -138,13 +140,22 @@ export function TutorApp({
 
   const startSession = useCallback(
     async (delivery: Delivery = 'socratic') => {
-      if (!userId) return
-      setChoosing(false)
-      const created = await api.createSession({ delivery, language, persona_on: personaOn })
-      writeLastSession(userId, created.id)
-      setSession(created)
-      setIncident(null)
-      dispatch({ type: 'reset' })
+      if (!userId || startingRef.current) return
+      startingRef.current = true
+      setStarting(true)
+      try {
+        const created = await api.createSession({ delivery, language, persona_on: personaOn })
+        writeLastSession(userId, created.id)
+        setSession(created)
+        setIncident(null)
+        dispatch({ type: 'reset' })
+        setChoosing(false)
+      } catch (error) {
+        setFatal(String(error))
+      } finally {
+        startingRef.current = false
+        setStarting(false)
+      }
     },
     [api, userId, language, personaOn],
   )
@@ -279,17 +290,26 @@ export function TutorApp({
           {fatal}
         </p>
       )}
-      {choosing && (
+      {choosing && !starting && (
         <DeliveryChooser
           s={s}
           onChoose={startSession}
           onCancel={session ? () => setChoosing(false) : undefined}
         />
       )}
-      {session && !choosing && (
+      {starting && <p role="status">{s.startingSession}</p>}
+      {session && !choosing && !starting && (
         <>
-          <div className="flex min-h-0 flex-col border-r border-zinc-800">
-            <ChatPanel chat={chat} s={s} language={session.language} onSend={send} serverTts={serverTts} />
+          <div className="flex min-h-0 min-w-0 flex-col border-r border-zinc-800">
+            <ChatPanel
+              key={JSON.stringify([apiBase, userId, session.id])}
+              draftStorageKey={`kaenguru.draft.v1.${JSON.stringify([apiBase, userId, session.id])}`}
+              chat={chat}
+              s={s}
+              language={session.language}
+              onSend={send}
+              serverTts={serverTts}
+            />
           </div>
           <aside className="flex min-h-0 flex-col">
             <nav className="flex border-b border-zinc-800 text-xs" role="tablist">

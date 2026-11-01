@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatState } from '../chatReducer'
 import type { Strings } from '../i18n'
 import type { Language } from '../types'
 import { type ServerTts, useSpeech } from '../voice/useSpeech'
 import { VoiceBar } from '../voice/VoiceBar'
+import { readDraft, writeDraft, type RetainedDraft } from './draftStorage'
 import { Markdown } from './Markdown'
 import { TurnView } from './TurnView'
 
@@ -15,14 +16,42 @@ export function ChatPanel({
   language,
   onSend,
   serverTts = null,
+  draftStorageKey,
 }: {
   chat: ChatState
   s: Strings
   language: Language
   onSend: (text: string, inputMode: InputMode) => void
   serverTts?: ServerTts | null
+  draftStorageKey?: string
 }) {
-  const [draft, setDraft] = useState('')
+  const [retained, setRetained] = useState(() => readDraft(draftStorageKey))
+  const retainedRef = useRef(retained)
+  const [storageFailed, setStorageFailed] = useState(false)
+  const updateDraft = useCallback(
+    (change: (previous: RetainedDraft) => RetainedDraft) => {
+      const next = change(retainedRef.current)
+      retainedRef.current = next
+      setStorageFailed(!writeDraft(draftStorageKey, next))
+      setRetained(next)
+    },
+    [draftStorageKey],
+  )
+  const draft = retained.draft
+  const setDraft = (value: string | ((previous: string) => string)) =>
+    updateDraft((previous) => ({
+      ...previous,
+      draft: typeof value === 'function' ? value(previous.draft) : value,
+    }))
+  const tutorCount = chat.items.filter((item) => item.kind === 'tutor').length
+  useEffect(() => {
+    if (retained.pending && tutorCount > retained.pending.afterTutorCount)
+      updateDraft((previous) => ({ ...previous, pending: null }))
+  }, [tutorCount, retained.pending, updateDraft])
+  const sendQuestion = (text: string, mode: InputMode) => {
+    updateDraft((previous) => ({ ...previous, pending: { text, afterTutorCount: tutorCount } }))
+    onSend(text, mode)
+  }
   const end = useRef<HTMLDivElement>(null)
   const busy = chat.streaming !== null
 
@@ -30,8 +59,8 @@ export function ChatPanel({
     language,
     (transcript) => {
       // While the tutor is still answering, a spoken reply lands in the draft instead of being lost.
-      if (busy) setDraft((d) => (d ? `${d} ${transcript}` : transcript))
-      else onSend(transcript, 'voice')
+      if (busy || retainedRef.current.pending) setDraft((d) => (d ? `${d} ${transcript}` : transcript))
+      else sendQuestion(transcript, 'voice')
     },
     serverTts,
   )
@@ -54,14 +83,14 @@ export function ChatPanel({
 
   const submit = () => {
     const text = draft.trim()
-    if (!text || busy) return
+    if (!text || busy || retainedRef.current.pending) return
     voice.cancelSpeech()
-    onSend(text, 'text')
+    sendQuestion(text, 'text')
     setDraft('')
   }
 
   return (
-    <section className="flex min-h-0 flex-1 flex-col" aria-label="chat">
+    <section className="flex min-h-0 min-w-0 flex-1 flex-col" aria-label="chat">
       <div className="flex-1 space-y-3 overflow-y-auto p-3">
         {chat.items.map((item) =>
           item.kind === 'notice' ? (
@@ -128,6 +157,31 @@ export function ChatPanel({
         )}
         <div ref={end} />
       </div>
+      {retained.pending && !busy && (
+        <section className="border-t border-zinc-800 p-2" aria-label={s.savedQuestion}>
+          <p>{s.savedQuestion}</p>
+          <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{retained.pending.text}</p>
+          <button
+            className="rounded border border-zinc-700 px-2 py-1 text-sm mr-2"
+            type="button"
+            onClick={() =>
+              updateDraft((previous) => ({
+                draft:
+                  previous.draft && previous.draft !== previous.pending?.text
+                    ? previous.draft + '\n\n' + previous.pending?.text
+                    : (previous.pending?.text ?? previous.draft),
+                pending: null,
+              }))
+            }
+          >
+            {draft ? s.appendQuestion : s.restoreQuestion}
+          </button>
+          <button type="button" onClick={() => updateDraft((previous) => ({ ...previous, pending: null }))}>
+            {s.discardQuestion}
+          </button>
+        </section>
+      )}
+      {storageFailed && <p role="status">{s.draftNotSaved}</p>}
       <VoiceBar voice={voice} s={s} />
       <form
         className="flex gap-2 border-t border-zinc-800 p-2"
@@ -152,7 +206,7 @@ export function ChatPanel({
         />
         <button
           type="submit"
-          disabled={busy || !draft.trim()}
+          disabled={busy || !draft.trim() || retained.pending !== null}
           className="self-end rounded bg-sky-700 px-3 py-1.5 text-sm disabled:opacity-40"
         >
           {s.send}
