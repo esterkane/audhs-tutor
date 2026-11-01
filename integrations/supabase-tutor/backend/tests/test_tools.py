@@ -195,3 +195,24 @@ async def test_ledger_unknown_topic_is_a_model_error(pool: AsyncConnectionPool, 
         {"topic": "made-up-topic", "score": 1, "evidence": "this topic does not exist"}]},
         ctx(user_id=two_users[0], ledger=PgLedger(pool)), t.TurnBudget())
     assert res.is_error and "made-up-topic" in res.content
+
+
+@pytest.mark.parametrize("chunks", [[], None])
+async def test_vector_scope_note_preserves_filter_and_reports_omitted_category(chunks) -> None:
+    retriever = FakeRetriever(chunks)
+    res = await t.dispatch("search_docs", {"query": "pgvector <#> and <=>", "products": ["database"]},
+                           ctx(retriever=retriever), t.TurnBudget())
+    payload = json.loads(res.content)
+    assert payload["scope_note"]["omitted_product"] == "ai"
+    assert payload["scope_note"]["searched_products"] == ["database"]
+    assert retriever.calls == [("pgvector <#> and <=>", 8, ["database"])]
+    assert len(payload["results"]) == (0 if chunks == [] else 1)
+
+
+@pytest.mark.parametrize("query,products", [
+    ("pgvector cosine", None), ("pgvector cosine", ["database", "ai"]),
+    ("RLS table policies", ["database"]),
+])
+async def test_scope_note_does_not_affect_unfiltered_inclusive_or_other_queries(query, products) -> None:
+    res = await t.dispatch("search_docs", {"query": query, "products": products}, ctx(), t.TurnBudget())
+    assert "scope_note" not in json.loads(res.content)

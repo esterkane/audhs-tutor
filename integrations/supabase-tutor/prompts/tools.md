@@ -4,7 +4,7 @@
 [
   {
     "name": "search_docs",
-    "description": "Hybrid (semantic + full-text) search over the ingested official Supabase documentation corpus. Call before asserting any product behaviour. Returns chunks with url, anchor, heading_path, content, tier, fetched_at, score.",
+    "description": "Hybrid (semantic + full-text) search over the ingested official Supabase documentation corpus. Call before asserting any product behaviour. Returns chunks with url, anchor, heading_path, content, tier, fetched_at, score. Product filters follow URL categories: pgvector and vector-search guides are mainly ai. Search ai with database when both are in scope; preserve explicitly requested product filters.",
     "input_schema": {
       "type": "object",
       "properties": {

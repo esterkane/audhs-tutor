@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from typing import Any, Literal, Protocol
@@ -27,7 +28,7 @@ TOOLS: list[dict[str, Any]] = json.loads(r"""
 [
   {
     "name": "search_docs",
-    "description": "Hybrid (semantic + full-text) search over the ingested official Supabase documentation corpus. Call before asserting any product behaviour. Returns chunks with url, anchor, heading_path, content, tier, fetched_at, score.",
+    "description": "Hybrid (semantic + full-text) search over the ingested official Supabase documentation corpus. Call before asserting any product behaviour. Returns chunks with url, anchor, heading_path, content, tier, fetched_at, score. Product filters follow URL categories: pgvector and vector-search guides are mainly ai. Search ai with database when both are in scope; preserve explicitly requested product filters.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -235,7 +236,10 @@ class _Input(BaseModel):
 
 class SearchDocsInput(_Input):
     query: str = Field(min_length=3)
-    products: list[Product] | None = None
+    products: list[Product] | None = Field(
+        default=None,
+        description="Preserve requested scope. URL categories: pgvector/vector-search guides are mainly ai; include ai with database when both are in scope.",
+    )
     k: int = Field(default=8, ge=1, le=12)
 
 
@@ -322,8 +326,20 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
         # This is search data, not an added instruction or a guessed answer.
         query += "\n" + ctx.learner_text
     chunks = await ctx.retriever.search(query, k=args.k, products=args.products)
+    scope: dict[str, Any] = {}
+    if (args.products and "ai" not in args.products
+            and re.search(r"\bpgvector\b|<->|<=>|<#>", query, re.IGNORECASE)):
+        # Report taxonomy coverage without widening a learner/model-selected filter.
+        # This is corpus metadata, not evidence for any vector/operator claim.
+        scope = {"scope_note": {
+            "searched_products": args.products,
+            "omitted_product": "ai",
+            "reason": "The ai product contains pgvector vector-columns and vector-indexes guides. "
+                      "Their absence from this filtered search does not mean they are absent from the corpus.",
+        }}
     if not chunks:
-        return _ok({"results": [], "note": "No corpus hits. web_search with reason no_corpus_hit is now allowed."})
+        return _ok({"results": [], "note": "No corpus hits. web_search with reason no_corpus_hit is now allowed.",
+                    **scope})
     return _ok({"results": [
         {
             "url": c.cite_url,
@@ -335,7 +351,7 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
             "content": c.content,
         }
         for c in chunks
-    ]})
+    ], **scope})
 
 
 def _attr(value: str) -> str:
