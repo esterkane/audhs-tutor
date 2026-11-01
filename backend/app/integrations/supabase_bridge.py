@@ -188,6 +188,30 @@ def render_final_text(text: str, state: BaseModel) -> str:
     return text + "\n\n```json tutor_turn\n" + json.dumps(metadata, ensure_ascii=False) + "\n```"
 
 
+def local_tool_instructions(tools: list[dict[str, Any]]) -> str:
+    """Keep every human-readable tool annotation; native JSON schema owns input structure."""
+
+    def annotations(node: Any, path: str = "") -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        if isinstance(node, dict):
+            for key, value in node.items():
+                child = f"{path}.{key}" if path else key
+                if key in {"description", "title", "examples", "$comment"}:
+                    result[child] = value
+                elif isinstance(value, (dict, list)):
+                    result.update(annotations(value, child))
+        elif isinstance(node, list):
+            for index, value in enumerate(node):
+                result.update(annotations(value, f"{path}[{index}]"))
+        return result
+
+    return json.dumps(
+        [{"name": tool["name"], "instructions": annotations(tool)} for tool in tools],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+
+
 class LocalStream:
     def __init__(self, final: Any) -> None:
         self.final = final
@@ -276,6 +300,14 @@ class LocalProjectClient:
                         "Assign a local tutor model or enable a hosted project tutor.",
                         409,
                     )
+                # Native constrained output already carries all typed tool input schemas.
+                # Preserve tool/field prose once rather than repeat the structural JSON.
+                messages[0] = Message(
+                    role="system",
+                    content=policy.removesuffix(json.dumps(tools))
+                    + "Input structure and valid values are enforced by the response JSON schema. "
+                    + local_tool_instructions(tools),
+                )
                 gateway = ModelGateway(
                     db,
                     router,

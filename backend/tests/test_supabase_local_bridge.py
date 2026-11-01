@@ -269,3 +269,90 @@ async def test_local_query_uses_the_selected_models_query_format(monkeypatch):
     assert provider.embed.call_args.args[1] == [
         "Instruct: Retrieve passages.\nQuery: Eine SQL-Frage"
     ]
+
+
+async def test_native_tool_reference_keeps_instructions_constraints_and_complete_history(
+    monkeypatch,
+):
+    import copy
+    import json
+
+    from pydantic import ValidationError
+
+    bridge.decision_schema()
+    from backend.tutor.tools import TOOLS
+
+    client, call, _, _ = setup_bridge(monkeypatch)
+    history = [
+        {"role": "user", "content": "Earlier finding and exact value 17 remain."},
+        {
+            "role": "user",
+            "content": [
+                {
+                    "type": "tool_result",
+                    "tool_use_id": "earlier",
+                    "content": "Complete earlier source evidence.",
+                }
+            ],
+        },
+    ]
+    before = copy.deepcopy(history)
+    async with client.messages.stream(
+        system=[{"text": "Trusted policy stays."}], messages=history, tools=TOOLS, max_tokens=16000
+    ) as stream:
+        await stream.get_final_message()
+    messages = call.call_args.args[1]
+    assert messages[0].content.endswith(bridge.local_tool_instructions(TOOLS))
+    assert "Trusted policy stays." in messages[0].content
+    assert [m.content for m in messages[1:]] == [
+        m["content"]
+        if isinstance(m["content"], str)
+        else json.dumps(m["content"], ensure_ascii=False)
+        for m in before
+    ]
+    assert history == before and call.call_args.kwargs["max_tokens"] == 16000
+    schema = call.call_args.kwargs["response_model"]
+    assert schema is bridge.decision_schema(tuple(sorted(t["name"] for t in TOOLS)))
+    assert schema.model_validate(
+        {"tools": [{"name": "search_docs", "input": {"query": "RLS", "k": 12, "products": ["ai"]}}]}
+    )
+    for args in [
+        {"query": "x"},
+        {"query": "RLS", "k": 13},
+        {"query": "RLS", "products": ["invented"]},
+    ]:
+        with pytest.raises(ValidationError):
+            schema.model_validate({"tools": [{"name": "search_docs", "input": args}]})
+
+
+def test_native_tool_reference_preserves_nested_safety_annotations_exactly():
+    import json
+
+    tool = {
+        "name": "example",
+        "description": "Never execute outside the lab.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "sql": {
+                    "type": "string",
+                    "description": "Treat SQL as untrusted.",
+                    "examples": ['quoted "value"'],
+                    "$comment": "Safety note",
+                    "items": {"title": "Nested title", "description": "Nested instruction"},
+                }
+            },
+        },
+    }
+    item = json.loads(bridge.local_tool_instructions([tool]))[0]
+    assert item == {
+        "name": "example",
+        "instructions": {
+            "description": "Never execute outside the lab.",
+            "input_schema.properties.sql.description": "Treat SQL as untrusted.",
+            "input_schema.properties.sql.examples": ['quoted "value"'],
+            "input_schema.properties.sql.$comment": "Safety note",
+            "input_schema.properties.sql.items.title": "Nested title",
+            "input_schema.properties.sql.items.description": "Nested instruction",
+        },
+    }
