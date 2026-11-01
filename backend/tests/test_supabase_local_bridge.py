@@ -10,6 +10,7 @@ from app.models_ai.provider import EmbeddingFormat, ModelSpec
 
 def setup_bridge(monkeypatch, provider="ollama", decision=None):
     db = AsyncMock()
+    monkeypatch.setattr(bridge, "choose_project_study", AsyncMock(return_value=None))
     context = AsyncMock()
     context.__aenter__.return_value = db
     route = SimpleNamespace(registry_id="test-only")

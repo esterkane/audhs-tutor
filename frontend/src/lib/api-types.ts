@@ -3531,6 +3531,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/learning-focus/supabase/study': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    /**
+     * Set Study
+     * @description Change project explanation routing atomically; no inference or history changes.
+     */
+    put: operations['set_study_api_learning_focus_supabase_study_put']
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
 }
 export type webhooks = Record<string, never>
 export interface components {
@@ -7251,6 +7271,14 @@ export interface components {
        * @enum {string}
        */
       view: 'guide' | 'notebook' | 'task'
+    }
+    /** ProjectStudyChoice */
+    ProjectStudyChoice: {
+      /**
+       * Provider
+       * @enum {string}
+       */
+      provider: 'local' | 'openai'
     }
     /** ProjectUpdate */
     ProjectUpdate: {
@@ -16005,6 +16033,39 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['SupabaseProjectStatus']
+        }
+      }
+    }
+  }
+  set_study_api_learning_focus_supabase_study_put: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['ProjectStudyChoice']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['SupabaseProjectStatus']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
         }
       }
     }

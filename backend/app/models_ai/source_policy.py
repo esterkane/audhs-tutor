@@ -1,7 +1,7 @@
-"""Fail-closed study transport with an explicit, version-bound authoring exception.
+"""Fail-closed transport with explicit authoring and project-study exceptions.
 
 Registry labels, keys, budgets and caller metadata alone never grant external transport.
-Only server authoring orchestration issues a request-local exact-message permit (ADR 0021).
+Server orchestration issues request-local exact-message permits (ADRs 0021 and 0025).
 """
 
 import hashlib
@@ -77,6 +77,15 @@ def bind_authoring_repair(spec: ModelSpec, messages: list[Message]) -> None:
     )
 
 
+def check_hosted_messages(spec: ModelSpec, messages: list[Message]) -> None:
+    from app.models_ai.study_policy import check_study_messages, study_scope_active
+
+    if study_scope_active():
+        check_study_messages(spec, messages)
+    else:
+        check_authoring_messages(spec, messages)
+
+
 class SourcePolicyDenied(ProviderError):
     """Content cannot be sent through this transport under the owner policy."""
 
@@ -86,6 +95,10 @@ async def validate_transport(
 ) -> None:
     if spec.provider == "openai" and _authoring.get() is not None:
         check_authoring_messages(spec, messages or [])
+    from app.models_ai.study_policy import check_study_messages, study_scope_active
+
+    if study_scope_active():
+        check_study_messages(spec, messages or [])
     validate = getattr(provider, "validate_local_transport", None)
     if not callable(validate):
         raise SourcePolicyDenied("Source policy: provider transport is not verified local")
@@ -93,6 +106,10 @@ async def validate_transport(
 
 
 async def deny_external(spec: ModelSpec) -> None:
+    from app.models_ai.study_policy import study_transport_allowed
+
+    if study_transport_allowed(spec):
+        return
     permit = _authoring.get()
     if (
         permit

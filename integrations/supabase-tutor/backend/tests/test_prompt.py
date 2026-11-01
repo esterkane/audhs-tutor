@@ -112,3 +112,13 @@ def test_onboarding_step_guidance(step: p.OnboardingStep, fragment: str) -> None
     text = p.session_block(p.SessionState(onboarding=step, first_turn=True))
     assert "Onboarding step" in text and fragment in text
     assert text.count("FIRST TURN") <= 1  # the onboarding line replaces the generic first-turn line
+
+
+
+def test_neutral_explicit_discussion_does_not_initiate_assessment() -> None:
+    state = p.SessionState(mode="neutral", delivery="explicit")
+    text = p.turn_system_text(state)
+    assert "Neutral discussion does not initiate assessment" in text
+    assert "assess with a scenario" not in text
+    assert "In neutral discussion" in text
+    assert "next_question is null" in text

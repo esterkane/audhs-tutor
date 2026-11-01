@@ -128,6 +128,25 @@ def sqlstate_codes(query: str) -> tuple[str, ...]:
     return tuple(dict.fromkeys(found))
 
 
+def named_condition_codes(content: str, query: str) -> tuple[str, ...]:
+    """Resolve comparison names from exact official rows, never a built-in answer table."""
+    normalized = re.sub(r"[_-]+", " ", query.casefold())
+    normalized = re.sub(r"\s+", " ", normalized)
+    found: list[str] = []
+    for line in content.splitlines():
+        row = re.fullmatch(r"\|\s*([0-9A-Z]{5})\s*\|\s*([a-z][a-z0-9_]*)\s*\|", line, re.I)
+        if row is None:
+            continue
+        words = row[2].casefold().split("_")
+        pattern = r"\b" + r"\s+".join(re.escape(word) for word in words) + r"\b"
+        # Natural wording may insert 'constraint' before the catalogue's 'violation'.
+        if words[-1] == "violation" and len(words) > 1:
+            pattern = pattern.replace(r"\s+violation", r"\s+(?:constraint\s+)?violation")
+        if re.search(pattern, normalized):
+            found.append(row[1].upper())
+    return tuple(dict.fromkeys(found))
+
+
 def sqlstate_excerpt(content: str, codes: tuple[str, ...]) -> str | None:
     """Quote exact reference rows/header/class, preserving real source identity."""
     labels = set(codes)
@@ -166,6 +185,19 @@ class PgHybridRetriever:
             chunks = [Chunk(**row) for row in await cur.fetchall()]
             anchors: list[Chunk] = []
             if codes:
+                filters = expand_products(products)
+                await cur.execute(
+                    "select c.content from tutor.docs_chunk c "
+                    "join tutor.docs_source s on s.id=c.source_id where s.status='active' "
+                    "and s.url='https://www.postgresql.org/docs/' || "
+                    "(current_setting('server_version_num')::int / 10000)::text || '/errcodes-appendix.html' "
+                    "and (%s::text[] is null or s.product=any(%s::text[])) "
+                    "order by c.ord limit 256",
+                    (filters, filters),
+                )
+                compared = [code for row in await cur.fetchall()
+                            for code in named_condition_codes(row["content"], query)]
+                codes = tuple(dict.fromkeys((*codes, *compared)))
                 code_pattern = r"(?m)^\|[ \t]*(" + "|".join(codes) + r")[ \t]*\|"
                 class_pattern = (r"(?m)^\|[ \t]*Class[ \t]*("
                                  + "|".join(dict.fromkeys(c[:2] for c in codes)) + r")\M")
@@ -203,6 +235,27 @@ class PgHybridRetriever:
                 anchor_ids = {hit.chunk_id for hit in anchors}
                 anchors = [hit for hit in kept if hit.chunk_id in anchor_ids][:k]
                 chunks = [hit for hit in kept if hit.chunk_id not in anchor_ids]
+            elif (k > 1 and (not products or "database" in products)
+                  and re.search(r"\b(?:postgres(?:ql)?|security[\s_-]+definer|row[\s_-]+level[\s_-]+security|RLS)\b", query, re.I)):
+                # Framework documentation can omit or overstate engine exceptions. Reserve
+                # evidence from the version-matched engine manual, keeping framework context.
+                filters = expand_products(products)
+                await cur.execute(
+                    "select chunk_id, url, anchor, heading_path, content, tier, fetched_at, score from ("
+                    "select c.id as chunk_id, s.url, c.anchor, c.heading_path, c.content, s.tier, s.fetched_at, "
+                    "1.0/(1.0+(c.embedding <=> %s::extensions.vector)) as score, "
+                    "row_number() over(partition by s.url order by c.embedding <=> %s::extensions.vector) as page_rank "
+                    "from tutor.docs_chunk c join tutor.docs_source s on s.id=c.source_id "
+                    "where s.status='active' and c.embedding is not null "
+                    "and s.url like 'https://www.postgresql.org/docs/' || "
+                    "(current_setting('server_version_num')::int / 10000)::text || '/%%' "
+                    "and (%s::text[] is null or s.product=any(%s::text[]))) ranked "
+                    "where page_rank=1 order by score desc limit %s",
+                    (str(embedding), str(embedding), filters, filters, min(2, k - 1)),
+                )
+                anchors = [Chunk(**row) for row in await cur.fetchall()]
+                anchor_ids = {hit.chunk_id for hit in anchors}
+                chunks = [hit for hit in chunks if hit.chunk_id not in anchor_ids]
         remaining = max(0, k - len(anchors))
         if self.reranker and remaining:
             chunks = await self.reranker.rerank(query, chunks, remaining)

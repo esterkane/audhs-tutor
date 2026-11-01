@@ -178,8 +178,10 @@ def session_block(state: SessionState) -> str:
         lines += [f"- {e.topic} {e.score}/5 — {_clip(e.evidence)}" for e in weakest]
         lines += ["", "Most recently reviewed:"]
         lines += [f"- {e.topic} {e.score}/5 on {e.last_reviewed.date().isoformat()}" for e in recent]
-    else:
+    elif state.mode != "neutral":
         lines += ["", "Mastery ledger: empty — assess with a scenario, not a self-rating."]
+    else:
+        lines += ["", "Mastery ledger: empty. Neutral discussion does not initiate assessment."]
 
     if state.due:
         lines += ["", "Due for spaced review (FSRS, most overdue first):"]

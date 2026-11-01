@@ -23,6 +23,27 @@ registry_defaults:
     context_len: 32768
     price_in_per_mtok: 0.125
     price_out_per_mtok: 0.50
+  # Owner-enabled tutor entries reserve conservative long-context/cache-write ceilings.
+  - id: openai-luna-study
+    display_name: GPT-6 Luna (hosted study)
+    source: openai
+    repo_id: gpt-6-luna
+    file_or_tag: gpt-6-luna
+    runtime: openai
+    role: chat
+    context_len: 1048576
+    price_in_per_mtok: 0.50
+    price_out_per_mtok: 0.75
+  - id: claude-sonnet-study
+    display_name: Claude Sonnet 5 (hosted study)
+    source: hosted
+    repo_id: claude-sonnet-5
+    file_or_tag: claude-sonnet-5
+    runtime: hosted
+    role: chat
+    context_len: 1000000
+    price_in_per_mtok: 4.0
+    price_out_per_mtok: 10.0
   - id: llama31-8b
     display_name: Llama 3.1 8B (Q4_K_M)
     source: ollama_library
@@ -273,3 +294,6 @@ profiles:
       primary: kokoro-82m
     vision:
       primary: gemma3-12b
+
+# Only these conservatively priced entries may receive project-study permits.
+project_study_models: [openai-luna-study, claude-sonnet-study]

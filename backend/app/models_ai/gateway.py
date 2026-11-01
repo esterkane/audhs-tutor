@@ -48,6 +48,7 @@ from app.models_ai.source_policy import (
     bind_authoring_repair,
     validate_transport,
 )
+from app.models_ai.study_policy import bind_study_repair
 from app.schemas.common import Actor, ObjectType
 
 REPAIR_POLICY_VERSION = "structured-repair.v4"
@@ -410,6 +411,7 @@ class ModelGateway:
                             ),
                         ]
                         bind_authoring_repair(spec, msgs)
+                        bind_study_repair(spec, msgs)
                         continue
                     await self._emit(
                         Verb.INVALID_OUTPUT,

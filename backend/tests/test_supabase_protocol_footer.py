@@ -131,3 +131,26 @@ def test_earlier_example_is_preserved_when_a_later_footer_is_reused():
     markdown, _ = split_reply(text)
     assert markdown.startswith(example)
     assert "The explanation continues" in markdown
+
+
+def test_hosted_schema_rejects_protocol_in_prose_without_discarding_content():
+    from pydantic import ValidationError
+
+    state = metadata()
+    schema = bridge.hosted_decision_schema(())
+    prose = "Both requested technical distinctions remain complete."
+    valid = schema.model_validate({"text": prose, "state": state.model_dump(mode="json")})
+    assert valid.text == prose
+    with pytest.raises(ValidationError, match="metadata in state only"):
+        schema.model_validate(
+            {
+                "text": prose + footer(state.model_dump(mode="json")),
+                "state": state.model_dump(mode="json"),
+            }
+        )
+    # Ordinary SQL/JSON examples remain valid learner content.
+    example = prose + '\n```json\n{"value": 1}\n```'
+    assert (
+        schema.model_validate({"text": example, "state": state.model_dump(mode="json")}).text
+        == example
+    )

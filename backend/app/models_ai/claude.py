@@ -24,7 +24,7 @@ from app.models_ai.provider import (
     structured_reason,
     usage_of,
 )
-from app.models_ai.source_policy import deny_external
+from app.models_ai.source_policy import check_hosted_messages, deny_external
 
 litellm.suppress_debug_info = True
 
@@ -78,6 +78,7 @@ class ClaudeProvider:
         max_retries: int = 1,
     ) -> ProviderResult:
         await self.validate_local_transport(spec)
+        check_hosted_messages(spec, messages)
         t0 = time.perf_counter()
         kwargs: dict[str, Any] = dict(
             model=self._model(spec),
@@ -129,6 +130,7 @@ class ClaudeProvider:
         temperature: float = 0.2,
     ) -> AsyncIterator[StreamEvent]:
         await self.validate_local_transport(spec)
+        check_hosted_messages(spec, messages)
         usage: Any | None = None
         try:
             response = await litellm.acompletion(

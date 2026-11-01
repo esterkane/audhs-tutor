@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { apiFetch, type Schemas } from '../lib/api'
 import { Button } from '../components/ui/button'
@@ -10,6 +10,18 @@ export function SupabaseProject() {
     queryKey: ['supabase-project-status'],
     retry: false,
     queryFn: () => apiFetch<Schemas['SupabaseProjectStatus']>('/api/learning-focus/supabase'),
+  })
+  const queryClient = useQueryClient()
+  const studyChoice = useMutation({
+    mutationFn: (provider: 'local' | 'openai') =>
+      apiFetch<Schemas['SupabaseProjectStatus']>('/api/learning-focus/supabase/study', {
+        method: 'PUT',
+        body: JSON.stringify({ provider }),
+      }),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['supabase-project-status'], data)
+      void queryClient.invalidateQueries({ queryKey: ['preferences'] })
+    },
   })
   const prefs = usePreferences()
   const values = prefs.data?.values ?? {}
@@ -23,6 +35,33 @@ export function SupabaseProject() {
           your own knowledge material. Project progress does not certify mastery.
         </p>
       </header>
+      {status.data?.ready && (
+        <details className="rounded border border-line p-3">
+          <summary>
+            Tutor provider: {status.data.study_provider === 'local' ? 'local' : status.data.study_provider}
+          </summary>
+          <p>
+            OpenAI can answer fresh project questions using the retrieved documentation and session history.
+            It shares your daily hosted budget with authoring. Reviewed reuse stays local.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              disabled={studyChoice.isPending || status.data.study_provider === 'local'}
+              onClick={() => studyChoice.mutate('local')}
+            >
+              Use local tutor
+            </Button>
+            <Button
+              disabled={studyChoice.isPending || status.data.study_provider === 'openai'}
+              onClick={() => studyChoice.mutate('openai')}
+            >
+              Use OpenAI tutor
+            </Button>
+          </div>
+          {studyChoice.isPending && <p role="status">Saving tutor provider…</p>}
+          {studyChoice.isError && <p role="alert">{studyChoice.error.message} Your session is kept.</p>}
+        </details>
+      )}
       {!status.data?.ready && (
         <section className="rounded border border-line p-4">
           <p role="status">
@@ -61,7 +100,10 @@ export function SupabaseProject() {
         <a href="https://github.com/esterkane/kanguroo-supabase-tutor" target="_blank" rel="noreferrer">
           kanguroo-supabase-tutor
         </a>
-        . Study uses the local model. Authoring remains a separate, capped workflow.
+        .{' '}
+        {status.data?.hosted_study_enabled
+          ? `Fresh project explanations use ${status.data.study_provider === 'anthropic' ? 'Anthropic' : 'OpenAI'} with the shared daily hosted budget. Reviewed answers and embeddings stay local.`
+          : 'Study uses the local model. Adding an API key does not enable hosted tutoring.'}
       </p>
     </div>
   )

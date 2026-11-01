@@ -12,7 +12,7 @@ from __future__ import annotations
 import os
 import time
 from collections.abc import AsyncIterator, Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from anthropic import AsyncAnthropic
@@ -151,6 +151,7 @@ class Orchestrator:
     ) -> AsyncIterator[TurnEvent]:
         """Stream one turn. `session_persona_on`/`learner_name` fix `system` for the session; they
         default to the state's values and must not change between turns of one session."""
+        ctx = replace(ctx, learner_text=user_text)
         persona = state.persona_on if session_persona_on is None else session_persona_on
         name = learner_name or state.learner_name
         new: list[Message] = [

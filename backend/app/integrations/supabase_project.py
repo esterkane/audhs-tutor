@@ -3,13 +3,15 @@
 import importlib
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Request
 from pydantic import BaseModel
 
+from app.api.deps import DB, Learner
 from app.integrations.supabase_bridge import LocalProjectClient, LocalProjectEmbedder
+from app.kernel import preferences
 
 PROJECT_REPOSITORY = "https://github.com/esterkane/kanguroo-supabase-tutor"
 PROJECT_REVISION = "5786968dfde6b9f1a4d5b157977b92e16d36ad69"
@@ -55,8 +57,17 @@ async def open_project(app: Any) -> None:
             )
         )
         embedder.project_pool = service.app_pool
+        import asyncio
+
+        from app.models_ai.budget import Budget
+
+        if getattr(app.state, "budget_lock", None) is None:
+            app.state.budget_lock = asyncio.Lock()
         service.anthropic = LocalProjectClient(
-            app.state.session_factory, app.state.providers, settings
+            app.state.session_factory,
+            app.state.providers,
+            settings,
+            Budget(settings.daily_budget_usd, lock=app.state.budget_lock),
         )
         from app.integrations.supabase_reviewed import ReviewedOrchestrator
 
@@ -100,8 +111,9 @@ class SupabaseProjectStatus(BaseModel):
 
 
 @router.get("/supabase", response_model=SupabaseProjectStatus)
-async def status(request: Request) -> dict[str, Any]:
+async def status(request: Request, db: DB, learner: Learner) -> dict[str, Any]:
     settings = request.app.state.settings
+    provider = await preferences.get(db, learner.id, "project.study_provider")
     return {
         "ready": request.app.state.tutor is not None,
         "user_id": settings.supabase_project_user_id
@@ -110,6 +122,37 @@ async def status(request: Request) -> dict[str, Any]:
         "repository": PROJECT_REPOSITORY,
         "revision": PROJECT_REVISION,
         "detail": request.app.state.supabase_project_error,
-        "study_provider": "local",
-        "hosted_study_enabled": False,
+        "study_provider": provider,
+        "hosted_study_enabled": provider in {"openai", "anthropic"},
     }
+
+
+class ProjectStudyChoice(BaseModel):
+    provider: Literal["local", "openai"]
+
+
+@router.put("/supabase/study", response_model=SupabaseProjectStatus)
+async def set_study(
+    choice: ProjectStudyChoice, request: Request, db: DB, learner: Learner
+) -> dict[str, Any]:
+    """Change project explanation routing atomically; no inference or history changes."""
+    from app.models_ai.budget import Budget
+    from app.orchestrator.project_study_gateway import choose_project_study
+
+    if choice.provider == "openai":
+        from app.models_ai import registry
+
+        await registry.seed_defaults(db, installed_ollama_tags=set())
+    async with db.begin_nested():
+        await preferences.set_pref(
+            db, learner.id, "project.study_provider", choice.provider, commit=False
+        )
+        if choice.provider == "openai":
+            await preferences.set_pref(
+                db, learner.id, "project.study_model", "openai-luna-study", commit=False
+            )
+            await choose_project_study(
+                db, request.app.state.settings, learner.id, request.app.state.providers, Budget(0)
+            )
+    await db.commit()
+    return await status(request, db, learner)

@@ -58,6 +58,19 @@ PREFERENCES: dict[str, PrefSpec] = {
             description="OpenAI authoring registry model ID",
         ),
         PrefSpec(
+            key="project.study_provider",
+            type="enum",
+            default="local",
+            choices=["local", "openai", "anthropic"],
+            description="API provider for unreviewed project explanations; saved material remains local",
+        ),
+        PrefSpec(
+            key="project.study_model",
+            type="str",
+            default="openai-luna-study",
+            description="Registry model for owner-enabled project API explanations",
+        ),
+        PrefSpec(
             key="tutor.persona",
             type="enum",
             default="none",
@@ -337,6 +350,7 @@ async def set_pref(
     events: EventWriter | None = None,
     event_object_id: str | None = None,
     policy_version: str = "v1",
+    commit: bool = True,
 ) -> LearnerPreference:
     validate(key, value)
     if origin not in ORIGINS:
@@ -362,7 +376,10 @@ async def set_pref(
             confidence,
             reversible,
         )
-    await db.commit()
+    if commit:
+        await db.commit()
+    else:
+        await db.flush()
     if events is not None and origin != "explicit":
         await events.emit(
             Verb.ADAPTED,

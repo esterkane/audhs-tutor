@@ -9,6 +9,7 @@ from app.integrations.supabase_project import project_module
 project_module()
 from backend.tutor.retrieval import (  # noqa: E402
     PgHybridRetriever,
+    named_condition_codes,
     sqlstate_codes,
     sqlstate_excerpt,
 )
@@ -79,7 +80,7 @@ async def test_exact_reference_precedes_semantics_and_survives_reranker():
         rerank=AsyncMock(side_effect=lambda q, hits, k: list(reversed(hits))[:k])
     )
     intro = row(url, "General SQLSTATE explanation, without a table")
-    repo, cursor, embedder = retriever([[wrong_code, context, anchor, intro], [anchor]], ranker)
+    repo, cursor, embedder = retriever([[wrong_code, context, anchor, intro], [], [anchor]], ranker)
     hits = await repo.search("What does SQLSTATE 42501 mean?", k=4, products=["database"])
     assert hits[0].chunk_id == anchor["chunk_id"] and hits[0].url == url
     assert hits[0].content == "| 42501 | insufficient_privilege |"
@@ -89,7 +90,7 @@ async def test_exact_reference_precedes_semantics_and_survives_reranker():
     assert intro["chunk_id"] in {hit.chunk_id for hit in hits}
     assert "42601" in anchor["content"]
     embedder.embed_query.assert_awaited_once()
-    assert cursor.execute.await_count == 2
+    assert cursor.execute.await_count == 3
     assert "current_setting('server_version_num')" in cursor.execute.call_args.args[0]
     assert cursor.execute.call_args.args[1][2] == ["database", "cron", "queues"]
 
@@ -104,7 +105,78 @@ async def test_ordinary_search_keeps_existing_one_query_path():
 
 
 async def test_explicit_product_filter_is_not_bypassed_for_exact_code():
-    repo, cursor, _ = retriever([[], []])
+    repo, cursor, _ = retriever([[], [], []])
     assert await repo.search("SQLSTATE 42501", products=["auth"]) == []
     parameters = cursor.execute.call_args.args[1]
     assert parameters[2] == parameters[3] == ["auth"]
+
+
+@pytest.mark.parametrize(
+    "name,query",
+    [
+        ("check_violation", "SQLSTATE 42501: is this a check-constraint violation?"),
+        ("unique_violation", "Compare SQLSTATE 40001 with a unique violation"),
+        ("division_by_zero", "SQLSTATE 22000 and division_by_zero"),
+    ],
+)
+def test_named_comparison_comes_from_supplied_catalogue_rows(name, query):
+    content = f"| ZZ123 | {name} |"
+    assert named_condition_codes(content, query) == ("ZZ123",)
+    assert named_condition_codes(content, "An unrelated question") == ()
+    assert named_condition_codes("No canonical table row", query) == ()
+
+
+async def test_named_comparison_retains_actual_source_identity_and_exact_rows():
+    url = "https://www.postgresql.org/docs/17/errcodes-appendix.html"
+    first = row(url, "| 42501 | insufficient_privilege |")
+    contrast = row(url, "| 23514 | check_violation |\n| 23505 | unique_violation |")
+    repo, cursor, _ = retriever([[], [{"content": contrast["content"]}], [first, contrast]])
+    hits = await repo.search(
+        "Does SQLSTATE 42501 mean a check-constraint violation?", k=4, products=["database"]
+    )
+    assert [hit.chunk_id for hit in hits] == [first["chunk_id"], contrast["chunk_id"]]
+    assert hits[1].content == "| 23514 | check_violation |"
+    assert hits[1].url == contrast["url"]
+    assert hits[1].tier == contrast["tier"]
+    assert "23514" in cursor.execute.call_args.args[1][0]
+    assert "23505" not in cursor.execute.call_args.args[1][0]
+
+
+async def test_sqlstate_tool_search_preserves_original_comparison_terms():
+    from backend.tutor.tools import SearchDocsInput, ToolContext, TurnBudget, _search_docs
+
+    repo = SimpleNamespace(search=AsyncMock(return_value=[]))
+    original = "Does SQLSTATE 42501 mean a check-constraint violation?"
+    ctx = ToolContext(user_id=uuid4(), retriever=repo, ledger=None, learner_text=original)
+    await _search_docs(
+        SearchDocsInput(query="SQLSTATE 42501 privilege", k=5, products=["database"]),
+        ctx,
+        TurnBudget(),
+    )
+    assert repo.search.call_args.args[0] == "SQLSTATE 42501 privilege\n" + original
+    assert repo.search.call_args.kwargs == {"k": 5, "products": ["database"]}
+    assert ctx.learner_text == original
+    repo.search.reset_mock()
+    await _search_docs(SearchDocsInput(query="An unrelated topic"), ctx, TurnBudget())
+    assert repo.search.call_args.args[0] == "An unrelated topic"
+
+
+async def test_database_mechanism_keeps_engine_and_framework_sources_without_filter_bypass():
+    primary = row(
+        "https://www.postgresql.org/docs/17/ddl-rowsecurity.html",
+        "Synthetic engine rule with exceptions",
+    )
+    framework = row(
+        "https://supabase.com/docs/guides/database/postgres/functions", "Synthetic framework usage"
+    )
+    repo, cursor, _ = retriever([[framework], [primary]])
+    hits = await repo.search(
+        "SECURITY DEFINER privileges and RLS", k=5, products=["database", "auth"]
+    )
+    assert [hit.chunk_id for hit in hits] == [primary["chunk_id"], framework["chunk_id"]]
+    assert hits[0].content == primary["content"]
+    assert "current_setting('server_version_num')" in cursor.execute.call_args.args[0]
+    assert cursor.execute.call_args.args[1][2] == ["database", "cron", "queues", "auth"]
+    repo, cursor, _ = retriever([[framework]])
+    await repo.search("SECURITY DEFINER privileges and RLS", k=5, products=["auth"])
+    assert cursor.execute.await_count == 1

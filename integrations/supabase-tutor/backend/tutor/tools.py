@@ -18,7 +18,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend.tutor.guard import learner_secrets
 from backend.tutor.ledger import LedgerDelta, LedgerStore, UnknownTopicsError
-from backend.tutor.retrieval import Retriever
+from backend.tutor.retrieval import Retriever, sqlstate_codes
 from backend.tutor.web import WebResult, WebSearch, WebSearchError, annotate, redact_query, source_tier
 
 __all__ = ["WebResult", "WebSearch", "source_tier"]  # re-exported: tests and callers import them from here
@@ -316,7 +316,12 @@ def _error(message: str) -> ToolResult:
 # ----------------------------------------------------------------------------- handlers
 async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudget) -> ToolResult:
     budget.searched_docs = True
-    chunks = await ctx.retriever.search(args.query, k=args.k, products=args.products)
+    query = args.query
+    if set(sqlstate_codes(query)) & set(sqlstate_codes(ctx.learner_text)):
+        # Preserve comparison terms the model may omit when reformulating the question.
+        # This is search data, not an added instruction or a guessed answer.
+        query += "\n" + ctx.learner_text
+    chunks = await ctx.retriever.search(query, k=args.k, products=args.products)
     if not chunks:
         return _ok({"results": [], "note": "No corpus hits. web_search with reason no_corpus_hit is now allowed."})
     return _ok({"results": [

@@ -27,7 +27,8 @@ from app.models_ai.provider import (
     usage_of,
 )
 from app.models_ai.routing import load_profiles
-from app.models_ai.source_policy import check_authoring_messages, deny_external
+from app.models_ai.source_policy import check_hosted_messages, deny_external
+from app.models_ai.study_policy import permitted_study_bytes
 
 litellm.suppress_debug_info = True
 
@@ -63,14 +64,14 @@ class OpenAIProvider:
     ) -> None:
         if not supported_model(spec.model):
             raise ProviderError("OpenAI model is not in the verified registry defaults")
-        # Keep this adapter within the short-context price tier, even with UTF-8/token overhead.
+        # Authoring retains its short-context bound; verified study scopes allow larger histories.
         import json
 
         size = len(json.dumps(to_chat(messages), ensure_ascii=True).encode())
         if response_model is not None:
             size += len(json.dumps(response_model.model_json_schema()).encode())
-        if size > 100_000:
-            raise ProviderError("OpenAI prompt too large for this short-context adapter")
+        if size > permitted_study_bytes(spec):
+            raise ProviderError("OpenAI prompt too large for the permitted context bound")
         if spec.price_in_per_mtok <= 0 or spec.price_out_per_mtok <= 0:
             raise ProviderError("OpenAI registry prices must be positive")
 
@@ -88,7 +89,7 @@ class OpenAIProvider:
         max_retries: int = 1,
     ) -> ProviderResult:
         await self.validate_local_transport(spec)
-        check_authoring_messages(spec, messages)
+        check_hosted_messages(spec, messages)
         self._validate(spec, messages, response_model)
         t0 = time.perf_counter()
         kwargs: dict[str, Any] = dict(
@@ -100,6 +101,7 @@ class OpenAIProvider:
             api_base="https://api.openai.com/v1",
             num_retries=0,
             store=False,
+            service_tier="default",
             temperature=temperature,
             timeout=self.timeout_s,
         )
@@ -141,7 +143,7 @@ class OpenAIProvider:
         temperature: float = 0.2,
     ) -> AsyncIterator[StreamEvent]:
         await self.validate_local_transport(spec)
-        check_authoring_messages(spec, messages)
+        check_hosted_messages(spec, messages)
         self._validate(spec, messages)
         usage: Any | None = None
         response: Any | None = None
@@ -155,6 +157,7 @@ class OpenAIProvider:
                 api_base="https://api.openai.com/v1",
                 num_retries=0,
                 store=False,
+                service_tier="default",
                 temperature=temperature,
                 stream=True,
                 stream_options={"include_usage": True},

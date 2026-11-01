@@ -1,11 +1,13 @@
-"""Local-only gateway adapter for the imported project's Anthropic-shaped tool loop.
+"""Gateway adapter for the imported project's Anthropic-shaped tool loop.
 
-This is a protocol adapter, never an Anthropic API client. Every attempt goes through the
-normal AuDHS gateway/accounting and only installed local providers are available.
+Every attempt uses normal AuDHS gateway accounting. Local execution is the default;
+explicit owner-enabled project study may use the scoped hosted explanation gateway.
+The Anthropic-shaped response is an internal protocol, not a direct API transport.
 """
 
 import json
 import math
+import re
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -14,7 +16,7 @@ from operator import or_
 from types import SimpleNamespace
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, create_model
+from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
@@ -26,6 +28,7 @@ from app.models_ai.budget import Budget
 from app.models_ai.gateway import ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import Router
+from app.orchestrator.project_study_gateway import ProjectStudyGateway, choose_project_study
 from app.orchestrator.prompts import supabase_project_policy
 
 
@@ -79,6 +82,36 @@ def decision_schema(tool_names: tuple[str, ...] | None = None) -> type[LocalDeci
     )
 
 
+@lru_cache
+def hosted_decision_schema(tool_names: tuple[str, ...]) -> type[LocalDecision]:
+    base = decision_schema(tool_names)
+
+    def prose_only(value: str) -> str:
+        if re.search(r"(?m)^\s*`{3,}json\s+tutor_turn\s*$", value):
+            raise ValueError(
+                "Put tutor_turn metadata in state only; text must contain the complete "
+                "learner-facing explanation without a protocol footer."
+            )
+        return value
+
+    return create_model(
+        "HostedProjectDecision",
+        __base__=base,
+        __validators__={"prose_only": field_validator("text")(prose_only)},
+        text=(
+            str,
+            Field(
+                default="",
+                max_length=64000,
+                description=(
+                    "Complete learner-facing Markdown explanation only. "
+                    "Never include a json tutor_turn footer; its metadata belongs in state."
+                ),
+            ),
+        ),
+    )
+
+
 def render_final_text(text: str, state: BaseModel) -> str:
     """Reuse a complete, matching protocol footer; never delete learner-facing prose.
 
@@ -127,8 +160,10 @@ class LocalProjectClient:
         sessions: async_sessionmaker[AsyncSession],
         providers: dict[str, Any],
         settings: Settings,
+        budget: Budget | None = None,
     ) -> None:
         self.sessions, self.providers, self.settings = sessions, providers, settings
+        self.budget = budget or Budget(0)
         self.beta = self
         self.messages = self
 
@@ -169,18 +204,30 @@ class LocalProjectClient:
             )
         async with self.sessions() as db:
             learner = await get_or_create_owner(db)
-            router = Router(self.settings.routing_profile)
-            route = await router.resolve(db, TaskClass.EXPLAIN_SIMPLE, learner.id)
-            spec = await registry.get_spec(db, route.registry_id)
-            if spec.provider != "ollama":
-                raise AppError(
-                    "supabase_local_route_required",
-                    "Assign a local tutor model for project study.",
-                    409,
-                )
-            gateway = ModelGateway(
-                db, router, {k: v for k, v in self.providers.items() if k == "ollama"}, Budget(0)
+            hosted = await choose_project_study(
+                db, self.settings, learner.id, self.providers, self.budget
             )
+            gateway: ModelGateway | ProjectStudyGateway
+            if hosted is not None:
+                response_schema = hosted_decision_schema(tuple(sorted(allowed)))
+                gateway = hosted
+                spec = hosted.spec
+            else:
+                router = Router(self.settings.routing_profile)
+                route = await router.resolve(db, TaskClass.EXPLAIN_SIMPLE, learner.id)
+                spec = await registry.get_spec(db, route.registry_id)
+                if spec.provider != "ollama":
+                    raise AppError(
+                        "supabase_local_route_required",
+                        "Assign a local tutor model or enable a hosted project tutor.",
+                        409,
+                    )
+                gateway = ModelGateway(
+                    db,
+                    router,
+                    {k: v for k, v in self.providers.items() if k == "ollama"},
+                    Budget(0),
+                )
             out = await gateway.complete(
                 TaskClass.EXPLAIN_SIMPLE,
                 messages,
@@ -190,8 +237,10 @@ class LocalProjectClient:
                 metadata={
                     "task": "supabase_project_tutor",
                     "host_adapter": "local-project-tools.v3",
-                    "structured_output": "native_schema",
-                    "schema_prompt": "compact_json.v1",
+                    "structured_output": "instructor_tools"
+                    if hosted is not None
+                    else "native_schema",
+                    "schema_prompt": "standard" if hosted is not None else "compact_json.v1",
                 },
             )
             await db.commit()  # Account for actual attempts even if a tool is rejected.
