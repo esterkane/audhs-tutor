@@ -450,3 +450,20 @@ def test_json_examples_remain_verbatim(text):
         }
     )
     assert result.text == text
+
+
+@pytest.mark.parametrize("conflict", [False, True])
+def test_flat_tutor_envelope_is_recovered_only_with_matching_metadata(conflict):
+    state = metadata().model_dump(mode="json")
+    prose = "Complete explanation.\n\nAll qualifications remain."
+    inner = {**state, "text": prose}
+    if conflict:
+        inner["language"] = "de"
+    raw = {"text": json.dumps(inner), "state": state}
+    schema = bridge.hosted_decision_schema(())
+    if conflict:
+        with pytest.raises(ValidationError):
+            schema.model_validate(raw)
+    else:
+        assert schema.model_validate(raw).text == prose
+        assert json.loads(raw["text"]) == inner

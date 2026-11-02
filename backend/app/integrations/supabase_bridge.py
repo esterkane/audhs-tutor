@@ -126,6 +126,17 @@ def hosted_decision_schema(
             nested = None
         if (
             isinstance(nested, dict)
+            and isinstance(value.state, BaseModel)
+            and set(nested) == set(type(value.state).model_fields) | {"text"}
+        ):
+            # The imported TutorTurn wire format flattens metadata beside text.
+            # Require its complete exact field set; ordinary JSON examples stay prose.
+            nested = {
+                "text": nested["text"],
+                "state": {key: item for key, item in nested.items() if key != "text"},
+            }
+        if (
+            isinstance(nested, dict)
             and set(nested) in ({"text", "state"}, {"text", "state", "tools"})
             and isinstance(nested.get("text"), str)
             and isinstance(nested.get("state"), dict)
