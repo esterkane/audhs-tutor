@@ -377,7 +377,7 @@ class LocalProjectClient:
                     role=role,
                     content=content
                     if isinstance(content, str)
-                    else json.dumps(content, ensure_ascii=False),
+                    else json.dumps(content, ensure_ascii=False, separators=(",", ":")),
                 )
             )
         async with self.sessions() as db:

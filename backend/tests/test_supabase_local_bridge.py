@@ -324,7 +324,7 @@ async def test_native_tool_reference_keeps_instructions_constraints_and_complete
     assert [m.content for m in messages[1:]] == [
         m["content"]
         if isinstance(m["content"], str)
-        else json.dumps(m["content"], ensure_ascii=False)
+        else json.dumps(m["content"], ensure_ascii=False, separators=(",", ":"))
         for m in before
     ]
     assert history == before and call.call_args.kwargs["max_tokens"] == 16000
@@ -429,3 +429,35 @@ async def test_gateway_failure_becomes_safe_host_refusal_and_keeps_accounting(mo
     assert history == [{"role": "user", "content": "Keep my previous question"}]
     call.assert_awaited_once()
     db.commit.assert_awaited_once()
+
+
+async def test_long_history_wire_compaction_is_lossless(monkeypatch):
+    import copy
+    import json
+
+    client, call, _, _ = setup_bridge(monkeypatch)
+    blocks = [
+        {"type": "tool_result", "tool_use_id": "source-1", "content":
+         'SELECT  1;\n{"note": "Keep  two spaces", "value": null}'},
+        {"type": "text", "text": "Nicht ändern: NULL ≠ FALSE;  two spaces.\nSQL remains exact."},
+    ]
+    history = [
+        {"role": "user", "content": f"Question {i}  retains whitespace"}
+        if i % 2 else {"role": "assistant", "content": copy.deepcopy(blocks)}
+        for i in range(120)
+    ]
+    original = copy.deepcopy(history)
+    async with client.messages.stream(system=[], messages=history, tools=[]) as stream:
+        await stream.get_final_message()
+    sent = call.call_args.args[1][1:]
+    assert len(sent) == len(history)
+    saved = 0
+    for source, wire in zip(history, sent, strict=True):
+        assert wire.role == source["role"]
+        if isinstance(source["content"], str):
+            assert wire.content == source["content"]
+        else:
+            assert json.loads(wire.content) == source["content"]
+            saved += len(json.dumps(source["content"], ensure_ascii=False)) - len(wire.content)
+    assert saved > 0
+    assert history == original

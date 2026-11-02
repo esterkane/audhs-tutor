@@ -18,3 +18,15 @@ Validation: 447 scoped backend tests passed; Ruff, mypy, frontend TypeScript bui
 The Responses route now leaves tool input structure to its enforced response schema and retains every human-readable tool annotation in the prompt. Other hosted transports keep their existing full tool catalogue. Full prior messages, request policy, output allowance, source requirements and model effort are unchanged.
 
 Regression tests cover both hosted paths, all retained annotation types and exact prior-message preservation. 448 scoped tests passed; Ruff and mypy passed. The isolated full browser workflow passed in 47.5 seconds (57.4 including startup), and manual review confirmed the complete transaction/vector answers. The first identical learner request used 12,046 input tokens instead of 12,595, a reduction of 549. Total time versus the previous 50.0-second test is not a controlled decoding benchmark; extra retrieval and repair choices varied. The supported result is reduced duplicated input with preserved tested behavior, not guaranteed latency improvement.
+
+## Lossless long-session wire formatting
+
+Structured historical message blocks now use compact JSON separators on the bridge-to-model boundary. This removes only formatting outside JSON string values. Message order, roles, every field and value, whitespace inside SQL/prose, source identifiers and saved transcripts remain unchanged. String messages are sent verbatim. There is no generated summary, truncation, source deduplication or history deletion.
+
+An offline replay through the actual bridge with a fake gateway measured synthetic histories at 1, 10, 30, 60 and 120 turns. Using o200k_base estimates (not billed provider usage), baseline input was 1,882 / 10,306 / 29,026 / 57,106 / 113,266 tokens. Compact formatting used 1,865 / 10,136 / 28,516 / 56,086 / 111,226: savings reach 2,040 tokens (1.8%) at 120 turns. The fixture includes three documentation excerpts per turn and preserved prior answers. It is a workload example, not a prediction of every learner session; counts exclude the separate response schema. Growth remains linear because source text and answers remain complete.
+
+Lossy summarization and source-reference replacement are deferred: the current guard consumes the original source-bearing transcript, and historical source identity/availability must remain reliable. This small reduction does not solve long-session growth or establish faster decoding.
+
+Validation: 51 bridge/Responses adapter tests, Ruff and targeted mypy passed. A 120-message regression checks round-trip equality, exact SQL/prose whitespace, message roles/order and unchanged input history.
+
+The real isolated Chromium workflow passed (45.8 seconds test, 57.0 total): model selection/setup failure, two source-backed explanations, no forced quiz, transcript reload and budget refusal. Manual review confirmed concurrent absolute versus relative balance updates and all requested NOT IN/NOT EXISTS NULL cases. Generation calls were 13.366 and 12.519 seconds; this is not a controlled speed comparison. No saved transcript was compressed or discarded.
