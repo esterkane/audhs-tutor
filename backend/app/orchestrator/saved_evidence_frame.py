@@ -42,7 +42,7 @@ FORMAT_WORDS = frozenset(
     """
 no not without do don t please sql commands code query queries quiz quizzes or and nor claims claim
 of inspecting inspect inspection a the live current project about new run rerun experiment
-statements
+statements execute neues ausführen
 keine kein keinen ohne bitte sql befehle code abfragen abfrage quiz und oder keine behauptung
 behauptungen einer eines aktuellen aktuellen projektprüfung projektdatenbank neuen versuch
 """.split()
@@ -53,7 +53,7 @@ REASON_WORDS = frozenset(
     "why because even though despite reason reasons explain explains explained distinction "
     "deactivating complete its warum wieso obwohl entschied entscheiden erklärt erkläre "
     "erläutere deshalb trotzdem erfolgreichen vollständigen unterscheidung unterschied "
-    "verpflichtet bedeutet bedeutete zeile sein seine seinen entschieden".split()
+    "verpflichtet bedeutet bedeutete zeile sein seine seinen entschieden selben".split()
 )
 
 
@@ -104,7 +104,9 @@ def supported_fact_frame(question: str, *, reasoning: bool = False) -> bool:
             r"\s*(?:please\s+)?(?:no\b|without\b|do not\b|don't\b|keine?\b|ohne\b)", clause, re.I
         )
         if negated:
-            if set(words) <= FORMAT_WORDS:
+            constraint = re.sub(r"\binvented\s+observations\b", "", clause, flags=re.I)
+            constraint_words = re.findall(r"[^\W\d_]+|[0-9]+", constraint.casefold())
+            if set(constraint_words) <= FORMAT_WORDS:
                 continue
             return False
         tokens.extend(word for word in words if not word.isdigit())

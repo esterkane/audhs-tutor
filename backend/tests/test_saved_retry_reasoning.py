@@ -123,3 +123,41 @@ async def test_general_motivation_question_is_not_mistaken_for_a_recorded_decisi
 async def test_removing_format_constraints_does_not_rewrite_fractional_references(minimum):
     question = QUESTION.replace("first experiment", f"first experiment (minimum {minimum})")
     assert await answer_saved_retry(question, state(), recorded(observation(minimum=0))) is None
+
+
+@pytest.mark.parametrize(
+    "constraint",
+    [
+        "Kein neues SQL ausführen.",
+        "Keine neuen SQL-Befehle.",
+        "Do not execute new SQL.",
+        "No commands or invented observations.",
+    ],
+)
+async def test_equivalent_constraints_keep_actual_german_retry_question_on_verified_path(
+    constraint,
+):
+    question = (
+        "Warum entschied der vollständige Retry im ersten Versuch, seine Zeile nicht zu "
+        "deaktivieren, obwohl der Commit erfolgreich war? Nutze die gespeicherten Beobachtungen "
+        "und erkläre den Unterschied zu UPDATE-only im selben Versuch. " + constraint
+    )
+    answer = await answer_saved_retry(question, state(language="de"), recorded(observation()))
+    assert answer is not None and answer.method == "literal-reference-causal-proof.v1"
+    assert "1 > 1 = false" in answer.text and "2 > 1 = true" in answer.text
+    assert "deshalb lautete die Entscheidung" in answer.text
+
+
+@pytest.mark.parametrize(
+    "suffix",
+    [" Execute new SQL.", " Run the experiment.", " No SQL and explain snapshot identity."],
+)
+async def test_recognizing_negative_execution_constraints_does_not_swallow_other_requests(suffix):
+    assert await answer_saved_retry(QUESTION + suffix, state(), recorded(observation())) is None
+
+
+async def test_do_not_invent_observations_is_not_confused_with_no_observations():
+    assert (
+        await answer_saved_retry(QUESTION + " No observations.", state(), recorded(observation()))
+        is None
+    )

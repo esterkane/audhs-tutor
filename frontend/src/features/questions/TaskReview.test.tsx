@@ -116,3 +116,30 @@ it('keeps focus chosen by the learner while a review is saving', async () => {
   await screen.findByText('Task review saved. This does not change your grades or confirm understanding.')
   expect(back).toHaveFocus()
 })
+
+
+
+it('focuses revealed content after the React commit even when animation frames run immediately', async () => {
+  vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => { callback(0); return 1 })
+  vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(preview)))
+  renderApp(<TaskReview />, { route: '/task-review?assessment=a1' })
+  const reveal = screen.getByRole('button', { name: 'Show task and rubric' })
+  reveal.focus()
+  fireEvent.click(reveal)
+  expect(await screen.findByRole('heading', { name: 'Content to review' })).toHaveFocus()
+})
+
+
+it('does not steal learner focus while the task preview is loading', async () => {
+  let resolve!: (value: Response) => void
+  vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>(done => { resolve = done })))
+  renderApp(<TaskReview />, { route: '/task-review?assessment=a1' })
+  const reveal = screen.getByRole('button', { name: 'Show task and rubric' })
+  reveal.focus()
+  fireEvent.click(reveal)
+  const back = screen.getByRole('link', { name: 'Back to Progress' })
+  back.focus()
+  resolve(jsonResponse(preview))
+  await screen.findByRole('heading', { name: 'Content to review' })
+  expect(back).toHaveFocus()
+})

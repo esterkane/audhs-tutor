@@ -39,3 +39,17 @@ Socratic delivery also retain that path. No second model paraphrases the verifie
 
 This expands accurate local reuse for recorded decision arithmetic. Broader unfamiliar
 incident explanations and local free-form generation quality remain outstanding.
+
+
+## Equivalent German constraints
+
+The held-out phrasing “im selben Versuch” with “Kein neues SQL ausführen” now reaches the same
+verified causal report. Equivalent negative execution and no-invented-observation constraints
+are recognized without interpreting positive execution requests as report-only requests.
+“No observations” remains distinct from “no invented observations”; uncovered requests still
+use the full tutor path. The complete original question and raw history remain unchanged.
+
+The expanded delta passed 365 scoped backend tests. The full German/English experiment,
+causal-reply and reload journeys passed (24.5 seconds); replies measured 168–188 ms. Independent
+persistence checks retained all 60 raw messages in two isolated sessions, eight experiments
+and 40 trials, with eight local embedding calls and no chat or hosted calls.

@@ -120,8 +120,8 @@ for (const language of ['en', 'de']) {
     expect(evidenceResumed.transcript).toEqual(saved.transcript)
     for (const ordinal of ['first', 'second']) {
       const causalQuestion = german
-        ? `Warum hat der vollständige Retry im ${ordinal === 'first' ? 'ersten' : 'zweiten'} gespeicherten Versuch entschieden, die eigene Zeile nicht zu deaktivieren, obwohl sein Commit erfolgreich war? Erkläre den Unterschied zum UPDATE-only im gleichen Versuch. Keine neuen SQL-Befehle.`
-        : `Why did the full retry in the ${ordinal} experiment decide not to deactivate its row even though its commit succeeded? Use the recorded observations, and explain the distinction from UPDATE-only in that same experiment. Do not run new SQL.`
+        ? `Warum entschied der vollständige Retry im ${ordinal === 'first' ? 'ersten' : 'zweiten'} Versuch, seine Zeile nicht zu deaktivieren, obwohl der Commit erfolgreich war? Nutze die gespeicherten Beobachtungen und erkläre den Unterschied zu UPDATE-only im selben Versuch. Kein neues SQL ausführen.`
+        : `Why did the full retry in the ${ordinal} experiment decide not to deactivate its row even though its commit succeeded? Use the recorded observations, and explain the distinction from UPDATE-only in that same experiment. Do not execute new SQL.`
       await input.fill(causalQuestion)
       const response = page.waitForResponse(r => r.url().endsWith('/supabase-project/turn'))
       const started = Date.now()

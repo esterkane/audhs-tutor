@@ -46,3 +46,21 @@ test('A held review save does not steal focus from the return link', async ({ pa
   await expect(page.getByText('Task review saved. This does not change your grades or confirm understanding.')).toBeVisible()
   await expect(back).toBeFocused()
 })
+
+
+
+test('A held task preview does not steal focus from the return link', async ({ page }) => {
+  let release!: () => void
+  const held = new Promise<void>(resolve => { release = resolve })
+  await page.route('**/api/questions/example/task-review', async route => {
+    await held
+    await route.fulfill({ json: { assessment_id: 'example', content_version: 'v1', current_review: null, approval_matches_content: false, reviewable: true, content: { objective: {}, item: { prompt: 'Example' }, criteria: [] } } })
+  })
+  await page.goto('/task-review?assessment=example&returnTo=%2Flearn')
+  await page.getByRole('button', { name: 'Show task and rubric' }).click()
+  const back = page.getByRole('link', { name: 'Return to previous activity' })
+  await back.focus()
+  release()
+  await expect(page.getByRole('heading', { name: 'Content to review' })).toBeVisible()
+  await expect(back).toBeFocused()
+})

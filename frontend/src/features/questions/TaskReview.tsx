@@ -40,7 +40,13 @@ function Review({ assessment }: { assessment: string }) {
   const heading = useRef<HTMLHeadingElement>(null)
   const reveal = useRef<HTMLButtonElement>(null)
   const feedback = useRef<HTMLParagraphElement>(null)
+  const previewFocus = useRef<{ origin: Element | null } | null>(null)
   const feedbackFocus = useRef<{ origin: Element | null } | null>(null)
+  useLayoutEffect(() => {
+    const intent = previewFocus.current
+    previewFocus.current = null
+    if (preview && intent && (document.activeElement === intent.origin || document.activeElement === document.body)) heading.current?.focus()
+  }, [preview])
   useLayoutEffect(() => {
     const intent = feedbackFocus.current
     feedbackFocus.current = null
@@ -51,14 +57,18 @@ function Review({ assessment }: { assessment: string }) {
   async function load() {
     if (active.current || pending) return
     const controller = new AbortController(); active.current = controller
+    const focusOrigin = document.activeElement
+    let focusMoved = false
+    const trackFocus = (event: FocusEvent) => { if (event.target !== focusOrigin) focusMoved = true }
+    document.addEventListener('focusin', trackFocus)
     setBusy(true); setConfirmed(false); setError(''); setNotice('')
     try {
       const result = await apiFetch<Preview>(path, { signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]) })
       if (!mounted.current) return
+      previewFocus.current = focusMoved ? null : { origin: focusOrigin }
       setPreview(result); setFacet(result.current_review?.facet ?? 'explanation')
-      requestAnimationFrame(() => { if (document.activeElement === reveal.current) heading.current?.focus() })
     } catch { if (mounted.current) { setPreview(null); setError('Could not load the task review. Try again.') } }
-    finally { if (mounted.current) setBusy(false); if (active.current === controller) active.current = null }
+    finally { document.removeEventListener('focusin', trackFocus); if (mounted.current) setBusy(false); if (active.current === controller) active.current = null }
   }
   async function save(decision: Command['decision']) {
     if (active.current || !preview || (!pending && !confirmed)) return
