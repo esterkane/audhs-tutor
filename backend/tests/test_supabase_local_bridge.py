@@ -375,7 +375,8 @@ def test_native_tool_reference_preserves_nested_safety_annotations_exactly():
     }
 
 
-async def test_hosted_no_quiz_keeps_full_tool_contract_once(monkeypatch):
+@pytest.mark.parametrize("compact", [False, True])
+async def test_hosted_no_quiz_preserves_tool_contract_and_annotations(monkeypatch, compact):
     import json
 
     from app.integrations.supabase_questions import question_scope
@@ -385,17 +386,30 @@ async def test_hosted_no_quiz_keeps_full_tool_contract_once(monkeypatch):
 
     client, call, _, _ = setup_bridge(monkeypatch)
     hosted = SimpleNamespace(
-        complete=call, spec=ModelSpec(provider="openai", model="test-only", registry_id="test-only")
+        complete=call,
+        spec=ModelSpec(provider="openai", model="test-only", registry_id="test-only"),
+        uses_schema_tool_contract=compact,
     )
     monkeypatch.setattr(bridge, "choose_project_study", AsyncMock(return_value=hosted))
+    history = [
+        {"role": "user", "content": "Earlier source and assumptions"},
+        {"role": "assistant", "content": "Earlier complete answer"},
+        {"role": "user", "content": "Current question, no quiz"},
+    ]
     with question_scope(SimpleNamespace(mode="lesson", delivery="explicit"), "No quiz."):
-        async with client.messages.stream(system=[], messages=[], tools=TOOLS) as stream:
+        async with client.messages.stream(system=[], messages=history, tools=TOOLS) as stream:
             await stream.get_final_message()
+    assert [message.model_dump() for message in call.call_args.args[1][1:]] == history
     policy = call.call_args.args[1][0].content
-    assert policy.count(json.dumps(TOOLS)) == 1
+    assert policy.count(json.dumps(TOOLS)) == (0 if compact else 1)
+    if compact:
+        assert bridge.local_tool_instructions(TOOLS) in policy
+        assert len(policy) < len(
+            policy.replace(bridge.local_tool_instructions(TOOLS), json.dumps(TOOLS))
+        )
     assert "CURRENT LEARNER DELIVERY REQUEST" in policy
     assert "set next_question to null" in policy
-    assert "Input structure and valid values are enforced" not in policy
+    assert ("Input structure and valid values are enforced" in policy) == compact
 
 
 async def test_gateway_failure_becomes_safe_host_refusal_and_keeps_accounting(monkeypatch):

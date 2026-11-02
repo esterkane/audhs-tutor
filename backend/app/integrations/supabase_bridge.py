@@ -394,6 +394,13 @@ class LocalProjectClient:
                 )
                 gateway = hosted
                 spec = hosted.spec
+                if getattr(hosted, "uses_schema_tool_contract", False):
+                    messages[0] = Message(
+                        role="system",
+                        content=policy
+                        + "\nInput structure and valid values are enforced by the response JSON schema. "
+                        + local_tool_instructions(tools),
+                    )
             else:
                 router = Router(self.settings.routing_profile)
                 route = await router.resolve(db, TaskClass.EXPLAIN_SIMPLE, learner.id)

@@ -11,3 +11,10 @@ Official model/pricing documentation verified 2026-11-02: https://developers.ope
 Qualification is bounded: manually reviewed English write-skew, grants/RLS, concurrent conflict visibility and caller-privilege ambiguity cases, plus German transaction and vector explanations. Medium reasoning resolved the observed caller-privilege omission in the tested runs, but does not guarantee general factual accuracy. Fresh answers can still take tens of seconds. Source-based local reuse remains preferable when it meets the request.
 
 Validation: 447 scoped backend tests passed; Ruff, mypy, frontend TypeScript build and changed-file ESLint passed. An isolated browser workflow selected the reasoning model through the actual setup button, verified failed setup preserves local routing, completed two German explanations, reloaded the full transcript, and exercised budget refusal (50.0 seconds test, 58.9 seconds including startup). Manual review confirmed the requested transaction and vector conclusions. A citation-only repair took 2.359 seconds. These measurements do not establish a general speed improvement.
+
+
+## Avoid duplicate tool structure
+
+The Responses route now leaves tool input structure to its enforced response schema and retains every human-readable tool annotation in the prompt. Other hosted transports keep their existing full tool catalogue. Full prior messages, request policy, output allowance, source requirements and model effort are unchanged.
+
+Regression tests cover both hosted paths, all retained annotation types and exact prior-message preservation. 448 scoped tests passed; Ruff and mypy passed. The isolated full browser workflow passed in 47.5 seconds (57.4 including startup), and manual review confirmed the complete transaction/vector answers. The first identical learner request used 12,046 input tokens instead of 12,595, a reduction of 549. Total time versus the previous 50.0-second test is not a controlled decoding benchmark; extra retrieval and repair choices varied. The supported result is reduced duplicated input with preserved tested behavior, not guaranteed latency improvement.

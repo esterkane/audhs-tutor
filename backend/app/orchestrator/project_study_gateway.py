@@ -34,6 +34,9 @@ class ProjectStudyRouter(Router):
 class ProjectStudyGateway:
     def __init__(self, gateway: ModelGateway, spec: ModelSpec, learner_id: str) -> None:
         self.gateway, self.spec, self.learner_id = gateway, spec, learner_id
+        self.uses_schema_tool_contract = isinstance(
+            gateway.providers.get(spec.provider), OpenAIResponsesProvider
+        )
 
     async def complete(
         self, task: TaskClass, messages: list[Message], **kwargs: Any
