@@ -187,7 +187,9 @@ class ReviewedOrchestrator:
                     {"role": "user", "content": user_text},
                     {"role": "assistant", "content": saved.text},
                 ],
-                model="local:saved-evidence.v1",
+                model="local:saved-retry-reasoning.v1"
+                if saved.method == "literal-reference-causal-proof.v1"
+                else "local:saved-evidence.v1",
             )
             return
 

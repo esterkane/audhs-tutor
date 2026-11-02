@@ -49,8 +49,24 @@ behauptungen einer eines aktuellen aktuellen projektprüfung projektdatenbank ne
 )
 
 
-def supported_fact_frame(question: str) -> bool:
+REASON_WORDS = frozenset(
+    "why because even though despite reason reasons explain explains explained distinction "
+    "deactivating complete its warum wieso obwohl entschied entscheiden erklärt erkläre "
+    "erläutere deshalb trotzdem erfolgreichen vollständigen unterscheidung unterschied "
+    "verpflichtet bedeutet bedeutete zeile sein seine seinen entschieden".split()
+)
+
+
+def supported_fact_frame(question: str, *, reasoning: bool = False) -> bool:
     if len(question) > 4000:
+        return False
+    if reasoning and not (
+        re.search(r"\b(?:why|warum|wieso)\b", question, re.I)
+        and re.search(r"\b(?:full|complete|vollständige[rns]?)\s+retry\b", question, re.I)
+        and re.search(r"\b(?:update[- ]only|nur\s+update)\b", question, re.I)
+        and re.search(r"\bcommit(?:s|ted)?\b", question, re.I)
+        and re.search(r"decid|decision|entschied|entscheidung|deactivat|deaktivier", question, re.I)
+    ):
         return False
     if re.search(
         r"\b(?:do not|don't|nicht)\s+(?:compare|show|vergleiche|zeige)|\bwhat\s+if\b|\bhow\s+(?!many\b)",
@@ -72,7 +88,7 @@ def supported_fact_frame(question: str) -> bool:
         re.I,
     ):
         return False
-    if not re.search(
+    if not (reasoning and re.search(r"\b(?:why|warum|wieso)\b", question, re.I)) and not re.search(
         r"\b(?:compare|contrast|show|give|report|summarize|check|correct|what|which|vergleiche|vergleich|zeige|gib|was|welche[rns]?)\b",
         question,
         re.I,
@@ -92,7 +108,9 @@ def supported_fact_frame(question: str) -> bool:
                 continue
             return False
         tokens.extend(word for word in words if not word.isdigit())
-    if not tokens or any(word not in WORDS for word in tokens):
+    if not tokens or any(
+        word not in (WORDS | REASON_WORDS if reasoning else WORDS) for word in tokens
+    ):
         return False
     return bool(
         set(tokens)

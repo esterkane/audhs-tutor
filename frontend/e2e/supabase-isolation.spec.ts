@@ -118,6 +118,36 @@ for (const language of ['en', 'de']) {
     await expect(input).toHaveValue('Next research finding remains unsent')
     const evidenceResumed = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
     expect(evidenceResumed.transcript).toEqual(saved.transcript)
+    for (const ordinal of ['first', 'second']) {
+      const causalQuestion = german
+        ? `Warum hat der vollständige Retry im ${ordinal === 'first' ? 'ersten' : 'zweiten'} gespeicherten Versuch entschieden, die eigene Zeile nicht zu deaktivieren, obwohl sein Commit erfolgreich war? Erkläre den Unterschied zum UPDATE-only im gleichen Versuch. Keine neuen SQL-Befehle.`
+        : `Why did the full retry in the ${ordinal} experiment decide not to deactivate its row even though its commit succeeded? Use the recorded observations, and explain the distinction from UPDATE-only in that same experiment. Do not run new SQL.`
+      await input.fill(causalQuestion)
+      const response = page.waitForResponse(r => r.url().endsWith('/supabase-project/turn'))
+      const started = Date.now()
+      await input.press('Enter')
+      expect((await response).ok()).toBe(true)
+      await expect(opener).toBeEnabled()
+      const reasoned = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
+      expect(reasoned.transcript.slice(0, saved.transcript.length)).toEqual(saved.transcript)
+      expect(reasoned.transcript).toHaveLength(saved.transcript.length + 2)
+      const answer = reasoned.transcript.at(-1).tutor_turn
+      expect(answer.text).toContain(ordinal === 'first' ? '1 > 1 = false' : '2 > 1 = true')
+      expect(answer.text).toContain(ordinal === 'first' ? '2 > 1 = true' : '3 > 1 = true')
+      expect(answer.text).toContain(german ? 'deshalb lautete die Entscheidung' : 'so the decision was')
+      expect(answer.text).toContain(german ? 'ursprüngliche Anzahl' : 'reused original count')
+      expect(answer.text).toContain(german ? 'Commit erfolgreich: ja' : 'commit succeeded: yes')
+      expect(answer.text).not.toMatch(/write-consistent|read-consistent|Repeatable Read/)
+      expect(answer.ledger_delta).toEqual([])
+      expect(answer.next_question).toBeNull()
+      console.log(JSON.stringify({ language, ordinal, causal_evidence_ms: Date.now() - started }))
+      saved = reasoned
+      await input.fill('Next research finding remains unsent')
+      await page.reload()
+      expect((await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()).transcript).toEqual(saved.transcript)
+      await expect(input).toHaveValue('Next research finding remains unsent')
+    }
+
     if (process.env.AUDHS_HOSTED_PROJECT_AUDIT === '1') {
       try {
         await request.put(`${API_URL}/api/preferences`, {

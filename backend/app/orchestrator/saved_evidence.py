@@ -47,19 +47,35 @@ async def answer_saved_retry(
         r"saved|stored|recorded|experiment|trial|gespeichert|versuch", question, re.I
     ):
         return None
-    if not supported_fact_frame(question):
+    reasoning = supported_fact_frame(question, reasoning=True)
+    if not reasoning and not supported_fact_frame(question):
         return None
     records = stored_experiments(history)
     if not records:
         return None
-    chosen = source_choices(question, records, last_ordinal=_last_declared(history))
+    selection_question = question
+    if reasoning:
+        # Frame validation has already limited negated clauses to presentation constraints.
+        selection_question = "".join(
+            clause
+            for clause in re.split(r"(?<=[.!?])", question)
+            if not re.match(
+                r"\s*(?:please\s+)?(?:no\b|without\b|do not\b|don't\b|keine?\b|ohne\b)",
+                clause,
+                re.I,
+            )
+        )
+    chosen = source_choices(selection_question, records, last_ordinal=_last_declared(history))
     if chosen is None:
         return None
     try:
-        text = retry_report(records, chosen, language=state.language)
+        text = retry_report(records, chosen, language=state.language, explain_decision=reasoning)
     except UnsupportedPlan:
         return None
     revisions = {record.source.id: record.source.revision for record in records}
     return SavedEvidenceAnswer(
-        text, tuple(chosen), tuple(revisions[identity] for identity in chosen)
+        text,
+        tuple(chosen),
+        tuple(revisions[identity] for identity in chosen),
+        method="literal-reference-causal-proof.v1" if reasoning else "literal-reference-proof.v1",
     )

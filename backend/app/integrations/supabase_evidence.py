@@ -227,6 +227,7 @@ def retry_report(
     record_ids: list[str],
     *,
     language: Literal["en", "de"],
+    explain_decision: bool = False,
 ) -> str:
     if not record_ids or len(record_ids) > 4 or len(set(record_ids)) != len(record_ids):
         raise UnsupportedPlan("Select one to four distinct recorded experiments")
@@ -242,6 +243,8 @@ def retry_report(
     for identity in record_ids:
         item = lookup[identity]
         value = json.loads(item.source.canonical_json)
+        if explain_decision and any(value["runs"][index].get("retry") is None for index in (3, 4)):
+            raise UnsupportedPlan("A causal retry comparison requires both observed retries")
         bindings: list[ValueBinding | PresenceBinding] = [
             ValueBinding("minimum", identity, "/input/minimum_active")
         ]
@@ -426,6 +429,19 @@ def retry_report(
                     f"before commit: {updated}. Commit succeeded: {yes_no(committed)}. Active "
                     f"afterwards: {final}."
                 )
+            if explain_decision:
+                if german:
+                    paragraph = (
+                        f"**{name}:** {reading}. Die Bedingung ist `{condition}`; deshalb "
+                        f"lautete die Entscheidung: {action}. Betroffene Zeilen vor Commit: "
+                        f"{updated}; Commit erfolgreich: {yes_no(committed)}. Danach aktiv: {final}."
+                    )
+                else:
+                    paragraph = (
+                        f"**{name}:** {reading}. The condition is `{condition}`, so the "
+                        f"decision was: {action}. Rows affected before commit: {updated}; "
+                        f"commit succeeded: {yes_no(committed)}. Active afterwards: {final}."
+                    )
             minimum_met = yes_no(facts[prefix + ".minimum_met"].value)
             paragraph += (
                 f" Mindestregel am Ende erfüllt: {minimum_met}."
