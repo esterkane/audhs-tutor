@@ -63,8 +63,12 @@ test('project provider setup failure, hosted answer and full transcript resume',
   expect(saved.transcript).toHaveLength(2)
   const turn = saved.transcript[1].tutor_turn
   expect(turn.mode).toBe("lesson")
-  expect(turn.next_question).toBeTruthy()
-  expect(turn.text).toContain("?")
+  // Explicit delivery permits a useful check; it does not require one per answer.
+  if (turn.next_question) {
+    expect(turn.text).toContain("?")
+    expect(turn.next_question.match(/\?/g)?.length).toBe(1)
+  }
+  expect(turn.guard_flags ?? []).not.toContain("NO_QUESTION")
   expect(
     turn.citations.some((citation: { url: string }) =>
       citation.url.startsWith('https://www.postgresql.org/docs/'),

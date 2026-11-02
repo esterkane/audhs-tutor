@@ -78,7 +78,8 @@ async def test_concurrent_scopes_and_exception_reset():
     assert not questions_suppressed()
 
 
-def test_factual_guard_findings_survive():
+@pytest.mark.parametrize("learner_text", ["Explain.", "Explain. No quiz."])
+def test_factual_guard_findings_survive(learner_text):
     module = project_module()
     from backend.tutor import guard
 
@@ -89,9 +90,9 @@ def test_factual_guard_findings_survive():
         text="I ran the query. [9]",
         speech="I ran the query.",
     )
-    context = guard.GuardContext(learner_text="Explain. No quiz.")
+    context = guard.GuardContext(learner_text=learner_text)
     before = {f.code for f in guard.check(turn, context)}
-    with question_scope(SimpleNamespace(mode="lesson", delivery="explicit"), "No quiz."):
+    with question_scope(SimpleNamespace(mode="lesson", delivery="explicit"), learner_text):
         after = {f.code for f in guard.check(turn, context)}
     assert before - {"NO_QUESTION"} == after
     assert after
@@ -127,3 +128,36 @@ async def test_local_reuse_respects_request_and_preserves_history(language, dire
     assert history == [{"role": "user", "content": "Earlier finding"}]
     assert final.new_messages[0]["content"] == text
     delegate.run_turn.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "mode,delivery,required",
+    [
+        ("lesson", "explicit", False),
+        ("lesson", "socratic", True),
+        ("exam", "explicit", True),
+        ("rabbit_hole", "explicit", True),
+    ],
+)
+def test_optional_explicit_lesson_does_not_force_a_repair(mode, delivery, required):
+    module = project_module()
+    from backend.tutor import guard
+
+    turn = module.TutorTurn(
+        mode=mode,
+        language="en",
+        persona_on=False,
+        text="Complete explanation.",
+        speech="Complete explanation.",
+    )
+    with question_scope(SimpleNamespace(mode=mode, delivery=delivery), "Explain."):
+        findings = guard.check_questions(turn)
+        assert ("NO_QUESTION" in {f.code for f in findings}) is required
+        assert not questions_suppressed()  # An optional useful check is still allowed.
+        questioned = turn.model_copy(
+            update={"next_question": "What changes?", "text": "Complete explanation. What changes?"}
+        )
+        assert "UNREQUESTED_QUIZ" not in {f.code for f in guard.check_questions(questioned)}
+        multiple = turn.model_copy(update={"next_question": "What changes? Why?"})
+        assert "MULTI_QUESTION" in {f.code for f in guard.check_questions(multiple)}
+    assert "NO_QUESTION" in {f.code for f in guard.check_questions(turn)}

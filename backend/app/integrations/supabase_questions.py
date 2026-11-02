@@ -7,6 +7,7 @@ from contextvars import ContextVar
 from functools import wraps
 from typing import Any
 
+_OPTIONAL: ContextVar[bool] = ContextVar("project_optional_check", default=False)
 _NO_QUIZ: ContextVar[bool] = ContextVar("project_no_quiz", default=False)
 _REQUEST = re.compile(
     r"(?:please\s+)?(?:no|without|skip|omit)\s+(?:sql\s+(?:or|and)\s+)?"
@@ -40,10 +41,10 @@ def _install() -> None:
     @wraps(original)
     def checked(turn: Any) -> Any:
         findings = original(turn)
-        if not _NO_QUIZ.get():
+        if not (_NO_QUIZ.get() or _OPTIONAL.get()):
             return findings
         findings = [finding for finding in findings if finding.code != "NO_QUESTION"]
-        if turn.next_question:
+        if _NO_QUIZ.get() and turn.next_question:
             findings.append(
                 guard.GuardFinding(
                     code="UNREQUESTED_QUIZ",
@@ -63,6 +64,7 @@ def _install() -> None:
 @contextmanager
 def question_scope(state: Any, text: str) -> Iterator[None]:
     _install()
+    optional_token = _OPTIONAL.set(state.mode == "lesson" and state.delivery == "explicit")
     token = _NO_QUIZ.set(
         state.mode in {"lesson", "neutral"}
         and state.delivery == "explicit"
@@ -72,3 +74,4 @@ def question_scope(state: Any, text: str) -> Iterator[None]:
         yield
     finally:
         _NO_QUIZ.reset(token)
+        _OPTIONAL.reset(optional_token)
