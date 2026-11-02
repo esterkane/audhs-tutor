@@ -23,9 +23,10 @@ def test_actual_prompt_changes_only_transport_instructions(persona):
     assert changed != original
     assert _NATIVE_OUTPUT not in changed
     assert _NATIVE_TEXT not in changed
-    assert changed.replace(_STRUCTURED_OUTPUT, _NATIVE_OUTPUT).replace(
-        _STRUCTURED_TEXT, _NATIVE_TEXT
-    ) == original
+    assert (
+        changed.replace(_STRUCTURED_OUTPUT, _NATIVE_OUTPUT).replace(_STRUCTURED_TEXT, _NATIVE_TEXT)
+        == original
+    )
     assert structured_project_policy(changed) == changed
 
 
@@ -48,8 +49,10 @@ async def test_adapter_changes_policy_only_and_preserves_full_history(monkeypatc
 
     client, complete, _, _ = setup_bridge(monkeypatch)
     policy = static_prefix(True, "Learner")
-    history = [{"role": "user", "content": policy},
-               {"role": "assistant", "content": "Earlier answer\n```json tutor_turn\n{}\n```"}]
+    history = [
+        {"role": "user", "content": policy},
+        {"role": "assistant", "content": "Earlier answer\n```json tutor_turn\n{}\n```"},
+    ]
     original = copy.deepcopy(history)
     async with client.messages.stream(
         system=[{"text": policy}], messages=history, tools=[], max_tokens=16000

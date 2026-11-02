@@ -72,7 +72,9 @@ async def test_real_adapter_parser_and_stream_keep_one_footer_and_full_history(m
     state = metadata()
     prose = "First requested distinction.\n\nSecond requested distinction.\n\nWhich check applies?"
     original_text = prose + footer(state.model_dump(mode="json"))
-    decision = bridge.decision_schema().model_validate({"text": original_text, "state": state.model_dump(mode="json")})
+    decision = bridge.decision_schema().model_validate(
+        {"text": original_text, "state": state.model_dump(mode="json")}
+    )
     client, call, _, _ = setup_bridge(monkeypatch, decision=decision)
     history = [{"role": "user", "content": "Earlier research stays unchanged."}]
     before = copy.deepcopy(history)
@@ -141,7 +143,10 @@ def test_hosted_schema_rejects_protocol_in_prose_without_discarding_content():
     valid = schema.model_validate({"text": prose, "state": state.model_dump(mode="json")})
     assert valid.text == prose
     matching = prose + footer(state.model_dump(mode="json"))
-    assert schema.model_validate({"text": matching, "state": state.model_dump(mode="json")}).text == matching
+    assert (
+        schema.model_validate({"text": matching, "state": state.model_dump(mode="json")}).text
+        == matching
+    )
     with pytest.raises(ValidationError, match="metadata in state only"):
         schema.model_validate(
             {
@@ -288,7 +293,9 @@ def test_complete_metadata_object_never_substitutes_for_answer(hosted):
     state = metadata()
     schema = bridge.hosted_decision_schema(()) if hosted else bridge.decision_schema(())
     with pytest.raises(ValidationError, match="Metadata alone"):
-        schema.model_validate({"text": state.model_dump_json(), "state": state.model_dump(mode="json")})
+        schema.model_validate(
+            {"text": state.model_dump_json(), "state": state.model_dump(mode="json")}
+        )
 
 
 def test_hosted_footer_without_explanation_is_not_an_answer():
@@ -299,7 +306,9 @@ def test_hosted_footer_without_explanation_is_not_an_answer():
         )
 
 
-async def test_matching_hosted_footer_needs_one_gateway_attempt_and_preserves_prose(db, monkeypatch):
+async def test_matching_hosted_footer_needs_one_gateway_attempt_and_preserves_prose(
+    db, monkeypatch
+):
     from sqlalchemy import select
 
     from app.db.models import ModelCall
@@ -364,7 +373,10 @@ async def test_matching_hosted_footer_needs_one_gateway_attempt_and_preserves_pr
         )
     ).all()
     assert [c.outcome for c in calls] == ["ok"]
-    assert bridge.render_final_text(result.result.parsed.text, result.result.parsed.state) == complete_answer
+    assert (
+        bridge.render_final_text(result.result.parsed.text, result.result.parsed.state)
+        == complete_answer
+    )
 
 
 @pytest.mark.parametrize("include_state", [False, True])
