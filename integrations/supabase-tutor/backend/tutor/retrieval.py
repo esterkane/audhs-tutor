@@ -267,10 +267,14 @@ class PgHybridRetriever:
                     "select c.id as chunk_id, s.url, c.anchor, c.heading_path, c.content, "
                     "s.tier, s.fetched_at, 1.0::float8 as score from tutor.docs_chunk c "
                     "join tutor.docs_source s on s.id=c.source_id where s.status='active' "
-                    "and s.url=any(%s::text[]) and c.content like any(%s::text[]) "
+                    "and (s.url=any(%s::text[]) or s.url ~ "
+                    "'^https://github[.]com/pgvector/pgvector/blob/(master|v[0-9]+[.][0-9]+[.][0-9]+)/README[.]md$') "
+                    "and c.content like any(%s::text[]) "
                     "and (%s::text[] is null or s.product=any(%s::text[])) "
                     "order by (select count(*) from unnest(%s::text[]) as terms(term) "
-                    "where c.content like term) desc, s.url, c.ord limit %s",
+                    "where c.content like term) desc, "
+                    "case when s.url like 'https://github.com/pgvector/pgvector/%%' then 0 else 1 end, "
+                    "s.url, c.ord limit %s",
                     (["https://supabase.com/docs/guides/ai/vector-columns.md",
                       "https://supabase.com/docs/guides/ai/vector-indexes/hnsw-indexes.md",
                       "https://supabase.com/docs/guides/database/extensions/pgvector.md"],

@@ -127,11 +127,15 @@ async def test_reranker_sees_candidate_pool_and_cuts_to_k(
     assert len(hits) == 1
 
 
-async def test_vector_operator_reference_is_reserved_and_not_duplicated_before_reranking():
+@pytest.mark.parametrize("reference_url", [
+    "https://supabase.com/docs/guides/ai/vector-columns.md",
+    "https://github.com/pgvector/pgvector/blob/v0.8.7/README.md",
+])
+async def test_vector_operator_reference_is_reserved_and_not_duplicated_before_reranking(reference_url):
     from contextlib import asynccontextmanager
     from datetime import UTC, datetime
 
-    reference = {"chunk_id": uuid4(), "url": "https://supabase.com/docs/guides/ai/vector-columns.md",
+    reference = {"chunk_id": uuid4(), "url": reference_url,
                  "anchor": "distance", "heading_path": "Vectors > Distance",
                  "content": "<-> L2; <=> cosine; <#> negative inner product", "tier": 1,
                  "fetched_at": datetime(2026, 11, 1, tzinfo=UTC), "score": 0.1}

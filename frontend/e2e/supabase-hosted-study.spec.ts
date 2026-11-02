@@ -97,9 +97,10 @@ test('project provider setup failure, hosted answer and full transcript resume',
   expect(vectorTurn.text).toContain('<=>')
   expect(vectorTurn.text).toContain('<#>')
   expect(vectorTurn.text).toMatch(/negative|negated|negation/i)
-  expect(vectorTurn.citations.some((c: { url: string }) => c.url.startsWith(
-    'https://supabase.com/docs/guides/ai/vector-columns.md',
-  ))).toBe(true)
+  expect(vectorTurn.citations.some((c: { url: string }) =>
+    c.url.startsWith('https://supabase.com/docs/guides/ai/vector-columns.md') ||
+    /^https:\/\/github\.com\/pgvector\/pgvector\/blob\/(?:master|v\d+\.\d+\.\d+)\/README\.md(?:#|$)/.test(c.url),
+  )).toBe(true)
   expect(vectorTurn.guard_flags ?? []).not.toContain('CITATION_NOT_FROM_TOOL')
   expect(vectorTurn.guard_flags ?? []).not.toContain('UNCITED_CLAIM')
   saved = continued
