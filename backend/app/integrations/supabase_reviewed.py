@@ -115,7 +115,9 @@ class ReviewedOrchestrator:
 
     async def run_turn(self, **kwargs: Any) -> AsyncIterator[Any]:
         from app.integrations.supabase_mode import mode_scope, selected_state
+        from app.integrations.supabase_vector_evidence import install_vector_evidence
 
+        install_vector_evidence()
         user_text = kwargs["user_text"]
         state = selected_state(kwargs["state"], user_text)
         kwargs = {**kwargs, "state": state}

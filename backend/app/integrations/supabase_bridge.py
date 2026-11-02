@@ -480,6 +480,9 @@ class LocalProjectClient:
             blocks: list[dict[str, Any]] = []
             rendered = decision.text
             if decision.state is not None and not decision.tools:
+                from app.integrations.supabase_citation_display import align_reasoning_reference
+
+                rendered = align_reasoning_reference(rendered, decision.state)
                 rendered = visible_question(
                     render_final_text(rendered, decision.state), decision.state
                 )
