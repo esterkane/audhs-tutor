@@ -378,6 +378,7 @@ class ModelGateway:
                         task,
                         kind,
                         ProviderResult(
+                            latency_ms=int((time.perf_counter() - attempt_started) * 1000),
                             tokens_in=e.tokens_in,
                             tokens_out=e.tokens_out,
                             cached_tokens=e.cached_tokens,

@@ -81,10 +81,11 @@ def test_provider_adapters_carry_only_typed_reason(provider):
     assert adapter._structured_error(wrapped(error)).reason_code == "invalid_json"
 
 
-async def test_gateway_persists_reason_and_diagnostic_export_allowlists_it(db):
+async def test_gateway_persists_reason_and_diagnostic_export_allowlists_it(db, monkeypatch):
     from sqlalchemy import select
 
     from app.db.models import ModelCall
+    from app.models_ai import gateway as gateway_module
     from app.models_ai.budget import Budget
     from app.models_ai.fake import FakeProvider
     from app.models_ai.gateway import ModelGateway
@@ -92,10 +93,14 @@ async def test_gateway_persists_reason_and_diagnostic_export_allowlists_it(db):
     from app.models_ai.registry import seed_defaults
     from app.models_ai.routing import Router
 
+    clock = [100.0]
+    monkeypatch.setattr(gateway_module, "time", SimpleNamespace(perf_counter=lambda: clock[0]))
+
     class FailOnce(FakeProvider):
         async def complete(self, *args, **kwargs):
             if not getattr(self, "failed_once", False):
                 self.failed_once = True
+                clock[0] += 1.25
                 raise StructuredOutputError(
                     "PRIVATE_FAILURE", 1, reason_code="quote_not_literal", tokens_in=12
                 )
@@ -127,6 +132,7 @@ async def test_gateway_persists_reason_and_diagnostic_export_allowlists_it(db):
     assert calls[0].outcome == "invalid_output"
     assert calls[0].metadata_json["structured_reason_code"] == "quote_not_literal"
     assert calls[0].tokens_in == 12
+    assert calls[0].latency_ms == 1250
     assert "structured_reason_code" not in calls[1].metadata_json
 
     diagnostic = load_diagnostic()
