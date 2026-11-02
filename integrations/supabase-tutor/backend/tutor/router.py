@@ -252,6 +252,8 @@ async def turn(body: TurnRequest, svc: Svc, user: User) -> EventSourceResponse:
                                                            user)
                             status_.pop("coaching_for_tutor_only", None)  # the learner's UI must not get the answers
                             yield _sse("lab", {"slug": installed.spec.slug, "action": "install", "result": status_})
+            except HostRefusal as e:
+                yield _sse("error", {"status": e.status_code, "message": e.message})
             except anthropic.APIStatusError as e:
                 yield _sse("error", {"status": e.status_code, "message": e.message})
             except anthropic.APIConnectionError:

@@ -396,3 +396,22 @@ async def test_hosted_no_quiz_keeps_full_tool_contract_once(monkeypatch):
     assert "CURRENT LEARNER DELIVERY REQUEST" in policy
     assert "set next_question to null" in policy
     assert "Input structure and valid values are enforced" not in policy
+
+
+async def test_gateway_failure_becomes_safe_host_refusal_and_keeps_accounting(monkeypatch):
+    from app.models_ai.gateway import GatewayError
+
+    client, call, db, _ = setup_bridge(monkeypatch)
+    call.side_effect = GatewayError("private transport detail; daily hosted budget reached")
+    from backend.tutor.host import HostRefusal
+
+    history = [{"role": "user", "content": "Keep my previous question"}]
+    with pytest.raises(HostRefusal) as caught:
+        async with client.messages.stream(system=[], messages=history, tools=[]):
+            raise AssertionError("Failure must not produce an answer")
+    assert caught.value.status_code == 503
+    assert "shared hosted budget" in caught.value.message
+    assert "private transport detail" not in caught.value.message
+    assert history == [{"role": "user", "content": "Keep my previous question"}]
+    call.assert_awaited_once()
+    db.commit.assert_awaited_once()

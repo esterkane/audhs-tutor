@@ -81,3 +81,40 @@ test('premature answer stream exits waiting state and retains the question', asy
   await page.getByRole('button', { name: 'Restore question to editor', exact: true }).click()
   await expect(input).toHaveValue('Keep this question after an incomplete stream')
 })
+
+
+test('mid-answer host refusal retains transcript and pending question across reload', async ({ page, request }) => {
+  await page.goto('/projects/supabase')
+  await page.getByRole('button', { name: /Explicit/ }).click()
+  const input = page.getByRole('textbox', { name: /message|question/i }).last()
+  await input.fill('Explain the difference between a missing SELECT grant and a row policy that matches no rows. Do not show SQL.')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByText(/Table privileges and row policies are separate checks/)).toBeVisible()
+  await expect(page.getByRole('button', { name: 'New session', exact: true })).toBeEnabled()
+  const id = await page.evaluate(() => Object.keys(localStorage)
+    .filter((key) => key.startsWith('kaenguru.session.')).map((key) => localStorage.getItem(key))[0])
+  const before = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
+  expect(before.transcript).toHaveLength(2)
+  let attempts = 0
+  await page.route('**/api/supabase-project/turn', (route) => {
+    attempts++
+    return route.fulfill({
+      status: 200,
+      contentType: 'text/event-stream',
+      body: 'event: token\ndata: {"text":"Unfinished explanation"}\n\n' +
+        'event: error\ndata: {"status":503,"message":"The tutor could not complete this answer. Check model availability and the shared hosted budget before retrying. Your earlier conversation is kept."}\n\n',
+    })
+  })
+  const question = 'Keep this new research question after a mid-answer budget refusal.'
+  await input.fill(question)
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByRole('alert')).toContainText('shared hosted budget')
+  await expect(page.getByRole('button', { name: 'New session', exact: true })).toBeEnabled()
+  await page.reload()
+  expect((await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()).transcript)
+    .toEqual(before.transcript)
+  await expect(page.getByText('Saved question awaiting an answer', { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Restore question to editor', exact: true }).click()
+  await expect(input).toHaveValue(question)
+  expect(attempts).toBe(1)
+})

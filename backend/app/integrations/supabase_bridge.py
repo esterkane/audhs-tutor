@@ -25,7 +25,7 @@ from app.db.traces import ModelCallRecord, write_model_call
 from app.kernel.learner import get_or_create_owner
 from app.models_ai import registry
 from app.models_ai.budget import Budget
-from app.models_ai.gateway import ModelGateway
+from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import Router
 from app.orchestrator.project_study_gateway import ProjectStudyGateway, choose_project_study
@@ -435,22 +435,32 @@ class LocalProjectClient:
             if repair_turn is not None:
                 output_schema = QuestionRepair
                 messages.append(Message(role="system", content=QUESTION_REPAIR_POLICY))
-            out = await gateway.complete(
-                TaskClass.EXPLAIN_SIMPLE,
-                messages,
-                response_model=output_schema,
-                learner_id=learner.id,
-                max_tokens=int(request.get("max_tokens", 16000)),
-                metadata={
-                    "task": "supabase_project_tutor",
-                    "host_adapter": "local-project-tools.v4",
-                    "question_only_repair": repair_turn is not None,
-                    "structured_output": "instructor_tools"
-                    if hosted is not None
-                    else "native_schema",
-                    "schema_prompt": "standard" if hosted is not None else "compact_json.v1",
-                },
-            )
+            try:
+                out = await gateway.complete(
+                    TaskClass.EXPLAIN_SIMPLE,
+                    messages,
+                    response_model=output_schema,
+                    learner_id=learner.id,
+                    max_tokens=int(request.get("max_tokens", 16000)),
+                    metadata={
+                        "task": "supabase_project_tutor",
+                        "host_adapter": "local-project-tools.v4",
+                        "question_only_repair": repair_turn is not None,
+                        "structured_output": "instructor_tools"
+                        if hosted is not None
+                        else "native_schema",
+                        "schema_prompt": "standard" if hosted is not None else "compact_json.v1",
+                    },
+                )
+            except GatewayError as error:
+                from backend.tutor.host import HostRefusal
+
+                await db.commit()  # Preserve failed/blocked attempt accounting too.
+                raise HostRefusal(
+                    "The tutor could not complete this answer. Check model availability and "
+                    "the shared hosted budget before retrying. Your earlier conversation is kept.",
+                    503,
+                ) from error
             await db.commit()  # Account for actual attempts even if a tool is rejected.
             decision = out.result.parsed
             if repair_turn is not None and isinstance(decision, QuestionRepair):

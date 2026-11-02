@@ -86,3 +86,35 @@ def test_explicit_delivery_adds_its_block_only_when_chosen() -> None:
     explicit = turn_system_text(SessionState(delivery="explicit"))
     assert "# DELIVERY: explicit" in explicit and "at most one application check when useful" in explicit
     assert "DELIVERY" not in turn_system_text(SessionState())
+
+
+async def test_midstream_host_refusal_emits_error_without_saving_partial_turn() -> None:
+    import asyncio
+    from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    from backend.tutor.orchestrator import Token
+    from backend.tutor.router import TurnRequest, turn
+
+    async def failed_turn(**kwargs):
+        yield Token("Partial answer")
+        raise HostRefusal("Shared hosted budget cannot cover the next call", 503)
+
+    previous = [{"role": "user", "content": "Previous question"}]
+    store = SimpleNamespace(session=AsyncMock(return_value={"mode": "lesson"}),
+                            history=AsyncMock(return_value=previous), append=AsyncMock())
+    lock = asyncio.Lock()
+    svc = SimpleNamespace(anthropic=object(), hooks=None, store=store, lock=lambda _: lock,
+                          session_state=AsyncMock(return_value=SessionState()),
+                          runner=lambda _: SimpleNamespace(active=None), retriever=None,
+                          ledger=None, web=None,
+                          orchestrator=lambda _: SimpleNamespace(run_turn=failed_turn))
+    response = await turn(TurnRequest(session_id=uuid4(), text="Next question"), svc, uuid4())
+    events = [event async for event in response.body_iterator]
+    assert [event["event"] for event in events] == ["token", "error"]
+    import json
+    assert json.loads(events[-1]["data"]) == {
+        "status": 503, "message": "Shared hosted budget cannot cover the next call"}
+    store.append.assert_not_awaited()
+    assert previous == [{"role": "user", "content": "Previous question"}]
+    assert not lock.locked()
