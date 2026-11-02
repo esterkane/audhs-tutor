@@ -1,5 +1,6 @@
 """A bounded missing-question repair that cannot rewrite accepted explanation prose."""
 
+import json
 import re
 from typing import Any
 
@@ -50,3 +51,36 @@ def compatible_speech(turn: Any) -> bool:
         )
         is None
     )
+
+
+def visible_question(rendered: str, state: BaseModel) -> str:
+    """Insert a missing metadata question into prose without regenerating or deleting text."""
+    from app.integrations.supabase_questions import questions_suppressed
+
+    metadata = state.model_dump(mode="json")
+    question = metadata.get("next_question")
+    if (
+        questions_suppressed()
+        or metadata.get("mode") not in {"lesson", "exam", "rabbit_hole"}
+        or metadata.get("session_end") is not None
+        or not isinstance(question, str)
+        or question.count("?") != 1
+        or not question.rstrip().endswith("?")
+        or "```" in question
+    ):
+        return rendered
+    from backend.tutor.turn_parser import split_reply
+
+    prose, block = split_reply(rendered)
+    # Never add a second question or guess how an ambiguous protocol should parse.
+    if "?" in prose or block is None:
+        return rendered
+    try:
+        if json.loads(block) != metadata:
+            return rendered
+    except (TypeError, ValueError):
+        return rendered
+    position = rendered.rfind("\n```json tutor_turn\n")
+    if position < 0:
+        return rendered
+    return rendered[:position] + "\n\n" + question + rendered[position:]

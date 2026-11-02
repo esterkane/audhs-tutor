@@ -64,6 +64,7 @@ test('project provider setup failure, hosted answer and full transcript resume',
   const turn = saved.transcript[1].tutor_turn
   expect(turn.mode).toBe("lesson")
   expect(turn.next_question).toBeTruthy()
+  expect(turn.text).toContain("?")
   expect(
     turn.citations.some((citation: { url: string }) =>
       citation.url.startsWith('https://www.postgresql.org/docs/'),

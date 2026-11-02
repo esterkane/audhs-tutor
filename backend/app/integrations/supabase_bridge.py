@@ -423,6 +423,7 @@ class LocalProjectClient:
                 QuestionRepair,
                 compatible_speech,
                 repaired_parts,
+                visible_question,
             )
 
             repair_turn = request.get("_audhs_question_repair") if hosted is not None else None
@@ -479,7 +480,9 @@ class LocalProjectClient:
             blocks: list[dict[str, Any]] = []
             rendered = decision.text
             if decision.state is not None and not decision.tools:
-                rendered = render_final_text(rendered, decision.state)
+                rendered = visible_question(
+                    render_final_text(rendered, decision.state), decision.state
+                )
             if rendered:
                 blocks.append({"type": "text", "text": rendered})
             for i, tool in enumerate(decision.tools):

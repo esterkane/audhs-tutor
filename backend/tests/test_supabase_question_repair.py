@@ -161,3 +161,96 @@ async def test_conflicting_speech_keeps_full_repair(monkeypatch, speech):
         pass
     assert call.call_args.kwargs["response_model"] is not QuestionRepair
     assert not call.call_args.kwargs["metadata"]["question_only_repair"]
+
+
+def test_metadata_question_becomes_visible_without_losing_any_existing_text():
+    project_module()
+    from backend.tutor.turn_parser import split_reply
+
+    from app.integrations.supabase_question_repair import visible_question
+
+    turn = original_turn().model_copy(
+        update={"next_question": "What changes if the commit is later?"}
+    )
+    metadata = (
+        bridge.decision_schema(())
+        .model_validate(
+            {
+                "text": turn.text,
+                "state": turn.model_dump(mode="json", exclude={"text", "guard_flags"}),
+            }
+        )
+        .state
+    )
+    rendered = bridge.render_final_text(turn.text, metadata)
+    result = visible_question(rendered, metadata)
+    assert result.replace("\n\n" + turn.next_question, "", 1) == rendered
+    assert turn.next_question in split_reply(result)[0]
+    assert visible_question(result, metadata) == result
+
+
+@pytest.mark.parametrize(
+    "mode,question,text",
+    [
+        ("neutral", "What now?", "Explanation."),
+        ("incident", "What now?", "Explanation."),
+        ("lesson", "What now?", "Explanation. What now?"),
+        ("lesson", "What now?", "Explanation. Why is that?"),
+        ("lesson", "Why? What?", "Explanation."),
+        ("lesson", None, "Explanation."),
+    ],
+)
+def test_visible_question_does_not_invent_or_duplicate_questions(mode, question, text):
+    from app.integrations.supabase_question_repair import visible_question
+
+    turn = original_turn().model_copy(
+        update={"mode": mode, "next_question": question, "text": text}
+    )
+    metadata = (
+        bridge.decision_schema(())
+        .model_validate(
+            {"text": text, "state": turn.model_dump(mode="json", exclude={"text", "guard_flags"})}
+        )
+        .state
+    )
+    rendered = bridge.render_final_text(text, metadata)
+    assert visible_question(rendered, metadata) == rendered
+
+
+def test_visible_question_respects_no_quiz_override():
+    from app.integrations.supabase_question_repair import visible_question
+    from app.integrations.supabase_questions import question_scope
+
+    turn = original_turn().model_copy(update={"next_question": "What changes?"})
+    metadata = (
+        bridge.decision_schema(())
+        .model_validate(
+            {
+                "text": turn.text,
+                "state": turn.model_dump(mode="json", exclude={"text", "guard_flags"}),
+            }
+        )
+        .state
+    )
+    rendered = bridge.render_final_text(turn.text, metadata)
+    with question_scope(SimpleNamespace(mode="lesson", delivery="explicit"), "No quiz."):
+        assert visible_question(rendered, metadata) == rendered
+
+
+async def test_bridge_displays_existing_question_in_one_call(monkeypatch):
+    project_module()
+    from backend.tutor.turn_parser import split_reply
+
+    turn = original_turn().model_copy(
+        update={"next_question": "What changes if the commit is later?"}
+    )
+    decision = bridge.decision_schema(()).model_validate(
+        {"text": turn.text, "state": turn.model_dump(mode="json", exclude={"text", "guard_flags"})}
+    )
+    client, call, _, _ = setup_bridge(monkeypatch, decision=decision)
+    async with client.messages.stream(system=[], messages=[], tools=[]) as stream:
+        response = await stream.get_final_message()
+    prose, _ = split_reply(response.content[0].text)
+    assert prose.startswith(turn.text)
+    assert turn.next_question in prose
+    assert call.await_count == 1

@@ -11,3 +11,10 @@ The question schema rejects blank, multiple and code-block questions. These chec
 345 scoped backend tests passed, including mode authority, explicit commands, concurrency/reset, byte-preserving repair, history, gateway routing, other-failure handling and guard reruns. Backend Ruff formatting/lint and mypy passed; frontend TypeScript and changed-test ESLint passed. Real English/German hosted browser journeys preserved lesson mode, honored no-quiz requests and restored complete transcripts. Four local English/German reviewed/incident/neutral resume journeys passed. Complete saved answers were manually inspected.
 
 Observed question-only calls took 2.03 seconds in an initial English sample and 1.36 seconds in a German sample, versus 2.75 seconds for a prior full rewrite. These are small unpaired samples, not proof of a general latency gain. Other generation and format repairs still dominate some sessions. Broader vector-reasoning reliability and repetitive questions remain open.
+
+
+## Display an already-generated check
+
+If a complete matching response contains one check question in metadata but no question in its prose, the host inserts that existing question before the protocol footer. It deletes no existing text, changes no metadata and makes no additional model call. Repeated rendering is idempotent. Neutral/incident replies, ended sessions, no-quiz overrides, existing or ambiguous questions, malformed question strings and nonmatching protocol blocks remain untouched.
+
+Question/transport regressions and scoped backend checks passed, including a one-call bridge test and preservation of every existing character. A fresh hosted full-session/resume browser journey and four English/German local reviewed/incident/neutral journeys passed with the experimental vector evidence disabled. Other model repairs and semantic question quality remain separate issues.
