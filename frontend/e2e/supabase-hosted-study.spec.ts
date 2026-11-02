@@ -62,6 +62,8 @@ test('project provider setup failure, hosted answer and full transcript resume',
   let saved = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()
   expect(saved.transcript).toHaveLength(2)
   const turn = saved.transcript[1].tutor_turn
+  expect(turn.mode).toBe("lesson")
+  expect(turn.next_question).toBeTruthy()
   expect(
     turn.citations.some((citation: { url: string }) =>
       citation.url.startsWith('https://www.postgresql.org/docs/'),
@@ -81,6 +83,7 @@ test('project provider setup failure, hosted answer and full transcript resume',
   expect(continued.transcript).toHaveLength(4)
   expect(continued.transcript.slice(0, 2)).toEqual(saved.transcript)
   const vectorTurn = continued.transcript[3].tutor_turn
+  expect(vectorTurn.mode).toBe("lesson")
   expect(vectorTurn.next_question).toBeNull()
   expect(vectorTurn.text.trim()).not.toMatch(/^\{\s*"(?:text|state|tools)"/)
   expect(vectorTurn.text).not.toContain('"next_question":')

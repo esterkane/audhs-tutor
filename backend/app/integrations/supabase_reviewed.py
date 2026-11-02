@@ -114,7 +114,11 @@ class ReviewedOrchestrator:
         self.delegate = delegate
 
     async def run_turn(self, **kwargs: Any) -> AsyncIterator[Any]:
-        state, user_text = kwargs["state"], kwargs["user_text"]
+        from app.integrations.supabase_mode import mode_scope, selected_state
+
+        user_text = kwargs["user_text"]
+        state = selected_state(kwargs["state"], user_text)
+        kwargs = {**kwargs, "state": state}
         from backend.tutor.orchestrator import Final, Token, ToolCall, ToolResultSummary
 
         from app.integrations.supabase_incidents import incident_turn, select_plan
@@ -220,7 +224,7 @@ class ReviewedOrchestrator:
             from app.integrations.supabase_questions import question_scope
 
             try:
-                with progress_scope(state), question_scope(state, user_text):
+                with mode_scope(state), progress_scope(state), question_scope(state, user_text):
                     async for event in self.delegate.run_turn(**kwargs):
                         if isinstance(event, Final):
                             validate_progress(event.turn)

@@ -307,6 +307,8 @@ class LocalStream:
 
 
 class LocalProjectClient:
+    supports_question_repair = True
+
     def __init__(
         self,
         sessions: async_sessionmaker[AsyncSession],
@@ -416,15 +418,32 @@ class LocalProjectClient:
                     Budget(0),
                 )
             response_schema = progress_schema(response_schema)
+            from app.integrations.supabase_question_repair import (
+                QUESTION_REPAIR_POLICY,
+                QuestionRepair,
+                compatible_speech,
+                repaired_parts,
+            )
+
+            repair_turn = request.get("_audhs_question_repair") if hosted is not None else None
+            from app.integrations.supabase_mode import mode_schema
+
+            output_schema = mode_schema(response_schema)
+            if repair_turn is not None and not compatible_speech(repair_turn):
+                repair_turn = None
+            if repair_turn is not None:
+                output_schema = QuestionRepair
+                messages.append(Message(role="system", content=QUESTION_REPAIR_POLICY))
             out = await gateway.complete(
                 TaskClass.EXPLAIN_SIMPLE,
                 messages,
-                response_model=response_schema,
+                response_model=output_schema,
                 learner_id=learner.id,
                 max_tokens=int(request.get("max_tokens", 16000)),
                 metadata={
                     "task": "supabase_project_tutor",
                     "host_adapter": "local-project-tools.v4",
+                    "question_only_repair": repair_turn is not None,
                     "structured_output": "instructor_tools"
                     if hosted is not None
                     else "native_schema",
@@ -433,6 +452,11 @@ class LocalProjectClient:
             )
             await db.commit()  # Account for actual attempts even if a tool is rejected.
             decision = out.result.parsed
+            if repair_turn is not None and isinstance(decision, QuestionRepair):
+                text, state = repaired_parts(repair_turn, decision)
+                decision = hosted_decision_schema(tuple(sorted(allowed))).model_validate(
+                    {"text": text, "state": state, "tools": []}
+                )
             if not isinstance(decision, LocalDecision) or any(
                 t.name not in allowed for t in decision.tools
             ):

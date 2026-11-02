@@ -163,6 +163,7 @@ class Orchestrator:
         markdown = ""
         repaired = False
         guard_retried = False
+        question_repair_turn = None
         stream_retries = 0
         model_used = self.model
 
@@ -170,9 +171,10 @@ class Orchestrator:
             splitter = FenceSplitter()
             started = time.monotonic()
             try:
-                async with self.client.beta.messages.stream(
-                    **self._request(persona, name, history + new)
-                ) as stream:
+                request = self._request(persona, name, history + new)
+                if question_repair_turn is not None:
+                    request["_audhs_question_repair"] = question_repair_turn
+                async with self.client.beta.messages.stream(**request) as stream:
                     async for event in stream:
                         if event.type == "text" and (out := splitter.feed(event.text)):
                             yield Token(out)
@@ -241,6 +243,11 @@ class Orchestrator:
             blocking = [f for f in findings if f.severity == "block"]
             if blocking and not guard_retried:
                 guard_retried = True
+                if (
+                    {f.code for f in blocking} == {"NO_QUESTION"}
+                    and getattr(self.client, "supports_question_repair", False) is True
+                ):
+                    question_repair_turn = turn
                 yield Rewrite(sorted({f.code for f in blocking}))
                 new.append({"role": "user", "content": guard.repair_message(findings)})
                 continue
