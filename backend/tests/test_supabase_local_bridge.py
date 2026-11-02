@@ -235,7 +235,7 @@ async def test_typed_input_retains_exact_supplied_arguments_without_defaults(mon
     assert result.content[0].input == arguments
     assert result.stop_reason == "tool_use"
     assert call.call_args.kwargs["response_model"] is schema
-    assert call.call_args.kwargs["metadata"]["host_adapter"] == "local-project-tools.v3"
+    assert call.call_args.kwargs["metadata"]["host_adapter"] == "local-project-tools.v4"
 
 
 async def test_unknown_offered_contract_stops_before_inference(monkeypatch):

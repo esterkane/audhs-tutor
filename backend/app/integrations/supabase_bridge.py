@@ -16,7 +16,7 @@ from operator import or_
 from types import SimpleNamespace
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field, create_model, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, TypeAdapter, create_model, model_validator
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.core.config import Settings
@@ -50,6 +50,16 @@ class LocalDecision(BaseModel):
                 "Metadata alone is not an answer. Answer all requested distinctions; "
                 "use tools when more evidence is needed."
             )
+        if not self.tools and isinstance(self.state, BaseModel):
+            try:
+                raw = json.loads(self.text)
+            except ValueError:
+                raw = None
+            if isinstance(raw, dict) and raw.keys() == self.state.model_dump().keys():
+                raise ValueError(
+                    "Metadata alone is not an answer. Preserve the complete explanation in text; "
+                    "put the protocol metadata in state."
+                )
         return self
 
 
@@ -107,18 +117,52 @@ def hosted_decision_schema(
         )
     base = decision_schema(tool_names)
 
-    def prose_only(value: str) -> str:
-        if re.search(r"(?m)^\s*`{3,}json\s+tutor_turn\s*$", value):
-            raise ValueError(
-                "Put tutor_turn metadata in state only; text must contain the complete "
-                "learner-facing explanation without a protocol footer."
-            )
+    def prose_only(value: LocalDecision) -> LocalDecision:
+        if re.search(r"(?m)^\s*`{3,}json\s+tutor_turn\s*$", value.text):
+            # A complete matching terminal footer is already valid for the imported
+            # parser. Reuse it exactly instead of asking the model to regenerate prose.
+            from backend.tutor.turn_parser import split_reply
+
+            prose, _ = split_reply(value.text)
+            if (
+                not prose.strip()
+                or not isinstance(value.state, BaseModel)
+                or render_final_text(value.text, value.state) != value.text
+            ):
+                raise ValueError(
+                    "Put tutor_turn metadata in state only; text must contain the complete "
+                    "learner-facing explanation without a conflicting or incomplete protocol footer."
+                )
         return value
 
+    def recover_complete_footer(cls: Any, value: Any) -> Any:
+        if not isinstance(value, dict) or value.get("state") is not None or value.get("tools"):
+            return value
+        text = value.get("text")
+        if not isinstance(text, str) or not text.rstrip().endswith("\n```"):
+            return value
+        from backend.tutor.turn_parser import split_reply
+
+        prose, block = split_reply(text)
+        if not prose.strip() or block is None:
+            return value
+        try:
+            raw = json.loads(block)
+            state = TypeAdapter(cls.model_fields["state"].annotation).validate_python(raw)
+            if isinstance(state, BaseModel) and raw.keys() == type(state).model_fields.keys():
+                return {**value, "state": state}
+        except (ValueError, TypeError, AttributeError):
+            pass
+        return value
+
+    validators: dict[str, Any] = {
+        "recover_complete_footer": model_validator(mode="before")(recover_complete_footer),
+        "prose_only": model_validator(mode="after")(prose_only),
+    }
     return create_model(
         "HostedProjectDecision",
         __base__=base,
-        __validators__={"prose_only": field_validator("text")(prose_only)},
+        __validators__=validators,
         text=(
             str,
             Field(
@@ -261,10 +305,12 @@ class LocalProjectClient:
                 "supabase_tool_contract_invalid", "A project tool contract is unavailable.", 422
             ) from None
         system = request.get("system", [])
-        policy = "\n\n".join(str(b.get("text", "")) for b in system)
+        from app.integrations.supabase_transport import structured_project_policy
+
+        policy = structured_project_policy("\n\n".join(str(b.get("text", "")) for b in system))
         policy += "\n\n" + supabase_project_policy()
         policy += (
-            "\n\nHOST OUTPUT CONTRACT: Return LocalDecision JSON. Put learner-facing Markdown and "
+            "\n\nHOST OUTPUT CONTRACT: Return LocalDecision JSON. Put the complete learner-facing Markdown answer "
             "in text without any tutor_turn fence. Put the required tutor_turn metadata in state; "
             "the host serializes the ```json tutor_turn fence. To request a tool, return its exact name and "
             "arguments in tools; leave tools empty and supply state when finished. Available tool contracts follow. "
@@ -339,7 +385,7 @@ class LocalProjectClient:
                 max_tokens=int(request.get("max_tokens", 16000)),
                 metadata={
                     "task": "supabase_project_tutor",
-                    "host_adapter": "local-project-tools.v3",
+                    "host_adapter": "local-project-tools.v4",
                     "structured_output": "instructor_tools"
                     if hosted is not None
                     else "native_schema",

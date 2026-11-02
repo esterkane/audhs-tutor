@@ -72,7 +72,7 @@ async def test_real_adapter_parser_and_stream_keep_one_footer_and_full_history(m
     state = metadata()
     prose = "First requested distinction.\n\nSecond requested distinction.\n\nWhich check applies?"
     original_text = prose + footer(state.model_dump(mode="json"))
-    decision = bridge.decision_schema().model_validate({"text": original_text, "state": state})
+    decision = bridge.decision_schema().model_validate({"text": original_text, "state": state.model_dump(mode="json")})
     client, call, _, _ = setup_bridge(monkeypatch, decision=decision)
     history = [{"role": "user", "content": "Earlier research stays unchanged."}]
     before = copy.deepcopy(history)
@@ -140,10 +140,12 @@ def test_hosted_schema_rejects_protocol_in_prose_without_discarding_content():
     prose = "Both requested technical distinctions remain complete."
     valid = schema.model_validate({"text": prose, "state": state.model_dump(mode="json")})
     assert valid.text == prose
+    matching = prose + footer(state.model_dump(mode="json"))
+    assert schema.model_validate({"text": matching, "state": state.model_dump(mode="json")}).text == matching
     with pytest.raises(ValidationError, match="metadata in state only"):
         schema.model_validate(
             {
-                "text": prose + footer(state.model_dump(mode="json")),
+                "text": prose + footer({**state.model_dump(mode="json"), "language": "de"}),
                 "state": state.model_dump(mode="json"),
             }
         )
@@ -279,3 +281,121 @@ async def test_empty_native_final_is_repaired_with_history_and_attempts_preserve
     ).all()
     assert [c.outcome for c in calls] == ["invalid_output", "ok"]
     assert "complete learner-facing explanation" in calls[0].error
+
+
+@pytest.mark.parametrize("hosted", [False, True])
+def test_complete_metadata_object_never_substitutes_for_answer(hosted):
+    state = metadata()
+    schema = bridge.hosted_decision_schema(()) if hosted else bridge.decision_schema(())
+    with pytest.raises(ValidationError, match="Metadata alone"):
+        schema.model_validate({"text": state.model_dump_json(), "state": state.model_dump(mode="json")})
+
+
+def test_hosted_footer_without_explanation_is_not_an_answer():
+    state = metadata()
+    with pytest.raises(ValidationError, match="metadata in state only"):
+        bridge.hosted_decision_schema(()).model_validate(
+            {"text": footer(state.model_dump(mode="json")), "state": state.model_dump(mode="json")}
+        )
+
+
+async def test_matching_hosted_footer_needs_one_gateway_attempt_and_preserves_prose(db, monkeypatch):
+    from sqlalchemy import select
+
+    from app.db.models import ModelCall
+    from app.kernel.learner import get_or_create_owner
+    from app.models_ai.benchmark_gateway import BenchmarkRouter
+    from app.models_ai.budget import Budget
+    from app.models_ai.gateway import ModelGateway
+    from app.models_ai.ollama import OllamaProvider
+    from app.models_ai.provider import Message, TaskClass
+    from app.models_ai.registry import seed_defaults
+    from tests import test_ollama_inference_options as native
+
+    original_reply = native.reply
+    answer = "NOT IN is unknown and removes the row; correlated NOT EXISTS is true and keeps it."
+
+    state = metadata().model_dump(mode="json")
+    complete_answer = answer + footer(state)
+
+    def reply(*, invalid=False, done=True):
+        payload = original_reply(done=done)
+        payload["message"]["content"] = json.dumps(
+            {
+                "text": complete_answer,
+                "state": state,
+            }
+        )
+        return payload
+
+    monkeypatch.setattr(native, "reply", reply)
+    posts = native.intercept(monkeypatch, invalid_first=False)
+    await seed_defaults(db, installed_ollama_tags={"gemma3:12b"})
+    learner = await get_or_create_owner(db)
+    gateway = ModelGateway(
+        db,
+        BenchmarkRouter("gemma3-12b"),
+        {"ollama": OllamaProvider("http://127.0.0.1:11434")},
+        Budget(0),
+    )
+    history = [
+        Message(role="user", content="Earlier finding must remain intact."),
+        Message(role="user", content="Compare both row-selection results."),
+    ]
+    before = copy.deepcopy(history)
+    result = await gateway.complete(
+        TaskClass.EXPLAIN_SIMPLE,
+        history,
+        learner_id=learner.id,
+        response_model=bridge.hosted_decision_schema(()),
+        max_tokens=16000,
+        metadata={"structured_output": "native_schema"},
+    )
+    assert result.result.parsed.text == complete_answer
+    assert history == before
+    assert len(posts) == 1
+    assert all("Earlier finding must remain intact." in json.dumps(p["messages"]) for p in posts)
+    assert all(p["options"]["num_predict"] == 16000 for p in posts)
+    calls = (
+        await db.scalars(
+            select(ModelCall)
+            .where(ModelCall.request_id == result.request_id)
+            .order_by(ModelCall.attempt)
+        )
+    ).all()
+    assert [c.outcome for c in calls] == ["ok"]
+    assert bridge.render_final_text(result.result.parsed.text, result.result.parsed.state) == complete_answer
+
+
+@pytest.mark.parametrize("include_state", [False, True])
+def test_complete_footer_supplies_missing_metadata_without_regeneration(include_state):
+    state = metadata().model_dump(mode="json")
+    text = "All requested details remain unchanged." + footer(state)
+    payload = {"text": text}
+    if include_state:
+        payload["state"] = None
+    before = copy.deepcopy(payload)
+    result = bridge.hosted_decision_schema(()).model_validate(payload)
+    assert result.text == text
+    assert result.state.model_dump(mode="json") == state
+    assert payload == before
+    assert bridge.render_final_text(result.text, result.state) == text
+
+
+@pytest.mark.parametrize("variant", ["partial", "no_prose", "trailing_prose", "broken", "conflict"])
+def test_footer_recovery_does_not_guess_or_override_metadata(variant):
+    state = metadata().model_dump(mode="json")
+    text = "Keep every detail." + footer(state)
+    payload = {"text": text}
+    if variant == "partial":
+        payload["text"] = "Keep every detail." + footer({"mode": "neutral"})
+    elif variant == "no_prose":
+        payload["text"] = footer(state)
+    elif variant == "trailing_prose":
+        payload["text"] += "\nThis explains the example."
+    elif variant == "broken":
+        payload["text"] = text[:-3]
+    else:
+        payload["state"] = {**state, "language": "de"}
+    with pytest.raises(ValidationError):
+        bridge.hosted_decision_schema(()).model_validate(payload)
