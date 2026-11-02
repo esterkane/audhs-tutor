@@ -123,6 +123,47 @@ class ReviewedOrchestrator:
         kwargs = {**kwargs, "state": state}
         from backend.tutor.orchestrator import Final, Token, ToolCall, ToolResultSummary
 
+        from app.integrations.supabase_mode import standalone_mode
+
+        if standalone_mode(user_text) is not None:
+            from app.integrations.supabase_project import project_module
+
+            labels = {
+                "en": {
+                    "lesson": "Lesson",
+                    "exam": "Exam",
+                    "neutral": "Neutral",
+                    "incident": "Incident",
+                    "rabbit_hole": "Exploration",
+                },
+                "de": {
+                    "lesson": "Lernen",
+                    "exam": "Prüfung",
+                    "neutral": "Neutral",
+                    "incident": "Fehlersuche",
+                    "rabbit_hole": "Vertiefung",
+                },
+            }
+            label = labels[state.language][state.mode]
+            text = f"Modus: {label}." if state.language == "de" else f"Mode: {label}."
+            turn = project_module().TutorTurn(
+                mode=state.mode,
+                language=state.language,
+                persona_on=state.persona_on,
+                text=text,
+                speech=text,
+            )
+            yield Token(text)
+            yield Final(
+                turn=turn,
+                new_messages=[
+                    {"role": "user", "content": user_text},
+                    {"role": "assistant", "content": text},
+                ],
+                model="local:mode-command.v1",
+            )
+            return
+
         from app.integrations.supabase_incidents import incident_turn, select_plan
         from app.integrations.supabase_isolation import isolation_answer
         from app.integrations.supabase_membership import membership_answer

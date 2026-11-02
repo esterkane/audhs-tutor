@@ -86,3 +86,59 @@ async def test_mode_scope_is_concurrent_and_resets_after_failure():
     with pytest.raises(RuntimeError), mode_scope(SessionState(mode="exam")):
         raise RuntimeError()
     assert mode_schema(base) is base
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Explain this; switch to neutral",
+        "neutral\nExplain SQL",
+        "```neutral```",
+        '"neutral"',
+        "Use neutral mode and explain RLS",
+    ],
+)
+def test_mixed_requests_never_become_local_control_only(text):
+    from app.integrations.supabase_mode import standalone_mode
+
+    assert standalone_mode(text) is None
+
+
+@pytest.mark.parametrize(
+    "language,command,expected",
+    [
+        ("en", "Switch to neutral mode.", "neutral"),
+        ("de", "Bitte wechsle in den Prüfungsmodus.", "exam"),
+    ],
+)
+async def test_pure_mode_switch_needs_no_model_and_appends_complete_exchange(
+    language, command, expected
+):
+    from app.integrations.supabase_reviewed import ReviewedOrchestrator
+
+    project_module()
+    from backend.tutor.orchestrator import Final
+    from backend.tutor.prompt import SessionState
+
+    class NeverCalled:
+        def run_turn(self, **kwargs):
+            raise AssertionError("A control-only command must not generate an answer")
+
+    history = [{"role": "user", "content": "Earlier complete question"}]
+    original = list(history)
+    state = SessionState(mode="lesson", language=language, persona_on=False)
+    events = [
+        event
+        async for event in ReviewedOrchestrator(NeverCalled()).run_turn(
+            user_text=command, state=state, history=history
+        )
+    ]
+    final = next(event for event in events if isinstance(event, Final))
+    assert final.turn.mode == expected
+    assert final.turn.language == language
+    assert final.model == "local:mode-command.v1"
+    assert final.new_messages == [
+        {"role": "user", "content": command},
+        {"role": "assistant", "content": final.turn.text},
+    ]
+    assert history == original and state.mode == "lesson"

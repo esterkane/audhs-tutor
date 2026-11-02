@@ -51,6 +51,12 @@ def requested_mode(text: str) -> str | None:
     return choices[-1] if choices else None
 
 
+def standalone_mode(text: str) -> str | None:
+    """Only a whole control command, never discard a question, quote or code block."""
+    match = _COMMAND.fullmatch(text.strip())
+    return _NAMES.get(match[1].strip().lower()) if match else None
+
+
 def selected_state(state: Any, text: str) -> Any:
     mode = requested_mode(text)
     return replace(state, mode=mode) if mode is not None and mode != state.mode else state
