@@ -84,5 +84,5 @@ async def test_before_turn_can_refuse_and_every_model_call_is_reported(host: Any
 
 def test_explicit_delivery_adds_its_block_only_when_chosen() -> None:
     explicit = turn_system_text(SessionState(delivery="explicit"))
-    assert "# DELIVERY: explicit" in explicit and "exactly one check question" in explicit
+    assert "# DELIVERY: explicit" in explicit and "at most one application check when useful" in explicit
     assert "DELIVERY" not in turn_system_text(SessionState())

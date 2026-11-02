@@ -67,7 +67,7 @@ EXECUTION_CLAIM = re.compile(
     re.IGNORECASE,
 )
 PERSONA_WORDS = re.compile(r"Kleinkünstler|Känguru|Schnapspraline|Kühlschrank|Vermieter|Weltrevolution", re.IGNORECASE)
-SPEECH_MARKUP = re.compile(r"```|https?://|\bselect\s+.+\bfrom\b|sequenceDiagram|flowchart\s", re.IGNORECASE)
+SPEECH_MARKUP = re.compile(r"```|https?://|sequenceDiagram|flowchart\s", re.IGNORECASE)
 
 
 # ----------------------------------------------------------------------------- context
@@ -356,11 +356,55 @@ def check_session_end(turn: TutorTurn) -> list[GuardFinding]:
     return findings
 
 
+# Mask quoted SQL tokens before respecting statement boundaries. In particular,
+# "SELECT privilege; ... from your assumptions" is prose, not one SQL statement.
+_SPEECH_SQL_TOKEN = re.compile(
+    r"'(?:''|\\.|[^'\\])*'|\"(?:\"\"|[^\"])*\""
+    r"|(?P<dollar>\$(?:[A-Za-z_][A-Za-z_0-9]*)?\$).*?(?P=dollar)",
+    re.DOTALL,
+)
+_SPEECH_SELECT = re.compile(r"\bselect\s+.+?\bfrom\b", re.IGNORECASE | re.DOTALL)
+
+
+def _speech_has_sql(speech: str) -> bool:
+    # SQL comments may contain semicolons too. Remove them rather than treating
+    # their punctuation as statement boundaries; block comments can nest.
+    parts: list[str] = []
+    pos = 0
+    while pos < len(speech):
+        if speech.startswith("--", pos):
+            end = speech.find("\n", pos + 2)
+            pos = len(speech) if end < 0 else end
+            parts.append(" ")
+        elif speech.startswith("/*", pos):
+            depth = 1
+            pos += 2
+            while pos < len(speech) and depth:
+                if speech.startswith("/*", pos):
+                    depth += 1
+                    pos += 2
+                elif speech.startswith("*/", pos):
+                    depth -= 1
+                    pos += 2
+                else:
+                    pos += 1
+            parts.append(" ")
+        elif quoted := _SPEECH_SQL_TOKEN.match(speech, pos):
+            if _SPEECH_SELECT.search(quoted.group()):
+                return True
+            parts.append(" quoted_token ")
+            pos = quoted.end()
+        else:
+            parts.append(speech[pos])
+            pos += 1
+    return any(_SPEECH_SELECT.search(part) for part in "".join(parts).split(";"))
+
+
 def check_speech(turn: TutorTurn) -> list[GuardFinding]:
     findings = []
     if (n := len(turn.speech.split())) > SPEECH_MAX_WORDS:
         findings.append(_f("SPEECH_TOO_LONG", "block", f"speech has {n} words; at most {SPEECH_MAX_WORDS}."))
-    if SPEECH_MARKUP.search(turn.speech) or _secrets_in(turn.speech):
+    if SPEECH_MARKUP.search(turn.speech) or _speech_has_sql(turn.speech) or _secrets_in(turn.speech):
         findings.append(_f("SPEECH_HAS_MARKUP", "block", "speech is read aloud: no code, SQL, URLs or diagrams."))
     return findings
 

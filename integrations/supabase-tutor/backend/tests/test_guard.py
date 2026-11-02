@@ -289,3 +289,47 @@ def test_paragraph_scope_retains_community_labelling_requirement() -> None:
 def test_paragraph_scope_without_tool_context_stays_conservative() -> None:
     t = turn(text="PostgreSQL 17 supports this distinction. Another sentence [1].")
     assert any(f.code == "UNCITED_CLAIM" for f in g.check_uncited_claims(t))
+
+
+@pytest.mark.parametrize("speech", [
+    "Case A fails because the role lacks SELECT privilege; a true RLS policy cannot supply it. "
+    "Case B succeeds but returns no rows because its false policy admits none. "
+    "Grants authorize object operations, while RLS restricts rows. "
+    "These are deductions from your assumptions, not executed database checks.",
+    "SELECT privilege is absent; this follows from the supplied assumptions.",
+])
+def test_speech_select_privilege_prose_is_not_sql(speech: str) -> None:
+    assert "SPEECH_HAS_MARKUP" not in codes(turn(speech=speech))
+
+
+@pytest.mark.parametrize("speech", [
+    "SELECT id FROM public.notes;",
+    '"SELECT id FROM public.notes;"',
+    "select n.id, 1.5 from public.notes n;",
+    "SELECT\n id\n FROM public.notes;",
+    "SELECT 'a;b' FROM public.notes;",
+    'SELECT "a;b" FROM public.notes;',
+    "SELECT $$a;b$$ FROM public.notes;",
+    "SELECT $tag$a;b$tag$ FROM public.notes;",
+    "SELECT 'it''s;a' FROM public.notes;",
+    "SELECT id /* a; /* b; */ c; */ FROM public.notes;",
+    "SELECT id -- comment;\n FROM public.notes;",
+    "SELECT id -- unmatched quote: '\n FROM public.notes;",
+    "A safe introduction; SELECT id FROM public.notes;",
+    "```python print(1)```", "https://supabase.com", "sequenceDiagram", "flowchart LR",
+])
+def test_speech_sql_and_markup_still_blocked(speech: str) -> None:
+    assert codes(turn(speech=speech))["SPEECH_HAS_MARKUP"] == "block"
+
+
+async def test_privilege_speech_does_not_regenerate_or_change_complete_answer() -> None:
+    speech = "SELECT privilege is absent; this follows from the supplied assumptions."
+    original = turn(text=f"Privileges and row policies are separate.\n\n{Q}", speech=speech,
+                    citations=[])
+    client = FakeClient([text_reply(original.text, turn=original.model_dump(exclude={"text"}))])
+    final = (await run(client))[-1]
+    assert isinstance(final, o.Final)
+    assert final.turn.text == original.text
+    assert final.turn.speech == speech
+    assert not final.turn.guard_flags
+    assert len(client.requests) == 1
