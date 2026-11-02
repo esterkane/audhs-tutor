@@ -201,8 +201,30 @@ class ReviewedOrchestrator:
             turn = reviewed_turn(state, include_diagnostics=not no_sql_requested(user_text))
             revision = "reviewed:select-privileges-row-visibility.v2"
         else:
-            async for event in self.delegate.run_turn(**kwargs):
-                yield event
+            from anthropic import APIStatusError
+            from httpx2 import Request, Response
+
+            from app.core.errors import AppError
+            from app.integrations.supabase_progress import progress_scope, validate_progress
+
+            try:
+                with progress_scope(state):
+                    async for event in self.delegate.run_turn(**kwargs):
+                        if isinstance(event, Final):
+                            validate_progress(event.turn)
+                        yield event
+            except AppError as error:
+                # The pinned router already encodes SDK status errors as SSE errors.
+                # Adapt host failures before they reach HTTP exception handlers after
+                # streaming has started. No Final is yielded or persisted on failure.
+                raise APIStatusError(
+                    error.message,
+                    response=Response(
+                        error.http_status,
+                        request=Request("POST", "http://localhost/supabase-project/turn"),
+                    ),
+                    body={"error": {"code": error.code, "message": error.message}},
+                ) from error
             return
         yield Token(turn.text)
         yield Final(
