@@ -92,7 +92,8 @@ def reviewed_turn(state: Any, *, include_diagnostics: bool = True) -> Any:
     text = explanation
     if include_diagnostics:
         text += " " + diagnostic_note + "\n\n```sql\n" + DIAGNOSTICS + "\n```"
-    text += "\n\n" + question
+    if state.mode != "neutral":
+        text += "\n\n" + question
     text += "\n\n" + "\n".join(SOURCES)
     return module.TutorTurn(
         mode=state.mode,
@@ -100,7 +101,7 @@ def reviewed_turn(state: Any, *, include_diagnostics: bool = True) -> Any:
         persona_on=state.persona_on,
         speech=speech,
         text=text,
-        next_question=question,
+        next_question=question if state.mode != "neutral" else None,
     )
 
 

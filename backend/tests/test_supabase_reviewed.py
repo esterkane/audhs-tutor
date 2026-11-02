@@ -206,3 +206,17 @@ async def test_output_restriction_is_not_a_negated_deadlock_report(restriction):
     delegate.run_turn.assert_not_called()
     assert "```sql" not in events[-1].turn.text
     assert "deadlock" in events[-1].turn.text.lower()
+
+
+@pytest.mark.parametrize("language", ["en", "de"])
+@pytest.mark.parametrize("include_diagnostics", [False, True])
+def test_neutral_reuse_preserves_explanation_without_lesson_question(language, include_diagnostics):
+    lesson = reviewed_turn(state(language=language), include_diagnostics=include_diagnostics)
+    neutral = reviewed_turn(
+        state(language=language, mode="neutral"), include_diagnostics=include_diagnostics
+    )
+    assert lesson.next_question
+    assert neutral.next_question is None
+    assert lesson.next_question not in neutral.text
+    assert neutral.text == lesson.text.replace("\n\n" + lesson.next_question, "", 1)
+    assert neutral.speech == lesson.speech

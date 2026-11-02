@@ -99,3 +99,25 @@ for (const language of ['en', 'de'])
     ).toBeVisible()
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
   })
+
+for (const language of ['en', 'de'])
+  test(`neutral reviewed explanation has no quiz and resumes (${language})`, async ({ page, request }) => {
+    const german = language === 'de'
+    await request.put(`${API_URL}/api/preferences`, { data: { key: 'tutor.response_language', value: language } })
+    await page.goto('/projects/supabase')
+    await page.getByRole('button', { name: german ? /Besprechen oder Fakten/ : /Discuss or look up facts/ }).click()
+    const question = german
+      ? 'Erkläre den Unterschied zwischen fehlender SELECT-Berechtigung und RLS ohne passende Zeilen: keine Zeilen. Bitte keine SQL-Abfragen.'
+      : 'Explain the difference between a missing SELECT grant and a row policy that matches no rows. Do not show SQL.'
+    await page.getByRole('textbox', { name: /message|question|nachricht|frage/i }).last().fill(question)
+    const answer = page.waitForResponse(r => r.url().endsWith('/supabase-project/turn'))
+    await page.getByRole('button', { name: german ? 'Senden' : 'Send', exact: true }).click()
+    expect((await answer).ok()).toBe(true)
+    const explanation = german ? /zwei getrennte Prüfungen/ : /Table privileges and row policies are separate checks/
+    const quiz = german ? 'Welche Prüfung würdest du zuerst durchführen, und warum?' : 'Which check would you make first, and why?'
+    await expect(page.getByText(explanation)).toBeVisible()
+    await expect(page.getByText(quiz, { exact: true })).toHaveCount(0)
+    await page.reload()
+    await expect(page.getByText(explanation)).toBeVisible()
+    await expect(page.getByText(quiz, { exact: true })).toHaveCount(0)
+  })
