@@ -164,6 +164,7 @@ class Orchestrator:
         repaired = False
         guard_retried = False
         question_repair_turn = None
+        citation_repair_context = None
         stream_retries = 0
         model_used = self.model
 
@@ -174,6 +175,8 @@ class Orchestrator:
                 request = self._request(persona, name, history + new)
                 if question_repair_turn is not None:
                     request["_audhs_question_repair"] = question_repair_turn
+                if citation_repair_context is not None:
+                    request["_audhs_citation_repair"] = citation_repair_context
                 async with self.client.beta.messages.stream(**request) as stream:
                     async for event in stream:
                         if event.type == "text" and (out := splitter.feed(event.text)):
@@ -248,6 +251,11 @@ class Orchestrator:
                     and getattr(self.client, "supports_question_repair", False) is True
                 ):
                     question_repair_turn = turn
+                elif (
+                    {f.code for f in blocking} == {"UNCITED_CLAIM"}
+                    and getattr(self.client, "supports_citation_repair", False) is True
+                ):
+                    citation_repair_context = (turn, gctx)
                 yield Rewrite(sorted({f.code for f in blocking}))
                 new.append({"role": "user", "content": guard.repair_message(findings)})
                 continue

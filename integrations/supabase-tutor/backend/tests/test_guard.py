@@ -333,3 +333,22 @@ async def test_privilege_speech_does_not_regenerate_or_change_complete_answer() 
     assert final.turn.speech == speech
     assert not final.turn.guard_flags
     assert len(client.requests) == 1
+
+
+@pytest.mark.parametrize("other_failure", [False, True])
+async def test_citation_placement_is_requested_only_for_uncited_claims(monkeypatch, other_failure):
+    findings = [g.GuardFinding(code="UNCITED_CLAIM", severity="block", fix_hint="Add source")]
+    if other_failure:
+        findings.append(g.GuardFinding(code="CLAIMED_EXECUTION", severity="block", fix_hint="Do not invent execution"))
+    checks = iter([findings, []])
+    monkeypatch.setattr(g, "check", lambda *args: next(checks))
+    client = FakeClient([text_reply("Original explanation."), text_reply("Repaired explanation.")])
+    client.supports_citation_repair = True
+    final = (await run(client))[-1]
+    assert isinstance(final, o.Final)
+    assert len(client.requests) == 2
+    assert ("_audhs_citation_repair" in client.requests[1]) is (not other_failure)
+    if not other_failure:
+        original, context = client.requests[1]["_audhs_citation_repair"]
+        assert "Original explanation." in original.text
+        assert isinstance(context, g.GuardContext)
