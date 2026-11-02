@@ -34,6 +34,18 @@ registry_defaults:
     context_len: 1048576
     price_in_per_mtok: 0.50
     price_out_per_mtok: 0.75
+  # Conservative long-context, 12h cache-write ceiling; standard service tier.
+  # Verified 2026-11-02: developers.openai.com/api/docs/models/gpt-6.1-sol
+  - id: openai-sol-study
+    display_name: GPT-6.1 Sol (hosted study, medium reasoning)
+    source: openai
+    repo_id: gpt-6.1-sol
+    file_or_tag: gpt-6.1-sol
+    runtime: openai
+    role: chat
+    context_len: 1050000
+    price_in_per_mtok: 10.0
+    price_out_per_mtok: 15.0
   - id: claude-sonnet-study
     display_name: Claude Sonnet 5 (hosted study)
     source: hosted
@@ -296,4 +308,6 @@ profiles:
       primary: gemma3-12b
 
 # Only these conservatively priced entries may receive project-study permits.
-project_study_models: [openai-luna-study, claude-sonnet-study]
+project_study_models: [openai-luna-study, openai-sol-study, claude-sonnet-study]
+project_study_transports:
+  openai-sol-study: responses_medium

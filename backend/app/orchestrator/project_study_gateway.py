@@ -12,6 +12,7 @@ from app.models_ai.budget import Budget
 from app.models_ai.claude import ClaudeProvider
 from app.models_ai.gateway import GatewayResult, ModelGateway
 from app.models_ai.openai import OpenAIProvider, supported_model
+from app.models_ai.openai_responses import OpenAIResponsesProvider
 from app.models_ai.provider import Message, ModelSpec, TaskClass
 from app.models_ai.routing import Router, load_profiles
 from app.models_ai.study_policy import study_scope
@@ -53,6 +54,9 @@ class ProjectStudyGateway:
                     "provider": self.spec.provider,
                 },
             }
+            provider = self.gateway.providers.get(self.spec.provider)
+            if isinstance(provider, OpenAIResponsesProvider):
+                kwargs["metadata"].update(transport="responses", reasoning_effort=provider.effort)
             return await self.gateway.complete(task, messages, **kwargs)
 
 
@@ -123,6 +127,11 @@ async def choose_project_study(
                     409,
                 )
             provider = OpenAIProvider(key)
+        transport = load_profiles().get("project_study_transports", {}).get(identity)
+        if transport == "responses_medium" and isinstance(provider, OpenAIProvider):
+            provider = OpenAIResponsesProvider(
+                provider.api_key, effort="medium", timeout_s=provider.timeout_s
+            )
     elif provider is None:
         if not settings.anthropic_api_key:
             raise AppError(

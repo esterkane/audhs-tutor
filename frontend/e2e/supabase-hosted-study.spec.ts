@@ -11,20 +11,23 @@ test('project provider setup failure, hosted answer and full transcript resume',
   request,
 }) => {
   test.setTimeout(120000)
+  const reasoningStudy = process.env.AUDHS_REASONING_STUDY_AUDIT === '1'
+  const modelButton = reasoningStudy ? 'Use reasoning tutor' : 'Use OpenAI tutor'
   await request.put(`${API_URL}/api/preferences`, { data: { key: 'tutor.persona', value: 'neutral' } })
   await request.put(`${API_URL}/api/preferences`, { data: { key: 'tutor.response_language', value: 'en' } })
   await page.goto('/projects/supabase')
   await page.getByText('Tutor provider: local', { exact: true }).click()
-  await page.getByRole('button', { name: 'Use OpenAI tutor', exact: true }).click()
+  await page.getByRole('button', { name: modelButton, exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('shared daily hosted budget')
   expect((await (await request.get(`${API_URL}/api/learning-focus/supabase`)).json()).study_provider).toBe(
     'local',
   )
   await request.put(`${API_URL}/api/preferences`, {
-    data: { key: 'authoring.daily_budget_cents', value: 100 },
+    data: { key: 'authoring.daily_budget_cents', value: reasoningStudy ? 300 : 100 },
   })
-  await page.getByRole('button', { name: 'Use OpenAI tutor', exact: true }).click()
+  await page.getByRole('button', { name: modelButton, exact: true }).click()
   await expect(page.getByText('Tutor provider: openai', { exact: true })).toBeVisible()
+  await expect(page.getByText(reasoningStudy ? 'Current model: GPT-6.1 Sol · medium reasoning' : 'Current model: GPT-6 Luna', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: /Explicit/ }).click()
   const input = page.getByRole('textbox', { name: /message|question/i }).last()
   const question =
@@ -112,7 +115,7 @@ test('project provider setup failure, hosted answer and full transcript resume',
   await page.getByRole('button', { name: 'Use local tutor', exact: true }).click()
   await expect(page.getByText('Tutor provider: local', { exact: true })).toBeVisible()
   await request.put(`${API_URL}/api/preferences`, { data: { key: 'authoring.daily_budget_cents', value: 0 } })
-  await page.getByRole('button', { name: 'Use OpenAI tutor', exact: true }).click()
+  await page.getByRole('button', { name: modelButton, exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('shared daily hosted budget')
   await page.reload()
   const afterFailure = await (await request.get(`${API_URL}/api/supabase-project/session/${id}`)).json()

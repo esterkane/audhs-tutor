@@ -7279,6 +7279,12 @@ export interface components {
        * @enum {string}
        */
       provider: 'local' | 'openai'
+      /**
+       * Model
+       * @default openai-luna-study
+       * @enum {string}
+       */
+      model: 'openai-luna-study' | 'openai-sol-study'
     }
     /** ProjectUpdate */
     ProjectUpdate: {
@@ -8545,6 +8551,11 @@ export interface components {
        * @default false
        */
       hosted_study_enabled: boolean
+      /**
+       * Study Model
+       * @default openai-luna-study
+       */
+      study_model: string
     }
     /** TaskIn */
     TaskIn: {

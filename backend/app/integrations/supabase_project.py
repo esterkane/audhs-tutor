@@ -108,6 +108,7 @@ class SupabaseProjectStatus(BaseModel):
     detail: str | None
     study_provider: str = "local"
     hosted_study_enabled: bool = False
+    study_model: str = "openai-luna-study"
 
 
 @router.get("/supabase", response_model=SupabaseProjectStatus)
@@ -123,12 +124,14 @@ async def status(request: Request, db: DB, learner: Learner) -> dict[str, Any]:
         "revision": PROJECT_REVISION,
         "detail": request.app.state.supabase_project_error,
         "study_provider": provider,
+        "study_model": await preferences.get(db, learner.id, "project.study_model"),
         "hosted_study_enabled": provider in {"openai", "anthropic"},
     }
 
 
 class ProjectStudyChoice(BaseModel):
     provider: Literal["local", "openai"]
+    model: Literal["openai-luna-study", "openai-sol-study"] = "openai-luna-study"
 
 
 @router.put("/supabase/study", response_model=SupabaseProjectStatus)
@@ -149,7 +152,7 @@ async def set_study(
         )
         if choice.provider == "openai":
             await preferences.set_pref(
-                db, learner.id, "project.study_model", "openai-luna-study", commit=False
+                db, learner.id, "project.study_model", choice.model, commit=False
             )
             await choose_project_study(
                 db, request.app.state.settings, learner.id, request.app.state.providers, Budget(0)

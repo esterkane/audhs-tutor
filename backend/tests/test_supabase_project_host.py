@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
+import pytest
+
 from app.integrations import supabase_project as host
 
 
@@ -98,8 +100,9 @@ async def test_status_reports_owner_selected_provider_without_enabling_from_key(
     assert result["hosted_study_enabled"] is True
 
 
+@pytest.mark.parametrize("model", ["openai-luna-study", "openai-sol-study"])
 async def test_study_choice_saves_provider_and_model_together_without_inference(
-    db, learner, settings
+    db, learner, settings, model
 ):
     from app.kernel import preferences
 
@@ -114,9 +117,12 @@ async def test_study_choice_saves_provider_and_model_together_without_inference(
             )
         )
     )
-    result = await host.set_study(host.ProjectStudyChoice(provider="openai"), request, db, learner)
+    result = await host.set_study(
+        host.ProjectStudyChoice(provider="openai", model=model), request, db, learner
+    )
+    assert result["study_model"] == model
     assert result["study_provider"] == "openai"
-    assert await preferences.get(db, learner.id, "project.study_model") == "openai-luna-study"
+    assert await preferences.get(db, learner.id, "project.study_model") == model
     result = await host.set_study(host.ProjectStudyChoice(provider="local"), request, db, learner)
     assert result["study_provider"] == "local"
     assert await preferences.get(db, learner.id, "authoring.daily_budget_cents") == 500

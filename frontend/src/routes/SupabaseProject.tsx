@@ -13,10 +13,10 @@ export function SupabaseProject() {
   })
   const queryClient = useQueryClient()
   const studyChoice = useMutation({
-    mutationFn: (provider: 'local' | 'openai') =>
+    mutationFn: (choice: { provider: 'local' | 'openai'; model?: 'openai-luna-study' | 'openai-sol-study' }) =>
       apiFetch<Schemas['SupabaseProjectStatus']>('/api/learning-focus/supabase/study', {
         method: 'PUT',
-        body: JSON.stringify({ provider }),
+        body: JSON.stringify(choice),
       }),
     onSuccess: (data) => {
       queryClient.setQueryData(['supabase-project-status'], data)
@@ -44,18 +44,33 @@ export function SupabaseProject() {
             OpenAI can answer fresh project questions using the retrieved documentation and session history.
             It shares your daily hosted budget with authoring. Reviewed reuse stays local.
           </p>
+          <p>
+            Reasoning tutor uses GPT-6.1 Sol with medium reasoning for complex explanations.
+            It costs more and may take longer than Luna. Both can make mistakes.
+          </p>
+          <p role="status">
+            {status.data.study_provider === 'openai'
+              ? `Current model: ${status.data.study_model === 'openai-sol-study' ? 'GPT-6.1 Sol · medium reasoning' : 'GPT-6 Luna'}`
+              : 'Local study selected.'}
+          </p>
           <div className="flex flex-wrap gap-2">
             <Button
               disabled={studyChoice.isPending || status.data.study_provider === 'local'}
-              onClick={() => studyChoice.mutate('local')}
+              onClick={() => studyChoice.mutate({ provider: 'local' })}
             >
               Use local tutor
             </Button>
             <Button
-              disabled={studyChoice.isPending || status.data.study_provider === 'openai'}
-              onClick={() => studyChoice.mutate('openai')}
+              disabled={studyChoice.isPending || (status.data.study_provider === 'openai' && status.data.study_model === 'openai-luna-study')}
+              onClick={() => studyChoice.mutate({ provider: 'openai', model: 'openai-luna-study' })}
             >
               Use OpenAI tutor
+            </Button>
+            <Button
+              disabled={studyChoice.isPending || (status.data.study_provider === 'openai' && status.data.study_model === 'openai-sol-study')}
+              onClick={() => studyChoice.mutate({ provider: 'openai', model: 'openai-sol-study' })}
+            >
+              Use reasoning tutor
             </Button>
           </div>
           {studyChoice.isPending && <p role="status">Saving tutor provider…</p>}

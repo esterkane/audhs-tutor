@@ -145,3 +145,32 @@ async def test_short_authoring_profile_cannot_bypass_study_price_ceiling(db, lea
     await preferences.set_pref(db, learner.id, "authoring.daily_budget_cents", 500)
     with pytest.raises(AppError, match="verification"):
         await choose_project_study(db, settings, learner.id, {"openai": object()}, Budget(0))
+
+
+@pytest.mark.parametrize(
+    "identity,reasoning", [("openai-luna-study", False), ("openai-sol-study", True)]
+)
+async def test_project_model_selects_verified_transport_without_mutating_provider(
+    db, learner, settings, identity, reasoning
+):
+    from app.models_ai.openai import OpenAIProvider
+    from app.models_ai.openai_responses import OpenAIResponsesProvider
+
+    await registry.seed_defaults(db, installed_ollama_tags=set())
+    await preferences.set_pref(db, learner.id, "project.study_provider", "openai")
+    await preferences.set_pref(db, learner.id, "project.study_model", identity)
+    await preferences.set_pref(db, learner.id, "authoring.daily_budget_cents", 500)
+    original = OpenAIProvider("synthetic-test-key", timeout_s=77)
+    providers = {"openai": original}
+    chosen = await choose_project_study(db, settings, learner.id, providers, Budget(0))
+    assert chosen is not None
+    actual = chosen.gateway.providers["openai"]
+    assert isinstance(actual, OpenAIResponsesProvider) == reasoning
+    assert providers["openai"] is original
+    assert actual.timeout_s == 77
+    assert chosen.gateway.budget.daily_cap_usd == 5
+    if reasoning:
+        assert actual.effort == "medium"
+        assert chosen.spec.context_len == 1050000
+    else:
+        assert actual is original
