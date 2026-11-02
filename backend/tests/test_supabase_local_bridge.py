@@ -271,8 +271,10 @@ async def test_local_query_uses_the_selected_models_query_format(monkeypatch):
     ]
 
 
+@pytest.mark.parametrize("no_quiz", [False, True])
 async def test_native_tool_reference_keeps_instructions_constraints_and_complete_history(
     monkeypatch,
+    no_quiz,
 ):
     import copy
     import json
@@ -296,14 +298,29 @@ async def test_native_tool_reference_keeps_instructions_constraints_and_complete
             ],
         },
     ]
+    from contextlib import nullcontext
+
+    from app.integrations.supabase_questions import question_scope
+
     before = copy.deepcopy(history)
-    async with client.messages.stream(
-        system=[{"text": "Trusted policy stays."}], messages=history, tools=TOOLS, max_tokens=16000
-    ) as stream:
-        await stream.get_final_message()
+    scope = (
+        question_scope(SimpleNamespace(mode="lesson", delivery="explicit"), "No quiz.")
+        if no_quiz
+        else nullcontext()
+    )
+    with scope:
+        async with client.messages.stream(
+            system=[{"text": "Trusted policy stays."}],
+            messages=history,
+            tools=TOOLS,
+            max_tokens=16000,
+        ) as stream:
+            await stream.get_final_message()
     messages = call.call_args.args[1]
     assert messages[0].content.endswith(bridge.local_tool_instructions(TOOLS))
     assert "Trusted policy stays." in messages[0].content
+    assert json.dumps(TOOLS) not in messages[0].content
+    assert ("CURRENT LEARNER DELIVERY REQUEST" in messages[0].content) is no_quiz
     assert [m.content for m in messages[1:]] == [
         m["content"]
         if isinstance(m["content"], str)
@@ -356,3 +373,26 @@ def test_native_tool_reference_preserves_nested_safety_annotations_exactly():
             "input_schema.properties.sql.items.description": "Nested instruction",
         },
     }
+
+
+async def test_hosted_no_quiz_keeps_full_tool_contract_once(monkeypatch):
+    import json
+
+    from app.integrations.supabase_questions import question_scope
+
+    bridge.decision_schema()
+    from backend.tutor.tools import TOOLS
+
+    client, call, _, _ = setup_bridge(monkeypatch)
+    hosted = SimpleNamespace(
+        complete=call, spec=ModelSpec(provider="openai", model="test-only", registry_id="test-only")
+    )
+    monkeypatch.setattr(bridge, "choose_project_study", AsyncMock(return_value=hosted))
+    with question_scope(SimpleNamespace(mode="lesson", delivery="explicit"), "No quiz."):
+        async with client.messages.stream(system=[], messages=[], tools=TOOLS) as stream:
+            await stream.get_final_message()
+    policy = call.call_args.args[1][0].content
+    assert policy.count(json.dumps(TOOLS)) == 1
+    assert "CURRENT LEARNER DELIVERY REQUEST" in policy
+    assert "set next_question to null" in policy
+    assert "Input structure and valid values are enforced" not in policy
