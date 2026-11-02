@@ -7843,7 +7843,13 @@ export interface components {
       model_call_id: string | null
       /** Calculation */
       calculation?:
-        ('python.string-repetition.v1' | 'python.literal-expression.v1' | 'vector.dot-cosine.v1') | null
+        | (
+            | 'python.string-repetition.v1'
+            | 'python.literal-expression.v1'
+            | 'vector.dot-cosine.v1'
+            | 'vector.distances.v1'
+          )
+        | null
       /** Reference */
       reference?: 'python.string-identity.v1' | null
       /** Memories */

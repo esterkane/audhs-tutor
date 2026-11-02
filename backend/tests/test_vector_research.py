@@ -38,10 +38,11 @@ def test_broader_requests_keep_model_context(changes):
     assert answer(SOURCE, question, TutorPresentation()) is None
 
 
+@pytest.mark.parametrize("metrics", [False, True])
 @pytest.mark.parametrize("action", ["discuss", "draft"])
 @pytest.mark.parametrize("hosted", [False, True])
 async def test_api_calculation_reuse_preserves_history_without_inference(
-    client, db, fake_local, monkeypatch, action, hosted
+    client, db, fake_local, monkeypatch, action, hosted, metrics
 ):
     import tests.test_research_tutor as fixtures
 
@@ -56,7 +57,15 @@ async def test_api_calculation_reuse_preserves_history_without_inference(
         "model_call_id": "earlier-model",
         "answer": {"discussion": "Earlier research reply.", "source_quotes": [SOURCE]},
     }
-    draft = await create(client, prompt=QUESTION, tutor_request="", tutor_exchanges=[legacy])
+    prompt = (
+        QUESTION.replace(
+            "dot product and cosine similarity",
+            "L2 distance, cosine distance and negative inner product",
+        )
+        if metrics
+        else QUESTION
+    )
+    draft = await create(client, prompt=prompt, tutor_request="", tutor_exchanges=[legacy])
     url = f"/api/knowledge-material/drafts/{draft['id']}/research-tutor"
     response = await client.post(
         url, json={"expected_version": 1, "question_id": "q1", "action": action}
@@ -66,10 +75,11 @@ async def test_api_calculation_reuse_preserves_history_without_inference(
     history = saved["payload"]["authoring"]["research"]["questions"][0]["tutor_exchanges"]
     assert len(history) == 2 and history[0]["answer"]["discussion"] == "Earlier research reply."
     exchange = history[-1]
-    assert exchange["calculation"] == "vector.dot-cosine.v1"
+    assert exchange["calculation"] == ("vector.distances.v1" if metrics else "vector.dot-cosine.v1")
     assert (
         exchange["model_call_id"] is None
-        and "0.99503719021" in exchange["answer"]["section" if action == "draft" else "discussion"]
+        and ("0.00496280979001" if metrics else "0.99503719021")
+        in exchange["answer"]["section" if action == "draft" else "discussion"]
     )
     again = await client.post(
         url, json={"expected_version": saved["version"], "question_id": "q1", "action": action}

@@ -157,7 +157,11 @@ async def help_research(
     if checked is None:
         checked = vector_research.answer(research.passage, question, presentation)
         if checked is not None:
-            calculation = vector_research.VERSION
+            calculation = (
+                vector_research.DISTANCE_VERSION
+                if vector_research.distance_question(question.prompt) is not None
+                else vector_research.VERSION
+            )
     reference = None
     if checked is None:
         checked = reference_research.answer(research.passage, question, presentation)

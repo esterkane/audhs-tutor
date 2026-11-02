@@ -145,3 +145,34 @@ def test_signed_integer_matrix_matches_independent_float_oracle():
 def test_negative_cosine_order_is_not_order_of_squared_magnitude():
     scores = compare("Vectors:\nq=[1,0]\nA=[-1,0]\nB=[-10,1]", "q", ["A", "B"])
     assert scores is not None and order_text(scores, cosine=True) == "`B` > `A`"
+
+
+@pytest.mark.parametrize("language", ["en", "de"])
+def test_distance_answer_has_correct_ranks_and_signs(language):
+    from app.orchestrator.vector_research import distance_question
+
+    source = "Vectors:\nq=[1,0]\nA=[2,2]\nB=[1,0]\nC=[-1,0]"
+    prompt = (
+        "Compare L2 distance, cosine distance and negative inner product "
+        "for query `q` with candidates `A`, `B` and `C`."
+    )
+    result = answer(
+        source, ResearchQuestion(id="q", prompt=prompt), TutorPresentation("none", language)
+    )
+    assert result is not None
+    assert "`A` < `B` < `C`" in result.discussion
+    assert "`B` < `A` < `C`" in result.discussion
+    assert "2.2360679775" in result.discussion and "0.292893218813" in result.discussion
+    assert "= `1`" in result.discussion
+    assert result.source_quotes == [source]
+    assert distance_question(prompt + " Also explain index tuning.") is None
+
+
+def test_distance_ranks_keep_exact_near_ties_and_zero_cosine():
+    from app.orchestrator.vector_research import distance_order
+
+    scores = compare("Vectors:\nq=[1,0]\nA=[1,0]\nB=[1,1e-12]\nZ=[0,0]", "q", ["B", "A", "Z"])
+    assert scores is not None
+    assert distance_order(scores, "cosine") == "`A` < `B`"
+    assert distance_order(scores, "l2") == "`A` < `B` < `Z`"
+    assert distance_order(scores, "negative_dot") == "`B` = `A` < `Z`"

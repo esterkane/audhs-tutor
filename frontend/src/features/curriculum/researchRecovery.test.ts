@@ -9,6 +9,8 @@ it('restores both historical model replies and checked calculations, rejecting m
     }] }
   }
   expect(validResearch(research({ model_call_id: 'historical-model-call' }))).toBe(true)
+  expect(validResearch(research({ model_call_id: null, calculation: 'vector.distances.v1' }))).toBe(true)
+  expect(validResearch(research({ model_call_id: 'call', calculation: 'vector.distances.v1' }))).toBe(false)
   expect(validResearch(research({ model_call_id: null, calculation: 'python.string-repetition.v1' }))).toBe(true)
   expect(validResearch(research({ model_call_id: null, calculation: 'python.literal-expression.v1' }))).toBe(true)
   expect(validResearch(research({ model_call_id: null, calculation: 'vector.dot-cosine.v1' }))).toBe(true)

@@ -15,6 +15,7 @@ class VectorScore:
     dot: Fraction
     cosine: float | None
     cosine_order: tuple[int, Fraction] | None
+    l2_squared: Fraction
 
 
 def vectors(source: str) -> dict[str, tuple[Fraction, ...]] | None:
@@ -67,5 +68,6 @@ def compare(source: str, query: str, candidates: list[str]) -> list[VectorScore]
             sign = (dot > 0) - (dot < 0)
             # Common positive query norm cancels. Square only after separating signs.
             order = (sign, sign * dot * dot / norm2)
-        results.append(VectorScore(name, dot, cosine, order))
+        l2_squared = sum(((x - y) ** 2 for x, y in zip(q, v, strict=True)), Fraction())
+        results.append(VectorScore(name, dot, cosine, order, l2_squared))
     return results

@@ -1,5 +1,6 @@
 """Complete numeric comparison of explicitly named source vectors; broader discussion stays modeled."""
 
+import math
 import re
 from itertools import groupby
 
@@ -8,6 +9,7 @@ from app.orchestrator.personas import TutorPresentation
 from app.schemas.knowledge_authoring import ResearchQuestion, ResearchTutorAnswer
 
 VERSION = "vector.dot-cosine.v1"
+DISTANCE_VERSION = "vector.distances.v1"
 _LABEL = r"`([A-Za-z][A-Za-z0-9_]{0,15})`"
 _LIST = rf"{_LABEL}(?:(?:\s*,\s*(?:(?:and|und)\s+)?|\s+(?:and|und)\s+){_LABEL})*"
 
@@ -53,7 +55,8 @@ def answer(
 ) -> ResearchTutorAnswer | None:
     if question.tutor_request.strip() or question.unresolved.strip() or question.memory_ids:
         return None
-    parsed = question_vectors(question.prompt)
+    distance = distance_question(question.prompt)
+    parsed = distance or question_vectors(question.prompt)
     if parsed is None:
         return None
     query, names, german = parsed
@@ -62,6 +65,8 @@ def answer(
         return None
     if presentation.language != "unchanged":
         german = presentation.language == "de"
+    if distance is not None:
+        return distance_answer(source, query, scores, german)
     parts = [f"{'Für Anfragevektor' if german else 'For query'} `{query}`:"]
     for score in scores:
         cosine = (
@@ -106,6 +111,83 @@ def answer(
         "Kosinuswerte sind gerundet; die Reihenfolge wird exakt verglichen."
         if german
         else "Cosine values are approximate; ranking comparisons are exact."
+    )
+    text = "\n".join(parts)
+    if len(text) > 1800:
+        return None
+    return ResearchTutorAnswer(discussion=text, source_quotes=[source])
+
+
+def distance_question(question: str) -> tuple[str, list[str], bool] | None:
+    if len(question) > 700:
+        return None
+    patterns = [
+        r"Compare L2 distance, cosine distance and negative inner product "
+        rf"for query {_LABEL} with candidates ({_LIST})\.?",
+        r"Vergleiche L2-Abstand, Kosinusdistanz und negatives Skalarprodukt "
+        rf"für Anfragevektor {_LABEL} mit (?:den )?Kandidaten ({_LIST})\.?",
+    ]
+    for german, pattern in enumerate(patterns):
+        match = re.fullmatch(pattern, question.strip(), re.IGNORECASE)
+        if match:
+            return match[1], re.findall(_LABEL, match[2]), bool(german)
+    return None
+
+
+def distance_order(scores: list[VectorScore], metric: str) -> str:
+    if metric == "cosine":
+        # Ascending cosine distance is descending cosine similarity, including ties.
+        return order_text(scores, cosine=True).replace(" > ", " < ")
+    if metric == "negative_dot":
+        return order_text(scores, cosine=False).replace(" > ", " < ")
+    ranked = sorted(scores, key=lambda row: row.l2_squared)
+    return " < ".join(
+        " = ".join(f"`{row.name}`" for row in group)
+        for _, group in groupby(ranked, key=lambda row: row.l2_squared)
+    )
+
+
+def distance_answer(
+    source: str, query: str, scores: list[VectorScore], german: bool
+) -> ResearchTutorAnswer | None:
+    missing = "undefiniert" if german else "undefined"
+    labels = (
+        ("L2-Abstand", "Kosinusdistanz", "Negatives Skalarprodukt")
+        if german
+        else ("L2 distance", "Cosine distance", "Negative inner product")
+    )
+    parts = [f"{'Für Anfragevektor' if german else 'For query'} `{query}`:"]
+    for row in scores:
+        cosine = missing if row.cosine is None else f"≈ {1 - row.cosine:.12g}"
+        parts.append(
+            f"- `{row.name}`: {labels[0]} ≈ {math.sqrt(float(row.l2_squared)):.12g}; "
+            f"{labels[1]} {cosine}; {labels[2]} = `{-row.dot}`."
+        )
+    parts.append(
+        "Aufsteigend (kleinster Wert zuerst):" if german else "Ascending (smallest first):"
+    )
+    for label, metric in zip(labels, ("l2", "cosine", "negative_dot"), strict=True):
+        parts.append(f"- {label}: {distance_order(scores, metric) or missing}.")
+    parts.append(
+        "L2 ist die Wurzel der Summe quadrierter Komponentendifferenzen. Kosinusdistanz ist "
+        "1 minus Kosinusähnlichkeit. Das negative Skalarprodukt negiert die Summe der "
+        "Komponentenprodukte: größere Skalarprodukte stehen aufsteigend zuerst; die Werte "
+        "können negativ, null oder positiv sein."
+        if german
+        else "L2 is the square root of the sum of squared coordinate differences. Cosine distance is "
+        "1 minus cosine similarity. Negative inner product negates the sum of coordinate products: "
+        "ascending order puts larger inner products first; scores can be negative, zero or positive."
+    )
+    if any(row.cosine is None for row in scores):
+        parts.append(
+            "Kosinus ist bei einem Nullvektor undefiniert; diese Kandidaten werden nicht eingeordnet."
+            if german
+            else "Cosine is undefined for a zero vector; those candidates are not ranked."
+        )
+    parts.append(
+        "Gerundete L2-/Kosinuswerte; exakte Rangvergleiche. Lokale Mathematik, keine Datenbankausführung."
+        if german
+        else "Rounded L2/cosine values; exact ranking comparisons. Local mathematics, not database execution."
     )
     text = "\n".join(parts)
     if len(text) > 1800:
