@@ -411,3 +411,42 @@ def test_footer_recovery_does_not_guess_or_override_metadata(variant):
         payload["state"] = {**state, "language": "de"}
     with pytest.raises(ValidationError):
         bridge.hosted_decision_schema(()).model_validate(payload)
+
+
+def test_matching_nested_transport_preserves_complete_prose():
+    state = metadata().model_dump(mode="json")
+    prose = "First concept.\n\nSecond concept and its qualification."
+    raw = {"text": json.dumps({"text": prose, "state": state}), "state": state}
+    result = bridge.hosted_decision_schema(()).model_validate(raw)
+    assert result.text == prose
+    assert raw["text"].startswith("{")
+
+
+def test_conflicting_nested_transport_is_rejected():
+    state = metadata().model_dump(mode="json")
+    other = {**state, "language": "de"}
+    with pytest.raises(ValidationError):
+        bridge.hosted_decision_schema(()).model_validate(
+            {
+                "text": json.dumps({"text": "Complete explanation.", "state": other}),
+                "state": state,
+            }
+        )
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"example": 42}',
+        'Example: {"text": "hello", "state": {}}',
+        '```json\n{"text":"example","state":{}}\n```',
+    ],
+)
+def test_json_examples_remain_verbatim(text):
+    result = bridge.hosted_decision_schema(()).model_validate(
+        {
+            "text": text,
+            "state": metadata().model_dump(mode="json"),
+        }
+    )
+    assert result.text == text

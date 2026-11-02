@@ -47,7 +47,9 @@ def matches(text: str, state: Any) -> bool:
     )
 
 
-def reviewed_turn(state: Any, *, include_diagnostics: bool = True) -> Any:
+def reviewed_turn(
+    state: Any, *, include_diagnostics: bool = True, include_question: bool = True
+) -> Any:
     from app.integrations.supabase_project import project_module
 
     module = project_module()
@@ -92,7 +94,7 @@ def reviewed_turn(state: Any, *, include_diagnostics: bool = True) -> Any:
     text = explanation
     if include_diagnostics:
         text += " " + diagnostic_note + "\n\n```sql\n" + DIAGNOSTICS + "\n```"
-    if state.mode != "neutral":
+    if state.mode != "neutral" and include_question:
         text += "\n\n" + question
     text += "\n\n" + "\n".join(SOURCES)
     return module.TutorTurn(
@@ -101,7 +103,7 @@ def reviewed_turn(state: Any, *, include_diagnostics: bool = True) -> Any:
         persona_on=state.persona_on,
         speech=speech,
         text=text,
-        next_question=question if state.mode != "neutral" else None,
+        next_question=question if state.mode != "neutral" and include_question else None,
     )
 
 
@@ -201,7 +203,13 @@ class ReviewedOrchestrator:
             )
             revision = "reviewed:incident-" + plan.key + ".v2"
         elif matches(user_text, state):
-            turn = reviewed_turn(state, include_diagnostics=not no_sql_requested(user_text))
+            from app.integrations.supabase_questions import no_quiz_requested
+
+            turn = reviewed_turn(
+                state,
+                include_diagnostics=not no_sql_requested(user_text),
+                include_question=not no_quiz_requested(user_text),
+            )
             revision = "reviewed:select-privileges-row-visibility.v2"
         else:
             from anthropic import APIStatusError
@@ -209,9 +217,10 @@ class ReviewedOrchestrator:
 
             from app.core.errors import AppError
             from app.integrations.supabase_progress import progress_scope, validate_progress
+            from app.integrations.supabase_questions import question_scope
 
             try:
-                with progress_scope(state):
+                with progress_scope(state), question_scope(state, user_text):
                     async for event in self.delegate.run_turn(**kwargs):
                         if isinstance(event, Final):
                             validate_progress(event.turn)

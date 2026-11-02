@@ -118,6 +118,29 @@ def hosted_decision_schema(
     base = decision_schema(tool_names)
 
     def prose_only(value: LocalDecision) -> LocalDecision:
+        # A serialized response envelope is transport data, not learner prose.
+        # Unwrap only when its validated state agrees exactly with the outer state.
+        try:
+            nested = json.loads(value.text)
+        except (ValueError, TypeError):
+            nested = None
+        if (
+            isinstance(nested, dict)
+            and set(nested) in ({"text", "state"}, {"text", "state", "tools"})
+            and isinstance(nested.get("text"), str)
+            and isinstance(nested.get("state"), dict)
+        ):
+            nested_state: BaseModel | None = TypeAdapter(
+                type(value).model_fields["state"].annotation
+            ).validate_python(nested["state"])
+            if (
+                nested.get("tools")
+                or not nested["text"].strip()
+                or not isinstance(value.state, BaseModel)
+                or nested_state != value.state
+            ):
+                raise ValueError("Nested response metadata conflicts with the outer response")
+            value = value.model_copy(update={"text": nested["text"]})
         if re.search(r"(?m)^\s*`{3,}json\s+tutor_turn\s*$", value.text):
             # A complete matching terminal footer is already valid for the imported
             # parser. Reuse it exactly instead of asking the model to regenerate prose.
@@ -325,6 +348,15 @@ class LocalProjectClient:
                     "ledger_update is unavailable. Answer the learner's question completely.\n"
                 )
                 + json.dumps(tools)
+            )
+        from app.integrations.supabase_questions import questions_suppressed
+
+        if questions_suppressed():
+            policy += (
+                "\nCURRENT LEARNER DELIVERY REQUEST: No quiz or follow-up check question. "
+                "This overrides the lesson-mode question requirement for this turn only. "
+                "Give the complete explanation with its sources, set next_question to null, "
+                "and preserve all other factual, tool and progress requirements."
             )
         messages = [Message(role="system", content=policy)]
         for item in request.get("messages", []):

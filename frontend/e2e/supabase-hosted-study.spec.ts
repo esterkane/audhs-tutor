@@ -81,6 +81,10 @@ test('project provider setup failure, hosted answer and full transcript resume',
   expect(continued.transcript).toHaveLength(4)
   expect(continued.transcript.slice(0, 2)).toEqual(saved.transcript)
   const vectorTurn = continued.transcript[3].tutor_turn
+  expect(vectorTurn.next_question).toBeNull()
+  expect(vectorTurn.text.trim()).not.toMatch(/^\{\s*"(?:text|state|tools)"/)
+  expect(vectorTurn.text).not.toContain('"next_question":')
+  expect(vectorTurn.guard_flags ?? []).not.toContain('NO_QUESTION')
   expect(vectorTurn.text).toContain('<->')
   expect(vectorTurn.text).toContain('<=>')
   expect(vectorTurn.text).toContain('<#>')
