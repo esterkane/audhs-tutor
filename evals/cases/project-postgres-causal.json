@@ -1,0 +1,730 @@
+{
+  "schema_version": 1,
+  "scope": "Offline factual review manifest for fresh Supabase/PostgreSQL project explanations; not a model score.",
+  "qualification_status": "not_run",
+  "sources": {
+    "policy": "https://www.postgresql.org/docs/17/sql-createpolicy.html",
+    "isolation": "https://www.postgresql.org/docs/17/transaction-iso.html",
+    "retry": "https://www.postgresql.org/docs/17/mvcc-serialization-failure-handling.html",
+    "subquery": "https://www.postgresql.org/docs/17/functions-subquery.html",
+    "where": "https://www.postgresql.org/docs/17/queries-table-expressions.html"
+  },
+  "oracle_bindings": {
+    "using-false": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "rls.using_false_updated_rows",
+      "proposed_report_path": null,
+      "expected": 0
+    },
+    "with-check": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "rls.with_check_failure_sqlstate",
+      "proposed_report_path": null,
+      "expected": "42501"
+    },
+    "unchanged-row": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "rls.row_after_failure",
+      "proposed_report_path": null,
+      "expected": "app_user:original"
+    },
+    "missing-grant": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "rls.missing_grant_sqlstate",
+      "proposed_report_path": null,
+      "expected": "42501"
+    },
+    "rr-counts": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "concurrency.0.initial_counts",
+      "proposed_report_path": null,
+      "expected": [
+        2,
+        2
+      ]
+    },
+    "rr-remaining": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "concurrency.0.remaining_on_duty",
+      "proposed_report_path": null,
+      "expected": 0
+    },
+    "rr-commit": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "concurrency.0.second_commit_sqlstate",
+      "proposed_report_path": null,
+      "expected": null
+    },
+    "serializable-remaining": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "concurrency.1.remaining_on_duty",
+      "proposed_report_path": null,
+      "expected": 1
+    },
+    "serializable-commit": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "concurrency.1.second_commit_sqlstate",
+      "proposed_report_path": null,
+      "expected": "40001"
+    },
+    "null-not-in": {
+      "availability": "planned",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": null,
+      "proposed_report_path": "null_comparisons.not_in",
+      "expected": [
+        null,
+        false,
+        true,
+        null
+      ]
+    },
+    "null-not-exists": {
+      "availability": "planned",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": null,
+      "proposed_report_path": "null_comparisons.not_exists",
+      "expected": [
+        true,
+        false,
+        true,
+        true
+      ]
+    },
+    "rc-absolute": {
+      "availability": "planned",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": null,
+      "proposed_report_path": "read_committed.absolute_final_balance",
+      "expected": 80
+    },
+    "rc-relative": {
+      "availability": "planned",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": null,
+      "proposed_report_path": "read_committed.relative_final_balance",
+      "expected": 70
+    }
+  },
+  "review_contract": {
+    "semantic_verdict": "manual_evidence_review",
+    "allowed_verdicts": [
+      "pass",
+      "fail",
+      "unresolved"
+    ],
+    "missing_review_verdict": "unresolved",
+    "planned_oracle_policy": "A planned binding is not execution evidence. Mark it unavailable until the oracle is implemented and a versioned successful report is recorded; documentation review must be labelled separately.",
+    "receipt_required_fields": [
+      "case_id",
+      "manifest_sha256",
+      "transcript_sha256",
+      "model_settings",
+      "oracle_report_sha256_or_unavailable",
+      "reviewer",
+      "reviewed_at",
+      "criteria"
+    ],
+    "criterion_required_fields": [
+      "criterion_id",
+      "verdict",
+      "answer_excerpt",
+      "source_passage_or_oracle_observation",
+      "reason"
+    ],
+    "limitations": [
+      "Keyword presence, citation syntax, JSON validity and model-judge agreement cannot establish semantic correctness.",
+      "Fixture observations establish only the specified roles and schedules, not a production incident diagnosis.",
+      "Full answer/history and matched source passages must be retained privately; no transcript or learner data is published."
+    ]
+  },
+  "cases": [
+    {
+      "id": "null-comparisons-en",
+      "family": "null-comparisons",
+      "language": "en",
+      "postgres_major": 17,
+      "prompt": "PostgreSQL 17: evaluate NOT IN for (1) left 5, subquery rows [1,NULL]; (2) left 1, rows [1,NULL]; (3) left NULL, an empty integer subquery; (4) left NULL, rows [1]. Which rows would WHERE retain? Compare NOT EXISTS using ordinary equality for the same four cases. Explain the NULL and empty-set reasoning. No SQL or quiz; do not claim you executed a query.",
+      "required_claims": [
+        {
+          "id": "not-in-values",
+          "claim": "In the stated order NOT IN yields UNKNOWN, FALSE, TRUE, UNKNOWN; UNKNOWN is SQL NULL.",
+          "source_ids": [
+            "subquery"
+          ],
+          "oracle_binding_ids": [
+            "null-not-in"
+          ]
+        },
+        {
+          "id": "where-true",
+          "claim": "WHERE retains only TRUE, therefore only case 3 for NOT IN.",
+          "source_ids": [
+            "where",
+            "subquery"
+          ],
+          "oracle_binding_ids": [
+            "null-not-in"
+          ]
+        },
+        {
+          "id": "not-exists-values",
+          "claim": "Equality-based NOT EXISTS yields TRUE, FALSE, TRUE, TRUE; WHERE retains cases 1, 3 and 4.",
+          "source_ids": [
+            "subquery",
+            "where"
+          ],
+          "oracle_binding_ids": [
+            "null-not-exists"
+          ]
+        },
+        {
+          "id": "null-cause",
+          "claim": "A definite equality makes NOT IN false; absent equality a NULL comparison can make it unknown. Empty right-hand input makes NOT IN true, even with a NULL left value.",
+          "source_ids": [
+            "subquery"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "equality-cause",
+          "claim": "NOT EXISTS checks absence of TRUE equality matches; ordinary NULL equality is UNKNOWN, not a match. It is not generally equivalent to NOT IN.",
+          "source_ids": [
+            "subquery"
+          ],
+          "oracle_binding_ids": []
+        }
+      ],
+      "forbidden_claims": [
+        {
+          "id": "null-always-unknown",
+          "claim": "A NULL left value always makes NOT IN unknown, including an empty subquery."
+        },
+        {
+          "id": "null-always-false",
+          "claim": "Any NULL in the right-hand rows makes NOT IN false, or a definite matching value fails to settle it."
+        },
+        {
+          "id": "equivalent",
+          "claim": "NOT IN and equality-based NOT EXISTS are always equivalent."
+        },
+        {
+          "id": "executed",
+          "claim": "Claims the tutor executed SQL or inspected actual learner data."
+        }
+      ]
+    },
+    {
+      "id": "null-comparisons-de",
+      "family": "null-comparisons",
+      "language": "de",
+      "postgres_major": 17,
+      "prompt": "PostgreSQL 17: Werte NOT IN aus für (1) links 5, Unterabfragezeilen [1,NULL]; (2) links 1, Zeilen [1,NULL]; (3) links NULL, eine leere Integer-Unterabfrage; (4) links NULL, Zeilen [1]. Welche Zeilen behält WHERE? Vergleiche NOT EXISTS mit gewöhnlicher Gleichheit für dieselben vier Fälle. Erkläre NULL und die leere Menge. Kein SQL und kein Quiz; behaupte keine Abfrageausführung.",
+      "required_claims": [
+        {
+          "id": "not-in-values",
+          "claim": "In the stated order NOT IN yields UNKNOWN, FALSE, TRUE, UNKNOWN; UNKNOWN is SQL NULL.",
+          "source_ids": [
+            "subquery"
+          ],
+          "oracle_binding_ids": [
+            "null-not-in"
+          ]
+        },
+        {
+          "id": "where-true",
+          "claim": "WHERE retains only TRUE, therefore only case 3 for NOT IN.",
+          "source_ids": [
+            "where",
+            "subquery"
+          ],
+          "oracle_binding_ids": [
+            "null-not-in"
+          ]
+        },
+        {
+          "id": "not-exists-values",
+          "claim": "Equality-based NOT EXISTS yields TRUE, FALSE, TRUE, TRUE; WHERE retains cases 1, 3 and 4.",
+          "source_ids": [
+            "subquery",
+            "where"
+          ],
+          "oracle_binding_ids": [
+            "null-not-exists"
+          ]
+        },
+        {
+          "id": "null-cause",
+          "claim": "A definite equality makes NOT IN false; absent equality a NULL comparison can make it unknown. Empty right-hand input makes NOT IN true, even with a NULL left value.",
+          "source_ids": [
+            "subquery"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "equality-cause",
+          "claim": "NOT EXISTS checks absence of TRUE equality matches; ordinary NULL equality is UNKNOWN, not a match. It is not generally equivalent to NOT IN.",
+          "source_ids": [
+            "subquery"
+          ],
+          "oracle_binding_ids": []
+        }
+      ],
+      "forbidden_claims": [
+        {
+          "id": "null-always-unknown",
+          "claim": "A NULL left value always makes NOT IN unknown, including an empty subquery."
+        },
+        {
+          "id": "null-always-false",
+          "claim": "Any NULL in the right-hand rows makes NOT IN false, or a definite matching value fails to settle it."
+        },
+        {
+          "id": "equivalent",
+          "claim": "NOT IN and equality-based NOT EXISTS are always equivalent."
+        },
+        {
+          "id": "executed",
+          "claim": "Claims the tutor executed SQL or inspected actual learner data."
+        }
+      ]
+    },
+    {
+      "id": "rc-updates-en",
+      "family": "rc-updates",
+      "language": "en",
+      "postgres_major": 17,
+      "prompt": "PostgreSQL 17, Read Committed, one row id=1,balance=100. T1 and T2 each do an ordinary unlocked SELECT and read 100. T1 updates first and has not committed when T2 attempts UPDATE on the same unchanged primary key. T1 then commits; T2 proceeds and commits. Compare A: T1 supplies precomputed balance=90 and T2 supplies balance=80; B: T1 runs balance=balance-10 and T2 runs balance=balance-20. Explain T2's wait, recheck, final values, and whether waiting reruns application arithmetic. No SQL or quiz.",
+      "required_claims": [
+        {
+          "id": "wait",
+          "claim": "T2 waits on T1's conflicting row update; the initial ordinary SELECTs do not reserve the balance.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "recheck",
+          "claim": "After T1 commits, T2 uses the updated row version and rechecks the search condition; the unchanged primary key still matches.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "absolute",
+          "claim": "Case A ends at 80; the supplied constant overwrites 90, losing T1's decrement.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": [
+            "rc-absolute"
+          ]
+        },
+        {
+          "id": "relative",
+          "claim": "Case B ends at 70; T2's database expression subtracts 20 from the updated value 90.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": [
+            "rc-relative"
+          ]
+        },
+        {
+          "id": "application",
+          "claim": "Waiting/rechecking does not rerun application arithmetic or turn a supplied constant into a relative update.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": []
+        }
+      ],
+      "forbidden_claims": [
+        {
+          "id": "read-lock",
+          "claim": "The original ordinary SELECTs prevent concurrent updates or lock in the value 100."
+        },
+        {
+          "id": "both-same",
+          "claim": "Both cases necessarily end at the same balance."
+        },
+        {
+          "id": "client-rerun",
+          "claim": "PostgreSQL reruns the application calculation when a blocked update resumes."
+        },
+        {
+          "id": "automatic-retry",
+          "claim": "Read Committed automatically reruns the entire client transaction."
+        }
+      ]
+    },
+    {
+      "id": "rc-updates-de",
+      "family": "rc-updates",
+      "language": "de",
+      "postgres_major": 17,
+      "prompt": "PostgreSQL 17, Read Committed, eine Zeile id=1,balance=100. T1 und T2 lesen mit gewöhnlichem SELECT ohne Sperre jeweils 100. T1 aktualisiert zuerst und hat noch nicht committet, als T2 dieselbe unveränderte Primärschlüsselzeile aktualisieren will. T1 committet, dann fährt T2 fort und committet. Vergleiche A: T1 übergibt vorab berechnet balance=90, T2 balance=80; B: T1 verwendet balance=balance-10, T2 balance=balance-20. Erkläre Warten, erneute Prüfung, Endwerte und ob dabei Anwendungsarithmetik erneut ausgeführt wird. Kein SQL oder Quiz.",
+      "required_claims": [
+        {
+          "id": "wait",
+          "claim": "T2 waits on T1's conflicting row update; the initial ordinary SELECTs do not reserve the balance.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "recheck",
+          "claim": "After T1 commits, T2 uses the updated row version and rechecks the search condition; the unchanged primary key still matches.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "absolute",
+          "claim": "Case A ends at 80; the supplied constant overwrites 90, losing T1's decrement.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": [
+            "rc-absolute"
+          ]
+        },
+        {
+          "id": "relative",
+          "claim": "Case B ends at 70; T2's database expression subtracts 20 from the updated value 90.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": [
+            "rc-relative"
+          ]
+        },
+        {
+          "id": "application",
+          "claim": "Waiting/rechecking does not rerun application arithmetic or turn a supplied constant into a relative update.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": []
+        }
+      ],
+      "forbidden_claims": [
+        {
+          "id": "read-lock",
+          "claim": "The original ordinary SELECTs prevent concurrent updates or lock in the value 100."
+        },
+        {
+          "id": "both-same",
+          "claim": "Both cases necessarily end at the same balance."
+        },
+        {
+          "id": "client-rerun",
+          "claim": "PostgreSQL reruns the application calculation when a blocked update resumes."
+        },
+        {
+          "id": "automatic-retry",
+          "claim": "Read Committed automatically reruns the entire client transaction."
+        }
+      ]
+    },
+    {
+      "id": "rls-boundaries-en",
+      "family": "rls-boundaries",
+      "language": "en",
+      "postgres_major": 17,
+      "prompt": "PostgreSQL 17, ordinary role app_user (not owner, superuser or BYPASSRLS), schema USAGE and table SELECT granted, RLS enabled, SELECT policy permits visibility. Compare UPDATE: (A) UPDATE privilege granted, UPDATE USING excludes the existing row; (B) UPDATE privilege granted, USING admits it but WITH CHECK rejects the proposed row; (C) UPDATE privilege missing. State row/error outcomes and whether SQLSTATE 42501 alone identifies a root cause. Do not infer a JWT or production incident diagnosis. No SQL or quiz.",
+      "required_claims": [
+        {
+          "id": "using",
+          "claim": "A excludes the existing row and updates zero rows; it is not by itself a missing-privilege error.",
+          "source_ids": [
+            "policy"
+          ],
+          "oracle_binding_ids": [
+            "using-false"
+          ]
+        },
+        {
+          "id": "with-check",
+          "claim": "B rejects the proposed row with 42501; the fixture's stored row remains unchanged.",
+          "source_ids": [
+            "policy"
+          ],
+          "oracle_binding_ids": [
+            "with-check",
+            "unchanged-row"
+          ]
+        },
+        {
+          "id": "grant",
+          "claim": "C fails with 42501; an RLS policy does not grant the missing table privilege.",
+          "source_ids": [
+            "policy"
+          ],
+          "oracle_binding_ids": [
+            "missing-grant"
+          ]
+        },
+        {
+          "id": "ambiguity",
+          "claim": "42501 alone cannot distinguish the stated policy-check failure from missing privileges; further evidence is required.",
+          "source_ids": [
+            "policy"
+          ],
+          "oracle_binding_ids": [
+            "with-check",
+            "missing-grant"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        {
+          "id": "using-error",
+          "claim": "A false UPDATE USING condition necessarily raises 42501 rather than filtering the row."
+        },
+        {
+          "id": "policy-grant",
+          "claim": "Adding an RLS policy itself grants table UPDATE privilege."
+        },
+        {
+          "id": "unique-cause",
+          "claim": "42501 alone establishes either missing privileges or a rejected new-row policy as the unique cause."
+        },
+        {
+          "id": "invented-identity",
+          "claim": "Invents a JWT claim, role assignment, executed diagnostic or production root cause."
+        }
+      ]
+    },
+    {
+      "id": "rls-boundaries-de",
+      "family": "rls-boundaries",
+      "language": "de",
+      "postgres_major": 17,
+      "prompt": "PostgreSQL 17, gewöhnliche Rolle app_user (kein Eigentümer, Superuser oder BYPASSRLS), Schema-USAGE und Tabellen-SELECT erteilt, RLS aktiviert, SELECT-Policy erlaubt Sichtbarkeit. Vergleiche UPDATE: (A) UPDATE-Recht vorhanden, UPDATE USING schließt die bestehende Zeile aus; (B) UPDATE-Recht vorhanden, USING lässt sie zu, WITH CHECK lehnt die neue Zeile ab; (C) UPDATE-Recht fehlt. Nenne Zeilen-/Fehlerergebnisse und ob SQLSTATE 42501 allein die Ursache bestimmt. Keine JWT- oder Produktionsdiagnose erfinden. Kein SQL oder Quiz.",
+      "required_claims": [
+        {
+          "id": "using",
+          "claim": "A excludes the existing row and updates zero rows; it is not by itself a missing-privilege error.",
+          "source_ids": [
+            "policy"
+          ],
+          "oracle_binding_ids": [
+            "using-false"
+          ]
+        },
+        {
+          "id": "with-check",
+          "claim": "B rejects the proposed row with 42501; the fixture's stored row remains unchanged.",
+          "source_ids": [
+            "policy"
+          ],
+          "oracle_binding_ids": [
+            "with-check",
+            "unchanged-row"
+          ]
+        },
+        {
+          "id": "grant",
+          "claim": "C fails with 42501; an RLS policy does not grant the missing table privilege.",
+          "source_ids": [
+            "policy"
+          ],
+          "oracle_binding_ids": [
+            "missing-grant"
+          ]
+        },
+        {
+          "id": "ambiguity",
+          "claim": "42501 alone cannot distinguish the stated policy-check failure from missing privileges; further evidence is required.",
+          "source_ids": [
+            "policy"
+          ],
+          "oracle_binding_ids": [
+            "with-check",
+            "missing-grant"
+          ]
+        }
+      ],
+      "forbidden_claims": [
+        {
+          "id": "using-error",
+          "claim": "A false UPDATE USING condition necessarily raises 42501 rather than filtering the row."
+        },
+        {
+          "id": "policy-grant",
+          "claim": "Adding an RLS policy itself grants table UPDATE privilege."
+        },
+        {
+          "id": "unique-cause",
+          "claim": "42501 alone establishes either missing privileges or a rejected new-row policy as the unique cause."
+        },
+        {
+          "id": "invented-identity",
+          "claim": "Invents a JWT claim, role assignment, executed diagnostic or production root cause."
+        }
+      ]
+    },
+    {
+      "id": "write-skew-en",
+      "family": "write-skew",
+      "language": "en",
+      "postgres_major": 17,
+      "prompt": "PostgreSQL 17: two initially on-duty workers. T1 and T2 each begin, read count=2, then each withdraws a different worker. Both UPDATE statements finish before T1 COMMIT; T2 COMMIT follows. Compare Repeatable Read and Serializable for this schedule. Explain why repeatable snapshots do not guarantee serial equivalence and what an application must retry after 40001. Do not promise a fixed victim/timing in all schedules or automatic safety for external effects. No SQL or quiz.",
+      "required_claims": [
+        {
+          "id": "rr",
+          "claim": "In the scripted Repeatable Read fixture, both see two workers, both disjoint withdrawals commit, and zero remain.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": [
+            "rr-counts",
+            "rr-remaining",
+            "rr-commit"
+          ]
+        },
+        {
+          "id": "serializable",
+          "claim": "In the scripted Serializable fixture, the second commit fails with 40001 and one worker remains; this is a fixture outcome, not a universal victim/timing rule.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": [
+            "serializable-remaining",
+            "serializable-commit"
+          ]
+        },
+        {
+          "id": "causality",
+          "claim": "Stable snapshots prevent some anomalies but do not make the two read-dependent disjoint writes equivalent to a valid serial execution.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "retry",
+          "claim": "Retry the complete transaction, including reads and value/decision logic, not just COMMIT or the failed statement.",
+          "source_ids": [
+            "retry"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "effects",
+          "claim": "External side effects need application-level handling; transaction retry alone does not make them safe or idempotent.",
+          "source_ids": [
+            "retry"
+          ],
+          "oracle_binding_ids": []
+        }
+      ],
+      "forbidden_claims": [
+        {
+          "id": "rr-serializable",
+          "claim": "Repeatable Read prevents write skew because its reads are repeatable."
+        },
+        {
+          "id": "universal-victim",
+          "claim": "Serializable always aborts T2 at COMMIT for all equivalent-looking schedules."
+        },
+        {
+          "id": "retry-commit",
+          "claim": "Retry only COMMIT/the failed statement while reusing the original decisions."
+        },
+        {
+          "id": "automatic-effects",
+          "claim": "PostgreSQL automatically retries the application or makes external effects safe."
+        }
+      ]
+    },
+    {
+      "id": "write-skew-de",
+      "family": "write-skew",
+      "language": "de",
+      "postgres_major": 17,
+      "prompt": "PostgreSQL 17: Anfangs sind zwei Beschäftigte im Dienst. T1 und T2 beginnen, lesen jeweils count=2 und nehmen danach jeweils eine andere Person aus dem Dienst. Beide UPDATEs sind vor T1 COMMIT beendet; T2 COMMIT folgt. Vergleiche Repeatable Read und Serializable für diesen Ablauf. Erkläre, warum wiederholbare Snapshots keine serielle Äquivalenz garantieren und was nach 40001 wiederholt werden muss. Versprich kein festes Opfer/Fehlerzeitpunkt für alle Abläufe und keine automatische Sicherheit externer Nebenwirkungen. Kein SQL oder Quiz.",
+      "required_claims": [
+        {
+          "id": "rr",
+          "claim": "In the scripted Repeatable Read fixture, both see two workers, both disjoint withdrawals commit, and zero remain.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": [
+            "rr-counts",
+            "rr-remaining",
+            "rr-commit"
+          ]
+        },
+        {
+          "id": "serializable",
+          "claim": "In the scripted Serializable fixture, the second commit fails with 40001 and one worker remains; this is a fixture outcome, not a universal victim/timing rule.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": [
+            "serializable-remaining",
+            "serializable-commit"
+          ]
+        },
+        {
+          "id": "causality",
+          "claim": "Stable snapshots prevent some anomalies but do not make the two read-dependent disjoint writes equivalent to a valid serial execution.",
+          "source_ids": [
+            "isolation"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "retry",
+          "claim": "Retry the complete transaction, including reads and value/decision logic, not just COMMIT or the failed statement.",
+          "source_ids": [
+            "retry"
+          ],
+          "oracle_binding_ids": []
+        },
+        {
+          "id": "effects",
+          "claim": "External side effects need application-level handling; transaction retry alone does not make them safe or idempotent.",
+          "source_ids": [
+            "retry"
+          ],
+          "oracle_binding_ids": []
+        }
+      ],
+      "forbidden_claims": [
+        {
+          "id": "rr-serializable",
+          "claim": "Repeatable Read prevents write skew because its reads are repeatable."
+        },
+        {
+          "id": "universal-victim",
+          "claim": "Serializable always aborts T2 at COMMIT for all equivalent-looking schedules."
+        },
+        {
+          "id": "retry-commit",
+          "claim": "Retry only COMMIT/the failed statement while reusing the original decisions."
+        },
+        {
+          "id": "automatic-effects",
+          "claim": "PostgreSQL automatically retries the application or makes external effects safe."
+        }
+      ]
+    }
+  ]
+}

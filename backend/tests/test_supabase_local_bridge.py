@@ -436,32 +436,108 @@ async def test_long_history_wire_compaction_is_lossless(monkeypatch):
     import json
 
     client, call, _, _ = setup_bridge(monkeypatch)
-    blocks = [
-        {
-            "type": "tool_result",
-            "tool_use_id": "source-1",
-            "content": 'SELECT  1;\n{"note": "Keep  two spaces", "value": null}',
-        },
-        {"type": "text", "text": "Nicht ändern: NULL ≠ FALSE;  two spaces.\nSQL remains exact."},
-    ]
-    history = [
-        {"role": "user", "content": f"Question {i}  retains whitespace"}
-        if i % 2
-        else {"role": "assistant", "content": copy.deepcopy(blocks)}
-        for i in range(120)
-    ]
+    history = []
+    eligible = set()
+    for index in range(20):
+        evidence = {
+            "results": [
+                {
+                    "url": f"https://example.test/source/{index}",
+                    "title": "Row security",
+                    "heading_path": "Database > Row security",
+                    "tier": 1,
+                    "fetched_at": None,
+                    "score": 0.25,
+                    "content": 'SELECT  1;\nNULL ≠ FALSE; {"quoted": "  unchanged"}',
+                }
+            ]
+        }
+        body = json.dumps(evidence, ensure_ascii=False)
+        history.extend(
+            [
+                {"role": "user", "content": f"Question {index}  retains whitespace"},
+                {
+                    "role": "assistant",
+                    "content": [
+                        {
+                            "type": "tool_use",
+                            "id": f"search-{index}",
+                            "name": "search_docs",
+                            "input": {},
+                        },
+                        {
+                            "type": "tool_use",
+                            "id": f"other-{index}",
+                            "name": "run_lab_sql",
+                            "input": {},
+                        },
+                        {
+                            "type": "tool_use",
+                            "id": f"error-{index}",
+                            "name": "search_docs",
+                            "input": {},
+                        },
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": f"search-{index}",
+                            "content": body,
+                            "is_error": False,
+                        },
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": f"other-{index}",
+                            "content": body,
+                            "is_error": False,
+                        },
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": f"error-{index}",
+                            "content": body,
+                            "is_error": True,
+                        },
+                        {"type": "text", "text": "Keep  these spaces.\nAnd this line."},
+                    ],
+                },
+                {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "text", "text": f"Answer {index}: keep  prose and [1]."},
+                    ],
+                },
+                {"role": "user", "content": '{"Learner JSON": "  unchanged"}'},
+                {"role": "system", "content": f"State {index}: keep constraints exactly."},
+            ]
+        )
+        eligible.add(f"search-{index}")
     original = copy.deepcopy(history)
     async with client.messages.stream(system=[], messages=history, tools=[]) as stream:
         await stream.get_final_message()
     sent = call.call_args.args[1][1:]
-    assert len(sent) == len(history)
-    saved = 0
-    for source, wire in zip(history, sent, strict=True):
-        assert wire.role == source["role"]
+    assert len(sent) == len(history) == 120
+    changed = 0
+    for source, message in zip(original, sent, strict=True):
+        assert message.role == source["role"]
         if isinstance(source["content"], str):
-            assert wire.content == source["content"]
-        else:
-            assert json.loads(wire.content) == source["content"]
-            saved += len(json.dumps(source["content"], ensure_ascii=False)) - len(wire.content)
-    assert saved > 0
+            assert message.content == source["content"]
+            continue
+        blocks = json.loads(message.content)
+        assert len(blocks) == len(source["content"])
+        for old, new in zip(source["content"], blocks, strict=True):
+            if old.get("type") == "tool_result" and old.get("tool_use_id") in eligible:
+                old_body, new_body = old["content"], new["content"]
+                assert len(new_body) < len(old_body)
+                assert json.loads(new_body) == json.loads(old_body)
+                assert json.loads(new_body)["results"][0]["content"] == (
+                    'SELECT  1;\nNULL ≠ FALSE; {"quoted": "  unchanged"}'
+                )
+                assert {**new, "content": old_body} == old
+                changed += 1
+            else:
+                assert new == old
+    assert changed == 20
     assert history == original

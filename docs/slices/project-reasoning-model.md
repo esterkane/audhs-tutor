@@ -40,3 +40,15 @@ The same synthetic history measured an additional 17 / 170 / 510 / 1,020 / 2,040
 Validation: 61 wire/bridge/Responses tests passed; targeted mypy and Ruff passed. Coverage includes exact source and SQL whitespace, large integers, nulls, unchanged input history, preserved tool identity, malformed/duplicate-key/noncanonical bodies and unchanged learner/assistant text.
 
 The isolated real-provider Chromium workflow passed (39.9 seconds test, 48.9 total), including model setup/failure, source-backed explanations, full transcript reload and budget refusal. Manually reviewed balance-update and NULL answers remained correct. The two explanation calls took 8.988 and 13.604 seconds; uncontrolled timing differences do not establish a general speedup.
+
+## Verified search provenance and bounded parsing
+
+The inner JSON transformation now requires one uniquely identified preceding assistant search_docs call and one successful user result with that ID. Reused or colliding IDs anywhere in the request, other tools/roles, missing success markers and unrecognized envelopes leave the body unchanged. The search envelope must include the expected result fields. Bodies over 256×1024 characters are skipped before JSON parsing. This is a request-format check, not cryptographic provenance or factual verification.
+
+The full original request still supplies guard/citation checks and persisted history. Only the copied model-facing representation changes. A mixed 120-message regression exercises 20 eligible inner compactions, unrelated tools and errors, exact source/SQL whitespace, message order and original-history equality. Unit tests also cover unusual numbers, malformed/noncanonical bodies, future ID reuse and oversized parser bypass.
+
+96 wire/bridge/Responses/factual-manifest tests passed; full application/test Ruff lint and formatting passed; targeted mypy passed. The accompanying factual manifest supplies eight EN/DE review cases and distinguishes existing oracle capabilities from planned observations; it does not certify a model or replace manual semantic review.
+
+An independent offline synthetic reference experiment shows why larger compression is deferred: whole-result references save heavily for exact repeats but nothing when scores or timestamps change. Passage references require explicit identity/version and per-occurrence metadata. Neither exact reconstruction nor synthetic token savings proves model comprehension. No reference-based compression is activated.
+
+Integrated real-provider Chromium workflow passed (44.1 seconds test, 54.0 total), covering setup/failure, complete source-backed answers, transcript reload and budget refusal. Manual review confirmed the absolute-versus-relative update and NOT IN/NOT EXISTS NULL cases. Explanation calls took10.379 and12.249 seconds, without a general latency claim. Independent read-only code review found no actionable defect in the final provenance/size/history safeguards.

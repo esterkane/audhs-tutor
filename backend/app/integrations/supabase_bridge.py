@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.traces import ModelCallRecord, write_model_call
-from app.integrations.supabase_wire import message_content
+from app.integrations.supabase_wire import message_contents
 from app.kernel.learner import get_or_create_owner
 from app.models_ai import registry
 from app.models_ai.budget import Budget
@@ -370,13 +370,13 @@ class LocalProjectClient:
                 "and preserve all other factual, tool and progress requirements."
             )
         messages = [Message(role="system", content=policy + "\n" + json.dumps(tools))]
-        for item in request.get("messages", []):
+        history = request.get("messages", [])
+        for item, content in zip(history, message_contents(history), strict=True):
             role = item.get("role", "user")
-            content = item.get("content", "")
             messages.append(
                 Message(
                     role=role,
-                    content=message_content(content),
+                    content=content,
                 )
             )
         async with self.sessions() as db:
