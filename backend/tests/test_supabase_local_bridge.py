@@ -437,13 +437,17 @@ async def test_long_history_wire_compaction_is_lossless(monkeypatch):
 
     client, call, _, _ = setup_bridge(monkeypatch)
     blocks = [
-        {"type": "tool_result", "tool_use_id": "source-1", "content":
-         'SELECT  1;\n{"note": "Keep  two spaces", "value": null}'},
+        {
+            "type": "tool_result",
+            "tool_use_id": "source-1",
+            "content": 'SELECT  1;\n{"note": "Keep  two spaces", "value": null}',
+        },
         {"type": "text", "text": "Nicht ändern: NULL ≠ FALSE;  two spaces.\nSQL remains exact."},
     ]
     history = [
         {"role": "user", "content": f"Question {i}  retains whitespace"}
-        if i % 2 else {"role": "assistant", "content": copy.deepcopy(blocks)}
+        if i % 2
+        else {"role": "assistant", "content": copy.deepcopy(blocks)}
         for i in range(120)
     ]
     original = copy.deepcopy(history)
