@@ -17,15 +17,29 @@ export function AcceptedKnowledge({ reading, onCheck, active = true }: { reading
   if (reading.isPending) return <p role="status">Checking for your accepted knowledge material…</p>
   if (!reading.data) return null
   const data = reading.data
+  const explanation = `## Explanation
+
+${data.explanation}
+
+`
+  const text = `${explanation}## A worked example
+
+${data.worked_example}`
+  const prequestions = (data.prequestions ?? []).map(q => ({
+    startOffset: q.target === 'explanation' ? 0 : explanation.length,
+    identity: q.question_id, question: q.question,
+  }))
+  const reader = <LessonReader identity={`accepted-knowledge:${data.draft_id}:${data.learning_object_version}`}
+    text={text} prequestions={prequestions}
+    trail={[data.title, `Accepted lesson version ${data.learning_object_version}`]} active={active}
+    sources={data.sources.map(id => ({chunk_id:id, citation:'Uploaded reference', cited:false}))} />
   return <Card>
     <CardTitle as="h2">Your accepted knowledge material</CardTitle>
     <p className="text-sm mb-3">Saved lesson version {data.learning_object_version}. This shows the material you activated, without AI rewriting. Acceptance is not independent factual verification.</p>
-    <PredictionReading identity={`accepted:${data.draft_id}:${data.learning_object_version}`} title={data.title}
+    {prequestions.length ? reader : <PredictionReading identity={`accepted:${data.draft_id}:${data.learning_object_version}`} title={data.title}
       resumeKeyPrefix={`lesson-reader:v1:accepted-knowledge:${data.draft_id}:${data.learning_object_version}:`}>
-    <LessonReader identity={`accepted-knowledge:${data.draft_id}:${data.learning_object_version}`}
-      text={`## Explanation\n\n${data.explanation}\n\n## A worked example\n\n${data.worked_example}`}
-      trail={[data.title, `Accepted lesson version ${data.learning_object_version}`]} active={active} sources={data.sources.map(id => ({chunk_id:id, citation:'Uploaded reference', cited:false}))} />
-    </PredictionReading>
+      {reader}
+    </PredictionReading>}
     <Disclosure label="Your notes and source references"><Markdown text={data.notes} />
       {data.sources.map((id,index)=><Button key={id} variant="secondary" onClick={()=>setSource(id)}>Read uploaded source {index+1}</Button>)}
       {source && <SourceViewer chunkId={source} citation={data.title} onClose={()=>setSource(null)} />}

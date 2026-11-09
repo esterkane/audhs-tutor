@@ -144,6 +144,8 @@ def test_implemented_bindings_exist_in_current_oracle_report_shape():
     assert isinstance(concurrency, ast.ListComp)
     assert ast.literal_eval(concurrency.generators[0].iter) == ("REPEATABLE READ", "SERIALIZABLE")
     paths.update(f"concurrency.{index}.{key}" for index in (0, 1) for key in returned_dict("skew"))
+    for family in ("null_comparisons", "read_committed"):
+        paths.update(f"{family}.{key}" for key in returned_dict(family))
     for binding in manifest()["oracle_bindings"].values():
         if binding["availability"] == "implemented":
             assert binding["report_path"] in paths
@@ -173,7 +175,10 @@ def test_corrupted_or_overclaimed_manifest_is_rejected(change):
     elif change == "unknown_oracle":
         data["cases"][0]["required_claims"][0]["oracle_binding_ids"] = ["invented"]
     elif change == "planned_as_implemented":
-        data["oracle_bindings"]["null-not-in"]["availability"] = "implemented"
+        binding = data["oracle_bindings"]["null-not-in"]
+        binding["proposed_report_path"] = binding["report_path"]
+        binding["report_path"] = None
+        binding["availability"] = "implemented"
     elif change == "missing_review_pass":
         data["review_contract"]["missing_review_verdict"] = "pass"
     elif change == "language_drift":

@@ -1,5 +1,6 @@
 import { LearningBreadcrumbs } from '../../components/LearningBreadcrumbs'
 import { ReadingTime } from './ReadingTime'
+import { PredictionReading } from './PredictionReading'
 import { Disclosure } from '../../components/ui/disclosure'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Markdown } from '../../components/Markdown'
@@ -8,19 +9,24 @@ import { ReadAloud } from '../voice/ReadAloud'
 import { SourceViewer } from '../curriculum/SourceViewer'
 
 type Source = { chunk_id: string; citation: string; cited: boolean }
-type Props = { text: string; identity: string; active: boolean; sources?: Source[]; trail?: string[] }
-type Section = { title: string; text: string }
+export type ReadingPrequestion = { startOffset: number; identity: string; question: string }
+type Props = { text: string; identity: string; active: boolean; sources?: Source[]; trail?: string[]; prequestions?: ReadingPrequestion[] }
+type Section = { title: string; text: string; startOffset: number }
 type Reading = { selected: number; full: boolean; notes: Record<string, string> }
 
 function sectionsFor(text: string): Section[] {
   // Cross-section definitions must remain in the same Markdown document.
-  if (/^ {0,3}\[[^\]\n]+\]:/m.test(text)) return [{ title: 'Full explanation', text }]
+  if (/^ {0,3}\[[^\]\n]+\]:/m.test(text)) return [{ title: 'Full explanation', text, startOffset: 0 }]
   const lines = text.match(/[^\n]*\n|[^\n]+$/g) ?? []
   const sections: Section[] = []
   let part = ''
+  let startOffset = 0
+  let offset = 0
   let title = 'Introduction'
   let fence: { char: string; size: number } | null = null
   for (const line of lines) {
+    const lineOffset = offset
+    offset += line.length
     const marker = /^ {0,3}(`{3,}|~{3,})(.*)/.exec(line)
     if (marker) {
       const run = marker[1]
@@ -32,20 +38,21 @@ function sectionsFor(text: string): Section[] {
     const heading = !fence && /^ {0,3}#{1,6}[\t ]+(.+?)[\t ]*\r?\n?$/.exec(line)
     if (heading) {
       if (part.trim()) {
-        sections.push({ title, text: part })
+        sections.push({ title, text: part, startOffset })
         part = line
+        startOffset = lineOffset
       } else part += line
       title = heading[1].replace(/[\t ]+#+[\t ]*$/, '')
     } else part += line
   }
-  if (part || !sections.length) sections.push({ title, text: part })
+  if (part || !sections.length) sections.push({ title, text: part, startOffset })
   return sections
 }
 
 export function LessonReader(props: Props) {
   return <Reader key={JSON.stringify([props.identity, props.text])} {...props} />
 }
-function Reader({ text, identity, active, sources, trail }: Props) {
+function Reader({ text, identity, active, sources, trail, prequestions }: Props) {
   const sections = sectionsFor(text)
   let hash = 2166136261
   for (let i = 0; i < text.length; i += 1) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619)
@@ -80,6 +87,9 @@ function Reader({ text, identity, active, sources, trail }: Props) {
   const id = useId()
   const visibleText = reading.full ? text : sections[reading.selected].text
   const noteKey = reading.full ? 'full' : String(reading.selected)
+  const prequestion = !reading.full && prequestions?.find(q => q.startOffset === sections[reading.selected].startOffset)
+  const passage = <><Markdown headingLevel={4} text={visibleText} />
+    {active && <ReadAloud key={`${reading.full}:${reading.selected}`} text={visibleText} />}</>
   function save(next: Reading) {
     setReading(next)
     try {
@@ -155,8 +165,12 @@ function Reader({ text, identity, active, sources, trail }: Props) {
       <LearningBreadcrumbs label="Reading location" items={[...(trail ?? ['Explanation']), reading.full ? 'Full reading' : `Section ${reading.selected + 1} of ${sections.length}: ${sections[reading.selected].title}`]} />
       <ReadingTime text={visibleText} />
       {!reading.full && <progress aria-label="Reading position" max={sections.length} value={reading.selected + 1} className="w-full" />}
-      <Markdown headingLevel={4} text={visibleText} />
-      {active && <ReadAloud key={`${reading.full}:${reading.selected}`} text={visibleText} />}
+      {prequestion ? <PredictionReading
+        identity={`${identity}:prequestion:${prequestion.identity}`}
+        title={sections[reading.selected].title} question={prequestion.question}
+        resumeReading={initial.status === 'Saved reading position and notes restored.' && !initial.reading.full && reading.selected === initial.reading.selected}>
+        {passage}
+      </PredictionReading> : passage}
       {!reading.full && sections.length > 1 && (
         <nav aria-label="Explanation sections" className="flex flex-wrap gap-2">
           <Button disabled={reading.selected === 0} onClick={() => move(reading.selected - 1)}>

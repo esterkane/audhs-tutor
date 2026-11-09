@@ -341,6 +341,8 @@ class KnowledgeMaterialInput(BaseModel):
     explanation: str = Field(default="", max_length=4000)
     worked_example: str = Field(default="", max_length=4000)
     question: str = Field(default="", max_length=4000)
+    explanation_prequestion: str = Field(default="", max_length=1000)
+    worked_example_prequestion: str = Field(default="", max_length=1000)
     criteria: list[str] = Field(default_factory=list, max_length=12)
 
 
@@ -391,6 +393,13 @@ class KnowledgeLessonSuggestion(BaseModel):
     criteria: list[str] = Field(min_length=1, max_length=4)
 
 
+class ReadingPrequestion(BaseModel):
+    target: Literal["explanation", "worked_example"]
+    question: str
+    question_id: str
+    content_sha256: str
+
+
 class KnowledgeReadingOut(BaseModel):
     draft_id: str
     title: str
@@ -401,3 +410,4 @@ class KnowledgeReadingOut(BaseModel):
     notes: str
     sources: list[str]
     learning_object_version: int
+    prequestions: list[ReadingPrequestion] = Field(default_factory=list)

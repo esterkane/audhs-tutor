@@ -6147,6 +6147,16 @@ export interface components {
        * @default
        */
       question: string
+      /**
+       * Explanation Prequestion
+       * @default
+       */
+      explanation_prequestion: string
+      /**
+       * Worked Example Prequestion
+       * @default
+       */
+      worked_example_prequestion: string
       /** Criteria */
       criteria?: string[]
     }
@@ -6190,6 +6200,16 @@ export interface components {
        * @default
        */
       question: string
+      /**
+       * Explanation Prequestion
+       * @default
+       */
+      explanation_prequestion: string
+      /**
+       * Worked Example Prequestion
+       * @default
+       */
+      worked_example_prequestion: string
       /** Criteria */
       criteria?: string[]
       /** Expected Version */
@@ -6215,6 +6235,8 @@ export interface components {
       sources: string[]
       /** Learning Object Version */
       learning_object_version: number
+      /** Prequestions */
+      prequestions?: components['schemas']['ReadingPrequestion'][]
     }
     /** KnowledgeResearch */
     KnowledgeResearch: {
@@ -7514,6 +7536,20 @@ export interface components {
       conversation_lang_supported: boolean
       /** Notes */
       notes: string[]
+    }
+    /** ReadingPrequestion */
+    ReadingPrequestion: {
+      /**
+       * Target
+       * @enum {string}
+       */
+      target: 'explanation' | 'worked_example'
+      /** Question */
+      question: string
+      /** Question Id */
+      question_id: string
+      /** Content Sha256 */
+      content_sha256: string
     }
     /** ReferenceImport */
     ReferenceImport: {

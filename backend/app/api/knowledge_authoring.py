@@ -250,7 +250,15 @@ async def create(
     learner: Learner,
     request_id: Annotated[UUID, Header(alias="Idempotency-Key")],
 ) -> DraftOut:
-    fingerprint = hashlib.sha256(body.model_dump_json().encode()).hexdigest()
+    # Preserve fingerprints of requests created before optional reading questions existed.
+    empty_prequestions = {
+        key
+        for key in ("explanation_prequestion", "worked_example_prequestion")
+        if getattr(body, key) == ""
+    }
+    fingerprint = hashlib.sha256(
+        body.model_dump_json(exclude=empty_prequestions).encode()
+    ).hexdigest()
     await db.execute(text("BEGIN IMMEDIATE"))
     prior = await db.scalar(
         select(CurriculumDraft).where(
@@ -413,6 +421,11 @@ async def accepted_reading(skill_id: str, db: DB, learner: Learner) -> Knowledge
         notes=str(draft.payload_json.get("authoring", {}).get("notes", "")),
         sources=list(lo.sources_json or []),
         learning_object_version=lo.version,
+        prequestions=knowledge_authoring.accepted_prequestions(
+            draft.payload_json.get("authoring", {}),
+            str(examples[0]) if examples else "",
+            str(examples[1]) if len(examples) > 1 else "",
+        ),
     )
 
 

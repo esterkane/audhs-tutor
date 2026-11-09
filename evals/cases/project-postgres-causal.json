@@ -77,10 +77,10 @@
       "expected": "40001"
     },
     "null-not-in": {
-      "availability": "planned",
+      "availability": "implemented",
       "script": "scripts/postgres_accuracy.py",
-      "report_path": null,
-      "proposed_report_path": "null_comparisons.not_in",
+      "report_path": "null_comparisons.not_in",
+      "proposed_report_path": null,
       "expected": [
         null,
         false,
@@ -89,10 +89,10 @@
       ]
     },
     "null-not-exists": {
-      "availability": "planned",
+      "availability": "implemented",
       "script": "scripts/postgres_accuracy.py",
-      "report_path": null,
-      "proposed_report_path": "null_comparisons.not_exists",
+      "report_path": "null_comparisons.not_exists",
+      "proposed_report_path": null,
       "expected": [
         true,
         false,
@@ -101,17 +101,17 @@
       ]
     },
     "rc-absolute": {
-      "availability": "planned",
+      "availability": "implemented",
       "script": "scripts/postgres_accuracy.py",
-      "report_path": null,
-      "proposed_report_path": "read_committed.absolute_final_balance",
+      "report_path": "read_committed.absolute_final_balance",
+      "proposed_report_path": null,
       "expected": 80
     },
     "rc-relative": {
-      "availability": "planned",
+      "availability": "implemented",
       "script": "scripts/postgres_accuracy.py",
-      "report_path": null,
-      "proposed_report_path": "read_committed.relative_final_balance",
+      "report_path": "read_committed.relative_final_balance",
+      "proposed_report_path": null,
       "expected": 70
     }
   },

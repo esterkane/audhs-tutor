@@ -9,7 +9,7 @@ export function sameKnowledgeMaterial(left: Schemas['KnowledgeMaterialInput'], r
   }
   const leftContent = Object.fromEntries(Object.entries(left).filter(([key]) => key !== 'workflow_step'))
   const rightContent = Object.fromEntries(Object.entries(right).filter(([key]) => key !== 'workflow_step'))
-  return canonical({ ...leftContent, focus_topic: left.focus_topic ?? null }) === canonical({ ...rightContent, focus_topic: right.focus_topic ?? null })
+  return canonical({ ...leftContent, focus_topic: left.focus_topic ?? null, explanation_prequestion: left.explanation_prequestion ?? '', worked_example_prequestion: left.worked_example_prequestion ?? '' }) === canonical({ ...rightContent, focus_topic: right.focus_topic ?? null, explanation_prequestion: right.explanation_prequestion ?? '', worked_example_prequestion: right.worked_example_prequestion ?? '' })
 }
 
 export function validResearch(value: unknown, options: { allowBlankPrompt?: boolean } = {}): value is Research {

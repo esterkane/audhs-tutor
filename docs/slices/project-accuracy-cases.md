@@ -10,18 +10,24 @@ an independent observation from `scripts/postgres_accuracy.py`. Forbidden claims
 specific overgeneralizations or invented explanations. They are reviewer criteria, not
 keyword lists to run against model output.
 
-## Executed evidence versus planned evidence
+## Implemented fixtures versus executed evidence
 
 The existing oracle implements RLS USING/WITH CHECK/missing-privilege observations and
 the fixed Repeatable Read/Serializable write-skew schedule. The manifest binds to those
 report fields. An implemented binding means the capability exists, not that it was run
 successfully for this evaluation; retain the actual versioned report and its hash.
 
-The NULL truth table and concurrent absolute-versus-relative update observations are
-explicitly **planned** bindings. Their proposed report paths are not available execution
-evidence. No runner or schema change is made to the oracle in this slice. Documentation
-supports the stated expected semantics; label a documentation-only review separately
-until executable observations have been implemented and recorded.
+The NULL truth table and concurrent absolute-versus-relative update observations are now
+implemented in the same isolated oracle. All thirteen current bindings identify actual
+report fields; future planned bindings must still keep report_path null. Availability
+does not establish successful execution: a review must use a recorded report from its
+own verified fixture version or explicitly label execution evidence unavailable.
+
+The NULL fixture evaluates the four ordered cases in SQL and preserves JSON null versus
+false. The Read Committed fixture records both initial reads of 100, observes that T2 is
+blocked by the exact T1 backend PID before releasing T1, and checks returned and committed
+balances of 80 for absolute assignments and 70 for database-side subtraction. A missing
+lock-wait barrier or early completion aborts instead of claiming the schedule occurred.
 
 The fixed Serializable fixture rejects the second commit. Its victim and timing must not
 be generalized to every schedule. RLS observations concern the specified ordinary role;
@@ -52,6 +58,13 @@ identities, explicit planned/implemented separation and the existing oracle's re
 shape via source AST inspection. Corrupted/overclaimed manifests are rejected. They do not
 start Docker, connect to a database or access held-out results.
 
-Next: implement and independently test the two planned oracle families; then freeze a
-bounded real-provider campaign through the actual project gateway and review the complete
-answers against both documentation and measured observations.
+Verification: 23 offline tests passed with three explicit Docker tests skipped. With the
+already installed PostgreSQL 17 image, all 26 tests passed, including actual NULL/locking
+observations, report-to-manifest binding checks and container error/cleanup cases. A separate
+report run recorded PostgreSQL 17.11, both expected balance outcomes and both lock waits;
+the labelled fixture container was removed. Ruff lint and format checks passed. No model
+was called and no learner database was opened. The manifest remains not_run for model
+qualification; executing a SQL oracle does not grade a generated answer.
+
+Next: freeze a bounded real-provider campaign through the actual project gateway and
+review complete answers against both documentation and these measured observations.

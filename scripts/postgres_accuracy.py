@@ -19,6 +19,7 @@ SOURCES = [
     "https://www.postgresql.org/docs/17/sql-createpolicy.html",
     "https://www.postgresql.org/docs/17/transaction-iso.html",
     "https://www.postgresql.org/docs/17/mvcc-serialization-failure-handling.html",
+    "https://www.postgresql.org/docs/17/functions-subquery.html",
 ]
 
 
@@ -74,7 +75,9 @@ class Database:
             )
             self.created = True
             for _ in range(40):
-                ready = command("exec", self.name, "pg_isready", "-h", "/work", check=False)
+                ready = command(
+                    "exec", self.name, "pg_isready", "-h", "/work", check=False
+                )
                 if ready.returncode == 0:
                     return self
                 time.sleep(0.25)
@@ -128,8 +131,13 @@ class Database:
             check=False,
         )
         if expected_state is not None:
-            if result.returncode == 0 or f"ERROR:  {expected_state}:" not in result.stderr:
-                raise AssertionError("Expected SQLSTATE " + expected_state + " was not observed")
+            if (
+                result.returncode == 0
+                or f"ERROR:  {expected_state}:" not in result.stderr
+            ):
+                raise AssertionError(
+                    "Expected SQLSTATE " + expected_state + " was not observed"
+                )
             return expected_state
         if result.returncode:
             raise RuntimeError("Fixture SQL failed: " + result.stderr)
@@ -177,7 +185,9 @@ async def skew(db: Database, isolation: str) -> dict[str, object]:
                 "snapshot",
             )
             if snapshot != "2":
-                raise AssertionError("Both transactions must first see two available rows")
+                raise AssertionError(
+                    "Both transactions must first see two available rows"
+                )
         for index, connection in enumerate(connections, 1):
             await send(
                 connection,
@@ -195,7 +205,9 @@ async def skew(db: Database, isolation: str) -> dict[str, object]:
         state = "40001" if b"ERROR:  40001:" in error else None
         if isolation == "REPEATABLE READ":
             if second.returncode or state:
-                raise AssertionError("Repeatable Read fixture should commit both disjoint writes")
+                raise AssertionError(
+                    "Repeatable Read fixture should commit both disjoint writes"
+                )
         elif second.returncode == 0 or state != "40001":
             raise AssertionError("Serializable fixture must reject this schedule")
         remaining = int(db.sql("SELECT count(*) FROM accuracy.duty WHERE on_duty"))
@@ -215,6 +227,148 @@ async def skew(db: Database, isolation: str) -> dict[str, object]:
                 await connection.wait()
 
 
+def null_comparisons(db: Database) -> dict[str, object]:
+    result = json.loads(
+        db.sql(
+            "WITH cases(id,lhs,rhs) AS (VALUES "
+            "(1,5,ARRAY[1,NULL]::integer[]), (2,1,ARRAY[1,NULL]::integer[]), "
+            "(3,NULL::integer,ARRAY[]::integer[]), (4,NULL::integer,ARRAY[1])), "
+            "observed AS (SELECT id, lhs NOT IN (SELECT value FROM unnest(rhs) r(value)) "
+            "AS not_in, NOT EXISTS (SELECT 1 FROM unnest(rhs) r(value) WHERE lhs=value) "
+            "AS not_exists FROM cases) "
+            "SELECT json_build_object('not_in',json_agg(not_in ORDER BY id), "
+            "'not_exists',json_agg(not_exists ORDER BY id)) FROM observed"
+        )
+    )
+    expected = {
+        "not_in": [None, False, True, None],
+        "not_exists": [True, False, True, True],
+    }
+    if not isinstance(result, dict) or result.keys() != expected.keys():
+        raise AssertionError("NULL fixture returned an unexpected report shape")
+    for key, values in expected.items():
+        observed = result[key]
+        if (
+            not isinstance(observed, list)
+            or len(observed) != len(values)
+            or any(
+                actual is not wanted
+                for actual, wanted in zip(observed, values, strict=True)
+            )
+        ):
+            raise AssertionError("NULL fixture returned an unexpected truth value")
+    return {"not_in": result["not_in"], "not_exists": result["not_exists"]}
+
+
+async def wait_for_blocker(
+    db: Database, waiter: int, blocker: int, update: asyncio.Task[str]
+) -> None:
+    deadline = time.monotonic() + 5
+    while time.monotonic() < deadline:
+        if update.done():
+            raise AssertionError("Second update ended before its blocker was observed")
+        # PIDs are integers returned by these exact disposable connections.
+        if db.sql(f"SELECT {blocker} = ANY(pg_blocking_pids({waiter}))") == "t":
+            return
+        await asyncio.sleep(0.05)
+    raise RuntimeError("Second update did not reach the required lock-wait barrier")
+
+
+async def read_committed_update(db: Database, assignment: str) -> dict[str, object]:
+    if assignment not in {"absolute", "relative"}:
+        raise ValueError("Unsupported fixture assignment")
+    db.sql("TRUNCATE accuracy.balance; INSERT INTO accuracy.balance VALUES (1,100)")
+    connections: list[asyncio.subprocess.Process] = []
+    pending: asyncio.Task[str] | None = None
+    try:
+        pids = []
+        for _ in range(2):
+            connection = await asyncio.create_subprocess_exec(
+                *db.arguments(interactive=True),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            connections.append(connection)
+            pid = await send(
+                connection,
+                "SET statement_timeout='10s'; BEGIN ISOLATION LEVEL READ COMMITTED; "
+                "SELECT pg_backend_pid()",
+                "started",
+            )
+            pids.append(int(pid))
+            initial = await send(
+                connection, "SELECT balance FROM accuracy.balance WHERE id=1", "read"
+            )
+            if initial != "100":
+                raise AssertionError("Both initial unlocked reads must observe 100")
+        first_value, second_value = (
+            ("90", "80") if assignment == "absolute" else ("balance-10", "balance-20")
+        )
+        first = await send(
+            connections[0],
+            "UPDATE accuracy.balance SET balance="
+            + first_value
+            + " WHERE id=1 RETURNING balance",
+            "updated",
+        )
+        if first != "90":
+            raise AssertionError("First update must produce 90")
+        pending = asyncio.create_task(
+            send(
+                connections[1],
+                "UPDATE accuracy.balance SET balance="
+                + second_value
+                + " WHERE id=1 RETURNING balance",
+                "updated",
+            )
+        )
+        await asyncio.sleep(0)
+        await wait_for_blocker(db, pids[1], pids[0], pending)
+        await send(connections[0], "COMMIT", "committed")
+        second = await pending
+        expected = 80 if assignment == "absolute" else 70
+        if second != str(expected):
+            raise AssertionError(
+                "Second update must use the expected assignment semantics"
+            )
+        await send(connections[1], "COMMIT", "committed")
+        remaining = int(db.sql("SELECT balance FROM accuracy.balance WHERE id=1"))
+        if remaining != expected:
+            raise AssertionError(
+                "Committed balance does not match the observed second update"
+            )
+        return {
+            "initial_balances": [100, 100],
+            "second_update_wait_observed": True,
+            "second_update_returned": expected,
+            "final_balance": remaining,
+        }
+    finally:
+        if pending is not None:
+            if not pending.done():
+                pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)
+        for connection in connections:
+            if connection.returncode is None:
+                try:
+                    connection.kill()
+                except ProcessLookupError:
+                    pass
+                await asyncio.wait_for(connection.wait(), timeout=5)
+
+
+async def read_committed(db: Database) -> dict[str, object]:
+    absolute = await asyncio.wait_for(read_committed_update(db, "absolute"), timeout=40)
+    relative = await asyncio.wait_for(read_committed_update(db, "relative"), timeout=40)
+    return {
+        "absolute_final_balance": absolute["final_balance"],
+        "relative_final_balance": relative["final_balance"],
+        "absolute": absolute,
+        "relative": relative,
+    }
+
+
 def run() -> dict[str, object]:
     with Database() as db:
         version = db.sql("SHOW server_version")
@@ -230,7 +384,8 @@ def run() -> dict[str, object]:
             "CREATE POLICY visible ON accuracy.documents FOR SELECT USING (true); "
             "CREATE POLICY editable ON accuracy.documents FOR UPDATE "
             "USING (owner_id=current_user) WITH CHECK (owner_id=current_user); "
-            "CREATE TABLE accuracy.duty(id int PRIMARY KEY,on_duty boolean)"
+            "CREATE TABLE accuracy.duty(id int PRIMARY KEY,on_duty boolean); "
+            "CREATE TABLE accuracy.balance(id int PRIMARY KEY,balance integer)"
         )
         eligible = db.sql(
             "SET ROLE app_user; UPDATE accuracy.documents SET body=body WHERE id=1 "
@@ -248,7 +403,9 @@ def run() -> dict[str, object]:
             "SET ROLE app_user; SELECT owner_id||':'||body FROM accuracy.documents WHERE id=1"
         )
         if unchanged != "app_user:original":
-            raise AssertionError("Rejected new-row check must leave stored row unchanged")
+            raise AssertionError(
+                "Rejected new-row check must leave stored row unchanged"
+            )
         db.sql("UPDATE accuracy.documents SET owner_id='other_user' WHERE id=1")
         hidden = db.sql(
             "SET ROLE app_user; WITH changed AS (UPDATE accuracy.documents SET body='changed' "
@@ -273,8 +430,11 @@ def run() -> dict[str, object]:
                 "using_false_updated_rows": int(hidden),
                 "missing_grant_sqlstate": missing_grant,
             },
+            "null_comparisons": null_comparisons(db),
+            "read_committed": asyncio.run(read_committed(db)),
             "concurrency": [
-                asyncio.run(skew(db, level)) for level in ("REPEATABLE READ", "SERIALIZABLE")
+                asyncio.run(skew(db, level))
+                for level in ("REPEATABLE READ", "SERIALIZABLE")
             ],
         }
 

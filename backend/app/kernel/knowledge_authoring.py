@@ -1,5 +1,7 @@
 """Explicit notes-to-draft preparation. No model calls or learning evidence writes."""
 
+import hashlib
+import json
 import re
 from typing import Any
 
@@ -8,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Chunk, Document, DocumentVersion, KnowledgeArea
 from app.kernel.learning_scope import reference_before, require_current_material
-from app.schemas.knowledge_authoring import KnowledgeMaterialInput
+from app.schemas.knowledge_authoring import KnowledgeMaterialInput, ReadingPrequestion
 
 
 async def source_ids(
@@ -128,3 +130,32 @@ async def payload_for(
         }
     ]
     return payload
+
+
+def accepted_prequestions(
+    authoring: dict[str, Any], explanation: str, worked_example: str
+) -> list[ReadingPrequestion]:
+    """Read the published draft snapshot only; never infer or generate a question."""
+    result = []
+    for target, passage in (("explanation", explanation), ("worked_example", worked_example)):
+        question = authoring.get(f"{target}_prequestion", "")
+        if (
+            not isinstance(question, str)
+            or not question.strip()
+            or len(question) > 1000
+            or not passage.strip()
+            or authoring.get(target) != passage
+        ):
+            continue
+        identity = json.dumps(
+            [target, passage, question], ensure_ascii=False, separators=(",", ":")
+        )
+        result.append(
+            ReadingPrequestion(
+                target=target,
+                question=question,
+                question_id=hashlib.sha256(identity.encode()).hexdigest(),
+                content_sha256=hashlib.sha256(passage.encode()).hexdigest(),
+            )
+        )
+    return result

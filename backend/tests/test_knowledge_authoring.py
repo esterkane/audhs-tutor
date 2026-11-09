@@ -439,3 +439,144 @@ async def test_active_material_revision_keeps_one_skill_and_creates_new_version(
     assert published.status_code == 200, published.text
     assert await db.scalar(select(func.count()).select_from(SkillNode)) == 1
     assert await db.scalar(select(func.count()).select_from(LearningObject)) == 2
+
+
+async def test_prequestions_are_explicit_versioned_and_unpublished_revision_stays_inactive(
+    client: AsyncClient, db: AsyncSession
+):
+    import hashlib
+
+    from app.db.models import MemoryState, ModelCall, SkillNode
+
+    form = complete(
+        explanation_prequestion="What operands can + concatenate?",
+        worked_example_prequestion="What changes when the number is converted?",
+    )
+    created = await client.post(
+        "/api/knowledge-material/drafts",
+        json=form,
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert created.status_code == 200, created.text
+    original = created.json()
+    assert (
+        original["payload"]["authoring"]["explanation_prequestion"]
+        == form["explanation_prequestion"]
+    )
+    assert original["payload"]["assessments"][0]["item"]["prompt"] == form["question"]
+    published = await client.post(
+        f"/api/curriculum/drafts/{original['id']}/publish",
+        json={"expected_version": original["version"]},
+    )
+    assert published.status_code == 200, published.text
+    node = await db.scalar(select(SkillNode))
+    assert node is not None
+    reading_url = f"/api/knowledge-material/skills/{node.id}/reading"
+    first = (await client.get(reading_url)).json()
+    assert first["question"] == form["question"]
+    questions = first["prequestions"]
+    assert [q["target"] for q in questions] == ["explanation", "worked_example"]
+    for question in questions:
+        target = question["target"]
+        assert question["question"] == form[f"{target}_prequestion"]
+        assert question["content_sha256"] == hashlib.sha256(form[target].encode()).hexdigest()
+    assert questions[0]["question_id"] != questions[1]["question_id"]
+
+    current = next(
+        d
+        for d in (await client.get("/api/curriculum/drafts")).json()["drafts"]
+        if d["id"] == original["id"]
+    )
+    revision = await client.post(
+        f"/api/knowledge-material/drafts/{original['id']}/revise",
+        json={"expected_version": current["version"]},
+        headers={"Idempotency-Key": str(uuid4())},
+    )
+    assert revision.status_code == 200, revision.text
+    draft = revision.json()
+    edited = await client.put(
+        f"/api/knowledge-material/drafts/{draft['id']}",
+        json={
+            **form,
+            "explanation_prequestion": "Why is explicit conversion needed?",
+            "expected_version": draft["version"],
+        },
+    )
+    assert edited.status_code == 200, edited.text
+    assert (await client.get(reading_url)).json() == first
+    published = await client.post(
+        f"/api/curriculum/drafts/{draft['id']}/publish",
+        json={"expected_version": edited.json()["version"]},
+    )
+    assert published.status_code == 200, published.text
+    second = (await client.get(reading_url)).json()
+    assert second["draft_id"] == draft["id"]
+    assert second["explanation"] == first["explanation"]
+    assert second["prequestions"][0]["question"] == "Why is explicit conversion needed?"
+    assert second["prequestions"][0]["question_id"] != questions[0]["question_id"]
+    await db.refresh(await db.get(CurriculumDraft, original["id"]))
+    original_row = await db.get(CurriculumDraft, original["id"])
+    assert (
+        original_row.payload_json["authoring"]["explanation_prequestion"]
+        == form["explanation_prequestion"]
+    )
+    for model in (CompetencyEvidence, AssessmentAttempt, MemoryState, ModelCall):
+        assert await db.scalar(select(func.count()).select_from(model)) == 0
+
+
+def test_prequestion_binding_ignores_blank_or_mismatched_passages_and_separates_targets():
+    from app.kernel.knowledge_authoring import accepted_prequestions
+
+    authoring = {
+        "explanation": "Same passage.",
+        "worked_example": "Same passage.",
+        "explanation_prequestion": "Same question?",
+        "worked_example_prequestion": "Same question?",
+    }
+    questions = accepted_prequestions(authoring, "Same passage.", "Same passage.")
+    assert len(questions) == 2
+    assert questions[0].question_id != questions[1].question_id
+    assert len(accepted_prequestions(authoring, "Changed passage.", "Same passage.")) == 1
+    assert accepted_prequestions({}, "Same passage.", "Same passage.") == []
+    authoring["explanation_prequestion"] = "  "
+    assert len(accepted_prequestions(authoring, "Same passage.", "Same passage.")) == 1
+
+
+async def test_legacy_create_identity_replays_without_new_optional_fields(
+    client: AsyncClient, db: AsyncSession
+):
+    import copy
+    import hashlib
+
+    from app.schemas.knowledge_authoring import KnowledgeMaterialInput
+
+    form = complete()
+    key = str(uuid4())
+    created = await client.post(
+        "/api/knowledge-material/drafts", json=form, headers={"Idempotency-Key": key}
+    )
+    assert created.status_code == 200
+    row = await db.get(CurriculumDraft, created.json()["id"])
+    assert row is not None
+    legacy = copy.deepcopy(row.payload_json)
+    legacy["authoring"].pop("explanation_prequestion")
+    legacy["authoring"].pop("worked_example_prequestion")
+    legacy["authoring"]["request_fingerprint"] = hashlib.sha256(
+        KnowledgeMaterialInput.model_validate(form)
+        .model_dump_json(exclude={"explanation_prequestion", "worked_example_prequestion"})
+        .encode()
+    ).hexdigest()
+    row.payload_json = legacy
+    await db.commit()
+    replay = await client.post(
+        "/api/knowledge-material/drafts", json=form, headers={"Idempotency-Key": key}
+    )
+    assert replay.status_code == 200, replay.text
+    assert replay.json()["id"] == row.id
+    changed = await client.post(
+        "/api/knowledge-material/drafts",
+        json={**form, "explanation_prequestion": "A newly authored question?"},
+        headers={"Idempotency-Key": key},
+    )
+    assert changed.status_code == 409
+    assert await db.scalar(select(func.count()).select_from(CurriculumDraft)) == 1

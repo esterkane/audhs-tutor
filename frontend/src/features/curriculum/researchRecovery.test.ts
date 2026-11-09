@@ -1,5 +1,6 @@
 import { expect, it } from 'vitest'
-import { validResearch } from './researchRecovery'
+import { validResearch, sameKnowledgeMaterial } from './researchRecovery'
+import type { Schemas } from '../../lib/api'
 
 it('restores both historical model replies and checked calculations, rejecting mixed identities', () => {
   function research(exchange: object) {
@@ -31,4 +32,13 @@ it('allows a temporary empty question only for browser editing recovery', () => 
   expect(validResearch(value)).toBe(false)
   expect(validResearch(value, { allowBlankPrompt: true })).toBe(true)
   expect(validResearch({ ...value, questions: [{ ...value.questions[0], prompt: 123 }] }, { allowBlankPrompt: true })).toBe(false)
+})
+
+
+it('treats omitted legacy prequestions like empty defaults but detects a new question', () => {
+  const legacy = { title: 'Lesson', notes: 'Source', domain: 'programming', workflow_step: 'write',
+    objective: '', explanation: '', worked_example: '', question: '', criteria: [] } as unknown as Schemas['KnowledgeMaterialInput']
+  const current = { ...legacy, explanation_prequestion: '', worked_example_prequestion: '' }
+  expect(sameKnowledgeMaterial(legacy, current)).toBe(true)
+  expect(sameKnowledgeMaterial(legacy, { ...current, explanation_prequestion: 'A new question?' })).toBe(false)
 })

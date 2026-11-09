@@ -20,6 +20,11 @@ The JSON report includes the actual server version, image ID and these observati
 - UPDATE USING excludes an ineligible existing row (zero updated rows).
 - UPDATE WITH CHECK rejects an invalid proposed row and leaves stored data unchanged.
 - Missing UPDATE privilege also produces SQLSTATE 42501; that code alone is not a diagnosis.
+- Four ordered NOT IN cases produce UNKNOWN/FALSE/TRUE/UNKNOWN, including NULL against an
+  empty integer subquery. Equality-based NOT EXISTS produces TRUE/FALSE/TRUE/TRUE.
+- Read Committed constant assignments finish at 80, while database-side subtraction
+  finishes at 70. Both initial reads observe 100. T2's wait on T1 is observed through
+  pg_blocking_pids before T1 commits; a sleep alone is not accepted as a lock observation.
 - Two transactions that each observe two available workers can commit disjoint withdrawals
   under Repeatable Read, leaving none available. The scripted Serializability schedule
   rejects the second commit with SQLSTATE 40001 and retains one available worker.
@@ -36,6 +41,7 @@ manual. References:
 - https://www.postgresql.org/docs/17/sql-createpolicy.html
 - https://www.postgresql.org/docs/17/transaction-iso.html
 - https://www.postgresql.org/docs/17/mvcc-serialization-failure-handling.html
+- https://www.postgresql.org/docs/17/functions-subquery.html
 
 For the executable success/error/cleanup checks (explicit opt-in; no image pull):
 
@@ -48,3 +54,18 @@ for a model comparison; keyword matches or this fixture's success alone cannot c
 answer's causal explanation or citation entailment. Keep model transcripts and learner data
 out of publication. Compare first-token and complete-response latency separately from SQL
 or retrieval setup, and do not infer a generation speedup from shorter incomplete answers.
+
+## Extended oracle verification
+
+The Read Committed fixture accepts only its two fixed developer-owned assignment modes.
+It limits statements, waits for explicit connection barriers, requires the exact blocker
+PID, and cancels outstanding reads/terminates owned client processes on failure. It neither
+accepts generated SQL nor opens an application database. The existing labelled disposable
+container, local-image-only and cleanup boundaries are retained.
+
+On the available PostgreSQL 17.11 image, the 26-test opt-in run passed. The ordinary offline
+run passed 23 tests and skipped three Docker-dependent cases. Tests distinguish SQL NULL,
+false and numeric aliases, reject a missing wait or early update completion, exercise
+failure cleanup, and compare every implemented case-manifest binding to the actual report.
+These observations support only the specified fixture scenarios; they are not a model
+accuracy score or a universal statement about every transaction schedule.

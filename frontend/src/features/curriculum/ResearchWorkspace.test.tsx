@@ -8,7 +8,7 @@ import type { Schemas } from '../../lib/api'
 
 afterEach(cleanup)
 function Harness() {
-  const [form, setForm] = useState<Schemas['KnowledgeMaterialInput']>({ title: 'Median', workflow_step: 'source', domain: 'ai_ml', objective: '', worked_example: '', question: '', criteria: [], notes: 'The median is the middle value of sorted data.', explanation: 'Existing paragraph.' })
+  const [form, setForm] = useState<Schemas['KnowledgeMaterialInput']>({ explanation_prequestion: '', worked_example_prequestion: '', title: 'Median', workflow_step: 'source', domain: 'ai_ml', objective: '', worked_example: '', question: '', criteria: [], notes: 'The median is the middle value of sorted data.', explanation: 'Existing paragraph.' })
   return <><ResearchWorkspace form={form} onChange={setForm} disabled={false} /><output aria-label="explanation">{form.explanation}</output><button onClick={() => setForm({ ...form, notes: 'Revised source' })}>Change source</button></>
 }
 it('prepares source-linked questions, retains separate findings and appends a reviewed section once', async () => {
@@ -47,7 +47,7 @@ it('collapses duplicate tutor prose after using a draft, preserves history and r
   function DraftHarness() {
     const q = { id: 'q1', prompt: 'Explain this source', findings: 'My finding', evidence: 'Source', unresolved: '', section: '', tutor_request: 'Draft', tutor_basis: '', tutor_exchanges: [{ action: 'draft' as const, request: 'Draft', model_call_id: 'c1', answer: { discussion: '', needs_check: '', next_question: '', section: 'One complete paragraph.', source_quotes: ['Source'] } }] }
     q.tutor_basis = JSON.stringify({ passage: 'Source', topic: 'topic', question: q.prompt, findings: q.findings, evidence: q.evidence, unresolved: '', section: '' })
-    const [form, setForm] = useState<Schemas['KnowledgeMaterialInput']>({ title: 'Draft', workflow_step: 'write', domain: 'ai_ml', notes: 'Source', objective: '', explanation: '', worked_example: '', question: '', criteria: [], research: { passage: 'Source', topic: 'topic', current: 0, questions: [q] } })
+    const [form, setForm] = useState<Schemas['KnowledgeMaterialInput']>({ explanation_prequestion: '', worked_example_prequestion: '', title: 'Draft', workflow_step: 'write', domain: 'ai_ml', notes: 'Source', objective: '', explanation: '', worked_example: '', question: '', criteria: [], research: { passage: 'Source', topic: 'topic', current: 0, questions: [q] } })
     return <><ResearchWorkspace phase="write" form={form} disabled={false} onChange={setForm} onTutor={onTutor} /><output aria-label="saved replies">{form.research?.questions[0].tutor_exchanges?.length}</output></>
   }
   const view = render(<DraftHarness />)

@@ -56,3 +56,22 @@ it('does not put a new prediction gate in front of existing same-version reading
   expect(screen.queryByLabelText('Your prediction (optional)')).toBeNull()
   expect(localStorage.getItem('lesson-reader:v1:saved-lesson:object:sha1:hash')).toContain('Keep this')
 })
+
+
+it('shows the authored question, retains its original attempt and isolates another question identity', () => {
+  const first = <PredictionReading identity="accepted:v1:explanation:q1" title="Explanation" question="Which values can be joined?"><p>Accepted passage</p></PredictionReading>
+  const view = render(first)
+  expect(screen.getByText(/Which values can be joined/)).toBeVisible()
+  fireEvent.change(screen.getByLabelText('Your prediction (optional)'), { target: { value: 'Only strings.' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save prediction and read' }))
+  expect(JSON.parse(localStorage.getItem('reading-prediction:v1:accepted:v1:explanation:q1')!).prompt).toBe('Which values can be joined?')
+  view.rerender(<PredictionReading identity="accepted:v2:explanation:q2" title="Explanation" question="What changes after conversion?"><p>Accepted passage</p></PredictionReading>)
+  expect(screen.getByLabelText('Your prediction (optional)')).toHaveValue('')
+  expect(localStorage.getItem('reading-prediction:v1:accepted:v1:explanation:q1')).toContain('Only strings.')
+})
+
+it('existing reading bypasses a new section prompt without deleting an earlier attempt', () => {
+  render(<PredictionReading identity="accepted:v1:example:q2" title="Worked example" question="What happens next?" resumeReading><p>Continue accepted reading</p></PredictionReading>)
+  expect(screen.getByText('Continue accepted reading')).toBeVisible()
+  expect(screen.queryByLabelText('Your prediction (optional)')).toBeNull()
+})

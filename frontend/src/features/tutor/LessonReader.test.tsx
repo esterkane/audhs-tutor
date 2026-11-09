@@ -221,3 +221,52 @@ it('shows the current section estimate and actual material trail without changin
   fireEvent.click(screen.getByText('Reading time: about 3 min (estimate)'))
   expect(screen.getByText(/not your measured pace or time remaining/)).toBeVisible()
 })
+
+
+it('binds authored questions to passage boundaries while full reading remains available', () => {
+  const first = '## Explanation\n\nFirst accepted passage.\n\n'
+  const text = first + '## A worked example\n\nSecond accepted passage.'
+  const props = { text, identity: 'accepted:version1', active: false, prequestions: [
+    { startOffset: 0, identity: 'question1', question: 'Predict the first mechanism?' },
+    { startOffset: first.length, identity: 'question2', question: 'Predict the example result?' },
+  ] }
+  const view = render(<LessonReader {...props} />)
+  expect(screen.getByText(/Predict the first mechanism/)).toBeVisible()
+  expect(screen.queryByTestId('markdown')).toBeNull()
+  fireEvent.change(screen.getByLabelText('Your prediction (optional)'), { target: { value: 'My original guess' } })
+  fireEvent.click(screen.getByRole('radio', { name: 'Full explanation' }))
+  expect(screen.getByTestId('markdown')).toHaveTextContent('First accepted passage.')
+  expect(screen.getByTestId('markdown')).toHaveTextContent('Second accepted passage.')
+  fireEvent.click(screen.getByRole('radio', { name: 'One section at a time' }))
+  expect(screen.getByLabelText('Your prediction (optional)')).toHaveValue('My original guess')
+  fireEvent.click(screen.getByRole('button', { name: 'Read without predicting' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Next section' }))
+  expect(screen.getByText(/Predict the example result/)).toBeVisible()
+  expect(screen.getByLabelText('Your prediction (optional)')).toHaveValue('')
+  fireEvent.click(screen.getByRole('button', { name: 'Read without predicting' }))
+  fireEvent.change(screen.getByLabelText('Your notes for this section (optional)'), { target: { value: 'Preserve section notes' } })
+  view.unmount()
+  render(<LessonReader {...props} />)
+  expect(screen.getByTestId('markdown')).toHaveTextContent('Second accepted passage.')
+  expect(screen.getByLabelText('Your notes for this section (optional)')).toHaveValue('Preserve section notes')
+  expect(localStorage.getItem('reading-prediction:v1:accepted:version1:prequestion:question1')).toContain('My original guess')
+})
+
+
+it('resume bypass applies only to the restored section, not an unseen later question', () => {
+  const first = '## Explanation\n\nFirst accepted passage.\n\n'
+  const props = { text: first + '## Example\n\nLater passage.', identity: 'resume-scope', active: false,
+    prequestions: [
+      { startOffset: 0, identity: 'q-first', question: 'First prediction?' },
+      { startOffset: first.length, identity: 'q-next', question: 'Unseen prediction?' },
+    ] }
+  const view = render(<LessonReader {...props} />)
+  fireEvent.click(screen.getByRole('button', { name: 'Read without predicting' }))
+  fireEvent.change(screen.getByLabelText('Your notes for this section (optional)'), { target: { value: 'Saved first section' } })
+  view.unmount()
+  render(<LessonReader {...props} />)
+  expect(screen.getByTestId('markdown')).toHaveTextContent('First accepted passage.')
+  fireEvent.click(screen.getByRole('button', { name: 'Next section' }))
+  expect(screen.getByText(/Unseen prediction/)).toBeVisible()
+  expect(screen.queryByTestId('markdown')).toBeNull()
+})

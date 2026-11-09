@@ -25,6 +25,8 @@ const empty = (): Form => ({
   objective: '',
   explanation: '',
   worked_example: '',
+  explanation_prequestion: '',
+  worked_example_prequestion: '',
   question: '',
   criteria: [],
   research: null,
@@ -141,6 +143,9 @@ function Editor({
         ['objective', 'explanation', 'worked_example', 'question'].every(
           (k) => typeof saved.form[k] === 'string',
         ) &&
+        ['explanation_prequestion', 'worked_example_prequestion'].every(
+          k => saved.form[k] === undefined || (typeof saved.form[k] === 'string' && saved.form[k].length <= 1000),
+        ) &&
         Array.isArray(saved.form.criteria) &&
         saved.form.criteria.every((c: unknown) => typeof c === 'string') &&
         (saved.form.research == null || validResearch(saved.form.research, { allowBlankPrompt: true })) &&
@@ -153,6 +158,7 @@ function Editor({
       )
         return {
           ...saved,
+          form: { ...empty(), ...saved.form },
           damaged: false,
           baseVersion:
             draft?.status === 'draft' && sameKnowledgeMaterial(saved.form, fromDraft(draft))
@@ -711,6 +717,18 @@ function Editor({
                 />
               </label>
             ))}
+            <fieldset className="space-y-3 border border-line rounded p-3">
+              <legend>Optional before-reading questions</legend>
+              <p>Write a question for each passage you want to predict before reading. These are separate from the application question and are not graded. Activation accepts the question together with the current passage.</p>
+              {([
+                ['explanation_prequestion', 'Before-reading question for explanation (optional)'],
+                ['worked_example_prequestion', 'Before-reading question for worked example (optional)'],
+              ] as const).map(([key, label]) => <label className="block" key={key}>
+                {label}<textarea className={field} rows={2} maxLength={1000}
+                  value={form[key] ?? ''} disabled={!!busy || readOnly}
+                  onChange={e => change({ ...form, [key]: e.target.value })} />
+              </label>)}
+            </fieldset>
             <label>
               Success criteria — one per line
               <textarea
