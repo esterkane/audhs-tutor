@@ -30,3 +30,13 @@ Lossy summarization and source-reference replacement are deferred: the current g
 Validation: 51 bridge/Responses adapter tests, Ruff and targeted mypy passed. A 120-message regression checks round-trip equality, exact SQL/prose whitespace, message roles/order and unchanged input history.
 
 The real isolated Chromium workflow passed (45.8 seconds test, 57.0 total): model selection/setup failure, two source-backed explanations, no forced quiz, transcript reload and budget refusal. Manual review confirmed concurrent absolute versus relative balance updates and all requested NOT IN/NOT EXISTS NULL cases. Generation calls were 13.366 and 12.519 seconds; this is not a controlled speed comparison. No saved transcript was compressed or discarded.
+
+## Canonical tool-result JSON formatting
+
+Tool results contain serialized JSON inside historical message JSON. The wire adapter now removes redundant formatting in that inner layer too, but only when the original body exactly matches canonical JSON emitted by the tool adapter. Duplicate keys, custom numeric spellings, nonfinite numbers, malformed JSON and plain text are left alone. Source/SQL string values, fields, order, tool identities and persisted messages are retained. It does not deduplicate evidence or replace it with references.
+
+The same synthetic history measured an additional 17 / 170 / 510 / 1,020 / 2,040 estimated tokens saved at 1 / 10 / 30 / 60 / 120 turns. At 120 turns the previous release used 111,226 estimated tokens and this candidate 109,186 (1.83% less; 3.60% below the original 113,266). These are o200k_base estimates excluding response schema, not provider billing or a decoding speed benchmark. Full histories still grow linearly.
+
+Validation: 61 wire/bridge/Responses tests passed; targeted mypy and Ruff passed. Coverage includes exact source and SQL whitespace, large integers, nulls, unchanged input history, preserved tool identity, malformed/duplicate-key/noncanonical bodies and unchanged learner/assistant text.
+
+The isolated real-provider Chromium workflow passed (39.9 seconds test, 48.9 total), including model setup/failure, source-backed explanations, full transcript reload and budget refusal. Manually reviewed balance-update and NULL answers remained correct. The two explanation calls took 8.988 and 13.604 seconds; uncontrolled timing differences do not establish a general speedup.

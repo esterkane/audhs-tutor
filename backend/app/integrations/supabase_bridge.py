@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.traces import ModelCallRecord, write_model_call
+from app.integrations.supabase_wire import message_content
 from app.kernel.learner import get_or_create_owner
 from app.models_ai import registry
 from app.models_ai.budget import Budget
@@ -375,9 +376,7 @@ class LocalProjectClient:
             messages.append(
                 Message(
                     role=role,
-                    content=content
-                    if isinstance(content, str)
-                    else json.dumps(content, ensure_ascii=False, separators=(",", ":")),
+                    content=message_content(content),
                 )
             )
         async with self.sessions() as db:
