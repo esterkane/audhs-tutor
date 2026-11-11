@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test'
 
+// The Jupyter login redirect may carry a token in its URL.
+test.use({ trace: 'off' })
+
 test('open an uploaded working copy, run a cell explicitly and reopen the saved result', async ({ page, context }) => {
   test.skip(process.env.AUDHS_TEST_JUPYTER !== '1', 'Requires the installed local notebook environment')
   test.setTimeout(120_000)
