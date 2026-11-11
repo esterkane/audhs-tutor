@@ -46,6 +46,7 @@ from reference_html import (
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from backend.tutor.embedding_space import (
     OPENAI,
+    QWEN,
     RECORDED_SQL,
     checked_vectors,
     ollama_payload,
@@ -402,7 +403,17 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
 async def embed(texts: list[str], provider: str, client: httpx.AsyncClient, model: str) -> list[list[float]]:
     if provider == "ollama":
         url = os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/embed"
-        r = await client.post(url, json=ollama_payload(texts, model, query=False), timeout=120)
+        payload = ollama_payload(texts, model, query=False)
+        r = await client.post(url, json=payload, timeout=120)
+        if model == QWEN and r.status_code == 400:
+            # Keep long code and tables intact. Ollama can load this model at 4096
+            # tokens by default even though the model supports a 32768-token window.
+            try:
+                error = r.json()
+            except ValueError:
+                error = None
+            if isinstance(error, dict) and error.get("error") == "the input length exceeds the context length":
+                r = await client.post(url, json={**payload, "options": {"num_ctx": 32768}}, timeout=120)
         r.raise_for_status()
         return checked_vectors(r.json()["embeddings"], len(texts))
     if provider == "openai":
