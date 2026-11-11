@@ -26,6 +26,7 @@ import json
 import os
 import re
 import sys
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urljoin, urlparse
@@ -200,11 +201,18 @@ def page_title(text: str) -> str | None:
     return m.group(1).strip().lower() if m else None
 
 
-def drop_duplicate_pages(full_text: str, titles: set[str]) -> tuple[str, int]:
-    """Remove llms-full pages whose H1 matches a page ingested under its own URL (better citation)."""
+def drop_duplicate_pages(full_text: str, canonical_texts: Iterable[str]) -> tuple[str, int]:
+    """Prefer a page citation only when it contains the complete combined-manual section."""
+    candidates: dict[str, list[str]] = {}
+    for text in canonical_texts:
+        title = page_title(text)
+        if title:
+            candidates.setdefault(title, []).append("\n" + text + "\n")
+
     kept, dropped = [], 0
     for page in split_pages(full_text):
-        if page_title(page) in titles:
+        section = "\n" + page.strip("\r\n") + "\n"
+        if any(section in canonical for canonical in candidates.get(page_title(page) or "", [])):
             dropped += 1
         else:
             kept.append(page)
@@ -565,10 +573,18 @@ async def main() -> int:
         docs = canonical_documents([d for d in seeds + expanded if d.product != "full"])
         full_docs = [d for d in seeds if d.product == "full"]
         # Pages fetched under their own URL are the canonical citation; drop their llms-full copies.
-        titles = {t for d in docs if d.status != "failed" and (t := page_title(d.text))}
+        # A separately managed snapshot can differ from today's download. Only use
+        # the downloaded text for deduplication when this run can actually index it.
+        canonical_texts = [
+            d.text for d in docs if d.status != "failed" and (
+                d.url not in known
+                or not (d.url in protected or d.url.startswith("https://supabase.com/docs/reference/"))
+                or known[d.url][0] == d.hash
+            )
+        ]
         for d in full_docs:
             if d.status != "failed":
-                d.text, dropped = drop_duplicate_pages(d.text, titles)
+                d.text, dropped = drop_duplicate_pages(d.text, canonical_texts)
                 # What is kept depends on the other pages too, so "unchanged" must compare the kept text.
                 d.hash = hashlib.sha256(d.text.encode()).hexdigest()
                 print(f"llms-full.txt: dropped {dropped} pages already ingested under their own URL")

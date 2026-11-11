@@ -100,7 +100,8 @@ def test_split_pages_uses_title_after_separator() -> None:
 
 
 def test_drop_duplicate_pages_keeps_unmatched() -> None:
-    text, dropped = ing.drop_duplicate_pages(FULL, {"row level security"})
+    canonical = ing.split_pages(FULL)[1]
+    text, dropped = ing.drop_duplicate_pages(FULL, [canonical + "\nRelated guides"])
     assert dropped == 1
     assert "Policies text" not in text and "Only In Full" in text
 
@@ -175,3 +176,15 @@ def test_long_qwen_document_retries_only_context_errors_and_keeps_full_input():
         initial, retry = asyncio.run(run(overflow, status))
         assert retry == {**initial, "options": {"num_ctx": 32768}}
     assert len(asyncio.run(run("unsupported dimensions", 400))) == 1
+
+def test_same_heading_does_not_erase_different_content_or_code_indentation():
+    combined = "# Supabase\n\nPricing and capacity.\n\n---\n\n# Python\n\n```py\nif ok:\n    run()\n```"
+    text, dropped = ing.drop_duplicate_pages(
+        combined, ["# Supabase\n\nWelcome.", "# Python\n\n```py\nif ok:\nrun()\n```"]
+    )
+    assert dropped == 0
+    assert "Pricing and capacity." in text and "    run()" in text
+
+def test_shorter_value_at_end_of_manual_section_is_not_a_duplicate():
+    text, dropped = ing.drop_duplicate_pages("# Limits\nMax 5", ["# Limits\nMax 500"])
+    assert dropped == 0 and text.endswith("Max 5")

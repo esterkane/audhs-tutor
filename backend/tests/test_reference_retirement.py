@@ -401,3 +401,29 @@ async def test_html_index_with_valid_document_link_stops_before_discovery(indexe
     assert await indexer.main() == 2
     assert requested == [indexer.INDEX_DEFAULT]
     retire.assert_not_called()
+
+
+async def test_combined_manual_keeps_text_pending_separate_guide_review(indexer, monkeypatch):
+    from unittest.mock import AsyncMock, Mock
+
+    import httpx
+
+    guide = "https://supabase.com/docs/guides/auth.md"
+    full = "https://supabase.com/llms-full.txt"
+    body = "# Example\n\nNewly published guidance."
+    documents = {indexer.INDEX_DEFAULT: f"{guide}\n{full}", guide: body, full: body}
+    real_client = httpx.AsyncClient
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, text=documents[str(r.url)]))
+    monkeypatch.setattr(indexer.httpx, "AsyncClient", lambda: real_client(transport=transport))
+    monkeypatch.setattr(sys, "argv", ["ingest", "--no-expand"])
+    monkeypatch.setenv("EMBEDDINGS_PROVIDER", "ollama")
+    monkeypatch.delenv("EMBEDDINGS_MODEL", raising=False)
+    monkeypatch.setattr(indexer, "enrolled", lambda: {guide})
+    monkeypatch.setattr(indexer, "existing_hashes", lambda: {guide: ("old", 1, "nomic-embed-text")})
+    monkeypatch.setattr(indexer, "embed", AsyncMock(return_value=[[0.0] * 768]))
+    upsert = Mock(return_value=1)
+    monkeypatch.setattr(indexer, "upsert", upsert)
+    assert await indexer.main() == 0
+    upsert.assert_called_once()
+    written = upsert.call_args.args[0]
+    assert written.url == full and written.chunks[0].content == "Newly published guidance."
