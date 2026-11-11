@@ -7,7 +7,7 @@ from sqlalchemy import select
 
 from app.db.models import Chunk, DocumentVersion
 from app.knowledge.pdf_page_sources import read
-from tests.pdf_scan_fixture import diagram_pdf, native_pdf, scanned_pdf
+from tests.pdf_scan_fixture import diagram_pdf, native_pdf, scanned_pdf, vector_pdf
 from tests.test_knowledge_authoring import complete
 from tests.test_pdf_ocr import runtime
 
@@ -170,3 +170,58 @@ async def test_unusable_files_still_fail(client, filename, content, error):
         "/api/knowledge-material/uploads", content=content, headers={"X-Filename": filename}
     )
     assert res.status_code == 422 and res.json()["error"]["code"] == error
+
+
+@runtime
+@pytest.mark.parametrize("mixed", [False, True])
+async def test_native_vector_artwork_counts_only_visible_pages(
+    client, db, settings, tmp_path, mixed
+):
+    settings.knowledge_authoring_root = str(tmp_path / "uploads")
+    writer = PdfWriter()
+    writer.append(io.BytesIO(vector_pdf()))
+    writer.append(io.BytesIO(vector_pdf(b"1 1 1 rg 80 40 200 80 re f")))
+    writer.append(io.BytesIO(vector_pdf(b"0.996 0.996 0.996 rg 80 40 200 80 re f")))
+    if mixed:
+        writer.append(io.BytesIO(native_pdf("An independent caption.")))
+    stream = io.BytesIO()
+    writer.write(stream)
+    res = await client.post(
+        "/api/knowledge-material/uploads",
+        content=stream.getvalue(),
+        headers={"X-Filename": "drawing.pdf"},
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["text"] == ("An independent caption." if mixed else "")
+    assert data["ocr_pages"] == [] and data["ocr_empty_pages"] == []
+    base = f"/api/knowledge-material/uploads/{data['document_id']}/versions/{data['document_version_id']}/pages"
+    pages = (await client.get(base)).json()["pages"]
+    assert [p["page"] for p in pages] == ([1, 3, 4] if mixed else [1, 3])
+    assert all(p == {"page": p["page"], "text": "", "ocr": False} for p in pages[:2])
+    assert (await client.get(base + "/1/preview")).status_code == 200
+    assert (await client.get(base + "/2/preview")).status_code == 404
+    chunks = list(
+        await db.scalars(
+            select(Chunk).where(Chunk.document_version_id == data["document_version_id"])
+        )
+    )
+    assert len(chunks) == int(mixed)
+
+
+@runtime
+@pytest.mark.parametrize(
+    "raw",
+    [
+        vector_pdf(b""),
+        vector_pdf(b"1 1 1 rg 80 40 200 80 re f"),
+        vector_pdf(b"0 0 1 rg 800 400 200 80 re f"),
+        diagram_pdf(blank=True),
+    ],
+)
+async def test_visibly_blank_pdf_still_rejected(client, settings, tmp_path, raw):
+    settings.knowledge_authoring_root = str(tmp_path / "uploads")
+    res = await client.post(
+        "/api/knowledge-material/uploads", content=raw, headers={"X-Filename": "blank.pdf"}
+    )
+    assert res.status_code == 422 and res.json()["error"]["code"] == "empty_upload"

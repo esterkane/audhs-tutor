@@ -99,12 +99,12 @@ def scanned_pdf(root: Path, *, mixed: bool = False, text: str | None = None) -> 
     return data
 
 
-def diagram_pdf() -> bytes:
+def diagram_pdf(*, blank: bool = False) -> bytes:
     """Image-only page with an outlined rectangle and no lettering."""
     writer = PdfWriter()
     page = writer.add_blank_page(width=400, height=200)
     pixels = bytearray([255] * (400 * 200))
-    for y in range(40, 160):
+    for y in range(40, 40 if blank else 160):
         start, stop = y * 400 + 70, y * 400 + 310
         if y < 45 or y >= 155:
             pixels[start:stop] = bytes(stop - start)
@@ -131,6 +131,17 @@ def diagram_pdf() -> bytes:
     )
     content = DecodedStreamObject()
     content.set_data(b"q 400 0 0 200 0 0 cm /Diagram Do Q")
+    page[NameObject("/Contents")] = writer._add_object(content)
+    stream = io.BytesIO()
+    writer.write(stream)
+    return stream.getvalue()
+
+
+def vector_pdf(paint: bytes = b"0 0 1 rg 80 40 200 80 re f") -> bytes:
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=400, height=200)
+    content = DecodedStreamObject()
+    content.set_data(paint)
     page[NameObject("/Contents")] = writer._add_object(content)
     stream = io.BytesIO()
     writer.write(stream)

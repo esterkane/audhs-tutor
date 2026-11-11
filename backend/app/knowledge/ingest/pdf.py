@@ -2,9 +2,10 @@
 
 import re
 import time
+from dataclasses import replace
 from typing import Any
 
-from app.knowledge.ingest.pdf_ocr import PdfOcrOptions, PdfOcrUnavailable, ocr_pages
+from app.knowledge.ingest.pdf_ocr import PdfOcrOptions, PdfOcrUnavailable, ocr_pages, visible_pages
 from app.knowledge.ingest.types import Block
 
 
@@ -53,6 +54,7 @@ def pdf_blocks(
     reader = PdfReader(BytesIO(data))
     native: dict[int, str] = {}
     scanned: list[int] = []
+    artwork: list[int] = []
     for i, page in enumerate(reader.pages, 1):
         native[i] = _clean_page(page.extract_text() or "")
         if len(native[i]) >= 80:
@@ -64,13 +66,23 @@ def pdf_blocks(
         content = page.get_contents()
         if content is not None and any(op == b"INLINE IMAGE" for _, op in content.operations):
             scanned.append(i)
+        elif (
+            require_complete
+            and not native[i]
+            and content is not None
+            and any(
+                op in {b"S", b"s", b"f", b"F", b"f*", b"B", b"B*", b"b", b"b*", b"Do", b"sh"}
+                for _, op in content.operations
+            )
+        ):
+            artwork.append(i)
+    started = time.monotonic()
     recognized: dict[int, str] = {}
     if scanned and ocr is None and require_complete:
         raise PdfOcrUnavailable(
             "This PDF has scanned pages. Enable local OCR and install Poppler and Tesseract on the backend."
         )
     if scanned and ocr is not None:
-        started = time.monotonic()
         recognized = ocr_pages(data, scanned, ocr)
         if extraction is not None:
             extraction.update(
@@ -79,6 +91,16 @@ def pdf_blocks(
                 ocr_pages=scanned,
                 empty_ocr_pages=[p for p, value in recognized.items() if not value.strip()],
                 latency_ms=round((time.monotonic() - started) * 1000),
+            )
+    if require_complete and extraction is not None:
+        candidates = artwork + [
+            i for i, text in recognized.items() if not text.strip() and not native[i]
+        ]
+        if candidates:
+            options = ocr or PdfOcrOptions()
+            remaining = options.timeout_s - (time.monotonic() - started)
+            extraction["visual_pages"] = visible_pages(
+                data, sorted(candidates), replace(options, timeout_s=remaining)
             )
     blocks: list[Block] = []
     for i, native_text in native.items():

@@ -29,6 +29,54 @@ class PdfOcrOptions:
     max_side: int = 3000
 
 
+def visible_pages(data: bytes, pages: list[int], options: PdfOcrOptions) -> list[int]:
+    """Confirm rendered marks on textless authoring pages without producing source text."""
+    if len(pages) > options.max_pages:
+        raise PdfOcrLimit(f"Upload at most {options.max_pages} visual pages at a time.")
+    executable = shutil.which("pdftoppm")
+    if not executable:
+        raise PdfOcrUnavailable("Install Poppler to inspect visual PDF pages.")
+    deadline = time.monotonic() + options.timeout_s
+    marked = []
+    with tempfile.TemporaryDirectory(prefix="audhs-pdf-visual-") as folder:
+        source = Path(folder) / "source.pdf"
+        source.write_bytes(data)
+        for page in pages:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise PdfOcrLimit("PDF page inspection timed out. Upload a smaller section.")
+            try:
+                raster = subprocess.run(
+                    [
+                        executable,
+                        "-f",
+                        str(page),
+                        "-l",
+                        str(page),
+                        "-singlefile",
+                        "-scale-to",
+                        "1024",
+                        str(source),
+                    ],
+                    check=True,
+                    capture_output=True,
+                    timeout=min(12.0, remaining),
+                ).stdout
+            except subprocess.TimeoutExpired:
+                raise PdfOcrLimit(
+                    "PDF page inspection timed out. Upload a smaller section."
+                ) from None
+            except (OSError, subprocess.CalledProcessError):
+                raise PdfOcrError("Local PDF page inspection failed.") from None
+            magic, size, maximum, pixels = raster.split(b"\n", 3)
+            width, height = map(int, size.split())
+            if magic != b"P6" or maximum != b"255" or len(pixels) != width * height * 3:
+                raise PdfOcrError("Local PDF page inspection returned an invalid image.")
+            if pixels.count(255) != len(pixels):
+                marked.append(page)
+    return marked
+
+
 def ocr_pages(data: bytes, pages: list[int], options: PdfOcrOptions) -> dict[int, str]:
     """Recognize selected 1-based pages, with one bounded raster in memory/on disk at a time."""
     if len(pages) > options.max_pages:

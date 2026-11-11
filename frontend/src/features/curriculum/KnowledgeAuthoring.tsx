@@ -370,7 +370,7 @@ function Editor({
           : ''
         change({ ...form, title: form.title || upload.filename, upload_id: upload.document_id, upload_version_id: upload.document_version_id ?? null, notes })
         setStatus(
-          !upload.text && upload.ocr_empty_pages?.length
+          !upload.text && upload.document_version_id
             ? `Uploaded ${upload.filename}. No text was recognized. Open Browse PDF pages to inspect the original, then describe what you see in your notes.`
             : `Uploaded ${upload.filename}. ${upload.ocr_pages?.length ? `Local OCR used on pages ${upload.ocr_pages.join(', ')}. Check names, column order, numbers and SQL identifiers against the original. Edit any errors in your source notes below. ` : ''}${emptyOcrNotice}Review the extracted content, then save your material. Original source is retained.`,
         )

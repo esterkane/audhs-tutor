@@ -24,8 +24,8 @@ def persist(path: Path, digest: str, doc: SourceDoc, languages: str) -> str:
         pages.append({"page": page, "text": block.text, "ocr": page in ocr})
     # A scan with no recognized text still has a physical page the learner can inspect.
     represented = {p["page"] for p in pages}
-    for number in sorted(ocr - represented):
-        pages.append({"page": number, "text": "", "ocr": True})
+    for number in sorted((ocr | set(report.get("visual_pages", []))) - represented):
+        pages.append({"page": number, "text": "", "ocr": number in ocr})
     pages.sort(key=lambda item: item["page"])
     evidence = {"sha256": digest, "pages": pages, "languages": languages, "format": 2}
     identity = _identity(evidence)
