@@ -28,11 +28,14 @@ BRIEFS: list[dict[str, Any]] = [
         ],
         "test": [
             "Show the original failing query and exact error.",
-            "Demonstrate the minimal fix with the authenticated role, not the administrator.",
-            "Show both an allowed own-row read and a denied cross-user read.",
+            "Repeat the same read with the same authenticated role and JWT subject after your fix.",
+            (
+                "Record which orders your subject can see. Filter for a known order belonging to "
+                "another subject and distinguish an empty result from a permission error."
+            ),
         ],
         "reflect": (
-            "Explain why table privileges and row visibility are separate checks. State what your"
+            "Use your observations to explain table privileges and row visibility. State what your"
             " test does not prove."
         ),
         "source": "https://github.com/esterkane/kanguroo-supabase-tutor",

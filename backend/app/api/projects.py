@@ -7,7 +7,7 @@ from sqlalchemy import select, update
 from app.api.deps import DB, Learner
 from app.core.errors import AppError
 from app.db.models import LearningProject
-from app.kernel.projects import ensure_projects
+from app.kernel.projects import BRIEFS, ensure_projects
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -27,13 +27,18 @@ class LearningProjectOut(BaseModel):
 
 
 def output(row: LearningProject) -> LearningProjectOut:
+    brief = row.brief_json
+    if row.slug == "supabase-postgres-support":
+        # Older project rows retain the instructions shipped when they were created.
+        template = next(item for item in BRIEFS if item["slug"] == row.slug)
+        brief = {**brief, "test": template["test"], "reflect": template["reflect"]}
     return LearningProjectOut(
         id=row.id,
         slug=row.slug,
         title=row.title,
         topic=row.topic,
         objective=row.objective,
-        brief=row.brief_json,
+        brief=brief,
         notes=row.notes,
         evidence=row.evidence,
         reflection=row.reflection,

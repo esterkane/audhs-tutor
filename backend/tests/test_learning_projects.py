@@ -3,7 +3,7 @@
 import pytest
 from sqlalchemy import func, select
 
-from app.api.projects import ProjectUpdate, save
+from app.api.projects import ProjectUpdate, output, save
 from app.core.errors import AppError
 from app.db.models import CompetencyEvidence, LearnerProfile, LearningProject
 from app.kernel.projects import ensure_projects
@@ -91,3 +91,17 @@ async def test_other_owner_cannot_read_or_overwrite_project(db, learner):
     await db.rollback()
     latest = await db.get(LearningProject, project_id)
     assert latest.version == 1 and latest.notes == ""
+
+
+async def test_existing_supabase_project_reads_current_lab_prompts_without_rewriting_work(
+    db, learner
+):
+    project = (await ensure_projects(db, learner.id))[0]
+    project.brief_json = {**project.brief_json, "test": ["Show a denied cross-user read."]}
+    project.notes = "My original observations"
+    await db.commit()
+    version = project.version
+    current = output(project)
+    assert "empty result from a permission error" in " ".join(current.brief["test"])
+    assert current.notes == project.notes and current.version == version
+    assert project.brief_json["test"] == ["Show a denied cross-user read."]
