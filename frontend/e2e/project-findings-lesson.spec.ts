@@ -100,6 +100,8 @@ for (const [label, topic] of [
     await page.goto('/projects')
     await page.getByRole('button', { name: 'Open project: ' + label, exact: true }).click()
     const evidence = 'My observations from the ' + label + ' project.'
+    const reflection = 'I want to revisit my ' + label + ' result.'
+    await page.getByLabel('What I can explain and what remains uncertain').fill(reflection)
     await page.getByLabel('Test evidence and observed results').fill(evidence)
     await page.getByRole('button', { name: 'Save project notes' }).click()
     const creating = page.waitForResponse(
@@ -110,7 +112,7 @@ for (const [label, topic] of [
     await expectOk(response)
     const draft = await response.json()
     expect(draft.payload.authoring.focus_topic).toBe(topic)
-    expect(draft.payload.authoring.notes).toBe('My test evidence\n' + evidence)
+    expect(draft.payload.authoring.notes).toBe('My test evidence\n' + evidence + '\n\nMy reflection\n' + reflection)
     await expect(page.getByLabel('Learning objective', { exact: true })).toBeVisible()
   })
 }
