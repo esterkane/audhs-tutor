@@ -17,6 +17,7 @@ test('compare conflicting project writing across tabs and choose either version'
   for (const choice of ['saved','local']) {
     await notes.fill('Writing in this tab '+choice)
     await serverNotes.fill('Another tab saved '+choice)
+    if (choice === 'local') await other.getByLabel('Test evidence and observed results').fill('Evidence from the other tab')
     await saveOther.click()
     await expect(other.getByRole('status')).toContainText('Project writing saved')
     await save.click()
@@ -27,11 +28,15 @@ test('compare conflicting project writing across tabs and choose either version'
       await compare.getByRole('button',{name:'Use saved version'}).press('Enter')
       await expect(notes).toHaveValue('Another tab saved saved')
     } else {
+      await compare.getByRole('button',{name:'Use saved evidence in this tab'}).press('Enter')
+      await expect(page.getByLabel('Test evidence and observed results')).toHaveValue('Evidence from the other tab')
+      await expect(save).toBeDisabled()
       await compare.getByRole('button',{name:'Keep my writing against the latest version'}).press('Enter')
       await save.click()
       await expect(page.getByRole('status')).toContainText('Project writing saved')
       await other.reload()
       await expect(serverNotes).toHaveValue('Writing in this tab local')
+      await expect(other.getByLabel('Test evidence and observed results')).toHaveValue('Evidence from the other tab')
     }
     await expect(compare).toHaveCount(0)
   }

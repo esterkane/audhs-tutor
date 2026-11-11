@@ -205,6 +205,9 @@ function ProjectEditor({ project }: { project: Project }) {
                 <dt className="font-semibold">{({notes: 'Notes', evidence: 'Evidence', reflection: 'Reflection', status: 'Status'})[key]}</dt>
                 <dd className="whitespace-pre-wrap break-words">Saved version: {project[key] || '(empty)'}</dd>
                 <dd className="whitespace-pre-wrap break-words">This tab: {form[key] || '(empty)'}</dd>
+                {key !== 'status' && <dd><Button variant="secondary" onClick={() => edit(key, project[key])}>
+                  Use saved {key} in this tab
+                </Button></dd>}
               </div>
             ))}
           </dl>
