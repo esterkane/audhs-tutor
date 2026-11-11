@@ -227,8 +227,8 @@ async def upload(
                 "Choose a smaller document or export a section (120,000 characters maximum).",
                 422,
             )
-        if not path.exists():
-            staged.replace(path)
+        # The name is derived from these bytes. Re-uploading restores a damaged original.
+        staged.replace(path)
     if suffix == ".pdf":
         doc.content_hash = await run_in_threadpool(
             pdf_page_sources.persist, path, digest, doc, settings.pdf_ocr_languages

@@ -62,6 +62,14 @@ async def test_start_uploaded_notebook_without_manifest_and_reopen_edits(
     document = await db.get(Document, doc_id)
     saved_source = Path(document.uri)
     assert await asyncio.to_thread(saved_source.read_bytes) == original
+    await asyncio.to_thread(saved_source.write_bytes, b"truncated during storage failure")
+    repaired = await client.post(
+        "/api/knowledge-material/uploads", content=original, headers={"X-Filename": "source.ipynb"}
+    )
+    assert repaired.status_code == 200
+    assert repaired.json()["document_id"] == doc_id
+    assert await asyncio.to_thread(saved_source.read_bytes) == original
+    assert target.read_text() == "saved edits"
     missing = str(uuid4())
     command.update(course_id="upload-" + missing, request_id=str(uuid4()))
     missing_url = "/api/notebooks/uploads/" + missing
