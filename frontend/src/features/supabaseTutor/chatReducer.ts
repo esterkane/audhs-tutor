@@ -63,7 +63,7 @@ export function chatReducer(state: ChatState, action: ChatAction): ChatState {
           }
         case 'tool_result_summary': {
           const tools = [...s.tools]
-          const i = tools.map((x) => x.name).lastIndexOf(e.data.name)
+          const i = tools.findIndex((tool) => tool.name === e.data.name && !tool.done)
           if (i >= 0)
             tools[i] = { ...tools[i], done: true, isError: e.data.is_error, summary: e.data.summary }
           return { ...state, streaming: { ...s, tools } }

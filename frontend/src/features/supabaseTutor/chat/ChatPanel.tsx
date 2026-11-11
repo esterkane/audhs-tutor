@@ -6,7 +6,6 @@ import type { Language } from '../types'
 import { type ServerTts, useSpeech } from '../voice/useSpeech'
 import { VoiceBar } from '../voice/VoiceBar'
 import { readDraft, writeDraft, type RetainedDraft } from './draftStorage'
-import { Markdown } from './Markdown'
 import { TurnView } from './TurnView'
 import { MembershipLab } from '../lab/MembershipLab'
 import { IsolationLab } from '../lab/IsolationLab'
@@ -64,6 +63,11 @@ export function ChatPanel({
   }
   const end = useRef<HTMLDivElement>(null)
   const busy = chat.streaming !== null
+  const searches = chat.streaming?.tools.filter(tool => tool.name === 'search_docs') ?? []
+  const stage = searches.some(tool => !tool.done) ? s.searchingDocs
+    : searches.length && searches.every(tool => tool.isError) ? s.docsUnavailable
+    : searches.length ? s.afterDocs
+    : s.awaitingAnswer
 
   const voice = useSpeech(
     language,
@@ -89,7 +93,7 @@ export function ChatPanel({
   useEffect(() => {
     // Braces matter: newer Chromium returns a Promise from scrollIntoView, and an effect must not return one.
     end.current?.scrollIntoView?.({ block: 'end' })
-  }, [chat.items.length, chat.streaming?.text])
+  }, [chat.items.length, stage])
 
   const submit = () => {
     const text = draft.trim()
@@ -127,7 +131,8 @@ export function ChatPanel({
           ),
         )}
         {chat.streaming && (
-          <div className="max-w-[95%]" aria-live="polite">
+          <div className="max-w-[95%]">
+            <p role="status" className="text-sm text-zinc-300">{stage}</p>
             {chat.streaming.rewrites.length > 0 && (
               <p className="mb-1 text-[11px] text-amber-400">
                 {s.rewritten}: {chat.streaming.rewrites.at(-1)?.join(', ')}
@@ -147,16 +152,11 @@ export function ChatPanel({
                           : 'border-sky-700 text-sky-300'
                     }`}
                   >
-                    {tool.name === 'compare_isolation_lab' ? s.isolationTitle : tool.name === 'same_row_balance_lab' ? s.balanceTitle : tool.name}
+                    {tool.name === 'search_docs' ? s.documentationSearch : tool.name === 'compare_isolation_lab' ? s.isolationTitle : tool.name === 'same_row_balance_lab' ? s.balanceTitle : tool.name}
                     {typeof tool.input.query === 'string' ? `: ${tool.input.query}` : ''}
                   </li>
                 ))}
               </ul>
-            )}
-            {chat.streaming.text ? (
-              <Markdown text={chat.streaming.text} diagramFailed={s.diagramFailed} tableLabel={s.tableRegion} />
-            ) : (
-              <p className="text-sm text-zinc-400">{s.thinking} …</p>
             )}
           </div>
         )}
