@@ -381,6 +381,9 @@ async def main() -> int:
         targets = select(parse_index(idx.text, a.index), a.profile, a.only)
         if a.limit:
             targets = targets[: a.limit]
+        if not targets:
+            print("Reference index or selection contains no document URLs; coverage could not be verified.", file=sys.stderr)
+            return 2
         sem = asyncio.Semaphore(4)
         seeds = [Doc(url=u, tier=t, product=product_of(u)) for u, t in targets]
         seeds = list(await asyncio.gather(*(fetch(client, d, sem) for d in seeds)))
@@ -429,7 +432,7 @@ async def main() -> int:
             rows.append((d.url, d.status, n, "yes"))
 
     retired = 0
-    if not a.dry_run and not partial:
+    if not a.dry_run and not partial and not seed_failed:
         retired = retire_missing([d.url for d in docs + full_docs], a.index)
 
     if a.verbose:
@@ -447,6 +450,7 @@ async def main() -> int:
     print(f"\n{len(rows)} sources ({len(seeds)} from index, {len(expanded)} linked), "
           f"{sum(r[2] for r in rows)} chunks written, status {by_status}, "
           f"{seed_failed} index failures, {expand_failed} linked-page failures, {retired} retired"
+          + ("; retirement skipped because seed discovery was incomplete" if seed_failed and not partial and not a.dry_run else "")
           + ("  (dry run)" if a.dry_run else ""))
     # Index entries are Tier 1 and must all succeed; a dead link inside the docs is only a warning.
     return 1 if seed_failed else 0

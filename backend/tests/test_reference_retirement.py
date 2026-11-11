@@ -100,12 +100,12 @@ def test_sdk_sources_use_the_searchable_api_product(indexer, sdk):
     [
         (["--profile", "support"], False, False, 1),
         (["--profile", "all"], False, True, 2),
-        (["--profile", "all"], True, True, 1),
+        (["--profile", "all"], True, False, 1),
         (["--profile", "all", "--only", "cli"], False, False, 1),
     ],
 )
 async def test_refresh_retirement_respects_selected_coverage(
-    indexer, monkeypatch, arguments, failed_sdk, should_retire, expected_count
+    indexer, monkeypatch, capsys, arguments, failed_sdk, should_retire, expected_count
 ):
     from unittest.mock import Mock
 
@@ -152,6 +152,38 @@ async def test_refresh_retirement_respects_selected_coverage(
     assert upsert.call_count == expected_count
     assert retire.called is should_retire
     if should_retire:
-        # Selected temporary failures stay in the manifest, not mistaken for removed docs.
+        # A complete seed scan can retire truly absent same-origin sources.
         assert set(retire.call_args.args[0]) == {cli, dart}
         assert retire.call_args.args[1] == indexer.INDEX_DEFAULT
+    if failed_sdk:
+        assert "retirement skipped" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize(
+    "args, index_text",
+    [
+        (["--profile", "all"], "An upstream maintenance notice without any document links."),
+        (["--only", "no-matching-topic", "--verbose"], "https://supabase.com/llms/cli.txt"),
+    ],
+)
+async def test_empty_coverage_fails_cleanly_before_any_embedding_or_retirement(
+    indexer, monkeypatch, capsys, args, index_text
+):
+    from unittest.mock import AsyncMock, Mock
+
+    import httpx
+
+    real_client = httpx.AsyncClient
+    transport = httpx.MockTransport(lambda request: httpx.Response(200, text=index_text))
+    monkeypatch.setattr(indexer.httpx, "AsyncClient", lambda: real_client(transport=transport))
+    monkeypatch.setattr(sys, "argv", ["ingest", *args])
+    monkeypatch.setattr(indexer, "existing_hashes", lambda: {})
+    embed, upsert, retire = AsyncMock(), Mock(), Mock()
+    monkeypatch.setattr(indexer, "embed", embed)
+    monkeypatch.setattr(indexer, "upsert", upsert)
+    monkeypatch.setattr(indexer, "retire_missing", retire)
+    assert await indexer.main() == 2
+    assert "no document URLs" in capsys.readouterr().err
+    embed.assert_not_called()
+    upsert.assert_not_called()
+    retire.assert_not_called()
