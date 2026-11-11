@@ -4916,6 +4916,27 @@ export interface components {
       /** Action */
       action?: string | null
     }
+    /**
+     * ConceptRelationship
+     * @description A learner-authored directed link; drafts may be incomplete.
+     */
+    ConceptRelationship: {
+      /**
+       * Source
+       * @default
+       */
+      source: string
+      /**
+       * Target
+       * @default
+       */
+      target: string
+      /**
+       * Link
+       * @default
+       */
+      link: string
+    }
     /** ConditionRecall */
     ConditionRecall: {
       conditions: components['schemas']['StudyConditions']
@@ -6406,6 +6427,7 @@ export interface components {
        * @default
        */
       worked_example_prequestion: string
+      relationship?: components['schemas']['ConceptRelationship'] | null
       case_comparison?: components['schemas']['CaseComparison'] | null
       /** Criteria */
       criteria?: string[]
@@ -6462,6 +6484,7 @@ export interface components {
        * @default
        */
       worked_example_prequestion: string
+      relationship?: components['schemas']['ConceptRelationship'] | null
       case_comparison?: components['schemas']['CaseComparison'] | null
       /** Criteria */
       criteria?: string[]
@@ -6490,6 +6513,7 @@ export interface components {
       learning_object_version: number
       /** Prequestions */
       prequestions?: components['schemas']['ReadingPrequestion'][]
+      relationship?: components['schemas']['ConceptRelationship'] | null
       case_comparison?: components['schemas']['AcceptedCaseComparison'] | null
     }
     /** KnowledgeResearch */

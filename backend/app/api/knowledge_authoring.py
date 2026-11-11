@@ -267,6 +267,8 @@ async def create(
         for key in ("explanation_prequestion", "worked_example_prequestion")
         if getattr(body, key) == ""
     }
+    if body.relationship is None:
+        empty_prequestions.add("relationship")
     if body.case_comparison is None:
         empty_prequestions.add("case_comparison")
     if body.upload_version_id is None:
@@ -316,7 +318,12 @@ async def update(
     if not previous:
         raise AppError("invalid_authoring_draft", "Choose a knowledge material draft.", 422)
     fields = body.model_dump(exclude={"expected_version"})
-    for field in ("case_comparison", "explanation_prequestion", "worked_example_prequestion"):
+    for field in (
+        "case_comparison",
+        "relationship",
+        "explanation_prequestion",
+        "worked_example_prequestion",
+    ):
         if field not in body.model_fields_set and field in previous:
             fields[field] = previous[field]
     command = KnowledgeMaterialInput.model_validate(fields)
@@ -430,6 +437,13 @@ def _reading_view(
     node: SkillNode, draft: CurriculumDraft, lo: LearningObject
 ) -> KnowledgeReadingOut:
     examples = list(lo.examples_json or [])
+    authoring = draft.payload_json.get("authoring", {})
+    original_examples = [authoring.get("explanation"), authoring.get("worked_example")]
+    relationship = (
+        knowledge_authoring.accepted_relationship(authoring.get("relationship"))
+        if list(examples[:2]) == original_examples
+        else None
+    )
     return KnowledgeReadingOut(
         draft_id=draft.id,
         title=node.title,
@@ -440,6 +454,7 @@ def _reading_view(
         notes=str(draft.payload_json.get("authoring", {}).get("notes", "")),
         sources=list(lo.sources_json or []),
         learning_object_version=lo.version,
+        relationship=relationship,
         case_comparison=knowledge_authoring.accepted_case_comparison(
             draft.payload_json.get("authoring", {}).get("case_comparison")
         ),

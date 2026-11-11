@@ -594,6 +594,7 @@ async def test_legacy_create_identity_replays_without_new_optional_fields(
     row = await db.get(CurriculumDraft, created.json()["id"])
     assert row is not None
     legacy = copy.deepcopy(row.payload_json)
+    legacy["authoring"].pop("relationship")
     legacy["authoring"].pop("explanation_prequestion")
     legacy["authoring"].pop("worked_example_prequestion")
     legacy["authoring"]["request_fingerprint"] = hashlib.sha256(
@@ -604,6 +605,7 @@ async def test_legacy_create_identity_replays_without_new_optional_fields(
                 "worked_example_prequestion",
                 "upload_version_id",
                 "case_comparison",
+                "relationship",
             }
         )
         .encode()

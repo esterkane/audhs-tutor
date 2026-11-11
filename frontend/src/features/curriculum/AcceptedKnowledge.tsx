@@ -1,3 +1,4 @@
+import { RelationshipPractice } from './ConceptRelationship'
 import { CasePractice } from './CasePractice'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -42,6 +43,8 @@ ${data.worked_example}`
       resumeKeyPrefix={`lesson-reader:v1:accepted-knowledge:${data.draft_id}:${data.learning_object_version}:`}>
       {reader}
     </PredictionReading>}
+    {data.relationship && <RelationshipPractice key={data.draft_id+':'+data.learning_object_version}
+      identity={data.draft_id+':'+data.learning_object_version} value={data.relationship}/>}
     {data.case_comparison && <CasePractice key={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id}
       identity={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id} pair={data.case_comparison}/>}
     <Disclosure label="Your notes and source references"><Markdown text={data.notes} />

@@ -326,6 +326,15 @@ class KnowledgeResearch(BaseModel):
         return self
 
 
+class ConceptRelationship(BaseModel):
+    """A learner-authored directed link; drafts may be incomplete."""
+
+    model_config = ConfigDict(extra="forbid")
+    source: str = Field(default="", max_length=300)
+    target: str = Field(default="", max_length=300)
+    link: str = Field(default="", max_length=1000)
+
+
 class CaseComparison(BaseModel):
     """Partial authoring is allowed until the learner activates the material."""
 
@@ -360,6 +369,7 @@ class KnowledgeMaterialInput(BaseModel):
     question: str = Field(default="", max_length=4000)
     explanation_prequestion: str = Field(default="", max_length=1000)
     worked_example_prequestion: str = Field(default="", max_length=1000)
+    relationship: ConceptRelationship | None = None
     case_comparison: CaseComparison | None = None
     criteria: list[str] = Field(default_factory=list, max_length=12)
 
@@ -440,4 +450,5 @@ class KnowledgeReadingOut(BaseModel):
     sources: list[str]
     learning_object_version: int
     prequestions: list[ReadingPrequestion] = Field(default_factory=list)
+    relationship: ConceptRelationship | None = None
     case_comparison: AcceptedCaseComparison | None = None

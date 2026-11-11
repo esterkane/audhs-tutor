@@ -13,6 +13,7 @@ from app.kernel.learning_scope import reference_before, require_current_material
 from app.schemas.knowledge_authoring import (
     AcceptedCaseComparison,
     CaseComparison,
+    ConceptRelationship,
     KnowledgeMaterialInput,
     ReadingPrequestion,
 )
@@ -188,6 +189,20 @@ def accepted_prequestions(
             )
         )
     return result
+
+
+def accepted_relationship(value: Any) -> ConceptRelationship | None:
+    try:
+        relationship = ConceptRelationship.model_validate(value)
+    except ValueError:
+        return None
+    if not all(
+        part.strip() for part in (relationship.source, relationship.link, relationship.target)
+    ):
+        return None
+    if relationship.source.strip().casefold() == relationship.target.strip().casefold():
+        return None
+    return relationship
 
 
 def accepted_case_comparison(value: Any) -> AcceptedCaseComparison | None:

@@ -844,6 +844,18 @@ async def _validate_payload(
     pedagogy gaps a deterministic draft leaves open (criteria, exercises, guessable cloze)."""
     problems: list[Problem] = []
     authoring = payload.get("authoring")
+    if isinstance(authoring, dict) and authoring.get("relationship") is not None:
+        from app.kernel.knowledge_authoring import accepted_relationship
+
+        if accepted_relationship(authoring["relationship"]) is None:
+            problems.append(
+                Problem(
+                    "error",
+                    "relationship",
+                    "Enter two distinct concepts and the relationship connecting them.",
+                )
+            )
+
     if isinstance(authoring, dict) and authoring.get("case_comparison") is not None:
         from app.kernel.knowledge_authoring import accepted_case_comparison
 

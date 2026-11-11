@@ -1,3 +1,4 @@
+import { RelationshipAuthoring } from './ConceptRelationship'
 import { CaseAuthoring } from './CasePractice'
 import { useSearchParams } from 'react-router-dom'
 import { useFocusPolicy } from '../focus/useFocusPolicy'
@@ -32,6 +33,7 @@ const empty = (): Form => ({
   explanation_prequestion: '',
   worked_example_prequestion: '',
   case_comparison: null,
+  relationship: null,
   question: '',
   criteria: [],
   research: null,
@@ -748,6 +750,8 @@ function Editor({
               </label>)}
             </fieldset>
           </Disclosure>
+          <RelationshipAuthoring value={form.relationship ?? null} disabled={!!busy || readOnly}
+            onChange={relationship => change({...form, relationship})}/>
           <CaseAuthoring pair={form.case_comparison ?? null} disabled={!!busy || readOnly}
             onChange={pair => change({...form, case_comparison:pair})} />
           {needsSave ? <p role="status">Save your latest writing before activating the lesson.</p> : review}
