@@ -160,7 +160,15 @@ def render_balance(obs: dict[str, Any], values: BalanceInput, german: bool) -> s
         f"balance - {values.b_value}" if values.b_operation == "subtract" else str(values.b_value)
     )
     statement = f"UPDATE wallet SET balance = {expr} WHERE id = 1 RETURNING balance;"
+    # Compare against the post-commit balance, including the zero-debit case.
+    guard = f"`balance = {values.initial}`"
     if german:
+        contrast = (
+            f"Mit der zusätzlichen Bedingung {guard} würde B die Zeile weiterhin aktualisieren."
+            if first == values.initial
+            else f"Mit der zusätzlichen Bedingung {guard} würde B nach dem Warten keine Zeile "
+            f"aktualisieren. Der Kontostand bliebe {first}."
+        )
         reason = (
             f"B zog {values.b_value} vom bestätigten Wert {first} ab."
             if values.b_operation == "subtract"
@@ -171,8 +179,14 @@ def render_balance(obs: dict[str, Any], values: BalanceInput, german: bool) -> s
             f"Beide Sitzungen lasen anfangs {values.initial}. A zog {values.a_debit} ab und erhielt {first}. "
             f"B wartete auf As Sperre für dieselbe Zeile. Nach As Commit erfüllte die Zeile weiterhin `id = 1`. "
             f"{reason} Bs UPDATE gab {final} zurück; nach Bs Commit las eine separate Verbindung {final}."
-            f"\n\nBs Zuweisung in vereinfachter Form, ohne das temporäre Lab-Schema:\n\n```sql\n{statement}\n```"
+            f"\n\n{contrast}\n\nBs Zuweisung in vereinfachter Form, ohne das temporäre Lab-Schema:\n\n```sql\n{statement}\n```"
         )
+    contrast = (
+        f"With the additional condition {guard}, B would still update the row."
+        if first == values.initial
+        else f"With the additional condition {guard}, B would update zero rows after waiting. "
+        f"The balance would remain {first}."
+    )
     reason = (
         f"B subtracted {values.b_value} from the committed value {first}."
         if values.b_operation == "subtract"
@@ -183,7 +197,7 @@ def render_balance(obs: dict[str, Any], values: BalanceInput, german: bool) -> s
         f"Both sessions initially read {values.initial}. A subtracted {values.a_debit} and returned {first}. "
         f"B waited for A's lock on the same row. After A committed, the row still matched `id = 1`. "
         f"{reason} B's UPDATE returned {final}; a separate connection read {final} after B committed."
-        f"\n\nB’s equivalent assignment, with the temporary lab schema omitted:\n\n```sql\n{statement}\n```"
+        f"\n\n{contrast}\n\nB’s equivalent assignment, with the temporary lab schema omitted:\n\n```sql\n{statement}\n```"
     )
 
 
