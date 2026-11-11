@@ -23,6 +23,7 @@ from backend.tutor.embedding_space import (
     ollama_payload,
     resolve_model,
 )
+from backend.tutor.postgres_chrome import NAV_QUERY, PG17_PAGE, pure_manual_chrome
 from backend.tutor.schemas import Chunk
 from backend.tutor.sdk_scope import SdkScope, url_pattern
 
@@ -198,6 +199,7 @@ class PgHybridRetriever:
         embedding = await self.embedder.embed_query(query)
         if sdk_scope is not None:
             return await self._sdk_matches(query, embedding, k, products, sdk_scope)
+        hide_chrome = not NAV_QUERY.search(query)
         fetch_k = max(k, RERANK_POOL) if self.reranker else k
         async with self.pool.connection() as conn:
             cur = conn.cursor(row_factory=dict_row)
@@ -206,7 +208,37 @@ class PgHybridRetriever:
                 (query, str(embedding), fetch_k, expand_products(products)),
             )
             chunks = [Chunk(**row) for row in await cur.fetchall()]
+            if hide_chrome and any(pure_manual_chrome(hit.url, hit.content) for hit in chunks):
+                manual_pages = list(dict.fromkeys(hit.url for hit in chunks if PG17_PAGE.fullmatch(hit.url)))
+                # RRF already considers up to 60 lexical and 60 dense candidates. Read its
+                # remaining candidates only when site navigation consumed a returned slot.
+                await cur.execute(
+                    "select * from tutor.hybrid_search(%s, %s::extensions.vector, %s, %s)",
+                    (query, str(embedding), max(fetch_k, 120), expand_products(products)),
+                )
+                chunks = [Chunk(**row) for row in await cur.fetchall()
+                          if not pure_manual_chrome(row["url"], row["content"])][:fetch_k]
+                if len(chunks) < k and manual_pages:
+                    # The entire lexical pool can be navigation when a query names a version.
+                    # Search the bodies of the same ranked pages using the same query vector.
+                    filters = expand_products(products)
+                    await cur.execute(
+                        "select c.id as chunk_id,s.url,c.anchor,c.heading_path,c.content,s.tier,s.fetched_at,"
+                        "1.0/(1.0+(c.embedding <=> %s::extensions.vector)) as score "
+                        "from tutor.docs_chunk c join tutor.docs_source s on s.id=c.source_id "
+                        "where s.status='active' and s.url=any(%s) and c.embedding is not null "
+                        "and (%s::text[] is null or c.meta->>'product'=any(%s::text[])) "
+                        "order by c.embedding <=> %s::extensions.vector,c.id limit %s",
+                        (str(embedding), manual_pages, filters, filters, str(embedding), 4 * k),
+                    )
+                    seen = {hit.chunk_id for hit in chunks}
+                    for row in await cur.fetchall():
+                        if row["chunk_id"] not in seen and not pure_manual_chrome(row["url"], row["content"]):
+                            chunks.append(Chunk(**row))
+                            if len(chunks) >= k:
+                                break
             anchors: list[Chunk] = []
+
             if codes:
                 filters = expand_products(products)
                 await cur.execute(
@@ -303,6 +335,8 @@ class PgHybridRetriever:
                 anchors.extend(Chunk(**row) for row in await cur.fetchall() if row["chunk_id"] not in existing)
                 anchor_ids = {hit.chunk_id for hit in anchors}
                 chunks = [hit for hit in chunks if hit.chunk_id not in anchor_ids]
+        if hide_chrome:
+            anchors = [hit for hit in anchors if not pure_manual_chrome(hit.url, hit.content)]
         remaining = max(0, k - len(anchors))
         if self.reranker and remaining:
             chunks = await self.reranker.rerank(query, chunks, remaining)
