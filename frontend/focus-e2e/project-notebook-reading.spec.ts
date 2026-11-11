@@ -91,6 +91,7 @@ test('run and reopen a project findings notebook from the accepted lesson', asyn
   const cell = lab.locator('.jp-Notebook .jp-CodeCell').first()
   await expect(cell.locator('.cm-content')).toHaveText(code, { timeout: 30_000 })
   await expect(cell.locator('.jp-OutputArea-output')).toHaveCount(0)
+  await expect(lab.getByRole('button', { name: /Python 3.*Idle/ })).toBeVisible({ timeout: 30_000 })
   await cell.locator('.cm-content').click()
   await lab.keyboard.press('Shift+Enter')
   await expect(cell.locator('.jp-OutputArea-output')).toHaveText('1', { timeout: 30_000 })
