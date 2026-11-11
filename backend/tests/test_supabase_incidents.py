@@ -212,3 +212,19 @@ async def test_concurrency_answer_skips_generation_and_keeps_full_history():
 )
 def test_concurrency_does_not_bypass_chosen_teaching_mode_or_active_lab(changes):
     assert select_plan("Our transaction fails SQLSTATE 40001", state(**changes)) is None
+
+
+@pytest.mark.parametrize(
+    "report",
+    [
+        "Compare UPDATE: (A) USING excludes a row; (B) WITH CHECK rejects it; "
+        "(C) missing UPDATE privilege. Can SQLSTATE 42501 alone explain it?",
+        "Vergleiche UPDATE: (A) USING schließt die Zeile aus; (B) WITH CHECK lehnt sie ab; "
+        "(C) UPDATE-Recht fehlt. Bestimmt SQLSTATE 42501 allein die Ursache?",
+        "Does SQLSTATE 42501 identify failure of USING or WITH CHECK?",
+        "Contrast SQLSTATE 42P01 with 42703 for a renamed table.",
+        "SQLSTATE 42501: (a) grant missing (b) policy rejects a new row. Outcomes?",
+    ],
+)
+def test_comparative_questions_delegate_even_with_a_recognized_error(report):
+    assert select_plan(report, state()) is None

@@ -229,6 +229,14 @@ def mixed_plan(plans: list[Diagnostic]) -> Diagnostic:
 def select_plan(text: str, state: Any) -> Diagnostic | None:
     if state.mode != "incident" or state.active_lab is not None or len(text) > 8000:
         return None
+    # Fixed diagnostics explain reported errors. A comparison asks for outcomes
+    # under distinct conditions, even when one of them mentions a familiar code.
+    if (
+        re.search(r"\b(?:compare|contrast|versus|vs|vergleiche?n?|gegenüberstellen)\b", text, re.I)
+        or len(set(re.findall(r"\(([a-c])\)", text.lower()))) >= 2
+        or (re.search(r"\busing\b", text, re.I) and re.search(r"\bwith\s+check\b", text, re.I))
+    ):
+        return None
     # A resolved/negated report is not a new failure. Preserve distinct mixed error boundaries.
     if re.search(r"no longer|not getting|not seeing|kein.*mehr|nicht mehr", text, re.I):
         return None

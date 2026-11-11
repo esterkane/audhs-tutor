@@ -101,6 +101,8 @@ REPORTS = [
 ]
 NOT_REPORTS = [
     "Hallo", "GRANT", "Klar", "Hallo, ich möchte Supabase Support lernen",
+    "PostgreSQL 17, RLS enabled. Compare UPDATE: SQLSTATE 42501 or zero affected rows?",
+    "PostgreSQL 17, RLS aktiviert. Vergleiche UPDATE: SQLSTATE 42501 oder null betroffene Zeilen?",
     "Was ist der Unterschied zwischen GRANT und RLS?", "Was bedeutet SQLSTATE 42501?",
     "How does the connection pooler work?", "Ich habe OrbStack und Node 22", "Zeig mir einen Index auf orders",
 ]
@@ -114,3 +116,7 @@ def test_first_messages_that_report_a_problem_start_an_incident(text: str) -> No
 @pytest.mark.parametrize("text", NOT_REPORTS)
 def test_greetings_answers_and_concept_questions_do_not(text: str) -> None:
     assert not looks_like_customer_problem(text)
+
+
+def test_comparison_in_an_actual_customer_report_keeps_incident_mode() -> None:
+    assert looks_like_customer_problem('Our query fails. Compare these SQLSTATE 42501 errors.')

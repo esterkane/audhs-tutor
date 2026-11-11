@@ -164,13 +164,14 @@ WEAK = re.compile(
     r"|heute|today|this morning|deploy\w*|migration|produktion|production|unsere?|our|nutzer|users"
     r"|ich bekomme|i get|i'?m getting|wir bekommen|we get)\b")
 CONCEPT_QUESTION = re.compile(r"(?i)^\W*(was|wie|warum|wieso|weshalb|what|how|why|explain|erkl[äa]r\w*)\b")
+COMPARISON_REQUEST = re.compile(r"(?i)(?:^|[.!?]\s+)\s*(?:please\s+|bitte\s+)?(?:compare|contrast|vergleiche?)\b")
 SYSTEM_MARKER = re.compile(r"(?i)\b(unsere?|our|mein\w*|my|kunde\w*|customer|seit|since|ich bekomme|i get|we get)\b")
 
 
 def looks_like_customer_problem(text: str) -> bool:
     if len(text.split()) < 3:  # "Hallo", "GRANT", "Klar" are onboarding answers, not reports
         return False
-    if CONCEPT_QUESTION.match(text) and not SYSTEM_MARKER.search(text):
+    if (CONCEPT_QUESTION.match(text) or COMPARISON_REQUEST.search(text)) and not SYSTEM_MARKER.search(text):
         return False
     if STRONG.search(text):
         return True
