@@ -120,13 +120,22 @@ export class TutorApi {
     }
     const parser = new SseParser()
     const reader = res.body.pipeThrough(new TextDecoderStream()).getReader()
-    let terminal = false
+    let terminal: 'turn' | 'error' | undefined
     try {
       for (;;) {
-        const { value, done } = await reader.read()
+        let chunk: ReadableStreamReadResult<string>
+        try {
+          chunk = await reader.read()
+        } catch (error) {
+          if (terminal === 'error') return
+          if (terminal === 'turn')
+            throw new ApiError(502, 'Your answer was saved. Reload to check for later session updates.')
+          throw error
+        }
+        const { value, done } = chunk
         if (done) break
         for (const event of parser.feed(value)) {
-          if (event.event === 'turn' || event.event === 'error') terminal = true
+          if (event.event === 'turn' || event.event === 'error') terminal = event.event
           onEvent(event)
         }
       }
