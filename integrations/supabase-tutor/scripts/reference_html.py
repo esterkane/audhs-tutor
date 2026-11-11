@@ -4,20 +4,28 @@ import re
 from html.parser import HTMLParser
 from urllib.parse import urljoin, urlsplit
 
-
 REFERENCE_URL = re.compile(
     r"https://supabase\.com/docs/reference/(?:(?:javascript|python|dart|swift|kotlin|csharp)/(?:v[0-9]+/)?|(?:api|server|middleware|tanstack_db)/)[a-z0-9-]+/?"
 )
 
 
+CONFIG_GUIDES = {
+    "https://supabase.com/docs/guides/local-development/cli/config": ("Supabase CLI config", "project_id"),
+    "https://supabase.com/docs/guides/self-hosting/auth/config": ("Auth Self-hosting Config", "GOTRUE_SITE_URL"),
+}
+
+
 class _Page(HTMLParser):
-    ignored = {"nav", "script", "style", "footer", "header", "aside", "template"}
-    blocks = {"p", "ul", "ol", "section", "article", "div", "li", "tr"}
+    ignored = frozenset({"nav", "script", "style", "footer", "header", "aside", "template"})
+    blocks = frozenset({"p", "ul", "ol", "section", "article", "div", "li", "tr"})
 
     def __init__(self, url: str):
         super().__init__()
         self.url = url
         self.canonical = ""
+        self.config_guide = url in CONFIG_GUIDES
+        self.article_depth = 0
+        self.line_number_depth = 0
         self.skip = 0
         self.started = False
         self.headings = 0
@@ -30,7 +38,18 @@ class _Page(HTMLParser):
         a = dict(attrs)
         if tag == "link" and "canonical" in (a.get("rel") or "").split():
             self.canonical = urljoin(self.url, a.get("href") or "")
-        if tag in self.ignored:
+        if self.config_guide:
+            if tag == "article" and (self.article_depth or a.get("id") == "sb-docs-guide-main-article"):
+                self.article_depth += 1
+            if not self.article_depth:
+                return
+        if self.config_guide and tag == "span" and (
+            self.line_number_depth or (self.code is not None and "linenumber" in (a.get("class") or "").split())
+        ):
+            self.line_number_depth += 1
+        if self.line_number_depth:
+            return
+        if tag in self.ignored and not (self.config_guide and tag == "header"):
             self.skip += 1
         if self.skip:
             return
@@ -65,6 +84,15 @@ class _Page(HTMLParser):
             self.parts.append("`")
 
     def handle_endtag(self, tag):
+        if self.line_number_depth:
+            if tag == "span":
+                self.line_number_depth -= 1
+            return
+        if self.config_guide:
+            if not self.article_depth:
+                return
+            if tag == "article":
+                self.article_depth -= 1
         if self.skip:
             if tag in self.ignored:
                 self.skip -= 1
@@ -91,7 +119,7 @@ class _Page(HTMLParser):
             self.parts.append(" | ")
 
     def handle_data(self, data):
-        if self.started and not self.skip:
+        if self.started and not self.skip and not self.line_number_depth and (not self.config_guide or self.article_depth):
             if self.code is not None:
                 self.code.append(data)
             else:
@@ -130,4 +158,18 @@ def reference_markdown(html: str, url: str) -> str:
     if version:
         heading, rest = text.split("\n", 1)
         text = f"{heading} [{version[1]} SDK {version[2]}]\n{rest}"
+    return text + "\n"
+
+def config_guide_markdown(html: str, url: str) -> str:
+    """Read the official configuration article when its Markdown twin is unavailable."""
+    title, setting = CONFIG_GUIDES[url]
+    page = _Page(url)
+    page.feed(html)
+    page.close()
+    text = "".join(page.parts).strip()
+    # The upstream H1 wraps its title in a paragraph.
+    text = re.sub(r"^#\s+", "# ", text)
+    if (page.canonical != url or page.headings != 1 or page.article_depth or page.code is not None
+            or not text.startswith(f"# {title}\n") or not re.search(rf"\b{setting}\b", text)):
+        raise ValueError("Incomplete or mismatched configuration guide")
     return text + "\n"

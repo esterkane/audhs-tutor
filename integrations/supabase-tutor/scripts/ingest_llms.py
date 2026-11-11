@@ -33,7 +33,14 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from db import admin_url
 from enrolled_refresh import enrolled, stage_checks
-from reference_html import REFERENCE_URL, CanonicalMethod, NoReferenceBody, reference_markdown
+from reference_html import (
+    CONFIG_GUIDES,
+    REFERENCE_URL,
+    CanonicalMethod,
+    NoReferenceBody,
+    config_guide_markdown,
+    reference_markdown,
+)
 
 # Support execution both as a script and from an editable vendor installation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -101,7 +108,7 @@ def product_of(url: str) -> str:
 
 
 def is_html_document(text: str) -> bool:
-    return bool(re.match(r"^\s*(?:<!doctype\s+html\b|<html\b)", text.lstrip("\ufeff"), re.I))
+    return bool(re.match(r"^\s*(?:<!doctype\s+html\b|<html\b)", text.lstrip("\ufeff"), re.IGNORECASE))
 
 
 def parse_index(text: str, base: str) -> list[tuple[str, int]]:
@@ -124,6 +131,9 @@ KB_LINK = re.compile(r"https://supabase\.com/kb/[A-Za-z0-9/_\-.]+")
 def canonical_md(url: str) -> str | None:
     """Docs/KB page URL → its Markdown twin (`.../page.md`); None for assets like `.png`."""
     path = urlparse(url).path.rstrip("/")
+    guide_url = f"https://supabase.com{path.removesuffix('.md')}"
+    if guide_url in CONFIG_GUIDES:
+        return guide_url
     last = path.rsplit("/", 1)[-1]
     if last.endswith(".md"):
         return f"https://supabase.com{path}"
@@ -227,7 +237,16 @@ async def fetch(client: httpx.AsyncClient, doc: Doc, sem: asyncio.Semaphore, *, 
                 doc.status = "failed"
                 doc.failure_reason = "unexpected_html"
                 return doc
-            if REFERENCE_URL.fullmatch(doc.url):
+            if doc.url in CONFIG_GUIDES:
+                try:
+                    if str(r.url) != doc.url:
+                        raise ValueError("Configuration guide redirected")
+                    doc.text = config_guide_markdown(r.text, doc.url)
+                except ValueError:
+                    doc.status = "failed"
+                    return doc
+                content = doc.text.encode()
+            elif REFERENCE_URL.fullmatch(doc.url):
                 final_url = str(r.url).rstrip("/")
                 if (not REFERENCE_URL.fullmatch(final_url) or
                         final_url.rsplit("/", 1)[0] != doc.url.rstrip("/").rsplit("/", 1)[0]):
