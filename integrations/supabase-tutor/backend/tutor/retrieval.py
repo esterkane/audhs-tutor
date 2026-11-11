@@ -15,6 +15,14 @@ import httpx
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
+from backend.tutor.embedding_space import (
+    NOMIC,
+    OPENAI,
+    RECORDED_SQL,
+    checked_vectors,
+    ollama_payload,
+    resolve_model,
+)
 from backend.tutor.schemas import Chunk
 
 # search_docs exposes a fixed `products` enum (prompts/tools.md); the corpus stores the URL-derived
@@ -50,47 +58,59 @@ class Reranker(Protocol):
     async def rerank(self, query: str, chunks: list[Chunk], k: int) -> list[Chunk]: ...
 
 
+async def _query_model(pool: AsyncConnectionPool | None, provider: str) -> str:
+    recorded: list[str | None] = []
+    if pool is not None:
+        async with pool.connection() as conn:
+            cursor = await conn.execute(RECORDED_SQL)
+            recorded = [row[0] for row in await cursor.fetchall()]
+    return resolve_model(provider, os.environ.get("EMBEDDINGS_MODEL"), recorded)
+
+
 class OllamaEmbedder:
-    """nomic-embed-text via Ollama; queries carry the nomic `search_query: ` prefix (chunks use
-    `search_document: `, see the ingest script)."""
+    """Use the local corpus model and its query-specific format."""
 
-    model = "nomic-embed-text"
+    model = NOMIC
 
-    def __init__(self, base_url: str | None = None, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(self, base_url: str | None = None, client: httpx.AsyncClient | None = None, pool: AsyncConnectionPool | None = None) -> None:
+        self.pool = pool
         self.url = (base_url or os.environ.get("OLLAMA_URL", "http://localhost:11434")) + "/api/embed"
         self.client = client or httpx.AsyncClient(timeout=60)
 
     async def embed_query(self, text: str) -> list[float]:
-        r = await self.client.post(self.url, json={"model": self.model, "input": [f"search_query: {text}"]})
+        self.model = await _query_model(self.pool, "ollama")
+        r = await self.client.post(self.url, json=ollama_payload([text], self.model, query=True))
         r.raise_for_status()
-        return list(r.json()["embeddings"][0])
+        return checked_vectors(r.json()["embeddings"], 1)[0]
 
 
 class OpenAIEmbedder:
     """text-embedding-3-small truncated to 768 dims so the column type never changes (ADR-003)."""
 
-    model = "text-embedding-3-small@768"
+    model = OPENAI
 
-    def __init__(self, api_key: str | None = None, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(self, api_key: str | None = None, client: httpx.AsyncClient | None = None, pool: AsyncConnectionPool | None = None) -> None:
+        self.pool = pool
         self.api_key = api_key or os.environ["OPENAI_API_KEY"]
         self.client = client or httpx.AsyncClient(timeout=60)
 
     async def embed_query(self, text: str) -> list[float]:
+        await _query_model(self.pool, "openai")
         r = await self.client.post(
             "https://api.openai.com/v1/embeddings",
             headers={"Authorization": f"Bearer {self.api_key}"},
             json={"model": "text-embedding-3-small", "input": [text], "dimensions": 768},
         )
         r.raise_for_status()
-        return list(r.json()["data"][0]["embedding"])
+        return checked_vectors([entry["embedding"] for entry in r.json()["data"]], 1)[0]
 
 
-def embedder_from_env() -> Embedder:
+def embedder_from_env(pool: AsyncConnectionPool | None = None) -> Embedder:
     provider = os.environ.get("EMBEDDINGS_PROVIDER", "ollama")
     if provider == "ollama":
-        return OllamaEmbedder()
+        return OllamaEmbedder(pool=pool)
     if provider == "openai":
-        return OpenAIEmbedder()
+        return OpenAIEmbedder(pool=pool)
     raise ValueError(f"unknown EMBEDDINGS_PROVIDER {provider!r}")
 
 
@@ -267,14 +287,10 @@ class PgHybridRetriever:
                     "select c.id as chunk_id, s.url, c.anchor, c.heading_path, c.content, "
                     "s.tier, s.fetched_at, 1.0::float8 as score from tutor.docs_chunk c "
                     "join tutor.docs_source s on s.id=c.source_id where s.status='active' "
-                    "and (s.url=any(%s::text[]) or s.url ~ "
-                    "'^https://github[.]com/pgvector/pgvector/blob/(master|v[0-9]+[.][0-9]+[.][0-9]+)/README[.]md$') "
-                    "and c.content like any(%s::text[]) "
+                    "and s.url=any(%s::text[]) and c.content like any(%s::text[]) "
                     "and (%s::text[] is null or s.product=any(%s::text[])) "
                     "order by (select count(*) from unnest(%s::text[]) as terms(term) "
-                    "where c.content like term) desc, "
-                    "case when s.url like 'https://github.com/pgvector/pgvector/%%' then 0 else 1 end, "
-                    "s.url, c.ord limit %s",
+                    "where c.content like term) desc, s.url, c.ord limit %s",
                     (["https://supabase.com/docs/guides/ai/vector-columns.md",
                       "https://supabase.com/docs/guides/ai/vector-indexes/hnsw-indexes.md",
                       "https://supabase.com/docs/guides/database/extensions/pgvector.md"],

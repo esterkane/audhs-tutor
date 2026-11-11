@@ -195,7 +195,7 @@ class TutorService:
         return cls(
             app_pool=app_pool, lab_pool=lab_pool(lab_url, min_size=1, max_size=4), lab_url=lab_url,
             verifier=JwtVerifier(os.environ["API_URL"]),
-            retriever=PgHybridRetriever(app_pool, embedder_from_env()), ledger=PgLedger(app_pool),
+            retriever=PgHybridRetriever(app_pool, embedder_from_env(app_pool)), ledger=PgLedger(app_pool),
             anthropic=AsyncAnthropic() if has_llm else None,
             refresh=RefreshManager(app_pool, db_url, os.environ.get("TUTOR_REFRESH_TOKEN")),
             voice=VoiceService.from_env(),

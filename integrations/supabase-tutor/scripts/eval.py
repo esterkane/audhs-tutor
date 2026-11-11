@@ -92,7 +92,7 @@ async def run_retrieval(cases: list[dict[str, Any]]) -> dict[str, Any]:
 
     details, ranks = [], []
     async with AsyncConnectionPool(admin_url(), min_size=1, max_size=2) as pool:
-        retriever = PgHybridRetriever(pool, embedder_from_env())
+        retriever = PgHybridRetriever(pool, embedder_from_env(pool))
         for case in cases:
             hits = [c.url for c in await retriever.search(case["query"], k=8)]
             r = rank_of(case["expected_urls"], hits)
@@ -195,7 +195,7 @@ async def run_model_sets(sets: dict[str, list[dict[str, Any]]], *, judge: bool, 
     out: dict[str, list[Recording]] = {}
     async with AsyncConnectionPool(admin_url(), min_size=1, max_size=4) as pool, \
             lab_pool(lab_url(), min_size=1, max_size=4) as labs:
-        retriever = PgHybridRetriever(pool, embedder_from_env())
+        retriever = PgHybridRetriever(pool, embedder_from_env(pool))
 
         def ctx() -> ToolContext:  # fresh lab runner per case: no state leaks between cases
             return ToolContext(user_id=EVAL_LEARNER, retriever=retriever, ledger=NullLedger(),

@@ -135,7 +135,7 @@ async def test_refresh_retirement_respects_selected_coverage(
             doc.hash = "synthetic-hash"
         return doc
 
-    async def embed(texts, provider, client):
+    async def embed(texts, provider, client, model):
         return [[0.0] * 768 for _ in texts]
 
     upsert = Mock(return_value=1)
@@ -191,11 +191,9 @@ async def test_empty_coverage_fails_cleanly_before_any_embedding_or_retirement(
 
 
 @pytest.mark.parametrize(
-    "stored_model,refresh", [("nomic-embed-text", False), ("text-embedding-3-small@768", True)]
+    "stored_model", ["nomic-embed-text", "qwen3-embedding:0.6b", "text-embedding-3-small@768"]
 )
-async def test_unchanged_text_reembeds_after_model_switch(
-    indexer, monkeypatch, stored_model, refresh
-):
+async def test_partial_refresh_keeps_existing_space(indexer, monkeypatch, stored_model):
     import hashlib
     from unittest.mock import AsyncMock, Mock
 
@@ -216,6 +214,131 @@ async def test_unchanged_text_reembeds_after_model_switch(
     upsert = Mock(return_value=1)
     monkeypatch.setattr(indexer, "embed", embed)
     monkeypatch.setattr(indexer, "upsert", upsert)
+    if stored_model == "text-embedding-3-small@768":
+        with pytest.raises(ValueError, match="incompatible"):
+            await indexer.main()
+    else:
+        assert await indexer.main() == 0
+    embed.assert_not_awaited()
+    upsert.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "model,document_input,query_input",
+    [
+        ("nomic-embed-text", "search_document: one passage", "search_query: one question"),
+        (
+            "qwen3-embedding:0.6b",
+            "one passage",
+            "Instruct: Given a web search query, retrieve relevant passages that answer the query."
+            "\nQuery: one question",
+        ),
+    ],
+)
+async def test_refresh_and_standalone_query_share_recorded_space(
+    indexer, monkeypatch, model, document_input, query_input
+):
+    import json
+    from contextlib import asynccontextmanager
+    from unittest.mock import AsyncMock
+
+    import httpx
+    from backend.tutor.retrieval import OllamaEmbedder
+
+    captured = []
+
+    def respond(request):
+        captured.append(json.loads(request.content))
+        return httpx.Response(200, json={"embeddings": [[0.1] * 768]})
+
+    class Pool:
+        @asynccontextmanager
+        async def connection(self):
+            conn = AsyncMock()
+            conn.execute.return_value.fetchall.return_value = [(model,)]
+            yield conn
+
+    monkeypatch.delenv("EMBEDDINGS_MODEL", raising=False)
+    async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+        await indexer.embed(["one passage"], "ollama", client, model)
+        await OllamaEmbedder(client=client, pool=Pool()).embed_query("one question")
+    assert [row["model"] for row in captured] == [model, model]
+    assert [row["input"] for row in captured] == [[document_input], [query_input]]
+    if model == "qwen3-embedding:0.6b":
+        assert all(row["truncate"] is False and row["dimensions"] == 768 for row in captured)
+
+
+@pytest.mark.parametrize(
+    "recorded,configured",
+    [
+        (["qwen3-embedding:0.6b", "nomic-embed-text"], None),
+        (["qwen3-embedding:0.6b"], "nomic-embed-text"),
+        ([None], None),
+        (["unrecognized"], None),
+    ],
+)
+def test_conflicting_or_unknown_spaces_are_refused(indexer, recorded, configured):
+    with pytest.raises(ValueError):
+        indexer.resolve_model("ollama", configured, recorded)
+
+
+def test_upsert_rechecks_identity_under_table_lock_before_any_row_write(indexer, monkeypatch):
+    from unittest.mock import MagicMock
+
+    import psycopg
+
+    conn = MagicMock()
+    conn.__enter__.return_value = conn
+    cur = conn.cursor.return_value.__enter__.return_value
+    cur.fetchall.return_value = [("qwen3-embedding:0.6b",)]
+    monkeypatch.setattr(psycopg, "connect", lambda *_: conn)
+    monkeypatch.setattr(indexer, "admin_url", lambda: "synthetic")
+    with pytest.raises(ValueError, match="incompatible"):
+        indexer.upsert(indexer.Doc("synthetic", 1, "database"), "nomic-embed-text", 1)
+    operations = [call.args[0] for call in cur.execute.call_args_list]
+    assert operations == [
+        "lock table tutor.docs_source in share row exclusive mode",
+        indexer.RECORDED_SQL,
+    ]
+
+
+def test_reject_invalid_vector_batches(indexer):
+    for batch in [[], [[0.0] * 767], [[float("nan")] * 768], [[float("inf")] * 768]]:
+        with pytest.raises(ValueError, match="768"):
+            indexer.checked_vectors(batch, 1)
+
+
+async def test_changed_page_refresh_automatically_keeps_recorded_qwen(indexer, monkeypatch):
+    import json
+    from unittest.mock import Mock
+
+    import httpx
+
+    url = "https://supabase.com/llms/cli.txt"
+    body = "# CLI reference\n\nChanged synthetic reference passage."
+    posted = []
+
+    def handle(req):
+        if req.method == "POST":
+            posted.append(json.loads(req.content))
+            return httpx.Response(
+                200, json={"embeddings": [[0.3] * 768 for _ in posted[-1]["input"]]}
+            )
+        return httpx.Response(200, text=body if str(req.url) == url else url)
+
+    client = httpx.AsyncClient
+    transport = httpx.MockTransport(handle)
+    monkeypatch.setattr(indexer.httpx, "AsyncClient", lambda: client(transport=transport))
+    monkeypatch.setattr(sys, "argv", ["ingest", "--only", "cli", "--no-expand"])
+    monkeypatch.setenv("EMBEDDINGS_PROVIDER", "ollama")
+    monkeypatch.delenv("EMBEDDINGS_MODEL", raising=False)
+    monkeypatch.setattr(
+        indexer, "existing_hashes", lambda: {url: ("old", 1, "qwen3-embedding:0.6b")}
+    )
+    write = Mock(return_value=1)
+    monkeypatch.setattr(indexer, "upsert", write)
     assert await indexer.main() == 0
-    assert embed.await_count == int(refresh)
-    assert upsert.call_count == int(refresh)
+    assert len(posted) == 1
+    assert posted[0]["model"] == "qwen3-embedding:0.6b"
+    assert all(not text.startswith("search_document: ") for text in posted[0]["input"])
+    assert write.call_args.args[1] == "qwen3-embedding:0.6b"

@@ -80,7 +80,7 @@ def build_service(cfg: HostConfig, hooks: HostHooks | None = None) -> Any:
     return TutorService(
         app_pool=app_pool, lab_pool=lab_pool(lab_url, min_size=1, max_size=4), lab_url=lab_url,
         verifier=HostVerifier(cfg.user_id),
-        retriever=PgHybridRetriever(app_pool, cfg.extra.get("embedder") or embedder_from_env()), ledger=PgLedger(app_pool),
+        retriever=PgHybridRetriever(app_pool, cfg.extra.get("embedder") or embedder_from_env(app_pool)), ledger=PgLedger(app_pool),
         anthropic=AsyncAnthropic(api_key=cfg.anthropic_api_key) if cfg.anthropic_api_key else None,
         refresh=RefreshManager(app_pool, cfg.db_url, cfg.refresh_token),
         hooks=hooks,

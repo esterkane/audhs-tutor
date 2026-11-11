@@ -12,7 +12,10 @@ Usage:
   python scripts/ingest_llms.py --profile all --corpus-version 2
 
 Env: SUPABASE_DB_URL (postgres superuser or service connection), EMBEDDINGS_PROVIDER
-(ollama|openai), OLLAMA_URL, OPENAI_API_KEY.
+(ollama|openai), EMBEDDINGS_MODEL (optional), OLLAMA_URL, OPENAI_API_KEY.
+Refreshes reuse the active corpus model. For a new local corpus, select qwen3-embedding:0.6b
+or use the legacy nomic-embed-text default. To migrate, build a separate corpus with the chosen
+model, verify document/query retrieval, then switch consumers to the verified corpus.
 """
 from __future__ import annotations
 
@@ -29,6 +32,16 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from db import admin_url
+
+# Support execution both as a script and from an editable vendor installation.
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from backend.tutor.embedding_space import (
+    OPENAI,
+    RECORDED_SQL,
+    checked_vectors,
+    ollama_payload,
+    resolve_model,
+)
 
 INDEX_DEFAULT = "https://supabase.com/llms.txt"
 UA = "kaenguru-tutor-ingest/0.1 (+local dev)"
@@ -265,12 +278,12 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
 
 
 # ----------------------------------------------------------------------------- embed
-async def embed(texts: list[str], provider: str, client: httpx.AsyncClient) -> list[list[float]]:
+async def embed(texts: list[str], provider: str, client: httpx.AsyncClient, model: str) -> list[list[float]]:
     if provider == "ollama":
         url = os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/embed"
-        r = await client.post(url, json={"model": "nomic-embed-text", "input": [f"search_document: {t}" for t in texts]}, timeout=120)
+        r = await client.post(url, json=ollama_payload(texts, model, query=False), timeout=120)
         r.raise_for_status()
-        return r.json()["embeddings"]
+        return checked_vectors(r.json()["embeddings"], len(texts))
     if provider == "openai":
         r = await client.post(
             "https://api.openai.com/v1/embeddings",
@@ -279,7 +292,7 @@ async def embed(texts: list[str], provider: str, client: httpx.AsyncClient) -> l
             timeout=120,
         )
         r.raise_for_status()
-        return [d["embedding"] for d in r.json()["data"]]
+        return checked_vectors([d["embedding"] for d in r.json()["data"]], len(texts))
     raise SystemExit(f"unknown EMBEDDINGS_PROVIDER {provider}")
 
 
@@ -289,6 +302,11 @@ def upsert(doc: Doc, model: str, corpus_version: int) -> int:
 
     with psycopg.connect(admin_url()) as conn, conn.transaction():
         with conn.cursor() as cur:
+            # Serialize the space check with source writes, including initial concurrent refreshes.
+            cur.execute("lock table tutor.docs_source in share row exclusive mode")
+            cur.execute(RECORDED_SQL)
+            provider = "openai" if model == OPENAI else "ollama"
+            resolve_model(provider, model, (row[0] for row in cur.fetchall()))
             cur.execute(
                 """
                 insert into tutor.docs_source (url, tier, product, content_hash, etag, embedding_model, corpus_version, status, fetched_at)
@@ -321,15 +339,12 @@ def upsert(doc: Doc, model: str, corpus_version: int) -> int:
     return len(doc.chunks)
 
 
-def existing_hashes() -> dict[str, tuple[str, int, str]]:
+def existing_hashes() -> dict[str, tuple[str, int, str | None]]:
     import psycopg
 
-    try:
-        with psycopg.connect(admin_url()) as conn, conn.cursor() as cur:
-            cur.execute("select url, content_hash, corpus_version, embedding_model from tutor.docs_source where status = 'active'")
-            return {url: (digest, version, model) for url, digest, version, model in cur.fetchall()}
-    except psycopg.Error:
-        return {}
+    with psycopg.connect(admin_url()) as conn, conn.cursor() as cur:
+        cur.execute("select url, content_hash, corpus_version, embedding_model from tutor.docs_source where status = 'active'")
+        return {u: (h, v, m) for u, h, v, m in cur.fetchall()}
 
 
 def retire_missing(urls: list[str], index_url: str = INDEX_DEFAULT) -> int:
@@ -366,8 +381,8 @@ async def main() -> int:
     a = ap.parse_args()
 
     provider = os.environ.get("EMBEDDINGS_PROVIDER", "ollama")
-    model = {"ollama": "nomic-embed-text", "openai": "text-embedding-3-small@768"}[provider]
     known = {} if a.dry_run else existing_hashes()
+    model = resolve_model(provider, os.environ.get("EMBEDDINGS_MODEL"), (record[2] for record in known.values()))
     # A support profile deliberately omits SDK sources; absence is not removal.
     partial = bool(a.only or a.limit or a.no_expand or a.profile != "all")
 
@@ -423,7 +438,7 @@ async def main() -> int:
             if not a.dry_run and d.chunks:
                 for i in range(0, len(d.chunks), 32):
                     batch = d.chunks[i : i + 32]
-                    embs = await embed([f"{c.heading_path}\n{c.content}" for c in batch], provider, client)
+                    embs = await embed([f"{c.heading_path}\n{c.content}" for c in batch], provider, client, model)
                     for c, emb in zip(batch, embs, strict=True):
                         c.embedding = emb
                 n = upsert(d, model, a.corpus_version)

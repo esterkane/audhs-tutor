@@ -49,7 +49,7 @@ async def main() -> None:
             lab_pool(lab_url(), min_size=1, max_size=2) as labs:
         runner = LabRunner(labs, lab_url())
         web = web_from_env()  # TUTOR_WEB_SEARCH=on + a search key, same as the backend
-        ctx = ToolContext(user_id=DEV_LEARNER, retriever=PgHybridRetriever(pool, embedder_from_env()),
+        ctx = ToolContext(user_id=DEV_LEARNER, retriever=PgHybridRetriever(pool, embedder_from_env(pool)),
                           ledger=PgLedger(pool), lab=runner, web=web, web_enabled=web is not None,
                           learner_text=args.message)
         orch = Orchestrator(client=AsyncAnthropic())
