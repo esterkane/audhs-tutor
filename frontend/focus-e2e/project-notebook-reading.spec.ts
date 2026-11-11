@@ -11,15 +11,23 @@ test('run and reopen a project findings notebook from the accepted lesson', asyn
 }) => {
   test.skip(process.env.AUDHS_TEST_JUPYTER !== '1', 'Requires installed local Jupyter')
   test.setTimeout(120_000)
+  const collection = process.env.AUDHS_NOTEBOOK_QDRANT_COLLECTION
+  if (collection && !/^audhs_jupyter_[a-f0-9]{32}$/.test(collection))
+    throw new Error('Expected a disposable Qdrant collection')
+  if (collection && process.env.AUDHS_NOTEBOOK_PG_SOCKET)
+    throw new Error('Select one notebook project per run')
+  const project = collection ? 'Qdrant' : 'Supabase'
   await endOpenSession(request)
   await page.goto('/projects')
-  await page.getByRole('button', { name: 'Open project: Supabase', exact: true }).click()
-  const observation = 'Synthetic sample: one row of three was visible to the role.'
+  await page.getByRole('button', { name: `Open project: ${project}`, exact: true }).click()
+  const observation = collection
+    ? 'The matching vector ranked ahead of the orthogonal vector.'
+    : 'Synthetic sample: one row of three was visible to the role.'
   await page.getByLabel('Test evidence and observed results').fill(observation)
   await page.getByRole('button', { name: 'Save project notes' }).click()
   await page.getByRole('button', { name: 'Create lesson draft from saved findings' }).click()
   await page.getByRole('button', { name: '1. Source' }).click()
-  const title = 'Interpreting a visibility sample'
+  const title = collection ? 'Comparing dot-product scores' : 'Interpreting a visibility sample'
   await page.getByLabel('Material title', { exact: true }).fill(title)
   const socket = process.env.AUDHS_NOTEBOOK_PG_SOCKET
   if (socket && !/^\/tmp\/audhs-jupyter-pg-[A-Za-z0-9]{6}$/.test(socket))
@@ -30,8 +38,14 @@ with psycopg.connect(host=${JSON.stringify(socket)}, dbname="postgres", user="no
     conn.execute("SET TRANSACTION READ ONLY")
     result = conn.execute("SELECT current_user, item_id FROM public.practice_rows ORDER BY item_id").fetchall()
 result`
-    : 'sum([True, False, False])'
-  const expected = socket ? "[('notebook_reader', 10)]" : '1'
+    : collection
+      ? `import json, urllib.request
+request = urllib.request.Request("http://127.0.0.1:6333/collections/${collection}/points/query", data=json.dumps({"query": [1, 0], "limit": 2}).encode(), headers={"Content-Type": "application/json"})
+with urllib.request.urlopen(request, timeout=5) as response:
+    points = json.load(response)["result"]["points"]
+[(point["id"], point["score"]) for point in points]`
+      : 'sum([True, False, False])'
+  const expected = socket ? "[('notebook_reader', 10)]" : collection ? '[(1, 1.0), (2, 0.0)]' : '1'
   await page.getByLabel('Upload reference content (optional)').setInputFiles({
     name: 'sample.ipynb',
     mimeType: 'application/json',
@@ -57,11 +71,17 @@ result`
   await page.getByRole('button', { name: '3. Write' }).click()
   await page
     .getByLabel('Learning objective', { exact: true })
-    .fill('Count visible rows in an observed sample.')
+    .fill(collection ? 'Rank unit vectors by dot product.' : 'Count visible rows in an observed sample.')
   await page.getByLabel('Explanation', { exact: true }).fill(observation)
-  await page.getByLabel('Worked example', { exact: true }).fill('One true value contributes one visible row.')
-  await page.getByLabel('Application question', { exact: true }).fill('How many rows were observed?')
-  await page.getByLabel(/Success criteria/).fill('Reports the count from the sample.')
+  await page
+    .getByLabel('Worked example', { exact: true })
+    .fill(collection ? 'The matching unit vector scores one.' : 'One true value contributes one visible row.')
+  await page
+    .getByLabel('Application question', { exact: true })
+    .fill(collection ? 'Which vector ranks first?' : 'How many rows were observed?')
+  await page
+    .getByLabel(/Success criteria/)
+    .fill(collection ? 'Reports the top result and its score.' : 'Reports the count from the sample.')
   await page.getByRole('button', { name: 'Next', exact: true }).click()
   const saved = page.waitForResponse((r) => r.request().method() === 'PUT' && r.url().includes('/drafts/'))
   await page.getByRole('button', { name: 'Save knowledge material' }).click()
@@ -99,7 +119,7 @@ result`
   }
   const lab = await openFromReading()
   const cell = lab.locator('.jp-Notebook:visible .jp-CodeCell').first()
-  await expect(cell.locator('.cm-content')).toContainText(socket || code, { timeout: 30_000 })
+  await expect(cell.locator('.cm-content')).toContainText(socket || collection || code, { timeout: 30_000 })
   await expect(cell.locator('.jp-OutputArea-output')).toHaveCount(0)
   await expect(lab.getByRole('button', { name: /Python 3.*Idle/ })).toBeVisible({ timeout: 30_000 })
   await cell.locator('.cm-content').click()
@@ -116,7 +136,7 @@ result`
     .toBe(1)
   await lab.close()
   await page.goto('/projects')
-  await page.getByRole('button', { name: 'Open project: Supabase', exact: true }).click()
+  await page.getByRole('button', { name: `Open project: ${project}`, exact: true }).click()
   await expect(page.getByLabel('Test evidence and observed results')).toHaveValue(observation)
   const reopened = await openFromReading()
   await expect(
