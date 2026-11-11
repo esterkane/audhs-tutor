@@ -349,8 +349,9 @@ async def test_changed_page_refresh_automatically_keeps_recorded_qwen(indexer, m
 
 
 async def test_html_error_returned_as_success_cannot_retire_or_overwrite(indexer, monkeypatch):
-    import httpx
     from unittest.mock import Mock
+
+    import httpx
 
     url = "https://supabase.com/llms/cli.txt"
     client = httpx.AsyncClient
@@ -378,6 +379,7 @@ async def test_html_error_returned_as_success_cannot_retire_or_overwrite(indexer
 
 async def test_html_index_with_valid_document_link_stops_before_discovery(indexer, monkeypatch):
     from unittest.mock import Mock
+
     import httpx
 
     requested = []
