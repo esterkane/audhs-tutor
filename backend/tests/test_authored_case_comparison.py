@@ -80,6 +80,12 @@ async def test_partial_draft_save_accept_revision_binding_and_disable(client, db
         )
     ).status_code == 409
     prepared = await save(created, {"case_comparison": PAIR})
+    cue = "Look at the conversion in each expression."
+    prepared = await save(prepared, {"case_comparison": PAIR | {"comparison_focus": cue}})
+    prepared = await save(prepared, {"case_comparison": PAIR})
+    assert prepared["payload"]["authoring"]["case_comparison"]["comparison_focus"] == cue
+    prepared = await save(prepared, {"case_comparison": PAIR | {"comparison_focus": ""}})
+    assert "comparison_focus" not in prepared["payload"]["authoring"]["case_comparison"]
     prepared = await save(prepared, {})
     published = (await activate(prepared)).json()["draft"]
     node = await db.scalar(
@@ -102,3 +108,19 @@ async def test_partial_draft_save_accept_revision_binding_and_disable(client, db
     assert (await client.get(uri)).json()["case_comparison"] is None
     for model in (AssessmentAttempt, CompetencyEvidence, ModelCall):
         assert await db.scalar(select(func.count()).select_from(model)) == 0
+
+
+def test_optional_cue_preserves_legacy_fingerprints_and_binds_a_changed_cue():
+    import hashlib
+    import json
+
+    from app.schemas.knowledge_authoring import CaseComparison
+
+    old_id = hashlib.sha256(
+        json.dumps(list(PAIR.values()), ensure_ascii=False, separators=(",", ":")).encode()
+    ).hexdigest()
+    assert CaseComparison.model_validate(PAIR).model_dump() == PAIR
+    assert accepted_case_comparison(PAIR).comparison_id == old_id
+    cue = "Look at the type conversion in each expression."
+    accepted = accepted_case_comparison(PAIR | {"comparison_focus": cue})
+    assert accepted.comparison_focus == cue and accepted.comparison_id != old_id

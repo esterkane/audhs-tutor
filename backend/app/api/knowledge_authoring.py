@@ -366,6 +366,17 @@ async def update(
     ):
         if field not in body.model_fields_set and field in previous:
             fields[field] = previous[field]
+    previous_pair = previous.get("case_comparison")
+    if (
+        body.case_comparison is not None
+        and "comparison_focus" not in body.case_comparison.model_fields_set
+        and isinstance(previous_pair, dict)
+        and previous_pair.get("comparison_focus")
+        and all(
+            fields["case_comparison"][key] == previous_pair.get(key) for key in ("case_a", "case_b")
+        )
+    ):
+        fields["case_comparison"]["comparison_focus"] = previous_pair["comparison_focus"]
     command = KnowledgeMaterialInput.model_validate(fields)
     if previous.get("factual_review_id") and not previous.get("skill_slug"):
         # Recover review drafts saved before the original skill identity was retained.

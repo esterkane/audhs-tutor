@@ -345,6 +345,7 @@ class CaseComparison(BaseModel):
     case_b: str = Field(default="", max_length=4000)
     failing_case: Literal["a", "b"] | None = None
     rationale: str = Field(default="", max_length=4000)
+    comparison_focus: str = Field(default="", max_length=300, exclude_if=lambda value: value == "")
 
 
 class AcceptedCaseComparison(CaseComparison):

@@ -3767,6 +3767,11 @@ export interface components {
        * @default
        */
       rationale: string
+      /**
+       * Comparison Focus
+       * @default
+       */
+      comparison_focus: string
       /** Comparison Id */
       comparison_id: string
     }
@@ -4787,6 +4792,11 @@ export interface components {
        * @default
        */
       rationale: string
+      /**
+       * Comparison Focus
+       * @default
+       */
+      comparison_focus: string
     }
     /** ChainEntry */
     ChainEntry: {

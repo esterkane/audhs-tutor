@@ -14,6 +14,7 @@ test('author, accept, compare, restore and skip on a narrow screen', async ({
   const question = 'What happens when the role has SELECT but no row passes the policy?'
   const caseA = 'The role has a SELECT grant, but a policy hides the row.'
   const caseB = 'The role lacks the required table SELECT grant.'
+  const cue = 'Which table privilege does each role have before a row policy applies?'
   const why = 'Case B fails its table privilege check before row policies apply.'
   const draftResponse = await request.post(API + '/api/knowledge-material/drafts', {
     headers: { 'Idempotency-Key': crypto.randomUUID() },
@@ -38,6 +39,7 @@ test('author, accept, compare, restore and skip on a narrow screen', async ({
   await page.getByLabel('Include a case comparison').check()
   await page.getByLabel('Case A', { exact: true }).fill(caseA)
   await page.getByLabel('Case B', { exact: true }).fill(caseB)
+  await page.getByLabel('What should the learner compare? (optional)').fill(cue)
   await page.getByLabel('Which case fails?').selectOption('b')
   await page.getByLabel('Why does that case fail?').fill(why)
   const saving = page.waitForResponse(
@@ -79,7 +81,9 @@ test('author, accept, compare, restore and skip on a narrow screen', async ({
   for (const text of [caseA, caseB]) await expect(page.getByText(text, { exact: true })).toBeVisible()
   await expect(page.getByText(why, { exact: true })).toHaveCount(0)
   const guide = page.locator('summary').filter({ hasText: 'Help me compare the cases' })
+  await expect(page.getByText(cue, { exact: true })).not.toBeVisible()
   await guide.press('Enter')
+  await expect(page.getByText(cue, { exact: true })).toBeVisible()
   const detailA = 'The role has the table grant.'
   const detailB = 'The required table grant is absent.'
   await page.getByLabel('Relevant detail from Case A (optional)').fill(detailA)

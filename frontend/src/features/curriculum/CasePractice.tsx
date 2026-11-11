@@ -32,7 +32,9 @@ export function CaseAuthoring({
             checked={!!pair}
             onChange={(event) =>
               onChange(
-                event.target.checked ? { case_a: '', case_b: '', failing_case: null, rationale: '' } : null,
+                event.target.checked
+                  ? { case_a: '', case_b: '', failing_case: null, rationale: '', comparison_focus: '' }
+                  : null,
               )
             }
           />{' '}
@@ -52,6 +54,17 @@ export function CaseAuthoring({
                 />
               </label>
             ))}
+            <label className="block">
+              What should the learner compare? (optional)
+              <textarea
+                className="block w-full border rounded p-2"
+                rows={2}
+                maxLength={300}
+                placeholder="Name a detail to look for in both cases. Leave the outcome for the explanation."
+                value={pair.comparison_focus ?? ''}
+                onChange={(e) => onChange({ ...pair, comparison_focus: e.target.value })}
+              />
+            </label>
             <label className="block">
               Which case fails?
               <select
@@ -167,10 +180,14 @@ export function CasePractice({
         ) : (
           <>
             <Disclosure label="Help me compare the cases">
-              <p>
-                Look for a condition or action that differs between the cases. Note one detail from each, then
-                use the difference to explain your choice.
-              </p>
+              {pair.comparison_focus ? (
+                <p className="whitespace-pre-wrap break-words">{pair.comparison_focus}</p>
+              ) : (
+                <p>
+                  Look for a condition or action that differs between the cases. Note one detail from each,
+                  then use the difference to explain your choice.
+                </p>
+              )}
               {(['detail_a', 'detail_b'] as const).map((key, index) => (
                 <label key={key} className="block">
                   Relevant detail from Case {index ? 'B' : 'A'} (optional)

@@ -221,8 +221,11 @@ def accepted_case_comparison(value: Any) -> AcceptedCaseComparison | None:
         or pair.case_a.strip() == pair.case_b.strip()
     ):
         return None
+    parts = [pair.case_a, pair.case_b, pair.failing_case, pair.rationale]
+    if pair.comparison_focus:
+        parts.append(pair.comparison_focus)
     identity = json.dumps(
-        [pair.case_a, pair.case_b, pair.failing_case, pair.rationale],
+        parts,
         ensure_ascii=False,
         separators=(",", ":"),
     )
