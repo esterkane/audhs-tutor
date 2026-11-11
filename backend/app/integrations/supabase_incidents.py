@@ -349,6 +349,44 @@ def select_plan(text: str, state: Any) -> Diagnostic | None:
     return found[0] if found else None
 
 
+# Accept only a short reported table error followed by a request to choose evidence.
+# Additional questions, constraints, incident history, and other diagnoses need contextual coaching.
+_EVIDENCE_REQUESTS = {
+    "en": (
+        r"(?:(?:a |the )?(?:customer|user|client) reports|"
+        r"(?:my|our) (?:request|query) (?:fails with|reports)|error)?\s*:?\s*"
+        r'["“]?(?:permission denied for table) [a-z_][\w.]*["”]?\.\s+'
+        r"ask (?:me )?one (?:open )?question (?:that helps me choose|to help me choose) "
+        r"(?:my next observation|what (?:evidence to collect|to check first)|my next step)[.!]?"
+        r"(?:\s+let me work it out first[.!]?)?"
+    ),
+    "de": (
+        r"(?:(?:ein kunde|eine kundin|meine abfrage|unsere anwendung) meldet|fehler)?\s*:?\s*"
+        r'[„“"]?keine berechtigung für tabelle [a-z_][\w.]*[“”"]?\.\s+'
+        r"stell(?:e)? mir eine (?:offene )?frage, mit der ich selbst "
+        r"(?:die nächste beobachtung auswählen|den nächsten schritt wählen|belege sammeln) kann[.!]?"
+    ),
+}
+
+
+def first_evidence_question(text: str, state: Any, history: Any) -> str | None:
+    if (
+        state.mode != "incident"
+        or getattr(state, "delivery", None) != "socratic"
+        or history
+        or state.active_lab is not None
+        or state.incident is not None
+        or state.persona_on
+    ):
+        return None
+    pattern = _EVIDENCE_REQUESTS.get(state.language)
+    if pattern is None or not re.fullmatch(pattern, " ".join(text.split()), re.I):
+        return None
+    if state.language == "de":
+        return "Welche Beobachtung würde dir helfen, mögliche Erklärungen für diesen Fehler zu unterscheiden?"
+    return "What observation would help you distinguish possible explanations for this error?"
+
+
 def incident_turn(
     text: str, state: Any, plan: Diagnostic, *, include_diagnostics: bool = True
 ) -> Any:

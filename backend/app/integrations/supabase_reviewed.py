@@ -165,7 +165,11 @@ class ReviewedOrchestrator:
             return
 
         from app.integrations.supabase_balance import balance_answer
-        from app.integrations.supabase_incidents import incident_turn, select_plan
+        from app.integrations.supabase_incidents import (
+            first_evidence_question,
+            incident_turn,
+            select_plan,
+        )
         from app.integrations.supabase_isolation import isolation_answer
         from app.integrations.supabase_membership import membership_answer
         from app.integrations.supabase_reference import reference_answer, supports_manual
@@ -254,7 +258,20 @@ class ReviewedOrchestrator:
         can_use_reviewed = (plan is not None or matches(user_text, state)) and supports_manual(
             "17", user_text, state, kwargs.get("history")
         )
-        if can_use_reviewed and plan is not None:
+        opening_question = first_evidence_question(user_text, state, kwargs.get("history"))
+        if opening_question:
+            from app.integrations.supabase_project import project_module
+
+            turn = project_module().TutorTurn(
+                mode=state.mode,
+                language=state.language,
+                persona_on=state.persona_on,
+                text=opening_question,
+                speech=opening_question,
+                next_question=opening_question,
+            )
+            revision = "reviewed:incident-first-observation.v1"
+        elif can_use_reviewed and plan is not None:
             turn = incident_turn(
                 user_text, state, plan, include_diagnostics=not no_sql_requested(user_text)
             )

@@ -282,3 +282,55 @@ def test_postgrest_error_identity_is_separate_from_query_results(report, key):
 def test_socratic_incident_leaves_investigation_to_the_learner(report):
     assert select_plan(report, state(delivery="explicit")) is not None
     assert select_plan(report, state(delivery="socratic")) is None
+
+
+@pytest.mark.parametrize(
+    "language,request_text",
+    [
+        (
+            "en",
+            "Error: permission denied for table orders. "
+            "Ask me one open question to help me choose what to check first.",
+        ),
+        (
+            "de",
+            "Fehler: keine Berechtigung für Tabelle bestellungen. "
+            "Stell mir eine offene Frage, mit der ich selbst den nächsten Schritt wählen kann.",
+        ),
+    ],
+)
+async def test_first_socratic_observation_is_local_and_never_replayed(language, request_text):
+    from app.integrations.supabase_incidents import first_evidence_question
+
+    current = state(language=language, delivery="socratic")
+    delegate = SimpleNamespace(run_turn=AsyncMock())
+    events = [
+        event
+        async for event in ReviewedOrchestrator(delegate).run_turn(
+            history=[], user_text=request_text, state=current
+        )
+    ]
+    delegate.run_turn.assert_not_called()
+    final = events[-1]
+    assert final.model == "reviewed:incident-first-observation.v1"
+    assert final.turn.text == final.turn.next_question == final.turn.speech
+    assert final.turn.text.count("?") == 1
+    assert not final.turn.ledger_delta
+    assert final.new_messages == [
+        {"role": "user", "content": request_text},
+        {"role": "assistant", "content": final.turn.text},
+    ]
+    assert first_evidence_question(request_text, current, final.new_messages) is None
+    for suffix in [
+        " Explain the grant as well.",
+        " Und zeige SQL.",
+        " Actually, why did the retry work?",
+    ]:
+        assert first_evidence_question(request_text + suffix, current, []) is None
+    for changes in [dict(incident=object()), dict(persona_on=True), dict(active_lab=object())]:
+        assert (
+            first_evidence_question(
+                request_text, state(language=language, delivery="socratic", **changes), []
+            )
+            is None
+        )
