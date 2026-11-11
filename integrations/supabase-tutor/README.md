@@ -63,3 +63,20 @@ The scheduled refresh also compares already indexed guides and CLI or self-hosti
 For a read-only index check on a local schedule, run `python scripts/ingest_llms.py --enrolled-only` with the local database URL. A systemd user timer can run this weekly with `Persistent=true` to catch up after downtime. The same check also runs through the vendor refresh manager when pg_cron is configured.
 
 Each check writes a receipt under `data/reference-review/<run>/review.json`. A changed entry includes the SHA-256 of the indexed snapshot and the new Markdown file in that directory. Invalid or unreachable sources mark the run incomplete. Entries listed as `not_indexed` have no active snapshot on this installation. Accepted sources, passages and existing citation IDs stay available while changes await review.
+
+### PostgreSQL 17 manual freshness
+
+Use `python scripts/postgres_manual_refresh.py --baseline-dir /path/to/archived-html --state-dir /path/to/private-review --limit 48` with the local database URL. Each original HTML file must be named with the SHA-256 recorded in the active index, followed by `.html`.
+
+The command rotates through the oldest checked sources and reads at most the specified number per run. It verifies the official versioned URL and page identity, compares the manual article with the archived original, and records each outcome in the local `checks.sqlite` ledger. The article comparison includes code whitespace, links and citation anchors. Site announcements and navigation are outside the comparison. Changed article HTML is saved by digest under `candidates/` for review. Invalid, missing or unreachable sources yield a nonzero exit status. The running tutor keeps its existing passages and citations throughout the check.
+
+To inspect pending differences, query the most recent result for each URL and accepted hash, for example:
+
+```sql
+SELECT url, accepted, checked, result
+FROM (
+  SELECT *, row_number() OVER (PARTITION BY url, accepted ORDER BY checked DESC) AS latest
+  FROM checks
+)
+WHERE latest = 1 AND json_extract(result, '$.status') = 'article_changed';
+```
