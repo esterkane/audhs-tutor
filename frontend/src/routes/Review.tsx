@@ -126,7 +126,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
       ...saved,
       admitted: saved.admitted ?? queue.admitted,
       reviewed: [...new Set([...queue.reviewed, ...saved.reviewed, itemId])],
-      current: null,
+      current: due.data?.items.find(i=>i.item_id===itemId)?.paired_next_id ?? null,
       revealed: null,
     }
     try {

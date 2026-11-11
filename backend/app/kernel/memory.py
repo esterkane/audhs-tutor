@@ -135,6 +135,7 @@ async def due_items(
         .where(
             ReviewItem.learner_id == learner_id,
             ReviewItem.active.is_(True),
+            MemoryState.learner_id == learner_id,
             content_access.skill_visible(learner_id),
             MemoryState.due <= _iso(now),
             question_state.review_eligible(learner_id),

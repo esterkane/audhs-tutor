@@ -83,6 +83,11 @@ export function CaseAuthoring({
               </select>
             </label>
             <label className="block">
+              <input type="checkbox" checked={!!pair.schedule_pair}
+                onChange={e=>onChange({...pair, schedule_pair:e.target.checked})}/> Add these two cases to my review queue on activation
+            </label>
+            <p className="text-sm">Each case has its own review date. An interleaved review can show them together when both are due.</p>
+            <label className="block">
               Why does that case fail?
               <textarea
                 className="block w-full border rounded p-2"

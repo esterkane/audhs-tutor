@@ -1424,6 +1424,10 @@ async def publish_draft(
             rubric_id = rubric.id
         db.add(Assessment(skill_id=skill_id, kind=a["kind"], item_json=item, rubric_id=rubric_id))
         report.assessments += 1
+    if d.origin == "knowledge_authored" and len(ids) == 1:
+        from app.kernel.discrimination_review import sync_pair
+
+        await sync_pair(db, learner_id, next(iter(ids.values())), authoring.get("case_comparison"))
     d.status = "published"
     d.version += 1
     d.published_at = utcnow_iso()

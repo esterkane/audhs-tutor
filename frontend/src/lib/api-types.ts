@@ -3784,6 +3784,8 @@ export interface components {
   schemas: {
     /** AcceptedCaseComparison */
     AcceptedCaseComparison: {
+      /** Schedule Pair */
+      schedule_pair?: boolean | null
       /**
        * Case A
        * @default
@@ -4813,6 +4815,8 @@ export interface components {
      * @description Partial authoring is allowed until the learner activates the material.
      */
     CaseComparison: {
+      /** Schedule Pair */
+      schedule_pair?: boolean | null
       /**
        * Case A
        * @default
@@ -8436,6 +8440,8 @@ export interface components {
     }
     /** ReviewItemOut */
     ReviewItemOut: {
+      /** Paired Next Id */
+      paired_next_id?: string | null
       /** Content Version */
       content_version: string
       /** Item Id */

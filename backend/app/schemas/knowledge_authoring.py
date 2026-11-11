@@ -353,6 +353,8 @@ class ConceptRelationship(BaseModel):
 class CaseComparison(BaseModel):
     """Partial authoring is allowed until the learner activates the material."""
 
+    schedule_pair: bool | None = Field(default=None, exclude_if=lambda value: value is None)
+
     model_config = ConfigDict(extra="forbid")
     case_a: str = Field(default="", max_length=4000)
     case_b: str = Field(default="", max_length=4000)

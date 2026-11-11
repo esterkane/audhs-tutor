@@ -418,6 +418,17 @@ async def update(
         )
     ):
         fields["case_comparison"]["comparison_focus"] = previous_pair["comparison_focus"]
+    if (
+        body.case_comparison is not None
+        and "schedule_pair" not in body.case_comparison.model_fields_set
+        and isinstance(previous_pair, dict)
+        and previous_pair.get("schedule_pair") is True
+        and all(
+            fields["case_comparison"].get(k) == previous_pair.get(k)
+            for k in ("case_a", "case_b", "failing_case", "rationale")
+        )
+    ):
+        fields["case_comparison"]["schedule_pair"] = True
     command = KnowledgeMaterialInput.model_validate(fields)
     if any(
         fields.get(k) != previous.get(k)

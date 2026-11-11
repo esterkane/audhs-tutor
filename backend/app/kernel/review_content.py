@@ -99,6 +99,8 @@ def display(content: dict[str, Any]) -> dict[str, Any]:
     if prompt.get("type") == "vocab":
         example = f" — e.g. {prompt['example']}" if prompt.get("example") else ""
         reveal = f"{prompt.get('a', '')}{example}"
+    elif content["item_type"] == "authored_case" and prompt.get("type") == "authored_case":
+        reveal = str(prompt.get("a", ""))
     elif content["assessment_id"] is not None:
         item, kind = content["item_json"], content["kind"]
         if kind == "mcq":

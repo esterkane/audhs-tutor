@@ -16,6 +16,7 @@ router = APIRouter(prefix="/review", tags=["review"])
 
 
 class ReviewItemOut(BaseModel):
+    paired_next_id: str | None = None
     content_version: str
     item_id: str
     assessment_id: str | None = None
@@ -185,9 +186,21 @@ async def due(
                 "policy_version": "planner.maintenance.v1" if maintenance else "v1",
             },
         )
+    admitted = all_due[:cap]
+    paired_next: dict[str, str] = {}
+    if (
+        domain != "language"
+        and cp.get("block_type") == "interleaved_review"
+        and cp.get("block_status") == "running"
+    ):
+        from app.kernel.discrimination_review import group_due_pairs
+
+        admitted, paired_next = group_due_pairs(admitted)
     items = []
-    for item, _ in all_due[:cap]:
-        items.append(await item_view(db, learner.id, item.id))
+    for item, _ in admitted:
+        view = await item_view(db, learner.id, item.id)
+        view.paired_next_id = paired_next.get(item.id)
+        items.append(view)
     return DueList(items=items, cap=cap, total_due=len(all_due), as_of=now.isoformat())
 
 
