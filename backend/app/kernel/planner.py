@@ -185,7 +185,7 @@ def plan_session(inp: PlanInput) -> Plan:
                 planned_min=_scale(review_min, e),
                 base_min=review_min,
                 node_ids=inp.review_node_ids[:8],
-                reason="interleave confusable AI/ML concepts (ADR-0006)",
+                reason="Revisit material selected for this review.",
             )
         )
     if (inp.other_domains_available or inp.language_due or inp.guitar) and e >= 3:
