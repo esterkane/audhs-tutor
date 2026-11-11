@@ -1,0 +1,42 @@
+import { test, expect } from '@playwright/test'
+
+test('trace an exact vector scan, resume an original prediction and transfer to a second query', async ({
+  page,
+}) => {
+  const writes: string[] = []
+  page.on('request', (r) => {
+    if (r.url().includes('/api/') && r.method() !== 'GET') writes.push(r.url())
+  })
+  await page.goto('/projects')
+  await page.getByRole('button', { name: 'Open project: Vector search', exact: true }).click()
+  const open = () => page.getByText('Predict and trace an exact vector search', { exact: true }).click()
+  await open()
+  const first = page.getByRole('region', { name: 'First trace', exact: true })
+  const transfer = page.getByRole('region', { name: 'Transfer trace' })
+  await expect(transfer).toHaveCount(0)
+  await first.getByLabel('My predicted winner').selectOption('C')
+  await first.getByRole('button', { name: 'Save prediction and start trace' }).press('Enter')
+  const next = first.getByRole('button', { name: 'Inspect next point', exact: true }).first()
+  await next.press('Enter')
+  await expect(first.getByRole('status')).toContainText('Previous best: none. Running best: A (5)')
+  await next.click()
+  await page.reload()
+  await open()
+  await expect(first.getByRole('status')).toContainText('Previous best: A (5). Running best: B (7)')
+  await first.getByRole('button', { name: 'Previous point' }).click()
+  await expect(first.getByText('My original prediction: C')).toBeVisible()
+  await next.click()
+  await next.click()
+  await expect(first.getByText(/differs from the final winner/)).toBeVisible()
+  await transfer.getByLabel('My predicted winner').selectOption('A')
+  await transfer.getByRole('button', { name: 'Save prediction and start trace' }).click()
+  for (let i = 0; i < 3; i++) await transfer.getByRole('button', { name: 'Inspect next point' }).click()
+  await expect(transfer.getByRole('status')).toContainText('Running best: A (7). Your prediction matches')
+  await first.getByRole('button', { name: 'Replay from start' }).first().click()
+  await page.reload()
+  await open()
+  await expect(first.getByText('Before the first point: no running best.')).toBeVisible()
+  await expect(first.getByText('My original prediction: C')).toBeVisible()
+  await expect(transfer.getByText('My original prediction: A')).toBeVisible()
+  expect(writes).toEqual([])
+})

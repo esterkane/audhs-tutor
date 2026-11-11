@@ -1,3 +1,4 @@
+import { VectorTracePractice } from '../features/programs/VectorTracePractice'
 import { ProjectBoolPractice } from '../features/programs/ProjectBoolPractice'
 import { ProjectFilterPractice } from '../features/programs/ProjectFilterPractice'
 import { useEffect, useRef, useState } from 'react'
@@ -212,6 +213,7 @@ function ProjectEditor({ project }: { project: Project }) {
         />
       )}
 
+      {project.slug === 'vector-search-evaluation' && <VectorTracePractice projectId={project.id} />}
       {project.slug === 'supabase-postgres-support' && <ProjectSqlPractice projectId={project.id} />}
 
       {project.slug === 'kubernetes-recovery' && (
