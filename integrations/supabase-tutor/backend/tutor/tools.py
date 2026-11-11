@@ -30,7 +30,7 @@ TOOLS: list[dict[str, Any]] = json.loads(r"""
 [
   {
     "name": "search_docs",
-    "description": "Hybrid (semantic + full-text) search over the ingested official Supabase documentation corpus. Call before asserting any product behaviour. Returns chunks with url, anchor, heading_path, content, tier, fetched_at, score. Product filters follow URL categories: pgvector and vector-search guides are mainly ai. Search ai with database when both are in scope; preserve explicitly requested product filters.",
+    "description": "Hybrid (semantic + full-text) search over the ingested official Supabase documentation corpus. Call before asserting any product behaviour. Returns chunks with url, anchor, heading_path, content, tier, fetched_at, score. Product filters follow URL categories. For supabase/config.toml settings use local-development; for CLI commands use cli. Self-hosted environment variables are under self-hosting. For vector queries, pgvector and vector-search guides are mainly ai. Search ai with database when both are in scope; preserve explicitly requested product filters.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -244,7 +244,7 @@ class SearchDocsInput(_Input):
     edition: str | None = Field(default=None, pattern=r"^(unversioned|v[0-9]{1,3})$")
     products: list[Product] | None = Field(
         default=None,
-        description="Preserve requested scope. URL categories: pgvector/vector-search guides are mainly ai; include ai with database when both are in scope.",
+        description="Preserve requested scope. URL categories: config.toml settings use local-development, CLI commands use cli and self-hosted environment variables use self-hosting. pgvector/vector-search guides are mainly ai; include ai with database when both are in scope.",
     )
     k: int = Field(default=8, ge=1, le=12)
 
