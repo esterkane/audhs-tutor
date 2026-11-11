@@ -92,6 +92,12 @@ In section view of an accepted lesson with a before-reading question, enter your
 
 After 24 hours, open **Review → Passage recall** from any browser connected to the same tutor installation. Write what you remember and choose **Save recall and compare** to see your answer alongside your original prediction and the passage as it read at the time. You can reopen your latest completed comparison with **View last saved recall**. This exercise is ungraded.
 
+### Make a lesson from personal notes
+
+Open **Curriculum → Source**, give the material a title, and enter your notes. You can save them at this point. When you want to teach the idea as a lesson, choose **Write a lesson from my notes**. Enter a learning objective, an explanation in your own words, a worked example, an application question and at least one success criterion. Open **Read your source notes** to check your wording as you write.
+
+Save the material, then open **Review** to preview and activate the lesson. To investigate a question first, use **Research** and save your findings with the draft. You can add selected research sections to the lesson as you write.
+
 ## Local setup
 
 The application runs on macOS and Linux, including Windows through WSL2. The optional MLX speech stack requires Apple Silicon; the `wsl` routing profile uses Faster Whisper instead. CI tests the core application on Linux using fake model providers. See the [local workflow update](docs/LOCAL-WORKFLOW-UPDATE.md) for authoring behavior and current quality limits.

@@ -19,6 +19,7 @@ export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, on
 }) {
   const questionRequiredId = useId()
   const staleId = useId()
+  const lengthId = useId()
   const [tutorOpen, setTutorOpen] = useState(false)
   const tutorContainer = useRef<HTMLDivElement>(null)
   const [passage, setPassage] = useState('')
@@ -29,6 +30,8 @@ export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, on
   const index = disabled ? viewIndex ?? r?.current ?? 0 : r?.current ?? 0
   const q = r?.questions[index]
   const stale = !!r && !form.notes.includes(r.passage)
+  const mergedExplanation = [form.explanation, q?.section].filter(Boolean).join('\n\n')
+  const overLimit = !!q?.section && !form.explanation.includes(q.section) && mergedExplanation.length > 4000
   function update(next: Research) { onChange({ ...form, research: next }); setNotice('') }
   function prepare() {
     if (!passage.trim() || !topic.trim() || !form.notes.includes(passage)) return
@@ -77,11 +80,19 @@ export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, on
         <Button variant="secondary" disabled={disabled || r.questions.length >= 12} onClick={() => update({ ...r, current: r.questions.length, questions: [...r.questions, { id: crypto.randomUUID(), prompt: `What else do I need to investigate about ${r.topic}?`, findings: '', evidence: '', unresolved: '', section: '', tutor_request: '', tutor_basis: '', tutor_exchanges: [] }] })}>Add my own research question</Button>
         <Button variant="secondary" disabled={index === 0} onClick={() => disabled ? setViewIndex(index - 1) : update({ ...r, current: index - 1 })}>Previous research question</Button>
         <Button variant="secondary" disabled={index === r.questions.length - 1} onClick={() => disabled ? setViewIndex(index + 1) : update({ ...r, current: index + 1 })}>Next research question</Button>
-        <Button hidden={phase === 'research'} aria-describedby={stale ? staleId : undefined} disabled={disabled || !q.section?.trim() || stale || `${form.explanation}\n\n${q.section}`.trim().length > 4000 || form.explanation.includes(q.section)} onClick={() => {
-          onChange({ ...form, explanation: [form.explanation, q.section].filter(Boolean).join('\n\n') })
+        <Button hidden={phase === 'research'} aria-describedby={[stale && staleId, overLimit && lengthId].filter(Boolean).join(' ') || undefined} disabled={disabled || !q.section?.trim() || stale || overLimit || form.explanation.includes(q.section)} onClick={() => {
+          onChange({ ...form, explanation: mergedExplanation })
           setNotice('Section added to your editable explanation. Review and save your knowledge material; activation remains separate.')
         }}>Add section to explanation</Button>
       </div>
+      {phase === 'write' && <>
+        {overLimit && <p id={lengthId} role="status">The combined explanation would exceed 4,000 characters by {mergedExplanation.length - 4000}. Shorten the existing explanation or your new section before adding it.</p>}
+        <Disclosure label="Edit existing explanation">
+          <label className="block">Existing lesson explanation<textarea className={field} rows={4} maxLength={4000}
+            aria-label="Existing lesson explanation" value={form.explanation} disabled={disabled}
+            onChange={e=>onChange({...form, explanation:e.target.value})} /></label>
+        </Disclosure>
+      </>}
       <p className="text-sm text-muted">Use Save knowledge material below to keep all questions, findings and your current place in the library. You may move on with unresolved questions. Shape a lesson when ready.</p>
       {onMemorySearch && <Disclosure label="Find earlier personal notes"><PersonalMemoryPanel ids={q.memory_ids ?? []} disabled={disabled} onSearch={onMemorySearch} onChange={ids => update({ ...r, questions: r.questions.map((v, i) => i === index ? { ...v, memory_ids: ids } : v) })} /></Disclosure>}
       <div ref={tutorContainer}><Disclosure label={hosted ? "Ask the authoring tutor (OpenAI)" : "Ask the local tutor (optional)"} open={tutorOpen} onToggle={e => setTutorOpen(e.currentTarget.open)}><ResearchTutorPanel tutorReady={tutorReady} sourceChangedDescription={stale ? staleId : undefined} hosted={hosted} onUseDraft={() => { setNotice('Draft copied to your editable section. Review it in Write.'); setTutorOpen(false); tutorContainer.current?.querySelector('summary')?.focus() }} research={r} question={q} disabled={disabled} sourceChanged={stale} onTutor={onTutor} onChange={next => update({ ...r, questions: r.questions.map((v, i) => i === index ? next : v) })} /></Disclosure></div>
