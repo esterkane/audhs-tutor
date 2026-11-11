@@ -1709,6 +1709,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/notebooks/uploads/{document_id}/edits': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Upload Edits */
+    get: operations['upload_edits_api_notebooks_uploads__document_id__edits_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/notebooks/uploads/{document_id}/start': {
     parameters: {
       query?: never
@@ -12974,6 +12991,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['NotebookUploadAvailability']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  upload_edits_api_notebooks_uploads__document_id__edits_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': string[]
         }
       }
       /** @description Validation Error */
