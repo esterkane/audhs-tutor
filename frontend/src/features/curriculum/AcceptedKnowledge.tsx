@@ -9,12 +9,14 @@ import { Disclosure } from '../../components/ui/disclosure'
 import { Markdown } from '../../components/Markdown'
 import { LessonReader } from '../tutor/LessonReader'
 import { PredictionReading } from '../tutor/PredictionReading'
+import { UploadedPdfPages } from './UploadedPdfPages'
 import { SourceViewer } from './SourceViewer'
 import { useState } from 'react'
 
 
 export function AcceptedKnowledge({ reading, onCheck, active = true }: { reading:ReturnType<typeof useAcceptedKnowledge>; onCheck:()=>void; active?:boolean }) {
   const [source, setSource] = useState<string | null>(null)
+  const [openPdf, setOpenPdf] = useState<string | null>(null)
   if (reading.isError) return <Card><p role="alert">Could not load your accepted knowledge material. AI help does not replace it.</p><Button onClick={() => void reading.refetch()} disabled={reading.isFetching}>Retry accepted material</Button></Card>
   if (reading.isPending) return <p role="status">Checking for your accepted knowledge material…</p>
   if (!reading.data) return null
@@ -48,6 +50,10 @@ ${data.worked_example}`
     {data.case_comparison && <CasePractice key={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id}
       identity={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id} pair={data.case_comparison}/>}
     <Disclosure label="Your notes and source references"><Markdown text={data.notes} />
+      {data.original_pdf && <div><Button variant="secondary" aria-expanded={openPdf === data.original_pdf.version_id}
+        onClick={() => setOpenPdf(openPdf === data.original_pdf?.version_id ? null : data.original_pdf!.version_id)}>Original PDF source</Button>
+        {openPdf === data.original_pdf.version_id && <UploadedPdfPages key={openPdf}
+          uploadId={data.original_pdf.upload_id} versionId={data.original_pdf.version_id} />}</div>}
       {data.sources.map((id,index)=><Button key={id} variant="secondary" onClick={()=>setSource(id)}>Read uploaded source {index+1}</Button>)}
       {source && <SourceViewer chunkId={source} citation={data.title} onClose={()=>setSource(null)} />}
     </Disclosure>

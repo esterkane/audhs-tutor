@@ -24,6 +24,7 @@ from app.knowledge.ingest.pdf_ocr import PdfOcrError, PdfOcrOptions
 from app.knowledge.ingest.service import ingest_source
 from app.schemas.curriculum import DraftOut
 from app.schemas.knowledge_authoring import (
+    AcceptedPdfSource,
     KnowledgeMaterialInput,
     KnowledgeMaterialUpdate,
     KnowledgeReadingOut,
@@ -448,7 +449,9 @@ async def revise(
 
 
 @router.get("/skills/{skill_id}/reading", response_model=KnowledgeReadingOut | None)
-async def accepted_reading(skill_id: str, db: DB, learner: Learner) -> KnowledgeReadingOut | None:
+async def accepted_reading(
+    skill_id: str, db: DB, learner: Learner, settings: SettingsDep
+) -> KnowledgeReadingOut | None:
     from app.kernel import skill_graph
 
     node = await skill_graph.get_node(db, skill_id, learner_id=learner.id)
@@ -458,7 +461,23 @@ async def accepted_reading(skill_id: str, db: DB, learner: Learner) -> Knowledge
     lo = await skill_graph.learning_object_for(db, node.id, learner_id=learner.id)
     if lo is None:
         return None
-    return _reading_view(node, draft, lo)
+    reading = _reading_view(node, draft, lo)
+    accepted = draft.payload_json.get("authoring", {})
+    upload_id, version_id = accepted.get("upload_id"), accepted.get("upload_version_id")
+    if (
+        isinstance(upload_id, str)
+        and isinstance(version_id, str)
+        and [reading.explanation, reading.worked_example]
+        == [accepted.get("explanation"), accepted.get("worked_example")]
+    ):
+        try:
+            await owned_pdf_version(upload_id, version_id, db, learner, settings)
+        except AppError as exc:
+            if exc.code not in {"not_found", "accuracy_review_only"}:
+                raise
+        else:
+            reading.original_pdf = AcceptedPdfSource(upload_id=upload_id, version_id=version_id)
+    return reading
 
 
 def _reading_view(

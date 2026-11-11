@@ -1,9 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
-import { boundedRead } from '../../lib/boundedRead'
-import type { Schemas } from '../../lib/api'
+import { useUploadedPdfPages } from './useUploadedPdfPages'
 import { matchingPdfPages } from './matchingPdfPages'
 
 type Props = {
@@ -19,15 +17,7 @@ export function UploadedPdfPages({ uploadId, versionId, passage, selectPassage, 
   const [preview, setPreview] = useState('')
   const [failed, setFailed] = useState(false)
   const [zoom, setZoom] = useState(false)
-  const query = useQuery({
-    queryKey: ['uploaded-pdf-pages', uploadId, versionId],
-    queryFn: ({ signal }) => boundedRead<Schemas['PdfPageSources']>(
-      `/api/knowledge-material/uploads/${encodeURIComponent(uploadId)}/versions/${encodeURIComponent(versionId)}/pages`,
-      signal, 'PDF page text',
-    ),
-    staleTime: Infinity,
-    retry: false,
-  })
+  const query = useUploadedPdfPages(uploadId, versionId)
   const pages = query.data?.pages
   const matches = useMemo(() => pages && passage ? matchingPdfPages(pages, passage) : [], [pages, passage])
   const page = pages?.[index]

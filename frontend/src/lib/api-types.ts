@@ -3770,6 +3770,13 @@ export interface components {
       /** Comparison Id */
       comparison_id: string
     }
+    /** AcceptedPdfSource */
+    AcceptedPdfSource: {
+      /** Upload Id */
+      upload_id: string
+      /** Version Id */
+      version_id: string
+    }
     /** AccuracyReviewSearchOut */
     AccuracyReviewSearchOut: {
       /** Query */
@@ -6527,6 +6534,7 @@ export interface components {
     }
     /** KnowledgeReadingOut */
     KnowledgeReadingOut: {
+      original_pdf?: components['schemas']['AcceptedPdfSource'] | null
       /** Draft Id */
       draft_id: string
       /** Title */

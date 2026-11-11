@@ -5,7 +5,7 @@ import pytest
 from pypdf import PdfWriter
 from sqlalchemy import select
 
-from app.db.models import Chunk, DocumentVersion
+from app.db.models import Chunk, DocumentVersion, SkillNode
 from app.knowledge.pdf_page_sources import read
 from tests.pdf_scan_fixture import diagram_pdf, native_pdf, scanned_pdf, vector_pdf
 from tests.test_knowledge_authoring import complete
@@ -73,6 +73,16 @@ async def test_mixed_pdf_pages_and_previous_transcription_remain_bound_to_saved_
     chunks = (await db.scalars(select(Chunk).where(Chunk.id.in_(ids)))).all()
     assert chunks and {chunk.document_version_id for chunk in chunks} == {
         first["document_version_id"]
+    }
+    activated = await client.post(
+        f"/api/curriculum/drafts/{draft['id']}/publish", json={"expected_version": draft["version"]}
+    )
+    assert activated.is_success, activated.text
+    skill = await db.scalar(select(SkillNode))
+    reading = await client.get(f"/api/knowledge-material/skills/{skill.id}/reading")
+    assert reading.json()["original_pdf"] == {
+        "upload_id": first["document_id"],
+        "version_id": first["document_version_id"],
     }
     scanned = next(chunk for chunk in chunks if quote in chunk.text)
     response = await client.get("/api/curriculum/chunks/" + scanned.id)

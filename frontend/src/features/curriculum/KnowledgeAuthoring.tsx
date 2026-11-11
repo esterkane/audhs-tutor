@@ -10,6 +10,7 @@ import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { Disclosure } from '../../components/ui/disclosure'
 import { apiFetch, type Schemas } from '../../lib/api'
+import { useUploadedPdfPages } from './useUploadedPdfPages'
 import { UploadedPdfPages } from './UploadedPdfPages'
 import { UploadedNotebook } from './UploadedNotebook'
 import { ResearchWorkspace } from './ResearchWorkspace'
@@ -495,7 +496,9 @@ function Editor({
     }
   }
   const directWrite = step === 'write' && !form.research && !readOnly
-  const notesShortcut = step === 'source' && !form.research && !form.upload_id && !readOnly && !!form.notes.trim()
+  const pages = useUploadedPdfPages(form.upload_id ?? '', form.upload_version_id ?? '').data?.pages
+  const manualPdf = !!pages?.length && pages.every(page => !page.text.trim())
+  const notesShortcut = step === 'source' && !form.research && (!form.upload_id || manualPdf) && !readOnly && !!form.notes.trim()
   const lessonFields = <>
     {([
       ['objective', 'Learning objective'],

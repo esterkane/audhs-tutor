@@ -441,7 +441,13 @@ class ReadingPrequestion(BaseModel):
     content_sha256: str
 
 
+class AcceptedPdfSource(BaseModel):
+    upload_id: str
+    version_id: str
+
+
 class KnowledgeReadingOut(BaseModel):
+    original_pdf: AcceptedPdfSource | None = None
     draft_id: str
     title: str
     objective: str
