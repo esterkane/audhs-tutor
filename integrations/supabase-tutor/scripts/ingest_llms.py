@@ -100,6 +100,10 @@ def product_of(url: str) -> str:
     return "other"
 
 
+def is_html_document(text: str) -> bool:
+    return bool(re.match(r"^\s*(?:<!doctype\s+html\b|<html\b)", text.lstrip("\ufeff"), re.I))
+
+
 def parse_index(text: str, base: str) -> list[tuple[str, int]]:
     """Return (url, tier) for every link in llms.txt, including llms-full.txt from the intro."""
     urls = re.findall(r"https?://[^\s)\]]+", text)
@@ -219,9 +223,7 @@ async def fetch(client: httpx.AsyncClient, doc: Doc, sem: asyncio.Semaphore, *, 
                 return doc
             # A successful HTTP status can still deliver a login or error page.
             # A seed with lost links must not authorize retirement of its descendants.
-            if urlparse(doc.url).path.lower().endswith((".txt", ".md")) and re.match(
-                r"^\s*(?:<!doctype\s+html\b|<html\b)", r.text.lstrip("\ufeff"), re.I
-            ):
+            if urlparse(doc.url).path.lower().endswith((".txt", ".md")) and is_html_document(r.text):
                 doc.status = "failed"
                 doc.failure_reason = "unexpected_html"
                 return doc
@@ -494,6 +496,9 @@ async def main() -> int:
             idx.raise_for_status()
         except httpx.HTTPError as e:
             print(f"cannot fetch index {a.index}: {e}", file=sys.stderr)
+            return 2
+        if is_html_document(idx.text):
+            print("Expected a text documentation index, but received HTML.", file=sys.stderr)
             return 2
         targets = select(parse_index(idx.text, a.index), a.profile, a.only)
         if a.limit:

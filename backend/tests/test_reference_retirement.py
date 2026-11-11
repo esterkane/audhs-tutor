@@ -370,3 +370,28 @@ async def test_html_error_returned_as_success_cannot_retire_or_overwrite(indexer
     write.assert_not_called()
     retire.assert_not_called()
     assert not indexer.RAW_DIR.exists()
+
+
+async def test_html_index_with_valid_document_link_stops_before_discovery(indexer, monkeypatch):
+    from unittest.mock import Mock
+    import httpx
+
+    requested = []
+
+    def handle(request):
+        requested.append(str(request.url))
+        return httpx.Response(
+            200, text="<html><p>Unavailable. Try https://supabase.com/llms/cli.txt </p></html>"
+        )
+
+    client = httpx.AsyncClient
+    monkeypatch.setattr(
+        indexer.httpx, "AsyncClient", lambda: client(transport=httpx.MockTransport(handle))
+    )
+    monkeypatch.setattr(sys, "argv", ["ingest", "--profile", "all"])
+    monkeypatch.setattr(indexer, "existing_hashes", lambda: {})
+    retire = Mock()
+    monkeypatch.setattr(indexer, "retire_missing", retire)
+    assert await indexer.main() == 2
+    assert requested == [indexer.INDEX_DEFAULT]
+    retire.assert_not_called()
