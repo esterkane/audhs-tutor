@@ -582,9 +582,12 @@ async def main() -> int:
                 or known[d.url][0] == d.hash
             )
         ]
+        fully_covered = set()
         for d in full_docs:
             if d.status != "failed":
                 d.text, dropped = drop_duplicate_pages(d.text, canonical_texts)
+                if dropped and not d.text.strip():
+                    fully_covered.add(d.url)
                 # What is kept depends on the other pages too, so "unchanged" must compare the kept text.
                 d.hash = hashlib.sha256(d.text.encode()).hexdigest()
                 print(f"llms-full.txt: dropped {dropped} pages already ingested under their own URL")
@@ -606,7 +609,14 @@ async def main() -> int:
                 rows.append((d.url, "unchanged", 0, "no"))
                 continue
             d.chunks = chunk_markdown(d.text, d.product, urlparse(d.url).path)
-            if not a.dry_run and d.chunks:
+            if not d.chunks and (d.url not in fully_covered or seed_failed or expand_failed):
+                if d in seeds:
+                    seed_failed += 1
+                else:
+                    expand_failed += 1
+                rows.append((d.url, "failed", 0, "-"))
+                continue
+            if not a.dry_run:
                 for i in range(0, len(d.chunks), 32):
                     batch = d.chunks[i : i + 32]
                     embs = await embed([f"{c.heading_path}\n{c.content}" for c in batch], provider, client, model)
