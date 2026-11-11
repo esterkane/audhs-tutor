@@ -1,0 +1,185 @@
+import { useEffect, useId, useRef, useState } from 'react'
+import type { Schemas } from '../../lib/api'
+import { Button } from '../../components/ui/button'
+import { Disclosure } from '../../components/ui/disclosure'
+
+type Pair = NonNullable<Schemas['KnowledgeMaterialInput']['case_comparison']>
+type Attempt = { choice: '' | 'a' | 'b'; reasoning: string; revealed: boolean }
+const empty: Attempt = { choice: '', reasoning: '', revealed: false }
+
+export function CaseAuthoring({
+  pair,
+  onChange,
+  disabled,
+}: {
+  pair: Pair | null
+  onChange: (value: Pair | null) => void
+  disabled: boolean
+}) {
+  return (
+    <Disclosure label="Compare two cases (optional)">
+      <fieldset disabled={disabled} className="space-y-3">
+        <legend className="sr-only">Case comparison</legend>
+        <label>
+          <input
+            type="checkbox"
+            checked={!!pair}
+            onChange={(event) =>
+              onChange(
+                event.target.checked ? { case_a: '', case_b: '', failing_case: null, rationale: '' } : null,
+              )
+            }
+          />{' '}
+          Include a case comparison
+        </label>
+        {pair && (
+          <>
+            {(['case_a', 'case_b'] as const).map((key, index) => (
+              <label className="block" key={key}>
+                Case {index ? 'B' : 'A'}
+                <textarea
+                  className="block w-full border rounded p-2"
+                  rows={3}
+                  maxLength={4000}
+                  value={pair[key]}
+                  onChange={(e) => onChange({ ...pair, [key]: e.target.value })}
+                />
+              </label>
+            ))}
+            <label className="block">
+              Which case fails?
+              <select
+                className="block"
+                value={pair.failing_case ?? ''}
+                onChange={(e) =>
+                  onChange({
+                    ...pair,
+                    failing_case: e.target.value === 'a' ? 'a' : e.target.value === 'b' ? 'b' : null,
+                  })
+                }
+              >
+                <option value="">Choose a case</option>
+                <option value="a">Case A</option>
+                <option value="b">Case B</option>
+              </select>
+            </label>
+            <label className="block">
+              Why does that case fail?
+              <textarea
+                className="block w-full border rounded p-2"
+                rows={3}
+                maxLength={4000}
+                value={pair.rationale}
+                onChange={(e) => onChange({ ...pair, rationale: e.target.value })}
+              />
+            </label>
+          </>
+        )}
+      </fieldset>
+    </Disclosure>
+  )
+}
+
+export function CasePractice({
+  pair,
+  identity,
+}: {
+  pair: NonNullable<Schemas['KnowledgeReadingOut']['case_comparison']>
+  identity: string
+}) {
+  const key = 'case-comparison:v1:' + identity
+  const [attempt, setAttempt] = useState<Attempt>(() => {
+    try {
+      const stored = JSON.parse(localStorage.getItem(key) ?? 'null')
+      if (
+        stored &&
+        ['', 'a', 'b'].includes(stored.choice) &&
+        typeof stored.reasoning === 'string' &&
+        typeof stored.revealed === 'boolean'
+      )
+        return stored
+    } catch {
+      /* Start a fresh attempt if storage is unavailable. */
+    }
+    return empty
+  })
+  const [error, setError] = useState('')
+  const group = useId()
+  const result = useRef<HTMLHeadingElement>(null)
+  const focusAfterReveal = useRef(false)
+  useEffect(() => {
+    if (attempt.revealed && focusAfterReveal.current) result.current?.focus()
+  }, [attempt.revealed])
+  function save(value: Attempt) {
+    setAttempt(value)
+    try {
+      localStorage.setItem(key, JSON.stringify(value))
+      setError('')
+    } catch {
+      setError('Your attempt is available on this page. Copy it before leaving.')
+    }
+  }
+  function reveal() {
+    focusAfterReveal.current = true
+    save({ ...attempt, revealed: true })
+  }
+  return (
+    <Disclosure label="Compare two cases">
+      <div className="space-y-3 min-w-0">
+        {(['case_a', 'case_b'] as const).map((key, index) => (
+          <section key={key}>
+            <h3 className="font-semibold">Case {index ? 'B' : 'A'}</h3>
+            <p className="whitespace-pre-wrap break-words">{pair[key]}</p>
+          </section>
+        ))}
+        {attempt.revealed ? (
+          <>
+            <h3 className="font-semibold" ref={result} tabIndex={-1}>
+              Compare with the author’s explanation
+            </h3>
+            {attempt.choice && <p>Your choice: Case {attempt.choice.toUpperCase()}</p>}
+            {attempt.reasoning && (
+              <p className="whitespace-pre-wrap break-words">Your reasoning: {attempt.reasoning}</p>
+            )}
+            <p>The author identifies Case {pair.failing_case.toUpperCase()} as the failing case.</p>
+            <p className="whitespace-pre-wrap break-words">{pair.rationale}</p>
+          </>
+        ) : (
+          <>
+            <fieldset>
+              <legend>Which case fails?</legend>
+              {(['a', 'b'] as const).map((value) => (
+                <label key={value} className="mr-3">
+                  <input
+                    type="radio"
+                    name={group}
+                    checked={attempt.choice === value}
+                    onChange={() => save({ ...attempt, choice: value })}
+                  />{' '}
+                  Case {value.toUpperCase()}
+                </label>
+              ))}
+            </fieldset>
+            <label className="block">
+              Why does it fail? (optional)
+              <textarea
+                className="block w-full border rounded p-2"
+                rows={3}
+                value={attempt.reasoning}
+                onChange={(e) => save({ ...attempt, reasoning: e.target.value })}
+              />
+            </label>
+            <p>This ungraded attempt is saved in this browser.</p>
+            <Button disabled={!attempt.choice} onClick={reveal}>
+              Compare with explanation
+            </Button>
+            <Button variant="secondary" onClick={reveal}>
+              Skip to explanation
+            </Button>
+          </>
+        )}
+        {error && <p role="alert">{error}</p>}
+      </div>
+    </Disclosure>
+  )
+}

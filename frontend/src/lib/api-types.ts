@@ -3691,6 +3691,31 @@ export interface paths {
 export type webhooks = Record<string, never>
 export interface components {
   schemas: {
+    /** AcceptedCaseComparison */
+    AcceptedCaseComparison: {
+      /**
+       * Case A
+       * @default
+       */
+      case_a: string
+      /**
+       * Case B
+       * @default
+       */
+      case_b: string
+      /**
+       * Failing Case
+       * @enum {string}
+       */
+      failing_case: 'a' | 'b'
+      /**
+       * Rationale
+       * @default
+       */
+      rationale: string
+      /** Comparison Id */
+      comparison_id: string
+    }
     /** AccuracyReviewSearchOut */
     AccuracyReviewSearchOut: {
       /** Query */
@@ -4678,6 +4703,29 @@ export interface components {
        * @default
        */
       message: string
+    }
+    /**
+     * CaseComparison
+     * @description Partial authoring is allowed until the learner activates the material.
+     */
+    CaseComparison: {
+      /**
+       * Case A
+       * @default
+       */
+      case_a: string
+      /**
+       * Case B
+       * @default
+       */
+      case_b: string
+      /** Failing Case */
+      failing_case?: ('a' | 'b') | null
+      /**
+       * Rationale
+       * @default
+       */
+      rationale: string
     }
     /** ChainEntry */
     ChainEntry: {
@@ -6338,6 +6386,7 @@ export interface components {
        * @default
        */
       worked_example_prequestion: string
+      case_comparison?: components['schemas']['CaseComparison'] | null
       /** Criteria */
       criteria?: string[]
     }
@@ -6393,6 +6442,7 @@ export interface components {
        * @default
        */
       worked_example_prequestion: string
+      case_comparison?: components['schemas']['CaseComparison'] | null
       /** Criteria */
       criteria?: string[]
       /** Expected Version */
@@ -6420,6 +6470,7 @@ export interface components {
       learning_object_version: number
       /** Prequestions */
       prequestions?: components['schemas']['ReadingPrequestion'][]
+      case_comparison?: components['schemas']['AcceptedCaseComparison'] | null
     }
     /** KnowledgeResearch */
     KnowledgeResearch: {

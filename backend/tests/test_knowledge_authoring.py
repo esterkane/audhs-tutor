@@ -599,7 +599,12 @@ async def test_legacy_create_identity_replays_without_new_optional_fields(
     legacy["authoring"]["request_fingerprint"] = hashlib.sha256(
         KnowledgeMaterialInput.model_validate(form)
         .model_dump_json(
-            exclude={"explanation_prequestion", "worked_example_prequestion", "upload_version_id"}
+            exclude={
+                "explanation_prequestion",
+                "worked_example_prequestion",
+                "upload_version_id",
+                "case_comparison",
+            }
         )
         .encode()
     ).hexdigest()

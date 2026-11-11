@@ -25,8 +25,8 @@ courses because a paper discusses audio. Speech input is a separate accessibilit
 
 | Recommendation | Inspected implementation | Status / next work |
 | --- | --- | --- |
-| Predict before reading | `AcceptedKnowledge` and `SavedLessonReading` → `PredictionReading` | Added: topic-only opener, optional attempt, explicit skip, immediate reading, original prediction + comparison/correction. Browser-local and content-version scoped. Existing reading bookmarks bypass the new opener. No automatic correctness or retention claim. Per-section source-specific questions and delayed experiment linkage remain open. |
-| Problem/contrasting case before instruction | `orchestrator/challenge.py`, notebook predictions | Partial: challenges exist, but no validated general consolidation comparison to the learner's original attempt. |
+| Predict before reading | `AcceptedKnowledge` and `SavedLessonReading` → `PredictionReading` | Accepted explanations and worked examples support authored questions. Predictions and reflections stay in the browser by default. Explicit enrollment makes the original prediction available for an ungraded recall after 24 hours. Measuring its effect on retention requires longitudinal observations. |
+| Problem/contrasting case before instruction | `orchestrator/challenge.py`, notebook predictions | In an accepted lesson, learners can choose which of two authored cases fails and compare their original choice and reasoning with the author’s explanation. General open-problem consolidation remains open. |
 | Overview then learner-completed map | `features/visualizer`, skill map | Partial: navigable map/visual activities are not a verified generative concept-map activity. New course map stays reset until new material is authored. |
 | Integrated diagrams, no decoration | `components/Markdown`, visualizer | Partial: rendering exists; contiguity and fading cannot be guaranteed for arbitrary authored diagrams. Need authored reference pairs and accessibility review. |
 | Learner drawing | No inspected end-to-end drawing assessment | Missing; optional text/label completion is a lower-complexity first step. |
@@ -35,7 +35,7 @@ courses because a paper discusses audio. Speech input is a separate accessibilit
 | Narration with key terms | `ReadAloud`, reader lifecycle tests | Partial: explicit playback and stopping exist; no automatic integrated narration/visual authoring guarantee. Text remains primary for technical first exposure. |
 | Selective key-term read-aloud | Existing playback can read selected content paths | Missing dedicated 3–5-item retrieval activity; no full-passage production-effect claims. |
 | Voice latency / turn-taking | `useVoiceLoop`, request/text recovery tests | Partial: real end-to-end audio latency not demonstrated below 2 seconds. Keep text fallback and no new timeout claims. |
-| Contrasting planted errors | `challenge.py`, `prompts/challenge/planted_error.md` | Partial: existing planted-error mode and delayed review; needs validated correct/buggy pair representation, novice scaffolding and semantic difficulty ladder. |
+| Contrasting planted errors | `challenge.py`, `prompts/challenge/planted_error.md` | Authors can save incomplete pairs while drafting. Activation requires two distinct cases, a selected failing case and an explanation. The author is responsible for factual correctness. Learners can skip to the explanation. Novice scaffolding and a progression in difficulty remain open. |
 | Parsons → faded example → open problem | Code editor, notebook and assessment exist | Missing diagnostic-gated ladder; do not equate an editable notebook to a Parsons task. |
 | Predict → step → compare | `NotebookWorkspace`, `Playground`, `GuidedExperiments` | Partial: saved predictions, outputs and comparisons exist; general variable trace, previous-state diff, back/replay and transfer assessment are not fully implemented. |
 | One-parameter ablation | `GuidedExperiments`, `comparisonCheckpoint` | Partial: bounded visual comparisons exist; no validated ML ablation/transfer outcome pipeline. |
@@ -56,11 +56,7 @@ accepted text, histories or mastery. Retain original attempt after reveal; corre
 Malformed/denied storage must leave reading available. Explicit skip persists. No model call,
 new package, timer, grading or global preference change is needed.
 
-Next: bind per-section authored prequestions to accepted content, then optional prediction
-experiments with delayed recall, preserving full attempts and provenance. Next validate
-contrasting error pairs and novice scaffolding before expanding richer visuals. Voice quality,
-low-capacity recognition and the fading ladder remain separate unfinished tasks; avoid
-claiming that a UI checkbox proves learning benefit. No n-of-1 experiment is enabled silently.
+For authored reading questions and optional delayed recall, see [accepted passage questions](../slices/authored-reading-prequestions.md). Further evaluation should measure delayed learning outcomes across sessions. Novice scaffolding, recognition practice for low-capacity sessions and gradual removal of worked-example steps remain open.
 
 
 ## Regression coverage

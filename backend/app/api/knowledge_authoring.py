@@ -266,6 +266,8 @@ async def create(
         for key in ("explanation_prequestion", "worked_example_prequestion")
         if getattr(body, key) == ""
     }
+    if body.case_comparison is None:
+        empty_prequestions.add("case_comparison")
     if body.upload_version_id is None:
         empty_prequestions.add("upload_version_id")
     fingerprint = hashlib.sha256(
@@ -312,7 +314,10 @@ async def update(
     previous = draft.payload_json.get("authoring")
     if not previous:
         raise AppError("invalid_authoring_draft", "Choose a knowledge material draft.", 422)
-    command = KnowledgeMaterialInput.model_validate(body.model_dump(exclude={"expected_version"}))
+    fields = body.model_dump(exclude={"expected_version"})
+    if "case_comparison" not in body.model_fields_set:
+        fields["case_comparison"] = previous.get("case_comparison")
+    command = KnowledgeMaterialInput.model_validate(fields)
     if previous.get("factual_review_id") and not previous.get("skill_slug"):
         # Recover review drafts saved before the original skill identity was retained.
         parent = await curriculum.get_draft(db, learner.id, previous["revised_from_draft_id"])
@@ -427,6 +432,9 @@ async def accepted_reading(skill_id: str, db: DB, learner: Learner) -> Knowledge
         notes=str(draft.payload_json.get("authoring", {}).get("notes", "")),
         sources=list(lo.sources_json or []),
         learning_object_version=lo.version,
+        case_comparison=knowledge_authoring.accepted_case_comparison(
+            draft.payload_json.get("authoring", {}).get("case_comparison")
+        ),
         prequestions=knowledge_authoring.accepted_prequestions(
             draft.payload_json.get("authoring", {}),
             str(examples[0]) if examples else "",

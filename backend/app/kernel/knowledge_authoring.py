@@ -10,7 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Chunk, Document, DocumentVersion, KnowledgeArea
 from app.kernel.learning_scope import reference_before, require_current_material
-from app.schemas.knowledge_authoring import KnowledgeMaterialInput, ReadingPrequestion
+from app.schemas.knowledge_authoring import (
+    AcceptedCaseComparison,
+    CaseComparison,
+    KnowledgeMaterialInput,
+    ReadingPrequestion,
+)
 
 
 async def source_ids(
@@ -183,3 +188,29 @@ def accepted_prequestions(
             )
         )
     return result
+
+
+def accepted_case_comparison(value: Any) -> AcceptedCaseComparison | None:
+    """Validate structure only. The learner authors and accepts the rationale."""
+    if not isinstance(value, dict):
+        return None
+    try:
+        pair = CaseComparison.model_validate(value)
+    except ValueError:
+        return None
+    if (
+        not pair.case_a.strip()
+        or not pair.case_b.strip()
+        or not pair.rationale.strip()
+        or pair.failing_case is None
+        or pair.case_a.strip() == pair.case_b.strip()
+    ):
+        return None
+    identity = json.dumps(
+        [pair.case_a, pair.case_b, pair.failing_case, pair.rationale],
+        ensure_ascii=False,
+        separators=(",", ":"),
+    )
+    return AcceptedCaseComparison(
+        **pair.model_dump(), comparison_id=hashlib.sha256(identity.encode()).hexdigest()
+    )

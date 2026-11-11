@@ -9,7 +9,7 @@ export function sameKnowledgeMaterial(left: Schemas['KnowledgeMaterialInput'], r
   }
   const leftContent = Object.fromEntries(Object.entries(left).filter(([key]) => key !== 'workflow_step'))
   const rightContent = Object.fromEntries(Object.entries(right).filter(([key]) => key !== 'workflow_step'))
-  return canonical({ ...leftContent, upload_version_id: left.upload_version_id ?? null, focus_topic: left.focus_topic ?? null, explanation_prequestion: left.explanation_prequestion ?? '', worked_example_prequestion: left.worked_example_prequestion ?? '' }) === canonical({ ...rightContent, upload_version_id: right.upload_version_id ?? null, focus_topic: right.focus_topic ?? null, explanation_prequestion: right.explanation_prequestion ?? '', worked_example_prequestion: right.worked_example_prequestion ?? '' })
+  return canonical({ ...leftContent, case_comparison:left.case_comparison ?? null, upload_version_id: left.upload_version_id ?? null, focus_topic: left.focus_topic ?? null, explanation_prequestion: left.explanation_prequestion ?? '', worked_example_prequestion: left.worked_example_prequestion ?? '' }) === canonical({ ...rightContent, case_comparison:right.case_comparison ?? null, upload_version_id: right.upload_version_id ?? null, focus_topic: right.focus_topic ?? null, explanation_prequestion: right.explanation_prequestion ?? '', worked_example_prequestion: right.worked_example_prequestion ?? '' })
 }
 
 export function validResearch(value: unknown, options: { allowBlankPrompt?: boolean } = {}): value is Research {

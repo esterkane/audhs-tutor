@@ -1,3 +1,4 @@
+import { CasePractice } from './CasePractice'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { useAcceptedKnowledge } from './acceptedKnowledgeApi'
@@ -41,6 +42,8 @@ ${data.worked_example}`
       resumeKeyPrefix={`lesson-reader:v1:accepted-knowledge:${data.draft_id}:${data.learning_object_version}:`}>
       {reader}
     </PredictionReading>}
+    {data.case_comparison && <CasePractice key={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id}
+      identity={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id} pair={data.case_comparison}/>}
     <Disclosure label="Your notes and source references"><Markdown text={data.notes} />
       {data.sources.map((id,index)=><Button key={id} variant="secondary" onClick={()=>setSource(id)}>Read uploaded source {index+1}</Button>)}
       {source && <SourceViewer chunkId={source} citation={data.title} onClose={()=>setSource(null)} />}

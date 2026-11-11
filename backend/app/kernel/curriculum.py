@@ -842,6 +842,18 @@ async def _validate_payload(
     assessments per skill (no orphans), assessment shapes, source chunks that still exist, and the
     pedagogy gaps a deterministic draft leaves open (criteria, exercises, guessable cloze)."""
     problems: list[Problem] = []
+    authoring = payload.get("authoring")
+    if isinstance(authoring, dict) and authoring.get("case_comparison") is not None:
+        from app.kernel.knowledge_authoring import accepted_case_comparison
+
+        if accepted_case_comparison(authoring["case_comparison"]) is None:
+            problems.append(
+                Problem(
+                    "error",
+                    "case_comparison",
+                    "Enter two distinct cases, choose which one fails, and explain why.",
+                )
+            )
     skills = _dicts(payload.get("skills"))
     if not skills:
         problems.append(Problem("error", "draft", "no skills"))

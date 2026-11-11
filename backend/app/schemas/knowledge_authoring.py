@@ -325,6 +325,21 @@ class KnowledgeResearch(BaseModel):
         return self
 
 
+class CaseComparison(BaseModel):
+    """Partial authoring is allowed until the learner activates the material."""
+
+    model_config = ConfigDict(extra="forbid")
+    case_a: str = Field(default="", max_length=4000)
+    case_b: str = Field(default="", max_length=4000)
+    failing_case: Literal["a", "b"] | None = None
+    rationale: str = Field(default="", max_length=4000)
+
+
+class AcceptedCaseComparison(CaseComparison):
+    failing_case: Literal["a", "b"]
+    comparison_id: str
+
+
 class KnowledgeMaterialInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     focus_topic: (
@@ -344,6 +359,7 @@ class KnowledgeMaterialInput(BaseModel):
     question: str = Field(default="", max_length=4000)
     explanation_prequestion: str = Field(default="", max_length=1000)
     worked_example_prequestion: str = Field(default="", max_length=1000)
+    case_comparison: CaseComparison | None = None
     criteria: list[str] = Field(default_factory=list, max_length=12)
 
 
@@ -423,3 +439,4 @@ class KnowledgeReadingOut(BaseModel):
     sources: list[str]
     learning_object_version: int
     prequestions: list[ReadingPrequestion] = Field(default_factory=list)
+    case_comparison: AcceptedCaseComparison | None = None
