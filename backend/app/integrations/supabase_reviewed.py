@@ -167,9 +167,11 @@ class ReviewedOrchestrator:
         from app.integrations.supabase_incidents import incident_turn, select_plan
         from app.integrations.supabase_isolation import isolation_answer
         from app.integrations.supabase_membership import membership_answer
-        from app.integrations.supabase_reference import reference_answer
+        from app.integrations.supabase_reference import reference_answer, supports_manual
 
-        isolation = await isolation_answer(user_text, state, kwargs.get("ctx"))
+        isolation = await isolation_answer(
+            user_text, state, kwargs.get("ctx"), kwargs.get("history")
+        )
         if isolation is not None:
             for name, args, is_error in isolation.calls:
                 yield ToolCall(name, args)
@@ -180,7 +182,9 @@ class ReviewedOrchestrator:
             )
             return
 
-        membership = await membership_answer(user_text, state, kwargs.get("ctx"))
+        membership = await membership_answer(
+            user_text, state, kwargs.get("ctx"), kwargs.get("history")
+        )
         if membership is not None:
             for name, args, is_error in membership.calls:
                 yield ToolCall(name, args)
@@ -244,12 +248,15 @@ class ReviewedOrchestrator:
             return
 
         plan = select_plan(user_text, state)
-        if plan is not None:
+        can_use_reviewed = (plan is not None or matches(user_text, state)) and supports_manual(
+            "17", user_text, state, kwargs.get("history")
+        )
+        if can_use_reviewed and plan is not None:
             turn = incident_turn(
                 user_text, state, plan, include_diagnostics=not no_sql_requested(user_text)
             )
             revision = "reviewed:incident-" + plan.key + ".v2"
-        elif matches(user_text, state):
+        elif can_use_reviewed:
             from app.integrations.supabase_questions import no_quiz_requested
 
             turn = reviewed_turn(

@@ -223,3 +223,18 @@ async def test_low_trust_reference_is_not_silently_promoted():
     answer = await membership_answer(PREFIX + "2 and inner values [1,null].", state(), ctx)
     assert "TRUE AND UNKNOWN = UNKNOWN" in answer.turn.text
     assert not answer.turn.citations
+
+
+@pytest.mark.parametrize(
+    "target,missing", [("17", False), ("17.11", False), ("17.12", True), ("18", True)]
+)
+async def test_local_membership_distinguishes_observed_server_from_session_target(target, missing):
+    result = await membership_answer(
+        PREFIX + "2 and inner values [1,null].",
+        state(objective="PostgreSQL " + target),
+        context(evidence(CASES[0])),
+    )
+    assert result is not None and "17.11" in result.turn.text
+    for value in (result.turn.text, result.turn.speech):
+        assert ("A separate run is needed for PostgreSQL " + target in value) is missing
+    assert result.messages[-1]["content"] == result.turn.text

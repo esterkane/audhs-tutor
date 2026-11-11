@@ -206,3 +206,19 @@ def test_unperformed_retry_is_not_described_as_no_serialization_failure():
     text = adapter.render(evidence, False)
     assert "did not execute a retry" in text
     assert "No retry was needed" not in text
+
+
+async def test_local_isolation_keeps_observed_schedule_separate_from_requested_edition(monkeypatch):
+    monkeypatch.setattr(adapter, "run_isolation_experiment", AsyncMock(return_value=observed()))
+    result = await adapter.isolation_answer(
+        GERMAN,
+        state(language="de"),
+        configured_context(),
+        [{"role": "user", "content": "Vergleiche PostgreSQL 17 und 18."}],
+    )
+    for value in (result.turn.text, result.turn.speech):
+        assert (
+            "auf PostgreSQL 17.11 gemessen" in value
+            and "Für PostgreSQL 18 fehlt ein eigener Lauf" in value
+        )
+    assert result.messages[-1]["content"] == result.turn.text

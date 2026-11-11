@@ -258,7 +258,9 @@ def render(
     )
 
 
-async def isolation_answer(text: str, state: Any, ctx: Any) -> IsolationAnswer | None:
+async def isolation_answer(
+    text: str, state: Any, ctx: Any, history: list[dict[str, Any]] | None = None
+) -> IsolationAnswer | None:
     if state.mode != "neutral" or state.delivery != "explicit" or state.incident is not None:
         return None
     try:
@@ -420,6 +422,13 @@ async def isolation_answer(text: str, state: Any, ctx: Any) -> IsolationAnswer |
         )
         if codes:
             speech += " SQLSTATE: " + ", ".join(codes) + "."
+    if evidence is not None:
+        from app.integrations.supabase_reference import lab_scope_note
+
+        note = lab_scope_note(evidence["server_version"], text, state, history)
+        if note:
+            body = note + "\n\n" + body
+            speech = note + " " + speech
     turn = module.TutorTurn(
         mode=state.mode,
         language=state.language,

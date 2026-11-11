@@ -176,7 +176,9 @@ def render(row: MembershipRow, german: bool, marker: str) -> str:
     )
 
 
-async def membership_answer(text: str, state: Any, ctx: Any) -> MembershipAnswer | None:
+async def membership_answer(
+    text: str, state: Any, ctx: Any, history: list[dict[str, Any]] | None = None
+) -> MembershipAnswer | None:
     if state.mode != "neutral" or state.delivery != "explicit" or state.incident is not None:
         return None
     try:
@@ -301,6 +303,13 @@ async def membership_answer(text: str, state: Any, ctx: Any) -> MembershipAnswer
     else:
         body = error
         speech = error
+    if not error:
+        from app.integrations.supabase_reference import lab_scope_note
+
+        note = lab_scope_note(row.server_version, text, state, history)
+        if note:
+            body = note + "\n\n" + body
+            speech = note + " " + speech
     turn = module.TutorTurn(
         mode=state.mode,
         language=state.language,

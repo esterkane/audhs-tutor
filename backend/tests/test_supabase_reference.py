@@ -187,3 +187,29 @@ async def test_matching_history_version_keeps_source_route_and_original_messages
     before = copy.deepcopy(history)
     assert await reference_answer("SQLSTATE ZZ123", state(), context(), history) is not None
     assert history == before
+
+
+async def test_catalogue_does_not_replace_prior_cross_edition_constraint_with_single_major():
+    history = [{"role": "user", "content": "Compare PostgreSQL 17 and 18."}]
+    assert await reference_answer("SQLSTATE ZZ123", state(), context(), history) is None
+
+
+async def test_explicit_switch_back_restores_catalogue_on_followup_without_mutating_history():
+    history = [
+        {"role": "user", "content": "Use PostgreSQL 18."},
+        {"role": "user", "content": "Switch back to PostgreSQL 17."},
+        {"role": "user", "content": [{"type": "tool_result", "content": "PostgreSQL 18"}]},
+    ]
+    before = copy.deepcopy(history)
+    result = await reference_answer(
+        "SQLSTATE ZZ123", state(objective="PostgreSQL 18"), context(), history
+    )
+    assert result is not None and result.turn.citations[0].url == URL
+    assert history == before
+
+
+async def test_patch_specific_objective_does_not_reuse_major_manual_only():
+    assert (
+        await reference_answer("SQLSTATE ZZ123", state(objective="PostgreSQL 17.12"), context())
+        is None
+    )

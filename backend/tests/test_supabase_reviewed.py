@@ -220,3 +220,26 @@ def test_neutral_reuse_preserves_explanation_without_lesson_question(language, i
     assert lesson.next_question not in neutral.text
     assert neutral.text == lesson.text.replace("\n\n" + lesson.next_question, "", 1)
     assert neutral.speech == lesson.speech
+
+
+@pytest.mark.parametrize(
+    "text,mode,objective",
+    [
+        ("PostgreSQL 18: " + QUESTION, "lesson", None),
+        ("PostgreSQL 18: our SELECT has SQLSTATE 42501.", "incident", None),
+        (QUESTION, "lesson", "Compare PostgreSQL 17 and 18."),
+    ],
+)
+async def test_reviewed_version_17_answers_delegate_other_requested_editions(text, mode, objective):
+    sentinel = object()
+
+    async def streamed(**kwargs):
+        yield sentinel
+
+    events = [
+        event
+        async for event in ReviewedOrchestrator(SimpleNamespace(run_turn=streamed)).run_turn(
+            history=[], user_text=text, state=state(mode=mode, objective=objective)
+        )
+    ]
+    assert events == [sentinel]

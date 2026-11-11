@@ -47,6 +47,49 @@ def identity_request(text: str, state: Any) -> tuple[str, ...]:
     return cast(tuple[str, ...], sqlstate_codes(subject.replace("`", "")))
 
 
+def active_releases(text: str, state: Any, history: list[dict[str, Any]] | None) -> list[str]:
+    from backend.tutor.postgres_versions import requested_releases
+
+    def releases(content: str) -> list[str]:
+        return requested_releases(content) or re.findall(
+            r"\bversion\s+(\d+(?:\.\d+)*)\b", content, re.IGNORECASE
+        )
+
+    current = releases(text)
+    if current:
+        return current
+    for message in reversed(history or []):
+        if message.get("role") == "user" and isinstance(message.get("content"), str):
+            prior = releases(message["content"])
+            if prior:
+                return prior
+    return releases(getattr(state, "objective", None) or "")
+
+
+def supports_manual(
+    version: str, text: str, state: Any, history: list[dict[str, Any]] | None
+) -> bool:
+    return all(release == version for release in active_releases(text, state, history))
+
+
+def lab_scope_note(
+    measured: str, text: str, state: Any, history: list[dict[str, Any]] | None
+) -> str:
+    from backend.tutor.postgres_versions import major
+
+    number = re.match(r"\d+(?:\.\d+)*", measured)
+    observed = number[0] if number else ""
+    missing = [
+        v for v in active_releases(text, state, history) if v != observed and v != major(observed)
+    ]
+    if not missing:
+        return ""
+    versions = ", ".join("PostgreSQL " + version for version in missing)
+    if state.language == "de":
+        return f"Diese Ergebnisse wurden auf PostgreSQL {measured} gemessen. Für {versions} fehlt ein eigener Lauf."
+    return f"These results were measured on PostgreSQL {measured}. A separate run is needed for {versions}."
+
+
 async def reference_answer(
     text: str, state: Any, ctx: Any, history: list[dict[str, Any]] | None = None
 ) -> ReferenceAnswer | None:
@@ -78,21 +121,7 @@ async def reference_answer(
     if len(versions) != 1:
         return None
     version = next(iter(versions))
-    # Earlier learner constraints remain relevant even when this turn is a bare code.
-    # Tool text is evidence, not a learner instruction selecting another server version.
-    context = [getattr(state, "objective", None) or ""] + [
-        message["content"]
-        for message in (history or [])
-        if message.get("role") == "user" and isinstance(message.get("content"), str)
-    ]
-    requested_versions = {
-        match
-        for content in context
-        for match in re.findall(
-            r"\b(?:Postgres(?:QL)?|PG|version)\s*(\d+)(?:\.\d+)*\b", content, re.IGNORECASE
-        )
-    }
-    if requested_versions - {version}:
+    if not supports_manual(version, text, state, history):
         return None
     urls: dict[str, int] = {}
     citations = []
