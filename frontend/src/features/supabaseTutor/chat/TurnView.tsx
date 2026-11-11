@@ -1,5 +1,6 @@
 import type { Strings } from '../i18n'
 import type { TutorTurn } from '../types'
+import { guideCitationHref } from './guideCitationHref'
 import { Markdown } from './Markdown'
 import { MermaidBlock } from './MermaidBlock'
 
@@ -68,7 +69,7 @@ export function TurnView({
               <li key={c.n}>
                 [{c.n}]{' '}
                 <a
-                  href={c.url}
+                  href={guideCitationHref(c.url)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sky-400 underline"
