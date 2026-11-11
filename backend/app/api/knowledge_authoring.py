@@ -7,6 +7,7 @@ from urllib.parse import unquote
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Header, Query, Request
+from fastapi.responses import Response
 from sqlalchemy import func, select, text
 from starlette.concurrency import run_in_threadpool
 
@@ -17,7 +18,7 @@ from app.db.models import CurriculumDraft, Document, DocumentVersion, LearningOb
 from app.kernel import curriculum, knowledge_authoring
 from app.kernel.content_access import skill_visible
 from app.kernel.learning_scope import reference_before, require_current_material
-from app.knowledge import pdf_page_sources
+from app.knowledge import pdf_page_preview, pdf_page_sources
 from app.knowledge.ingest.loaders import load_file
 from app.knowledge.ingest.pdf_ocr import PdfOcrError, PdfOcrOptions
 from app.knowledge.ingest.service import ingest_source
@@ -232,10 +233,9 @@ async def upload(
     )
 
 
-@router.get("/uploads/{upload_id}/versions/{version_id}/pages", response_model=PdfPageSources)
-async def pdf_pages(
+async def owned_pdf_version(
     upload_id: str, version_id: str, db: DB, learner: Learner, settings: SettingsDep
-) -> PdfPageSources:
+) -> tuple[Path, Path, str]:
     doc = await db.get(Document, upload_id)
     version = await db.get(DocumentVersion, version_id)
     if (
@@ -249,8 +249,34 @@ async def pdf_pages(
     await require_current_material(db, learner.id, doc.created_at)
     storage = await run_in_threadpool(Path(settings.knowledge_authoring_root).expanduser)
     owner = settings.project_root / storage / "knowledge-authoring" / learner.id
-    return await run_in_threadpool(
-        pdf_page_sources.read, Path(doc.uri), owner, version.content_hash
+    return Path(doc.uri), owner, version.content_hash
+
+
+@router.get("/uploads/{upload_id}/versions/{version_id}/pages", response_model=PdfPageSources)
+async def pdf_pages(
+    upload_id: str, version_id: str, db: DB, learner: Learner, settings: SettingsDep
+) -> PdfPageSources:
+    source = await owned_pdf_version(upload_id, version_id, db, learner, settings)
+    return await run_in_threadpool(pdf_page_sources.read, *source)
+
+
+@router.get(
+    "/uploads/{upload_id}/versions/{version_id}/pages/{page}/preview",
+    response_class=Response,
+    responses={200: {"content": {"image/png": {}}}},
+)
+async def preview_pdf_page(
+    upload_id: str, version_id: str, page: int, db: DB, learner: Learner, settings: SettingsDep
+) -> Response:
+    source = await owned_pdf_version(upload_id, version_id, db, learner, settings)
+    png = await run_in_threadpool(pdf_page_preview.render, *source, page)
+    return Response(
+        png,
+        media_type="image/png",
+        headers={
+            "Cache-Control": "private, no-store",
+            "X-Content-Type-Options": "nosniff",
+        },
     )
 
 

@@ -41,6 +41,13 @@ async def test_mixed_pdf_pages_and_previous_transcription_remain_bound_to_saved_
     old = await pages(first["document_version_id"])
     assert [(p["page"], p["ocr"]) for p in old] == [(1, False), (2, True)]
     assert "\n\n".join(p["text"] for p in old) == first["text"]
+    preview_url = base + first["document_version_id"] + "/pages/2/preview"
+    preview = await client.get(preview_url)
+    assert preview.status_code == 200 and preview.content.startswith(b"\x89PNG\r\n\x1a\n")
+    assert preview.headers["cache-control"] == "private, no-store"
+    assert preview.headers["x-content-type-options"] == "nosniff"
+    assert (await client.get(preview_url.replace("/2/preview", "/3/preview"))).status_code == 404
+    assert (await client.get(base + "wrong/pages/2/preview")).status_code == 404
     quote = "Datenbankrechte und Zeilenfilter"
     assert quote not in old[0]["text"] and quote in old[1]["text"]
     monkeypatch.setattr(
@@ -81,6 +88,11 @@ async def test_mixed_pdf_pages_and_previous_transcription_remain_bound_to_saved_
     assert await pages(first["document_version_id"]) == []
     source = next((tmp_path / "private").rglob("*.pdf"))
     assert not read(source, tmp_path / "other-owner", version.content_hash).pages
+    assert (await client.get(preview_url)).status_code == 404
+    latest_preview = base + second["document_version_id"] + "/pages/2/preview"
+    assert (await client.get(latest_preview)).content == preview.content
+    source.write_bytes(native_pdf("A different file must not be shown."))
+    assert (await client.get(latest_preview)).status_code == 404
 
 
 @runtime
