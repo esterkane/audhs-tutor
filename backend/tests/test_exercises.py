@@ -3,6 +3,7 @@
 results (all pass / partial / error / malformed), evidence + FSRS + delayed transfer item through the
 ordinary attempt route, exercise excluded from the item rotation, no host execution anywhere."""
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -225,3 +226,24 @@ def test_backend_never_executes_learner_code() -> None:
         assert not re.search(r"\b(exec|eval|compile|subprocess|os\.system|__import__)\s*\(", src), (
             rel
         )
+
+
+async def test_concurrent_first_open_keeps_one_exercise_and_check(db, session_factory):
+    node = await _node(db)
+
+    readiness = asyncio.Barrier(8)
+
+    async def open_exercise():
+        async with session_factory() as connection:
+            skill = await connection.get(models.SkillNode, node.id)
+            await readiness.wait()
+            item = await exercises.ensure_exercise(connection, skill)
+            return item.id, item.item_json["check_assessment_id"]
+
+    results = await asyncio.gather(*(open_exercise() for _ in range(8)))
+    assert len(set(results)) == 1
+    rows = (
+        await db.scalars(select(models.Assessment).where(models.Assessment.skill_id == node.id))
+    ).all()
+    catalogue_ids = {a.id for a in rows if a.item_json.get("exercise_id") == "attn-scaled-softmax"}
+    assert catalogue_ids == set(results[0])

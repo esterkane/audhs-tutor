@@ -111,3 +111,18 @@ async def test_no_connection_cannot_return_computed_balance():
     result = await balance.balance_answer(EN, state(), None)
     assert result.calls[0][-1] is True
     assert "50" not in result.turn.text and "No measured balance" in result.turn.text
+
+
+@pytest.mark.parametrize(
+    "german,changed,unchanged",
+    [
+        (False, "would update zero rows", "would still update the row"),
+        (True, "keine Zeile aktualisieren", "weiterhin aktualisieren"),
+    ],
+)
+def test_hypothetical_balance_guard_depends_on_committed_value(german, changed, unchanged):
+    for debit, phrase in [(20, changed), (0, unchanged)]:
+        values = balance.BalanceInput(initial=100, a_debit=debit, b_operation="set", b_value=70)
+        answer = balance.render_balance(measured(values), values, german)
+        assert phrase in answer and "`balance = 100`" in answer
+        assert "WHERE id = 1 RETURNING balance;" in answer

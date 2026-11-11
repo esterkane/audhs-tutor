@@ -65,14 +65,18 @@ for (const language of ['en', 'de'])
         await run.press('Enter')
         const marker = (de ? 'Bestätigter Kontostand: ' : 'Committed balance: ') + result + '.'
         await expect(page.getByText(marker, { exact: false }).last()).toBeVisible({ timeout: 25000 })
+        const contrast = de ? 'Der Kontostand bliebe 80.' : 'The balance would remain 80.'
+        await expect(page.getByText(contrast, { exact: false }).last()).toBeVisible()
         const saved = await history()
         expect(saved.slice(0, previous.length)).toEqual(previous)
         expect(saved).toHaveLength(previous.length + 2)
         expect(saved.at(-1).tutor_turn.text).toContain(marker)
+        expect(saved.at(-1).tutor_turn.text).toContain(contrast)
         previous = saved
         await page.reload()
         await expect(chat).toHaveValue('Keep this unsent finding.')
         await expect(page.getByText(marker, { exact: false }).last()).toBeVisible()
+        await expect(page.getByText(contrast, { exact: false }).last()).toBeVisible()
         await toggle.press('Enter')
         await expect(page.getByLabel(de ? 'Operation von B' : 'Operation for B')).toHaveValue(mode)
         expect(await history()).toEqual(saved)
