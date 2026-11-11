@@ -70,6 +70,13 @@ def test_real_sql_results_and_serialization_failure():
         "not_in": [None, False, True, None],
         "not_exists": [True, False, True, True],
     }
+    assert report["array_positions"] == {
+        "repeated": [1, 1],
+        "missing": [0, None],
+        "empty": [0, None],
+        "zero_origin": [1, 0],
+        "negative_origin": [1, -2],
+    }
     assert report["read_committed"]["absolute_final_balance"] == 80
     assert report["read_committed"]["relative_final_balance"] == 70
     for assignment in ("absolute", "relative"):

@@ -20,6 +20,8 @@ SOURCES = [
     "https://www.postgresql.org/docs/17/transaction-iso.html",
     "https://www.postgresql.org/docs/17/mvcc-serialization-failure-handling.html",
     "https://www.postgresql.org/docs/17/functions-subquery.html",
+    "https://www.postgresql.org/docs/17/intarray.html",
+    "https://www.postgresql.org/docs/17/functions-array.html",
 ]
 
 
@@ -225,6 +227,35 @@ async def skew(db: Database, isolation: str) -> dict[str, object]:
             if connection.returncode is None:
                 connection.kill()
                 await connection.wait()
+
+
+def array_positions(db: Database) -> dict[str, list[int | None]]:
+    """Measure the extension's position and core array subscript for the same inputs."""
+    db.sql("CREATE EXTENSION intarray WITH SCHEMA accuracy")
+    observed = json.loads(
+        db.sql("""
+        WITH cases(label, items, needle) AS (VALUES
+            ('repeated', ARRAY[7,7], 7),
+            ('missing', ARRAY[7,7], 5),
+            ('empty', ARRAY[]::integer[], 7),
+            ('zero_origin', '[0:1]={7,7}'::integer[], 7),
+            ('negative_origin', '[-2:-1]={7,7}'::integer[], 7)
+        )
+        SELECT json_object_agg(label, json_build_array(
+            accuracy.idx(items, needle), array_position(items, needle)
+        )) FROM cases
+    """)
+    )
+    expected = {
+        "repeated": [1, 1],
+        "missing": [0, None],
+        "empty": [0, None],
+        "zero_origin": [1, 0],
+        "negative_origin": [1, -2],
+    }
+    if json.dumps(observed, sort_keys=True) != json.dumps(expected, sort_keys=True):
+        raise AssertionError(f"Unexpected array position observations: {observed!r}")
+    return observed
 
 
 def null_comparisons(db: Database) -> dict[str, object]:
@@ -435,6 +466,7 @@ def run() -> dict[str, object]:
                 "missing_grant_sqlstate": missing_grant,
             },
             "null_comparisons": null_comparisons(db),
+            "array_positions": array_positions(db),
             "read_committed": asyncio.run(read_committed(db)),
             "concurrency": [
                 asyncio.run(skew(db, level))

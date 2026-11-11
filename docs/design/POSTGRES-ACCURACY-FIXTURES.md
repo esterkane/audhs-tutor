@@ -20,6 +20,12 @@ The JSON report includes the actual server version, image ID and these observati
 - UPDATE USING excludes an ineligible existing row (zero updated rows).
 - UPDATE WITH CHECK rejects an invalid proposed row and leaves stored data unchanged.
 - Missing UPDATE privilege also produces SQLSTATE 42501; that code alone is not a diagnosis.
+- Each pair in `array_positions` reports `intarray.idx` first and core `array_position`
+  second. An absent item gives `[0, null]`, including on an empty integer array. For a
+  match at the first element of a zero-based or negative-based array, the extension
+  returned position 1 while the core function returned the actual subscript (0 or −2).
+  These cases let reviewers check explanations that confuse the no-match sentinel with
+  a valid zero subscript.
 - Four ordered NOT IN cases produce UNKNOWN/FALSE/TRUE/UNKNOWN, including NULL against an
   empty integer subquery. Equality-based NOT EXISTS produces TRUE/FALSE/TRUE/TRUE.
 - Read Committed constant assignments finish at 80, while database-side subtraction
