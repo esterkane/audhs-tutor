@@ -250,3 +250,19 @@ async def test_stream_boundary_adapts_only_safe_host_errors(known):
         assert failure.value.__cause__ is original
     else:
         assert failure.value is original
+
+
+def test_neutral_hosted_wire_requires_empty_typed_ledger():
+    from app.integrations.supabase_bridge import hosted_decision_schema
+    from app.integrations.supabase_mode import mode_schema, mode_scope
+    from app.integrations.supabase_progress import progress_schema, progress_scope
+    from app.models_ai.openai_responses import compatible_schema
+
+    state = SimpleNamespace(mode="neutral")
+    with progress_scope(state), mode_scope(state):
+        schema = mode_schema(progress_schema(hosted_decision_schema(())))
+    ledger = compatible_schema(schema)["$defs"]["SelectedModeMetadata"]["properties"][
+        "ledger_delta"
+    ]
+    assert ledger["items"] == {"type": "string"}
+    assert ledger["maxItems"] == 0

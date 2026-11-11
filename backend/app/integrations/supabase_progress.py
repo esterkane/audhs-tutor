@@ -69,7 +69,8 @@ def _neutral_schema(base: type[BaseModel]) -> type[BaseModel]:
     metadata = create_model(
         "UnassessedProjectMetadata",
         __base__=metadata_types[0],
-        ledger_delta=(list[Any], Field(default_factory=list, max_length=0)),
+        # Hosted structured output requires typed items even in an always-empty array.
+        ledger_delta=(list[str], Field(default_factory=list, max_length=0)),
     )
     return create_model("UnassessedProjectDecision", __base__=base, state=(metadata | None, None))
 
