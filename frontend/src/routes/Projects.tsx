@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, apiFetch, type Schemas } from '../lib/api'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
+import { ProjectSqlPractice } from '../features/programs/ProjectSqlPractice'
 import { useDraftRecovery } from '../features/curriculum/useDraftRecovery'
 
 type Project = Schemas['LearningProjectOut']
@@ -157,6 +158,8 @@ function ProjectEditor({ project }: { project: Project }) {
           <Link to={project.brief.workspace}>Open the imported Supabase/PostgreSQL lab</Link>
         </p>
       )}
+
+      {project.slug === 'supabase-postgres-support' && <ProjectSqlPractice projectId={project.id} />}
 
       {typeof project.brief.source === 'string' && (
         <p>
