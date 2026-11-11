@@ -56,6 +56,8 @@ def test_actual_postgres_retirement_keeps_other_origins_and_failed_fetch_urls(in
             "INSERT INTO tutor.docs_source VALUES "
             "('https://supabase.com/keep','active'),('https://supabase.com/missing','active'),"
             "('https://supabase.com/temporary-fetch-failure','active'),"
+            "('https://supabase.com/openapi.json','active'),"
+            "('https://supabase.com/docs/schema/openapi.json','active'),"
             "('https://www.postgresql.org/docs/17/sql-grant.html','active'),"
             "('https://supabase.com.evil.invalid/unrelated','active')"
         )
@@ -86,6 +88,8 @@ def test_actual_postgres_retirement_keeps_other_origins_and_failed_fetch_urls(in
             for line in db.sql("SELECT url,status FROM tutor.docs_source ORDER BY url").splitlines()
         )
         assert states["https://supabase.com/missing"] == "retired"
+        assert states["https://supabase.com/openapi.json"] == "active"
+        assert states["https://supabase.com/docs/schema/openapi.json"] == "active"
         assert states["https://supabase.com/temporary-fetch-failure"] == "active"
         assert states["https://www.postgresql.org/docs/17/sql-grant.html"] == "active"
         assert states["https://supabase.com.evil.invalid/unrelated"] == "active"
@@ -342,3 +346,58 @@ async def test_changed_page_refresh_automatically_keeps_recorded_qwen(indexer, m
     assert posted[0]["model"] == "qwen3-embedding:0.6b"
     assert all(not text.startswith("search_document: ") for text in posted[0]["input"])
     assert write.call_args.args[1] == "qwen3-embedding:0.6b"
+
+
+async def test_html_error_returned_as_success_cannot_retire_or_overwrite(indexer, monkeypatch):
+    from unittest.mock import Mock
+
+    import httpx
+
+    url = "https://supabase.com/llms/cli.txt"
+    client = httpx.AsyncClient
+    transport = httpx.MockTransport(
+        lambda req: httpx.Response(
+            200,
+            text="<!DOCTYPE html><html>Service unavailable</html>" if str(req.url) == url else url,
+        )
+    )
+    monkeypatch.setattr(indexer.httpx, "AsyncClient", lambda: client(transport=transport))
+    monkeypatch.setattr(sys, "argv", ["ingest", "--profile", "all"])
+    monkeypatch.setattr(
+        indexer, "existing_hashes", lambda: {url: ("old", 1, "qwen3-embedding:0.6b")}
+    )
+    monkeypatch.setenv("EMBEDDINGS_PROVIDER", "ollama")
+    monkeypatch.delenv("EMBEDDINGS_MODEL", raising=False)
+    write, retire = Mock(), Mock()
+    monkeypatch.setattr(indexer, "upsert", write)
+    monkeypatch.setattr(indexer, "retire_missing", retire)
+    assert await indexer.main() == 1
+    write.assert_not_called()
+    retire.assert_not_called()
+    assert not indexer.RAW_DIR.exists()
+
+
+async def test_html_index_with_valid_document_link_stops_before_discovery(indexer, monkeypatch):
+    from unittest.mock import Mock
+
+    import httpx
+
+    requested = []
+
+    def handle(request):
+        requested.append(str(request.url))
+        return httpx.Response(
+            200, text="<html><p>Unavailable. Try https://supabase.com/llms/cli.txt </p></html>"
+        )
+
+    client = httpx.AsyncClient
+    monkeypatch.setattr(
+        indexer.httpx, "AsyncClient", lambda: client(transport=httpx.MockTransport(handle))
+    )
+    monkeypatch.setattr(sys, "argv", ["ingest", "--profile", "all"])
+    monkeypatch.setattr(indexer, "existing_hashes", lambda: {})
+    retire = Mock()
+    monkeypatch.setattr(indexer, "retire_missing", retire)
+    assert await indexer.main() == 2
+    assert requested == [indexer.INDEX_DEFAULT]
+    retire.assert_not_called()

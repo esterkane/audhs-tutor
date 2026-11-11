@@ -30,7 +30,7 @@ TOOLS: list[dict[str, Any]] = json.loads(r"""
 [
   {
     "name": "search_docs",
-    "description": "Hybrid (semantic + full-text) search over the ingested official Supabase documentation corpus. Call before asserting any product behaviour. Returns chunks with url, anchor, heading_path, content, tier, fetched_at, score. Product filters follow URL categories: pgvector and vector-search guides are mainly ai. Search ai with database when both are in scope; preserve explicitly requested product filters.",
+    "description": "Hybrid (semantic + full-text) search over the ingested official Supabase documentation corpus. Call before asserting any product behaviour. Returns chunks with url, anchor, heading_path, content, tier, fetched_at, score. Product filters follow URL categories. For supabase/config.toml settings use local-development; for CLI commands use cli. Self-hosted environment variables are under self-hosting. For vector queries, pgvector and vector-search guides are mainly ai. Search ai with database when both are in scope; preserve explicitly requested product filters.",
     "input_schema": {
       "type": "object",
       "properties": {
@@ -244,7 +244,7 @@ class SearchDocsInput(_Input):
     edition: str | None = Field(default=None, pattern=r"^(unversioned|v[0-9]{1,3})$")
     products: list[Product] | None = Field(
         default=None,
-        description="Preserve requested scope. URL categories: pgvector/vector-search guides are mainly ai; include ai with database when both are in scope.",
+        description="Preserve requested scope. URL categories: config.toml settings use local-development, CLI commands use cli and self-hosted environment variables use self-hosting. pgvector/vector-search guides are mainly ai; include ai with database when both are in scope.",
     )
     k: int = Field(default=8, ge=1, le=12)
 
@@ -324,6 +324,21 @@ def _error(message: str) -> ToolResult:
 
 
 # ----------------------------------------------------------------------------- handlers
+def _config_products(text: str) -> list[Product] | None:
+    """Recognize an explicit local or self-hosted configuration lookup in either tutor language."""
+    if not re.search(r"config(?:uration)?|setting|environment variable|einstellung|konfigur|umgebungsvariable", text, re.I):
+        return None
+    if re.search(r"\b(?:compare|versus|vs|vergleich|dashboard|cloud)\b|managed project|(?<!self-)(?<!self )hosted project", text, re.I):
+        return None
+    local = re.search(r"\b(?:local(?:ly)?|lokal\w*)\s+(?:(?:supabase|development)\s+)?(?:cli|project|projekt)|config\.toml", text, re.I)
+    hosted = re.search(r"\bself[- ]host(?:ed|ing)|selbst[- ]gehostet\w*", text, re.I)
+    if local and not hosted:
+        return ["local-development", "cli"]
+    if hosted and not local:
+        return ["self-hosting"]
+    return None
+
+
 async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudget) -> ToolResult:
     budget.searched_docs = True
     query = args.query
@@ -346,6 +361,7 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
         query += "\n" + ", ".join(f"PostgreSQL {v}" for v in targeted)
     versions = list(dict.fromkeys(map(major, targeted)))
     sdk = learner_sdk_scope(ctx.learner_text)
+    inferred_products = None
     if sdk is not None:
         # Planner hints may split a comparison but cannot invent a language or version.
         query = row_page_query(query, ctx.learner_text)
@@ -354,8 +370,17 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
             selected = SdkScope(sdk.sdk, (args.edition,))
         chunks = await ctx.retriever.search(query, k=args.k, products=args.products, sdk_scope=selected)
     else:
-        chunks = await ctx.retriever.search(query, k=args.k, products=args.products)
-    scope: dict[str, Any] = {}
+        if args.products is None and not versions:
+            # A planner may run several searches for one question. Narrow only when
+            # this specific lookup and the original learner text agree on the area.
+            learner_products = _config_products(ctx.learner_text)
+            if learner_products and learner_products == _config_products(query):
+                inferred_products = learner_products
+        chunks = await ctx.retriever.search(query, k=args.k, products=inferred_products if inferred_products else args.products)
+        if inferred_products and not chunks:
+            inferred_products = None
+            chunks = await ctx.retriever.search(query, k=args.k, products=None)
+    scope: dict[str, Any] = {"scope_note": {"searched_products": inferred_products}} if inferred_products else {}
     if (args.products and "ai" not in args.products
             and re.search(r"\bpgvector\b|<->|<=>|<#>", query, re.IGNORECASE)):
         # Report taxonomy coverage without widening a learner/model-selected filter.

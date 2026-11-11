@@ -269,3 +269,29 @@ async def test_one_side_of_comparison_does_not_establish_other_editions():
     assert retriever.calls[0][0] == "PostgreSQL 17 grants"
     assert scope["requested_majors"] == ["17", "18"]
     assert scope["searched_majors"] == ["17"] and scope["missing_from_results"] == ["18"]
+
+@pytest.mark.parametrize(("text", "expected"), [
+    ("Which local CLI setting controls JWT expiry?", ["local-development", "cli"]),
+    ("Welche lokale CLI-Einstellung regelt die Gültigkeit?", ["local-development", "cli"]),
+    ("Which environment variable enables GitHub on a self-hosted project?", ["self-hosting"]),
+    ("Welche Umgebungsvariable steuert selbst gehostetes Auth?", ["self-hosting"]),
+    ("How do I link the CLI to my hosted project?", None),
+    ("Compare my local CLI setting with the cloud dashboard", None),
+    ("Which setting applies to both my local CLI and self-hosted server?", None),
+    ("Why is a transaction slow on a self-hosted server?", None),
+])
+async def test_configuration_lookup_scope(text, expected):
+    retriever = FakeRetriever()
+    result = await t._search_docs(t.SearchDocsInput(query=text), ctx(retriever=retriever, learner_text=text), t.TurnBudget())
+    assert retriever.calls == [(text, 8, expected)]
+    assert json.loads(result.content).get("scope_note", {}).get("searched_products") == expected
+
+
+async def test_configuration_lookup_respects_explicit_filters_and_broadens_empty_results():
+    query = "Which local CLI setting controls token expiry?"
+    retriever = FakeRetriever([])
+    context = ctx(retriever=retriever, learner_text=query)
+    await t._search_docs(t.SearchDocsInput(query=query, products=["auth"]), context, t.TurnBudget())
+    await t._search_docs(t.SearchDocsInput(query="token lifetime"), context, t.TurnBudget())
+    await t._search_docs(t.SearchDocsInput(query=query), context, t.TurnBudget())
+    assert [call[2] for call in retriever.calls] == [["auth"], None, ["local-development", "cli"], None]

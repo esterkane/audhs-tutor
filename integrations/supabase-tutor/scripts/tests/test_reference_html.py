@@ -133,3 +133,39 @@ def test_product_article_requires_its_own_canonical_and_preserves_code(family, p
     assert "query = (\n    x < 4\n)" in result and "Unrelated menu" not in result
     with pytest.raises(ValueError):
         reference_markdown(source.replace(url, URL), url)
+
+
+@pytest.mark.parametrize("url,identity", ing.CONFIG_GUIDES.items())
+def test_configuration_guide_uses_article_and_preserves_code(tmp_path, url, identity):
+    title, setting = identity
+    html = f"""<link rel="canonical" href="{url}"><h1>Navigation</h1>
+    <article id="sb-docs-guide-main-article"><header><h1><p>{title}</p></h1></header>
+    <h2>{setting}</h2><pre><code><span class="linenumber">1</span>value = 17</code></pre>
+    </article><div>Feedback panel</div>"""
+    assert ing.canonical_md(url + ".md") == ing.canonical_md(url) == url
+    async def run(body):
+        async with httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(200, text=body))) as client:
+            return await ing.fetch(client, ing.Doc(url, 1, ing.product_of(url)), asyncio.Semaphore(1), raw_dir=tmp_path)
+    doc = asyncio.run(run(html))
+    assert doc.status == "active" and doc.url == url
+    assert doc.text.startswith(f"# {title}\n") and "\nvalue = 17\n" in doc.text
+    assert "Navigation" not in doc.text and "Feedback panel" not in doc.text
+    assert (tmp_path / f"{doc.hash}.md").read_text() == doc.text
+    for invalid in (html.replace(url, url + "-other"), html.replace(setting, "missing"), html.replace("</article>", "")):
+        assert asyncio.run(run(invalid)).status == "failed"
+    assert len(list(tmp_path.iterdir())) == 1
+
+
+def test_config_chunks_only_cite_published_heading_links():
+    url = "https://supabase.com/docs/guides/local-development/cli/config"
+    text = f"""# Supabase CLI config
+Introduction.
+## Auth Config[#]({url}#auth-config)
+### `auth.jwt_expiry`[#]({url}#auth.jwt_expiry)
+Tokens are valid for the configured number of seconds.
+### Other
+Another setting.
+"""
+    chunks = ing.chunk_markdown(text, "local-development", "/docs/guides/local-development/cli/config")
+    assert [chunk.anchor for chunk in chunks] == [None, "auth.jwt_expiry", None]
+    assert chunks[1].heading_path == "Supabase CLI config > Auth Config > `auth.jwt_expiry`"

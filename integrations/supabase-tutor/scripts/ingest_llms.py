@@ -33,18 +33,27 @@ from urllib.parse import urljoin, urlparse
 import httpx
 from db import admin_url
 from enrolled_refresh import enrolled, stage_checks
-from reference_html import REFERENCE_URL, CanonicalMethod, NoReferenceBody, reference_markdown
+from reference_html import (
+    CONFIG_GUIDES,
+    REFERENCE_URL,
+    CanonicalMethod,
+    NoReferenceBody,
+    config_guide_markdown,
+    reference_markdown,
+)
 
 # Support execution both as a script and from an editable vendor installation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from backend.tutor.embedding_space import (
     OPENAI,
+    QWEN,
     RECORDED_SQL,
     checked_vectors,
     ollama_payload,
     resolve_model,
 )
 
+OPENAPI_SUFFIX = "openapi.json"
 INDEX_DEFAULT = "https://supabase.com/llms.txt"
 UA = "kaenguru-tutor-ingest/0.1 (+local dev)"
 SUPPORT_SKIP = re.compile(r"/llms/(dart|swift|kotlin|csharp)\.txt$")
@@ -100,13 +109,17 @@ def product_of(url: str) -> str:
     return "other"
 
 
+def is_html_document(text: str) -> bool:
+    return bool(re.match(r"^\s*(?:<!doctype\s+html\b|<html\b)", text.lstrip("\ufeff"), re.IGNORECASE))
+
+
 def parse_index(text: str, base: str) -> list[tuple[str, int]]:
     """Return (url, tier) for every link in llms.txt, including llms-full.txt from the intro."""
     urls = re.findall(r"https?://[^\s)\]]+", text)
     seen, out = set(), []
     for u in urls:
         u = urljoin(base, u.rstrip(".,"))
-        if u in seen or "mcp.supabase.com" in u or u.endswith("openapi.json"):
+        if u in seen or "mcp.supabase.com" in u or u.endswith(OPENAPI_SUFFIX):
             continue
         seen.add(u)
         out.append((u, 1))
@@ -120,6 +133,9 @@ KB_LINK = re.compile(r"https://supabase\.com/kb/[A-Za-z0-9/_\-.]+")
 def canonical_md(url: str) -> str | None:
     """Docs/KB page URL → its Markdown twin (`.../page.md`); None for assets like `.png`."""
     path = urlparse(url).path.rstrip("/")
+    guide_url = f"https://supabase.com{path.removesuffix('.md')}"
+    if guide_url in CONFIG_GUIDES:
+        return guide_url
     last = path.rsplit("/", 1)[-1]
     if last.endswith(".md"):
         return f"https://supabase.com{path}"
@@ -217,7 +233,22 @@ async def fetch(client: httpx.AsyncClient, doc: Doc, sem: asyncio.Semaphore, *, 
             if r.status_code != 200 or not r.text.strip():
                 doc.status = "failed"
                 return doc
-            if REFERENCE_URL.fullmatch(doc.url):
+            # A successful HTTP status can still deliver a login or error page.
+            # A seed with lost links must not authorize retirement of its descendants.
+            if urlparse(doc.url).path.lower().endswith((".txt", ".md")) and is_html_document(r.text):
+                doc.status = "failed"
+                doc.failure_reason = "unexpected_html"
+                return doc
+            if doc.url in CONFIG_GUIDES:
+                try:
+                    if str(r.url) != doc.url:
+                        raise ValueError("Configuration guide redirected")
+                    doc.text = config_guide_markdown(r.text, doc.url)
+                except ValueError:
+                    doc.status = "failed"
+                    return doc
+                content = doc.text.encode()
+            elif REFERENCE_URL.fullmatch(doc.url):
                 final_url = str(r.url).rstrip("/")
                 if (not REFERENCE_URL.fullmatch(final_url) or
                         final_url.rsplit("/", 1)[0] != doc.url.rstrip("/").rsplit("/", 1)[0]):
@@ -319,8 +350,21 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
 
     # Rendered reference headings do not reliably define HTML fragment IDs.
     synthesize_anchors = not urlparse(source_file).path.startswith("/docs/reference/")
+    config_url = urljoin("https://supabase.com", source_file)
     chunks: list[Chunk] = []
     for hs, paras in sections:
+        anchor = slug(hs[-1]) if hs and synthesize_anchors else None
+        if config_url in CONFIG_GUIDES:
+            # These rendered pages use setting names verbatim (including dots and underscores).
+            # Keep only an explicit permalink for this page; headings without one cite the page.
+            anchor = None
+            titles = []
+            for index, heading in enumerate(hs):
+                link = re.search(r"\[#\]\(" + re.escape(config_url) + r"#([\w.-]+)\)$", heading)
+                titles.append(heading[:link.start()].rstrip() if link else heading)
+                if link and index == len(hs) - 1:
+                    anchor = link[1]
+            hs = titles
         cur: list[str] = []
         carry: list[str] = []
 
@@ -333,7 +377,7 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
                 Chunk(
                     ord=len(chunks),
                     heading_path=" > ".join(hs),  # noqa: B023 - flush() runs inside the loop
-                    anchor=slug(hs[-1]) if hs and synthesize_anchors else None,  # noqa: B023
+                    anchor=anchor,  # noqa: B023
                     content=content,
                     meta={
                         "product": product,
@@ -359,7 +403,17 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
 async def embed(texts: list[str], provider: str, client: httpx.AsyncClient, model: str) -> list[list[float]]:
     if provider == "ollama":
         url = os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/embed"
-        r = await client.post(url, json=ollama_payload(texts, model, query=False), timeout=120)
+        payload = ollama_payload(texts, model, query=False)
+        r = await client.post(url, json=payload, timeout=120)
+        if model == QWEN and r.status_code == 400:
+            # Keep long code and tables intact. Ollama can load this model at 4096
+            # tokens by default even though the model supports a 32768-token window.
+            try:
+                error = r.json()
+            except ValueError:
+                error = None
+            if isinstance(error, dict) and error.get("error") == "the input length exceeds the context length":
+                r = await client.post(url, json={**payload, "options": {"num_ctx": 32768}}, timeout=120)
         r.raise_for_status()
         return checked_vectors(r.json()["embeddings"], len(texts))
     if provider == "openai":
@@ -438,9 +492,10 @@ def retire_missing(urls: list[str], index_url: str = INDEX_DEFAULT) -> int:
     with psycopg.connect(admin_url()) as conn:
         cur = conn.execute(
             "update tutor.docs_source set status = 'retired' where status = 'active' "
-            "and starts_with(url, %s) and url <> all(%s) "
+            # The Markdown indexer deliberately excludes OpenAPI documents at discovery.
+            "and starts_with(url, %s) and url <> all(%s) and url not like %s "
             "and not starts_with(url, 'https://supabase.com/docs/reference/') and url <> all(%s)",
-            (prefix, urls, sorted(enrolled()))
+            (prefix, urls, "%" + OPENAPI_SUFFIX, sorted(enrolled()))
         )
         return cur.rowcount
 
@@ -486,6 +541,9 @@ async def main() -> int:
             idx.raise_for_status()
         except httpx.HTTPError as e:
             print(f"cannot fetch index {a.index}: {e}", file=sys.stderr)
+            return 2
+        if is_html_document(idx.text):
+            print("Expected a text documentation index, but received HTML.", file=sys.stderr)
             return 2
         targets = select(parse_index(idx.text, a.index), a.profile, a.only)
         if a.limit:
@@ -559,8 +617,9 @@ async def main() -> int:
     by_status: dict[str, int] = {}
     for _, s, _, _ in rows:
         by_status[s] = by_status.get(s, 0) + 1
+    chunk_action = "prepared" if a.dry_run else "written"
     print(f"\n{len(rows)} sources ({len(seeds)} from index, {len(expanded)} linked), "
-          f"{sum(r[2] for r in rows)} chunks written, status {by_status}, "
+          f"{sum(r[2] for r in rows)} chunks {chunk_action}, status {by_status}, "
           f"{seed_failed} index failures, {expand_failed} linked-page failures, {retired} retired"
           + ("; retirement skipped because seed discovery was incomplete" if seed_failed and not partial and not a.dry_run else "")
           + (f"; enrolled checks {review}" if a.check_enrolled else "")

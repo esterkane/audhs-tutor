@@ -142,3 +142,36 @@ def test_long_fenced_examples_keep_blank_lines_and_literal_headings(monkeypatch)
         chunks = ing.chunk_markdown("# Lesson\n\n" + example + "\n\n## Follow-up\nDone.", "api", "/guide")
         assert any(example in chunk.content and chunk.heading_path == "Lesson" for chunk in chunks)
         assert chunks[-1].heading_path.endswith("Follow-up")
+
+
+def test_long_qwen_document_retries_only_context_errors_and_keeps_full_input():
+    import asyncio
+    import json
+
+    import httpx
+    import pytest
+
+    async def run(error, final_status):
+        requests = []
+        text = "SQL table and code " * 3000
+
+        def respond(request):
+            requests.append(json.loads(request.content))
+            if len(requests) == 1:
+                return httpx.Response(400, json={"error": error})
+            return httpx.Response(final_status, json={"embeddings": [[0.5] * 768]})
+
+        async with httpx.AsyncClient(transport=httpx.MockTransport(respond)) as client:
+            if final_status == 200 and error == "the input length exceeds the context length":
+                assert await ing.embed([text], "ollama", client, ing.QWEN) == [[0.5] * 768]
+            else:
+                with pytest.raises(httpx.HTTPStatusError):
+                    await ing.embed([text], "ollama", client, ing.QWEN)
+        assert all(r["input"] == [text] and r["truncate"] is False for r in requests)
+        return requests
+
+    overflow = "the input length exceeds the context length"
+    for status in (200, 400):
+        initial, retry = asyncio.run(run(overflow, status))
+        assert retry == {**initial, "options": {"num_ctx": 32768}}
+    assert len(asyncio.run(run("unsupported dimensions", 400))) == 1
