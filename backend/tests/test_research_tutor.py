@@ -234,7 +234,7 @@ async def test_numbered_evidence_keeps_entire_source_and_attaches_exact_saved_te
         },
     }
     await db.commit()
-    fake_local.structured = {"section": "One proposed paragraph.", "source_indices": [3]}
+    fake_local.structured = {"section": "One proposed paragraph.", "source_indices": [3, 1, 3]}
     response = await client.post(
         f"/api/knowledge-material/drafts/{draft['id']}/research-tutor",
         json={"expected_version": 1, "question_id": "q1", "action": "draft"},
@@ -243,8 +243,11 @@ async def test_numbered_evidence_keeps_entire_source_and_attaches_exact_saved_te
     answer = response.json()["payload"]["authoring"]["research"]["questions"][0]["tutor_exchanges"][
         0
     ]["answer"]
-    assert answer["source_quotes"] == [passage[3600:]]
-    assert answer["source_passage_ids"] == [3]
+    assert answer["source_quotes"] == [passage[3600:], passage[:1800]]
+    assert answer["source_passage_ids"] == [3, 1]
+    await db.refresh(row)
+    saved_question = row.payload_json["authoring"]["research"]["questions"][0]
+    assert saved_question["tutor_exchanges"][0]["answer"] == answer
     content = fake_local.calls[0].messages[-1].content
     data = json.loads(content.split("\n", 1)[1].rsplit("\n", 1)[0])
     assert next(iter(data)) == "source_passages"

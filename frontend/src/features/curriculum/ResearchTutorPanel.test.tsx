@@ -7,7 +7,7 @@ import { ResearchTutorPanel } from './ResearchTutorPanel'
 
 afterEach(cleanup)
 const onTutor = vi.fn()
-function Harness({ draftOnly = false, checked = false, reference = false, hosted = false, tutorReady = true }: { tutorReady?: boolean; draftOnly?: boolean; checked?: boolean; reference?: boolean; hosted?: boolean }) {
+function Harness({ passageIds, draftOnly = false, checked = false, reference = false, hosted = false, tutorReady = true }: { passageIds?: number[]; tutorReady?: boolean; draftOnly?: boolean; checked?: boolean; reference?: boolean; hosted?: boolean }) {
   const research: Schemas['KnowledgeResearch'] = { passage: 'Sort and average the middle values.', topic: 'median', current: 0, questions: [] }
   const original = { id: 'q1', prompt: 'How?', findings: 'My findings', evidence: 'My source', unresolved: '', section: 'Existing paragraph', tutor_request: 'Help with the middle values', tutor_basis: '' }
   const [question, setQuestion] = useState<Schemas['ResearchQuestion']>({ ...original,
@@ -15,7 +15,7 @@ function Harness({ draftOnly = false, checked = false, reference = false, hosted
       findings: original.findings, evidence: original.evidence, unresolved: original.unresolved, section: original.section }),
     tutor_exchanges: [{ action: 'draft', request: 'Help with the middle values', model_call_id: checked || reference ? null : 'call1', ...(reference ? { reference: 'python.string-identity.v1' as const } : {}), ...(checked ? { calculation: 'python.string-repetition.v1' as const } : {}), answer: {
       discussion: draftOnly ? '' : 'Average the two middle values.', needs_check: 'External links have not been checked.', next_question: '',
-      source_quotes: ['Sort and average the middle values.'], section: 'Proposed paragraph.' } }],
+      source_passage_ids: passageIds, source_quotes: ['Sort and average the middle values.'], section: 'Proposed paragraph.' } }],
   })
   return <><ResearchTutorPanel tutorReady={tutorReady} hosted={hosted} research={research} question={question} disabled={false} sourceChanged={false} onChange={setQuestion} onTutor={onTutor} />
     <output aria-label="my section">{question.section}</output>
@@ -119,4 +119,12 @@ it('keeps saved sections usable while new tutor requests wait for setup', () => 
   fireEvent.click(screen.getByText('Replace my section with tutor draft'))
   expect(screen.getByLabelText('my section')).toHaveTextContent('Proposed paragraph.')
   expect(onTutor).not.toHaveBeenCalled()
+})
+
+it.each([{ ids: [3] }, { ids: undefined }, { ids: [3, 1] }])('opens saved source quotes with only their recorded labels (%j)', ({ ids }) => {
+  render(<Harness passageIds={ids} />)
+  fireEvent.click(screen.getByText('Sources (1)'))
+  expect(screen.getByText('Sort and average the middle values.')).toBeVisible()
+  if (ids?.length === 1) expect(screen.getByText('Passage [3]')).toBeVisible()
+  else expect(screen.queryByText(/Passage \[/)).not.toBeInTheDocument()
 })
