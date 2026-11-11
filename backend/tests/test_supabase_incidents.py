@@ -228,3 +228,41 @@ def test_concurrency_does_not_bypass_chosen_teaching_mode_or_active_lab(changes)
 )
 def test_comparative_questions_delegate_even_with_a_recognized_error(report):
     assert select_plan(report, state()) is None
+
+
+@pytest.mark.parametrize(
+    ("report", "key"),
+    [
+        ("Invoice 42501 returns zero rows.", None),
+        ("Port 42703 reagiert langsam.", None),
+        ("SQLSTATE 42703 on invoice 42501.", "missing_column"),
+        ("Fehlercode 42703 bei Rechnung 42501.", "missing_column"),
+        ('relation "orders" does not exist; ticket 42501', "missing_relation"),
+        ('{"code":"42501","message":"lookup failed"}', "insufficient_privilege"),
+        ("ERROR: 42501: lookup failed", "insufficient_privilege"),
+        ("SQLSTATE [42P01] for ticket 42703", "missing_relation"),
+    ],
+)
+def test_incident_distinguishes_reported_codes_from_application_identifiers(report, key):
+    plan = select_plan(report, state())
+    assert (plan.key if plan else None) == key
+
+
+@pytest.mark.parametrize(
+    ("report", "key"),
+    [
+        (
+            '{"code":"23505","details":"Key (invoice_id)=(42501) already exists.",'
+            '"message":"duplicate key value violates unique constraint"}',
+            None,
+        ),
+        ('{"code":"42703","details":"invoice 42501","message":"lookup failed"}', "missing_column"),
+        ('The query succeeded and returned {"sqlstate":"42501"}.', None),
+        ('Rows: [{"code":"42501","message":"example field"}]', None),
+        ('Result: {"code":"42501"}', None),
+        ("SQLSTATE [42703]", "missing_column"),
+    ],
+)
+def test_postgrest_error_identity_is_separate_from_query_results(report, key):
+    plan = select_plan(report, state())
+    assert (plan.key if plan else None) == key

@@ -1,5 +1,6 @@
 """Reviewed diagnostic plans for reported PostgreSQL errors, without invented SQL."""
 
+import json
 import re
 from dataclasses import dataclass
 from typing import Any
@@ -226,6 +227,47 @@ def mixed_plan(plans: list[Diagnostic]) -> Diagnostic:
     )
 
 
+# An unlabelled five-digit number can be a port, invoice or ticket.
+_DIAGNOSTIC_CODE = r"(?:42P01|42703|42501)"
+_REPORTED_CODES = re.compile(
+    r"""\b(?:sqlstate|error(?:\s+code)?|fehler(?:code)?)\b\s*[:=]?\s*["'\[]?"""
+    rf"(?P<codes>{_DIAGNOSTIC_CODE}\b(?:\s*(?:,|/|\band\b|\bund\b)\s*{_DIAGNOSTIC_CODE}\b)*)",
+    re.I,
+)
+
+
+def _incident_prose(text: str) -> str:
+    """Keep PostgREST error identity and message separate from arbitrary JSON row data."""
+    decoder = json.JSONDecoder()
+    parts: list[str] = []
+    offset = 0
+    for start in re.finditer(r"[\[{]", text):
+        if start.start() < offset:
+            continue
+        try:
+            value, end = decoder.raw_decode(text, start.start())
+        except (ValueError, RecursionError):
+            continue
+        # Bracketed SQLSTATE labels such as [42703] are also valid JSON arrays.
+        if start.group() == "[" and re.search(
+            r"\bsqlstate\s*[:=]?\s*$", text[: start.start()], re.I
+        ):
+            continue
+        parts.append(text[offset : start.start()])
+        if isinstance(value, dict):
+            code = value.get("code")
+            message = value.get("message")
+            if (
+                isinstance(code, str)
+                and re.fullmatch(r"[0-9A-Z]{5}", code)
+                and isinstance(message, str)
+            ):
+                parts.append(f" SQLSTATE {code}: {message} ")
+        offset = end
+    parts.append(text[offset:])
+    return " ".join(parts)
+
+
 def select_plan(text: str, state: Any) -> Diagnostic | None:
     if state.mode != "incident" or state.active_lab is not None or len(text) > 8000:
         return None
@@ -237,6 +279,7 @@ def select_plan(text: str, state: Any) -> Diagnostic | None:
         or (re.search(r"\busing\b", text, re.I) and re.search(r"\bwith\s+check\b", text, re.I))
     ):
         return None
+    text = _incident_prose(text)
     # A resolved/negated report is not a new failure. Preserve distinct mixed error boundaries.
     if re.search(r"no longer|not getting|not seeing|kein.*mehr|nicht mehr", text, re.I):
         return None
@@ -268,7 +311,11 @@ def select_plan(text: str, state: Any) -> Diagnostic | None:
             for code in explicit_codes
         ):
             return None
-    codes = {code.upper() for code in re.findall(r"\b(?:42P01|42703|42501)\b", text, re.I)}
+    codes = {
+        code.upper()
+        for report in _REPORTED_CODES.finditer(text)
+        for code in re.findall(_DIAGNOSTIC_CODE, report["codes"], re.I)
+    }
     if "42P01" in codes and PLANS[2] not in found:
         found.append(PLANS[2])
     if "42703" in codes and PLANS[3] not in found:
