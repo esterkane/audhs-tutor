@@ -209,14 +209,12 @@ class ReviewedOrchestrator:
         )
         if reference is not None:
             yield ToolCall("search_docs", reference.messages[1]["content"][0]["input"])
-            yield ToolResultSummary(
-                "search_docs", False, "Versioned PostgreSQL SQLSTATE reference."
-            )
+            yield ToolResultSummary("search_docs", False, reference.summary)
             yield Token(reference.turn.text)
             yield Final(
                 turn=reference.turn,
                 new_messages=reference.messages,
-                model="reference:postgres-sqlstate.v1",
+                model=reference.model,
             )
             return
 
