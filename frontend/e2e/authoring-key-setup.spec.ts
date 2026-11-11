@@ -4,6 +4,12 @@ import axe from 'axe-core'
 
 for (const entry of ['/curriculum', '/preferences']) test(`explicit key save clears the field and keeps authoring mode and budget unchanged from ${entry}`,  async ({ page, request }) => {
   const before = await (await request.get(`${API}/api/authoring/setup`)).json()
+  let releaseSetup!: () => void
+  const setupReady = new Promise<void>(resolve => { releaseSetup = resolve })
+  await page.route('**/api/authoring/setup', async route => {
+    await setupReady
+    await route.fulfill({ json: before })
+  })
   let saves = 0
   await page.route('**/api/authoring/key', async route => {
     expect(route.request().postDataJSON()).toEqual({ key: 'synthetic-browser-secret' })
@@ -18,7 +24,11 @@ for (const entry of ['/curriculum', '/preferences']) test(`explicit key save cle
   await expect(save).toBeDisabled()
   await input.fill('synthetic-browser-secret')
   await expect(page.getByText(/Key entered but not saved/)).toBeVisible()
+  await expect(save).toBeDisabled()
+  releaseSetup()
+  await expect(save).toBeEnabled()
   await save.focus()
+  await expect(save).toBeFocused()
   await page.keyboard.press('Enter')
   await expect(page.getByText('API key saved on this machine. No model request was made.')).toBeVisible()
   await expect(input).toHaveValue('')
