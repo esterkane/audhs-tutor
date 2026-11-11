@@ -309,9 +309,7 @@ class NotebookLab:
                     "Notebook environment setup failed. Check network access and retry setup."
                 )
         finally:
-            if self.installer.returncode is None:
-                self.installer.terminate()
-                await self.installer.wait()
+            await self._terminate(self.installer)
             self.installer = None
 
     async def _start(self, course_id: str, install: bool, upload: Path | None = None) -> None:
@@ -423,14 +421,25 @@ class NotebookLab:
                 pass
         await self._stop_owned_process()
 
-    async def _stop_owned_process(self) -> None:
-        if self.process and self.process.returncode is None:
-            self.process.terminate()
+    @staticmethod
+    async def _terminate(process: asyncio.subprocess.Process) -> None:
+        if process.returncode is not None:
+            return
+        try:
+            process.terminate()
+            await asyncio.wait_for(process.wait(), 5)
+        except TimeoutError:
             try:
-                await asyncio.wait_for(self.process.wait(), 5)
-            except TimeoutError:
-                self.process.kill()
-                await self.process.wait()
+                process.kill()
+            except ProcessLookupError:
+                pass
+            await process.wait()
+        except ProcessLookupError:
+            await process.wait()
+
+    async def _stop_owned_process(self) -> None:
+        if self.process:
+            await self._terminate(self.process)
         if self.runtime:
             self.runtime.cleanup()
             self.runtime = None

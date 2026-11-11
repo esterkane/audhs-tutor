@@ -280,3 +280,34 @@ async def test_occupied_port_cannot_claim_readiness_or_receive_login_token(
         ) and lab.proof_key.hex() not in str(seen[0].url)
     finally:
         await lab.close()
+
+
+@pytest.mark.skipif(__import__("os").name != "posix", reason="Uses POSIX signal handling")
+async def test_shutdown_reaps_installer_that_ignores_termination(tmp_path: Path) -> None:
+    import sys
+
+    ready = tmp_path / "installer-ready"
+    lab = NotebookLab(Settings(_env_file=None))  # type: ignore[call-arg]
+    lab.task = asyncio.create_task(
+        lab.command(
+            [
+                sys.executable,
+                "-c",
+                "import pathlib,signal,sys,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);"
+                "pathlib.Path(sys.argv[1]).touch();time.sleep(30)",
+                str(ready),
+            ]
+        )
+    )
+    try:
+        async with asyncio.timeout(10):
+            while not ready.exists():  # noqa: ASYNC110 - sentinel from the child process
+                await asyncio.sleep(0.02)
+        child = lab.installer
+        assert child is not None
+        await asyncio.wait_for(lab.close(), 10)
+        assert child.returncode is not None and lab.installer is None
+    finally:
+        if lab.installer and lab.installer.returncode is None:
+            lab.installer.kill()
+            await lab.installer.wait()
