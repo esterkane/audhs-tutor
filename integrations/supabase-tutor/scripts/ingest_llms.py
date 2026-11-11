@@ -572,8 +572,9 @@ async def main() -> int:
     by_status: dict[str, int] = {}
     for _, s, _, _ in rows:
         by_status[s] = by_status.get(s, 0) + 1
+    chunk_action = "prepared" if a.dry_run else "written"
     print(f"\n{len(rows)} sources ({len(seeds)} from index, {len(expanded)} linked), "
-          f"{sum(r[2] for r in rows)} chunks written, status {by_status}, "
+          f"{sum(r[2] for r in rows)} chunks {chunk_action}, status {by_status}, "
           f"{seed_failed} index failures, {expand_failed} linked-page failures, {retired} retired"
           + ("; retirement skipped because seed discovery was incomplete" if seed_failed and not partial and not a.dry_run else "")
           + (f"; enrolled checks {review}" if a.check_enrolled else "")
