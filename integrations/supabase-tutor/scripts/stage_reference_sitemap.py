@@ -16,7 +16,7 @@ from xml.etree import ElementTree
 
 import httpx
 
-from ingest_llms import Doc, UA, chunk_markdown, fetch
+from ingest_llms import Doc, UA, chunk_markdown, fetch, product_of
 
 SITEMAP = "https://supabase.com/docs/sitemap.xml"
 SDK = ("csharp", "dart", "javascript", "kotlin", "python", "swift")
@@ -99,7 +99,7 @@ async def stage(client: httpx.AsyncClient, targets: list[str], directory: Path, 
         for offset in range(0, len(targets), 8):
             batch = targets[offset : offset + 8]
             pages = await asyncio.gather(
-                *(fetch(client, Doc(url, 1, "api"), semaphore, raw_dir=raw_dir) for url in batch)
+                *(fetch(client, Doc(url, 1, product_of(url)), semaphore, raw_dir=raw_dir) for url in batch)
             )
             for url, doc in zip(batch, pages, strict=True):
                 group = classify(url)
@@ -119,7 +119,7 @@ async def stage(client: httpx.AsyncClient, targets: list[str], directory: Path, 
                     row["status"] = "canonical_content_changed_during_stage"
                     failures += 1
                 else:
-                    chunks = chunk_markdown(doc.text, "api", urlsplit(doc.url).path)
+                    chunks = chunk_markdown(doc.text, product_of(doc.url), urlsplit(doc.url).path)
                     if not chunks:
                         row["status"] = "no_passages"
                         failures += 1
@@ -148,6 +148,7 @@ async def stage(client: httpx.AsyncClient, targets: list[str], directory: Path, 
             records.flush()
             passages.flush()
     summary = {
+        "chunk_format": "fenced-markdown-v2",
         "sitemap_url": SITEMAP,
         "manifest_sha256": hashlib.sha256(manifest).hexdigest(),
         "selected": len(targets),
