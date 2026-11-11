@@ -64,12 +64,9 @@ jobs:
         run: |
           uv python install 3.12
           uv sync --frozen
-      - name: Select a reachable signed Ubuntu mirror
+      - name: Install OCR tools from a verified Ubuntu mirror
         run: |
-          bash "$GITHUB_WORKSPACE/scripts/ci_ubuntu_sources.sh" > "$RUNNER_TEMP/audhs-ubuntu.sources"
-          sudo install -m 644 "$RUNNER_TEMP/audhs-ubuntu.sources" /etc/apt/sources.list.d/ubuntu.sources
-      - name: Local scanned PDF OCR runtime
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu
+          bash "$GITHUB_WORKSPACE/scripts/ci_ubuntu_sources.sh" "$RUNNER_TEMP/audhs-ubuntu.sources"
       - name: Lockfile is in sync with pyproject
         run: uv lock --check
       - name: Lint
@@ -160,10 +157,9 @@ jobs:
         run: |
           uv python install 3.12
           cd backend && uv sync --frozen
-      - name: Select a reachable signed Ubuntu mirror
+      - name: Install OCR tools from a verified Ubuntu mirror
         run: |
-          bash "$GITHUB_WORKSPACE/scripts/ci_ubuntu_sources.sh" > "$RUNNER_TEMP/audhs-ubuntu.sources"
-          sudo install -m 644 "$RUNNER_TEMP/audhs-ubuntu.sources" /etc/apt/sources.list.d/ubuntu.sources
+          bash "$GITHUB_WORKSPACE/scripts/ci_ubuntu_sources.sh" "$RUNNER_TEMP/audhs-ubuntu.sources"
       - name: Frontend (locked) + the pinned Chromium build
         run: |
           cd frontend
@@ -183,8 +179,6 @@ jobs:
           fixture=$(mktemp -d /tmp/audhs-c2-browser-XXXXXXXX)
           cd frontend
           AUDHS_RECALL_FIXTURE_DB="$fixture/synthetic.db" pnpm exec playwright test --config=playwright.focus.config.ts
-      - name: CPU OCR runtime for the scanned upload journey
-        run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu
       - name: Scanned PDF through source, research, writing, review and learning
         env:
           AUDHS_TEST_PDF_OCR: "1"

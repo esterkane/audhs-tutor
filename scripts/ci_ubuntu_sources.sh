@@ -10,9 +10,15 @@ for mirror in https://archive.ubuntu.com/ubuntu https://mirrors.edge.kernel.org/
         --connect-timeout 4 --max-time 10 "$mirror/dists/noble-security/InRelease" -o "$signed_release" \
         && gpgv --keyring "$keyring" "$signed_release" >/dev/null 2>&1 \
         && grep -Fqx 'Suite: noble-security' "$signed_release"; then
-        printf 'Types: deb\nURIs: %s\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: %s\n' "$mirror" "$keyring"
-        exit 0
+        sources=$1
+        printf 'Types: deb\nURIs: %s\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nSigned-By: %s\n' "$mirror" "$keyring" > "$sources"
+        sudo install -m 644 "$sources" /etc/apt/sources.list.d/ubuntu.sources
+        apt_source=(-o Dir::Etc::sourcelist=/etc/apt/sources.list.d/ubuntu.sources -o Dir::Etc::sourceparts=- -o Acquire::Retries=2)
+        if sudo apt-get "${apt_source[@]}" update --error-on=any &&
+            sudo apt-get "${apt_source[@]}" install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu; then
+            exit 0
+        fi
     fi
 done
-echo 'No Ubuntu mirror supplied a verified noble-security Release.' >&2
+echo 'No verified Ubuntu mirror completed OCR runtime installation.' >&2
 exit 1
