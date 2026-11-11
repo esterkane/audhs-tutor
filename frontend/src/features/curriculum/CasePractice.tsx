@@ -4,7 +4,13 @@ import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
 
 type Pair = NonNullable<Schemas['KnowledgeMaterialInput']['case_comparison']>
-type Attempt = { choice: '' | 'a' | 'b'; reasoning: string; revealed: boolean }
+type Attempt = {
+  choice: '' | 'a' | 'b'
+  reasoning: string
+  revealed: boolean
+  detail_a?: string
+  detail_b?: string
+}
 const empty: Attempt = { choice: '', reasoning: '', revealed: false }
 
 export function CaseAuthoring({
@@ -97,7 +103,13 @@ export function CasePractice({
         typeof stored.reasoning === 'string' &&
         typeof stored.revealed === 'boolean'
       )
-        return stored
+        return {
+          choice: stored.choice,
+          reasoning: stored.reasoning,
+          revealed: stored.revealed,
+          detail_a: typeof stored.detail_a === 'string' ? stored.detail_a : '',
+          detail_b: typeof stored.detail_b === 'string' ? stored.detail_b : '',
+        }
     } catch {
       /* Start a fresh attempt if storage is unavailable. */
     }
@@ -141,11 +153,37 @@ export function CasePractice({
             {attempt.reasoning && (
               <p className="whitespace-pre-wrap break-words">Your reasoning: {attempt.reasoning}</p>
             )}
+            {(['detail_a', 'detail_b'] as const).map(
+              (key, index) =>
+                attempt[key] && (
+                  <p key={key} className="whitespace-pre-wrap break-words">
+                    Your detail from Case {index ? 'B' : 'A'}: {attempt[key]}
+                  </p>
+                ),
+            )}
             <p>The author identifies Case {pair.failing_case.toUpperCase()} as the failing case.</p>
             <p className="whitespace-pre-wrap break-words">{pair.rationale}</p>
           </>
         ) : (
           <>
+            <Disclosure label="Help me compare the cases">
+              <p>
+                Look for a condition or action that differs between the cases. Note one detail from each, then
+                use the difference to explain your choice.
+              </p>
+              {(['detail_a', 'detail_b'] as const).map((key, index) => (
+                <label key={key} className="block">
+                  Relevant detail from Case {index ? 'B' : 'A'} (optional)
+                  <textarea
+                    className="block w-full border rounded p-2"
+                    rows={2}
+                    maxLength={1000}
+                    value={attempt[key] ?? ''}
+                    onChange={(e) => save({ ...attempt, [key]: e.target.value })}
+                  />
+                </label>
+              ))}
+            </Disclosure>
             <fieldset>
               <legend>Which case fails?</legend>
               {(['a', 'b'] as const).map((value) => (

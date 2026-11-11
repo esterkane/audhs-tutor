@@ -35,7 +35,7 @@ courses because a paper discusses audio. Speech input is a separate accessibilit
 | Narration with key terms | `ReadAloud`, reader lifecycle tests | Partial: explicit playback and stopping exist; no automatic integrated narration/visual authoring guarantee. Text remains primary for technical first exposure. |
 | Selective key-term read-aloud | Existing playback can read selected content paths | Missing dedicated 3–5-item retrieval activity; no full-passage production-effect claims. |
 | Voice latency / turn-taking | `useVoiceLoop`, request/text recovery tests | Partial: real end-to-end audio latency not demonstrated below 2 seconds. Keep text fallback and no new timeout claims. |
-| Contrasting planted errors | `challenge.py`, `prompts/challenge/planted_error.md` | Authors can save incomplete pairs while drafting. Activation requires two distinct cases, a selected failing case and an explanation. The author is responsible for factual correctness. Learners can skip to the explanation. Novice scaffolding and a progression in difficulty remain open. |
+| Contrasting planted errors | `challenge.py`, `prompts/challenge/planted_error.md` | Authors can save incomplete pairs while drafting. Activation requires two distinct cases, a selected failing case and an explanation. The author is responsible for factual correctness. Learners can skip to the explanation. Learners can optionally record one distinguishing detail from each case before choosing. Their original details, choice and reasoning remain available after reveal and reload. A progression in case difficulty remains open. |
 | Parsons → faded example → open problem | Code editor, notebook and assessment exist | Missing diagnostic-gated ladder; do not equate an editable notebook to a Parsons task. |
 | Predict → step → compare | `NotebookWorkspace`, `Playground`, `GuidedExperiments` | Partial: saved predictions, outputs and comparisons exist; general variable trace, previous-state diff, back/replay and transfer assessment are not fully implemented. |
 | One-parameter ablation | `GuidedExperiments`, `comparisonCheckpoint` | Partial: bounded visual comparisons exist; no validated ML ablation/transfer outcome pipeline. |
@@ -56,7 +56,7 @@ accepted text, histories or mastery. Retain original attempt after reveal; corre
 Malformed/denied storage must leave reading available. Explicit skip persists. No model call,
 new package, timer, grading or global preference change is needed.
 
-For authored reading questions and optional delayed recall, see [accepted passage questions](../slices/authored-reading-prequestions.md). Further evaluation should measure delayed learning outcomes across sessions. Novice scaffolding, recognition practice for low-capacity sessions and gradual removal of worked-example steps remain open.
+For authored reading questions and optional delayed recall, see [accepted passage questions](../slices/authored-reading-prequestions.md). Further evaluation should measure delayed learning outcomes across sessions. Recognition practice for low-capacity sessions, a progression in case difficulty and gradual removal of worked-example steps remain open.
 
 
 ## Regression coverage
