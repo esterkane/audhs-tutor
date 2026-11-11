@@ -294,12 +294,28 @@ async def preview_pdf_page(
     )
 
 
+async def check_diagram_page(
+    body: KnowledgeMaterialInput, db: DB, learner: Learner, settings: SettingsDep
+) -> None:
+    if not body.diagram_label:
+        return
+    if not body.upload_id or not body.upload_version_id:
+        raise AppError("invalid_diagram", "Choose an uploaded PDF page for this label.", 422)
+    source = await owned_pdf_version(body.upload_id, body.upload_version_id, db, learner, settings)
+    manifest = await run_in_threadpool(pdf_page_sources.read, *source)
+    if not any(p.page == body.diagram_label.page for p in manifest.pages):
+        raise AppError(
+            "invalid_diagram", "The labelled page is unavailable in this PDF version.", 422
+        )
+
+
 @router.post("/drafts", response_model=DraftOut)
 async def create(
     body: KnowledgeMaterialInput,
     db: DB,
     learner: Learner,
     request_id: Annotated[UUID, Header(alias="Idempotency-Key")],
+    settings: SettingsDep,
 ) -> DraftOut:
     # Preserve fingerprints of requests created before optional reading questions existed.
     empty_prequestions = {
@@ -307,6 +323,8 @@ async def create(
         for key in ("explanation_prequestion", "worked_example_prequestion")
         if getattr(body, key) == ""
     }
+    if body.diagram_label is None:
+        empty_prequestions.add("diagram_label")
     if body.relationship is None:
         empty_prequestions.add("relationship")
     if body.case_comparison is None:
@@ -329,6 +347,7 @@ async def create(
                 "authoring_conflict", "This save identity belongs to different content.", 409
             )
         return _draft_out(prior)
+    await check_diagram_page(body, db, learner, settings)
     payload = await knowledge_authoring.payload_for(
         db,
         learner.id,
@@ -351,7 +370,7 @@ async def create(
 
 @router.put("/drafts/{draft_id}", response_model=DraftOut)
 async def update(
-    draft_id: str, body: KnowledgeMaterialUpdate, db: DB, learner: Learner
+    draft_id: str, body: KnowledgeMaterialUpdate, db: DB, learner: Learner, settings: SettingsDep
 ) -> DraftOut:
     draft = await _current_draft(db, learner.id, draft_id)
     previous = draft.payload_json.get("authoring")
@@ -366,6 +385,12 @@ async def update(
     ):
         if field not in body.model_fields_set and field in previous:
             fields[field] = previous[field]
+    if "diagram_label" not in body.model_fields_set and body.upload_id == previous.get("upload_id"):
+        if body.upload_version_id in (None, previous.get("upload_version_id")):
+            fields["diagram_label"] = previous.get("diagram_label")
+            fields["upload_version_id"] = body.upload_version_id or previous.get(
+                "upload_version_id"
+            )
     previous_pair = previous.get("case_comparison")
     if (
         body.case_comparison is not None
@@ -378,6 +403,11 @@ async def update(
     ):
         fields["case_comparison"]["comparison_focus"] = previous_pair["comparison_focus"]
     command = KnowledgeMaterialInput.model_validate(fields)
+    if any(
+        fields.get(k) != previous.get(k)
+        for k in ("diagram_label", "upload_id", "upload_version_id")
+    ):
+        await check_diagram_page(command, db, learner, settings)
     if previous.get("factual_review_id") and not previous.get("skill_slug"):
         # Recover review drafts saved before the original skill identity was retained.
         parent = await curriculum.get_draft(db, learner.id, previous["revised_from_draft_id"])
@@ -503,7 +533,11 @@ async def accepted_reading(
             if exc.code not in {"not_found", "accuracy_review_only"}:
                 raise
         else:
-            reading.original_pdf = AcceptedPdfSource(upload_id=upload_id, version_id=version_id)
+            reading.original_pdf = AcceptedPdfSource(
+                upload_id=upload_id,
+                version_id=version_id,
+                diagram_label=accepted.get("diagram_label"),
+            )
     return reading
 
 

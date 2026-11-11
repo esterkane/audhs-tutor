@@ -27,6 +27,7 @@ const empty = (): Form => ({
   notes: '',
   upload_id: null,
   upload_version_id: null,
+  diagram_label: null,
   focus_topic: null,
   objective: '',
   explanation: '',
@@ -670,7 +671,8 @@ function Editor({
           )}
           {form.upload_id && <>
             <p>Uploaded source linked. Its passages remain attached to the lesson.</p>
-            {form.upload_version_id && <UploadedPdfPages key={form.upload_version_id} uploadId={form.upload_id} versionId={form.upload_version_id} />}
+            {form.upload_version_id && <UploadedPdfPages key={form.upload_version_id} uploadId={form.upload_id} versionId={form.upload_version_id}
+              diagramLabel={form.diagram_label} editLabel={readOnly || busy ? undefined : diagram_label => change({...form, diagram_label})} />}
             <UploadedNotebook key={form.upload_id} documentId={form.upload_id} />
           </>}
           <label>

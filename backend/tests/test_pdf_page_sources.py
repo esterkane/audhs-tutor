@@ -235,3 +235,54 @@ async def test_visibly_blank_pdf_still_rejected(client, settings, tmp_path, raw)
         "/api/knowledge-material/uploads", content=raw, headers={"X-Filename": "blank.pdf"}
     )
     assert res.status_code == 422 and res.json()["error"]["code"] == "empty_upload"
+
+
+async def test_diagram_description_is_pinned_to_a_real_page_and_survives_legacy_edits(
+    client, settings, tmp_path
+):
+    settings.knowledge_authoring_root = str(tmp_path)
+
+    async def upload(text):
+        res = await client.post(
+            "/api/knowledge-material/uploads",
+            content=native_pdf(text),
+            headers={"X-Filename": "reference.pdf"},
+        )
+        assert res.is_success, res.text
+        data = res.json()
+        return {"upload_id": data["document_id"], "upload_version_id": data["document_version_id"]}
+
+    first = await upload("A synthetic outline")
+    second = await upload("A different outline")
+    label = {"page": 1, "position": "center", "text": "One outline"}
+
+    async def create(body):
+        return await client.post(
+            "/api/knowledge-material/drafts",
+            json=complete(**body),
+            headers={"Idempotency-Key": str(uuid4())},
+        )
+
+    assert (await create({"diagram_label": label})).status_code == 422
+    assert (await create({**first, "diagram_label": {**label, "page": 2}})).status_code == 422
+    assert (
+        await create(
+            {**first, "upload_version_id": second["upload_version_id"], "diagram_label": label}
+        )
+    ).status_code == 404
+    created = await create({**first, "diagram_label": label})
+    assert created.is_success, created.text
+    draft = created.json()
+
+    async def edit(body):
+        res = await client.put(
+            "/api/knowledge-material/drafts/" + draft["id"],
+            json={**complete(**body), "expected_version": draft["version"]},
+        )
+        assert res.is_success, res.text
+        return res.json()
+
+    draft = await edit({"upload_id": first["upload_id"]})
+    assert draft["payload"]["authoring"]["diagram_label"] == label
+    draft = await edit(second)
+    assert draft["payload"]["authoring"]["diagram_label"] is None

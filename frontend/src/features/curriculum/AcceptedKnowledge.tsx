@@ -55,7 +55,7 @@ ${data.worked_example}`
       {data.original_pdf && <div><Button variant="secondary" aria-expanded={openPdf === data.original_pdf.version_id}
         onClick={() => setOpenPdf(openPdf === data.original_pdf?.version_id ? null : data.original_pdf!.version_id)}>Original PDF source</Button>
         {openPdf === data.original_pdf.version_id && <UploadedPdfPages key={openPdf}
-          uploadId={data.original_pdf.upload_id} versionId={data.original_pdf.version_id} />}</div>}
+          uploadId={data.original_pdf.upload_id} versionId={data.original_pdf.version_id} diagramLabel={data.original_pdf.diagram_label} />}</div>}
       {data.sources.map((id,index)=><Button key={id} variant="secondary" onClick={()=>setSource(id)}>Read uploaded source {index+1}</Button>)}
       {source && <SourceViewer chunkId={source} citation={data.title} onClose={()=>setSource(null)} />}
     </Disclosure>

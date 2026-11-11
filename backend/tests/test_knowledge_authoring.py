@@ -606,6 +606,7 @@ async def test_legacy_create_identity_replays_without_new_optional_fields(
                 "upload_version_id",
                 "case_comparison",
                 "relationship",
+                "diagram_label",
             }
         )
         .encode()

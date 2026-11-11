@@ -353,6 +353,14 @@ class AcceptedCaseComparison(CaseComparison):
     comparison_id: str
 
 
+class DiagramLabel(BaseModel):
+    page: int = Field(ge=1)
+    text: str = Field(min_length=1, max_length=600, pattern=r"\S")
+    position: Literal["top left", "top right", "center", "bottom left", "bottom right"] | None = (
+        None
+    )
+
+
 class KnowledgeMaterialInput(BaseModel):
     model_config = ConfigDict(extra="forbid")
     focus_topic: (
@@ -366,6 +374,7 @@ class KnowledgeMaterialInput(BaseModel):
     research: KnowledgeResearch | None = None
     upload_id: str | None = Field(default=None, max_length=128)
     upload_version_id: str | None = Field(default=None, max_length=128)
+    diagram_label: DiagramLabel | None = None
     objective: str = Field(default="", max_length=1000)
     explanation: str = Field(default="", max_length=4000)
     worked_example: str = Field(default="", max_length=4000)
@@ -443,6 +452,7 @@ class ReadingPrequestion(BaseModel):
 
 
 class AcceptedPdfSource(BaseModel):
+    diagram_label: DiagramLabel | None = Field(default=None, exclude_if=lambda value: value is None)
     upload_id: str
     version_id: str
 

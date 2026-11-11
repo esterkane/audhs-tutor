@@ -28,6 +28,9 @@ for (const kind of ['diagram_pdf', 'vector_pdf'] as const) {
     const description = 'My observation: the diagram shows an outlined rectangle.'
     const title = `Reading an uploaded ${kind}`
     await page.getByLabel('Material title', { exact: true }).fill(title)
+    await page.getByText('Describe or label this page', { exact: true }).click()
+    await page.getByLabel('Your diagram label or description').fill('Outline of the example frame.')
+    await page.getByLabel('Label position on page').selectOption('center')
     await notes.fill(description)
     await save.click()
     await expect(page).toHaveURL(/draft=/)
@@ -37,6 +40,7 @@ for (const kind of ['diagram_pdf', 'vector_pdf'] as const) {
     await browse.click()
     await inspect.press('Enter')
     await expect(image).toBeVisible()
+    await expect(image).toHaveAccessibleDescription(/page 1, center: Outline of the example frame/)
     const original = await image.getAttribute('src')
     await page.getByRole('button', { name: 'Write a lesson from my notes' }).click()
     await page.getByLabel('Learning objective', { exact: true }).fill('Describe a rectangle.')
@@ -64,7 +68,10 @@ for (const kind of ['diagram_pdf', 'vector_pdf'] as const) {
     await page.getByText('Your notes and source references', {exact:true}).click()
     await page.getByRole('button', {name:'Original PDF source'}).press('Enter')
     await browse.click()
+    await expect(page.getByText('Outline of the example frame.', {exact:false}).filter({visible:true}).last()).toBeVisible()
+    await expect(image).toHaveCount(0)
     await inspect.press('Enter')
+    await expect(image).toHaveAccessibleDescription(/page 1, center: Outline of the example frame/)
     await expect(image).toHaveAttribute('src', original!)
     await expect.poll(() => image.evaluate(e => (e as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
     await endOpenSession(request)

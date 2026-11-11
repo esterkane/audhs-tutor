@@ -3777,6 +3777,7 @@ export interface components {
     }
     /** AcceptedPdfSource */
     AcceptedPdfSource: {
+      diagram_label?: components['schemas']['DiagramLabel'] | null
       /** Upload Id */
       upload_id: string
       /** Version Id */
@@ -5514,6 +5515,15 @@ export interface components {
       /** Due Total */
       due_total: number
     }
+    /** DiagramLabel */
+    DiagramLabel: {
+      /** Page */
+      page: number
+      /** Text */
+      text: string
+      /** Position */
+      position?: ('top left' | 'top right' | 'center' | 'bottom left' | 'bottom right') | null
+    }
     /** DiscardCorrectionDraft */
     DiscardCorrectionDraft: {
       /**
@@ -6448,6 +6458,7 @@ export interface components {
       upload_id?: string | null
       /** Upload Version Id */
       upload_version_id?: string | null
+      diagram_label?: components['schemas']['DiagramLabel'] | null
       /**
        * Objective
        * @default
@@ -6505,6 +6516,7 @@ export interface components {
       upload_id?: string | null
       /** Upload Version Id */
       upload_version_id?: string | null
+      diagram_label?: components['schemas']['DiagramLabel'] | null
       /**
        * Objective
        * @default
