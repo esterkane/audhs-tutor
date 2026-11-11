@@ -71,4 +71,4 @@ def starter_task() -> str:
 
 
 def supabase_project_policy() -> str:
-    return _read("tutor/supabase-project.v3.md")
+    return _read("tutor/supabase-project.v4.md")
