@@ -22,7 +22,7 @@ function read(key: string, course: string) {
 }
 
 /** One immutable setup intent per course/tab. Never automatically resend a POST. */
-export function useNotebookCommand(courseId: string, onStatus: (value: Status) => void) {
+export function useNotebookCommand(courseId: string, onStatus: (value: Status) => void, startPath = '/api/notebooks/start') {
   const key = `audhs.notebook-command.v1:${courseId}`
   const [stored, setStored] = useState(() => read(key, courseId))
   const [error, setError] = useState('')
@@ -54,7 +54,7 @@ export function useNotebookCommand(courseId: string, onStatus: (value: Status) =
     active.current = controller
     setBusy(true); setError('')
     try {
-      const result = await boundedRead<Status>(send ? '/api/notebooks/start' :
+      const result = await boundedRead<Status>(send ? startPath :
         `/api/notebooks/requests/${command.request_id}?service_id=${command.service_id}`,
       controller.signal, 'Notebook setup acknowledgement', send ? {
         method: 'POST', headers: { 'X-Notebook-Action': 'start' }, body: JSON.stringify(command),
@@ -63,7 +63,7 @@ export function useNotebookCommand(courseId: string, onStatus: (value: Status) =
     } catch (cause) {
       if (active.current !== controller) return
       // These responses prove THIS new command was not accepted. Never infer that from a timeout.
-      if (send && cause instanceof ApiError && ['notebook_busy', 'notebook_receipts_full'].includes(cause.code)) {
+      if (send && cause instanceof ApiError && ['notebook_busy', 'notebook_receipts_full', 'notebook_upload_unavailable'].includes(cause.code)) {
         rejected.current = command.request_id
         try {
           if (!memoryOnly.current) sessionStorage.removeItem(key)

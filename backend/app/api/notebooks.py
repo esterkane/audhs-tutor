@@ -1,11 +1,17 @@
 """Local notebook setup, available only from the local application."""
 
+import asyncio
+import re
+from pathlib import Path
 from urllib.parse import urlsplit
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from pydantic import BaseModel, Field
 
+from app.api.deps import DB, Learner, SettingsDep
+from app.core.errors import AppError
+from app.db.models import Document
 from app.notebooks.inspection import NotebookInspection, inspect_notebook
 from app.notebooks.lab import NotebookLab
 
@@ -38,6 +44,81 @@ def local(request: Request) -> NotebookLab:
     if origin and urlsplit(origin).hostname not in {"127.0.0.1", "localhost", "::1"}:
         raise HTTPException(403, "Notebook control requires a local application origin.")
     return request.app.state.notebook_lab  # type: ignore[no-any-return]
+
+
+class NotebookUploadAvailability(BaseModel):
+    available: bool
+
+
+async def owned_upload(
+    document_id: str, db: DB, learner: Learner, settings: SettingsDep
+) -> Path | None:
+    if not re.fullmatch(r"[0-7][0-9A-HJKMNP-TV-Z]{25}", document_id):
+        return None
+    doc = await db.get(Document, document_id)
+    if doc is None or doc.source_type != "notebook":
+        return None
+    return await asyncio.to_thread(validated_source, doc.uri, learner.id, settings)
+
+
+def validated_source(uri: str, learner_id: str, settings: SettingsDep) -> Path | None:
+    storage = settings.project_root / Path(settings.knowledge_authoring_root).expanduser()
+    owner = storage / "knowledge-authoring" / learner_id
+    path = Path(uri)
+    if not path.is_relative_to(owner) or path.resolve() != path or not path.is_file():
+        return None
+    parts = path.relative_to(owner).parts
+    if len(parts) == 2 and not re.fullmatch("[0-9a-f]{16}", parts[0]):
+        return None
+    if len(parts) not in {1, 2} or not re.fullmatch(r"[0-9a-f]{64}\.ipynb", path.name):
+        return None
+    return path
+
+
+@router.get("/uploads/{document_id}", response_model=NotebookUploadAvailability)
+async def upload_availability(
+    document_id: str,
+    request: Request,
+    response: Response,
+    db: DB,
+    learner: Learner,
+    settings: SettingsDep,
+) -> NotebookUploadAvailability:
+    local(request)
+    response.headers["Cache-Control"] = "no-store"
+    return NotebookUploadAvailability(
+        available=await owned_upload(document_id, db, learner, settings) is not None
+    )
+
+
+@router.post("/uploads/{document_id}/start", response_model=NotebookStatus)
+async def start_upload(
+    document_id: str,
+    body: StartNotebook,
+    request: Request,
+    response: Response,
+    db: DB,
+    learner: Learner,
+    settings: SettingsDep,
+) -> NotebookStatus:
+    lab = local(request)
+    if request.headers.get("x-notebook-action") != "start":
+        raise HTTPException(403, "Use the notebook setup button in the local app.")
+    if (
+        body.course_id != f"upload-{document_id}"
+        or body.service_id is None
+        or body.request_id is None
+    ):
+        raise HTTPException(422, "Notebook, request and backend identities must match.")
+    path = await owned_upload(document_id, db, learner, settings)
+    if path is None:
+        raise AppError("notebook_upload_unavailable", "The original notebook is unavailable.", 404)
+    response.headers["Cache-Control"] = "no-store"
+    return NotebookStatus.model_validate(
+        lab.start_command(
+            str(body.service_id), str(body.request_id), body.course_id, body.install, upload=path
+        )
+    )
 
 
 @router.get("/status", response_model=NotebookStatus, summary="Read local notebook setup status")

@@ -5,17 +5,19 @@ import { type Schemas } from '../../lib/api'
 import { boundedRead } from '../../lib/boundedRead'
 import { Button } from '../../components/ui/button'
 
-export function LocalNotebookLab({ courseId }: { courseId: string }) {
-  return <NotebookLabPanel key={courseId} courseId={courseId} />
+type LabProps = { courseId: string; uploadId?: string }
+
+export function LocalNotebookLab({ courseId, uploadId }: LabProps) {
+  return <NotebookLabPanel key={courseId} courseId={courseId} uploadId={uploadId} />
 }
 
-function NotebookLabPanel({ courseId }: { courseId: string }) {
+function NotebookLabPanel({ courseId, uploadId }: LabProps) {
   const cache = useQueryClient()
   const onStatus = useCallback(() => {
     // A historical command receipt must never replace another job's live status.
     void cache.invalidateQueries({ queryKey: ['notebook-lab'] })
   }, [cache])
-  const command = useNotebookCommand(courseId, onStatus)
+  const command = useNotebookCommand(courseId, onStatus, uploadId ? `/api/notebooks/uploads/${encodeURIComponent(uploadId)}/start` : undefined)
   const state = useQuery({
     queryKey: ['notebook-lab'],
     queryFn: ({ signal }) => boundedRead<Schemas['NotebookStatus']>('/api/notebooks/status', signal, 'Notebook setup'),
@@ -39,13 +41,13 @@ function NotebookLabPanel({ courseId }: { courseId: string }) {
   const unavailableStandard = inspection.data?.unavailable_standard_imports ?? []
   const unavailableOther = (inspection.data?.unavailable_imports ?? []).filter(name => !unavailableStandard.includes(name))
   const mine = state.data?.course_id === courseId
-  const ownStatus = mine ? state.data : command.receipt
+  const ownStatus = mine ? state.data : uploadId ? undefined : command.receipt
   return (
     <section aria-label="Complete local notebook" className="grid gap-3">
-      <h3 className="font-semibold">Complete notebook with datasets and scientific libraries</h3>
+      <h3 className="font-semibold">{uploadId ? 'Your uploaded notebook' : 'Complete notebook with datasets and scientific libraries'}</h3>
       <p>
-        Prepare a private working copy and start Jupyter on this computer. Existing edits are preserved. The
-        notebook opens with its datasets alongside it; no upload or terminal command is needed.
+        Prepare a private working copy and start Jupyter on this computer. Existing edits are preserved.{' '}
+        {uploadId ? 'Only the notebook file is included. Add any datasets it needs in Jupyter.' : 'The notebook opens with its datasets alongside it; no upload or terminal command is needed.'}
       </p>
       <Button disabled={busy} onClick={() => void start(false)}>
         Prepare and start notebook lab
@@ -87,7 +89,7 @@ function NotebookLabPanel({ courseId }: { courseId: string }) {
           Open prepared notebook in Jupyter
         </a>
       )}
-      <details>
+      {!uploadId && <details>
         <summary>Notebook requirements and exercise readiness</summary>
         <p className="text-sm my-2">Check the prepared working copy and package locations in the app’s notebook Python environment. This does not run cells, install packages or assess your work.</p>
         <Button disabled={busy || inspection.isFetching} onClick={() => void inspection.refetch()}>{inspection.isFetching ? 'Checking notebook requirements…' : 'Check notebook requirements'}</Button>
@@ -105,7 +107,7 @@ function NotebookLabPanel({ courseId }: { courseId: string }) {
           {!!(inspection.data.unparsed_cells ?? []).length && <p>Partial analysis: cells {(inspection.data.unparsed_cells ?? []).join(', ')} contain unsupported syntax, notebook commands or exceed analysis limits.</p>}
           <p className="text-sm text-muted">Cell numbers count all notebook cells from 1. This is the last check; check again after editing. Jupyter readiness and completed course exercises are separate.</p>
         </div>}
-      </details>
+      </details>}
       <p>
         Read the instructions, then use Shift+Enter to run cells. Jupyter runs native Python with access to
         your local files; inspect downloaded code before running it. Return to this app’s tab to continue

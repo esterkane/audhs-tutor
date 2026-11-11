@@ -176,6 +176,7 @@ it('preserves notes when combined upload content is too long and permits a retry
   const text = 'x'.repeat(119900)
   vi.stubGlobal('fetch', vi.fn(async (url: string) => {
     if (url === '/api/learner/me') return jsonResponse({id:'owner'})
+    if (url === '/api/notebooks/uploads/source') return jsonResponse({ available: false })
     uploads += 1
     return jsonResponse({document_id:'source', filename:'reference.md', text})
   }))

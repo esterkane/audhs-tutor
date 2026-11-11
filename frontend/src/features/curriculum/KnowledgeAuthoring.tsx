@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { Disclosure } from '../../components/ui/disclosure'
 import { apiFetch, type Schemas } from '../../lib/api'
+import { UploadedNotebook } from './UploadedNotebook'
 import { ResearchWorkspace } from './ResearchWorkspace'
 import { validResearch, sameKnowledgeMaterial } from './researchRecovery'
 import { useLessonDraft } from '../tutor/useLessonDraft'
@@ -633,7 +634,10 @@ function Editor({
               </p>
             </>
           )}
-          {form.upload_id && <p>Uploaded source linked. Its passages remain attached to the lesson.</p>}
+          {form.upload_id && <>
+            <p>Uploaded source linked. Its passages remain attached to the lesson.</p>
+            <UploadedNotebook key={form.upload_id} documentId={form.upload_id} />
+          </>}
           <label>
             Your notes and selected source content
             <textarea

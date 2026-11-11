@@ -1587,6 +1587,40 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/notebooks/uploads/{document_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Upload Availability */
+    get: operations['upload_availability_api_notebooks_uploads__document_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/notebooks/uploads/{document_id}/start': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Start Upload */
+    post: operations['start_upload_api_notebooks_uploads__document_id__start_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/notebooks/status': {
     parameters: {
       query?: never
@@ -6857,6 +6891,11 @@ export interface components {
       request_id?: string | null
       /** Service Id */
       service_id?: string | null
+    }
+    /** NotebookUploadAvailability */
+    NotebookUploadAvailability: {
+      /** Available */
+      available: boolean
     }
     /** ParkIn */
     ParkIn: {
@@ -12298,6 +12337,72 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ReviewOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  upload_availability_api_notebooks_uploads__document_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NotebookUploadAvailability']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  start_upload_api_notebooks_uploads__document_id__start_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        document_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['StartNotebook']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['NotebookStatus']
         }
       }
       /** @description Validation Error */

@@ -1,8 +1,10 @@
 """Explicit, local-only notebook preparation. Never executes notebook cells."""
 
 import asyncio
+import hashlib
 import json
 import os
+import re
 import secrets
 import shutil
 import tempfile
@@ -24,6 +26,31 @@ PACKAGES = [
     "matplotlib==3.11.2",
     "scikit-learn==1.9.1",
 ]
+
+
+def copy_once(src: Path, target: Path, *, verified: bytes | None = None) -> None:
+    # Keep existing learner edits; reopening is never a reset.
+    if not target.exists():
+        staging: Path | None = None
+        try:
+            with tempfile.NamedTemporaryFile(
+                dir=target.parent, prefix=".preparing-", delete=False
+            ) as stream:
+                staging = Path(stream.name)
+                if verified is None:
+                    with src.open("rb") as original:
+                        shutil.copyfileobj(original, stream)
+                else:
+                    stream.write(verified)
+                stream.flush()
+                os.fsync(stream.fileno())
+            try:
+                os.link(staging, target)  # Atomic publish without replacing learner work.
+            except FileExistsError:
+                pass
+        finally:
+            if staging is not None:
+                staging.unlink(missing_ok=True)
 
 
 def prepare(root: Path, course_id: str) -> str:
@@ -59,30 +86,38 @@ def prepare(root: Path, course_id: str) -> str:
         target = folder / name
         if target.is_symlink():
             raise ValueError("Notebook files cannot be symlinks.")
-        # Keep existing learner edits; reopening is never a reset.
-        if not target.exists():
-            staging: Path | None = None
-            try:
-                with tempfile.NamedTemporaryFile(
-                    dir=folder, prefix=".preparing-", delete=False
-                ) as stream:
-                    staging = Path(stream.name)
-                    with src.open("rb") as original:
-                        shutil.copyfileobj(original, stream)
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                try:
-                    os.link(staging, target)  # Atomic publish without replacing learner work.
-                except FileExistsError:
-                    pass
-            finally:
-                if staging is not None:
-                    staging.unlink(missing_ok=True)
+        copy_once(src, target)
         if name.endswith(".ipynb") and not notebook:
             notebook = name
     if not notebook:
         raise ValueError("The bundle has no notebook.")
     return f"{course_id}/{notebook}"
+
+
+def prepare_upload(root: Path, course_id: str, source: Path) -> str:
+    # Only the server constructs this identity and resolves the content-addressed source.
+    if not re.fullmatch(r"upload-[0-7][0-9A-HJKMNP-TV-Z]{25}", course_id):
+        raise ValueError("Invalid notebook identifier.")
+    folder = root / "data/notebooks" / course_id
+    target = folder / "notebook.ipynb"
+    if target.resolve() != root.resolve() / target.relative_to(root) or target.is_symlink():
+        raise ValueError("Notebook working files cannot be symlinks.")
+    if target.exists() and not target.is_file():
+        raise ValueError("Notebook working copy must be a regular file.")
+    folder.mkdir(parents=True, exist_ok=True)
+    if not target.exists():
+        raw = source.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != source.stem:
+            raise ValueError("The uploaded original no longer matches the saved source.")
+        notebook = json.loads(raw)
+        if (
+            not isinstance(notebook, dict)
+            or notebook.get("nbformat") != 4
+            or not isinstance(notebook.get("cells"), list)
+        ):
+            raise ValueError("Open a version 4 Jupyter notebook.")
+        copy_once(source, target, verified=raw)
+    return f"{course_id}/notebook.ipynb"
 
 
 class NotebookLab:
@@ -143,7 +178,13 @@ class NotebookLab:
         return saved
 
     def start_command(
-        self, service_id: str, request_id: str, course_id: str, install: bool
+        self,
+        service_id: str,
+        request_id: str,
+        course_id: str,
+        install: bool,
+        *,
+        upload: Path | None = None,
     ) -> dict[str, str | None]:
         if service_id != self.service_id:
             raise AppError(
@@ -173,12 +214,12 @@ class NotebookLab:
                 "Setup history is full for this backend instance. Existing requests can still be checked.",
                 409,
             )
-        self.start(course_id, install)
+        self.start(course_id, install, upload=upload)
         self.command_id = request_id
         self.commands[request_id] = ((course_id, install), self.snapshot())
         return self.snapshot()
 
-    def start(self, course_id: str, install: bool) -> None:
+    def start(self, course_id: str, install: bool, *, upload: Path | None = None) -> None:
         if self.task and not self.task.done():
             return
         if self.command_id is not None:
@@ -189,7 +230,11 @@ class NotebookLab:
         self.url = None
         self.status = "preparing"
         self.message = "Preparing local files; existing edits will be preserved."
-        self.task = asyncio.create_task(self._start(course_id, install))
+        self.task = asyncio.create_task(
+            self._start(course_id, install)
+            if upload is None
+            else self._start(course_id, install, upload)
+        )
 
     async def command(self, args: list[str]) -> None:
         self.installer = await asyncio.create_subprocess_exec(
@@ -210,9 +255,13 @@ class NotebookLab:
                 await self.installer.wait()
             self.installer = None
 
-    async def _start(self, course_id: str, install: bool) -> None:
+    async def _start(self, course_id: str, install: bool, upload: Path | None = None) -> None:
         try:
-            notebook = await asyncio.to_thread(prepare, self.root, course_id)
+            notebook = (
+                await asyncio.to_thread(prepare, self.root, course_id)
+                if upload is None
+                else await asyncio.to_thread(prepare_upload, self.root, course_id, upload)
+            )
             python = self.root / "data/notebook-env/bin/python"
             if install:
                 self.status, self.message = (
