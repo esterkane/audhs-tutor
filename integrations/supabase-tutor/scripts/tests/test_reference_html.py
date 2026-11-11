@@ -38,6 +38,7 @@ def test_fetch_and_chunk_sdk_article_only(tmp_path, monkeypatch):
     )
     assert (tmp_path / (doc.hash + ".md")).read_text() == doc.text
     chunks = ing.chunk_markdown(doc.text, doc.product, URL)
+    assert all(c.anchor is None for c in chunks)
     assert any(c.heading_path.endswith("Examples") and c.meta["has_code"] for c in chunks)
 
 

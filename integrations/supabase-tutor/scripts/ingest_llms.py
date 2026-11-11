@@ -293,6 +293,8 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
     if body and "".join(body).strip():
         sections.append((stack.copy(), "\n".join(body)))
 
+    # Rendered reference headings do not reliably define HTML fragment IDs.
+    synthesize_anchors = not urlparse(source_file).path.startswith("/docs/reference/")
     chunks: list[Chunk] = []
     for hs, b in sections:
         paras = [p for p in re.split(r"\n{2,}", b) if p.strip()]
@@ -308,7 +310,7 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
                 Chunk(
                     ord=len(chunks),
                     heading_path=" > ".join(hs),  # noqa: B023 - flush() runs inside the loop
-                    anchor=slug(hs[-1]) if hs else None,  # noqa: B023
+                    anchor=slug(hs[-1]) if hs and synthesize_anchors else None,  # noqa: B023
                     content=content,
                     meta={
                         "product": product,
