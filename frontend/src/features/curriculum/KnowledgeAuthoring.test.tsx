@@ -412,3 +412,24 @@ it('waits for authoring setup before enabling tutor requests while preserving ed
   expect(screen.getByLabelText('My findings')).toHaveValue('New findings while setup loads.')
   expect(screen.queryByText(/Authoring setup is loading or unavailable/)).not.toBeInTheDocument()
 })
+
+it('recovers unsaved source edits when returning after starting another material', async () => {
+  vi.stubGlobal('fetch', vi.fn(async (url: string) =>
+    jsonResponse(url === '/api/learner/me' ? { id: 'owner' } : {})))
+  const draft = { id: 'source-switch', status: 'draft', version: 1, payload: { authoring: {
+    title: 'First material', domain: 'programming', notes: 'Saved source notes', upload_id: null,
+    objective: '', explanation: '', worked_example: '', question: '', criteria: [], research: null,
+  } } } as unknown as NonNullable<Parameters<typeof KnowledgeAuthoring>[0]['draft']>
+  const label = 'Your notes and selected source content'
+  const first = mount(draft)
+  fireEvent.change(await screen.findByLabelText(label), { target: { value: 'Unsaved first edit' } })
+  fireEvent.click(screen.getByText('Start another knowledge material'))
+  expect(onOpen).toHaveBeenCalledWith(null)
+  first.unmount()
+  const second = mount()
+  expect(await screen.findByLabelText(label)).toHaveValue('')
+  fireEvent.change(screen.getByLabelText(label), { target: { value: 'Second material notes' } })
+  second.unmount()
+  mount(draft)
+  expect(await screen.findByLabelText(label)).toHaveValue('Unsaved first edit')
+})
