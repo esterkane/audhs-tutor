@@ -1,7 +1,7 @@
 import { ProjectBoolPractice } from '../features/programs/ProjectBoolPractice'
 import { ProjectFilterPractice } from '../features/programs/ProjectFilterPractice'
 import { useEffect, useRef, useState } from 'react'
-import { Link, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { ApiError, apiFetch, type Schemas } from '../lib/api'
 import { Button } from '../components/ui/button'
@@ -74,6 +74,8 @@ export function Projects() {
 }
 
 function ProjectEditor({ project }: { project: Project }) {
+  const navigate = useNavigate()
+  const draftRequest = useRef<{ version: number; key: string } | null>(null)
   const recovery = useDraftRecovery('learning-project:' + project.id, project.version, encode(project))
   const cache = useQueryClient()
   const [busy, setBusy] = useState(false),
@@ -128,6 +130,39 @@ function ProjectEditor({ project }: { project: Project }) {
             ? reason.message
             : 'Could not confirm saving. Your writing is kept; check the saved version before retrying.',
         )
+    } finally {
+      if (active.current === controller) active.current = null
+      if (!controller.signal.aborted) setBusy(false)
+    }
+  }
+  async function draftFromProject() {
+    if (active.current || recovery.dirty || conflict || !valid) return
+    if (!project.evidence.trim() && !project.reflection.trim()) return
+    const controller = new AbortController()
+    active.current = controller
+    if (draftRequest.current?.version !== project.version) {
+      draftRequest.current = { version: project.version, key: crypto.randomUUID() }
+    }
+    setBusy(true)
+    setError('')
+    try {
+      const notes = [
+        project.evidence.trim() && 'My test evidence\n' + project.evidence,
+        project.reflection.trim() && 'My reflection\n' + project.reflection,
+      ].filter(Boolean).join('\n\n')
+      const draft = await apiFetch<{ id: string }>('/api/knowledge-material/drafts', {
+        method: 'POST',
+        headers: { 'Idempotency-Key': draftRequest.current.key },
+        signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
+        body: JSON.stringify({
+          title: project.title + ' — project findings', domain: 'programming',
+          focus_topic: 'supabase', workflow_step: 'write', notes,
+        }),
+      })
+      await cache.invalidateQueries({ queryKey: ['curriculum', 'drafts'] })
+      if (!controller.signal.aborted) navigate('/curriculum?draft=' + encodeURIComponent(draft.id))
+    } catch (reason) {
+      if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not open the lesson draft. Please retry.')
     } finally {
       if (active.current === controller) active.current = null
       if (!controller.signal.aborted) setBusy(false)
@@ -282,6 +317,13 @@ function ProjectEditor({ project }: { project: Project }) {
       <p className="text-sm text-muted">
         {recovery.dirty ? 'Unsaved writing is kept in this browser tab.' : 'Your current writing is saved.'}
       </p>
+      {project.slug === 'supabase-postgres-support' && (
+        <div>
+          <Button variant="secondary" disabled={busy || !valid || conflict || recovery.dirty || (!project.evidence.trim() && !project.reflection.trim())}
+            onClick={() => void draftFromProject()}>Create lesson draft from saved findings</Button>
+          <p className="text-sm text-muted">Save your project evidence or reflection first. This copies that writing into a new personal draft for you to edit and review.</p>
+        </div>
+      )}
       {recovery.error && <p role="alert">{recovery.error}</p>}
       {error && <p role="alert">{error}</p>}
       {notice && <p role="status">{notice}</p>}
