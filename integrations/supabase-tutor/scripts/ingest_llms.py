@@ -82,7 +82,7 @@ class Chunk:
 def product_of(url: str) -> str:
     p = urlparse(url).path
     if REFERENCE_URL.fullmatch(url):
-        return "api"
+        return "platform" if p.startswith("/docs/reference/api/") else "api"
     if p.startswith("/llms/"):
         name = p.split("/")[-1].replace(".txt", "")
         return {"js": "api", "server": "api", "api": "platform", "python": "api",

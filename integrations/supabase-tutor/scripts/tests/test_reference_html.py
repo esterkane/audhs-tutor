@@ -119,3 +119,16 @@ def test_historical_sdk_heading_and_edition_boundaries(tmp_path):
 
     assert asyncio.run(run()).status == "failed"
     assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize(
+    "family,product", [("api", "platform"), ("server", "api"), ("middleware", "api"), ("tanstack_db", "api")]
+)
+def test_product_article_requires_its_own_canonical_and_preserves_code(family, product):
+    url = f"https://supabase.com/docs/reference/{family}/example"
+    source = PAGE.replace(URL, url)
+    assert ing.product_of(url) == product
+    result = reference_markdown(source, url)
+    assert "query = (\n    x < 4\n)" in result and "Unrelated menu" not in result
+    with pytest.raises(ValueError):
+        reference_markdown(source.replace(url, URL), url)

@@ -6,7 +6,7 @@ from urllib.parse import urljoin, urlsplit
 
 
 REFERENCE_URL = re.compile(
-    r"https://supabase\.com/docs/reference/(?:javascript|python|dart|swift|kotlin|csharp)/(?:v[0-9]+/)?[a-z0-9-]+/?"
+    r"https://supabase\.com/docs/reference/(?:(?:javascript|python|dart|swift|kotlin|csharp)/(?:v[0-9]+/)?|(?:api|server|middleware|tanstack_db)/)[a-z0-9-]+/?"
 )
 
 
@@ -105,7 +105,7 @@ class CanonicalMethod(ValueError):
 def reference_markdown(html: str, url: str) -> str:
     """Require the requested official reference URL and one non-empty article."""
     if not REFERENCE_URL.fullmatch(url):
-        raise ValueError("Expected an official SDK method URL")
+        raise ValueError("Expected an official reference article URL")
     page = _Page(url)
     page.feed(html)
     page.close()
