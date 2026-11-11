@@ -207,6 +207,16 @@ class ReviewedOrchestrator:
         reference = await reference_answer(
             user_text, state, kwargs.get("ctx"), kwargs.get("history")
         )
+        if reference is None:
+            from app.integrations.supabase_function_lookup import function_answer
+
+            reference = await function_answer(
+                user_text,
+                state,
+                kwargs.get("ctx"),
+                kwargs.get("history"),
+                getattr(self.delegate, "client", None),
+            )
         if reference is not None:
             yield ToolCall("search_docs", reference.messages[1]["content"][0]["input"])
             yield ToolResultSummary("search_docs", False, reference.summary)

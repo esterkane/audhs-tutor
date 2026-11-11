@@ -28,7 +28,7 @@ from app.models_ai import registry
 from app.models_ai.budget import Budget
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
-from app.models_ai.routing import Router
+from app.models_ai.routing import NoModelReady, Router
 from app.orchestrator.project_study_gateway import ProjectStudyGateway, choose_project_study
 from app.orchestrator.prompts import supabase_project_policy
 
@@ -307,6 +307,13 @@ class LocalStream:
         return self.final
 
 
+class FunctionLookupRouter(Router):
+    """This evidence check was qualified only with the local Q8 model."""
+
+    def chain_for(self, task: TaskClass, override: str | None = None) -> list[str]:
+        return ["qwen35-function-9b-q8"]
+
+
 class LocalProjectClient:
     supports_question_repair = True
     supports_citation_repair = True
@@ -322,6 +329,69 @@ class LocalProjectClient:
         self.budget = budget or Budget(0)
         self.beta = self
         self.messages = self
+
+    async def function_lookup_ready(self) -> bool:
+        if "ollama" not in self.providers:
+            return False
+        async with self.sessions() as db:
+            try:
+                row = await registry.get_row(db, "qwen35-function-9b-q8")
+            except KeyError:
+                return False
+            spec = registry.spec_from_row(row)
+            return (
+                row.status == "ready"
+                and spec.provider == "ollama"
+                and spec.model == "qwen3.5:9b-q8_0"
+            )
+
+    async def function_lookup_decision(
+        self, policy: str, payload: dict[str, Any], schema: type[BaseModel]
+    ) -> BaseModel | None:
+        from copy import copy
+
+        from app.core.config import OllamaInferenceOptions
+        from app.models_ai.ollama import OllamaProvider
+
+        provider = self.providers.get("ollama")
+        if not isinstance(provider, OllamaProvider):
+            return None
+        local = copy(provider)
+        local.timeout_s = min(local.timeout_s, 20.0)
+        local.inference_options = {
+            **provider.inference_options,
+            "qwen35-function-9b-q8": OllamaInferenceOptions(reasoning_effort=False, temperature=0),
+        }
+        async with self.sessions() as db:
+            gateway = ModelGateway(
+                db,
+                FunctionLookupRouter(self.settings.routing_profile),
+                {"ollama": local},
+                Budget(0),
+            )
+            owner = await get_or_create_owner(db)
+            try:
+                output = await gateway.complete(
+                    TaskClass.EXPLAIN_SIMPLE,
+                    [
+                        Message(role="system", content=policy),
+                        Message(role="user", content=json.dumps(payload, ensure_ascii=False)),
+                    ],
+                    response_model=schema,
+                    learner_id=owner.id,
+                    max_tokens=320,
+                    temperature=0,
+                    metadata={
+                        "structured_output": "native_schema",
+                        "schema_prompt": "compact_json.v1",
+                        "host_adapter": "verified-postgres-function.v1",
+                    },
+                )
+            except (NoModelReady, GatewayError):
+                await db.commit()
+                return None
+            await db.commit()
+            return output.result.parsed
 
     @asynccontextmanager
     async def stream(self, **request: Any) -> AsyncIterator[LocalStream]:
