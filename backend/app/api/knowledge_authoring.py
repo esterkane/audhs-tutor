@@ -7,7 +7,7 @@ from urllib.parse import unquote
 from uuid import UUID
 
 from fastapi import APIRouter, BackgroundTasks, Header, Query, Request
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from starlette.concurrency import run_in_threadpool
 
 from app.api.curriculum import _draft_out
@@ -456,11 +456,20 @@ async def library_lesson_matches(
     db: DB, learner: Learner, q: Annotated[str, Query(min_length=1, max_length=200)]
 ) -> list[str]:
     """Search the same accepted reading the learner can open, returning only matching skill IDs."""
-    current_draft_id = (
-        curriculum.latest_accepted_material_query(learner.id, SkillNode.slug)
-        .with_only_columns(CurriculumDraft.id)
-        .correlate(SkillNode)
-        .scalar_subquery()
+    slug = CurriculumDraft.payload_json["skills"][0]["slug"].as_string()
+    ranked = (
+        curriculum.visible_accepted_material(learner.id)
+        .with_only_columns(
+            CurriculumDraft.id,
+            slug.label("slug"),
+            func.row_number()
+            .over(
+                partition_by=slug,
+                order_by=(CurriculumDraft.published_at.desc(), CurriculumDraft.id.desc()),
+            )
+            .label("position"),
+        )
+        .subquery()
     )
     current_object_id = (
         select(LearningObject.id)
@@ -473,7 +482,8 @@ async def library_lesson_matches(
     rows = await db.execute(
         select(SkillNode, CurriculumDraft, LearningObject)
         .select_from(SkillNode)
-        .join(CurriculumDraft, CurriculumDraft.id == current_draft_id)
+        .join(ranked, (ranked.c.slug == SkillNode.slug) & (ranked.c.position == 1))
+        .join(CurriculumDraft, CurriculumDraft.id == ranked.c.id)
         .join(LearningObject, LearningObject.id == current_object_id)
         .where(skill_visible(learner.id))
     )

@@ -66,13 +66,17 @@ async def test_current_reading_content_uses_visible_owner_and_latest_object(
                 examples_json=["A current explanation", example],
             )
         )
-    for owner, date, published, notes in [
-        (learner.id, "2025-01-03", "2025-01-04", "current personal notes"),
-        (other.id, "2025-01-03", "2025-01-05", "other person's secret"),
-        (learner.id, "2025-01-01", "2025-01-06", "archived pre-reset text"),
-    ]:
+    for index, (owner, date, published, notes) in enumerate(
+        [
+            (learner.id, "2025-01-03", "2025-01-04", "older same-timestamp edition"),
+            (learner.id, "2025-01-03", "2025-01-04", "current personal notes"),
+            (other.id, "2025-01-03", "2025-01-05", "other person's secret"),
+            (learner.id, "2025-01-01", "2025-01-06", "archived pre-reset text"),
+        ]
+    ):
         db.add(
             CurriculumDraft(
+                id=f"tie-check-{index}",
                 learner_id=owner,
                 title="Lesson",
                 created_at=date,
@@ -127,6 +131,7 @@ async def test_current_reading_content_uses_visible_owner_and_latest_object(
         "archived pre-reset text",
         "hidden object-only goal",
         "Superseded question",
+        "older same-timestamp edition",
     ]:
         response = await client.get(
             "/api/knowledge-material/library/lesson-matches", params={"q": term}

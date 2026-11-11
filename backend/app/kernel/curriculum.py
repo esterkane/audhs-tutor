@@ -1197,20 +1197,23 @@ class PublishReport:
     new_object_versions: int = 0
 
 
+def visible_accepted_material(learner_id: str) -> Select[tuple[CurriculumDraft]]:
+    from app.kernel.learning_scope import created_visible
+
+    return select(CurriculumDraft).where(
+        CurriculumDraft.learner_id == learner_id,
+        CurriculumDraft.origin == "knowledge_authored",
+        CurriculumDraft.status == "published",
+        created_visible(learner_id, CurriculumDraft.created_at),
+    )
+
+
 def latest_accepted_material_query(
     learner_id: str, slug: str | InstrumentedAttribute[str]
 ) -> Select[tuple[CurriculumDraft]]:
-    from app.kernel.learning_scope import created_visible
-
     return (
-        select(CurriculumDraft)
-        .where(
-            CurriculumDraft.learner_id == learner_id,
-            CurriculumDraft.origin == "knowledge_authored",
-            CurriculumDraft.status == "published",
-            created_visible(learner_id, CurriculumDraft.created_at),
-            CurriculumDraft.payload_json["skills"][0]["slug"].as_string() == slug,
-        )
+        visible_accepted_material(learner_id)
+        .where(CurriculumDraft.payload_json["skills"][0]["slug"].as_string() == slug)
         .order_by(CurriculumDraft.published_at.desc(), CurriculumDraft.id.desc())
         .limit(1)
     )
