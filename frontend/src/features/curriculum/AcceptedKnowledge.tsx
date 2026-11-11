@@ -36,7 +36,7 @@ ${data.worked_example}`
     binding: { draft_id: data.draft_id, learning_object_version: data.learning_object_version, question_id: q.question_id },
   }))
   const reader = <LessonReader identity={`accepted-knowledge:${data.draft_id}:${data.learning_object_version}`}
-    text={text} prequestions={prequestions}
+    text={text} prequestions={prequestions} keyTermPractice
     trail={[data.title, `Accepted lesson version ${data.learning_object_version}`]} active={active}
     sources={data.sources.map(id => ({chunk_id:id, citation:'Uploaded reference', cited:false}))} />
   return <Card>

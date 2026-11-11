@@ -1,3 +1,4 @@
+import { KeyTermPractice } from './KeyTermPractice'
 import { LearningBreadcrumbs } from '../../components/LearningBreadcrumbs'
 import { ReadingTime } from './ReadingTime'
 import type { PredictionBinding } from './SavePredictionForRecall'
@@ -11,7 +12,7 @@ import { SourceViewer } from '../curriculum/SourceViewer'
 
 type Source = { chunk_id: string; citation: string; cited: boolean }
 export type ReadingPrequestion = { startOffset: number; identity: string; question: string; binding?: PredictionBinding }
-type Props = { text: string; identity: string; active: boolean; sources?: Source[]; trail?: string[]; prequestions?: ReadingPrequestion[] }
+type Props = { keyTermPractice?: boolean; text: string; identity: string; active: boolean; sources?: Source[]; trail?: string[]; prequestions?: ReadingPrequestion[] }
 type Section = { title: string; text: string; startOffset: number }
 type Reading = { selected: number; full: boolean; notes: Record<string, string> }
 
@@ -53,7 +54,7 @@ function sectionsFor(text: string): Section[] {
 export function LessonReader(props: Props) {
   return <Reader key={JSON.stringify([props.identity, props.text])} {...props} />
 }
-function Reader({ text, identity, active, sources, trail, prequestions }: Props) {
+function Reader({ text, identity, active, sources, trail, prequestions, keyTermPractice }: Props) {
   const sections = sectionsFor(text)
   let hash = 2166136261
   for (let i = 0; i < text.length; i += 1) hash = Math.imul(hash ^ text.charCodeAt(i), 16777619)
@@ -89,8 +90,11 @@ function Reader({ text, identity, active, sources, trail, prequestions }: Props)
   const visibleText = reading.full ? text : sections[reading.selected].text
   const noteKey = reading.full ? 'full' : String(reading.selected)
   const prequestion = !reading.full && prequestions?.find(q => q.startOffset === sections[reading.selected].startOffset)
-  const passage = <><Markdown headingLevel={4} text={visibleText} />
-    {active && <ReadAloud key={`${reading.full}:${reading.selected}`} text={visibleText} />}</>
+  const markdown = <Markdown headingLevel={4} text={visibleText} />
+  const playback = active && <ReadAloud key={`${reading.full}:${reading.selected}`} text={visibleText} />
+  const passage = keyTermPractice && active
+    ? <KeyTermPractice key={noteKey} passage={markdown} playback={playback} />
+    : <>{markdown}{playback}</>
   function save(next: Reading) {
     setReading(next)
     try {
