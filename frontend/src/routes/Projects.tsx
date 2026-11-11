@@ -1,3 +1,4 @@
+import { ProjectFilterPractice } from '../features/programs/ProjectFilterPractice'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -157,6 +158,14 @@ function ProjectEditor({ project }: { project: Project }) {
         <p>
           <Link to={project.brief.workspace}>Open the imported Supabase/PostgreSQL lab</Link>
         </p>
+      )}
+
+      {project.slug === 'qdrant-filtered-search' && (
+        <ProjectFilterPractice
+          evidence={form.evidence}
+          disabled={!valid || busy || conflict}
+          onAppend={(entry) => edit('evidence', [form.evidence, entry].filter(Boolean).join('\n\n'))}
+        />
       )}
 
       {project.slug === 'supabase-postgres-support' && <ProjectSqlPractice projectId={project.id} />}
