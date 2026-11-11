@@ -347,17 +347,27 @@ it('keeps an empty question through reload, blocks submission and saves its repl
 
 
 it('reports OCR and unread pages while preserving existing notes and source text', async () => {
-  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+  let saved: Record<string, unknown> | undefined
+  vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
+    if (url.includes('/pages')) return jsonResponse({ pages: [] })
+    if (url === '/api/knowledge-material/drafts' && init?.method === 'POST') {
+      saved = JSON.parse(init.body as string)
+      return jsonResponse({ id: 'corrected', status: 'draft', version: 1, payload: { authoring: saved } })
+    }
     if (url === '/api/learner/me') return jsonResponse({ id: 'owner' })
-    return jsonResponse({ document_id: 'scan1', filename: 'scan.pdf', text: 'Recognized source text.', sha256: 'hash', characters: 23, ocr_pages: [2, 3], ocr_empty_pages: [3] })
+    return jsonResponse({ document_id: 'scan1', filename: 'scan.pdf', text: 'Recognized source text.', document_version_id: 'scan-version', sha256: 'hash', characters: 23, ocr_pages: [2, 3], ocr_empty_pages: [3] })
   }))
   mount()
   fireEvent.change(await screen.findByLabelText('Your notes and selected source content'), { target: { value: 'Keep my research.' } })
   fireEvent.change(screen.getByLabelText('Upload reference content (optional)'), { target: { files: [new File(['%PDF'], 'scan.pdf', { type: 'application/pdf' })] } })
   await screen.findByText(/Local OCR used on pages 2, 3/)
-  expect(screen.getByRole('status')).toHaveTextContent('No text was recognized on pages 3')
+  expect(screen.getByText(/Local OCR used on pages 2, 3/)).toHaveTextContent('No text was recognized on pages 3')
   expect(screen.getByLabelText('Your notes and selected source content')).toHaveValue('Keep my research.\n\nRecognized source text.')
   expect(onOpen).not.toHaveBeenCalled()
+  const corrected = 'Reader role: select public rows. Writer role: insert new rows.'
+  fireEvent.change(screen.getByLabelText('Your notes and selected source content'), { target: { value: corrected } })
+  fireEvent.click(screen.getByRole('button', { name: 'Save knowledge material' }))
+  await waitFor(() => expect(saved).toMatchObject({ notes: corrected, upload_id: 'scan1', upload_version_id: 'scan-version' }))
 })
 
 it('keeps writing editable after OCR fails and allows another upload', async () => {

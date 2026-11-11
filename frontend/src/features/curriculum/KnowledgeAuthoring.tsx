@@ -368,7 +368,7 @@ function Editor({
           : ''
         change({ ...form, title: form.title || upload.filename, upload_id: upload.document_id, upload_version_id: upload.document_version_id ?? null, notes })
         setStatus(
-          `Uploaded ${upload.filename}. ${upload.ocr_pages?.length ? `Local OCR used on pages ${upload.ocr_pages.join(', ')}. Check names, numbers and SQL identifiers against the original. ` : ''}${emptyOcrNotice}Review the extracted content, then save your material. Original source is retained.`,
+          `Uploaded ${upload.filename}. ${upload.ocr_pages?.length ? `Local OCR used on pages ${upload.ocr_pages.join(', ')}. Check names, column order, numbers and SQL identifiers against the original. Edit any errors in your source notes below. ` : ''}${emptyOcrNotice}Review the extracted content, then save your material. Original source is retained.`,
         )
       } else {
         const saved = await save(controller.signal)
