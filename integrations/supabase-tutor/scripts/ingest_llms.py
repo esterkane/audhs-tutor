@@ -278,31 +278,48 @@ def approx_tokens(s: str) -> int:
 
 def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
     """Split on H1–H3, keep code fences/tables intact, pack sections to TARGET..MAX tokens."""
-    lines = text.splitlines()
-    sections: list[tuple[list[str], str]] = []  # (heading stack, body)
+    sections: list[tuple[list[str], list[str]]] = []
     stack: list[str] = []
-    body: list[str] = []
-    in_fence = False
-    for ln in lines:
-        if ln.strip().startswith("```"):
-            in_fence = not in_fence
-        m = None if in_fence else re.match(r"^(#{1,3})\s+(.*)", ln)
-        if m:
-            if body and "".join(body).strip():
-                sections.append((stack.copy(), "\n".join(body)))
-            level = len(m.group(1))
-            stack = stack[: level - 1] + [m.group(2).strip()]
-            body = []
+    paragraphs: list[str] = []
+    lines: list[str] = []
+    fence = ""
+
+    def finish_paragraph():
+        if lines:
+            paragraphs.append("\n".join(lines))
+            lines.clear()
+
+    for line in text.splitlines():
+        if fence:
+            lines.append(line)
+            end = re.fullmatch(r" {0,3}(`{3,}|~{3,})[ \t]*", line)
+            if end and end[1].startswith(fence):
+                fence = ""
+            continue
+        opener = re.match(r"^ {0,3}(`{3,}|~{3,})(.*)$", line)
+        if opener and not (opener[1][0] == "`" and "`" in opener[2]):
+            fence = opener[1]
+            lines.append(line)
+            continue
+        heading = re.match(r"^(#{1,3})\s+(.*)", line)
+        if heading:
+            finish_paragraph()
+            if paragraphs:
+                sections.append((stack, paragraphs))
+                paragraphs = []
+            stack = stack[: len(heading[1]) - 1] + [heading[2].strip()]
+        elif not line:
+            finish_paragraph()
         else:
-            body.append(ln)
-    if body and "".join(body).strip():
-        sections.append((stack.copy(), "\n".join(body)))
+            lines.append(line)
+    finish_paragraph()
+    if paragraphs:
+        sections.append((stack, paragraphs))
 
     # Rendered reference headings do not reliably define HTML fragment IDs.
     synthesize_anchors = not urlparse(source_file).path.startswith("/docs/reference/")
     chunks: list[Chunk] = []
-    for hs, b in sections:
-        paras = [p for p in re.split(r"\n{2,}", b) if p.strip()]
+    for hs, paras in sections:
         cur: list[str] = []
         carry: list[str] = []
 
@@ -320,7 +337,7 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
                     meta={
                         "product": product,
                         "source_file": source_file,
-                        "has_code": "```" in content,
+                        "has_code": bool(re.search(r"^ {0,3}(?:`{3,}|~{3,})", content, re.MULTILINE)),
                     },
                 )
             )

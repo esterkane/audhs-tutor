@@ -132,3 +132,13 @@ def test_discover_skips_kb_copy_of_docs_troubleshooting() -> None:
         "https://supabase.com/docs/guides/troubleshooting/high-cpu.md",
         "https://supabase.com/kb/troubleshooting/only-kb.md",
     ]
+
+
+def test_long_fenced_examples_keep_blank_lines_and_literal_headings(monkeypatch):
+    monkeypatch.setattr(ing, "TARGET_TOKENS", 5)
+    monkeypatch.setattr(ing, "MAX_TOKENS", 10)
+    for marker in ["````", "~~~"]:
+        example = marker + "python\n# literal heading\n\n\nprint('hello')\n```\n\nprint('world')\n" + marker
+        chunks = ing.chunk_markdown("# Lesson\n\n" + example + "\n\n## Follow-up\nDone.", "api", "/guide")
+        assert any(example in chunk.content and chunk.heading_path == "Lesson" for chunk in chunks)
+        assert chunks[-1].heading_path.endswith("Follow-up")
