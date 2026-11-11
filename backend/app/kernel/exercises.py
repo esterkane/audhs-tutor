@@ -223,14 +223,14 @@ async def ensure_exercise(db: AsyncSession, node: SkillNode) -> Assessment | Non
         .order_by(Assessment.id)
         .limit(1)
     )
-    found = await db.scalar(existing)
+    found = (await db.scalars(existing)).first()
     if found is not None:
         return found
     # Concurrent first opens must share both IDs: the browser keys its draft by
     # assessment ID, and grading binds it to the linked check. Recheck under the
     # SQLite write lock and publish the pair in a single transaction.
     await db.execute(update(SkillNode).where(SkillNode.id == node.id).values(id=SkillNode.id))
-    found = await db.scalar(existing)
+    found = (await db.scalars(existing)).first()
     if found is not None:
         await db.commit()
         return found
