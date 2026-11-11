@@ -627,8 +627,9 @@ class LocalProjectEmbedder:
                 async with self.project_pool.connection() as connection:
                     cursor = await connection.execute(
                         "select distinct s.embedding_model from tutor.docs_source s "
-                        "join tutor.docs_chunk c on c.source_id = s.id "
-                        "where s.status = 'active' and c.embedding is not null"
+                        "where s.status = 'active' and exists ("
+                        "select 1 from tutor.docs_chunk c "
+                        "where c.source_id = s.id and c.embedding is not null)"
                     )
                     recorded = {row[0] for row in await cursor.fetchall()}
                 if recorded and recorded != {spec.model}:
