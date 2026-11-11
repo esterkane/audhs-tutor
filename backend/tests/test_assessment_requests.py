@@ -417,3 +417,43 @@ async def test_old_cleanup_cannot_delete_replacement_or_completed_claim(client, 
     await workspace_requests.release_unstarted_assessment(db, owner, sid, key, replacement)
     await db.refresh(row)
     assert row.response_json == {"completed": True}
+
+
+@pytest.mark.parametrize("answer", ["²", "9" * 5000], ids=["superscript", "long-integer"])
+async def test_non_index_numeric_mcq_answer_saves_and_replays_once(client, db, fake_local, answer):
+    body = {**await prepare(client, db), "answer": answer}
+    first = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert first.status_code == 200, first.text
+    assert first.json()["correct"] is False
+    before = await counts(db)
+    assert before[0] == 1
+    retry = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert retry.status_code == 200
+    assert retry.json() == first.json()
+    assert await counts(db) == before
+    assert fake_local.calls == []
+
+
+@pytest.mark.parametrize(("answer", "correct"), [("1", False), ("-1", True)])
+async def test_signed_cloze_result_survives_retry(client, db, fake_local, answer, correct):
+    from app.orchestrator.grader import versioned_view
+
+    body = await prepare(client, db)
+    skill_id = (await db.get(models.Assessment, body["assessment_id"])).skill_id
+    assessment = models.Assessment(
+        skill_id=skill_id, kind="cloze", item_json={"text": "0 - 1 = ____", "answers": ["-1"]}
+    )
+    db.add(assessment)
+    await db.commit()
+    session = await db.get(models.Session, body["session_id"])
+    item = await versioned_view(db, assessment, session.learner_id)
+    body.update(assessment_id=item.id, content_version=item.content_version, answer=answer)
+    first = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert first.status_code == 200, first.text
+    assert first.json()["correct"] is correct
+    before = await counts(db)
+    assert before[0] == 1
+    retry = await client.post("/api/assess/attempt", json=body, headers=HEADERS)
+    assert retry.json() == first.json()
+    assert await counts(db) == before
+    assert fake_local.calls == []

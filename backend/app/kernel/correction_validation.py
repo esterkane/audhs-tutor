@@ -28,6 +28,17 @@ def answer_text(value: str) -> str:
     return re.sub(r"(?<=[^\W\d_])\.$", "", text)
 
 
+def option_index(value: str, count: int) -> int | None:
+    digits = value.strip()
+    if not digits.isdecimal():
+        return None
+    try:
+        index = int(digits)
+    except ValueError:  # Accepted submission length can exceed the integer conversion limit.
+        return None
+    return index if index < count else None
+
+
 class MCQ(Shape):
     question: Text
     options: list[Text] = Field(min_length=2, max_length=12)

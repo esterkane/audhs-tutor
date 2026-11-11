@@ -29,6 +29,7 @@ from app.db.models import (
 from app.kernel import competency, memory, question_replacements, question_state, task_reviews
 from app.kernel import session as ksession
 from app.kernel.correction_validation import answer_text as _norm
+from app.kernel.correction_validation import option_index
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import NoModelReady
@@ -104,15 +105,8 @@ async def versioned_view(
 def grade_mcq(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
     options: list[str] = item["options"]
     correct_idx = int(item["answer"])
-    chosen: int | None = None
     a = answer.strip()
-    if a.isdecimal():
-        try:
-            index = int(a)
-        except ValueError:  # A submission can exceed Python's integer conversion limit.
-            index = len(options)
-        if index < len(options):
-            chosen = index
+    chosen = option_index(a, len(options))
     if chosen is None:
         for i, opt in enumerate(options):
             if _norm(opt) == _norm(a):

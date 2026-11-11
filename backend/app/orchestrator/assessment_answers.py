@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.answer_recovery import AnswerRecovery
 from app.db.answers import save_completed
+from app.kernel.correction_validation import option_index
 from app.schemas.grading import AssessmentOutcome, AttemptRequest, AttemptResult
 from app.schemas.provisional_feedback import ProvisionalFeedbackResult
 
@@ -41,10 +42,9 @@ def feedback_snapshot(
         )
     answer_display = request.answer
     options = question.get("options")
-    index = request.answer.strip()
-    if question.get("kind") == "mcq" and isinstance(options, list) and index.isdigit():
-        choice = int(index)
-        if choice < len(options):
+    if question.get("kind") == "mcq" and isinstance(options, list):
+        choice = option_index(request.answer, len(options))
+        if choice is not None:
             answer_display = str(options[choice])
     snapshot: dict[str, Any] = dict(
         learner_id=learner_id,
