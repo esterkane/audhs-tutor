@@ -102,6 +102,10 @@ class CanonicalMethod(ValueError):
     """An official method alias claims another canonical URL within the same SDK."""
 
 
+class NoReferenceBody(ValueError):
+    """The canonical page contains only a title, with no indexable article text."""
+
+
 def reference_markdown(html: str, url: str) -> str:
     """Require the requested official reference URL and one non-empty article."""
     if not REFERENCE_URL.fullmatch(url):
@@ -118,6 +122,8 @@ def reference_markdown(html: str, url: str) -> str:
         ):
             raise CanonicalMethod(canonical)
         raise ValueError("Reference points outside the requested SDK")
+    if page.headings == 1 and page.code is None and re.fullmatch(r"# [^\n]+",text):
+        raise NoReferenceBody("Canonical reference has no indexable body")
     if page.headings != 1 or page.code is not None or not re.search(r"^# [^\n]+\n\s*\S", text):
         raise ValueError("Incomplete or mismatched SDK reference page")
     version = re.fullmatch(r"/docs/reference/([^/]+)/(v[0-9]+)/[^/]+/?", urlsplit(url).path)

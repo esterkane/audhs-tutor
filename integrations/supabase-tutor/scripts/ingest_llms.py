@@ -32,7 +32,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from db import admin_url
-from reference_html import REFERENCE_URL, CanonicalMethod, reference_markdown
+from reference_html import REFERENCE_URL, CanonicalMethod, NoReferenceBody, reference_markdown
 
 # Support execution both as a script and from an editable vendor installation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -62,6 +62,7 @@ class Doc:
     etag: str | None = None
     status: str = "active"
     chunks: list[Chunk] = field(default_factory=list)
+    failure_reason: str | None = None
 
 
 @dataclass
@@ -232,6 +233,10 @@ async def fetch(client: httpx.AsyncClient, doc: Doc, sem: asyncio.Semaphore, *, 
                             raise ValueError("Canonical SDK reference redirected")
                         doc.text = reference_markdown(r.text, target)
                         doc.url = target
+                except NoReferenceBody:
+                    doc.status = "failed"
+                    doc.failure_reason = "no_indexable_body"
+                    return doc
                 except ValueError:
                     doc.status = "failed"
                     return doc
