@@ -1,3 +1,4 @@
+import { CorrectionComparison } from '../features/review/CorrectionComparison'
 import { TransitionWaitNotice } from '../features/session/TransitionWaitNotice'
 import { apiFetch, type Schemas } from '../lib/api'
 import { ReviewRecovery } from '../features/review/ReviewRecovery'
@@ -445,6 +446,7 @@ function ReviewSession({ sessionId }: { sessionId: string | null }) {
           <div className="mt-3">
             <p className="font-medium">Answer</p>
             <p>{item.reveal}</p>
+            {item.assessment_id && item.options && <CorrectionComparison sessionId={sessionId} itemId={item.item_id} version={item.content_version} />}
             <ReadAloud key={item.item_id} text={item.reveal} />
             <ReviewConceptHelp
               key={`${item.item_id}:${item.content_version}`}

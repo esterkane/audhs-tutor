@@ -71,6 +71,72 @@ async def refresh_item(item_id: str, session_id: str, db: DB, learner: Learner) 
     return await item_view(db, learner.id, item_id)
 
 
+class CorrectionComparison(BaseModel):
+    earlier: str
+    corrected: str
+
+
+@router.get("/items/{item_id}/correction", response_model=CorrectionComparison | None)
+async def earlier_correction(
+    item_id: str, session_id: str, content_version: str, db: DB, learner: Learner
+) -> CorrectionComparison | None:
+    """After recall, compare the latest independently checked answer with its linked revision."""
+    from sqlalchemy import select
+
+    from app.db.models import AssessmentAttempt
+    from app.kernel.correction_validation import option_index
+    from app.orchestrator import assessment_content
+
+    session = await ksession.get_owned(db, session_id, learner.id)
+    view = await item_view(db, learner.id, item_id)
+    if view.content_version != content_version or not view.assessment_id or not view.options:
+        return None
+    assessment = await assessment_content.snapshot(db, view.assessment_id, learner.id)
+    if assessment["kind"] != "mcq":
+        return None
+    fingerprint = assessment_content.recovery_fingerprint(assessment)
+    attempts = (
+        select(AssessmentAttempt)
+        .where(
+            AssessmentAttempt.learner_id == learner.id,
+            AssessmentAttempt.assessment_id == view.assessment_id,
+        )
+        .order_by(AssessmentAttempt.ts.desc(), AssessmentAttempt.id.desc())
+        .limit(1)
+    )
+    original = await db.scalar(attempts.where(AssessmentAttempt.revision_of_attempt_id.is_(None)))
+    if (
+        not original
+        or original.correct is not False
+        or (original.confidence_pre or 0) < 4
+        or original.content_fingerprint != fingerprint
+        or original.grader_route != "deterministic"
+        or not original.session_id
+        or original.session_id == session_id
+    ):
+        return None
+    revision = await db.scalar(
+        attempts.where(AssessmentAttempt.revision_of_attempt_id == original.id)
+    )
+    if (
+        not revision
+        or revision.correct is not True
+        or revision.content_fingerprint != fingerprint
+        or revision.grader_route != "deterministic"
+        or revision.session_id != original.session_id
+        or revision.ts >= session.started_at
+    ):
+        return None
+
+    def display(answer: str) -> str:
+        index = option_index(answer.strip(), len(view.options or []))
+        return view.options[index] if view.options and index is not None else answer
+
+    return CorrectionComparison(
+        earlier=display(original.answer), corrected=display(revision.answer)
+    )
+
+
 @router.get(
     "/due",
     summary="Due review items, capped to the minimum-viable review for this session",

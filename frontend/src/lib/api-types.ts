@@ -1621,6 +1621,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/review/items/{item_id}/correction': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Earlier Correction
+     * @description After recall, compare the latest independently checked answer with its linked revision.
+     */
+    get: operations['earlier_correction_api_review_items__item_id__correction_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/review/due': {
     parameters: {
       query?: never
@@ -5072,6 +5092,13 @@ export interface components {
        * @description live count from the retrieval index
        */
       index_count?: number | null
+    }
+    /** CorrectionComparison */
+    CorrectionComparison: {
+      /** Earlier */
+      earlier: string
+      /** Corrected */
+      corrected: string
     }
     /** CorrectionDraftList */
     CorrectionDraftList: {
@@ -12709,6 +12736,40 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['ReviewItemOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  earlier_correction_api_review_items__item_id__correction_get: {
+    parameters: {
+      query: {
+        session_id: string
+        content_version: string
+      }
+      header?: never
+      path: {
+        item_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CorrectionComparison'] | null
         }
       }
       /** @description Validation Error */
