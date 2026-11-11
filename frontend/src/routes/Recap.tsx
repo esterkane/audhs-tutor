@@ -63,11 +63,10 @@ export function Recap() {
     return (
       <Card>
         <CardTitle as="h1">Session saved</CardTitle>
-        <p>
-          Next skill on the map: {summary.next_skill?.title ?? '—'} (
-          {((summary.next_skill?.mastery ?? 0) * 100).toFixed(0)}% mastery). {summary.due_reviews} items due
-          for review.
-        </p>
+        {summary.next_skill && <p>Next skill on the map: {summary.next_skill.title}{typeof summary.next_skill.mastery === 'number' && ` (${Math.round(summary.next_skill.mastery * 100)}% estimated mastery)`}</p>}
+        <p>{summary.due_reviews === 0 ? 'You have no reviews due.' :
+          summary.due_reviews === 1 ? 'You have one review due.' :
+            `You have ${summary.due_reviews} reviews due.`}</p>
         <Button variant="primary" className="mt-3" onClick={() => nav('/')}>
           Back to Home
         </Button>

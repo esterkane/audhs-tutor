@@ -32,7 +32,11 @@ for (const save of [true, false]) it(`shares one finish operation, saving option
   await act(async () => { release(jsonResponse({ id: 's1', next_skill: null, due_reviews: 0 })); await response })
   expect(await screen.findByText(save ? 'Session saved' : 'Home destination')).toBeVisible()
   expect(useMode.getState().sessionId).toBeNull()
-  if (save) expect(sessionStorage.getItem(recapDraftKey('s1'))).toBeNull()
+  if (save) {
+    expect(sessionStorage.getItem(recapDraftKey('s1'))).toBeNull()
+    expect(screen.getByText('You have no reviews due.')).toBeVisible()
+    expect(screen.queryByText(/next skill|mastery/i)).toBeNull()
+  }
   else expect(sessionStorage.getItem(recapDraftKey('s1'))).toContain('Keep notes')
 })
 
