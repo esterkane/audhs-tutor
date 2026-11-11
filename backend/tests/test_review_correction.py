@@ -2,13 +2,22 @@ from uuid import uuid4
 
 import pytest
 
-from app.db.models import Assessment, AssessmentAttempt, Session
+from app.db.models import Assessment, AssessmentAttempt, LearnerProfile, Session
 from tests.test_assessment_requests import prepare
 from tests.test_assessment_revisions import learning_rows
 
 
 @pytest.mark.parametrize(
-    "negative", ["low-confidence", "ungraded", "old-content", "unlinked", "later-failure"]
+    "negative",
+    [
+        "low-confidence",
+        "ungraded",
+        "old-content",
+        "unlinked",
+        "later-failure",
+        "foreign-original",
+        "foreign-revision",
+    ],
 )
 async def test_only_current_qualified_correction_is_shown(client, db, negative):
     body = await prepare(client, db)
@@ -49,7 +58,13 @@ async def test_only_current_qualified_correction_is_shown(client, db, negative):
 
     before = await learning_rows(db)
     assert await lookup() == {"earlier": options[wrong], "corrected": options[answer]}
-    if negative == "low-confidence":
+    if negative in {"foreign-original", "foreign-revision"}:
+        other = LearnerProfile(display_name="Another learner")
+        db.add(other)
+        await db.flush()
+        attempt = root if negative == "foreign-original" else corrected
+        attempt.learner_id = other.id
+    elif negative == "low-confidence":
         root.confidence_pre = 3
     elif negative == "ungraded":
         corrected.grader_route = "rubric"
