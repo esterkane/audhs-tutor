@@ -21,7 +21,17 @@ test('run and reopen a project findings notebook from the accepted lesson', asyn
   await page.getByRole('button', { name: '1. Source' }).click()
   const title = 'Interpreting a visibility sample'
   await page.getByLabel('Material title', { exact: true }).fill(title)
-  const code = 'sum([True, False, False])'
+  const socket = process.env.AUDHS_NOTEBOOK_PG_SOCKET
+  if (socket && !/^\/tmp\/audhs-jupyter-pg-[A-Za-z0-9]{6}$/.test(socket))
+    throw new Error('Expected disposable PostgreSQL socket')
+  const code = socket
+    ? `import psycopg
+with psycopg.connect(host=${JSON.stringify(socket)}, dbname="postgres", user="notebook_reader", connect_timeout=3) as conn:
+    conn.execute("SET TRANSACTION READ ONLY")
+    result = conn.execute("SELECT current_user, item_id FROM public.practice_rows ORDER BY item_id").fetchall()
+result`
+    : 'sum([True, False, False])'
+  const expected = socket ? "[('notebook_reader', 10)]" : '1'
   await page.getByLabel('Upload reference content (optional)').setInputFiles({
     name: 'sample.ipynb',
     mimeType: 'application/json',
@@ -88,13 +98,13 @@ test('run and reopen a project findings notebook from the accepted lesson', asyn
     return opened
   }
   const lab = await openFromReading()
-  const cell = lab.locator('.jp-Notebook .jp-CodeCell').first()
-  await expect(cell.locator('.cm-content')).toHaveText(code, { timeout: 30_000 })
+  const cell = lab.locator('.jp-Notebook:visible .jp-CodeCell').first()
+  await expect(cell.locator('.cm-content')).toContainText(socket || code, { timeout: 30_000 })
   await expect(cell.locator('.jp-OutputArea-output')).toHaveCount(0)
   await expect(lab.getByRole('button', { name: /Python 3.*Idle/ })).toBeVisible({ timeout: 30_000 })
   await cell.locator('.cm-content').click()
   await lab.keyboard.press('Shift+Enter')
-  await expect(cell.locator('.jp-OutputArea-output')).toHaveText('1', { timeout: 30_000 })
+  await expect(cell.locator('.jp-OutputArea-output')).toHaveText(expected, { timeout: 30_000 })
   await lab.keyboard.press('Control+s')
   const contents = new URL(lab.url())
   contents.pathname = contents.pathname.replace('/lab/tree/', '/api/contents/')
@@ -110,8 +120,8 @@ test('run and reopen a project findings notebook from the accepted lesson', asyn
   await expect(page.getByLabel('Test evidence and observed results')).toHaveValue(observation)
   const reopened = await openFromReading()
   await expect(
-    reopened.locator('.jp-Notebook .jp-CodeCell').first().locator('.jp-OutputArea-output'),
-  ).toHaveText('1', { timeout: 30_000 })
+    reopened.locator('.jp-Notebook:visible .jp-CodeCell').first().locator('.jp-OutputArea-output'),
+  ).toHaveText(expected, { timeout: 30_000 })
   await reopened.close()
   await endOpenSession(request)
 })

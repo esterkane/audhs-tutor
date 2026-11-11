@@ -175,6 +175,7 @@ async def test_launched_lab_resolves_environment_pip(
         env = kwargs["env"]
         assert isinstance(env, dict)
         launches.append(env)
+        assert env["JUPYTERLAB_WORKSPACES_DIR"] == str(tmp_path / "data/notebook-workspaces")
         (Path(env["JUPYTER_RUNTIME_DIR"]) / "jpserver-1071.json").write_text(
             json.dumps(
                 {

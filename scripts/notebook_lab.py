@@ -16,6 +16,7 @@ PACKAGES = [
     "pandas==3.0.6",
     "matplotlib==3.11.2",
     "scikit-learn==1.9.1",
+    "psycopg[binary]==3.3.6",
 ]
 
 

@@ -26,6 +26,7 @@ PACKAGES = [
     "pandas==3.0.6",
     "matplotlib==3.11.2",
     "scikit-learn==1.9.1",
+    "psycopg[binary]==3.3.6",
 ]
 
 
@@ -342,7 +343,7 @@ class NotebookLab:
                     [
                         str(python),
                         "-c",
-                        "import pip, jupyterlab, ipykernel, numpy, pandas, matplotlib, sklearn",
+                        "import pip, jupyterlab, ipykernel, numpy, pandas, matplotlib, sklearn, psycopg",
                     ]
                 )
             except ValueError:
@@ -378,6 +379,7 @@ class NotebookLab:
                         "VIRTUAL_ENV": str(python.parent.parent),
                         "JUPYTER_TOKEN": self.token,
                         "JUPYTER_RUNTIME_DIR": self.runtime.name,
+                        "JUPYTERLAB_WORKSPACES_DIR": str(self.root / "data/notebook-workspaces"),
                         "AUDHS_NOTEBOOK_PROOF_KEY": self.proof_key.hex(),
                     },
                     stdout=asyncio.subprocess.DEVNULL,
