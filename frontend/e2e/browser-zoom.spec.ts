@@ -130,7 +130,7 @@ for (const { width, theme } of [{ width: 640, theme: 'light' }, { width: 1280, t
     } }))
     await page.getByRole('link', { name: 'Progress', exact: true }).focus()
     await page.keyboard.press('Enter')
-    await page.getByRole('link', { name: 'Explore by area', exact: true }).focus()
+    await page.getByRole('link', { name: 'Explore learning areas', exact: true }).focus()
     await page.keyboard.press('Enter')
     await page.getByRole('link', { name: 'Example area', exact: true }).focus()
     await page.keyboard.press('Enter')

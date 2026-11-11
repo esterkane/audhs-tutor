@@ -24,9 +24,12 @@ export function Progress() {
   return <div className="grid gap-5">
     <div>
       <h1 className="text-page-title font-semibold">Progress</h1>
-      <p><Link className="underline" to="/map">Knowledge map</Link> · <Link className="underline" to="/explore">Explore by area</Link></p>
       <p className="mt-2 text-muted">See what has been checked and when. Reading, bookmarks and opening activities are not evidence of understanding.</p>
     </div>
+    <nav aria-label="Related learning pages" className="flex flex-wrap gap-4">
+      <Link className="underline" to="/map">View skill map</Link>
+      <Link className="underline" to="/explore">Explore learning areas</Link>
+    </nav>
     {skills.isError && <Card><p role="alert">Could not refresh your concepts.</p><Button onClick={() => void skills.refetch()} disabled={skills.isFetching}>Retry concepts</Button></Card>}
     {skills.isPending && <p role="status">Loading concepts…</p>}
     {skills.data && <>
@@ -41,10 +44,6 @@ export function Progress() {
       {concept ? <ConceptEvidence key={concept.id} skillId={concept.id} title={concept.title} />
         : <p role="status">{selected ? 'This concept is unavailable. Choose another concept.' : 'No concepts are available yet. Explore your learning areas to get started.'}</p>}
     </>}
-    <div className="flex flex-wrap gap-4">
-      <Link className="underline" to="/map">View skill map</Link>
-      <Link className="underline" to="/explore">Explore learning areas</Link>
-    </div>
   </div>
 }
 
