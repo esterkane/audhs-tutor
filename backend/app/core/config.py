@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=(str(PROJECT_ROOT / ".env"), ".env"), extra="ignore")
 
     knowledge_authoring_root: str = "./data"
+    notebook_lab_port: int = Field(default=8890, ge=1, le=65535)
     pdf_ocr_enabled: bool = True
     pdf_ocr_languages: str = Field(
         default="eng+deu", pattern=r"^[a-zA-Z0-9_]+(?:\+[a-zA-Z0-9_]+)*$"

@@ -123,6 +123,7 @@ def prepare_upload(root: Path, course_id: str, source: Path) -> str:
 class NotebookLab:
     def __init__(self, settings: Settings) -> None:
         self.root = settings.project_root
+        self.port = settings.notebook_lab_port
         self.status = "idle"
         self.message = "Prepare the notebook and open a local scientific Python workspace."
         self.url: str | None = None
@@ -304,7 +305,7 @@ class NotebookLab:
                     "jupyterlab",
                     "--no-browser",
                     "--ServerApp.ip=127.0.0.1",
-                    "--ServerApp.port=8890",
+                    f"--ServerApp.port={self.port}",
                     "--ServerApp.port_retries=0",
                     f"--ServerApp.root_dir={self.root / 'data/notebooks'}",
                     env={
@@ -320,15 +321,15 @@ class NotebookLab:
                 for _ in range(60):
                     if self.process.returncode is not None:
                         raise ValueError(
-                            "Jupyter could not start. Port 8890 may be busy; use or close the existing lab."
+                            f"Jupyter could not start on port {self.port}. If it is busy, change NOTEBOOK_LAB_PORT and restart the tutor."
                         )
                     try:
                         response = await client.get(
-                            "http://127.0.0.1:8890/api/status",
+                            f"http://127.0.0.1:{self.port}/api/status",
                             headers={"Authorization": f"token {self.token}"},
                         )
                         if response.status_code == 200:
-                            self.url = f"http://127.0.0.1:8890/lab/tree/{urllib.parse.quote(notebook)}?token={self.token}"
+                            self.url = f"http://127.0.0.1:{self.port}/lab/tree/{urllib.parse.quote(notebook)}?token={self.token}"
                             self.status, self.message = (
                                 "ready",
                                 "Files are ready. Open the lab, read the instructions, then run cells yourself.",
