@@ -32,6 +32,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from db import admin_url
+from reference_html import REFERENCE_URL, CanonicalMethod, reference_markdown
 
 # Support execution both as a script and from an editable vendor installation.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -80,6 +81,8 @@ class Chunk:
 # ----------------------------------------------------------------------------- index
 def product_of(url: str) -> str:
     p = urlparse(url).path
+    if REFERENCE_URL.fullmatch(url):
+        return "api"
     if p.startswith("/llms/"):
         name = p.split("/")[-1].replace(".txt", "")
         return {"js": "api", "server": "api", "api": "platform", "python": "api",
@@ -129,6 +132,17 @@ def discover(docs: list[Doc]) -> list[str]:
     for d in docs:
         if d.status == "failed":
             continue
+        seed_sdk = {
+            "/llms/js.txt": "javascript", "/llms/python.txt": "python",
+            "/llms/dart.txt": "dart", "/llms/swift.txt": "swift",
+            "/llms/kotlin.txt": "kotlin", "/llms/csharp.txt": "csharp",
+        }.get(urlparse(d.url).path)
+        if seed_sdk and urlparse(d.url).netloc == "supabase.com":
+            for link in re.findall(r"https://supabase\.com/docs/reference/[^\s<>\[\]()\x22\x27]+", d.text):
+                method_url = link.split("#", 1)[0].rstrip("/.,")
+                if (REFERENCE_URL.fullmatch(method_url) and
+                        f"/reference/{seed_sdk}/" in method_url and method_url not in found):
+                    found.append(method_url)
         links = GUIDE_LINK.findall(d.text)
         if urlparse(d.url).path.startswith("/kb/"):
             links += KB_LINK.findall(d.text)
@@ -191,25 +205,64 @@ def select(urls: list[tuple[str, int]], profile: str, only: str | None) -> list[
 
 
 # ----------------------------------------------------------------------------- fetch
-async def fetch(client: httpx.AsyncClient, doc: Doc, sem: asyncio.Semaphore) -> Doc:
+async def fetch(client: httpx.AsyncClient, doc: Doc, sem: asyncio.Semaphore, *, raw_dir: Path | None = None) -> Doc:
     async with sem:
         try:
-            r = await client.get(doc.url, headers={"User-Agent": UA}, timeout=30, follow_redirects=True)
+            # Supabase serves its agent-friendly reference HTML to identifiable HTTP clients.
+            agent = f"python-httpx/{httpx.__version__} {UA}" if REFERENCE_URL.fullmatch(doc.url) else UA
+            r = await client.get(doc.url, headers={"User-Agent": agent}, timeout=30, follow_redirects=True)
             await asyncio.sleep(0.2)
             if r.status_code != 200 or not r.text.strip():
                 doc.status = "failed"
                 return doc
-            doc.text = r.text
+            if REFERENCE_URL.fullmatch(doc.url):
+                final_url = str(r.url).rstrip("/")
+                if (not REFERENCE_URL.fullmatch(final_url) or
+                        final_url.rsplit("/", 1)[0] != doc.url.rstrip("/").rsplit("/", 1)[0]):
+                    doc.status = "failed"
+                    return doc
+                try:
+                    try:
+                        doc.text = reference_markdown(r.text, doc.url)
+                    except CanonicalMethod as alias:
+                        target = str(alias)
+                        r = await client.get(target, headers={"User-Agent": agent}, timeout=30)
+                        r.raise_for_status()
+                        if str(r.url).rstrip("/") != target:
+                            raise ValueError("Canonical SDK reference redirected")
+                        doc.text = reference_markdown(r.text, target)
+                        doc.url = target
+                except ValueError:
+                    doc.status = "failed"
+                    return doc
+                content = doc.text.encode()
+            else:
+                doc.text = r.text
+                content = r.content
             doc.etag = r.headers.get("etag")
-            doc.hash = hashlib.sha256(r.content).hexdigest()
-            RAW_DIR.mkdir(parents=True, exist_ok=True)
-            (RAW_DIR / f"{doc.hash}.md").write_bytes(r.content)
+            doc.hash = hashlib.sha256(content).hexdigest()
+            directory = RAW_DIR if raw_dir is None else raw_dir
+            directory.mkdir(parents=True, exist_ok=True)
+            (directory / f"{doc.hash}.md").write_bytes(content)
         except httpx.HTTPError:
             doc.status = "failed"
     return doc
 
 
 # ----------------------------------------------------------------------------- chunk
+def canonical_documents(docs: list[Doc]) -> list[Doc]:
+    """Process each successful canonical URL once; keep failures for coverage reporting."""
+    seen: set[str] = set()
+    unique = []
+    for doc in docs:
+        if doc.status != "failed":
+            if doc.url in seen:
+                continue
+            seen.add(doc.url)
+        unique.append(doc)
+    return unique
+
+
 def slug(h: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", h.lower()).strip("-")
 
@@ -410,7 +463,7 @@ async def main() -> int:
             expanded = [Doc(url=u, tier=1, product=product_of(u)) for u in extra]
             expanded = list(await asyncio.gather(*(fetch(client, d, sem) for d in expanded)))
 
-        docs = [d for d in seeds + expanded if d.product != "full"]
+        docs = canonical_documents([d for d in seeds + expanded if d.product != "full"])
         full_docs = [d for d in seeds if d.product == "full"]
         # Pages fetched under their own URL are the canonical citation; drop their llms-full copies.
         titles = {t for d in docs if d.status != "failed" and (t := page_title(d.text))}
