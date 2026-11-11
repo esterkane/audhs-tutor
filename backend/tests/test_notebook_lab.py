@@ -216,7 +216,9 @@ async def test_launched_lab_resolves_environment_pip(
 
 
 @pytest.mark.parametrize("status", [200, 204])
-async def test_occupied_port_cannot_claim_readiness_or_receive_login_token(tmp_path, monkeypatch, status):
+async def test_occupied_port_cannot_claim_readiness_or_receive_login_token(
+    tmp_path, monkeypatch, status
+):
     import httpx
 
     bundle(tmp_path)
