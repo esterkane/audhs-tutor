@@ -179,6 +179,15 @@ function ProjectEditor({ project }: { project: Project }) {
 
       {project.slug === 'supabase-postgres-support' && <ProjectSqlPractice projectId={project.id} />}
 
+      {project.slug === 'kubernetes-recovery' && (
+        <div className="space-y-1">
+          <p>Readiness lab for a disposable Kubernetes cluster</p>
+          <ul className="list-disc pl-5">
+            <li><a href="/project-labs/audhs-readiness-lab.md" download>Download the exercise instructions</a></li>
+            <li><a href="/project-labs/audhs-readiness-lab.yaml" download>Download the Deployment and Service manifest</a></li>
+          </ul>
+        </div>
+      )}
       {typeof project.brief.source === 'string' && (
         <p>
           <a href={project.brief.source} target="_blank" rel="noreferrer">
