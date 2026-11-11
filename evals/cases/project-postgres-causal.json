@@ -113,6 +113,20 @@
       "report_path": "read_committed.relative_final_balance",
       "proposed_report_path": null,
       "expected": 70
+    },
+    "rc-absolute-wait": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "read_committed.absolute.second_update_wait_observed",
+      "proposed_report_path": null,
+      "expected": true
+    },
+    "rc-relative-wait": {
+      "availability": "implemented",
+      "script": "scripts/postgres_accuracy.py",
+      "report_path": "read_committed.relative.second_update_wait_observed",
+      "proposed_report_path": null,
+      "expected": true
     }
   },
   "review_contract": {
@@ -311,7 +325,10 @@
           "source_ids": [
             "isolation"
           ],
-          "oracle_binding_ids": []
+          "oracle_binding_ids": [
+            "rc-absolute-wait",
+            "rc-relative-wait"
+          ]
         },
         {
           "id": "recheck",
@@ -382,7 +399,10 @@
           "source_ids": [
             "isolation"
           ],
-          "oracle_binding_ids": []
+          "oracle_binding_ids": [
+            "rc-absolute-wait",
+            "rc-relative-wait"
+          ]
         },
         {
           "id": "recheck",

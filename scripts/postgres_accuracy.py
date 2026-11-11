@@ -274,7 +274,9 @@ async def wait_for_blocker(
     raise RuntimeError("Second update did not reach the required lock-wait barrier")
 
 
-async def read_committed_update(db: Database, assignment: str) -> dict[str, object]:
+async def read_committed_update(
+    db: Database, assignment: str, *, require_initial_balance: bool = False
+) -> dict[str, object]:
     if assignment not in {"absolute", "relative"}:
         raise ValueError("Unsupported fixture assignment")
     db.sql("TRUNCATE accuracy.balance; INSERT INTO accuracy.balance VALUES (1,100)")
@@ -314,12 +316,13 @@ async def read_committed_update(db: Database, assignment: str) -> dict[str, obje
         )
         if first != "90":
             raise AssertionError("First update must produce 90")
+        predicate = "id=1 AND balance=100" if require_initial_balance else "id=1"
         pending = asyncio.create_task(
             send(
                 connections[1],
                 "UPDATE accuracy.balance SET balance="
                 + second_value
-                + " WHERE id=1 RETURNING balance",
+                + f" WHERE {predicate} RETURNING balance",
                 "updated",
             )
         )
@@ -328,20 +331,21 @@ async def read_committed_update(db: Database, assignment: str) -> dict[str, obje
         await send(connections[0], "COMMIT", "committed")
         second = await pending
         expected = 80 if assignment == "absolute" else 70
-        if second != str(expected):
+        expected_return = "" if require_initial_balance else str(expected)
+        if second != expected_return:
             raise AssertionError(
                 "Second update must use the expected assignment semantics"
             )
         await send(connections[1], "COMMIT", "committed")
         remaining = int(db.sql("SELECT balance FROM accuracy.balance WHERE id=1"))
-        if remaining != expected:
+        if remaining != (90 if require_initial_balance else expected):
             raise AssertionError(
                 "Committed balance does not match the observed second update"
             )
         return {
             "initial_balances": [100, 100],
             "second_update_wait_observed": True,
-            "second_update_returned": expected,
+            "second_update_returned": int(second) if second else None,
             "final_balance": remaining,
         }
     finally:

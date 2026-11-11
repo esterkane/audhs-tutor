@@ -29,10 +29,11 @@ export function PassageRecall() {
       boundedRead<Completed | null>(base + '/latest-recall', signal, 'Last saved recall'),
   })
   const completed = receipt ?? (historyOpen ? history.data : null)
+  const completedId = completed?.id
   const resultHeading = useRef<HTMLHeadingElement>(null)
   useEffect(() => {
-    if (completed) resultHeading.current?.focus()
-  }, [completed?.id])
+    if (completedId) resultHeading.current?.focus()
+  }, [completedId])
   async function next() {
     await due.refetch()
     setReceipt(null)
