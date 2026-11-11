@@ -4,7 +4,7 @@ import { API_URL } from '../playwright.config'
 test.skip(process.env.AUDHS_SUPABASE_CONFIGURED_AUDIT !== '1', 'Requires an isolated configured project')
 
 test('failed outgoing question remains recoverable after reload without automatic resend', async ({
-  page,
+  page, request,
 }) => {
   await page.setViewportSize({ width: 390, height: 900 })
   await page.goto('/projects/supabase')
@@ -21,6 +21,19 @@ test('failed outgoing question remains recoverable after reload without automati
   await input.fill(question)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByRole('alert')).toBeVisible()
+  // Another client can finish a different turn while this question is still unsent.
+  const sessionId = await page.evaluate(() => {
+    const key = Object.keys(localStorage).find(k => k.startsWith('kaenguru.session.'))
+    return key && localStorage.getItem(key)
+  })
+  expect(sessionId).toBeTruthy()
+  const different = 'Explain the difference between a missing SELECT grant and a row policy that matches no rows.'
+  const answered = await request.post(API_URL + '/api/supabase-project/turn', {
+    data: { session_id: sessionId, text: different },
+  })
+  expect(answered.ok()).toBeTruthy()
+  const saved = await request.get(API_URL + '/api/supabase-project/session/' + sessionId)
+  expect((await saved.json()).transcript.at(-1).content).toContain('Table privileges and row policies')
   await page.reload()
   await expect(page.getByText('Saved question awaiting an answer', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Restore question to editor', exact: true }).click()
@@ -106,7 +119,7 @@ test('mid-answer host refusal retains transcript and pending question across rel
         'event: error\ndata: {"status":503,"message":"The tutor could not complete this answer. Check model availability and the shared hosted budget before retrying. Your earlier conversation is kept."}\n\n',
     })
   })
-  const question = 'Keep this new research question after a mid-answer budget refusal.'
+  const question = 'Compare a SELECT grant with a row policy that gives an empty result. Explain without SQL.'
   await input.fill(question)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await expect(page.getByRole('alert')).toContainText('shared hosted budget')
@@ -117,5 +130,14 @@ test('mid-answer host refusal retains transcript and pending question across rel
   await expect(page.getByText('Saved question awaiting an answer', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Restore question to editor', exact: true }).click()
   await expect(input).toHaveValue(question)
+  await page.unroute('**/api/supabase-project/turn')
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await expect(page.getByRole('button', { name: 'New session', exact: true })).toBeEnabled()
+  await expect(page.getByText('Saved question awaiting an answer', { exact: true })).toHaveCount(0)
+  const recovered = await (await request.get(API_URL + '/api/supabase-project/session/' + id)).json()
+  expect(recovered.transcript.slice(0, 2)).toEqual(before.transcript)
+  expect(recovered.transcript).toHaveLength(4)
+  expect(recovered.transcript[2].content).toBe(question)
+  expect(recovered.transcript[3].role).toBe('assistant')
   expect(attempts).toBe(1)
 })

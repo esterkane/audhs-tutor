@@ -54,9 +54,17 @@ export function ChatPanel({
     }))
   const tutorCount = chat.items.filter((item) => item.kind === 'tutor').length
   useEffect(() => {
-    if (retained.pending && tutorCount > retained.pending.afterTutorCount)
-      updateDraft((previous) => ({ ...previous, pending: null }))
-  }, [tutorCount, retained.pending, updateDraft])
+    const pending = retained.pending
+    if (!pending || tutorCount <= pending.afterTutorCount) return
+    let answers = 0
+    const answered = chat.items.some((item, index) => {
+      if (item.kind !== 'tutor') return false
+      answers++
+      const question = chat.items[index - 1]
+      return answers > pending.afterTutorCount && question?.kind === 'user' && question.text === pending.text
+    })
+    if (answered) updateDraft((previous) => ({ ...previous, pending: null }))
+  }, [chat.items, tutorCount, retained.pending, updateDraft])
   const sendQuestion = (text: string, mode: InputMode) => {
     updateDraft((previous) => ({ ...previous, pending: { text, afterTutorCount: tutorCount } }))
     onSend(text, mode)
