@@ -141,12 +141,18 @@ function ProjectEditor({ project }: { project: Project }) {
     if (!project.evidence.trim() && !project.reflection.trim()) return
     const controller = new AbortController()
     active.current = controller
-    if (draftRequest.current?.version !== project.version) {
-      draftRequest.current = { version: project.version, key: crypto.randomUUID() }
-    }
     setBusy(true)
     setError('')
     try {
+      const storageKey = 'audhs.project-lesson.pending:' + project.id + ':' + project.version
+      if (draftRequest.current?.version !== project.version) {
+        let key = crypto.randomUUID() as string
+        try {
+          key = sessionStorage.getItem(storageKey) || key
+          sessionStorage.setItem(storageKey, key)
+        } catch { /* The current tab can still retry with its in-memory key. */ }
+        draftRequest.current = { version: project.version, key }
+      }
       const notes = [
         project.evidence.trim() && 'My test evidence\n' + project.evidence,
         project.reflection.trim() && 'My reflection\n' + project.reflection,
@@ -161,7 +167,10 @@ function ProjectEditor({ project }: { project: Project }) {
         }),
       })
       await cache.invalidateQueries({ queryKey: ['curriculum', 'drafts'] })
-      if (!controller.signal.aborted) navigate('/curriculum?draft=' + encodeURIComponent(draft.id))
+      if (!controller.signal.aborted) {
+        navigate('/curriculum?draft=' + encodeURIComponent(draft.id))
+        try { sessionStorage.removeItem(storageKey) } catch { /* Storage may be unavailable. */ }
+      }
     } catch (reason) {
       if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : 'Could not open the lesson draft. Please retry.')
     } finally {

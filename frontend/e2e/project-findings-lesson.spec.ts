@@ -16,6 +16,16 @@ test('turn saved Supabase findings into a personal lesson and resume reading', a
   await expect(create).toBeEnabled()
   const projects = await (await request.get(API + '/api/projects')).json()
   const skills = await (await request.get(API + '/api/skills')).json()
+  let savedId = ''
+  await page.route('**/api/knowledge-material/drafts', async route => {
+    const saved = await route.fetch()
+    expect(saved.ok()).toBeTruthy()
+    savedId = (await saved.json()).id
+    await route.abort()
+  }, { times: 1 })
+  await create.click()
+  await expect(page.getByRole('alert')).toBeVisible()
+  await page.reload()
   const creating = page.waitForResponse(
     (r) => r.url().endsWith('/knowledge-material/drafts') && r.request().method() === 'POST',
   )
@@ -23,6 +33,7 @@ test('turn saved Supabase findings into a personal lesson and resume reading', a
   const res = await creating
   await expectOk(res)
   const draft = await res.json()
+  expect(draft.id).toBe(savedId)
   expect(draft.payload.authoring.notes).toBe(
     'My test evidence\n' + evidence + '\n\nMy reflection\n' + reflection,
   )
