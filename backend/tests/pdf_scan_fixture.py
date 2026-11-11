@@ -97,3 +97,41 @@ def scanned_pdf(root: Path, *, mixed: bool = False, text: str | None = None) -> 
     data = result.getvalue()
     assert not PdfReader(io.BytesIO(data)).pages[-1].extract_text()
     return data
+
+
+def diagram_pdf() -> bytes:
+    """Image-only page with an outlined rectangle and no lettering."""
+    writer = PdfWriter()
+    page = writer.add_blank_page(width=400, height=200)
+    pixels = bytearray([255] * (400 * 200))
+    for y in range(40, 160):
+        start, stop = y * 400 + 70, y * 400 + 310
+        if y < 45 or y >= 155:
+            pixels[start:stop] = bytes(stop - start)
+        else:
+            pixels[start : start + 5] = pixels[stop - 5 : stop] = bytes(5)
+    image = DecodedStreamObject()
+    image.set_data(bytes(pixels))
+    image.update(
+        {
+            NameObject("/Type"): NameObject("/XObject"),
+            NameObject("/Subtype"): NameObject("/Image"),
+            NameObject("/Width"): NumberObject(400),
+            NameObject("/Height"): NumberObject(200),
+            NameObject("/BitsPerComponent"): NumberObject(8),
+            NameObject("/ColorSpace"): NameObject("/DeviceGray"),
+        }
+    )
+    page[NameObject("/Resources")] = DictionaryObject(
+        {
+            NameObject("/XObject"): DictionaryObject(
+                {NameObject("/Diagram"): writer._add_object(image.flate_encode())}
+            )
+        }
+    )
+    content = DecodedStreamObject()
+    content.set_data(b"q 400 0 0 200 0 0 cm /Diagram Do Q")
+    page[NameObject("/Contents")] = writer._add_object(content)
+    stream = io.BytesIO()
+    writer.write(stream)
+    return stream.getvalue()

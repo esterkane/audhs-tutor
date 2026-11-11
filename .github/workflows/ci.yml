@@ -180,7 +180,7 @@ jobs:
       - name: Scanned PDF through source, research, writing, review and learning
         env:
           AUDHS_TEST_PDF_OCR: "1"
-        run: cd frontend && pnpm exec playwright test --config=playwright.focus.config.ts author-own-material.spec.ts mixed-pdf-pages.spec.ts
+        run: cd frontend && pnpm exec playwright test --config=playwright.focus.config.ts author-own-material.spec.ts mixed-pdf-pages.spec.ts diagram-manual.spec.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

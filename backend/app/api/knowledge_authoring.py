@@ -205,7 +205,9 @@ async def upload(
         raise AppError(
             "unreadable_upload", "Could not extract this file. Try a text export.", 422
         ) from None
-    if not doc.text.strip():
+    # A successfully inspected image page is usable as a visual source for manual notes.
+    visual_pdf = suffix == ".pdf" and doc.meta.get("pdf_extraction", {}).get("empty_ocr_pages")
+    if not doc.text.strip() and not visual_pdf:
         raise AppError(
             "empty_upload", "No readable text found. Try clearer pages or a text export.", 422
         )

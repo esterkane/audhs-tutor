@@ -360,7 +360,7 @@ function Editor({
           signal: controller.signal,
         })
         if (!mounted.current || controller.signal.aborted) return
-        const notes = form.notes ? `${form.notes}\n\n${upload.text}` : upload.text
+        const notes = [form.notes, upload.text].filter(Boolean).join('\n\n')
         if (notes.length > 120000)
           throw new Error(
             'Your notes and this upload exceed 120,000 characters together. Your notes are unchanged. Shorten them or start another material, then upload the file again.',
@@ -370,7 +370,9 @@ function Editor({
           : ''
         change({ ...form, title: form.title || upload.filename, upload_id: upload.document_id, upload_version_id: upload.document_version_id ?? null, notes })
         setStatus(
-          `Uploaded ${upload.filename}. ${upload.ocr_pages?.length ? `Local OCR used on pages ${upload.ocr_pages.join(', ')}. Check names, column order, numbers and SQL identifiers against the original. Edit any errors in your source notes below. ` : ''}${emptyOcrNotice}Review the extracted content, then save your material. Original source is retained.`,
+          !upload.text && upload.ocr_empty_pages?.length
+            ? `Uploaded ${upload.filename}. No text was recognized. Open Browse PDF pages to inspect the original, then describe what you see in your notes.`
+            : `Uploaded ${upload.filename}. ${upload.ocr_pages?.length ? `Local OCR used on pages ${upload.ocr_pages.join(', ')}. Check names, column order, numbers and SQL identifiers against the original. Edit any errors in your source notes below. ` : ''}${emptyOcrNotice}Review the extracted content, then save your material. Original source is retained.`,
         )
       } else {
         const saved = await save(controller.signal)

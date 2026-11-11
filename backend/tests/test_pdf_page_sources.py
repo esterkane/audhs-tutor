@@ -1,12 +1,13 @@
 import io
 from uuid import uuid4
 
+import pytest
 from pypdf import PdfWriter
 from sqlalchemy import select
 
 from app.db.models import Chunk, DocumentVersion
 from app.knowledge.pdf_page_sources import read
-from tests.pdf_scan_fixture import native_pdf, scanned_pdf
+from tests.pdf_scan_fixture import diagram_pdf, native_pdf, scanned_pdf
 from tests.test_knowledge_authoring import complete
 from tests.test_pdf_ocr import runtime
 
@@ -124,3 +125,48 @@ async def test_unreadable_scan_remains_selectable_between_readable_pages(
     assert [p["page"] for p in pages] == [1, 2, 3]
     assert pages[1] == {"page": 2, "ocr": True, "text": ""}
     assert upload["text"] == "\n\n".join(p["text"] for p in pages if p["text"])
+
+
+@runtime
+async def test_diagram_without_recognized_words_has_original_but_no_chunks(
+    client, db, settings, tmp_path
+):
+    settings.knowledge_authoring_root = str(tmp_path / "private")
+    raw = diagram_pdf()
+    res = await client.post(
+        "/api/knowledge-material/uploads", content=raw, headers={"X-Filename": "figure.pdf"}
+    )
+    assert res.status_code == 200, res.text
+    data = res.json()
+    assert data["text"] == "" and data["characters"] == 0 and data["ocr_empty_pages"] == [1]
+    assert (
+        list(
+            await db.scalars(
+                select(Chunk).where(Chunk.document_version_id == data["document_version_id"])
+            )
+        )
+        == []
+    )
+    assert next((tmp_path / "private").rglob("*.pdf")).read_bytes() == raw
+    pages = f"/api/knowledge-material/uploads/{data['document_id']}/versions/{data['document_version_id']}/pages"
+    assert (await client.get(pages)).json()["pages"] == [{"page": 1, "ocr": True, "text": ""}]
+    preview = await client.get(pages + "/1/preview")
+    assert preview.status_code == 200 and preview.content.startswith(b"\x89PNG")
+    assert not (
+        await client.post("/api/knowledge-material/drafts", json={"title": "Figure", "notes": ""})
+    ).is_success
+
+
+@pytest.mark.parametrize(
+    ("filename", "content", "error"),
+    [
+        ("empty.pdf", b"", "empty_upload"),
+        ("bad.pdf", b"XYZ", "unreadable_upload"),
+        ("empty.txt", b"  ", "empty_upload"),
+    ],
+)
+async def test_unusable_files_still_fail(client, filename, content, error):
+    res = await client.post(
+        "/api/knowledge-material/uploads", content=content, headers={"X-Filename": filename}
+    )
+    assert res.status_code == 422 and res.json()["error"]["code"] == error
