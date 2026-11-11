@@ -312,3 +312,73 @@ async def test_shutdown_reaps_installer_that_ignores_termination(tmp_path: Path)
         if lab.installer and lab.installer.returncode is None:
             lab.installer.kill()
             await lab.installer.wait()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX installer lifetime pipe and process groups")
+async def test_backend_pipe_eof_reaps_build_helper(tmp_path):
+    import sys
+
+    from app.notebooks import install_guard
+
+    # Guard is a separate real process. Closing its only writer matches backend exit.
+    marker = tmp_path / "orphan-write"
+    helper = (
+        "import pathlib,signal,sys,time;signal.signal(signal.SIGTERM,signal.SIG_IGN);"
+        "pathlib.Path(sys.argv[1]).touch();time.sleep(2);pathlib.Path(sys.argv[2]).touch()"
+    )
+    ready = tmp_path / "started"
+    process = await asyncio.create_subprocess_exec(
+        sys.executable,
+        "-I",
+        install_guard.__file__,
+        sys.executable,
+        "-c",
+        "import subprocess,sys,time;subprocess.Popen(sys.argv[1:]);time.sleep(10)",
+        sys.executable,
+        "-c",
+        helper,
+        str(ready),
+        str(marker),
+        stdin=asyncio.subprocess.PIPE,
+    )
+    try:
+        async with asyncio.timeout(5):
+            while not ready.exists():  # noqa: ASYNC110 - child readiness
+                await asyncio.sleep(0.02)
+        assert process.stdin is not None
+        process.stdin.close()
+        await asyncio.wait_for(process.wait(), 5)
+        await asyncio.sleep(2)
+        assert not marker.exists()
+    finally:
+        if process.returncode is None:
+            process.terminate()
+            await asyncio.wait_for(process.wait(), 5)
+
+
+async def test_repair_partial_environment_preserves_existing_edits(tmp_path, monkeypatch):
+    from app.notebooks.lab import PACKAGES
+
+    bundle(tmp_path)
+    prepare(tmp_path, "test")
+    target = tmp_path / "data/notebooks/test/task.ipynb"
+    target.write_text("saved edit")
+    lab = NotebookLab(Settings(_env_file=None))
+    lab.root = tmp_path
+    env = tmp_path / "data/notebook-env"
+    env.mkdir()
+    (env / "pyvenv.cfg").write_text("partial")
+    calls = []
+
+    async def record(args):
+        calls.append(args)
+        if len(calls) == 2:
+            raise ValueError("Synthetic offline installation failure")
+
+    monkeypatch.setattr(lab, "command", record)
+    lab.start("test", True)
+    await lab.task
+    assert lab.status == "needs_install"
+    assert calls[0] == ["uv", "venv", "--allow-existing", "--python", "3.12", str(env)]
+    assert calls[1][-len(PACKAGES) :] == PACKAGES
+    assert target.read_text() == "saved edit"

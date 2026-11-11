@@ -8,6 +8,7 @@ import os
 import re
 import secrets
 import shutil
+import sys
 import tempfile
 import urllib.parse
 import uuid
@@ -297,8 +298,12 @@ class NotebookLab:
         )
 
     async def command(self, args: list[str]) -> None:
+        # A backend crash closes this pipe. The guard then reaps the installer's process group.
+        if os.name == "posix":
+            args = [sys.executable, "-I", str(Path(__file__).with_name("install_guard.py")), *args]
         self.installer = await asyncio.create_subprocess_exec(
             *args,
+            stdin=asyncio.subprocess.PIPE if os.name == "posix" else asyncio.subprocess.DEVNULL,
             env=self.env,
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
@@ -328,8 +333,14 @@ class NotebookLab:
                     "Installing the pinned scientific Python environment. This may take several minutes.",
                 )
                 if not python.exists():
+                    if (
+                        environment.resolve() != self.root.resolve() / "data/notebook-env"
+                        or python.parent.is_symlink()
+                        or python.is_symlink()
+                    ):
+                        raise ValueError("Cannot repair a notebook environment through a symlink.")
                     await self.command(
-                        ["uv", "venv", "--python", "3.12", str(python.parent.parent)]
+                        ["uv", "venv", "--allow-existing", "--python", "3.12", str(environment)]
                     )
                 await self.command(["uv", "pip", "install", "--python", str(python), *PACKAGES])
             if not python.exists():
