@@ -23,6 +23,8 @@ test('open an uploaded working copy, run a cell explicitly and reopen the saved 
   await page.getByRole('button', { name: 'Prepare and start notebook lab' }).click()
   const link = page.getByRole('link', { name: 'Open prepared notebook in Jupyter' })
   await link.waitFor({ timeout: 30_000 })
+  const href = await link.getAttribute('href')
+  expect(href).toMatch(/^\/api\/notebooks\/open\/[\da-f-]{36}\/[\da-f-]{36}$/i)
   const opened = context.waitForEvent('page')
   await link.click()
   const lab = await opened
@@ -51,5 +53,35 @@ test('open an uploaded working copy, run a cell explicitly and reopen the saved 
   await link.click()
   const second = await reopened
   await expect(second.locator('.jp-Notebook .jp-CodeCell').first().locator('.jp-OutputArea-output')).toHaveText('42', { timeout: 30_000 })
+  // Keep the rendered href and exercise it after its isolated Jupyter server exits.
+  const opaque = new URL(href!, page.url()).href
+  const outsider = await context.newPage()
+  const otherOrigin = 'http://localhost:49991'
+  await outsider.route(otherOrigin + '/fixture', route => route.fulfill({
+    contentType: 'text/html', body: '<a href="' + opaque + '">Open earlier lab</a>',
+  }))
+  await outsider.goto(otherOrigin + '/fixture')
+  const denied = outsider.waitForResponse(r => r.url() === opaque)
+  await outsider.getByRole('link').click()
+  const rejected = await denied
+  expect(rejected.status()).toBe(403)
+  expect(rejected.headers()['location']).toBeUndefined()
+  await outsider.close()
+  const stopped = await second.evaluate(async () => {
+    const xsrf = document.cookie.split('; ').find(c => c.startsWith('_xsrf='))?.slice(6)
+    const response = await fetch('/api/shutdown', {
+      method: 'POST', headers: xsrf ? { 'X-XSRFToken': decodeURIComponent(xsrf) } : {},
+    })
+    return response.status
+  })
+  expect(stopped).toBe(200)
   await second.close()
+  await expect.poll(async () => {
+    const stale = await context.request.get(opaque, { maxRedirects: 0 })
+    if (stale.status() === 409) {
+      expect(stale.headers()['location']).toBeUndefined()
+      expect(stale.headers()['cache-control']).toBe('no-store')
+    }
+    return stale.status()
+  }, {timeout: 20_000}).toBe(409)
 })

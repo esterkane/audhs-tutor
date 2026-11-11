@@ -142,3 +142,33 @@ async def test_old_ready_receipt_does_not_offer_a_stopped_lab(lab, monkeypatch):
     await lab.task
     assert lab.lookup(lab.service_id, original)["url"] is None
     assert lab.lookup(lab.service_id, original)["status"] == "error"
+
+
+async def test_restarted_process_never_revives_previous_ready_receipt(lab, monkeypatch):
+    class Process:
+        returncode = None
+
+    first, second = Process(), Process()
+
+    async def same_listener(client, process):
+        return process is lab.process and process.returncode is None
+
+    monkeypatch.setattr(lab, "_verified_listener", same_listener)
+    lab.process = first
+    old_key, new_key = str(uuid.uuid4()), str(uuid.uuid4())
+    lab.targets[old_key] = (first, "old.ipynb")
+    lab.token = "synthetic-first-token"
+    lab.commands[old_key] = (
+        ("old", False),
+        {"status": "ready", "url": f"/api/notebooks/open/{lab.service_id}/{old_key}"},
+    )
+    assert (await lab.launch_url(lab.service_id, old_key)).endswith(lab.token)
+    first.returncode = 0
+    lab.process = second
+    lab.token = "synthetic-second-token"
+    lab.targets[new_key] = (second, "new.ipynb")
+    with pytest.raises(AppError) as lost:
+        await lab.launch_url(lab.service_id, old_key)
+    assert lost.value.http_status == 409
+    assert lab.lookup(lab.service_id, old_key)["url"] is None
+    assert (await lab.launch_url(lab.service_id, new_key)).endswith(lab.token)

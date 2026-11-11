@@ -144,6 +144,8 @@ async def test_incomplete_environment_offers_repair(
 async def test_launched_lab_resolves_environment_pip(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    import hmac
+
     import httpx
 
     bundle(tmp_path)
@@ -160,6 +162,7 @@ async def test_launched_lab_resolves_environment_pip(
     launches: list[dict[str, str]] = []
 
     class Process:
+        pid = 1071
         returncode: int | None = None
 
         def terminate(self) -> None:
@@ -172,13 +175,33 @@ async def test_launched_lab_resolves_environment_pip(
         env = kwargs["env"]
         assert isinstance(env, dict)
         launches.append(env)
+        (Path(env["JUPYTER_RUNTIME_DIR"]) / "jpserver-1071.json").write_text(
+            json.dumps(
+                {
+                    "pid": 1071,
+                    "port": lab.port,
+                    "hostname": "127.0.0.1",
+                    "root_dir": str(lab.root / "data/notebooks"),
+                    "token": env["JUPYTER_TOKEN"],
+                }
+            )
+        )
         return Process()
 
     async def ready(args: list[str]) -> None:
         pass
 
     original_client = httpx.AsyncClient
-    transport = httpx.MockTransport(lambda request: httpx.Response(200))
+
+    def prove(request: httpx.Request) -> httpx.Response:
+        assert "authorization" not in request.headers and "token" not in str(request.url)
+        challenge = request.url.path.rsplit("/", 1)[1]
+        signature = hmac.digest(
+            bytes.fromhex(launches[0]["AUDHS_NOTEBOOK_PROOF_KEY"]), challenge.encode(), "sha256"
+        )
+        return httpx.Response(204, headers={"X-AuDHS-Listener-Proof": signature.hex()})
+
+    transport = httpx.MockTransport(prove)
     monkeypatch.setattr(httpx, "AsyncClient", lambda **kwargs: original_client(transport=transport))
     monkeypatch.setattr(asyncio, "create_subprocess_exec", launch)
     monkeypatch.setattr(lab, "command", ready)
@@ -190,3 +213,68 @@ async def test_launched_lab_resolves_environment_pip(
     assert launches[0]["VIRTUAL_ENV"] == str(bindir.parent)
     assert "OPENAI_API_KEY" not in launches[0]
     await lab.close()
+
+
+@pytest.mark.parametrize("status", [200, 204])
+async def test_occupied_port_cannot_claim_readiness_or_receive_login_token(tmp_path, monkeypatch, status):
+    import httpx
+
+    bundle(tmp_path)
+    lab = NotebookLab(Settings(_env_file=None))
+    lab.root = tmp_path
+    env_python = (
+        tmp_path / "data/notebook-env" / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
+    )
+    env_python.parent.mkdir(parents=True)
+    env_python.touch()
+    seen = []
+
+    class Process:
+        pid = 1075
+        returncode = None
+
+    proc = Process()
+
+    async def launch(*args, **kwargs):
+        env = kwargs["env"]
+        # Even a genuine server-info record can precede Jupyter's async socket bind.
+        (Path(env["JUPYTER_RUNTIME_DIR"]) / "jpserver-1075.json").write_text(
+            json.dumps(
+                {
+                    "pid": proc.pid,
+                    "port": lab.port,
+                    "hostname": "127.0.0.1",
+                    "root_dir": str(tmp_path / "data/notebooks"),
+                    "token": env["JUPYTER_TOKEN"],
+                }
+            )
+        )
+        return proc
+
+    async def installed(_args):
+        pass
+
+    def wrong_listener(request):
+        seen.append(request)
+        proc.returncode = 1
+        return httpx.Response(status, headers={"X-AuDHS-Listener-Proof": "0" * 64})
+
+    original = httpx.AsyncClient
+    monkeypatch.setattr(
+        httpx,
+        "AsyncClient",
+        lambda **kwargs: original(transport=httpx.MockTransport(wrong_listener)),
+    )
+    monkeypatch.setattr(lab, "command", installed)
+    monkeypatch.setattr(asyncio, "create_subprocess_exec", launch)
+    try:
+        lab.start_command(lab.service_id, "one", "test", False)
+        await lab.task
+        assert lab.snapshot()["status"] == "error" and lab.snapshot()["url"] is None
+        assert len(seen) == 1
+        assert "authorization" not in seen[0].headers and lab.token not in str(seen[0].url)
+        assert lab.token not in repr(
+            list(seen[0].headers.items())
+        ) and lab.proof_key.hex() not in str(seen[0].url)
+    finally:
+        await lab.close()

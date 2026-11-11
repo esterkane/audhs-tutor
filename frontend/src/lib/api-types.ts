@@ -1706,6 +1706,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/notebooks/open/{service_id}/{request_id}': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Open Notebook */
+    get: operations['open_notebook_api_notebooks_open__service_id___request_id__get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/notebooks/status': {
     parameters: {
       query?: never
@@ -12819,6 +12836,43 @@ export interface operations {
         content: {
           'application/json': components['schemas']['NotebookStatus']
         }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  open_notebook_api_notebooks_open__service_id___request_id__get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        service_id: string
+        request_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      303: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
+      }
+      /** @description The prepared notebook is no longer available. */
+      409: {
+        headers: {
+          [name: string]: unknown
+        }
+        content?: never
       }
       /** @description Validation Error */
       422: {

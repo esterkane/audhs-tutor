@@ -7,6 +7,7 @@ from urllib.parse import urlsplit
 from uuid import UUID
 
 from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field
 
 from app.api.deps import DB, Learner, SettingsDep
@@ -119,6 +120,30 @@ async def start_upload(
             str(body.service_id), str(body.request_id), body.course_id, body.install, upload=path
         )
     )
+
+
+@router.get(
+    "/open/{service_id}/{request_id}",
+    response_class=RedirectResponse,
+    status_code=303,
+    responses={409: {"description": "The prepared notebook is no longer available."}},
+)
+async def open_notebook(service_id: UUID, request_id: UUID, request: Request) -> Response:
+    lab = local(request)
+    headers = {"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"}
+    if request.headers.get("sec-fetch-site") not in {None, "same-origin", "none"}:
+        return PlainTextResponse(
+            "Open the prepared notebook from the local tutor.", status_code=403, headers=headers
+        )
+    try:
+        destination = await lab.launch_url(str(service_id), str(request_id))
+    except AppError as error:
+        return PlainTextResponse(
+            "This notebook link is unavailable. Return to the tutor and prepare the notebook again.",
+            status_code=error.http_status,
+            headers=headers,
+        )
+    return RedirectResponse(destination, status_code=303, headers=headers)
 
 
 @router.get("/status", response_model=NotebookStatus, summary="Read local notebook setup status")

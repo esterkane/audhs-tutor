@@ -15,7 +15,7 @@ it('offers explicit setup and opens only the prepared course', async () => {
         ? {
             request_id: body.request_id, service_id: body.service_id, status: 'ready',
             message: 'Ready',
-            url: 'http://127.0.0.1:8890/lab/tree/test/task.ipynb?token=fixture',
+            url: '/api/notebooks/open/' + body.service_id + '/' + body.request_id,
             course_id: 'test',
           }
         : { request_id: body.request_id, service_id: body.service_id, status: 'needs_install', message: 'Install once', url: null, course_id: 'test' }
@@ -30,7 +30,7 @@ it('offers explicit setup and opens only the prepared course', async () => {
   await waitFor(() =>
     expect(screen.getByRole('link', { name: 'Open prepared notebook in Jupyter' })).toHaveAttribute(
       'href',
-      expect.stringContaining('/test/task.ipynb'),
+      setup.url,
     ),
   )
 })
@@ -68,7 +68,7 @@ it('keeps another active job visible when recovering an older course receipt', a
   const pending = { request_id: '22222222-2222-4222-8222-222222222222', service_id: '11111111-1111-4111-8111-111111111111', course_id: 'test', install: false }
   sessionStorage.setItem('audhs.notebook-command.v1:test', JSON.stringify(pending))
   const fetcher = vi.fn(async (url: string) => jsonResponse(url.includes('/requests/')
-    ? { ...pending, status: 'ready', message: 'Earlier setup ready', url: 'http://127.0.0.1:8890/lab?token=fixture' }
+    ? { ...pending, status: 'ready', message: 'Earlier setup ready', url: '/api/notebooks/open/' + pending.service_id + '/' + pending.request_id }
     : { ...pending, request_id: '33333333-3333-4333-8333-333333333333', course_id: 'other', status: 'installing', message: 'Installing other notebook', url: null }))
   vi.stubGlobal('fetch', fetcher)
   renderApp(<LocalNotebookLab courseId="test" />)
@@ -111,4 +111,17 @@ it('does not report platform-only standard modules as installed or ordinary pack
   await screen.findByText(/Standard-library modules unavailable in this Python build or platform: winreg/)
   expect(screen.queryByText(/Imports not found in this environment:/)).not.toBeInTheDocument()
   expect(screen.queryByText(/Imported modules were found/)).not.toBeInTheDocument()
+})
+
+it('never exposes a legacy ready URL or a link bound to another command', async () => {
+  const service = '11111111-1111-4111-8111-111111111111'
+  const command = '22222222-2222-4222-8222-222222222222'
+  for (const url of ['http://127.0.0.1:8891/lab?token=old', '/api/notebooks/open/' + service + '/' + service]) {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse({ service_id: service, request_id: command,
+      course_id: 'test', status: 'ready', url, message: 'Saved setup' })))
+    const view = renderApp(<LocalNotebookLab courseId="test" />)
+    await screen.findByText('Saved setup')
+    expect(screen.queryByRole('link', { name: 'Open prepared notebook in Jupyter' })).toBeNull()
+    view.unmount()
+  }
 })

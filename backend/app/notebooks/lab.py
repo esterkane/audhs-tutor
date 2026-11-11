@@ -2,6 +2,7 @@
 
 import asyncio
 import hashlib
+import hmac
 import json
 import os
 import re
@@ -130,7 +131,10 @@ class NotebookLab:
         self.task: asyncio.Task[None] | None = None
         self.process: asyncio.subprocess.Process | None = None
         self.installer: asyncio.subprocess.Process | None = None
-        self.token = secrets.token_urlsafe(32)
+        self.token = ""
+        self.proof_key = b""
+        self.runtime: tempfile.TemporaryDirectory[str] | None = None
+        self.targets: dict[str, tuple[asyncio.subprocess.Process, str]] = {}
         self.course_id = ""
         self.service_id = str(uuid.uuid4())
         self.command_id: str | None = None
@@ -168,7 +172,7 @@ class NotebookLab:
             return self.snapshot()
         saved = dict(self.commands[request_id][1])
         if saved["status"] == "ready" and (
-            self.process is None or self.process.returncode is not None
+            request_id not in self.targets or not self._live(self.targets[request_id][0])
         ):
             return {
                 **saved,
@@ -177,6 +181,60 @@ class NotebookLab:
                 "message": "The notebook lab stopped. Your prepared files are kept.",
             }
         return saved
+
+    def _live(self, process: asyncio.subprocess.Process) -> bool:
+        return self.process is process and process.returncode is None
+
+    def _owns_record(self, process: asyncio.subprocess.Process) -> bool:
+        if self.runtime is None or not self._live(process):
+            return False
+        record = Path(self.runtime.name) / f"jpserver-{process.pid}.json"
+        try:
+            info = json.loads(record.read_bytes())
+            return (
+                isinstance(info, dict)
+                and info.get("pid") == process.pid
+                and info.get("port") == self.port
+                and info.get("hostname") == "127.0.0.1"
+                and isinstance(info.get("root_dir"), str)
+                and Path(info["root_dir"]) == (self.root / "data/notebooks").absolute()
+                and isinstance(info.get("token"), str)
+                and secrets.compare_digest(info["token"], self.token)
+            )
+        except (OSError, ValueError, TypeError):
+            return False
+
+    async def _verified_listener(
+        self, client: httpx.AsyncClient, process: asyncio.subprocess.Process
+    ) -> bool:
+        if not self._owns_record(process):
+            return False
+        challenge = secrets.token_hex(32)
+        expected = hmac.digest(self.proof_key, challenge.encode("ascii"), "sha256").hex()
+        try:
+            async with client.stream(
+                "GET", f"http://127.0.0.1:{self.port}/audhs-listener-proof/{challenge}"
+            ) as response:
+                return (
+                    response.status_code == 204
+                    and secrets.compare_digest(
+                        response.headers.get("X-AuDHS-Listener-Proof", ""), expected
+                    )
+                    and self._live(process)
+                )
+        except (httpx.HTTPError, TypeError):
+            return False
+
+    async def launch_url(self, service_id: str, request_id: str) -> str:
+        target = self.targets.get(request_id)
+        if service_id == self.service_id and target is not None:
+            process, notebook = target
+            async with httpx.AsyncClient(timeout=2, trust_env=False) as client:
+                if await self._verified_listener(client, process):
+                    return f"http://127.0.0.1:{self.port}/lab/tree/{urllib.parse.quote(notebook)}?token={self.token}"
+        raise AppError(
+            "notebook_listener_unavailable", "The notebook lab stopped. Open it again.", 409
+        )
 
     def start_command(
         self,
@@ -263,7 +321,8 @@ class NotebookLab:
                 if upload is None
                 else await asyncio.to_thread(prepare_upload, self.root, course_id, upload)
             )
-            python = self.root / "data/notebook-env/bin/python"
+            environment = self.root / "data/notebook-env"
+            python = environment / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
             if install:
                 self.status, self.message = (
                     "installing",
@@ -298,11 +357,18 @@ class NotebookLab:
                 "starting",
                 "Starting authenticated Jupyter on this computer…",
             )
-            if self.process is None or self.process.returncode is not None:
+            starting_new_process = self.process is None or self.process.returncode is not None
+            if starting_new_process:
+                if self.runtime:
+                    self.runtime.cleanup()
+                self.runtime = tempfile.TemporaryDirectory(prefix="audhs-jupyter-")
+                self.targets.clear()
+                self.token = secrets.token_urlsafe(32)
+                self.proof_key = secrets.token_bytes(32)
                 self.process = await asyncio.create_subprocess_exec(
                     str(python),
-                    "-m",
-                    "jupyterlab",
+                    "-I",
+                    str(Path(__file__).with_name("serve.py")),
                     "--no-browser",
                     "--ServerApp.ip=127.0.0.1",
                     f"--ServerApp.port={self.port}",
@@ -313,31 +379,32 @@ class NotebookLab:
                         "PATH": str(python.parent) + os.pathsep + self.env.get("PATH", os.defpath),
                         "VIRTUAL_ENV": str(python.parent.parent),
                         "JUPYTER_TOKEN": self.token,
+                        "JUPYTER_RUNTIME_DIR": self.runtime.name,
+                        "AUDHS_NOTEBOOK_PROOF_KEY": self.proof_key.hex(),
                     },
                     stdout=asyncio.subprocess.DEVNULL,
                     stderr=asyncio.subprocess.DEVNULL,
                 )
-            async with httpx.AsyncClient(timeout=2) as client:
+            assert self.process is not None
+            async with httpx.AsyncClient(timeout=2, trust_env=False) as client:
                 for _ in range(60):
                     if self.process.returncode is not None:
                         raise ValueError(
-                            f"Jupyter could not start on port {self.port}. If it is busy, change NOTEBOOK_LAB_PORT and restart the tutor."
+                            f"Jupyter could not start on port {self.port}. "
+                            "If it is busy, change NOTEBOOK_LAB_PORT and restart the tutor."
                         )
-                    try:
-                        response = await client.get(
-                            f"http://127.0.0.1:{self.port}/api/status",
-                            headers={"Authorization": f"token {self.token}"},
+                    if await self._verified_listener(client, self.process):
+                        request = self.command_id or str(uuid.uuid4())
+                        self.targets[request] = (self.process, notebook)
+                        self.url = f"/api/notebooks/open/{self.service_id}/{request}"
+                        self.status, self.message = (
+                            "ready",
+                            "Files are ready. Open the lab, read the instructions, then run cells yourself.",
                         )
-                        if response.status_code == 200:
-                            self.url = f"http://127.0.0.1:{self.port}/lab/tree/{urllib.parse.quote(notebook)}?token={self.token}"
-                            self.status, self.message = (
-                                "ready",
-                                "Files are ready. Open the lab, read the instructions, then run cells yourself.",
-                            )
-                            return
-                    except httpx.HTTPError:
-                        pass
+                        return
                     await asyncio.sleep(0.5)
+            if starting_new_process:
+                await self._stop_owned_process()
             raise ValueError("Jupyter did not become ready. Retry opening the lab.")
         except (TimeoutError, ValueError, OSError, KeyError, TypeError) as exc:
             self.status = "needs_install" if self.status == "installing" else "error"
@@ -354,6 +421,9 @@ class NotebookLab:
                 await self.task
             except asyncio.CancelledError:
                 pass
+        await self._stop_owned_process()
+
+    async def _stop_owned_process(self) -> None:
         if self.process and self.process.returncode is None:
             self.process.terminate()
             try:
@@ -361,3 +431,7 @@ class NotebookLab:
             except TimeoutError:
                 self.process.kill()
                 await self.process.wait()
+        if self.runtime:
+            self.runtime.cleanup()
+            self.runtime = None
+        self.targets.clear()

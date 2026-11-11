@@ -42,6 +42,10 @@ function NotebookLabPanel({ courseId, uploadId }: LabProps) {
   const unavailableOther = (inspection.data?.unavailable_imports ?? []).filter(name => !unavailableStandard.includes(name))
   const mine = state.data?.course_id === courseId
   const ownStatus = mine ? state.data : uploadId ? undefined : command.receipt
+  const uuid = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i
+  const launchPath = ownStatus?.status === 'ready' && ownStatus.service_id === state.data?.service_id &&
+    uuid.test(ownStatus.service_id ?? '') && uuid.test(ownStatus.request_id ?? '')
+    ? '/api/notebooks/open/' + ownStatus.service_id + '/' + ownStatus.request_id : null
   return (
     <section aria-label="Complete local notebook" className="grid gap-3">
       <h3 className="font-semibold">{uploadId ? 'Your uploaded notebook' : 'Complete notebook with datasets and scientific libraries'}</h3>
@@ -84,8 +88,8 @@ function NotebookLabPanel({ courseId, uploadId }: LabProps) {
           </Button>
         </>
       )}
-      {ownStatus?.status === 'ready' && ownStatus.url && (
-        <a className="underline font-semibold" href={ownStatus.url} target="_blank" rel="noreferrer">
+      {launchPath && ownStatus?.url === launchPath && (
+        <a className="underline font-semibold" href={launchPath} target="_blank" rel="noreferrer">
           Open prepared notebook in Jupyter
         </a>
       )}

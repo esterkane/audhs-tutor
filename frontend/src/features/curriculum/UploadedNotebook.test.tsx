@@ -15,7 +15,7 @@ it('uses the saved upload identity and requires an explicit start', async () => 
     expect(init?.method).toBe('POST')
     const command = JSON.parse(init?.body as string)
     expect(command).toMatchObject({ course_id: 'upload-test', install: false, service_id: service })
-    status = { ...command, status: 'ready', url: 'http://127.0.0.1:8890/lab/tree/upload-test/notebook.ipynb', message: 'Ready' }
+    status = { ...command, status: 'ready', url: '/api/notebooks/open/' + service + '/' + command.request_id, message: 'Ready' }
     return jsonResponse(status)
   })
   vi.stubGlobal('fetch', fetcher)
@@ -25,7 +25,7 @@ it('uses the saved upload identity and requires an explicit start', async () => 
   expect(fetcher.mock.calls.every(([, init]) => init?.method !== 'POST')).toBe(true)
   fireEvent.click(screen.getByRole('button', { name: 'Prepare and start notebook lab' }))
   const link = await screen.findByRole('link', { name: 'Open prepared notebook in Jupyter' })
-  expect(link).toHaveAttribute('href', 'http://127.0.0.1:8890/lab/tree/upload-test/notebook.ipynb')
+  expect(link).toHaveAttribute('href', status.url)
 })
 
 it('retries a failed lookup and hides Jupyter for a non-notebook source', async () => {
