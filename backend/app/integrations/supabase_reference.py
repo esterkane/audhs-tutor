@@ -11,6 +11,8 @@ from uuid import uuid4
 class ReferenceAnswer:
     turn: Any
     messages: list[dict[str, Any]]
+    model: str
+    summary: str
 
 
 def identity_request(text: str, state: Any) -> tuple[str, ...]:
@@ -90,11 +92,103 @@ def lab_scope_note(
     return f"These results were measured on PostgreSQL {measured}. A separate run is needed for {versions}."
 
 
+def config_default_request(text: str) -> str | None:
+    key = r"(`?)([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)\1"
+    request = re.fullmatch(
+        r"(?i:what(?: is|'s) the default(?: value)? (?:of|for)|"
+        r"was ist der standardwert (?:von|für)) "
+        + key
+        + r" (?i:in (?:supabase/)?config\.toml|in (?:the |der )?supabase cli)\??",
+        text.strip(),
+    )
+    return request[2] if request else None
+
+
+async def config_default_answer(
+    text: str, key: str, state: Any, ctx: Any
+) -> ReferenceAnswer | None:
+    from backend.tutor.tools import TurnBudget, dispatch
+
+    args = {"query": key + " config.toml default", "k": 8, "products": ["local-development"]}
+    result = await dispatch("search_docs", args, ctx, TurnBudget())
+    if result.is_error:
+        return None
+    url = "https://supabase.com/docs/guides/local-development/cli/config"
+    matches: list[tuple[str, dict[str, Any]]] = []
+    for hit in json.loads(result.content).get("results", []):
+        if hit.get("url") not in {url, f"{url}#{key}"} or hit.get("tier") != 1:
+            continue
+        rows = [
+            line.strip().strip("|").strip() for line in hit["content"].splitlines() if line.strip()
+        ]
+        if not rows or [field.strip() for field in rows[0].split("|")] != [
+            "Name",
+            "Default",
+            "Required",
+        ]:
+            continue
+        fields = rows[1:]
+        if fields and re.fullmatch(r"[- :|]+", fields[0]):
+            fields = fields[1:]
+        if fields:
+            cells = [field.strip() for field in fields[0].split("|")]
+            if len(cells) == 3 and cells[0] == key and cells[2] in {"true", "false"}:
+                matches.append((cells[1], hit))
+    if len({value for value, _ in matches}) != 1:
+        return None
+    value, source = matches[0]
+    # Only literal numeric and boolean defaults are unambiguous without the surrounding prose.
+    if not re.fullmatch(r"true|false|-?[0-9]+(?:\.[0-9]+)?", value):
+        return None
+    label = (
+        "Die Supabase-CLI-Referenz nennt"
+        if state.language == "de"
+        else "The Supabase CLI reference lists"
+    )
+    description = (
+        f"{label} `{value}` als Standardwert für `{key}`."
+        if state.language == "de"
+        else f"{label} `{value}` as the default for `{key}`."
+    )
+    return build_reference_answer(
+        text,
+        state,
+        args,
+        result,
+        description + " [1]",
+        description.replace("`", ""),
+        [
+            {
+                "n": 1,
+                "url": source["url"],
+                "title": source["title"],
+                "tier": 1,
+                "fetched_at": source.get("fetched_at"),
+            }
+        ],
+        "reference:supabase-config-default.v1",
+        "Supabase CLI configuration reference.",
+    )
+
+
 async def reference_answer(
     text: str, state: Any, ctx: Any, history: list[dict[str, Any]] | None = None
 ) -> ReferenceAnswer | None:
     codes = identity_request(text, state)
-    if not codes or ctx is None:
+    if ctx is None:
+        return None
+    if not codes:
+        if (
+            state.mode == "neutral"
+            and state.delivery == "explicit"
+            and not state.active_lab
+            and not state.incident
+            and not history
+            and not getattr(state, "objective", None)
+        ):
+            key = config_default_request(text)
+            if key:
+                return await config_default_answer(text, key, state, ctx)
         return None
     from backend.tutor.tools import TurnBudget, dispatch
 
@@ -149,6 +243,30 @@ async def reference_answer(
     markers = " ".join(f"[{n}]" for n in urls.values())
     body = f"{label}: PostgreSQL {version}. {markers}\n\n| {header} |\n| --- | --- | --- |\n"
     body += "\n".join(lines)
+    return build_reference_answer(
+        text,
+        state,
+        args,
+        result,
+        body,
+        "; ".join(speech),
+        citations,
+        "reference:postgres-sqlstate.v1",
+        "Versioned PostgreSQL SQLSTATE reference.",
+    )
+
+
+def build_reference_answer(
+    text: str,
+    state: Any,
+    args: dict[str, Any],
+    result: Any,
+    body: str,
+    speech: str,
+    citations: list[dict[str, Any]],
+    model: str,
+    summary: str,
+) -> ReferenceAnswer:
     from app.integrations.supabase_project import project_module
 
     turn = project_module().TutorTurn(
@@ -156,7 +274,7 @@ async def reference_answer(
         language=state.language,
         persona_on=state.persona_on,
         text=body,
-        speech="; ".join(speech),
+        speech=speech,
         citations=citations,
     )
     tool_id = "reference-" + str(uuid4())
@@ -173,4 +291,6 @@ async def reference_answer(
             {"role": "user", "content": [result.to_block(tool_id)]},
             {"role": "assistant", "content": body},
         ],
+        model,
+        summary,
     )

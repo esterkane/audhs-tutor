@@ -213,3 +213,77 @@ async def test_patch_specific_objective_does_not_reuse_major_manual_only():
         await reference_answer("SQLSTATE ZZ123", state(objective="PostgreSQL 17.12"), context())
         is None
     )
+
+
+CONFIG = "https://supabase.com/docs/guides/local-development/cli/config"
+QUESTION = "What is the default value for api.max_rows in supabase/config.toml?"
+
+
+def config_context(value="42", *, url=CONFIG, prefix="", key="api.max_rows"):
+    content = (
+        f"{prefix}| Name | Default | Required |\n| --- | --- | --- |\n| {key} | {value} | false |"
+    )
+    ctx = context(content, url)
+    hit = ctx.retriever.search.return_value[0]
+    ctx.retriever.search.return_value = [hit.model_copy(update={"tier": 1})]
+    return ctx
+
+
+@pytest.mark.parametrize(
+    ("text", "lang", "value"),
+    [
+        (QUESTION, "en", "42"),
+        ("Was ist der Standardwert für `api.max_rows` in der Supabase CLI?", "de", "73"),
+    ],
+)
+async def test_config_default_takes_literal_from_source_and_retains_tool_result(text, lang, value):
+    ctx = config_context(value, url=CONFIG + "#api.max_rows")
+    result = await reference_answer(text, state(language=lang), ctx)
+    assert result and result.model == "reference:supabase-config-default.v1"
+    assert (
+        f"`{value}`" in result.turn.text
+        and result.turn.citations[0].url == CONFIG + "#api.max_rows"
+    )
+    block = result.messages[2]["content"][0]
+    assert (
+        json.loads(block["content"])["results"][0]["content"]
+        == ctx.retriever.search.return_value[0].content
+    )
+    assert block["tool_use_id"] == result.messages[1]["content"][0]["id"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        QUESTION + " What went wrong?",
+        "Why did api.max_rows make my request fail?",
+        "What is the default for api.max_rows in Supabase CLI v2.1?",
+        "What is the default for api.max_rows and auth.enabled in config.toml?",
+    ],
+)
+async def test_config_lookup_does_not_swallow_incidents_or_versions(text):
+    ctx = config_context()
+    assert await reference_answer(text, state(), ctx) is None
+    ctx.retriever.search.assert_not_called()
+
+
+async def test_config_default_declines_missing_conflicting_historical_or_bad_evidence():
+    for ctx in (
+        config_context(key="db.port"),
+        config_context(url=CONFIG + "#db.port"),
+        config_context("None"),
+        config_context(prefix="```md\n"),
+        config_context(url=URL),
+    ):
+        assert await reference_answer(QUESTION, state(), ctx) is None
+    ctx = config_context("1000")
+    ctx.retriever.search.return_value += config_context("500").retriever.search.return_value
+    assert await reference_answer(QUESTION, state(), ctx) is None
+    for st, hist in [
+        (state(objective="Use CLI version 1"), []),
+        (state(mode="incident"), []),
+        (state(), [{"role": "user", "content": "Use my previous snapshot"}]),
+    ]:
+        ctx = config_context()
+        assert await reference_answer(QUESTION, st, ctx, hist) is None
+        ctx.retriever.search.assert_not_called()
