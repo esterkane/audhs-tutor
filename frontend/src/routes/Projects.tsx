@@ -1,3 +1,4 @@
+import { ProjectBoolPractice } from '../features/programs/ProjectBoolPractice'
 import { ProjectFilterPractice } from '../features/programs/ProjectFilterPractice'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
@@ -162,6 +163,14 @@ function ProjectEditor({ project }: { project: Project }) {
 
       {project.slug === 'qdrant-filtered-search' && (
         <ProjectFilterPractice
+          evidence={form.evidence}
+          disabled={!valid || busy || conflict}
+          onAppend={(entry) => edit('evidence', [form.evidence, entry].filter(Boolean).join('\n\n'))}
+        />
+      )}
+
+      {project.slug === 'elasticsearch-relevance' && (
+        <ProjectBoolPractice
           evidence={form.evidence}
           disabled={!valid || busy || conflict}
           onAppend={(entry) => edit('evidence', [form.evidence, entry].filter(Boolean).join('\n\n'))}
