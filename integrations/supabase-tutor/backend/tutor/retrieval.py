@@ -239,10 +239,21 @@ class PgHybridRetriever:
                                 break
             anchors: list[Chunk] = []
 
-            if codes:
+            # A planner may supply a catalogue code/name pair inside a longer search.
+            # Confirm the pair on one official row before reserving a result slot.
+            pair = re.search(
+                r"""\b([0-9a-z]{5})\b["']?\s+["']?([a-z][a-z0-9]*_[a-z0-9_]+)\b""",
+                query, re.I,
+            )
+            editions = set(re.findall(r"\bpostgres(?:ql)?\s+(\d+)\b", query, re.I))
+            paired_lookup = (
+                not codes and pair is not None and any(char.isdigit() for char in pair[1])
+                and len(editions) <= 1
+            )
+            if codes or paired_lookup:
                 filters = expand_products(products)
                 await cur.execute(
-                    "select c.content from tutor.docs_chunk c "
+                    "select c.content, s.url from tutor.docs_chunk c "
                     "join tutor.docs_source s on s.id=c.source_id where s.status='active' "
                     "and s.url='https://www.postgresql.org/docs/' || "
                     "(current_setting('server_version_num')::int / 10000)::text || '/errcodes-appendix.html' "
@@ -250,9 +261,24 @@ class PgHybridRetriever:
                     "order by c.ord limit 256",
                     (filters, filters),
                 )
-                compared = [code for row in await cur.fetchall()
-                            for code in named_condition_codes(row["content"], query)]
-                codes = tuple(dict.fromkeys((*codes, *compared)))
+                catalogue = await cur.fetchall()
+                if codes:
+                    compared = [code for row in catalogue
+                                for code in named_condition_codes(row["content"], query)]
+                    codes = tuple(dict.fromkeys((*codes, *compared)))
+                elif pair:
+                    exact = re.compile(
+                        rf"^\|[ \t]*{re.escape(pair[1])}[ \t]*\|[ \t]*{re.escape(pair[2])}[ \t]*\|[ \t]*$",
+                        re.I | re.M,
+                    )
+                    major = next(iter(editions), None)
+                    if any(
+                        exact.search(row["content"])
+                        and (major is None or row["url"].endswith(f"/{major}/errcodes-appendix.html"))
+                        for row in catalogue
+                    ):
+                        codes = (pair[1].upper(),)
+            if codes:
                 code_pattern = r"(?m)^\|[ \t]*(" + "|".join(codes) + r")[ \t]*\|"
                 class_pattern = (r"(?m)^\|[ \t]*Class[ \t]*("
                                  + "|".join(dict.fromkeys(c[:2] for c in codes)) + r")\M")
@@ -288,7 +314,7 @@ class PgHybridRetriever:
                             hit = hit.model_copy(update={"content": excerpt})
                     kept.append(hit)
                 anchor_ids = {hit.chunk_id for hit in anchors}
-                anchors = [hit for hit in kept if hit.chunk_id in anchor_ids][:k]
+                anchors = [hit for hit in kept if hit.chunk_id in anchor_ids][:1 if paired_lookup else k]
                 chunks = [hit for hit in kept if hit.chunk_id not in anchor_ids]
             elif (k > 1 and (not products or "database" in products)
                   and re.search(r"\b(?:postgres(?:ql)?|security[\s_-]+definer|row[\s_-]+level[\s_-]+security|RLS)\b", query, re.I)):
