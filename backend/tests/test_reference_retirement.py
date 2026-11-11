@@ -8,7 +8,7 @@ import pytest
 
 
 @pytest.fixture
-def indexer(monkeypatch):
+def indexer(monkeypatch, tmp_path):
     scripts = Path(__file__).resolve().parents[2] / "integrations/supabase-tutor/scripts"
     monkeypatch.syspath_prepend(str(scripts))
     spec = importlib.util.spec_from_file_location(
@@ -18,6 +18,7 @@ def indexer(monkeypatch):
     module = importlib.util.module_from_spec(spec)
     monkeypatch.setitem(sys.modules, spec.name, module)
     spec.loader.exec_module(module)
+    monkeypatch.setattr(module, "RAW_DIR", tmp_path / "corpus")
     return module
 
 
