@@ -11,6 +11,15 @@ import { ProjectSqlPractice } from '../features/programs/ProjectSqlPractice'
 import { useDraftRecovery } from '../features/curriculum/useDraftRecovery'
 
 type Project = Schemas['LearningProjectOut']
+const projectTopics: Partial<Record<string, NonNullable<Schemas['KnowledgeMaterialInput']['focus_topic']>>> = {
+  'supabase-postgres-support': 'supabase',
+  'postgresql-query-plan': 'postgresql',
+  'elasticsearch-relevance': 'elasticsearch',
+  'vector-search-evaluation': 'vector-search',
+  'qdrant-filtered-search': 'qdrant',
+  'kubernetes-recovery': 'kubernetes',
+}
+
 const encode = (project: Project) =>
   JSON.stringify({
     notes: project.notes,
@@ -75,6 +84,7 @@ export function Projects() {
 }
 
 function ProjectEditor({ project }: { project: Project }) {
+  const focusTopic = projectTopics[project.slug]
   const navigate = useNavigate()
   const draftRequest = useRef<{ version: number; key: string } | null>(null)
   const recovery = useDraftRecovery('learning-project:' + project.id, project.version, encode(project))
@@ -137,7 +147,7 @@ function ProjectEditor({ project }: { project: Project }) {
     }
   }
   async function draftFromProject() {
-    if (active.current || recovery.dirty || conflict || !valid) return
+    if (!focusTopic || active.current || recovery.dirty || conflict || !valid) return
     if (!project.evidence.trim() && !project.reflection.trim()) return
     const controller = new AbortController()
     active.current = controller
@@ -163,7 +173,7 @@ function ProjectEditor({ project }: { project: Project }) {
         signal: AbortSignal.any([controller.signal, AbortSignal.timeout(15000)]),
         body: JSON.stringify({
           title: project.title + ' — project findings', domain: 'programming',
-          focus_topic: 'supabase', workflow_step: 'write', notes,
+          focus_topic: focusTopic, workflow_step: 'write', notes,
         }),
       })
       await cache.invalidateQueries({ queryKey: ['curriculum', 'drafts'] })
@@ -328,7 +338,7 @@ function ProjectEditor({ project }: { project: Project }) {
       <p className="text-sm text-muted">
         {recovery.dirty ? 'Unsaved writing is kept in this browser tab.' : 'Your current writing is saved.'}
       </p>
-      {project.slug === 'supabase-postgres-support' && (
+      {focusTopic && (
         <div>
           <Button variant="secondary" disabled={busy || !valid || conflict || recovery.dirty || (!project.evidence.trim() && !project.reflection.trim())}
             onClick={() => void draftFromProject()}>Create lesson draft from saved findings</Button>

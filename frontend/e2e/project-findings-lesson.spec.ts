@@ -5,8 +5,8 @@ test('turn saved Supabase findings into a personal lesson and resume reading', a
   await endOpenSession(request)
   await page.goto('/projects')
   await page.getByRole('button', { name: 'Open project: Supabase', exact: true }).click()
-  const evidence = 'In my fixture the support role read zero rows under the policy.'
-  const reflection = 'I still need to distinguish visibility from table grants.'
+  const evidence = 'In my fixture the support role read zero rows under the policy.'.padEnd(23999, 'x') + 'E'
+  const reflection = 'I still need to distinguish visibility from table grants.'.padEnd(15999, 'y') + 'R'
   await page.getByLabel('My project notes').fill('Private scratch, excluded from transfer.')
   await page.getByLabel('Test evidence and observed results').fill(evidence)
   await page.getByLabel('What I can explain and what remains uncertain').fill(reflection)
@@ -88,3 +88,29 @@ test('turn saved Supabase findings into a personal lesson and resume reading', a
   expect(await (await request.get(API + '/api/projects')).json()).toEqual(projects)
   await endOpenSession(request)
 })
+
+for (const [label, topic] of [
+  ['PostgreSQL', 'postgresql'],
+  ['Elasticsearch', 'elasticsearch'],
+  ['Vector search', 'vector-search'],
+  ['Qdrant', 'qdrant'],
+  ['Kubernetes', 'kubernetes'],
+]) {
+  test('create a personal lesson from ' + label + ' findings', async ({ page }) => {
+    await page.goto('/projects')
+    await page.getByRole('button', { name: 'Open project: ' + label, exact: true }).click()
+    const evidence = 'My observations from the ' + label + ' project.'
+    await page.getByLabel('Test evidence and observed results').fill(evidence)
+    await page.getByRole('button', { name: 'Save project notes' }).click()
+    const creating = page.waitForResponse(
+      r => r.url().endsWith('/knowledge-material/drafts') && r.request().method() === 'POST',
+    )
+    await page.getByRole('button', { name: 'Create lesson draft from saved findings' }).click()
+    const response = await creating
+    await expectOk(response)
+    const draft = await response.json()
+    expect(draft.payload.authoring.focus_topic).toBe(topic)
+    expect(draft.payload.authoring.notes).toBe('My test evidence\n' + evidence)
+    await expect(page.getByLabel('Learning objective', { exact: true })).toBeVisible()
+  })
+}
