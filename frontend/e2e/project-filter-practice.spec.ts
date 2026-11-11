@@ -18,6 +18,15 @@ test('filtered fixture preserves prediction and observation in learner-owned pro
   await expect(evidence).toHaveValue(
     /My prior note\.[\s\S]*My prediction: B,C[\s\S]*Observed IDs in rank order: C, A/,
   )
+  await page.locator('summary').filter({ hasText: 'Change one condition' }).press('Enter')
+  await page.getByLabel('Predicted order without the topic condition').fill('D,C,A')
+  await page.getByRole('button', { name: 'Compare searches' }).press('Enter')
+  await expect(page.getByText(/Without a topic condition:/)).toContainText('D = 5, C = 4, A = 3')
+  await page.getByLabel('Predicted order with the new query').fill('C,A,D')
+  await page.getByRole('button', { name: 'Check new query' }).press('Enter')
+  await expect(page.getByText(/New query scores:/)).toContainText('A = 0, C = -1, D = -2')
+  await page.getByRole('button', { name: 'Add comparison to project evidence' }).click()
+  await expect(evidence).toHaveValue(/My prediction: C,A,D. Observed scores: A = 0, C = -1, D = -2/)
   await page.getByLabel('Topic filter').selectOption('traces')
   await expect(prediction).toBeEmpty()
   await prediction.fill('none')
@@ -34,5 +43,6 @@ test('filtered fixture preserves prediction and observation in learner-owned pro
   await expect(evidence).toHaveValue(
     /tenant blue, topic logs[\s\S]*tenant blue, topic traces[\s\S]*Observed IDs in rank order: none/,
   )
+  await expect(evidence).toHaveValue(/Remove only the topic condition[\s\S]*New query \[-1, 2\]/)
   await expect(page.getByLabel('What I can explain and what remains uncertain')).toHaveValue(/eligibility/)
 })

@@ -8,7 +8,113 @@ const points = [
   { id: 'C', tenant: 'blue', topic: 'logs', vector: [3, 1] },
   { id: 'D', tenant: 'blue', topic: 'metrics', vector: [4, 1] },
 ]
-const query = [1, 1]
+function rankedPoints(query: number[], topic?: string) {
+  return points
+    .filter((p) => p.tenant === 'blue' && (topic === undefined || p.topic === topic))
+    .map((p) => ({ id: p.id, score: p.vector.reduce((sum, value, i) => sum + value * query[i], 0) }))
+    .sort((a, b) => b.score - a.score)
+}
+type Ranking = ReturnType<typeof rankedPoints>
+const ids = (rows: Ranking) => rows.map((row) => row.id).join(', ') || 'none'
+const scores = (rows: Ranking) => rows.map((row) => row.id + ' = ' + row.score).join(', ') || 'none'
+const agrees = (answer: string, observed: string) =>
+  answer.toLowerCase().replace(/\s+/g, '') === observed.toLowerCase().replace(/\s+/g, '')
+
+function CompareConditions({
+  topic,
+  baselinePrediction,
+  evidence,
+  disabled,
+  onAppend,
+}: {
+  topic: string
+  baselinePrediction: string
+  evidence: string
+  disabled: boolean
+  onAppend: (entry: string) => void
+}) {
+  const [prediction, setPrediction] = useState('')
+  const [transfer, setTransfer] = useState('')
+  const [ran, setRan] = useState(false)
+  const [tested, setTested] = useState(false)
+  const baseline = rankedPoints([1, 1], topic)
+  const withoutTopic = rankedPoints([1, 1])
+  const newQuery = rankedPoints([-1, 2])
+  const entry = [
+    'Controlled exact dot-product comparison on the same synthetic points; tenant blue throughout.',
+    `Baseline: topic ${topic}, query [1, 1]. My prediction: ${baselinePrediction.trim()}. Observed scores: ${scores(baseline)}.`,
+    `Remove only the topic condition. My prediction: ${prediction.trim()}. Observed scores: ${scores(withoutTopic)}.`,
+    `New query [-1, 2], still without a topic condition. My prediction: ${transfer.trim()}. Observed scores: ${scores(newQuery)}.`,
+  ].join('\n')
+  const fits = [evidence, entry].filter(Boolean).join('\n\n').length <= 24000
+  return (
+    <Disclosure label="Change one condition">
+      <p>Keep the same points, blue tenant and query [1, 1]. Remove only the topic condition.</p>
+      <label>
+        Predicted order without the topic condition
+        <input
+          value={prediction}
+          maxLength={100}
+          onChange={(e) => {
+            setPrediction(e.target.value)
+            setRan(false)
+            setTested(false)
+            setTransfer('')
+          }}
+        />
+      </label>
+      <Button disabled={!prediction.trim()} onClick={() => setRan(true)}>
+        Compare searches
+      </Button>
+      {ran && (
+        <>
+          <p role="status">
+            {agrees(prediction, ids(withoutTopic))
+              ? 'Prediction matches.'
+              : 'Compare your prediction with the ranked points.'}{' '}
+            With topic {topic}: {scores(baseline)}. Without a topic condition: {scores(withoutTopic)}.
+          </p>
+          <p>
+            The scores of previously eligible points stay the same. Removing the topic condition admits other
+            topics within blue.
+          </p>
+          <p>Now change only the query to [-1, 2]. For each eligible point [x, y], calculate −x + 2y.</p>
+          <label>
+            Predicted order with the new query
+            <input
+              value={transfer}
+              maxLength={100}
+              onChange={(e) => {
+                setTransfer(e.target.value)
+                setTested(false)
+              }}
+            />
+          </label>
+          <Button disabled={!transfer.trim()} onClick={() => setTested(true)}>
+            Check new query
+          </Button>
+          {tested && (
+            <>
+              <p role="status">
+                {agrees(transfer, ids(newQuery))
+                  ? 'Prediction matches.'
+                  : 'Compare your prediction with the new scores.'}{' '}
+                New query scores: {scores(newQuery)}. The blue tenant filter still applies.
+              </p>
+              <Button
+                disabled={disabled || !fits || evidence.includes(entry)}
+                onClick={() => onAppend(entry)}
+              >
+                Add comparison to project evidence
+              </Button>
+              {!fits && <p>Your evidence is near its limit. Make room before adding this comparison.</p>}
+            </>
+          )}
+        </>
+      )}
+    </Disclosure>
+  )
+}
 
 export function ProjectFilterPractice({
   evidence,
@@ -22,12 +128,9 @@ export function ProjectFilterPractice({
   const [topic, setTopic] = useState('logs')
   const [prediction, setPrediction] = useState('')
   const [checked, setChecked] = useState(false)
-  const ranked = points
-    .filter((p) => p.tenant === 'blue' && p.topic === topic)
-    .map((p) => ({ id: p.id, score: p.vector.reduce((sum, value, i) => sum + value * query[i], 0) }))
-    .sort((a, b) => b.score - a.score)
-  const observed = ranked.map((row) => row.id).join(', ') || 'none'
-  const matches = prediction.toLowerCase().replace(/\s+/g, '') === observed.toLowerCase().replace(/\s+/g, '')
+  const ranked = rankedPoints([1, 1], topic)
+  const observed = ids(ranked)
+  const matches = agrees(prediction, observed)
   const entry = [
     'Exact dot-product fixture: query [1, 1], tenant blue, topic ' + topic + '.',
     'My prediction: ' + prediction.trim(),
@@ -108,6 +211,13 @@ export function ProjectFilterPractice({
             Add run to project evidence
           </Button>
           {!fits && <p>Your evidence is near its limit. Make room before adding this run.</p>}
+          <CompareConditions
+            topic={topic}
+            baselinePrediction={prediction}
+            evidence={evidence}
+            disabled={disabled}
+            onAppend={onAppend}
+          />
         </div>
       )}
     </Disclosure>
