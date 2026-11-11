@@ -6,7 +6,6 @@ or FSRS writes. Previously committed assessed outcomes replay unchanged. Revisio
 retain their original lineage; feedback is literal and specific.
 """
 
-import re
 from datetime import UTC, datetime
 from typing import Any
 
@@ -29,6 +28,7 @@ from app.db.models import (
 )
 from app.kernel import competency, memory, question_replacements, question_state, task_reviews
 from app.kernel import session as ksession
+from app.kernel.correction_validation import answer_text as _norm
 from app.models_ai.gateway import GatewayError, ModelGateway
 from app.models_ai.provider import Message, TaskClass
 from app.models_ai.routing import NoModelReady
@@ -101,18 +101,19 @@ async def versioned_view(
     return result.model_copy(update={"content_version": assessment_content.token(content)})
 
 
-def _norm(s: str) -> str:
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9_√() ]+", " ", s.lower())).strip()
-
-
 def grade_mcq(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
     options: list[str] = item["options"]
     correct_idx = int(item["answer"])
     chosen: int | None = None
     a = answer.strip()
-    if a.isdigit() and int(a) < len(options):
-        chosen = int(a)
-    else:
+    if a.isdecimal():
+        try:
+            index = int(a)
+        except ValueError:  # A submission can exceed Python's integer conversion limit.
+            index = len(options)
+        if index < len(options):
+            chosen = index
+    if chosen is None:
         for i, opt in enumerate(options):
             if _norm(opt) == _norm(a):
                 chosen = i
@@ -146,9 +147,7 @@ def grade_mcq(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
 def grade_cloze(item: dict[str, Any], answer: str) -> tuple[GradeResult, bool]:
     accepted = [_norm(x) for x in item["answers"]]
     a = _norm(answer)
-    passed = bool(a) and any(
-        a == acc or re.search(rf"(?<![a-z0-9]){re.escape(acc)}(?![a-z0-9])", a) for acc in accepted
-    )
+    passed = bool(a) and a in accepted
     if passed:
         feedback = f"Correct: '{item['answers'][0]}' fits the blank."
         next_step = "Next: say the whole sentence aloud from memory."

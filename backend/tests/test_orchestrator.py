@@ -1155,3 +1155,30 @@ async def test_saved_source_citations_do_not_attribute_code_literals(
     saved = await world["db"].get(models.TutorAnswer, done["answer_id"])
     assert saved is not None and saved.text == text
     assert saved.metadata_json["sources"] == done["sources"]
+
+
+@pytest.mark.parametrize(
+    ("accepted", "submitted", "expected"),
+    [
+        ("-1", "1", False),
+        ("0.5", "0 5", False),
+        ("RLS", "not RLS", False),
+        ("n!", "n", False),
+        ("String?", "String", False),
+        ("1.", "1", False),
+        ("<=", ">=", False),
+        ("<=", "<=", True),
+        ("Schlüssel", "Schl ssel", False),
+        ("Schlüssel", " SCHLÜSSEL. ", True),
+        ("sqrt(d_k)", "Sqrt(d_k)", True),
+    ],
+)
+def test_cloze_requires_the_whole_accepted_answer(accepted, submitted, expected):
+    assert grade_cloze({"answers": [accepted]}, submitted)[1] is expected
+
+
+def test_mcq_handles_numeric_text_that_cannot_be_an_option_index():
+    item = {"options": ["squared", "²"], "answer": 1}
+    assert grade_mcq(item, "²")[1]
+    assert grade_mcq(item, "01")[1]
+    assert not grade_mcq(item, "9" * 5000)[1]

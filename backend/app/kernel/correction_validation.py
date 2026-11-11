@@ -1,6 +1,7 @@
 """Non-publishing structural review. Valid shape does not prove a correct lesson."""
 
 import re
+import unicodedata
 from typing import Annotated, Any
 
 from pydantic import (
@@ -20,8 +21,11 @@ class Shape(BaseModel):
 
 
 def answer_text(value: str) -> str:
-    """Mirror current deterministic grading without changing its accepted-answer policy."""
-    return re.sub(r"\s+", " ", re.sub(r"[^a-z0-9_√() ]+", " ", value.lower())).strip()
+    """Normalize whitespace and ordinary prose endings while preserving technical symbols."""
+    text = " ".join(unicodedata.normalize("NFC", value).lower().split())
+    if not text.strip(".!?"):
+        return ""
+    return re.sub(r"(?<=[^\W\d_])\.$", "", text)
 
 
 class MCQ(Shape):

@@ -135,7 +135,7 @@ async def test_incomplete_sources_are_not_verified(db):
     assert good["complete"] and len(good["items"]) == 1
 
 
-@pytest.mark.parametrize("options", [["A!", "A?"], ["a b", "a   b"], ["!!!", "Valid"]])
+@pytest.mark.parametrize("options", [["A", "A."], ["a b", "a   b"], ["!!!", "Valid"]])
 def test_mcq_options_cannot_alias_under_actual_grader(options):
     assert validate("mcq", {**MCQ, "options": options})
 
