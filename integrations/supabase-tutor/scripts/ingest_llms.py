@@ -348,8 +348,21 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
 
     # Rendered reference headings do not reliably define HTML fragment IDs.
     synthesize_anchors = not urlparse(source_file).path.startswith("/docs/reference/")
+    config_url = urljoin("https://supabase.com", source_file)
     chunks: list[Chunk] = []
     for hs, paras in sections:
+        anchor = slug(hs[-1]) if hs and synthesize_anchors else None
+        if config_url in CONFIG_GUIDES:
+            # These rendered pages use setting names verbatim (including dots and underscores).
+            # Keep only an explicit permalink for this page; headings without one cite the page.
+            anchor = None
+            titles = []
+            for index, heading in enumerate(hs):
+                link = re.search(r"\[#\]\(" + re.escape(config_url) + r"#([\w.-]+)\)$", heading)
+                titles.append(heading[:link.start()].rstrip() if link else heading)
+                if link and index == len(hs) - 1:
+                    anchor = link[1]
+            hs = titles
         cur: list[str] = []
         carry: list[str] = []
 
@@ -362,7 +375,7 @@ def chunk_markdown(text: str, product: str, source_file: str) -> list[Chunk]:
                 Chunk(
                     ord=len(chunks),
                     heading_path=" > ".join(hs),  # noqa: B023 - flush() runs inside the loop
-                    anchor=slug(hs[-1]) if hs and synthesize_anchors else None,  # noqa: B023
+                    anchor=anchor,  # noqa: B023
                     content=content,
                     meta={
                         "product": product,

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Ask the ingested corpus a question via tutor.hybrid_search (debugging aid for retrieval).
 
-Embeds the query with the same provider as the ingest (nomic `search_query:` prefix for Ollama).
+Uses the active corpus’s local embedding model and the tutor’s query formatting.
 
 Usage:
   uv run python scripts/search.py "permission denied for table 42501"
@@ -11,20 +11,27 @@ from __future__ import annotations
 
 import argparse
 import os
+import sys
+from pathlib import Path
 
 import httpx
 import psycopg
 from db import admin_url
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from backend.tutor.embedding_space import RECORDED_SQL, checked_vectors, ollama_payload, resolve_model
 
-def embed_query(text: str) -> list[float]:
+
+def embed_query(text: str, conn: psycopg.Connection) -> list[float]:
     provider = os.environ.get("EMBEDDINGS_PROVIDER", "ollama")
     if provider != "ollama":
         raise SystemExit("only EMBEDDINGS_PROVIDER=ollama is wired up here")
     url = os.environ.get("OLLAMA_URL", "http://localhost:11434") + "/api/embed"
-    r = httpx.post(url, json={"model": "nomic-embed-text", "input": [f"search_query: {text}"]}, timeout=60)
+    recorded = [row[0] for row in conn.execute(RECORDED_SQL).fetchall()]
+    model = resolve_model(provider, os.environ.get("EMBEDDINGS_MODEL"), recorded)
+    r = httpx.post(url, json=ollama_payload([text], model, query=True), timeout=60)
     r.raise_for_status()
-    return r.json()["embeddings"][0]
+    return checked_vectors(r.json()["embeddings"], 1)[0]
 
 
 def main() -> None:
@@ -34,8 +41,8 @@ def main() -> None:
     ap.add_argument("--product", action="append", help="restrict to meta.product (repeatable)")
     args = ap.parse_args()
 
-    emb = str(embed_query(args.query))
     with psycopg.connect(admin_url()) as conn:
+        emb = str(embed_query(args.query, conn))
         rows = conn.execute(
             "select score, url, anchor, heading_path, left(regexp_replace(content, '\\s+', ' ', 'g'), 160)"
             " from tutor.hybrid_search(%s, %s::extensions.vector, %s, %s)",

@@ -154,3 +154,18 @@ def test_configuration_guide_uses_article_and_preserves_code(tmp_path, url, iden
     for invalid in (html.replace(url, url + "-other"), html.replace(setting, "missing"), html.replace("</article>", "")):
         assert asyncio.run(run(invalid)).status == "failed"
     assert len(list(tmp_path.iterdir())) == 1
+
+
+def test_config_chunks_only_cite_published_heading_links():
+    url = "https://supabase.com/docs/guides/local-development/cli/config"
+    text = f"""# Supabase CLI config
+Introduction.
+## Auth Config[#]({url}#auth-config)
+### `auth.jwt_expiry`[#]({url}#auth.jwt_expiry)
+Tokens are valid for the configured number of seconds.
+### Other
+Another setting.
+"""
+    chunks = ing.chunk_markdown(text, "local-development", "/docs/guides/local-development/cli/config")
+    assert [chunk.anchor for chunk in chunks] == [None, "auth.jwt_expiry", None]
+    assert chunks[1].heading_path == "Supabase CLI config > Auth Config > `auth.jwt_expiry`"
