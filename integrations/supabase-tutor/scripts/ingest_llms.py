@@ -217,6 +217,14 @@ async def fetch(client: httpx.AsyncClient, doc: Doc, sem: asyncio.Semaphore, *, 
             if r.status_code != 200 or not r.text.strip():
                 doc.status = "failed"
                 return doc
+            # A successful HTTP status can still deliver a login or error page.
+            # A seed with lost links must not authorize retirement of its descendants.
+            if urlparse(doc.url).path.lower().endswith((".txt", ".md")) and re.match(
+                r"^\s*(?:<!doctype\s+html\b|<html\b)", r.text.lstrip("\ufeff"), re.I
+            ):
+                doc.status = "failed"
+                doc.failure_reason = "unexpected_html"
+                return doc
             if REFERENCE_URL.fullmatch(doc.url):
                 final_url = str(r.url).rstrip("/")
                 if (not REFERENCE_URL.fullmatch(final_url) or

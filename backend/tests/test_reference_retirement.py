@@ -342,3 +342,31 @@ async def test_changed_page_refresh_automatically_keeps_recorded_qwen(indexer, m
     assert posted[0]["model"] == "qwen3-embedding:0.6b"
     assert all(not text.startswith("search_document: ") for text in posted[0]["input"])
     assert write.call_args.args[1] == "qwen3-embedding:0.6b"
+
+
+async def test_html_error_returned_as_success_cannot_retire_or_overwrite(indexer, monkeypatch):
+    import httpx
+    from unittest.mock import Mock
+
+    url = "https://supabase.com/llms/cli.txt"
+    client = httpx.AsyncClient
+    transport = httpx.MockTransport(
+        lambda req: httpx.Response(
+            200,
+            text="<!DOCTYPE html><html>Service unavailable</html>" if str(req.url) == url else url,
+        )
+    )
+    monkeypatch.setattr(indexer.httpx, "AsyncClient", lambda: client(transport=transport))
+    monkeypatch.setattr(sys, "argv", ["ingest", "--profile", "all"])
+    monkeypatch.setattr(
+        indexer, "existing_hashes", lambda: {url: ("old", 1, "qwen3-embedding:0.6b")}
+    )
+    monkeypatch.setenv("EMBEDDINGS_PROVIDER", "ollama")
+    monkeypatch.delenv("EMBEDDINGS_MODEL", raising=False)
+    write, retire = Mock(), Mock()
+    monkeypatch.setattr(indexer, "upsert", write)
+    monkeypatch.setattr(indexer, "retire_missing", retire)
+    assert await indexer.main() == 1
+    write.assert_not_called()
+    retire.assert_not_called()
+    assert not indexer.RAW_DIR.exists()
