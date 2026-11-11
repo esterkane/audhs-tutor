@@ -121,7 +121,7 @@ def test_owned_foreign_keys_and_downgrade(stored):
         revision = conn.execute("SELECT version_num FROM alembic_version").fetchone()[0]
     with pytest.raises(
         RuntimeError,
-        match="populated provisional feedback history",
+        match="populated reading prediction history",
     ):
         command.downgrade(alembic_config(url), "c0ff66df480b")
     assert dump_tables(url) == before

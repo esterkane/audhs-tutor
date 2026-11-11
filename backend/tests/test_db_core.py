@@ -50,6 +50,7 @@ EXPECTED_TABLES = {
     "competency_evidence",
     "competency_state",
     "review_item",
+    "reading_prediction",
     "memory_state",
     "review_log",
     "assessment",
