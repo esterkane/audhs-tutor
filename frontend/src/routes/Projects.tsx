@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { apiFetch, type Schemas } from '../lib/api'
+import { ApiError, apiFetch, type Schemas } from '../lib/api'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { useDraftRecovery } from '../features/curriculum/useDraftRecovery'
@@ -116,6 +116,9 @@ function ProjectEditor({ project }: { project: Project }) {
           : 'Project writing saved. You can resume it later.',
       )
     } catch (reason) {
+      if (!controller.signal.aborted && reason instanceof ApiError && reason.code === 'project_changed') {
+        await cache.invalidateQueries({ queryKey: ['learning-projects'] })
+      }
       if (!controller.signal.aborted)
         setError(
           reason instanceof Error
@@ -194,19 +197,35 @@ function ProjectEditor({ project }: { project: Project }) {
         </label>
       ))}
       {conflict && (
-        <div>
-          <p role="alert">The saved project changed. Your writing is retained; compare it before saving.</p>
+        <section aria-label="Compare project versions">
+          <p role="alert">The saved project changed. Compare the differences before choosing a version.</p>
+          <dl>
+            {(['notes', 'evidence', 'reflection', 'status'] as const).filter(key => form[key] !== project[key]).map(key => (
+              <div key={key} className="my-2">
+                <dt className="font-semibold">{({notes: 'Notes', evidence: 'Evidence', reflection: 'Reflection', status: 'Status'})[key]}</dt>
+                <dd className="whitespace-pre-wrap break-words">Saved version: {project[key] || '(empty)'}</dd>
+                <dd className="whitespace-pre-wrap break-words">This tab: {form[key] || '(empty)'}</dd>
+              </div>
+            ))}
+          </dl>
+          <Button variant="secondary" onClick={() => {
+            recovery.reset(encode(project), project.version)
+            setError('')
+            setNotice('Loaded the saved project.')
+          }}>Use saved version</Button>
           <Button
             variant="secondary"
             onClick={() => {
               const kept = recovery.text
               recovery.reset(encode(project), project.version)
               recovery.edit(kept)
+              setError('')
+              setNotice('Your tab writing is ready to save.')
             }}
           >
             Keep my writing against the latest version
           </Button>
-        </div>
+        </section>
       )}
       <div className="flex gap-2 flex-wrap">
         <Button disabled={busy || !valid || conflict} onClick={() => void save('working')}>
