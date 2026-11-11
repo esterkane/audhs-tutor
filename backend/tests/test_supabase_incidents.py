@@ -45,6 +45,9 @@ def test_report_maps_to_reviewed_plan_and_preserves_incident(index, language):
     "report",
     [
         "Our connection times out",
+        "HTTP 403: permission denied for table invoices. Retry: HTTP 200. Why did the retry work?",
+        "Yesterday SQLSTATE 42703. Today the same query succeeds. What changed?",
+        "Gestern SQLSTATE 42703. Heute funktioniert dieselbe Abfrage. Was hat sich geändert?",
         "We no longer see permission denied for table orders",
     ],
 )
@@ -228,6 +231,13 @@ def test_concurrency_does_not_bypass_chosen_teaching_mode_or_active_lab(changes)
 )
 def test_comparative_questions_delegate_even_with_a_recognized_error(report):
     assert select_plan(report, state()) is None
+
+
+def test_current_failure_after_earlier_success_keeps_reported_error():
+    report = (
+        "HTTP 200 on first request. Next request: HTTP 403 permission denied for table invoices."
+    )
+    assert select_plan(report, state()) == PLANS[0]
 
 
 @pytest.mark.parametrize(

@@ -280,6 +280,23 @@ def select_plan(text: str, state: Any) -> Diagnostic | None:
     ):
         return None
     text = _incident_prose(text)
+    # An earlier error can explain a failed request, but cannot establish why a later one worked.
+    if re.search(
+        r"\b(?:why did (?:the |my )?(?:retry|second (?:request|attempt)) "
+        r"(?:work|succeed)|warum (?:hat|klappte|funktionierte) (?:der |mein )?"
+        r"(?:zweite versuch|erneute versuch|retry))\b",
+        text,
+        re.I,
+    ) or (
+        re.search(r"\b(?:what changed|was hat sich geändert)\b", text, re.I)
+        and re.search(
+            r"\b(?:now|today|jetzt|heute)\b[^.!?]{0,100}\b"
+            r"(?:succeeds?|works?|funktioniert|klappt)\b",
+            text,
+            re.I,
+        )
+    ):
+        return None
     # A resolved/negated report is not a new failure. Preserve distinct mixed error boundaries.
     if re.search(r"no longer|not getting|not seeing|kein.*mehr|nicht mehr", text, re.I):
         return None
