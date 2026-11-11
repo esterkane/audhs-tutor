@@ -1184,6 +1184,23 @@ class PublishReport:
     new_object_versions: int = 0
 
 
+async def latest_accepted_material(
+    db: AsyncSession, learner_id: str, slug: str
+) -> CurriculumDraft | None:
+    accepted: CurriculumDraft | None = await db.scalar(
+        select(CurriculumDraft)
+        .where(
+            CurriculumDraft.learner_id == learner_id,
+            CurriculumDraft.origin == "knowledge_authored",
+            CurriculumDraft.status == "published",
+            CurriculumDraft.payload_json["skills"][0]["slug"].as_string() == slug,
+        )
+        .order_by(CurriculumDraft.published_at.desc(), CurriculumDraft.id.desc())
+        .limit(1)
+    )
+    return accepted
+
+
 async def publish_draft(
     db: AsyncSession, learner_id: str, draft_id: str, *, expected_version: int | None = None
 ) -> PublishReport:
@@ -1205,6 +1222,25 @@ async def publish_draft(
             409,
         )
     payload = d.payload_json
+    authoring = payload.get("authoring") or {}
+    if authoring.get("factual_review_id"):
+        parent = await get_draft(db, learner_id, authoring["revised_from_draft_id"])
+        slug = parent.payload_json["skills"][0]["slug"]
+        latest_material = await latest_accepted_material(db, learner_id, slug)
+        if latest_material is None or latest_material.id != parent.id:
+            raise AppError(
+                "review_version_changed",
+                "A newer lesson was accepted. Review that version before activating another revision.",
+                409,
+            )
+        if (payload.get("skills") or [{}])[0].get("slug") != slug:
+            raise AppError(
+                "review_skill_changed",
+                "Save this revision again to reconnect it to the original lesson.",
+                409,
+            )
+        if d.area_id is None:
+            d.area_id = parent.area_id
     problems = selection_problems(payload.get("selection")) + await validate_payload(db, payload)
     errors = [p for p in problems if p.level == "error"]
     if errors:

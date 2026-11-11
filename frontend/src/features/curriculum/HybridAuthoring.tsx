@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { boundedRead } from '../../lib/boundedRead'
 import { apiFetch, type Schemas } from '../../lib/api'
 import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
@@ -129,7 +130,8 @@ export function FactualReviews({ draftId, onOpen }: { draftId: string; onOpen: (
   const path = `/api/knowledge-material/drafts/${draftId}/factual-review`
   const query = useQuery({
     queryKey: ['factual-review', draftId],
-    queryFn: () => apiFetch<Schemas['FactualReviewOut'] | null>(path),
+    queryFn: ({ signal }) => boundedRead<Schemas['FactualReviewOut'] | null>(path, signal, 'Review schedule'),
+    retry: false,
   })
   const [editedUrls, setUrls] = useState<string | null>(null)
   const urls = editedUrls ?? query.data?.urls.join('\n') ?? ''
@@ -137,23 +139,28 @@ export function FactualReviews({ draftId, onOpen }: { draftId: string; onOpen: (
   const days = editedDays ?? query.data?.interval_days ?? 30
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
-  async function action(kind: 'save' | 'run' | 'pause' | string) {
+  const scheduleChanged = query.data && (urls.trim() !== query.data.urls.join('\n') || days !== query.data.interval_days)
+  async function action(kind: string) {
     setBusy(true)
     setMessage('')
     try {
-      if (kind === 'save' || kind === 'pause')
-        await apiFetch(path, {
+      if (kind === 'save' || kind === 'pause') {
+        const saved = await apiFetch<Schemas['FactualReviewOut']>(path, {
           method: 'PUT',
           body: JSON.stringify({
-            urls: urls
+            urls: kind === 'pause' ? query.data?.urls : urls
               .split('\n')
               .map((x) => x.trim())
               .filter(Boolean),
-            interval_days: days,
+            interval_days: kind === 'pause' ? query.data?.interval_days : days,
             enabled: kind === 'save',
           }),
         })
-      else if (kind === 'run') await apiFetch(`${path}/run`, { method: 'POST' })
+        cache.setQueryData(['factual-review', draftId], saved)
+        setUrls(null)
+        setDays(null)
+        setMessage(kind === 'save' ? 'Review schedule saved.' : 'Reviews paused.')
+      } else if (kind === 'run') await apiFetch(`${path}/run`, { method: 'POST' })
       else {
         const revision = await apiFetch<Schemas['DraftOut']>(`${path}/revisions/${kind}`, { method: 'POST' })
         await cache.cancelQueries({ queryKey: ['curriculum', 'drafts'], exact: true })
@@ -197,12 +204,12 @@ export function FactualReviews({ draftId, onOpen }: { draftId: string; onOpen: (
           />
         </label>
         <div className="flex flex-wrap gap-2">
-          <Button disabled={busy || !urls.trim()} onClick={() => void action('save')}>
+          <Button disabled={busy || query.isPending || query.isError || !urls.trim()} onClick={() => void action('save')}>
             Save review schedule
           </Button>
           <Button
             variant="secondary"
-            disabled={busy || !query.data?.enabled}
+            disabled={busy || query.isError || !query.data?.enabled || !!scheduleChanged}
             onClick={() => void action('run')}
           >
             Check references now
@@ -215,6 +222,8 @@ export function FactualReviews({ draftId, onOpen }: { draftId: string; onOpen: (
             Pause reviews
           </Button>
         </div>
+        {scheduleChanged && <p>Save your changes before checking these references.</p>}
+        {query.isError && <p role="alert">Could not load the saved review schedule. <Button onClick={() => void query.refetch()}>Retry review schedule</Button></p>}
         {query.data && (
           <p>
             {query.data.enabled ? `Next due: ${query.data.next_due_at}` : 'Reviews paused'}. Checks resume
@@ -234,10 +243,10 @@ export function FactualReviews({ draftId, onOpen }: { draftId: string; onOpen: (
                 <p>
                   {String(item.checked_at)} ·{' '}
                   {item.outcome === 'sources_unchanged'
-                    ? 'Reference text unchanged; no new model review'
+                    ? 'Reference text unchanged. No new model review.'
                     : item.outcome === 'reviewed'
                       ? 'Review proposal ready'
-                      : 'Review failed; material unchanged'}
+                      : 'Review failed. The accepted lesson is unchanged.'}
                 </p>
                 {item.error_message && <p>{item.error_message}</p>}
                 {proposal?.findings.map((finding, i) => (
@@ -254,7 +263,7 @@ export function FactualReviews({ draftId, onOpen }: { draftId: string; onOpen: (
                   <Disclosure label="Proposed explanation">
                     <p className="whitespace-pre-wrap">{proposal.proposed_explanation}</p>
                     <Button disabled={busy} onClick={() => void action(String(item.id))}>
-                      Create update draft
+                      {item.revision_id ? 'Reopen update draft' : 'Create update draft'}
                     </Button>
                   </Disclosure>
                 )}

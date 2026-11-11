@@ -102,7 +102,9 @@ async def propose_revision(
     if run.get("revision_id"):
         return await curriculum.get_draft(db, learner_id, run["revision_id"])
     original = await curriculum.get_draft(db, learner_id, draft_id)
-    if original.status != "published" or original.version != run["draft_version"]:
+    slug = original.payload_json["skills"][0]["slug"]
+    latest = await curriculum.latest_accepted_material(db, learner_id, slug)
+    if latest is None or latest.id != original.id or original.version != run["draft_version"]:
         raise AppError(
             "review_version_changed",
             "Review the current accepted version before creating a revision.",
@@ -113,6 +115,7 @@ async def propose_revision(
     explanation = run["proposal"]["proposed_explanation"]
     authoring.update(
         explanation=explanation,
+        skill_slug=slug,
         revised_from_draft_id=draft_id,
         factual_review_id=run_id,
         request_id=str(uuid4()),
@@ -123,6 +126,7 @@ async def propose_revision(
         learner_id=learner_id,
         course=None,
         section=None,
+        area_id=original.area_id,
         payload_json=payload,
         origin="knowledge_authored",
         status="draft",

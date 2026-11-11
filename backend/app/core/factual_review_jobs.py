@@ -4,7 +4,7 @@ import asyncio
 import logging
 
 from fastapi import FastAPI
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.db.base import utcnow_iso
 from app.db.models import CurriculumDraft, KnowledgeReview
@@ -20,6 +20,7 @@ async def tick(app: FastAPI) -> None:
     if not settings.read_authoring_key():
         return
     async with app.state.session_factory() as db:
+        now = utcnow_iso()
         due = list(
             (
                 await db.scalars(
@@ -27,7 +28,11 @@ async def tick(app: FastAPI) -> None:
                     .join(CurriculumDraft, CurriculumDraft.id == KnowledgeReview.draft_id)
                     .where(
                         KnowledgeReview.enabled.is_(True),
-                        KnowledgeReview.next_due_at <= utcnow_iso(),
+                        KnowledgeReview.next_due_at <= now,
+                        or_(
+                            KnowledgeReview.running_until.is_(None),
+                            KnowledgeReview.running_until <= now,
+                        ),
                         CurriculumDraft.status == "published",
                     )
                     .order_by(KnowledgeReview.next_due_at)

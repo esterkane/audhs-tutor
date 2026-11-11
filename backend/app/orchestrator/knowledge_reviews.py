@@ -6,13 +6,13 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from sqlalchemy import or_, select, update
+from sqlalchemy import or_, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import Settings
 from app.core.errors import AppError
 from app.db.base import new_id, utcnow_iso
-from app.db.models import CurriculumDraft, KnowledgeReview
+from app.db.models import KnowledgeReview
 from app.kernel import curriculum
 from app.kernel import knowledge_reviews as policies
 from app.knowledge import reference_fetch
@@ -62,16 +62,7 @@ async def run(
     if draft.status != "published":
         raise AppError("review_requires_accepted", "This material has not been activated.", 409)
     slug = (draft.payload_json.get("skills") or [{}])[0].get("slug")
-    latest = await db.scalar(
-        select(CurriculumDraft)
-        .where(
-            CurriculumDraft.learner_id == learner_id,
-            CurriculumDraft.status == "published",
-            CurriculumDraft.payload_json["skills"][0]["slug"].as_string() == slug,
-        )
-        .order_by(CurriculumDraft.published_at.desc())
-        .limit(1)
-    )
+    latest = await curriculum.latest_accepted_material(db, learner_id, slug)
     if latest and latest.id != draft.id:
         row.enabled = False
         await db.commit()

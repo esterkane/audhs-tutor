@@ -110,3 +110,20 @@ it('preserves a zero authoring cap when explicitly choosing local authoring', as
   await screen.findByText('Authoring settings saved.')
   expect(bodies).toEqual([{key:'authoring.daily_budget_cents',value:0},{key:'authoring.enabled',value:false}])
 })
+
+it('checks only the saved references and pauses without applying unsaved edits', async () => {
+  const url = 'https://example.org/accepted'
+  const policy = { enabled: true, interval_days: 14, urls: [url], next_due_at: 'tomorrow', history: [] }
+  let saved: unknown
+  vi.stubGlobal('fetch', vi.fn(async (_url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') saved = JSON.parse(String(init.body))
+    return jsonResponse(policy)
+  }))
+  wrap(<FactualReviews draftId="accepted" onOpen={vi.fn()} />)
+  fireEvent.click(screen.getByText('Factual reviews and updates (optional)'))
+  const urls = await screen.findByDisplayValue(url)
+  fireEvent.change(urls, { target: { value: 'https://example.org/unsaved' } })
+  expect(screen.getByRole('button', { name: 'Check references now' })).toBeDisabled()
+  fireEvent.click(screen.getByRole('button', { name: 'Pause reviews' }))
+  await waitFor(() => expect(saved).toEqual({ enabled: false, interval_days: 14, urls: [url] }))
+})

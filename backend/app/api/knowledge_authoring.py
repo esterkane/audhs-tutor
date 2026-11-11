@@ -310,6 +310,10 @@ async def update(
     if not previous:
         raise AppError("invalid_authoring_draft", "Choose a knowledge material draft.", 422)
     command = KnowledgeMaterialInput.model_validate(body.model_dump(exclude={"expected_version"}))
+    if previous.get("factual_review_id") and not previous.get("skill_slug"):
+        # Recover review drafts saved before the original skill identity was retained.
+        parent = await curriculum.get_draft(db, learner.id, previous["revised_from_draft_id"])
+        previous = {**previous, "skill_slug": parent.payload_json["skills"][0]["slug"]}
     payload = await knowledge_authoring.payload_for(
         db,
         learner.id,
@@ -403,17 +407,7 @@ async def accepted_reading(skill_id: str, db: DB, learner: Learner) -> Knowledge
     from app.kernel import skill_graph
 
     node = await skill_graph.get_node(db, skill_id, learner_id=learner.id)
-    draft = await db.scalar(
-        select(CurriculumDraft)
-        .where(
-            CurriculumDraft.learner_id == learner.id,
-            CurriculumDraft.origin == "knowledge_authored",
-            CurriculumDraft.status == "published",
-            CurriculumDraft.payload_json["skills"][0]["slug"].as_string() == node.slug,
-        )
-        .order_by(CurriculumDraft.published_at.desc())
-        .limit(1)
-    )
+    draft = await curriculum.latest_accepted_material(db, learner.id, node.slug)
     if draft is None:
         return None
     lo = await skill_graph.learning_object_for(db, node.id, learner_id=learner.id)
