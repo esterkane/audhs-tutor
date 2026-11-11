@@ -101,6 +101,12 @@ it('offers exact reuse at capacity while keeping new-generation actions disabled
   expect(screen.getByRole('button', { name: 'Ask for another reply' })).toBeDisabled()
   fireEvent.click(screen.getByRole('button', { name: 'Reuse saved reply' }))
   expect(request).toHaveBeenCalledExactlyOnceWith('discuss')
+  const full = Array.from({ length: 12 }, (_, i) => ({ ...question, id: String(i) }))
+  view.rerender(<ResearchTutorPanel {...props} research={{ ...research, questions: full }} question={full[0]} />)
+  expect(screen.getByText(/open Source and choose Start another knowledge material/)).toBeVisible()
+  full[1] = { ...full[1], tutor_exchanges: [] }
+  view.rerender(<ResearchTutorPanel {...props} research={{ ...research, questions: full }} question={full[0]} />)
+  expect(screen.getByText(/Select another question with room/)).toBeVisible()
   const adopted = { ...question, section: 'Proposed paragraph.', tutor_exchanges: question.tutor_exchanges.map(x => ({ ...x, answer: { ...x.answer, section: 'Proposed paragraph.' } })) }
   view.rerender(<ResearchTutorPanel {...props} question={adopted} />)
   expect(screen.queryByRole('button', { name: 'Reuse saved reply' })).not.toBeInTheDocument()
