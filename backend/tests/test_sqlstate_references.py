@@ -180,3 +180,35 @@ async def test_database_mechanism_keeps_engine_and_framework_sources_without_fil
     repo, cursor, _ = retriever([[framework]])
     await repo.search("SECURITY DEFINER privileges and RLS", k=5, products=["auth"])
     assert cursor.execute.await_count == 1
+
+
+@pytest.mark.parametrize(
+    "query,matched",
+    [
+        ('"42501" "insufficient_privilege"\nPostgreSQL 17', True),
+        ("23514 check_violation", True),
+        ("PostgreSQL 17 UPDATE USING 42501 insufficient_privilege permission denied", True),
+        ("42501 check_violation", False),
+        ("42501 row_count", False),
+        ('"42501" "insufficient_privilege" PostgreSQL 18', False),
+    ],
+)
+async def test_code_name_lookup_requires_same_official_row_and_edition(query, matched):
+    url = "https://www.postgresql.org/docs/17/errcodes-appendix.html"
+    appendix = row(url, "| 42501 | insufficient_privilege |\n| 23514 | check_violation |")
+    generic = row("https://supabase.com/docs/example", "Other reference")
+    responses = [[generic], [appendix]]
+    if matched:
+        responses.append([appendix])
+    elif "PostgreSQL" in query:
+        responses.append([])
+    repo, _, _ = retriever(responses)
+    hits = await repo.search(query, k=2)
+    if matched:
+        assert hits[0].url == url
+        assert hits[1].chunk_id == generic["chunk_id"]
+        assert hits[0].content == next(
+            line for line in appendix["content"].splitlines() if line.split("|")[1].strip() in query
+        )
+    else:
+        assert [h.chunk_id for h in hits] == [generic["chunk_id"]]
