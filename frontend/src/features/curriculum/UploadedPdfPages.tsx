@@ -49,9 +49,9 @@ export function UploadedPdfPages({ uploadId, versionId, passage, selectPassage, 
           {page.text.trim() ? <blockquote aria-label={`Extracted text from PDF page ${page.page}`} className="mt-2 whitespace-pre-wrap break-words border-l-2 pl-3">{page.text}</blockquote> : <p>No text was extracted from this page.</p>}
           {src && <>
             <Button variant="secondary" aria-expanded={preview === src} onClick={()=>{
-              setPreview(preview === src ? '' : src); setFailed(false); setZoom(false)
-            }}>{preview === src ? 'Hide original page' : 'Inspect original page ' + page.page}</Button>
-            {preview === src && (failed ? <p role="alert">The original page image could not be loaded. Hide and reopen it to retry.</p>
+              setPreview(preview === src && !failed ? '' : src); setFailed(false); setZoom(false)
+            }}>{preview !== src ? 'Inspect original page ' + page.page : failed ? 'Retry original page ' + page.page : 'Hide original page'}</Button>
+            {preview === src && (failed ? <p role="alert">The original page image could not be loaded.</p>
               : <figure>
                 <figcaption>Original PDF page {page.page}. Compare the scan with the extracted text above.</figcaption>
                 <Button variant="secondary" aria-pressed={zoom} onClick={()=>setZoom(!zoom)}>Enlarge page image</Button>
