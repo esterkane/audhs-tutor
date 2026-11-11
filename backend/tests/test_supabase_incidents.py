@@ -276,3 +276,9 @@ def test_incident_distinguishes_reported_codes_from_application_identifiers(repo
 def test_postgrest_error_identity_is_separate_from_query_results(report, key):
     plan = select_plan(report, state())
     assert (plan.key if plan else None) == key
+
+
+@pytest.mark.parametrize("report", [*REPORTS, "keine Berechtigung für Tabelle invoices"])
+def test_socratic_incident_leaves_investigation_to_the_learner(report):
+    assert select_plan(report, state(delivery="explicit")) is not None
+    assert select_plan(report, state(delivery="socratic")) is None

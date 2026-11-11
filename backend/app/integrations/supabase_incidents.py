@@ -269,7 +269,12 @@ def _incident_prose(text: str) -> str:
 
 
 def select_plan(text: str, state: Any) -> Diagnostic | None:
-    if state.mode != "incident" or state.active_lab is not None or len(text) > 8000:
+    if (
+        state.mode != "incident"
+        or getattr(state, "delivery", "explicit") != "explicit"
+        or state.active_lab is not None
+        or len(text) > 8000
+    ):
         return None
     # Fixed diagnostics explain reported errors. A comparison asks for outcomes
     # under distinct conditions, even when one of them mentions a familiar code.
@@ -306,8 +311,6 @@ def select_plan(text: str, state: Any) -> Diagnostic | None:
         if any(re.search(p, text, re.I) for p in plan.patterns)
     ]
     if any(plan in CONCURRENCY_PLANS for plan in found):
-        if getattr(state, "delivery", "explicit") != "explicit":
-            return None
         # Don't turn a hypothetical/denied error or an unhandled code into a complete diagnosis.
         if re.search(
             r"\b(?:not|never|without|hypothetical|if|kein|nicht|ohne|falls)\b",
