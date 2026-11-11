@@ -3,7 +3,7 @@
 import json
 import re
 from dataclasses import dataclass
-from typing import Any, cast
+from typing import Any
 from uuid import uuid4
 
 
@@ -33,20 +33,17 @@ def identity_request(text: str, state: Any) -> tuple[str, ...]:
     )
     if question:
         subject = next(value for value in question.groups() if value is not None)
-    code = r"[\"'`]?[0-9A-Z]{5}[\"'`]?"
-    if not re.fullmatch(
-        r"(?:SQLSTATE(?: codes?)?\s*[:=]?\s*)?"
-        + code
-        + r"(?:\s*(?:,|/|and|or|und|oder)\s*"
-        + code
-        + r"){0,3}",
-        subject,
-        re.IGNORECASE,
-    ):
+    subject = re.sub(r"^SQLSTATE\b(?:\s+codes?\b)?\s*[:=]?\s*", "", subject, flags=re.I)
+    members = re.split(r"\s*(?:,|/|\b(?:and|or|und|oder)\b)\s*", subject, flags=re.I)
+    if len(members) > 4:
         return ()
-    from backend.tutor.retrieval import sqlstate_codes
-
-    return cast(tuple[str, ...], sqlstate_codes(subject.replace("`", "")))
+    codes = []
+    for member in members:
+        token = re.fullmatch(r"""(['"`]?)([0-9A-Za-z]{5})\1""", member)
+        if token is None or not any(char.isdigit() for char in token[2]):
+            return ()
+        codes.append(token[2].upper())
+    return tuple(dict.fromkeys(codes))
 
 
 def active_releases(text: str, state: Any, history: list[dict[str, Any]] | None) -> list[str]:
@@ -203,7 +200,7 @@ async def reference_answer(
         return None
     from backend.tutor.tools import TurnBudget, dispatch
 
-    args = {"query": text, "k": 12, "products": ["database"]}
+    args = {"query": "SQLSTATE " + ", ".join(codes), "k": 12, "products": ["database"]}
     result = await dispatch("search_docs", args, ctx, TurnBudget())
     if result.is_error:
         return None

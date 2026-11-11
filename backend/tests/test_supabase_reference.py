@@ -86,6 +86,37 @@ def test_broader_contextual_and_versioned_questions_do_not_get_partial_answers(q
 
 
 @pytest.mark.parametrize(
+    "question",
+    [
+        "SQLSTATE 23514 and ABCDE",
+        "SQLSTATE 23514 and 23502 and ABCDE",
+        "SQLSTATE '23514\"",
+    ],
+)
+async def test_invalid_list_member_or_mismatched_quote_declines_entire_lookup(question):
+    ctx = context("| 23514 | check_violation |")
+    assert await reference_answer(question, state(), ctx) is None
+    ctx.retriever.search.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "Was bedeuten `23514` und `23502`?",
+        "What do 23514 and 23502 mean?",
+        "SQLSTATE '23514', \"23502\"",
+    ],
+)
+async def test_every_explicit_code_reaches_search_and_answer(question):
+    ctx = context("| 23514 | check_violation |\n| 23502 | not_null_violation |")
+    result = await reference_answer(question, state(), ctx)
+    assert result is not None
+    assert "check_violation" in result.turn.text and "not_null_violation" in result.turn.text
+    assert result.messages[0]["content"] == question
+    assert result.messages[1]["content"][0]["input"]["query"] == "SQLSTATE 23514, 23502"
+
+
+@pytest.mark.parametrize(
     "changes",
     [
         dict(mode="lesson"),
