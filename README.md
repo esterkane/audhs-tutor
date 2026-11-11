@@ -86,6 +86,12 @@ Feedback does not retrain a model, silently rewrite active lessons or change mas
 
 Imported material is not automatically a reviewed or published course. Course curation and curriculum improvements remain in progress. Voice implementation is available, but the personal-recording acceptance gate remains open. See [the roadmap](docs/ROADMAP.md) and [handoff](docs/HANDOFF.md) for current evidence and outstanding work.
 
+### Revisit a passage from memory
+
+In section view of an accepted lesson with a before-reading question, enter your prediction and choose **Save prediction and read**. After reading, answer **How did your prediction compare?** To revisit that question a day later, choose **Save prediction for later recall**. This last step saves your original prediction to your learner profile. Your immediate comparison and correction stay in the browser.
+
+After 24 hours, open **Review → Passage recall** from any browser connected to the same tutor installation. Write what you remember and choose **Save recall and compare** to see your answer alongside your original prediction and the passage as it read at the time. You can reopen your latest completed comparison with **View last saved recall**. This exercise is ungraded.
+
 ## Local setup
 
 The application runs on macOS and Linux, including Windows through WSL2. The optional MLX speech stack requires Apple Silicon; the `wsl` routing profile uses Faster Whisper instead. CI tests the core application on Linux using fake model providers. See the [local workflow update](docs/LOCAL-WORKFLOW-UPDATE.md) for authoring behavior and current quality limits.

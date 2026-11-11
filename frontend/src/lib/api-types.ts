@@ -744,6 +744,91 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/reading-predictions/enrollment': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Enrollment */
+    get: operations['enrollment_api_reading_predictions_enrollment_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/reading-predictions': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Enroll */
+    post: operations['enroll_api_reading_predictions_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/reading-predictions/due': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Due */
+    get: operations['due_api_reading_predictions_due_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/reading-predictions/latest-recall': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Latest Recall */
+    get: operations['latest_recall_api_reading_predictions_latest_recall_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
+  '/api/reading-predictions/{prediction_id}/recall': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    get?: never
+    put?: never
+    /** Recall */
+    post: operations['recall_api_reading_predictions__prediction_id__recall_post']
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/references/{identity}': {
     parameters: {
       query?: never
@@ -4733,6 +4818,25 @@ export interface components {
       /** Evidence */
       evidence?: components['schemas']['PassageEvidence'][]
     }
+    /** CompletedRecall */
+    CompletedRecall: {
+      /** Id */
+      id: string
+      /** Question */
+      question: string
+      /** Title */
+      title: string
+      /** Prediction */
+      prediction: string
+      /** Answer */
+      answer: string
+      /** Passage */
+      passage: string
+      /** Created At */
+      created_at: string
+      /** Answered At */
+      answered_at: string
+    }
     /** ComponentOut */
     ComponentOut: {
       /** Ready */
@@ -5420,6 +5524,28 @@ export interface components {
       total_due: number
       /** As Of */
       as_of: string
+    }
+    /** DuePrediction */
+    DuePrediction: {
+      /** Id */
+      id: string
+      /** Due At */
+      due_at: string
+      /** Question */
+      question: string
+      /** Title */
+      title: string
+    }
+    /** EnrollPrediction */
+    EnrollPrediction: {
+      /** Draft Id */
+      draft_id: string
+      /** Learning Object Version */
+      learning_object_version: number
+      /** Question Id */
+      question_id: string
+      /** Prediction */
+      prediction: string
     }
     /** ExcludedQuestions */
     ExcludedQuestions: {
@@ -7182,6 +7308,13 @@ export interface components {
       /** Self Rating */
       self_rating: number
     }
+    /** PredictionReceipt */
+    PredictionReceipt: {
+      /** Id */
+      id: string
+      /** Due At */
+      due_at: string
+    }
     /** PrefOut */
     PrefOut: {
       /** Values */
@@ -7628,6 +7761,11 @@ export interface components {
       question_id: string
       /** Content Sha256 */
       content_sha256: string
+    }
+    /** RecallInput */
+    RecallInput: {
+      /** Answer */
+      answer: string
     }
     /** ReferenceImport */
     ReferenceImport: {
@@ -10634,6 +10772,147 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['PrefOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  enrollment_api_reading_predictions_enrollment_get: {
+    parameters: {
+      query: {
+        draft_id: string
+        learning_object_version: number
+        question_id: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PredictionReceipt'] | null
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  enroll_api_reading_predictions_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['EnrollPrediction']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PredictionReceipt']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  due_api_reading_predictions_due_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['DuePrediction'] | null
+        }
+      }
+    }
+  }
+  latest_recall_api_reading_predictions_latest_recall_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CompletedRecall'] | null
+        }
+      }
+    }
+  }
+  recall_api_reading_predictions__prediction_id__recall_post: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        prediction_id: string
+      }
+      cookie?: never
+    }
+    requestBody: {
+      content: {
+        'application/json': components['schemas']['RecallInput']
+      }
+    }
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['CompletedRecall']
         }
       }
       /** @description Validation Error */

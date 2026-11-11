@@ -9,7 +9,8 @@ import { readDraft, writeDraft, clearDraft } from '../features/assess/draft'
 import { useSkills } from '../features/skills/api'
 import { OptionalConfidence } from '../components/OptionalConfidence'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { PassageRecall } from '../features/review/PassageRecall'
 import { Button } from '../components/ui/button'
 import { Card, CardTitle } from '../components/ui/card'
 import { SessionControls } from '../features/session/SessionControls'
@@ -56,7 +57,12 @@ function restoreQueue(key: string): ReviewCheckpoint {
 
 export function Review() {
   const { sessionId } = useMode()
-  return <ReviewSession key={sessionId ?? 'none'} sessionId={sessionId} />
+  const [params] = useSearchParams()
+  if (params.get('practice') === 'passage') return <PassageRecall />
+  return <>
+    <ReviewSession key={sessionId ?? 'none'} sessionId={sessionId} />
+    <Link className="underline" to="/review?practice=passage">Passage recall</Link>
+  </>
 }
 
 function ReviewSession({ sessionId }: { sessionId: string | null }) {

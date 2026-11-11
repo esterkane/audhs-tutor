@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from 'react'
+import { SavePredictionForRecall, type PredictionBinding } from './SavePredictionForRecall'
 import { Button } from '../../components/ui/button'
 
 type Reflection = '' | 'confirmed' | 'partly' | 'changed'
@@ -11,10 +12,11 @@ function valid(value: unknown): value is Attempt {
 }
 
 /** A local, ungraded attempt; never writes mastery, assessment or tutor history. */
-export function PredictionReading(props: { identity: string; title: string; resumeKeyPrefix?: string; question?: string; resumeReading?: boolean; children: ReactNode }) {
+type Props = { identity: string; title: string; resumeKeyPrefix?: string; question?: string; resumeReading?: boolean; binding?: PredictionBinding; children: ReactNode }
+export function PredictionReading(props: Props) {
   return <Prediction key={props.identity} {...props} />
 }
-function Prediction({ identity, title, resumeKeyPrefix, question, resumeReading, children }: { identity: string; title: string; resumeKeyPrefix?: string; question?: string; resumeReading?: boolean; children: ReactNode }) {
+function Prediction({ identity, title, resumeKeyPrefix, question, resumeReading, binding, children }: Props) {
   const key = `reading-prediction:v1:${identity}`
   const id = useId()
   const [initial] = useState(() => {
@@ -77,6 +79,7 @@ function Prediction({ identity, title, resumeKeyPrefix, question, resumeReading,
         <label htmlFor={`${id}-correction`} className="block">What changed, and which passage helped? (optional)</label>
         <textarea id={`${id}-correction`} className="block w-full border border-line rounded p-2" value={attempt.correction}
           onChange={e => save({ ...attempt, correction: e.target.value })} />
+        {binding && attempt.reflection && <SavePredictionForRecall binding={binding} prediction={attempt.prediction} />}
       </fieldset>}
     </>}
     <p role="status" className="text-sm">{status}</p>

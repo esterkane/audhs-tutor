@@ -1,5 +1,6 @@
 import { LearningBreadcrumbs } from '../../components/LearningBreadcrumbs'
 import { ReadingTime } from './ReadingTime'
+import type { PredictionBinding } from './SavePredictionForRecall'
 import { PredictionReading } from './PredictionReading'
 import { Disclosure } from '../../components/ui/disclosure'
 import { useEffect, useId, useRef, useState } from 'react'
@@ -9,7 +10,7 @@ import { ReadAloud } from '../voice/ReadAloud'
 import { SourceViewer } from '../curriculum/SourceViewer'
 
 type Source = { chunk_id: string; citation: string; cited: boolean }
-export type ReadingPrequestion = { startOffset: number; identity: string; question: string }
+export type ReadingPrequestion = { startOffset: number; identity: string; question: string; binding?: PredictionBinding }
 type Props = { text: string; identity: string; active: boolean; sources?: Source[]; trail?: string[]; prequestions?: ReadingPrequestion[] }
 type Section = { title: string; text: string; startOffset: number }
 type Reading = { selected: number; full: boolean; notes: Record<string, string> }
@@ -167,7 +168,7 @@ function Reader({ text, identity, active, sources, trail, prequestions }: Props)
       {!reading.full && <progress aria-label="Reading position" max={sections.length} value={reading.selected + 1} className="w-full" />}
       {prequestion ? <PredictionReading
         identity={`${identity}:prequestion:${prequestion.identity}`}
-        title={sections[reading.selected].title} question={prequestion.question}
+        title={sections[reading.selected].title} question={prequestion.question} binding={prequestion.binding}
         resumeReading={initial.status === 'Saved reading position and notes restored.' && !initial.reading.full && reading.selected === initial.reading.selected}>
         {passage}
       </PredictionReading> : passage}

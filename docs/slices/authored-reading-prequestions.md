@@ -31,7 +31,7 @@ navigation. Documents requiring cross-section Markdown definitions retain full-d
 
 The learner can predict, skip, or select Full explanation at any time. Full reading does not erase
 a previous prediction. After reveal, the exact authored question, original prediction and separate
-reflection/correction remain visible. Attempt records stay browser-local and include the prompt.
+reflection/correction remain visible. The immediate attempt is saved in the browser with its prompt. The learner can explicitly save the prediction to their profile for later recall.
 Reading notes and bookmarks use their existing independent storage.
 
 A restored bookmark bypasses a new question only for its originally restored section; it does not
@@ -39,8 +39,7 @@ silently skip an unseen later passage question. Missing/invalid storage leaves r
 An older question or accepted version keeps its original record; no records are migrated by guessing.
 Saved-answer lessons without authored prequestions retain their existing generic prediction path.
 
-No model calls, grades, competency evidence or FSRS writes are introduced. Delayed experimental
-outcomes and server-side prediction synchronization remain separate future work.
+An enrolled prediction is tied to the accepted draft, question and learning-object version. After 24 hours the Review screen offers a fresh response before showing the original prediction and passage. The stored passage remains available for comparison after revisions. Longitudinal learning outcomes still require observation. This activity uses no model calls, grades, competency evidence or FSRS writes.
 
 ## Verification
 

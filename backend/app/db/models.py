@@ -1261,3 +1261,33 @@ class LearningProject(IdMixin, LearnerScoped, Base):
     version: Mapped[int] = mapped_column(Integer, default=1)
     created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
     updated_at: Mapped[str] = mapped_column(Text, default=utcnow_iso, onupdate=utcnow_iso)
+
+
+class ReadingPrediction(IdMixin, LearnerScoped, Base):
+    """Explicitly enrolled ungraded prediction and its one delayed recall."""
+
+    __tablename__ = "reading_prediction"
+    __table_args__ = (
+        UniqueConstraint(
+            "learner_id",
+            "draft_id",
+            "learning_object_version",
+            "question_id",
+            name="uq_reading_prediction_binding",
+        ),
+        Index("ix_reading_prediction_due", "learner_id", "answered_at", "due_at"),
+    )
+    draft_id: Mapped[str] = mapped_column(Text, ForeignKey("curriculum_draft.id"))
+    object_id: Mapped[str] = mapped_column(Text, ForeignKey("learning_object.id"))
+    learning_object_version: Mapped[int] = mapped_column(Integer)
+    question_id: Mapped[str] = mapped_column(Text)
+    target: Mapped[str] = mapped_column(Text)
+    content_sha256: Mapped[str] = mapped_column(Text)
+    title: Mapped[str] = mapped_column(Text)
+    question: Mapped[str] = mapped_column(Text)
+    passage: Mapped[str] = mapped_column(Text)
+    prediction: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[str] = mapped_column(Text, default=utcnow_iso)
+    due_at: Mapped[str] = mapped_column(Text)
+    answer: Mapped[str | None] = mapped_column(Text)
+    answered_at: Mapped[str | None] = mapped_column(Text)

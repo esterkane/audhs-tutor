@@ -28,6 +28,7 @@ ${data.worked_example}`
   const prequestions = (data.prequestions ?? []).map(q => ({
     startOffset: q.target === 'explanation' ? 0 : explanation.length,
     identity: q.question_id, question: q.question,
+    binding: { draft_id: data.draft_id, learning_object_version: data.learning_object_version, question_id: q.question_id },
   }))
   const reader = <LessonReader identity={`accepted-knowledge:${data.draft_id}:${data.learning_object_version}`}
     text={text} prequestions={prequestions}
