@@ -58,10 +58,16 @@ test('successful answer clears pending question while retaining newer unsent not
     session_end: null,
     guard_flags: [],
   }
+  const otherTurn: ChatState['items'] = [
+    { kind: 'user', id: 'other-question', text: 'Different question from another client' },
+    { kind: 'tutor', id: 'other-answer', turn },
+  ]
+  view.rerender(<ChatPanel {...props} chat={{ ...initialChat, items: otherTurn }} onSend={send} />)
+  expect(JSON.parse(localStorage.getItem(props.draftStorageKey)!).pending?.text).toBe('First question')
   view.rerender(
     <ChatPanel
       {...props}
-      chat={{ ...initialChat, items: [{ kind: 'tutor', id: 'answer', turn }] }}
+      chat={{ ...initialChat, items: [...otherTurn, { kind: 'user', id: 'sent', text: 'First question' }, { kind: 'tutor', id: 'answer', turn }] }}
       onSend={send}
     />,
   )
