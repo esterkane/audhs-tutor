@@ -21,3 +21,17 @@ it('retries the same versioned page in place after an image failure', () => {
   expect(second.getAttribute('src')).toBe(first.getAttribute('src'))
   expect(screen.queryByRole('alert')).toBeNull()
 })
+it('updates comparison guidance when switching between textless and readable pages', () => {
+  const client = new QueryClient()
+  client.setQueryData(['uploaded-pdf-pages', 'doc', 'v1'], { pages: [
+    { page: 1, text: '', ocr: true }, { page: 2, text: 'An authored caption.', ocr: false },
+  ] })
+  render(<QueryClientProvider client={client}><UploadedPdfPages uploadId="doc" versionId="v1" /></QueryClientProvider>)
+  fireEvent.click(screen.getByText('Browse PDF pages'))
+  fireEvent.click(screen.getByRole('button', { name: 'Inspect original page 1' }))
+  expect(screen.queryByText(/Compare the original/)).not.toBeInTheDocument()
+  fireEvent.change(screen.getByRole('combobox', { name: 'PDF page' }), { target: { value: '1' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Inspect original page 2' }))
+  expect(screen.getByText('An authored caption.')).toBeInTheDocument()
+  expect(screen.getByText(/Compare the original with the extracted text above/)).toBeInTheDocument()
+})
