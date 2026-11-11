@@ -2,7 +2,7 @@ import { CaseAuthoring } from './CasePractice'
 import { useSearchParams } from 'react-router-dom'
 import { useFocusPolicy } from '../focus/useFocusPolicy'
 import { useGenerationBusy } from '../sensory/generationActivity'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { Button } from '../../components/ui/button'
@@ -198,6 +198,7 @@ function Editor({
   const [editVersion, setEditVersion] = useState(initial.baseVersion ?? draft?.version)
   const missingQuestions = form.research?.questions.flatMap((q, i) => (q.prompt.trim() ? [] : [i + 1])) ?? []
   const step = form.workflow_step ?? 'source'
+  const lessonFieldId = useId()
   const stepHeading = useRef<HTMLHeadingElement | null>(null)
   useEffect(() => {
     onStepChange?.(step)
@@ -489,6 +490,28 @@ function Editor({
       if (mounted.current) setBusy('')
     }
   }
+  const directWrite = step === 'write' && !form.research && !readOnly
+  const notesShortcut = step === 'source' && !form.research && !form.upload_id && !readOnly && !!form.notes.trim()
+  const lessonFields = <>
+    {([
+      ['objective', 'Learning objective'],
+      ['explanation', 'Explanation'],
+      ['worked_example', 'Worked example'],
+      ['question', 'Application question'],
+    ] as const).map(([key, label]) => (
+      <div className="my-2" key={key}>
+        <label htmlFor={lessonFieldId + key}>{label}</label>
+        <textarea id={lessonFieldId + key} className={field} rows={3}
+          maxLength={key === 'objective' ? 1000 : 4000} value={form[key]}
+          disabled={!!busy || readOnly}
+          onChange={(e) => change({ ...form, [key]: e.target.value })} />
+      </div>
+    ))}
+    <label htmlFor={lessonFieldId + 'criteria'}>Success criteria — one per line</label>
+    <textarea id={lessonFieldId + 'criteria'} className={field} rows={3}
+      value={form.criteria?.join('\n') ?? ''} disabled={!!busy || readOnly}
+      onChange={(e) => change({ ...form, criteria: e.target.value.split('\n') })} />
+  </>
   return (
     <Card>
       <nav aria-label="Knowledge material steps" className="flex flex-wrap gap-2 mb-4">
@@ -659,7 +682,12 @@ function Editor({
             16,000 characters. Longer material can still be saved.
           </p>
         </div>
-        <div hidden={step !== 'research' && step !== 'write'}>
+        {directWrite && <section className="space-y-3" aria-label="Write a lesson from your notes">
+          <Disclosure label="Read your source notes"><p className="whitespace-pre-wrap">{form.notes}</p></Disclosure>
+          <p>Complete these fields to activate a lesson. You can save your draft at any point.</p>
+          {lessonFields}
+        </section>}
+        <div hidden={step !== 'research' && (step !== 'write' || directWrite)}>
           <ResearchWorkspace
             tutorReady={authoringReady}
             hosted={hosted}
@@ -706,26 +734,7 @@ function Editor({
               Write these yourself or generate an editable proposal. Include a distinct worked example and an
               application question. Neither generation nor activation verifies factual accuracy.
             </p>
-            {(
-              [
-                ['objective', 'Learning objective'],
-                ['explanation', 'Explanation'],
-                ['worked_example', 'Worked example'],
-                ['question', 'Application question'],
-              ] as const
-            ).map(([key, label]) => (
-              <label className="block my-2" key={key}>
-                {label}
-                <textarea
-                  className={field}
-                  rows={3}
-                  maxLength={key === 'objective' ? 1000 : 4000}
-                  value={form[key]}
-                  disabled={!!busy || readOnly}
-                  onChange={(e) => change({ ...form, [key]: e.target.value })}
-                />
-              </label>
-            ))}
+            {!directWrite && lessonFields}
             <fieldset className="space-y-3 border border-line rounded p-3">
               <legend>Optional before-reading questions</legend>
               <p>Write a question for each passage you want to predict before reading. These are separate from the application question and are not graded. Activation accepts the question together with the current passage.</p>
@@ -738,16 +747,6 @@ function Editor({
                   onChange={e => change({ ...form, [key]: e.target.value })} />
               </label>)}
             </fieldset>
-            <label>
-              Success criteria — one per line
-              <textarea
-                className={field}
-                rows={3}
-                value={form.criteria?.join('\n') ?? ''}
-                disabled={!!busy || readOnly}
-                onChange={(e) => change({ ...form, criteria: e.target.value.split('\n') })}
-              />
-            </label>
           </Disclosure>
           <CaseAuthoring pair={form.case_comparison ?? null} disabled={!!busy || readOnly}
             onChange={pair => change({...form, case_comparison:pair})} />
@@ -820,9 +819,9 @@ function Editor({
             <Button
               variant="secondary"
               disabled={!!busy || step === 'review'}
-              onClick={() => go(steps[steps.indexOf(step) + 1])}
+              onClick={() => go(notesShortcut ? 'write' : steps[steps.indexOf(step) + 1])}
             >
-              Next
+              {notesShortcut ? 'Write a lesson from my notes' : 'Next'}
             </Button>
           </div>
           {status && (
