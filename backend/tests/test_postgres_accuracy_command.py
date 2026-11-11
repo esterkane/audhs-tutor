@@ -227,3 +227,23 @@ async def test_read_committed_barrier_failure_cleans_up_both_connections(monkeyp
     for connection in connections:
         connection.kill.assert_called_once()
         connection.wait.assert_awaited_once()
+
+
+@LIVE
+def test_stale_balance_predicate_skips_both_assignments_after_wait():
+    import asyncio
+
+    with accuracy.Database() as db:
+        db.sql(
+            "CREATE SCHEMA accuracy; CREATE TABLE accuracy.balance(id integer primary key, balance integer)"
+        )
+        for assignment in ("absolute", "relative"):
+            observed = asyncio.run(
+                accuracy.read_committed_update(db, assignment, require_initial_balance=True)
+            )
+            assert observed == {
+                "initial_balances": [100, 100],
+                "second_update_wait_observed": True,
+                "second_update_returned": None,
+                "final_balance": 90,
+            }
