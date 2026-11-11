@@ -36,6 +36,27 @@ test('role-check practice moves from arranging to completing to independent writ
   await expect(area.getByLabel('Your SQL')).toHaveValue(query)
   await area.getByRole('button', { name: 'Compare with an example' }).click()
   await expect(area.getByText(/Checking the effective role alone/)).toBeVisible()
+  const transfer = area.locator('summary').filter({ hasText: 'Try a different role and transaction ending' })
+  await transfer.press('Enter')
+  const compareTransfer = area.getByRole('button', { name: 'Compare the new role check' })
+  await expect(compareTransfer).toBeDisabled()
+  await expect(area.getByText(/Inside the transaction the effective role is/)).toHaveCount(0)
+  const transferSql =
+    'BEGIN READ ONLY; SET LOCAL ROLE reporting_reader; SELECT current_user, current_user = session_user; COMMIT; SELECT current_user = session_user;'
+  await area.getByLabel('SQL for the new situation').fill(transferSql)
+  await area.getByLabel('Predicted results before and after commit').fill('I predict false both times.')
+  await compareTransfer.press('Enter')
+  await expect(area.getByText(/Inside the transaction the effective role is/)).toContainText(
+    'equality is true',
+  )
+  await page.reload()
+  await open()
+  await transfer.press('Enter')
+  await expect(area.getByLabel('SQL for the new situation')).toHaveValue(transferSql)
+  await expect(area.getByLabel('Predicted results before and after commit')).toHaveValue(
+    'I predict false both times.',
+  )
+  await expect(area.getByText(/Your SQL is saved for comparison and is ungraded/)).toBeVisible()
   await area.getByRole('button', { name: 'Revisit the previous step' }).click()
   await expect(area.getByLabel('Final statement')).toHaveValue(' ABORT transaction ; ')
   expect(await projects()).toEqual(before)

@@ -5,7 +5,26 @@ import { useDraftRecovery } from '../curriculum/useDraftRecovery'
 
 const statements = ['BEGIN READ ONLY;', 'SET LOCAL ROLE authenticated;', 'SELECT current_user;', 'ROLLBACK;']
 const initial = { order: [2, 3, 0, 1], stage: 0, ending: '', query: '', compared: false }
-type Practice = typeof initial
+type Practice = typeof initial & {
+  transferQuery?: string
+  transferPrediction?: string
+  transferCompared?: boolean
+}
+
+const transferExample = [
+  'BEGIN READ ONLY;',
+  'SET LOCAL ROLE reporting_reader;',
+  'SELECT current_user, current_user = session_user;',
+  'COMMIT;',
+  'SELECT current_user = session_user;',
+]
+function orderHint(order: number[]) {
+  if (order[0] !== 0)
+    return 'Start the transaction before changing role. Which statement opens the read-only transaction?'
+  if (order.indexOf(1) > order.indexOf(2))
+    return 'The role inspection precedes the role change. Which identity would that inspect?'
+  return 'The rollback ends the local role setting. Inspect the effective role before that point.'
+}
 
 export function ProjectSqlPractice({ projectId }: { projectId: string }) {
   const saved = useDraftRecovery('sql-role-practice-v1:' + projectId, 1, JSON.stringify(initial))
@@ -19,7 +38,10 @@ export function ProjectSqlPractice({ projectId }: { projectId: string }) {
       ![0, 1, 2].includes(work.stage) ||
       typeof work.ending !== 'string' ||
       typeof work.query !== 'string' ||
-      typeof work.compared !== 'boolean'
+      typeof work.compared !== 'boolean' ||
+      (work.transferQuery !== undefined && typeof work.transferQuery !== 'string') ||
+      (work.transferPrediction !== undefined && typeof work.transferPrediction !== 'string') ||
+      (work.transferCompared !== undefined && typeof work.transferCompared !== 'boolean')
     )
       throw new Error()
   } catch {
@@ -76,9 +98,7 @@ export function ProjectSqlPractice({ projectId }: { projectId: string }) {
               onClick={() =>
                 work.order.every((id, i) => id === i)
                   ? update({ stage: 1 }, 'Order checked. Try the missing statement.')
-                  : setMessage(
-                      'Start the transaction before changing role. Inspect the role after changing it and before ending the transaction.',
-                    )
+                  : setMessage(orderHint(work.order))
               }
             >
               Check order
@@ -137,6 +157,56 @@ export function ProjectSqlPractice({ projectId }: { projectId: string }) {
                   SQL can differ. Checking the effective role alone does not test table access or row
                   policies.
                 </p>
+                <Disclosure label="Try a different role and transaction ending">
+                  <p>
+                    You start as the login role, which can assume the distinct role reporting_reader. Write a
+                    read-only transaction that assumes reporting_reader locally. Show the effective role and
+                    whether it equals the login role. Commit, then check equality again in the same
+                    connection.
+                  </p>
+                  <label>
+                    SQL for the new situation
+                    <textarea
+                      className="block w-full"
+                      rows={5}
+                      maxLength={4000}
+                      value={work.transferQuery ?? ''}
+                      onChange={(e) => update({ transferQuery: e.target.value, transferCompared: false })}
+                    />
+                  </label>
+                  <label>
+                    Predicted results before and after commit
+                    <textarea
+                      className="block w-full"
+                      rows={2}
+                      maxLength={1000}
+                      value={work.transferPrediction ?? ''}
+                      onChange={(e) =>
+                        update({ transferPrediction: e.target.value, transferCompared: false })
+                      }
+                    />
+                  </label>
+                  <Button
+                    disabled={!work.transferQuery?.trim() || !work.transferPrediction?.trim()}
+                    onClick={() => update({ transferCompared: true })}
+                  >
+                    Compare the new role check
+                  </Button>
+                  {work.transferCompared && (
+                    <div>
+                      <pre>{transferExample.join('\n')}</pre>
+                      <p>
+                        Inside the transaction the effective role is reporting_reader and equality is false.
+                        After commit the local role setting expires. The effective role is the original login
+                        role again, so equality is true. Compare these observations with your prediction.
+                      </p>
+                      <p>
+                        This example was verified on PostgreSQL 17.11. Your SQL is saved for comparison and is
+                        ungraded.
+                      </p>
+                    </div>
+                  )}
+                </Disclosure>
               </div>
             )}
           </>
