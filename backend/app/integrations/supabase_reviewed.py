@@ -15,6 +15,10 @@ DIAGNOSTICS = """SELECT current_user;
 SELECT n.nspname, c.relname,
        has_schema_privilege(current_user, n.oid, 'USAGE') AS schema_usage,
        has_table_privilege(current_user, c.oid, 'SELECT') AS table_select,
+       ARRAY(SELECT a.attname FROM pg_catalog.pg_attribute AS a
+             WHERE a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
+               AND has_column_privilege(current_user, c.oid, a.attnum, 'SELECT')
+             ORDER BY a.attnum) AS selectable_columns,
        c.relrowsecurity, c.relforcerowsecurity
 FROM pg_class AS c
 JOIN pg_namespace AS n ON n.oid = c.relnamespace
@@ -60,6 +64,8 @@ def reviewed_turn(
             "Sind die nötigen Berechtigungen vorhanden, liefert ein normales SELECT bei einer "
             "RLS-Richtlinie ohne passende Zeilen normalerweise ein leeres Ergebnis. Diese Zeilenfilterung "
             "allein erklärt keinen Fehler wegen fehlender Tabellenberechtigung.\n\n"
+            "SELECT kann auch für einzelne Spalten erteilt sein. Vergleiche alle in der Abfrage "
+            "verwendeten Spalten, auch in Filtern, mit den lesbaren Spalten der Rolle. "
             "Prüfe mit der tatsächlichen Anwendungsrolle. Eigentümer und Rollen mit BYPASSRLS können "
             "die Zeilenrichtlinien umgehen; auch Funktionen in Richtlinien können eigene Fehler auslösen."
         )
@@ -79,6 +85,8 @@ def reviewed_turn(
             "can produce permission denied. With the required privileges, an ordinary SELECT under "
             "an RLS policy admitting no rows normally returns an empty result. That row filtering "
             "alone does not explain a table permission-denied error.\n\n"
+            "A role can also read specific columns through column-level SELECT grants. Compare the "
+            "columns your query uses, including filters, with the columns that role can read. "
             "Check as the actual application role. Owners and roles with BYPASSRLS can bypass row "
             "policies; functions inside a policy can also raise their own errors."
         )
@@ -292,7 +300,7 @@ class ReviewedOrchestrator:
                 include_diagnostics=not no_sql_requested(user_text),
                 include_question=not no_quiz_requested(user_text),
             )
-            revision = "reviewed:select-privileges-row-visibility.v2"
+            revision = "reviewed:select-privileges-row-visibility.v3"
         else:
             from anthropic import APIStatusError
             from httpx2 import Request, Response
