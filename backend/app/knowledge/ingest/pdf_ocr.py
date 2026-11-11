@@ -67,6 +67,8 @@ def ocr_pages(data: bytes, pages: list[int], options: PdfOcrOptions) -> dict[int
         raise PdfOcrUnavailable(
             "OCR language packs are missing. Install the packs selected by PDF_OCR_LANGUAGES on the backend."
         )
+    # Detect orientation on rendered pixels; Poppler already applies PDF rotation metadata.
+    segmentation = "1" if "osd" in available else "3"
     results: dict[int, str] = {}
     with tempfile.TemporaryDirectory(prefix="audhs-pdf-ocr-") as folder:
         root = Path(folder)
@@ -90,7 +92,7 @@ def ocr_pages(data: bytes, pages: list[int], options: PdfOcrOptions) -> dict[int
             )
             image = output.with_suffix(".png")
             results[page] = run(
-                [recognize, str(image), "stdout", "-l", options.languages, "--psm", "3"]
+                [recognize, str(image), "stdout", "-l", options.languages, "--psm", segmentation]
             ).strip()
             image.unlink(missing_ok=True)
             if sum(len(text) for text in results.values()) > 120000:

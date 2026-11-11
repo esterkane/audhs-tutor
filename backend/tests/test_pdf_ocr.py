@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 from httpx import AsyncClient
-from pypdf import PdfReader
+from pypdf import PdfReader, PdfWriter
 
 from app.core.config import Settings
 from app.knowledge.ingest import pdf_ocr
@@ -223,3 +223,44 @@ def test_legacy_native_pdf_loader_does_not_require_ocr_for_a_short_page(monkeypa
     assert loader.pdf_blocks(buffer.getvalue())[0].text == "Keep this native heading"
     with pytest.raises(PdfOcrUnavailable):
         loader.pdf_blocks(buffer.getvalue(), require_complete=True)
+
+
+@runtime
+def test_rotated_scan_keeps_text_page_order_and_source_bytes(tmp_path):
+    if "osd" not in subprocess.check_output(["tesseract", "--list-langs"], text=True).splitlines():
+        pytest.skip("orientation detection language data unavailable")
+    prose = " ".join(
+        [
+            "PostgreSQL keeps records in tables.",
+            "A primary key identifies one row.",
+            "An index can speed up a lookup.",
+            "A transaction groups related changes.",
+            "Commit makes those changes durable.",
+        ]
+    )
+    source = scanned_pdf(tmp_path, text=prose)
+    writer = PdfWriter()
+    for angle in (0, 90, 180, 270):
+        writer.add_page(PdfReader(io.BytesIO(source)).pages[0].rotate(angle))
+    path = tmp_path / "rotation.pdf"
+    writer.write(path)
+    original = path.read_bytes()
+    result = load_file(path, pdf_ocr=PdfOcrOptions())
+    assert [b.heading for b in result.blocks] == ["p. 1", "p. 2", "p. 3", "p. 4"]
+    assert [" ".join(b.text.split()) for b in result.blocks] == [prose] * 4
+    assert result.meta["pdf_extraction"]["ocr_pages"] == [1, 2, 3, 4]
+    assert path.read_bytes() == original
+
+
+def test_orientation_pack_is_optional(monkeypatch):
+    calls = []
+    monkeypatch.setattr(pdf_ocr.shutil, "which", lambda name: name)
+
+    def run(args, **kwargs):
+        calls.append(args)
+        output = b"eng\ndeu\n" if "--list-langs" in args else b"page text"
+        return subprocess.CompletedProcess(args, 0, output, b"")
+
+    monkeypatch.setattr(pdf_ocr.subprocess, "run", run)
+    assert pdf_ocr.ocr_pages(b"synthetic", [1], PdfOcrOptions()) == {1: "page text"}
+    assert calls[-1][-2:] == ["--psm", "3"]
