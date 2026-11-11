@@ -16,8 +16,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import Select, delete, func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import InstrumentedAttribute
 
 from app.core.errors import AppError
 from app.db.base import utcnow_iso
@@ -1196,21 +1197,30 @@ class PublishReport:
     new_object_versions: int = 0
 
 
-async def latest_accepted_material(
-    db: AsyncSession, learner_id: str, slug: str
-) -> CurriculumDraft | None:
-    accepted: CurriculumDraft | None = await db.scalar(
+def latest_accepted_material_query(
+    learner_id: str, slug: str | InstrumentedAttribute[str]
+) -> Select[tuple[CurriculumDraft]]:
+    from app.kernel.learning_scope import created_visible
+
+    return (
         select(CurriculumDraft)
         .where(
             CurriculumDraft.learner_id == learner_id,
             CurriculumDraft.origin == "knowledge_authored",
             CurriculumDraft.status == "published",
+            created_visible(learner_id, CurriculumDraft.created_at),
             CurriculumDraft.payload_json["skills"][0]["slug"].as_string() == slug,
         )
         .order_by(CurriculumDraft.published_at.desc(), CurriculumDraft.id.desc())
         .limit(1)
     )
-    return accepted
+
+
+async def latest_accepted_material(
+    db: AsyncSession, learner_id: str, slug: str
+) -> CurriculumDraft | None:
+    result = await db.execute(latest_accepted_material_query(learner_id, slug))
+    return result.scalar_one_or_none()
 
 
 async def publish_draft(

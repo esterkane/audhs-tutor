@@ -3376,6 +3376,26 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/knowledge-material/library/lesson-matches': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /**
+     * Library Lesson Matches
+     * @description Search the same accepted reading the learner can open, returning only matching skill IDs.
+     */
+    get: operations['library_lesson_matches_api_knowledge_material_library_lesson_matches_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/authoring/setup': {
     parameters: {
       query?: never
@@ -16031,6 +16051,37 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['KnowledgeReadingOut'] | null
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  library_lesson_matches_api_knowledge_material_library_lesson_matches_get: {
+    parameters: {
+      query: {
+        q: string
+      }
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': string[]
         }
       }
       /** @description Validation Error */

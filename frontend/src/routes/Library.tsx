@@ -1,3 +1,4 @@
+import { matchesDraft } from './libraryMaterial'
 import { useEffect, useRef, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
@@ -36,6 +37,7 @@ export function Library() {
         ['skills'],
         ['library-search', 'answers', query],
         ['library-search', 'sources', query],
+        ['library-search', 'lesson-content', query],
       ])
         void cache.invalidateQueries({ queryKey: key })
     }
@@ -69,7 +71,7 @@ export function Library() {
         <details>
           <summary className="cursor-pointer">Import and other library views</summary>
           <p className="text-sm mt-3">
-            Search includes saved knowledge drafts, lesson titles, saved answers and indexed passages. Project
+            Search includes your saved writing, accepted lesson content, saved answers and indexed passages. Project
             and notebook edits, unsaved writing and the web are not included.
           </p>
           <nav aria-label="Other library views" className="grid gap-2 mt-3">
@@ -185,16 +187,14 @@ function RecentMaterial() {
 function Results({ query, onOpen }: { query: string; onOpen: (id: string) => void }) {
   const drafts = useDrafts(),
     skills = useSkills()
+  const content = useQuery({
+    queryKey: ['library-search', 'lesson-content', query], retry: false,
+    queryFn: ({ signal }) => boundedRead<string[]>('/api/knowledge-material/library/lesson-matches?' + new URLSearchParams({q:query}), signal, 'Lesson content search'),
+  })
   const term = query.toLocaleLowerCase()
-  const own = (drafts.data?.drafts ?? []).filter(
-    (row) =>
-      row.origin === 'knowledge_authored' &&
-      row.status !== 'published' &&
-      (row.title + ' ' + JSON.stringify(row.payload)).toLocaleLowerCase().includes(term),
-  )
-  const lessons = (skills.data?.skills ?? []).filter((row) =>
-    (row.title + ' ' + row.description).toLocaleLowerCase().includes(term),
-  )
+  const own = (drafts.data?.drafts ?? []).filter(row => row.origin === 'knowledge_authored' && row.status !== 'published' && matchesDraft(row, term))
+  const ids = new Set(content.data ?? [])
+  const lessons = (skills.data?.skills ?? []).filter(row => ids.has(row.id) || [row.title,row.description].some(text=>text.toLocaleLowerCase().includes(term)))
   const answers = useQuery({
     queryKey: ['library-search', 'answers', query],
     retry: false,
@@ -237,7 +237,7 @@ function Results({ query, onOpen }: { query: string; onOpen: (id: string) => voi
         <h2 id="search-material" tabIndex={-1} className="font-semibold">
           My material
         </h2>
-        {(drafts.isError || skills.isError) && (
+        {(drafts.isError || skills.isError || content.isError) && (
           <div role="alert">
             Some material could not refresh.{' '}
             <Button
@@ -245,6 +245,7 @@ function Results({ query, onOpen }: { query: string; onOpen: (id: string) => voi
               onClick={() => {
                 void drafts.refetch()
                 void skills.refetch()
+                void content.refetch()
               }}
             >
               Retry material search
@@ -254,18 +255,18 @@ function Results({ query, onOpen }: { query: string; onOpen: (id: string) => voi
             )}
           </div>
         )}
-        {(drafts.isPending || skills.isPending) && <p role="status">Searching your material…</p>}
+        {(drafts.isPending || skills.isPending || content.isPending) && <p role="status">Searching your material…</p>}
         {!drafts.isPending &&
-          !skills.isPending &&
+          !skills.isPending && !content.isPending &&
           !drafts.isError &&
-          !skills.isError &&
+          !skills.isError && !content.isError &&
           !own.length &&
           !lessons.length && <p>No material matched.</p>}
         <ul className="grid gap-2">
           {own.slice(0, 8).map((row) => (
             <li key={'draft:' + row.id}>
               <span className="text-sm text-muted">
-                {row.status === 'rejected' ? 'Inactive draft' : 'Draft'} ·{' '}
+                {row.status === 'rejected' ? 'Discarded draft' : 'Draft'} ·{' '}
               </span>
               <Link className={linkStyle} to={`/curriculum?${new URLSearchParams({ draft: row.id })}`}>
                 {row.title}

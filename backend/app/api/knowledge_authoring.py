@@ -6,15 +6,16 @@ from typing import Annotated
 from urllib.parse import unquote
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Header, Request
+from fastapi import APIRouter, BackgroundTasks, Header, Query, Request
 from sqlalchemy import select, text
 from starlette.concurrency import run_in_threadpool
 
 from app.api.curriculum import _draft_out
 from app.api.deps import DB, Gateway, Learner, SettingsDep
 from app.core.errors import AppError
-from app.db.models import CurriculumDraft, Document, DocumentVersion
+from app.db.models import CurriculumDraft, Document, DocumentVersion, LearningObject, SkillNode
 from app.kernel import curriculum, knowledge_authoring
+from app.kernel.content_access import skill_visible
 from app.kernel.learning_scope import reference_before, require_current_material
 from app.knowledge import pdf_page_sources
 from app.knowledge.ingest.loaders import load_file
@@ -422,6 +423,12 @@ async def accepted_reading(skill_id: str, db: DB, learner: Learner) -> Knowledge
     lo = await skill_graph.learning_object_for(db, node.id, learner_id=learner.id)
     if lo is None:
         return None
+    return _reading_view(node, draft, lo)
+
+
+def _reading_view(
+    node: SkillNode, draft: CurriculumDraft, lo: LearningObject
+) -> KnowledgeReadingOut:
     examples = list(lo.examples_json or [])
     return KnowledgeReadingOut(
         draft_id=draft.id,
@@ -442,6 +449,45 @@ async def accepted_reading(skill_id: str, db: DB, learner: Learner) -> Knowledge
             str(examples[1]) if len(examples) > 1 else "",
         ),
     )
+
+
+@router.get("/library/lesson-matches", response_model=list[str])
+async def library_lesson_matches(
+    db: DB, learner: Learner, q: Annotated[str, Query(min_length=1, max_length=200)]
+) -> list[str]:
+    """Search the same accepted reading the learner can open, returning only matching skill IDs."""
+    current_draft_id = (
+        curriculum.latest_accepted_material_query(learner.id, SkillNode.slug)
+        .with_only_columns(CurriculumDraft.id)
+        .correlate(SkillNode)
+        .scalar_subquery()
+    )
+    current_object_id = (
+        select(LearningObject.id)
+        .where(LearningObject.skill_id == SkillNode.id)
+        .order_by(LearningObject.version.desc())
+        .limit(1)
+        .correlate(SkillNode)
+        .scalar_subquery()
+    )
+    rows = await db.execute(
+        select(SkillNode, CurriculumDraft, LearningObject)
+        .select_from(SkillNode)
+        .join(CurriculumDraft, CurriculumDraft.id == current_draft_id)
+        .join(LearningObject, LearningObject.id == current_object_id)
+        .where(skill_visible(learner.id))
+    )
+    term = q.casefold()
+    matches = []
+    for node, draft, lo in rows:
+        view = _reading_view(node, draft, lo)
+        fields = [view.objective, view.notes, view.explanation, view.worked_example, view.question]
+        fields.extend(item.question for item in view.prequestions)
+        if view.case_comparison:
+            fields.extend([view.case_comparison.case_a, view.case_comparison.case_b])
+        if any(term in field.casefold() for field in fields):
+            matches.append(node.id)
+    return matches
 
 
 async def _current_draft(db: DB, learner_id: str, draft_id: str) -> CurriculumDraft:
