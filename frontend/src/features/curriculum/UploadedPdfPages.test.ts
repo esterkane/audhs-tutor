@@ -3,6 +3,7 @@ import { matchingPdfPages } from './matchingPdfPages'
 
 const pages = [
   {page: 1, text: 'Opening. Repeated text.', ocr: false},
+  {page: 2, text: '', ocr: true},
   {page: 3, text: 'Repeated text. Scanned ending.', ocr: true},
 ]
 

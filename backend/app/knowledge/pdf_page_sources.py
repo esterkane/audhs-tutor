@@ -15,13 +15,18 @@ from app.schemas.knowledge_authoring import PdfPageSource, PdfPageSources
 def persist(path: Path, digest: str, doc: SourceDoc, languages: str) -> str:
     report = doc.meta.get("pdf_extraction", {})
     ocr = set(report.get("ocr_pages", []))
-    pages = []
+    pages: list[dict[str, Any]] = []
     for block in doc.blocks:
         match = re.fullmatch(r"p\. ([1-9]\d*)", block.heading or "")
         if match is None:
             raise ValueError("PDF extraction lost a physical page label")
         page = int(match[1])
         pages.append({"page": page, "text": block.text, "ocr": page in ocr})
+    # A scan with no recognized text still has a physical page the learner can inspect.
+    represented = {p["page"] for p in pages}
+    for number in sorted(ocr - represented):
+        pages.append({"page": number, "text": "", "ocr": True})
+    pages.sort(key=lambda item: item["page"])
     evidence = {"sha256": digest, "pages": pages, "languages": languages, "format": 2}
     identity = _identity(evidence)
     dest = path.with_suffix(".pdf.extraction-" + identity + ".json")
