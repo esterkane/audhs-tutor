@@ -321,13 +321,13 @@ def upsert(doc: Doc, model: str, corpus_version: int) -> int:
     return len(doc.chunks)
 
 
-def existing_hashes() -> dict[str, tuple[str, int]]:
+def existing_hashes() -> dict[str, tuple[str, int, str]]:
     import psycopg
 
     try:
         with psycopg.connect(admin_url()) as conn, conn.cursor() as cur:
-            cur.execute("select url, content_hash, corpus_version from tutor.docs_source where status = 'active'")
-            return {u: (h, v) for u, h, v in cur.fetchall()}
+            cur.execute("select url, content_hash, corpus_version, embedding_model from tutor.docs_source where status = 'active'")
+            return {url: (digest, version, model) for url, digest, version, model in cur.fetchall()}
     except psycopg.Error:
         return {}
 
@@ -416,7 +416,7 @@ async def main() -> int:
                     expand_failed += 1
                 rows.append((d.url, "failed", 0, "-"))
                 continue
-            if known.get(d.url) == (d.hash, a.corpus_version):
+            if known.get(d.url) == (d.hash, a.corpus_version, model):
                 rows.append((d.url, "unchanged", 0, "no"))
                 continue
             d.chunks = chunk_markdown(d.text, d.product, urlparse(d.url).path)

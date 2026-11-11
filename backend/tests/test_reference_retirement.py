@@ -187,3 +187,34 @@ async def test_empty_coverage_fails_cleanly_before_any_embedding_or_retirement(
     embed.assert_not_called()
     upsert.assert_not_called()
     retire.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "stored_model,refresh", [("nomic-embed-text", False), ("text-embedding-3-small@768", True)]
+)
+async def test_unchanged_text_reembeds_after_model_switch(
+    indexer, monkeypatch, stored_model, refresh
+):
+    import hashlib
+    from unittest.mock import AsyncMock, Mock
+
+    import httpx
+
+    url = "https://supabase.com/llms/cli.txt"
+    body = "# CLI reference\n\nReproducible synthetic reference content."
+    digest = hashlib.sha256(body.encode()).hexdigest()
+    client = httpx.AsyncClient
+    transport = httpx.MockTransport(
+        lambda r: httpx.Response(200, text=body if str(r.url) == url else url)
+    )
+    monkeypatch.setattr(indexer.httpx, "AsyncClient", lambda: client(transport=transport))
+    monkeypatch.setattr(sys, "argv", ["ingest", "--only", "cli", "--no-expand"])
+    monkeypatch.setenv("EMBEDDINGS_PROVIDER", "ollama")
+    monkeypatch.setattr(indexer, "existing_hashes", lambda: {url: (digest, 1, stored_model)})
+    embed = AsyncMock(return_value=[[0.0] * 768])
+    upsert = Mock(return_value=1)
+    monkeypatch.setattr(indexer, "embed", embed)
+    monkeypatch.setattr(indexer, "upsert", upsert)
+    assert await indexer.main() == 0
+    assert embed.await_count == int(refresh)
+    assert upsert.call_count == int(refresh)
