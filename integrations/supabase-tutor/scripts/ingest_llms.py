@@ -52,6 +52,7 @@ from backend.tutor.embedding_space import (
     resolve_model,
 )
 
+OPENAPI_SUFFIX = "openapi.json"
 INDEX_DEFAULT = "https://supabase.com/llms.txt"
 UA = "kaenguru-tutor-ingest/0.1 (+local dev)"
 SUPPORT_SKIP = re.compile(r"/llms/(dart|swift|kotlin|csharp)\.txt$")
@@ -117,7 +118,7 @@ def parse_index(text: str, base: str) -> list[tuple[str, int]]:
     seen, out = set(), []
     for u in urls:
         u = urljoin(base, u.rstrip(".,"))
-        if u in seen or "mcp.supabase.com" in u or u.endswith("openapi.json"):
+        if u in seen or "mcp.supabase.com" in u or u.endswith(OPENAPI_SUFFIX):
             continue
         seen.add(u)
         out.append((u, 1))
@@ -480,9 +481,10 @@ def retire_missing(urls: list[str], index_url: str = INDEX_DEFAULT) -> int:
     with psycopg.connect(admin_url()) as conn:
         cur = conn.execute(
             "update tutor.docs_source set status = 'retired' where status = 'active' "
-            "and starts_with(url, %s) and url <> all(%s) "
+            # The Markdown indexer deliberately excludes OpenAPI documents at discovery.
+            "and starts_with(url, %s) and url <> all(%s) and url not like %s "
             "and not starts_with(url, 'https://supabase.com/docs/reference/') and url <> all(%s)",
-            (prefix, urls, sorted(enrolled()))
+            (prefix, urls, "%" + OPENAPI_SUFFIX, sorted(enrolled()))
         )
         return cur.rowcount
 

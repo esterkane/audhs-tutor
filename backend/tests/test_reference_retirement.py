@@ -56,6 +56,8 @@ def test_actual_postgres_retirement_keeps_other_origins_and_failed_fetch_urls(in
             "INSERT INTO tutor.docs_source VALUES "
             "('https://supabase.com/keep','active'),('https://supabase.com/missing','active'),"
             "('https://supabase.com/temporary-fetch-failure','active'),"
+            "('https://supabase.com/openapi.json','active'),"
+            "('https://supabase.com/docs/schema/openapi.json','active'),"
             "('https://www.postgresql.org/docs/17/sql-grant.html','active'),"
             "('https://supabase.com.evil.invalid/unrelated','active')"
         )
@@ -86,6 +88,8 @@ def test_actual_postgres_retirement_keeps_other_origins_and_failed_fetch_urls(in
             for line in db.sql("SELECT url,status FROM tutor.docs_source ORDER BY url").splitlines()
         )
         assert states["https://supabase.com/missing"] == "retired"
+        assert states["https://supabase.com/openapi.json"] == "active"
+        assert states["https://supabase.com/docs/schema/openapi.json"] == "active"
         assert states["https://supabase.com/temporary-fetch-failure"] == "active"
         assert states["https://www.postgresql.org/docs/17/sql-grant.html"] == "active"
         assert states["https://supabase.com.evil.invalid/unrelated"] == "active"
