@@ -427,3 +427,44 @@ async def test_combined_manual_keeps_text_pending_separate_guide_review(indexer,
     upsert.assert_called_once()
     written = upsert.call_args.args[0]
     assert written.url == full and written.chunks[0].content == "Newly published guidance."
+
+
+@pytest.mark.parametrize("heading_only", [False, True])
+async def test_empty_chunk_refresh_distinguishes_verified_duplicates_from_lost_content(
+    indexer, monkeypatch, heading_only
+):
+    from unittest.mock import AsyncMock, Mock
+
+    import httpx
+
+    guide = "https://supabase.com/docs/guides/auth.md"
+    full = "https://supabase.com/llms-full.txt"
+    body = "# Example\n\nA canonical passage."
+    docs = {
+        indexer.INDEX_DEFAULT: f"{guide}\n{full}",
+        guide: body,
+        full: "# Unavailable" if heading_only else body,
+    }
+    real_client = httpx.AsyncClient
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, text=docs[str(r.url)]))
+    monkeypatch.setattr(indexer.httpx, "AsyncClient", lambda: real_client(transport=transport))
+    monkeypatch.setattr(sys, "argv", ["ingest", "--profile", "all"])
+    monkeypatch.setenv("EMBEDDINGS_PROVIDER", "ollama")
+    monkeypatch.delenv("EMBEDDINGS_MODEL", raising=False)
+    monkeypatch.setattr(indexer, "enrolled", lambda: set())
+    monkeypatch.setattr(
+        indexer, "existing_hashes", lambda: {full: ("previous", 1, "nomic-embed-text")}
+    )
+    monkeypatch.setattr(indexer, "embed", AsyncMock(return_value=[[0.5] * 768]))
+    upsert, retire = Mock(return_value=0), Mock(return_value=0)
+    monkeypatch.setattr(indexer, "upsert", upsert)
+    monkeypatch.setattr(indexer, "retire_missing", retire)
+    assert await indexer.main() == int(heading_only)
+    writes = [call.args[0] for call in upsert.call_args_list]
+    if heading_only:
+        assert [d.url for d in writes] == [guide]
+        retire.assert_not_called()
+    else:
+        assert [d.url for d in writes] == [guide, full]
+        assert not writes[-1].chunks and writes[0].chunks
+        retire.assert_called_once()
