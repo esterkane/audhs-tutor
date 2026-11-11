@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { matchingPdfPages } from './UploadedPdfPages'
+import { matchingPdfPages } from './matchingPdfPages'
 
 const pages = [
   {page: 1, text: 'Opening. Repeated text.', ocr: false},
