@@ -15,7 +15,7 @@ import json
 from dataclasses import dataclass, field
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Assessment, AssessmentRubric, ChunkProvenance, SkillNode
@@ -175,16 +175,18 @@ async def sources_for(db: AsyncSession, node: SkillNode) -> list[dict[str, str]]
     return out
 
 
-async def ensure_check_item(db: AsyncSession, node: SkillNode, ex: Exercise) -> Assessment:
+async def _ensure_check_item(db: AsyncSession, node: SkillNode, ex: Exercise) -> Assessment:
     """The check question as an ordinary explain-back item on the node (rubric-graded, one card),
     so the question is answered and recorded — not just shown."""
     rows = (
         await db.execute(
-            select(Assessment).where(
+            select(Assessment)
+            .where(
                 Assessment.owner_learner_id.is_(None),
                 Assessment.skill_id == node.id,
                 Assessment.kind == "explain_back",
             )
+            .order_by(Assessment.id)
         )
     ).scalars()
     for a in rows:
@@ -200,7 +202,7 @@ async def ensure_check_item(db: AsyncSession, node: SkillNode, ex: Exercise) -> 
         item_json={"exercise_id": ex.exercise_id, "prompt": ex.check_question, "role": "check"},
     )
     db.add(a)
-    await db.commit()
+    await db.flush()
     return a
 
 
@@ -210,43 +212,38 @@ async def ensure_exercise(db: AsyncSession, node: SkillNode) -> Assessment | Non
     ex = for_slug(node.slug)
     if ex is None:
         return None
-    rows = (
-        await db.execute(
-            select(Assessment).where(
-                Assessment.owner_learner_id.is_(None),
-                Assessment.skill_id == node.id,
-                Assessment.kind == KIND,
-            )
+    existing = (
+        select(Assessment)
+        .where(
+            Assessment.owner_learner_id.is_(None),
+            Assessment.skill_id == node.id,
+            Assessment.kind == KIND,
+            Assessment.item_json["exercise_id"].as_string() == ex.exercise_id,
         )
-    ).scalars()
-    for a in rows:
-        if a.item_json.get("exercise_id") == ex.exercise_id:
-            return a
-    check = await ensure_check_item(db, node, ex)
-    a = Assessment(  # a concurrent first request may race us: re-check after the commit
+        .order_by(Assessment.id)
+        .limit(1)
+    )
+    found = await db.scalar(existing)
+    if found is not None:
+        return found
+    # Concurrent first opens must share both IDs: the browser keys its draft by
+    # assessment ID, and grading binds it to the linked check. Recheck under the
+    # SQLite write lock and publish the pair in a single transaction.
+    await db.execute(update(SkillNode).where(SkillNode.id == node.id).values(id=SkillNode.id))
+    found = await db.scalar(existing)
+    if found is not None:
+        await db.commit()
+        return found
+    check = await _ensure_check_item(db, node, ex)
+    exercise = Assessment(
         skill_id=node.id,
         kind=KIND,
         rubric_id=None,
         item_json=await _item_for(db, node, ex, check.id),
     )
-    db.add(a)
+    db.add(exercise)
     await db.commit()
-    rows = (
-        await db.execute(
-            select(Assessment)
-            .where(
-                Assessment.owner_learner_id.is_(None),
-                Assessment.skill_id == node.id,
-                Assessment.kind == KIND,
-            )
-            .order_by(Assessment.id)
-        )
-    ).scalars()
-    first = next((r for r in rows if r.item_json.get("exercise_id") == ex.exercise_id), a)
-    if first.id != a.id:
-        await db.delete(a)
-        await db.commit()
-    return first
+    return exercise
 
 
 def policy_for(ex: Exercise) -> dict[str, Any]:

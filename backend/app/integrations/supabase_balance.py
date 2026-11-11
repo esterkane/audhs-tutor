@@ -179,7 +179,8 @@ def render_balance(obs: dict[str, Any], values: BalanceInput, german: bool) -> s
             f"Beide Sitzungen lasen anfangs {values.initial}. A zog {values.a_debit} ab und erhielt {first}. "
             f"B wartete auf As Sperre für dieselbe Zeile. Nach As Commit erfüllte die Zeile weiterhin `id = 1`. "
             f"{reason} Bs UPDATE gab {final} zurück; nach Bs Commit las eine separate Verbindung {final}."
-            f"\n\n{contrast}\n\nBs Zuweisung in vereinfachter Form, ohne das temporäre Lab-Schema:\n\n```sql\n{statement}\n```"
+            f"\n\n{contrast}\n\nBs Zuweisung in vereinfachter Form, ohne das temporäre Lab-Schema:\n\n"
+            f"```sql\n{statement}\n```"
         )
     contrast = (
         f"With the additional condition {guard}, B would still update the row."
@@ -197,7 +198,8 @@ def render_balance(obs: dict[str, Any], values: BalanceInput, german: bool) -> s
         f"Both sessions initially read {values.initial}. A subtracted {values.a_debit} and returned {first}. "
         f"B waited for A's lock on the same row. After A committed, the row still matched `id = 1`. "
         f"{reason} B's UPDATE returned {final}; a separate connection read {final} after B committed."
-        f"\n\n{contrast}\n\nB’s equivalent assignment, with the temporary lab schema omitted:\n\n```sql\n{statement}\n```"
+        f"\n\n{contrast}\n\nB’s equivalent assignment, with the temporary lab schema omitted:\n\n"
+        f"```sql\n{statement}\n```"
     )
 
 
