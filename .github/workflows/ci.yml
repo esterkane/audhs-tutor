@@ -49,7 +49,7 @@ jobs:
     needs: scope
     if: needs.scope.outputs.runtime == 'true'
     name: backend · ruff, mypy, pytest
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     defaults:
       run:
@@ -135,7 +135,7 @@ jobs:
     needs: scope
     if: needs.scope.outputs.runtime == 'true'
     name: browser journeys · playwright on the sandbox stack
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Measured Linux run reached test292 at25min; retain the complete serial suite.
     timeout-minutes: 40
     steps:
