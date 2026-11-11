@@ -106,16 +106,108 @@ CHECK_POLICY = (
 )
 
 
+def hstore_order_request(text: str) -> str | None:
+    """Recognize a key-order question only when the whole request asks for that behavior."""
+    subject = " ".join(text.casefold().strip().removesuffix("?").split())
+    prefix = (
+        "(?:which (?:postgresql )?hstore function (?:returns|lists|extracts) (?:all |the )?keys "
+        "|welche (?:postgresql[- ])?hstore[- ]funktion (?:gibt|liefert|listet) (?:alle |die )?schlüssel )"
+    )
+    for kind, wording in (
+        (
+            "sorted",
+            r"(?:in alphabetical order|alphabetically|alphabetisch(?: sortiert)?|in alphabetischer reihenfolge)",
+        ),
+        (
+            "input",
+            (
+                "(?:in (?:their |the )?(?:original |original insertion |input |insertion )order"
+                "|in (?:der |ihrer )?(?:ursprünglichen reihenfolge|eingabereihenfolge|reihenfolge ihrer eingabe))"
+            ),
+        ),
+    ):
+        if re.fullmatch(prefix + wording + r"(?: zurück| auf)?", subject):
+            return kind
+    return None
+
+
+def hstore_order_answer(
+    text: str, kind: str, state: Any, args: dict[str, Any], result: Any, hits: list[dict[str, Any]]
+) -> "ReferenceAnswer | None":
+    from app.integrations.supabase_reference import build_reference_answer
+
+    spans = [
+        ("skeys", "skeys ( hstore ) → setof text Extracts an hstore's keys as a set."),
+        (
+            "order",
+            "The order of the pairs is not significant (and may not be reproduced on output).",
+        ),
+    ]
+    citations: list[dict[str, Any]] = []
+    for identifier, span in spans:
+        for number in range(1, len(hits) + 1):
+            source = cited_hit(
+                FunctionChoice(identifier=identifier, passage=number, support=span), hits, "hstore"
+            )
+            if source is not None:
+                citations.append(
+                    dict(
+                        n=len(citations) + 1,
+                        url=source["url"],
+                        title=source["title"],
+                        tier=source["tier"],
+                        fetched_at=source.get("fetched_at"),
+                    )
+                )
+                break
+        else:
+            return None
+    if state.language == "de":
+        body = (
+            "`skeys` liefert die Schlüssel als Menge. [1] PostgreSQL kann die Paare bei der "
+            "Ausgabe anders anordnen als bei der Eingabe. [2]"
+        )
+        action = (
+            "Für eine sortierte Ausgabe kannst du die Schlüssel explizit sortieren. Die "
+            "Textsortierung folgt der verwendeten Kollation."
+        )
+    else:
+        body = (
+            "`skeys` returns the keys as a set. [1] PostgreSQL can output the pairs in a "
+            "different order from their input order. [2]"
+        )
+        action = "For sorted output, sort the keys explicitly. Text sorting follows the selected collation."
+    speech = body.replace("`", "").replace(" [1]", "").replace(" [2]", "")
+    if kind == "sorted":
+        body += (
+            "\n\n"
+            + action
+            + "\n\n```sql\nSELECT k FROM skeys('z=>1, aa=>2, b=>3'::hstore) AS keys(k) ORDER BY k;\n```"
+        )
+        speech += " " + action
+    return build_reference_answer(
+        text,
+        state,
+        args,
+        result,
+        body,
+        speech,
+        citations,
+        "reference:hstore-key-order.v1",
+        "PostgreSQL hstore manual.",
+    )
+
+
 async def function_answer(
     text: str, state: Any, ctx: Any, history: list[dict[str, Any]] | None, client: Any
 ) -> "ReferenceAnswer | None":
     from app.integrations.supabase_reference import build_reference_answer, supports_manual
 
     chapter = requested_chapter(text)
+    order_kind = hstore_order_request(text) if chapter == "hstore" else None
     decide = getattr(client, "function_lookup_decision", None)
     if (
         chapter is None
-        or decide is None
         or ctx is None
         or history
         or state.mode != "neutral"
@@ -125,7 +217,7 @@ async def function_answer(
         or state.persona_on
         or getattr(state, "objective", None)
         or not supports_manual("17", text, state, history)
-        or not await client.function_lookup_ready()
+        or (order_kind is None and (decide is None or not await client.function_lookup_ready()))
     ):
         return None
 
@@ -137,6 +229,10 @@ async def function_answer(
         return None
     hits = json.loads(result.content).get("results", [])
     if not hits or len(hits) > 8:
+        return None
+    if order_kind is not None:
+        return hstore_order_answer(text, order_kind, state, args, result, hits)
+    if decide is None:
         return None
     passages = [{"number": i, "body": hit["content"]} for i, hit in enumerate(hits, 1)]
     choice = await decide(PICK_POLICY, {"question": text, "passages": passages}, FunctionChoice)
