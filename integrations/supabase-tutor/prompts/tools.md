@@ -9,6 +9,8 @@
       "type": "object",
       "properties": {
         "query": { "type": "string", "minLength": 3 },
+        "sdk": {"type": "string", "enum": ["javascript", "python", "dart", "swift", "kotlin", "csharp"], "description": "Only use an SDK explicitly identified by the learner."},
+        "edition": {"type": "string", "pattern": "^(unversioned|v[0-9]{1,3})$", "description": "Only narrow to a learner-requested SDK edition. Unversioned designates the current reference route."},
         "products": { "type": "array", "items": { "type": "string", "enum": ["auth","database","realtime","storage","functions","cli","platform","pricing","kb","ai","api","local-development","observability","security","self-hosting","other"] } },
         "k": { "type": "integer", "minimum": 1, "maximum": 12, "default": 8 }
       },

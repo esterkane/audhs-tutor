@@ -17,6 +17,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from backend.tutor.sdk_scope import Sdk, SdkScope, learner_sdk_scope
 from backend.tutor.guard import learner_secrets
 from backend.tutor.ledger import LedgerDelta, LedgerStore, UnknownTopicsError
 from backend.tutor.postgres_versions import major, manual_edition, requested_releases, without_release_mentions
@@ -37,6 +38,8 @@ TOOLS: list[dict[str, Any]] = json.loads(r"""
           "type": "string",
           "minLength": 3
         },
+        "sdk": {"type": "string", "enum": ["javascript", "python", "dart", "swift", "kotlin", "csharp"], "description": "Only use an SDK explicitly identified by the learner."},
+        "edition": {"type": "string", "pattern": "^(unversioned|v[0-9]{1,3})$", "description": "Only narrow to a learner-requested SDK edition. Unversioned designates the current reference route."},
         "products": {
           "type": "array",
           "items": {
@@ -237,6 +240,8 @@ class _Input(BaseModel):
 
 class SearchDocsInput(_Input):
     query: str = Field(min_length=3)
+    sdk: Sdk | None = None
+    edition: str | None = Field(default=None, pattern=r"^(unversioned|v[0-9]{1,3})$")
     products: list[Product] | None = Field(
         default=None,
         description="Preserve requested scope. URL categories: pgvector/vector-search guides are mainly ai; include ai with database when both are in scope.",
@@ -340,7 +345,15 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
         query = without_release_mentions(query)
         query += "\n" + ", ".join(f"PostgreSQL {v}" for v in targeted)
     versions = list(dict.fromkeys(map(major, targeted)))
-    chunks = await ctx.retriever.search(query, k=args.k, products=args.products)
+    sdk = learner_sdk_scope(ctx.learner_text)
+    if sdk is not None:
+        # Planner hints may split a comparison but cannot invent a language or version.
+        selected = sdk
+        if args.sdk in (None, sdk.sdk) and args.edition in sdk.editions:
+            selected = SdkScope(sdk.sdk, (args.edition,))
+        chunks = await ctx.retriever.search(query, k=args.k, products=args.products, sdk_scope=selected)
+    else:
+        chunks = await ctx.retriever.search(query, k=args.k, products=args.products)
     scope: dict[str, Any] = {}
     if (args.products and "ai" not in args.products
             and re.search(r"\bpgvector\b|<->|<=>|<#>", query, re.IGNORECASE)):
@@ -383,6 +396,18 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
                     patch_scope="A major-version manual URL alone cannot verify a patch-specific change. "
                                 "Use evidence that identifies the requested patch.",
                 )
+    if sdk is not None:
+        from urllib.parse import urlsplit
+        represented = set()
+        for hit in chunks:
+            parts = urlsplit(hit.url).path.strip("/").split("/")
+            if len(parts) in (4, 5) and parts[:3] == ["docs", "reference", sdk.sdk]:
+                represented.add(parts[3] if len(parts) == 5 else "unversioned")
+        scope.setdefault("scope_note", {})["sdk_reference"] = {
+            "sdk": sdk.sdk, "requested_editions": list(sdk.editions),
+            "missing_from_results": sorted(set(sdk.editions) - represented),
+            "note": "Unversioned means the current documentation route; it establishes no numbered release.",
+        }
     if not chunks:
         return _ok({"results": [], "note": "No matching passages returned. web_search with reason no_corpus_hit is now allowed.",
                     **scope})

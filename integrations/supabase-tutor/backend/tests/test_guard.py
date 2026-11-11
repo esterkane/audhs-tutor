@@ -387,3 +387,22 @@ async def test_citation_placement_is_requested_only_for_uncited_claims(monkeypat
         original, context = client.requests[1]["_audhs_citation_repair"]
         assert "Original explanation." in original.text
         assert isinstance(context, g.GuardContext)
+
+
+
+async def test_old_sdk_citation_rechecked_before_delivery_without_changing_history():
+    url = "https://supabase.com/docs/reference/javascript/v1/select"
+    history = [{"role": "user", "content": [{"type": "tool_result", "tool_use_id": "old",
+               "content": json.dumps({"results": [{"url": url, "tier": 1}]})}]}]
+    original = copy.deepcopy(history)
+    meta = TURN_JSON | {"citations": [{"n": 1, "url": url, "tier": 1, "title": "JS v1"}]}
+    client = FakeClient([text_reply("Laut Dokumentation [1].", turn=meta) for _ in range(2)])
+    orch = o.Orchestrator(client=client)
+    events = [e async for e in orch.run_turn(history=history, user_text="Und im aktuellen JavaScript-Client?",
+                                             state=o.SessionState(), ctx=tool_context())]
+    final = events[-1]
+    assert isinstance(final, o.Final)
+    assert final.turn.guard_flags == ["SDK_REFERENCE_SCOPE_MISMATCH"]
+    assert final.turn.text == o.SDK_EVIDENCE_GAP["de"]
+    assert not final.turn.citations and not final.turn.ledger_delta
+    assert history == original and len(client.requests) == 2

@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urldefrag
 
+from backend.tutor.sdk_scope import incompatible_reference, learner_sdk_scope
 from backend.tutor.postgres_versions import manual_edition, requested_majors
 from backend.tutor.schemas import GuardFinding, TutorTurn
 
@@ -230,7 +231,12 @@ def check_citations(turn: TutorTurn, ctx: GuardContext) -> list[GuardFinding]:
     if unused := sorted(listed.keys() - used):
         findings.append(_f("CITATION_UNUSED", "warn", f"citations {unused} are never marked in the text."))
     editions = requested_majors(ctx.learner_text)
+    sdk = learner_sdk_scope(ctx.learner_text)
     for c in turn.citations:
+        if incompatible_reference(c.url, sdk):
+            findings.append(_f("SDK_REFERENCE_SCOPE_MISMATCH", "block",
+                               f"[{c.n}] cites a different SDK or documentation edition than requested. "
+                               "Use matching evidence or explain which reference remains unverified."))
         edition = manual_edition(c.url)
         if editions and edition is not None and edition not in editions:
             findings.append(_f("PG_MANUAL_EDITION_MISMATCH", "block",

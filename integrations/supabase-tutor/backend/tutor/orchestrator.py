@@ -110,6 +110,16 @@ EDITION_EVIDENCE_GAP = {
 }
 
 
+SDK_EVIDENCE_GAP = {
+    "en": "I could not verify the requested SDK behavior with matching reference pages.",
+    "de": "Ich konnte das angefragte SDK-Verhalten mit passenden Referenzseiten nicht bestätigen.",
+}
+
+
+def scope_gap(code, language):
+    return (SDK_EVIDENCE_GAP if code == "SDK_REFERENCE_SCOPE_MISMATCH" else EDITION_EVIDENCE_GAP)[language]
+
+
 REFUSAL_TEXT = {
     "de": "Dazu kann ich in dieser Sitzung keine Antwort geben. Formuliere die Frage bitte anders, "
           "oder wir machen mit dem Lab weiter.",
@@ -169,7 +179,7 @@ class Orchestrator:
         markdown = ""
         repaired = False
         guard_retried = False
-        edition_repair = False
+        edition_repair = ""
         question_repair_turn = None
         citation_repair_context = None
         stream_retries = 0
@@ -238,8 +248,8 @@ class Orchestrator:
             except TurnParseError as e:
                 if repaired:
                     if edition_repair:
-                        yield Final(fallback_turn(state, EDITION_EVIDENCE_GAP[state.language],
-                                                  "PG_MANUAL_EDITION_MISMATCH"), new, usage, model_used)
+                        yield Final(fallback_turn(state, scope_gap(edition_repair, state.language),
+                                                  edition_repair), new, usage, model_used)
                         return
                     turn = guard.redact_secrets(fallback_turn(state, markdown, "unstructured"), user_text)
                     yield Final(turn, new, usage, model_used)
@@ -257,7 +267,8 @@ class Orchestrator:
             blocking = [f for f in findings if f.severity == "block"]
             if blocking and not guard_retried:
                 guard_retried = True
-                edition_repair = any(f.code == "PG_MANUAL_EDITION_MISMATCH" for f in blocking)
+                edition_repair = next((f.code for f in blocking if f.code in {
+                    "PG_MANUAL_EDITION_MISMATCH", "SDK_REFERENCE_SCOPE_MISMATCH"}), "")
                 if (
                     {f.code for f in blocking} == {"NO_QUESTION"}
                     and getattr(self.client, "supports_question_repair", False) is True
@@ -271,9 +282,11 @@ class Orchestrator:
                 yield Rewrite(sorted({f.code for f in blocking}))
                 new.append({"role": "user", "content": guard.repair_message(findings)})
                 continue
-            if any(f.code == "PG_MANUAL_EDITION_MISMATCH" for f in blocking):
-                yield Final(fallback_turn(state, EDITION_EVIDENCE_GAP[state.language],
-                                          "PG_MANUAL_EDITION_MISMATCH"), new, usage, model_used, findings)
+            mismatch = next((f.code for f in blocking if f.code in {
+                "PG_MANUAL_EDITION_MISMATCH", "SDK_REFERENCE_SCOPE_MISMATCH"}), "")
+            if mismatch:
+                yield Final(fallback_turn(state, scope_gap(mismatch, state.language),
+                                          mismatch), new, usage, model_used, findings)
                 return
             turn = guard.redact_secrets(turn, user_text).model_copy(
                 update={"guard_flags": sorted({f.code for f in findings})})
@@ -281,6 +294,6 @@ class Orchestrator:
             return
 
         if edition_repair:
-            markdown = EDITION_EVIDENCE_GAP[state.language]
+            markdown = scope_gap(edition_repair, state.language)
         yield Final(fallback_turn(state, markdown or REFUSAL_TEXT[state.language], "tool_loop_limit"),
                     new, usage, model_used)

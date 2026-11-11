@@ -24,6 +24,7 @@ from backend.tutor.embedding_space import (
     resolve_model,
 )
 from backend.tutor.schemas import Chunk
+from backend.tutor.sdk_scope import SdkScope, url_pattern
 
 # search_docs exposes a fixed `products` enum (prompts/tools.md); the corpus stores the URL-derived
 # product (scripts/ingest_llms.py: product_of). Each tool value expands to the stored values it covers.
@@ -51,7 +52,7 @@ class Embedder(Protocol):
 
 
 class Retriever(Protocol):
-    async def search(self, query: str, k: int = 8, products: Sequence[str] | None = None) -> list[Chunk]: ...
+    async def search(self, query: str, k: int = 8, products: Sequence[str] | None = None, *, sdk_scope: SdkScope | None = None) -> list[Chunk]: ...
 
 
 class Reranker(Protocol):
@@ -192,9 +193,11 @@ class PgHybridRetriever:
         self.embedder = embedder
         self.reranker = reranker
 
-    async def search(self, query: str, k: int = 8, products: Sequence[str] | None = None) -> list[Chunk]:
+    async def search(self, query: str, k: int = 8, products: Sequence[str] | None = None, *, sdk_scope: SdkScope | None = None) -> list[Chunk]:
         codes = sqlstate_codes(query)
         embedding = await self.embedder.embed_query(query)
+        if sdk_scope is not None:
+            return await self._sdk_matches(query, embedding, k, products, sdk_scope)
         fetch_k = max(k, RERANK_POOL) if self.reranker else k
         async with self.pool.connection() as conn:
             cur = conn.cursor(row_factory=dict_row)
@@ -304,3 +307,45 @@ class PgHybridRetriever:
         if self.reranker and remaining:
             chunks = await self.reranker.rerank(query, chunks, remaining)
         return anchors + chunks[:remaining]
+
+    async def _sdk_matches(
+        self, query: str, embedding: list[float], k: int, products: Sequence[str] | None, scope: SdkScope
+    ) -> list[Chunk]:
+        """Scope both retrieval signals before ranking; keep evidence for each compared edition."""
+        pools = []
+        async with self.pool.connection() as conn:
+            cur = conn.cursor(row_factory=dict_row)
+            for edition in scope.editions or (None,):
+                await cur.execute(SDK_SEARCH_SQL, (
+                    url_pattern(scope, edition), expand_products(products), expand_products(products),
+                    str(embedding), query, query, max(k, RERANK_POOL) if self.reranker else k,
+                ))
+                hits = [Chunk(**row) for row in await cur.fetchall()]
+                if self.reranker and hits:
+                    hits = await self.reranker.rerank(query, hits, k)
+                pools.append(hits)
+        return [hits[i] for i in range(k) for hits in pools if i < len(hits)][:k]
+
+
+SDK_SEARCH_SQL = """
+with scoped as materialized (
+    select c.id, c.anchor, c.heading_path, c.content, c.content_hash, c.fts, c.embedding,
+           s.url, s.tier, s.fetched_at
+    from tutor.docs_source s join tutor.docs_chunk c on c.source_id=s.id
+    where s.status='active' and s.url ~ %s and (%s::text[] is null or c.meta->>'product'=any(%s))
+), dense as (
+    select id, row_number() over(order by embedding operator(extensions.<=>) %s::extensions.vector, id) pos
+    from scoped where embedding is not null order by pos limit 60
+), lexical as (
+    select id, row_number() over(order by ts_rank_cd(fts,websearch_to_tsquery('english', %s)) desc, id) pos
+    from scoped where fts @@ websearch_to_tsquery('english', %s) order by pos limit 60
+), scored as (
+    select s.*, coalesce(1.0/(60+d.pos),0)+coalesce(1.0/(60+l.pos),0) score
+    from scoped s left join dense d using(id) left join lexical l using(id)
+    where d.pos is not null or l.pos is not null
+), unique_passages as (
+    select distinct on (url,content_hash) * from scored order by url,content_hash,score desc,id
+)
+select id as chunk_id,url,anchor,heading_path,content,tier,fetched_at,score::double precision
+from unique_passages order by score desc,id limit %s
+"""
