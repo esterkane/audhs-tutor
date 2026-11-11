@@ -102,9 +102,11 @@ export function CaseAuthoring({
 export function CasePractice({
   pair,
   identity,
+  lowCapacity = false,
 }: {
   pair: NonNullable<Schemas['KnowledgeReadingOut']['case_comparison']>
   identity: string
+  lowCapacity?: boolean
 }) {
   const key = 'case-comparison:v1:' + identity
   const [attempt, setAttempt] = useState<Attempt>(() => {
@@ -128,6 +130,15 @@ export function CasePractice({
     }
     return empty
   })
+  const [detailed, setDetailed] = useState(false)
+  const quick =
+    lowCapacity &&
+    !detailed &&
+    !attempt.revealed &&
+    !attempt.choice &&
+    !attempt.reasoning &&
+    !attempt.detail_a &&
+    !attempt.detail_b
   const [error, setError] = useState('')
   const group = useId()
   const result = useRef<HTMLHeadingElement>(null)
@@ -144,19 +155,20 @@ export function CasePractice({
       setError('Your attempt is available on this page. Copy it before leaving.')
     }
   }
-  function reveal() {
+  function reveal(choice = attempt.choice) {
     focusAfterReveal.current = true
-    save({ ...attempt, revealed: true })
+    save({ ...attempt, choice, revealed: true })
   }
   return (
-    <Disclosure label="Compare two cases">
+    <Disclosure label={lowCapacity ? 'Two-choice practice' : 'Compare two cases'}>
       <div className="space-y-3 min-w-0">
-        {(['case_a', 'case_b'] as const).map((key, index) => (
-          <section key={key}>
-            <h3 className="font-semibold">Case {index ? 'B' : 'A'}</h3>
-            <p className="whitespace-pre-wrap break-words">{pair[key]}</p>
-          </section>
-        ))}
+        {!quick &&
+          (['case_a', 'case_b'] as const).map((key, index) => (
+            <section key={key}>
+              <h3 className="font-semibold">Case {index ? 'B' : 'A'}</h3>
+              <p className="whitespace-pre-wrap break-words">{pair[key]}</p>
+            </section>
+          ))}
         {attempt.revealed ? (
           <>
             <h3 className="font-semibold" ref={result} tabIndex={-1}>
@@ -177,6 +189,24 @@ export function CasePractice({
             <p>The author identifies Case {pair.failing_case.toUpperCase()} as the failing case.</p>
             <p className="whitespace-pre-wrap break-words">{pair.rationale}</p>
           </>
+        ) : quick ? (
+          <fieldset className="grid gap-2">
+            <legend>Which case fails?</legend>
+            <p className="text-sm">Choose one to see the author’s explanation. This practice is ungraded.</p>
+            {(['a', 'b'] as const).map((choice) => (
+              <Button
+                key={choice}
+                variant="secondary"
+                className="whitespace-normal break-words text-left justify-start"
+                onClick={() => reveal(choice)}
+              >
+                Case {choice.toUpperCase()}: {pair[choice === 'a' ? 'case_a' : 'case_b']}
+              </Button>
+            ))}
+            <Button variant="ghost" onClick={() => setDetailed(true)}>
+              Compare in detail
+            </Button>
+          </fieldset>
         ) : (
           <>
             <Disclosure label="Help me compare the cases">
@@ -225,10 +255,10 @@ export function CasePractice({
               />
             </label>
             <p>This ungraded attempt is saved in this browser.</p>
-            <Button disabled={!attempt.choice} onClick={reveal}>
+            <Button disabled={!attempt.choice} onClick={() => reveal()}>
               Compare with explanation
             </Button>
-            <Button variant="secondary" onClick={reveal}>
+            <Button variant="secondary" onClick={() => reveal()}>
               Skip to explanation
             </Button>
           </>

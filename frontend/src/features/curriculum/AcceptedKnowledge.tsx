@@ -15,7 +15,7 @@ import { SourceViewer } from './SourceViewer'
 import { useState } from 'react'
 
 
-export function AcceptedKnowledge({ reading, onCheck, active = true }: { reading:ReturnType<typeof useAcceptedKnowledge>; onCheck:()=>void; active?:boolean }) {
+export function AcceptedKnowledge({ reading, onCheck, active = true, lowCapacity = false }: { reading:ReturnType<typeof useAcceptedKnowledge>; onCheck:()=>void; active?:boolean; lowCapacity?:boolean }) {
   const [source, setSource] = useState<string | null>(null)
   const [openPdf, setOpenPdf] = useState<string | null>(null)
   if (reading.isError) return <Card><p role="alert">Could not load your accepted knowledge material. AI help does not replace it.</p><Button onClick={() => void reading.refetch()} disabled={reading.isFetching}>Retry accepted material</Button></Card>
@@ -49,7 +49,7 @@ ${data.worked_example}`
     {data.relationship && <RelationshipPractice key={data.draft_id+':'+data.learning_object_version}
       identity={data.draft_id+':'+data.learning_object_version} value={data.relationship}/>}
     {data.case_comparison && <CasePractice key={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id}
-      identity={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id} pair={data.case_comparison}/>}
+      identity={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id} pair={data.case_comparison} lowCapacity={lowCapacity}/>}
     <Disclosure label="Your notes and source references"><Markdown text={data.notes} />
       {data.notebook_upload_id && <UploadedNotebook key={data.notebook_upload_id} documentId={data.notebook_upload_id} />}
       {data.original_pdf && <div><Button variant="secondary" aria-expanded={openPdf === data.original_pdf.version_id}

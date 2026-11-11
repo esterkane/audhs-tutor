@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { API, expectOk, endOpenSession } from '../e2e/helpers'
 
-test('author, accept, compare, restore and skip on a narrow screen', async ({
+for (const lowCapacity of [false, true]) test(`author, accept and practice cases on a narrow screen (${lowCapacity ? 'low capacity' : 'steady'})`, async ({
   page,
   request,
   browser,
@@ -9,7 +9,7 @@ test('author, accept, compare, restore and skip on a narrow screen', async ({
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await endOpenSession(request)
-  const title = 'Synthetic separated permissions'
+  const title = 'Synthetic separated permissions ' + (lowCapacity ? 'low capacity' : 'steady')
   const passage = 'A table privilege permits SELECT. A policy may restrict visible rows.'
   const question = 'What happens when the role has SELECT but no row passes the policy?'
   const caseA = 'The role has a SELECT grant, but a policy hides the row.'
@@ -57,6 +57,11 @@ test('author, accept, compare, restore and skip on a narrow screen', async ({
   await expectOk(await published)
   const skills = (await (await request.get(API + '/api/skills')).json()).skills
   const skill = skills.find((s: { title: string }) => s.title === title)
+  if (lowCapacity) {
+    await page.goto('/')
+    await page.locator('summary').filter({ hasText: 'Session options' }).click()
+    await page.getByRole('button', { name: /Low capacity/ }).click()
+  }
   await page.goto('/?lesson=' + encodeURIComponent(skill.id))
   const started = page.waitForResponse(
     (r) => r.url().endsWith('/api/sessions') && r.request().method() === 'POST',
@@ -76,6 +81,23 @@ test('author, accept, compare, restore and skip on a narrow screen', async ({
     if (req.method() === 'POST') writes.push(req.url())
   })
   await page.goto('/session')
+  if (lowCapacity) {
+    expect(session.mode).toBe('low_capacity')
+    const openQuick = page.locator('summary').filter({ hasText: 'Two-choice practice' })
+    await openQuick.press('Enter')
+    await expect(page.getByRole('button', { name: 'Case B: ' + caseB })).toBeVisible()
+    await expect(page.getByText(why, { exact: true })).toHaveCount(0)
+    await page.getByRole('button', { name: 'Case A: ' + caseA }).press('Enter')
+    await expect(page.getByRole('heading', { name: 'Compare with the author’s explanation' })).toBeFocused()
+    await expect(page.getByText('Your choice: Case A', { exact: true })).toBeVisible()
+    await expect(page.getByText(why, { exact: true })).toBeVisible()
+    await page.reload()
+    await openQuick.press('Enter')
+    await expect(page.getByText('Your choice: Case A', { exact: true })).toBeVisible()
+    expect(writes).toEqual([])
+    await endOpenSession(request)
+    return
+  }
   const open = page.locator('summary').filter({ hasText: 'Compare two cases' })
   await open.press('Enter')
   for (const text of [caseA, caseB]) await expect(page.getByText(text, { exact: true })).toBeVisible()

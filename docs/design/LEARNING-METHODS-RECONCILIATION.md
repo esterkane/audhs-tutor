@@ -39,7 +39,7 @@ courses because a paper discusses audio. Speech input is a separate accessibilit
 | Parsons → faded example → open problem | Code editor, notebook and assessment exist | Missing diagnostic-gated ladder; do not equate an editable notebook to a Parsons task. |
 | Predict → step → compare | `NotebookWorkspace`, `Playground`, `GuidedExperiments` | Partial: saved predictions, outputs and comparisons exist; general variable trace, previous-state diff, back/replay and transfer assessment are not fully implemented. |
 | One-parameter ablation | `GuidedExperiments`, `comparisonCheckpoint` | Partial: bounded visual comparisons exist; no validated ML ablation/transfer outcome pipeline. |
-| Spaced retrieval with feedback | `kernel/memory.py`, `review_content.py`, review API/UI | Implemented foundation. Low-capacity recognition coverage still requires authored valid alternatives; never invent distractors silently or claim it complete from scheduling alone. |
+| Spaced retrieval with feedback | `kernel/memory.py`, `review_content.py`, review API/UI | Due cards support scheduled recall. In a low-capacity lesson, an accepted case pair also offers optional two-choice recognition with the author’s explanation. A recognition choice is saved in this browser and does not schedule a review or update mastery. |
 | Interleave problem types, block terminology | `kernel/planner.py` | Partial: planner/switch boundaries exist; content-type-aware interleaving needs a specific deterministic test. |
 | Confidence before feedback | Existing optional assessment confidence | Preserve current optional policy; not a missing mandatory field. High-confidence correction revisit needs outcome attribution tests. |
 | Plan, cues, resume recap | Session context/checkpoints, reader bookmarks, parking lot | Implemented foundation; existing reading notes and full histories must survive prediction addition. No mid-task notification added. |
@@ -56,7 +56,7 @@ accepted text, histories or mastery. Retain original attempt after reveal; corre
 Malformed/denied storage must leave reading available. Explicit skip persists. No model call,
 new package, timer, grading or global preference change is needed.
 
-For authored reading questions and optional delayed recall, see [accepted passage questions](../slices/authored-reading-prequestions.md). Further evaluation should measure delayed learning outcomes across sessions. Recognition practice for low-capacity sessions, a progression in case difficulty and gradual removal of worked-example steps remain open.
+For authored reading questions and optional delayed recall, see [accepted passage questions](../slices/authored-reading-prequestions.md). Further evaluation should measure delayed learning outcomes across sessions. Progression in case difficulty and gradual removal of worked-example steps remain open.
 
 
 ## Regression coverage

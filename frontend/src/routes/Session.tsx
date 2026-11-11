@@ -407,6 +407,7 @@ function SessionBody({ sessionId, data, canNavigate, secondaryContent }: {
             active={phase === 'teach'}
             hasQuestion={assessmentEntered}
             socratic={data.socratic}
+            lowCapacity={data.mode === 'low_capacity'}
             sessionId={sessionId}
             skillId={activeSkillId}
             learningGoal={skill ? skill.description || skill.title : undefined}
@@ -519,6 +520,7 @@ function TeachPanel({
   recoveryScope,
   active,
   hasQuestion,
+  lowCapacity,
   socratic,
   sessionId,
   skillId,
@@ -529,6 +531,7 @@ function TeachPanel({
 }: {
   recoveryScope: string
   hasQuestion: boolean
+  lowCapacity: boolean
   socratic: boolean
   sessionId: string
   skillId: string | null
@@ -643,7 +646,7 @@ function TeachPanel({
   )
   return (
     <>
-      <AcceptedKnowledge reading={authoredReading} onCheck={onCheck} active={active} />
+      <AcceptedKnowledge reading={authoredReading} onCheck={onCheck} active={active} lowCapacity={lowCapacity} />
       <OptionalKnowledgeTutor authored={!!authoredReading.data || authoredReading.isPending || authoredReading.isError}>
       <SavedLessonReading reading={savedReading} active={active} hasReply={!!text || !!alt || busy} />
       {busy && (
