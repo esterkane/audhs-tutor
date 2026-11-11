@@ -55,6 +55,32 @@ LIVE = pytest.mark.skipif(
 
 
 @LIVE
+def test_reviewed_select_diagnostic_distinguishes_column_and_table_access():
+    from app.integrations.supabase_reviewed import DIAGNOSTICS
+
+    with accuracy.Database() as db:
+        db.sql(
+            "CREATE ROLE reader; CREATE TABLE public.practice(id int, body text, obsolete int);"
+            "ALTER TABLE public.practice DROP COLUMN obsolete;"
+            "INSERT INTO public.practice VALUES(1,'example');"
+            "GRANT SELECT(id) ON public.practice TO reader"
+        )
+        assert db.sql("SET ROLE reader; SELECT id FROM public.practice") == "1"
+        assert (
+            db.sql(
+                "SET ROLE reader; SELECT id FROM public.practice WHERE body = 'example'",
+                expected_state="42501",
+            )
+            == "42501"
+        )
+        result = db.sql("SET ROLE reader;" + DIAGNOSTICS)
+        assert "public|practice|t|f|{id}|f|f" in result.splitlines()
+        db.sql("GRANT SELECT ON public.practice TO reader")
+        result = db.sql("SET ROLE reader;" + DIAGNOSTICS)
+        assert "public|practice|t|t|{id,body}|f|f" in result.splitlines()
+
+
+@LIVE
 def test_real_sql_results_and_serialization_failure():
     report = accuracy.run()
     assert report["rls"] == {
