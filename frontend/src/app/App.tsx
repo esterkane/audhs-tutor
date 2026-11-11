@@ -42,7 +42,7 @@ import { Recap } from '../routes/Recap'
 import { Review } from '../routes/Review'
 import { Session } from '../routes/Session'
 import { Projects } from '../routes/Projects'
-import { SupabaseProject } from '../routes/SupabaseProject'
+const SupabaseProject = lazy(() => import('../routes/SupabaseProject').then(module => ({ default: module.SupabaseProject })))
 import { Playground } from '../routes/Playground'
 import { MODE_LABELS, useMode } from '../stores/mode'
 
@@ -221,7 +221,7 @@ export default function App() {
               <Route path="/programs" element={<Projects />} />
               <Route path="/library" element={<Library />} />
             <Route path="/projects" element={<Projects />} />
-            <Route path="/projects/supabase" element={<SupabaseProject />} />
+            <Route path="/projects/supabase" element={<Suspense fallback={<p role="status">Loading Supabase project…</p>}><SupabaseProject /></Suspense>} />
               <Route path="/curriculum" element={<Curriculum />} />
               <Route path="/models" element={<Models />} />
               <Route path="/experiments" element={<Experiments />} />
