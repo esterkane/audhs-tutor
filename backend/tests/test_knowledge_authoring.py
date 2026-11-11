@@ -318,6 +318,41 @@ async def test_docx_text_extraction(client: AsyncClient, settings: Settings, tmp
     assert "My uploaded example" in response.json()["text"]
 
 
+@pytest.mark.parametrize("kernel", [{}, {"language": "sql\n```\nMETADATA_ONLY"}])
+async def test_notebook_authoring_extracts_ordered_source_without_running_cells(
+    client: AsyncClient, settings: Settings, tmp_path: Path, kernel: dict[str, str]
+):
+    import json
+
+    settings.knowledge_authoring_root = str(tmp_path)
+    marker = tmp_path / "cell-executed"
+    code = f"# ````\nfrom pathlib import Path\nif True:\n    Path({str(marker)!r}).touch()"
+    notebook = {
+        "nbformat": 4,
+        "metadata": {"kernelspec": kernel, "private": "METADATA_ONLY"},
+        "cells": [
+            {"cell_type": "markdown", "source": ["# Investigation\n"]},
+            {
+                "cell_type": "code",
+                "source": code,
+                "outputs": [{"output_type": "stream", "text": ["OUTPUT_ONLY"]}],
+            },
+            {"cell_type": "raw", "source": "Follow-up question"},
+        ],
+    }
+    result = await client.post(
+        "/api/knowledge-material/uploads",
+        headers={"X-Filename": "practice.ipynb"},
+        content=json.dumps(notebook),
+    )
+    assert result.status_code == 200, result.text
+    text = result.json()["text"]
+    assert text.index("# Investigation") < text.index(code) < text.index("Follow-up question")
+    assert "OUTPUT_ONLY" not in text and "METADATA_ONLY" not in text
+    assert f"`````\n{code}\n`````" in text
+    assert not marker.exists()
+
+
 async def test_pdf_upload_extracts_text(client: AsyncClient, settings: Settings, tmp_path: Path):
     settings.knowledge_authoring_root = str(tmp_path)
     stream = b"BT /F1 12 Tf 20 100 Td (Training median is reused for held-out data.) Tj ET"

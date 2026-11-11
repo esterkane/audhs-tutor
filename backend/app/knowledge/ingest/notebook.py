@@ -32,15 +32,30 @@ def _outputs(cell: dict[str, Any]) -> str:
     return text[:MAX_OUTPUT_CHARS] + ("…" if len(text) > MAX_OUTPUT_CHARS else "")
 
 
-def notebook_blocks(raw: str) -> list[Block]:
+def notebook_blocks(raw: str, *, source_only: bool = False) -> list[Block]:
     nb = json.loads(raw)
-    kernel = (nb.get("metadata") or {}).get("kernelspec") or {}
+    kernel = {} if source_only else (nb.get("metadata") or {}).get("kernelspec") or {}
     lang = str(kernel.get("language") or "python")
     heading: str | None = None
     blocks: list[Block] = []
     for cell in nb.get("cells") or []:
         src = _source(cell).strip()
         if not src:
+            continue
+        if source_only:
+            # Editable authoring source preserves headings, indentation and magics
+            # while leaving saved outputs, attachments and metadata in the original.
+            kind = cell.get("cell_type")
+            if kind in {"markdown", "code", "raw"}:
+                original = _source(cell).rstrip("\r\n")
+                if kind == "code":
+                    # An unlabelled fence avoids asserting a language and keeps
+                    # notebook metadata out of the learner's source material.
+                    runs = re.findall(r"`+", original)
+                    fence = "`" * max(3, 1 + max(map(len, runs), default=0))
+                    blocks.append(Block(text=f"{fence}\n{original}\n{fence}", kind="code"))
+                else:
+                    blocks.append(Block(text=original, kind="prose"))
             continue
         if cell.get("cell_type") == "markdown":
             m = _H.match(src)

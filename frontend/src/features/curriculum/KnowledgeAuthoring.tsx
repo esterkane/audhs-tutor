@@ -618,7 +618,7 @@ function Editor({
                 <input
                   className={field}
                   type="file"
-                  accept=".txt,.md,.pdf,.docx"
+                  accept=".txt,.md,.pdf,.docx,.ipynb"
                   disabled={!!busy || readOnly || !!form.upload_id}
                   onChange={(e) => {
                     const file = e.target.files?.[0]
@@ -628,7 +628,7 @@ function Editor({
                 />
               </label>
               <p className="text-sm text-muted">
-                TXT, Markdown, PDF or DOCX; up to 10 MiB. One upload per material. Scanned PDF pages use local
+                TXT, Markdown, PDF, DOCX or Jupyter notebook (.ipynb), up to 10 MiB. Notebook imports use cell source and omit saved outputs. One upload per material. Scanned PDF pages use local
                 OCR (English and German). Check the extracted text before using it. Uploads are not executed.
               </p>
             </>

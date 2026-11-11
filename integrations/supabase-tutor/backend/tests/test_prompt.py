@@ -122,3 +122,12 @@ def test_neutral_explicit_discussion_does_not_initiate_assessment() -> None:
     assert "assess with a scenario" not in text
     assert "In neutral discussion" in text
     assert "next_question is null" in text
+
+
+@pytest.mark.parametrize("language", ["en", "de"])
+def test_worked_comparison_guidance_is_scoped_to_explicit_delivery(language: str) -> None:
+    explicit = p.turn_system_text(p.SessionState(language=language, delivery="explicit"))
+    socratic = p.turn_system_text(p.SessionState(language=language, delivery="socratic"))
+    assert "outcome of each" in explicit and "resulting state" in explicit
+    assert "missing assumption" in explicit
+    assert "For a worked comparison" not in socratic

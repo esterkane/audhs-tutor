@@ -153,8 +153,12 @@ async def upload(
 ) -> KnowledgeUploadOut:
     name = Path(unquote(filename).replace("\\", "/")).name
     suffix = Path(name).suffix.lower()
-    if suffix not in {".txt", ".md", ".pdf", ".docx"}:
-        raise AppError("unsupported_upload", "Choose a TXT, Markdown, PDF or DOCX file.", 422)
+    if suffix not in {".txt", ".md", ".pdf", ".docx", ".ipynb"}:
+        raise AppError(
+            "unsupported_upload",
+            "Choose a TXT, Markdown, PDF, DOCX or Jupyter notebook (.ipynb).",
+            422,
+        )
     content = bytearray()
     async for block in request.stream():
         if len(content) + len(block) > 10 * 1024 * 1024:
@@ -185,7 +189,12 @@ async def upload(
             else None
         )
         doc = await run_in_threadpool(
-            load_file, path, uri=str(path), pdf_ocr=ocr, pdf_ocr_required=True
+            load_file,
+            path,
+            uri=str(path),
+            pdf_ocr=ocr,
+            pdf_ocr_required=True,
+            notebook_source_only=True,
         )
     except PdfOcrError as exc:
         raise AppError(exc.code, str(exc), 422) from None

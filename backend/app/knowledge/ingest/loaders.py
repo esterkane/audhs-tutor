@@ -368,6 +368,7 @@ def load_file(
     use_cache: bool = True,
     pdf_ocr: PdfOcrOptions | None = None,
     pdf_ocr_required: bool = False,
+    notebook_source_only: bool = False,
 ) -> SourceDoc:
     """Raises `ValueError` for unsupported suffixes, `SkipFile` for recognised-but-empty files,
     `PdfSupportMissing` / `SttSupportMissing` / `VisionSupportMissing` for optional runtimes and
@@ -518,7 +519,7 @@ def load_file(
             raise ValueError("not a supported transcript")
         return done(transcript_blocks(cues), source_type=source_type or "transcript")
     if st == "notebook":
-        return done(notebook_blocks(text))
+        return done(notebook_blocks(text, source_only=notebook_source_only))
     if suffix == ".json":
         cues = transcript_cues(text, suffix)
         if cues:

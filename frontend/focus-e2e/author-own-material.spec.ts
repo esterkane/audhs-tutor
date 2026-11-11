@@ -73,6 +73,7 @@ test('fresh focused upload to authored lesson, reading, notes, feedback and resu
     'Table privileges and row visibility are separate checks. With the required SELECT privilege, a row policy that admits no rows normally gives an empty result. A missing table privilege may give permission denied. Test the application role rather than the table owner.'
   const upload = page.waitForResponse((response) => response.url().endsWith('/knowledge-material/uploads'))
   const scan = process.env.AUDHS_TEST_PDF_OCR === '1'
+  const notebook = process.env.AUDHS_TEST_NOTEBOOK_UPLOAD === '1' && !scan
   const uploadBytes = scan
     ? execFileSync(
         resolve(root, 'backend/.venv/bin/python'),
@@ -84,10 +85,10 @@ test('fresh focused upload to authored lesson, reading, notes, feedback and resu
         ],
         { cwd: resolve(root, 'backend'), maxBuffer: 10 * 1024 * 1024 },
       )
-    : Buffer.from(source)
+    : Buffer.from(notebook ? JSON.stringify({ nbformat: 4, nbformat_minor: 5, metadata: {}, cells: [{ cell_type: "markdown", metadata: {}, source: [source] }] }) : source)
   await page.getByLabel('Upload reference content (optional)').setInputFiles({
-    name: scan ? 'scanned-source.pdf' : 'new-notes-'.repeat(30) + '.md',
-    mimeType: scan ? 'application/pdf' : 'text/markdown',
+    name: scan ? 'scanned-source.pdf' : notebook ? 'practice.ipynb' : 'new-notes-'.repeat(30) + '.md',
+    mimeType: scan ? 'application/pdf' : notebook ? 'application/json' : 'text/markdown',
     buffer: uploadBytes,
   })
   const uploaded = await upload
