@@ -28,9 +28,10 @@ test('open an uploaded working copy, run a cell explicitly and reopen the saved 
   const opened = context.waitForEvent('page')
   await link.click()
   const lab = await opened
-  const first = lab.locator('.jp-Notebook .jp-CodeCell').first()
+  const first = lab.locator('.jp-Notebook:visible .jp-CodeCell').first()
   await expect(first.locator('.cm-content')).toHaveText('6 * 7', { timeout: 30_000 })
   await expect(first.locator('.jp-OutputArea-output')).toHaveCount(0)
+  await expect(lab.getByRole('button', { name: /Python 3.*Idle/ })).toBeVisible({ timeout: 30_000 })
   await first.locator('.cm-content').click()
   await lab.keyboard.press('Shift+Enter')
   await expect(first.locator('.jp-OutputArea-output')).toHaveText('42', { timeout: 30_000 })
@@ -52,7 +53,7 @@ test('open an uploaded working copy, run a cell explicitly and reopen the saved 
   const reopened = context.waitForEvent('page')
   await link.click()
   const second = await reopened
-  await expect(second.locator('.jp-Notebook .jp-CodeCell').first().locator('.jp-OutputArea-output')).toHaveText('42', { timeout: 30_000 })
+  await expect(second.locator('.jp-Notebook:visible .jp-CodeCell').first().locator('.jp-OutputArea-output')).toHaveText('42', { timeout: 30_000 })
   // Keep the rendered href and exercise it after its isolated Jupyter server exits.
   const opaque = new URL(href!, page.url()).href
   const outsider = await context.newPage()
