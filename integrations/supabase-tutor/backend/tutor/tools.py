@@ -19,6 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from backend.tutor.guard import learner_secrets
 from backend.tutor.ledger import LedgerDelta, LedgerStore, UnknownTopicsError
+from backend.tutor.postgres_versions import major, manual_edition, requested_releases, without_release_mentions
 from backend.tutor.retrieval import Retriever, sqlstate_codes
 from backend.tutor.web import WebResult, WebSearch, WebSearchError, annotate, redact_query, source_tier
 
@@ -325,6 +326,20 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
         # Preserve comparison terms the model may omit when reformulating the question.
         # This is search data, not an added instruction or a guessed answer.
         query += "\n" + ctx.learner_text
+    learner_releases = requested_releases(ctx.learner_text)
+    planner_releases = requested_releases(query)
+    requested = learner_releases or planner_releases
+    requested_majors = list(dict.fromkeys(map(major, requested)))
+    # A comparison may legitimately call search once per edition. Keep that narrow
+    # search while measuring this result against the learner's complete request.
+    overlap = {major(v) for v in planner_releases} & set(requested_majors)
+    targeted = [v for v in requested if not overlap or major(v) in overlap]
+    if learner_releases and set(planner_releases) != set(targeted):
+        # Remove conflicting planner-invented editions before candidate ranking.
+        # Keep exact requested patches to make release-note passages discoverable.
+        query = without_release_mentions(query)
+        query += "\n" + ", ".join(f"PostgreSQL {v}" for v in targeted)
+    versions = list(dict.fromkeys(map(major, targeted)))
     chunks = await ctx.retriever.search(query, k=args.k, products=args.products)
     scope: dict[str, Any] = {}
     if (args.products and "ai" not in args.products
@@ -337,8 +352,39 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
             "reason": "The ai product contains pgvector vector-columns and vector-indexes guides. "
                       "Their absence from this filtered search does not mean they are absent from the corpus.",
         }}
+    if versions:
+        matched = set()
+        kept = []
+        excluded = set()
+        for hit in chunks:
+            manual = manual_edition(hit.url)
+            if manual and manual not in versions:
+                excluded.add(manual)
+                continue
+            if manual:
+                matched.add(manual)
+            kept.append(hit)
+        chunks = kept
+        missing = [v for v in requested_majors if v not in matched]
+        patches = [v for v in requested if v != major(v)]
+        if missing or patches:
+            scope.setdefault("scope_note", {})["postgresql_manual"] = {
+                "requested_majors": requested_majors,
+                "searched_majors": versions,
+                "missing_from_results": missing,
+                "excluded_manual_editions": sorted(excluded),
+                "coverage": "No matching numbered PostgreSQL manual passage was retrieved for the "
+                            "listed missing majors. Other sources do not establish version-specific "
+                            "behavior by themselves; fetch time is not the release version.",
+            }
+            if patches:
+                scope["scope_note"]["postgresql_manual"].update(
+                    requested_patches=patches,
+                    patch_scope="A major-version manual URL alone cannot verify a patch-specific change. "
+                                "Use evidence that identifies the requested patch.",
+                )
     if not chunks:
-        return _ok({"results": [], "note": "No corpus hits. web_search with reason no_corpus_hit is now allowed.",
+        return _ok({"results": [], "note": "No matching passages returned. web_search with reason no_corpus_hit is now allowed.",
                     **scope})
     return _ok({"results": [
         {

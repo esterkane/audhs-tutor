@@ -254,6 +254,10 @@ existing installation or restore an older full-corpus backup without that migrat
 
 ### Full local notebooks
 
-The project-study page supports editable notebook source and small browser Python experiments. For full notebooks with datasets, plots and scientific packages, run `make notebooks install=1` once, then `make notebooks`. This starts authenticated JupyterLab on localhost in a separate environment and opens `data/notebooks`. Upload your notebook and its datasets together, read the instructions, then run cells explicitly with Shift+Enter. Course-specific dependencies may need a separate compatible environment; imported code is never executed automatically. The browser experiment runner does not replace a full Jupyter kernel.
+In **Curriculum → Source**, upload your `.ipynb` under **Upload reference content (optional)**. The editor includes the notebook’s Markdown, raw text and code in cell order. Review the extracted content before saving your material.
+
+To work in the notebook, expand **Open uploaded notebook locally** and choose **Prepare and start notebook lab**. If prompted, install the local notebook tools. Follow **Open prepared notebook in Jupyter** to open an editable working copy. Add any datasets it needs beside the notebook in Jupyter. Inspect the code, then run a cell with Shift+Enter. Save in Jupyter to keep your edits and outputs. To reopen the working copy later, return to the saved material’s Source step. Jupyter saves changes separately from your original upload and lesson text.
+
+For direct terminal access to the local notebook workspace, run `make notebooks install=1` for initial setup and `make notebooks` for subsequent launches. Course-specific dependencies may require a separate compatible environment.
 
 Each page offers **Listen or ask about this page**. Select a passage for focused explanation, opt into a Socratic question, or dictate a message and review it before sending. Audio needs local voice setup under Models. Tutor guidance is distinct from executable test results and does not award mastery.

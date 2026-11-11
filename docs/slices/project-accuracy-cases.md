@@ -66,5 +66,14 @@ the labelled fixture container was removed. Ruff lint and format checks passed. 
 was called and no learner database was opened. The manifest remains not_run for model
 qualification; executing a SQL oracle does not grade a generated answer.
 
-Next: freeze a bounded real-provider campaign through the actual project gateway and
-review complete answers against both documentation and these measured observations.
+## Hosted project tutor evaluation, 11 November 2026
+
+The eight-case run used fresh synthetic sessions, PostgreSQL 17.11 and manual review of the complete English and German answers. Five answers met all criteria. Both NULL comparisons, both Read Committed examples and the English write-skew example passed.
+
+Both row-security questions reached a generic incident response and omitted the requested comparison. After the routing change in `10deb29`, targeted retests covered all three outcomes in both languages. The German write-skew answer initially omitted the second commit failure and the final worker count. A targeted retest after the worked-comparison change in `6608689` included both observations and the limits of that particular schedule.
+
+These results span three application versions. A release-wide eight-case result still requires running the complete set on the same revision. The static case manifest remains a specification. The run-specific scores come from private review receipts.
+
+### Search planning and response time
+
+Two targeted trials used the same English and German row-security questions. Both required complete answers, faster responses in each language, at least 15% less combined waiting time, and estimated cost no greater than baseline. The baseline pair took 55.828 seconds. A broader first query took 60.332 seconds. Allowing a second independent query in the first planning round took 55.048 seconds. In that trial the model still requested one initial search in each language. English improved by 2.261 seconds, while German took 1.481 seconds longer. Both trials produced complete answers but exceeded the baseline cost. Both changes were reverted.

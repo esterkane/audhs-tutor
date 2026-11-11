@@ -216,3 +216,56 @@ async def test_vector_scope_note_preserves_filter_and_reports_omitted_category(c
 async def test_scope_note_does_not_affect_unfiltered_inclusive_or_other_queries(query, products) -> None:
     res = await t.dispatch("search_docs", {"query": query, "products": products}, ctx(), t.TurnBudget())
     assert "scope_note" not in json.loads(res.content)
+
+
+@pytest.mark.parametrize("learner, query, versions, expected", [
+    ("Assume PostgreSQL 18. Explain row visibility.", "row policies", ["18"], ["18"]),
+    ("Explain PostgreSQL 18 RLS", "row policies", ["18"], ["18"]),
+    ("PostgreSQL 18.2 RLS", "PostgreSQL 17 row policies", ["18"], ["18"]),
+    ("Vergleiche PostgreSQL 17 und 18", "row policies", ["17", "18"], ["17", "18"]),
+    ("Compare PostgreSQL 17 and PostgreSQL 18", "PostgreSQL 17 grants", ["17"], ["17"]),
+    ("Show 18 rows", "row policies", [], ["17", "18", "current"]),
+])
+async def test_numbered_manual_matches_requested_editions(learner, query, versions, expected):
+    exemplar = FakeRetriever().chunks[0]
+    chunks = [exemplar.model_copy(update={"url": f"https://www.postgresql.org/docs/{v}/ddl.html"})
+              for v in ("17", "18", "current")]
+    retriever = FakeRetriever(chunks)
+    res = await t.dispatch("search_docs", {"query": query}, ctx(learner_text=learner, retriever=retriever), t.TurnBudget())
+    payload = json.loads(res.content)
+    assert [r["url"].split("/docs/")[1].split("/")[0] for r in payload["results"]] == expected
+    assert all(f"PostgreSQL {v}" in retriever.calls[0][0] for v in versions)
+
+
+async def test_uncovered_edition_keeps_framework_source_and_exact_freshness_without_wrong_manual():
+    framework = FakeRetriever().chunks[0]
+    outdated = framework.model_copy(update={"url": "https://www.postgresql.org/docs/17/ddl.html"})
+    result = await t.dispatch("search_docs", {"query": "row policies", "products": ["database"]},
+                              ctx(retriever=FakeRetriever([outdated, framework]), learner_text="Explain PostgreSQL 18 RLS"),
+                              t.TurnBudget())
+    payload = json.loads(result.content)
+    assert payload["scope_note"]["postgresql_manual"]["missing_from_results"] == ["18"]
+    assert payload["scope_note"]["postgresql_manual"]["excluded_manual_editions"] == ["17"]
+    assert [r["url"] for r in payload["results"]] == [framework.cite_url]
+    assert payload["results"][0]["fetched_at"] == framework.fetched_at.isoformat()
+
+async def test_conflicting_planner_release_removed_before_ranking_and_exact_patch_retained():
+    exemplar = FakeRetriever().chunks[0]
+    retriever = FakeRetriever([exemplar.model_copy(update={"url":"https://www.postgresql.org/docs/18/ddl.html"})])
+    result = await t.dispatch("search_docs", {"query":"PostgreSQL 17 RLS grants"},
+                              ctx(learner_text="PostgreSQL 18.2 RLS", retriever=retriever), t.TurnBudget())
+    actual_query = retriever.calls[0][0]
+    assert "17" not in actual_query and "PostgreSQL 18.2" in actual_query and "RLS grants" in actual_query
+    scope = json.loads(result.content)["scope_note"]["postgresql_manual"]
+    assert scope["requested_patches"] == ["18.2"] and scope["missing_from_results"] == []
+
+
+async def test_one_side_of_comparison_does_not_establish_other_editions():
+    exemplar = FakeRetriever().chunks[0]
+    retriever = FakeRetriever([exemplar.model_copy(update={"url":"https://www.postgresql.org/docs/17/ddl.html"})])
+    result = await t.dispatch("search_docs", {"query":"PostgreSQL 17 grants"},
+                              ctx(learner_text="PostgreSQL 17 and 18 permissions", retriever=retriever), t.TurnBudget())
+    scope = json.loads(result.content)["scope_note"]["postgresql_manual"]
+    assert retriever.calls[0][0] == "PostgreSQL 17 grants"
+    assert scope["requested_majors"] == ["17", "18"]
+    assert scope["searched_majors"] == ["17"] and scope["missing_from_results"] == ["18"]

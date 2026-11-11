@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urldefrag
 
+from backend.tutor.postgres_versions import manual_edition, requested_majors
 from backend.tutor.schemas import GuardFinding, TutorTurn
 
 QUESTION_MODES = {"lesson", "exam", "rabbit_hole"}
@@ -228,7 +229,14 @@ def check_citations(turn: TutorTurn, ctx: GuardContext) -> list[GuardFinding]:
                            f"Markers {missing} have no entry in citations[]; add them or remove the markers."))
     if unused := sorted(listed.keys() - used):
         findings.append(_f("CITATION_UNUSED", "warn", f"citations {unused} are never marked in the text."))
+    editions = requested_majors(ctx.learner_text)
     for c in turn.citations:
+        edition = manual_edition(c.url)
+        if editions and edition is not None and edition not in editions:
+            findings.append(_f("PG_MANUAL_EDITION_MISMATCH", "block",
+                               f"[{c.n}] is the {edition} PostgreSQL manual. The learner requested "
+                               f"{', '.join(editions)}. Cite matching evidence or explain which "
+                               "version-specific behavior remains unverified."))
         tool_tier = ctx.sources.get(_norm(c.url))
         if tool_tier is None:
             findings.append(_f("CITATION_NOT_FROM_TOOL", "block",

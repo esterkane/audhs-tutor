@@ -104,6 +104,12 @@ def fallback_turn(state: SessionState, text: str, flag: str) -> TutorTurn:
                      speech=_speech(text), text=text, guard_flags=[flag])
 
 
+EDITION_EVIDENCE_GAP = {
+    "en": "I could not verify this explanation for the requested PostgreSQL edition with matching sources.",
+    "de": "Ich konnte diese Erklärung für die angefragte PostgreSQL-Version mit passenden Quellen nicht bestätigen.",
+}
+
+
 REFUSAL_TEXT = {
     "de": "Dazu kann ich in dieser Sitzung keine Antwort geben. Formuliere die Frage bitte anders, "
           "oder wir machen mit dem Lab weiter.",
@@ -163,6 +169,7 @@ class Orchestrator:
         markdown = ""
         repaired = False
         guard_retried = False
+        edition_repair = False
         question_repair_turn = None
         citation_repair_context = None
         stream_retries = 0
@@ -230,6 +237,10 @@ class Orchestrator:
                 turn = parse_turn(markdown, json_text)
             except TurnParseError as e:
                 if repaired:
+                    if edition_repair:
+                        yield Final(fallback_turn(state, EDITION_EVIDENCE_GAP[state.language],
+                                                  "PG_MANUAL_EDITION_MISMATCH"), new, usage, model_used)
+                        return
                     turn = guard.redact_secrets(fallback_turn(state, markdown, "unstructured"), user_text)
                     yield Final(turn, new, usage, model_used)
                     return
@@ -246,6 +257,7 @@ class Orchestrator:
             blocking = [f for f in findings if f.severity == "block"]
             if blocking and not guard_retried:
                 guard_retried = True
+                edition_repair = any(f.code == "PG_MANUAL_EDITION_MISMATCH" for f in blocking)
                 if (
                     {f.code for f in blocking} == {"NO_QUESTION"}
                     and getattr(self.client, "supports_question_repair", False) is True
@@ -259,10 +271,16 @@ class Orchestrator:
                 yield Rewrite(sorted({f.code for f in blocking}))
                 new.append({"role": "user", "content": guard.repair_message(findings)})
                 continue
+            if any(f.code == "PG_MANUAL_EDITION_MISMATCH" for f in blocking):
+                yield Final(fallback_turn(state, EDITION_EVIDENCE_GAP[state.language],
+                                          "PG_MANUAL_EDITION_MISMATCH"), new, usage, model_used, findings)
+                return
             turn = guard.redact_secrets(turn, user_text).model_copy(
                 update={"guard_flags": sorted({f.code for f in findings})})
             yield Final(turn, new, usage, model_used, findings)
             return
 
+        if edition_repair:
+            markdown = EDITION_EVIDENCE_GAP[state.language]
         yield Final(fallback_turn(state, markdown or REFUSAL_TEXT[state.language], "tool_loop_limit"),
                     new, usage, model_used)

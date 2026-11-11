@@ -1,12 +1,13 @@
 """guard.py: each invariant fires on a violation and stays quiet on the compliant version."""
 from __future__ import annotations
 
+import copy
 import json
 from typing import Any
 
 import pytest
 
-from backend.tests.test_orchestrator import FakeClient, FakeStream, message, run, text_reply
+from backend.tests.test_orchestrator import TURN_JSON, FakeClient, FakeStream, ctx as tool_context, message, run, text_reply
 from backend.tutor import guard as g
 from backend.tutor import orchestrator as o
 from backend.tutor.schemas import TutorTurn
@@ -56,6 +57,40 @@ def test_question_rules() -> None:
 
 
 # ----------------------------------------------------------------------------- citations
+@pytest.mark.parametrize("request_text,edition,blocked", [
+    ("What about PostgreSQL 18?", "17", True),
+    ("Und PostgreSQL 18?", "current", True),
+    ("What about PostgreSQL 18?", "18", False),
+    ("Compare PostgreSQL 17 and 18", "17", False),
+    ("Compare PostgreSQL 17 and 18", "18", False),
+    ("Explain this again.", "17", False),
+])
+def test_previous_manual_citation_respects_current_explicit_edition(request_text, edition, blocked):
+    manual = f"https://www.postgresql.org/docs/{edition}/ddl-rowsecurity.html"
+    answer = turn(citations=[{"n": 1, "url": manual + "#example", "title": "Row security", "tier": 2}])
+    context = g.GuardContext(sources={manual: 2}, learner_text=request_text)
+    assert ("PG_MANUAL_EDITION_MISMATCH" in codes(answer, context)) is blocked
+
+
+async def test_two_wrong_edition_answers_preserve_history_and_return_evidence_gap() -> None:
+    manual = "https://www.postgresql.org/docs/17/ddl-rowsecurity.html"
+    history = [{"role": "user", "content": [{"type": "tool_result", "tool_use_id": "old",
+                "content": json.dumps({"results": [{"url": manual, "tier": 2}]})}]}]
+    original = copy.deepcopy(history)
+    meta = TURN_JSON | {"citations": [{"n": 1, "url": manual, "tier": 2, "title": "RLS"}]}
+    client = FakeClient([text_reply("Alte Behauptung [1].", turn=meta) for _ in range(2)])
+    orch = o.Orchestrator(client=client)  # type: ignore[arg-type]
+    events = [e async for e in orch.run_turn(history=history, user_text="Und in PostgreSQL 18?",
+                                             state=o.SessionState(), ctx=tool_context())]
+    final = events[-1]
+    assert isinstance(final, o.Final)
+    assert final.turn.guard_flags == ["PG_MANUAL_EDITION_MISMATCH"]
+    assert final.turn.text == o.EDITION_EVIDENCE_GAP["de"]
+    assert not final.turn.citations and not final.turn.ledger_delta
+    assert history == original and len(client.requests) == 2
+    assert sum(m["role"] == "assistant" for m in final.new_messages) == 2
+
+
 def test_citation_rules() -> None:
     assert codes(turn(citations=[]))["CITATION_MARKER_MISSING"] == "block"
     extra = [{"n": 1, "url": SRC, "title": "RLS", "tier": 1}, {"n": 2, "url": SRC, "title": "RLS", "tier": 1}]
