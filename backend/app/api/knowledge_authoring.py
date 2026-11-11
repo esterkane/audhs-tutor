@@ -1,6 +1,7 @@
 """Notes and uploads are inputs to editable, inactive knowledge drafts."""
 
 import hashlib
+import tempfile
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import unquote
@@ -19,7 +20,7 @@ from app.kernel import curriculum, knowledge_authoring
 from app.kernel.content_access import skill_visible
 from app.kernel.learning_scope import reference_before, require_current_material
 from app.knowledge import pdf_page_preview, pdf_page_sources
-from app.knowledge.ingest.loaders import load_file
+from app.knowledge.ingest.loaders import load_file, provenance_from_path
 from app.knowledge.ingest.pdf_ocr import PdfOcrError, PdfOcrOptions
 from app.knowledge.ingest.service import ingest_source
 from app.schemas.curriculum import DraftOut
@@ -180,44 +181,54 @@ async def upload(
         folder = folder / hashlib.sha256(cutoff.encode()).hexdigest()[:16]
     folder.mkdir(parents=True, exist_ok=True)
     path = folder / (digest + suffix)
-    if not path.exists():
-        path.write_bytes(content)
-    try:
-        ocr = (
-            PdfOcrOptions(
-                languages=settings.pdf_ocr_languages,
-                max_pages=settings.pdf_ocr_max_pages,
-                timeout_s=settings.pdf_ocr_timeout_s,
+    with tempfile.TemporaryDirectory(dir=folder, prefix=".upload-") as temporary:
+        staged = Path(temporary) / path.name
+        staged.write_bytes(content)
+        try:
+            ocr = (
+                PdfOcrOptions(
+                    languages=settings.pdf_ocr_languages,
+                    max_pages=settings.pdf_ocr_max_pages,
+                    timeout_s=settings.pdf_ocr_timeout_s,
+                )
+                if settings.pdf_ocr_enabled
+                else None
             )
-            if settings.pdf_ocr_enabled
-            else None
-        )
-        doc = await run_in_threadpool(
-            load_file,
-            path,
-            uri=str(path),
-            pdf_ocr=ocr,
-            pdf_ocr_required=True,
-            notebook_source_only=True,
-        )
-    except PdfOcrError as exc:
-        raise AppError(exc.code, str(exc), 422) from None
-    except Exception:
-        raise AppError(
-            "unreadable_upload", "Could not extract this file. Try a text export.", 422
-        ) from None
-    # A successfully inspected image page is usable as a visual source for manual notes.
-    visual_pdf = suffix == ".pdf" and doc.meta.get("pdf_extraction", {}).get("visual_pages")
-    if not doc.text.strip() and not visual_pdf:
-        raise AppError(
-            "empty_upload", "No readable text found. Try clearer pages or a text export.", 422
-        )
-    if len(doc.text) > 120000:
-        raise AppError(
-            "upload_text_too_large",
-            "Choose a smaller document or export a section (120,000 characters maximum).",
-            422,
-        )
+            doc = await run_in_threadpool(
+                load_file,
+                staged,
+                provenance=provenance_from_path(path, None),
+                uri=str(path),
+                pdf_ocr=ocr,
+                pdf_ocr_required=True,
+                notebook_source_only=True,
+            )
+        except PdfOcrError as exc:
+            raise AppError(exc.code, str(exc), 422) from None
+        except Exception:
+            raise AppError(
+                "unreadable_upload", "Could not extract this file. Try a text export.", 422
+            ) from None
+        # A successfully inspected image page is usable as a visual source for manual notes.
+        visual_pdf = suffix == ".pdf" and doc.meta.get("pdf_extraction", {}).get("visual_pages")
+        if not doc.text.strip() and not visual_pdf:
+            raise AppError(
+                "empty_upload",
+                (
+                    "The notebook has no source text. Add a Markdown or code cell and upload it again."
+                    if suffix == ".ipynb"
+                    else "No readable text found. Try clearer pages or a text export."
+                ),
+                422,
+            )
+        if len(doc.text) > 120000:
+            raise AppError(
+                "upload_text_too_large",
+                "Choose a smaller document or export a section (120,000 characters maximum).",
+                422,
+            )
+        if not path.exists():
+            staged.replace(path)
     if suffix == ".pdf":
         doc.content_hash = await run_in_threadpool(
             pdf_page_sources.persist, path, digest, doc, settings.pdf_ocr_languages

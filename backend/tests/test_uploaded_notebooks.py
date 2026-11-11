@@ -102,3 +102,29 @@ def test_working_copy_rejects_symlinked_data_root_and_non_file_target(tmp_path: 
     (data / "notebooks" / identity / "notebook.ipynb").mkdir(parents=True)
     with pytest.raises(ValueError, match="regular file"):
         prepare_upload(root, identity, tmp_path / "unused")
+
+
+async def test_rejected_output_only_notebook_leaves_no_private_upload(client, settings, tmp_path):
+    settings.knowledge_authoring_root = str(tmp_path)
+    notebook = {
+        "nbformat": 4,
+        "nbformat_minor": 5,
+        "metadata": {},
+        "cells": [
+            {
+                "cell_type": "code",
+                "source": "",
+                "outputs": [{"output_type": "stream", "name": "stdout", "text": "old result"}],
+                "metadata": {},
+                "execution_count": 3,
+            }
+        ],
+    }
+    response = await client.post(
+        "/api/knowledge-material/uploads",
+        content=json.dumps(notebook).encode(),
+        headers={"X-Filename": "output-only.ipynb"},
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "empty_upload"
+    assert not any(path.is_file() for path in (tmp_path / "knowledge-authoring").rglob("*"))
