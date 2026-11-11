@@ -192,6 +192,7 @@ class ChunkOut(BaseModel):
     open_url: str | None
     t_start: float | None
     t_end: float | None
+    pdf_page: int | None = None
     prev_text: str | None
     next_text: str | None
 

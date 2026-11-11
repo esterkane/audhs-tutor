@@ -1398,6 +1398,7 @@ class Passage:
     uri: str
     t_start: float | None
     t_end: float | None
+    pdf_page: int | None
     prev_text: str | None
     next_text: str | None
 
@@ -1433,6 +1434,14 @@ async def passage(db: AsyncSession, chunk_id: str) -> Passage | None:
         f" @{int(c.t_start // 60):02d}:{int(c.t_start % 60):02d}" if c.t_start is not None else ""
     )
     parts = [p for p in (prov.course, prov.section, prov.lecture) if p]
+    page_match = (
+        re.fullmatch(re.escape(doc.uri) + r"#p\. ([1-9]\d*)", prov.path)
+        if doc.source_type in {"pdf", "slides"} and doc.uri.lower().endswith(".pdf")
+        else None
+    )
+    pdf_page = int(page_match[1]) if page_match else None
+    if pdf_page is not None and f"p. {pdf_page}" not in parts:
+        parts.append(f"p. {pdf_page}")
     return Passage(
         chunk_id=c.id,
         text=c.text,
@@ -1446,6 +1455,7 @@ async def passage(db: AsyncSession, chunk_id: str) -> Passage | None:
         uri=doc.uri,
         t_start=c.t_start,
         t_end=c.t_end,
+        pdf_page=pdf_page,
         prev_text=neighbours.get(c.ordinal - 1),
         next_text=neighbours.get(c.ordinal + 1),
     )
@@ -1468,8 +1478,12 @@ def open_target(uri: str, roots: list[Path]) -> Path | None:
     return None
 
 
-def open_fragment(source_type: str, uri: str, t_start: float | None) -> str:
-    """`#t=` for media (browsers seek), nothing else: PDF page numbers are not tracked."""
+def open_fragment(
+    source_type: str, uri: str, t_start: float | None, pdf_page: int | None = None
+) -> str:
+    """Deep-link only physically recorded source positions."""
+    if pdf_page is not None and pdf_page > 0 and uri.lower().endswith(".pdf"):
+        return f"#page={pdf_page}"
     if t_start is not None and (
         source_type in ("course_caption", "audio", "video", "transcript")
         or uri.lower().endswith((".mp4", ".mp3", ".m4a", ".webm", ".mov", ".wav"))

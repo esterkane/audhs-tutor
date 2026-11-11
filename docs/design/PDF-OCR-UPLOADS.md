@@ -2,7 +2,7 @@
 
 Knowledge material uploads accept native-text, scanned and mixed PDFs. Existing selectable
 text is extracted first. Pages with images and fewer than 80 extracted characters also receive
-local CPU OCR, including scans that have a short selectable header. A header missed by OCR is
+local CPU OCR, including scans that have a short selectable header. The loader recognizes raster images stored as page resources and images painted inline in a page content stream. A header missed by OCR is
 retained. Blank pages without images do not require OCR. Text-rich pages are not rasterized.
 
 The upload result identifies OCR page numbers. The learner can edit the extracted content

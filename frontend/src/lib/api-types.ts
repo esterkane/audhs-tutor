@@ -3189,6 +3189,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/knowledge-material/uploads/{upload_id}/versions/{version_id}/pages': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Pdf Pages */
+    get: operations['pdf_pages_api_knowledge_material_uploads__upload_id__versions__version_id__pages_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/knowledge-material/drafts': {
     parameters: {
       query?: never
@@ -4695,6 +4712,8 @@ export interface components {
       t_start: number | null
       /** T End */
       t_end: number | null
+      /** Pdf Page */
+      pdf_page?: number | null
       /** Prev Text */
       prev_text: string | null
       /** Next Text */
@@ -6161,6 +6180,8 @@ export interface components {
       research?: components['schemas']['KnowledgeResearch'] | null
       /** Upload Id */
       upload_id?: string | null
+      /** Upload Version Id */
+      upload_version_id?: string | null
       /**
        * Objective
        * @default
@@ -6214,6 +6235,8 @@ export interface components {
       research?: components['schemas']['KnowledgeResearch'] | null
       /** Upload Id */
       upload_id?: string | null
+      /** Upload Version Id */
+      upload_version_id?: string | null
       /**
        * Objective
        * @default
@@ -6293,6 +6316,8 @@ export interface components {
     }
     /** KnowledgeUploadOut */
     KnowledgeUploadOut: {
+      /** Document Version Id */
+      document_version_id?: string | null
       /** Document Id */
       document_id: string
       /** Filename */
@@ -6963,6 +6988,20 @@ export interface components {
       passage_id: string
       /** Quote */
       quote: string
+    }
+    /** PdfPageSource */
+    PdfPageSource: {
+      /** Page */
+      page: number
+      /** Text */
+      text: string
+      /** Ocr */
+      ocr: boolean
+    }
+    /** PdfPageSources */
+    PdfPageSources: {
+      /** Pages */
+      pages?: components['schemas']['PdfPageSource'][]
     }
     /** PersonalMemory */
     PersonalMemory: {
@@ -15457,6 +15496,38 @@ export interface operations {
         }
         content: {
           'application/json': components['schemas']['KnowledgeUploadOut']
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  pdf_pages_api_knowledge_material_uploads__upload_id__versions__version_id__pages_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        upload_id: string
+        version_id: string
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['PdfPageSources']
         }
       }
       /** @description Validation Error */

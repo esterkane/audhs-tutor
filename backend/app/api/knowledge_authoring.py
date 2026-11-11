@@ -1,7 +1,6 @@
 """Notes and uploads are inputs to editable, inactive knowledge drafts."""
 
 import hashlib
-import json
 from pathlib import Path
 from typing import Annotated
 from urllib.parse import unquote
@@ -14,9 +13,10 @@ from starlette.concurrency import run_in_threadpool
 from app.api.curriculum import _draft_out
 from app.api.deps import DB, Gateway, Learner, SettingsDep
 from app.core.errors import AppError
-from app.db.models import CurriculumDraft
+from app.db.models import CurriculumDraft, Document, DocumentVersion
 from app.kernel import curriculum, knowledge_authoring
 from app.kernel.learning_scope import reference_before, require_current_material
+from app.knowledge import pdf_page_sources
 from app.knowledge.ingest.loaders import load_file
 from app.knowledge.ingest.pdf_ocr import PdfOcrError, PdfOcrOptions
 from app.knowledge.ingest.service import ingest_source
@@ -29,6 +29,7 @@ from app.schemas.knowledge_authoring import (
     KnowledgeUploadOut,
     MemorySearchIn,
     MemorySearchOut,
+    PdfPageSources,
     ResearchTutorIn,
     ResearchTutorOut,
 )
@@ -212,43 +213,43 @@ async def upload(
             "Choose a smaller document or export a section (120,000 characters maximum).",
             422,
         )
-    if doc.meta.get("pdf_extraction"):
-        # The original SHA stays stable; a changed transcription gets a new source
-        # version instead of returning new text linked to old indexed chunks.
-        extraction_hash = hashlib.sha256(
-            json.dumps(
-                {
-                    "sha256": digest,
-                    "text": doc.text,
-                    "ocr_version": 1,
-                    "languages": settings.pdf_ocr_languages,
-                },
-                sort_keys=True,
-                ensure_ascii=False,
-            ).encode()
-        ).hexdigest()
-        doc.content_hash = extraction_hash
-        audit = path.with_suffix(path.suffix + ".extraction-" + extraction_hash + ".json")
-        audit.write_text(
-            json.dumps(
-                {
-                    "sha256": digest,
-                    "extraction_sha256": extraction_hash,
-                    **doc.meta["pdf_extraction"],
-                }
-            )
+    if suffix == ".pdf":
+        doc.content_hash = await run_in_threadpool(
+            pdf_page_sources.persist, path, digest, doc, settings.pdf_ocr_languages
         )
-        audit.chmod(0o600)
     doc.title = name
     result = await ingest_source(db, doc, trust_tier=1, repo=None, dedupe=False)
     return KnowledgeUploadOut(
         document_id=result.document_id,
+        document_version_id=result.version_id if suffix == ".pdf" else None,
         filename=name,
         text=doc.text,
         sha256=digest,
         characters=len(doc.text),
         ocr_pages=doc.meta.get("pdf_extraction", {}).get("ocr_pages", []),
         ocr_empty_pages=doc.meta.get("pdf_extraction", {}).get("empty_ocr_pages", []),
+    )
+
+
+@router.get("/uploads/{upload_id}/versions/{version_id}/pages", response_model=PdfPageSources)
+async def pdf_pages(
+    upload_id: str, version_id: str, db: DB, learner: Learner, settings: SettingsDep
+) -> PdfPageSources:
+    doc = await db.get(Document, upload_id)
+    version = await db.get(DocumentVersion, version_id)
+    if (
+        doc is None
+        or doc.source_type != "pdf"
+        or version is None
+        or version.document_id != doc.id
+        or f"/knowledge-authoring/{learner.id}/" not in doc.uri
+    ):
+        raise AppError("not_found", "The PDF extraction is unavailable.", 404)
+    await require_current_material(db, learner.id, doc.created_at)
+    storage = await run_in_threadpool(Path(settings.knowledge_authoring_root).expanduser)
+    owner = settings.project_root / storage / "knowledge-authoring" / learner.id
+    return await run_in_threadpool(
+        pdf_page_sources.read, Path(doc.uri), owner, version.content_hash
     )
 
 
@@ -265,6 +266,8 @@ async def create(
         for key in ("explanation_prequestion", "worked_example_prequestion")
         if getattr(body, key) == ""
     }
+    if body.upload_version_id is None:
+        empty_prequestions.add("upload_version_id")
     fingerprint = hashlib.sha256(
         body.model_dump_json(exclude=empty_prequestions).encode()
     ).hexdigest()

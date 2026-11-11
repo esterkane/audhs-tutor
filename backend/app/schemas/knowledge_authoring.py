@@ -337,6 +337,7 @@ class KnowledgeMaterialInput(BaseModel):
     notes: str = Field(min_length=1, max_length=120000)
     research: KnowledgeResearch | None = None
     upload_id: str | None = Field(default=None, max_length=128)
+    upload_version_id: str | None = Field(default=None, max_length=128)
     objective: str = Field(default="", max_length=1000)
     explanation: str = Field(default="", max_length=4000)
     worked_example: str = Field(default="", max_length=4000)
@@ -350,7 +351,18 @@ class KnowledgeMaterialUpdate(KnowledgeMaterialInput):
     expected_version: int = Field(ge=1)
 
 
+class PdfPageSource(BaseModel):
+    page: int = Field(ge=1)
+    text: str
+    ocr: bool
+
+
+class PdfPageSources(BaseModel):
+    pages: list[PdfPageSource] = Field(default_factory=list)
+
+
 class KnowledgeUploadOut(BaseModel):
+    document_version_id: str | None = None
     document_id: str
     filename: str
     text: str

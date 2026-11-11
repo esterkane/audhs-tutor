@@ -2,6 +2,7 @@ import { useId, useRef, useState } from 'react'
 import type { Schemas } from '../../lib/api'
 import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
+import { UploadedPdfPages } from './UploadedPdfPages'
 import { PersonalMemoryPanel } from './PersonalMemoryPanel'
 import { ResearchTutorPanel } from './ResearchTutorPanel'
 
@@ -41,6 +42,9 @@ export function ResearchWorkspace({ form, disabled, onChange, onTutor, phase, on
   return <section aria-label="Source questions and research" className="space-y-3 rounded border border-line p-3">
     <h3 className="font-semibold">{r ? phase === 'write' ? 'Develop this section' : 'Investigate this question' : 'Build knowledge step by step'}</h3>
     <p>{r ? phase === 'write' ? 'Turn your findings into one paragraph. Add the section to your explanation when ready; saving keeps it editable.' : 'Record your findings and evidence for this question. Continue in Write to develop a knowledge section. Research does not count as assessment.' : 'Choose a short passage from your notes or upload. Prepare editable research questions, investigate one at a time, then write your own knowledge section. Research does not count as assessment.'}</p>
+    {form.upload_id && form.upload_version_id && <UploadedPdfPages key={form.upload_version_id}
+      uploadId={form.upload_id} versionId={form.upload_version_id} passage={r?.passage ?? passage}
+      selectPassage={!r && !disabled ? setPassage : undefined} notes={form.notes} />}
     {!r && <>
       <label>Topic to investigate<input className={field} maxLength={300} value={topic} disabled={disabled} onChange={e => setTopic(e.target.value)} /></label>
       <label>Exact source passage<textarea className={field} rows={4} maxLength={6000} value={passage} disabled={disabled} onChange={e => setPassage(e.target.value)} /></label>

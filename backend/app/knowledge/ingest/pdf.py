@@ -55,7 +55,14 @@ def pdf_blocks(
     scanned: list[int] = []
     for i, page in enumerate(reader.pages, 1):
         native[i] = _clean_page(page.extract_text() or "")
-        if len(native[i]) < 80 and _has_image(page.get("/Resources")):
+        if len(native[i]) >= 80:
+            continue
+        if _has_image(page.get("/Resources")):
+            scanned.append(i)
+            continue
+        # An inline image is a painting operation and needs no resource entry.
+        content = page.get_contents()
+        if content is not None and any(op == b"INLINE IMAGE" for _, op in content.operations):
             scanned.append(i)
     recognized: dict[int, str] = {}
     if scanned and ocr is None and require_complete:

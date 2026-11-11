@@ -8,6 +8,7 @@ import { Button } from '../../components/ui/button'
 import { Card, CardTitle } from '../../components/ui/card'
 import { Disclosure } from '../../components/ui/disclosure'
 import { apiFetch, type Schemas } from '../../lib/api'
+import { UploadedPdfPages } from './UploadedPdfPages'
 import { UploadedNotebook } from './UploadedNotebook'
 import { ResearchWorkspace } from './ResearchWorkspace'
 import { validResearch, sameKnowledgeMaterial } from './researchRecovery'
@@ -22,6 +23,7 @@ const empty = (): Form => ({
   domain: 'ai_ml',
   notes: '',
   upload_id: null,
+  upload_version_id: null,
   focus_topic: null,
   objective: '',
   explanation: '',
@@ -361,7 +363,7 @@ function Editor({
         const emptyOcrNotice = upload.ocr_empty_pages?.length
           ? `No text was recognized on pages ${upload.ocr_empty_pages.join(', ')}; check these pages in the original. `
           : ''
-        change({ ...form, title: form.title || upload.filename, upload_id: upload.document_id, notes })
+        change({ ...form, title: form.title || upload.filename, upload_id: upload.document_id, upload_version_id: upload.document_version_id ?? null, notes })
         setStatus(
           `Uploaded ${upload.filename}. ${upload.ocr_pages?.length ? `Local OCR used on pages ${upload.ocr_pages.join(', ')}. Check names, numbers and SQL identifiers against the original. ` : ''}${emptyOcrNotice}Review the extracted content, then save your material. Original source is retained.`,
         )
@@ -636,6 +638,7 @@ function Editor({
           )}
           {form.upload_id && <>
             <p>Uploaded source linked. Its passages remain attached to the lesson.</p>
+            {form.upload_version_id && <UploadedPdfPages key={form.upload_version_id} uploadId={form.upload_id} versionId={form.upload_version_id} />}
             <UploadedNotebook key={form.upload_id} documentId={form.upload_id} />
           </>}
           <label>

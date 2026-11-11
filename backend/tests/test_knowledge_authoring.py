@@ -598,7 +598,9 @@ async def test_legacy_create_identity_replays_without_new_optional_fields(
     legacy["authoring"].pop("worked_example_prequestion")
     legacy["authoring"]["request_fingerprint"] = hashlib.sha256(
         KnowledgeMaterialInput.model_validate(form)
-        .model_dump_json(exclude={"explanation_prequestion", "worked_example_prequestion"})
+        .model_dump_json(
+            exclude={"explanation_prequestion", "worked_example_prequestion", "upload_version_id"}
+        )
         .encode()
     ).hexdigest()
     row.payload_json = legacy

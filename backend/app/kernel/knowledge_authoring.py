@@ -14,20 +14,31 @@ from app.schemas.knowledge_authoring import KnowledgeMaterialInput, ReadingPrequ
 
 
 async def source_ids(
-    db: AsyncSession, learner_id: str, upload_id: str | None, selected_text: str = ""
+    db: AsyncSession,
+    learner_id: str,
+    upload_id: str | None,
+    selected_text: str = "",
+    version_id: str | None = None,
 ) -> list[str]:
     if not upload_id:
+        if version_id:
+            raise ValueError("An upload version requires its source document.")
         return []
     doc = await db.get(Document, upload_id)
     if doc is None or f"/knowledge-authoring/{learner_id}/" not in doc.uri:
         raise ValueError("Uploaded source is unavailable for this learner")
     await require_current_material(db, learner_id, doc.created_at)
-    latest = await db.scalar(
+    query = (
         select(DocumentVersion.id)
         .where(DocumentVersion.document_id == doc.id)
         .order_by(DocumentVersion.version.desc())
         .limit(1)
     )
+    if version_id:
+        query = query.where(DocumentVersion.id == version_id)
+    latest = await db.scalar(query)
+    if version_id and latest is None:
+        raise ValueError("This extraction version does not belong to the selected upload.")
     chunks = list(
         (
             await db.scalars(
@@ -40,9 +51,11 @@ async def source_ids(
     # Prefer the chosen excerpt, including sections beyond the start of a long upload.
     terms = set(re.findall(r"\w{3,}", selected_text.casefold()))
 
-    def relevance(chunk: Chunk) -> float:
+    def relevance(chunk: Chunk) -> tuple[bool, float]:
         words = set(re.findall(r"\w{3,}", chunk.text.casefold()))
-        return len(terms & words) / max(1, len(words))
+        body = chunk.text.partition("\n")[2]
+        exact = bool(version_id and selected_text and selected_text in body)
+        return exact, len(terms & words) / max(1, len(words))
 
     selected = sorted(chunks, key=relevance, reverse=True)[:6]
     return [c.id for c in sorted(selected, key=lambda c: c.ordinal)]
@@ -66,8 +79,19 @@ async def payload_for(
         )
     elif await reference_before(db, learner_id):
         raise ValueError("Choose the technology for this new knowledge material")
-    sources = await source_ids(db, learner_id, command.upload_id, command.notes)
+    version = command.upload_version_id
+    if version is None and previous and previous.get("upload_id") == command.upload_id:
+        version = previous.get("upload_version_id")
+    sources = await source_ids(
+        db,
+        learner_id,
+        command.upload_id,
+        command.research.passage if version and command.research else command.notes,
+        version,
+    )
     authoring = {**(previous or {}), **command.model_dump(mode="json")}
+    if version:
+        authoring["upload_version_id"] = version
     complete = all(
         v.strip()
         for v in [command.objective, command.explanation, command.worked_example, command.question]

@@ -272,7 +272,7 @@ async def chunk(chunk_id: str, db: DB, settings: SettingsDep) -> ChunkOut:
         open_url: str | None = p.uri
     elif curriculum.open_target(p.uri, settings.ingest_roots_resolved) is not None:
         open_url = _file_route(p.chunk_id) + curriculum.open_fragment(
-            p.source_type, p.uri, p.t_start
+            p.source_type, p.uri, p.t_start, p.pdf_page
         )
     else:
         open_url = None
@@ -290,6 +290,7 @@ async def chunk(chunk_id: str, db: DB, settings: SettingsDep) -> ChunkOut:
         open_url=open_url,
         t_start=p.t_start,
         t_end=p.t_end,
+        pdf_page=p.pdf_page,
         prev_text=p.prev_text,
         next_text=p.next_text,
     )
