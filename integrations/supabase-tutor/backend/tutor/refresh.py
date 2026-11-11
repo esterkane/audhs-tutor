@@ -17,7 +17,7 @@ from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
 
 ROOT = Path(__file__).resolve().parents[2]
-INGEST = [sys.executable, str(ROOT / "scripts" / "ingest_llms.py")]
+INGEST = [sys.executable, str(ROOT / "scripts" / "ingest_llms.py"), "--check-enrolled"]
 RUN_TIMEOUT_S = 30 * 60
 PLACEHOLDER_TOKENS = {"", "change-me"}
 

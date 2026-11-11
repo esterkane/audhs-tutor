@@ -32,6 +32,7 @@ from urllib.parse import urljoin, urlparse
 
 import httpx
 from db import admin_url
+from enrolled_refresh import enrolled, stage_checks
 from reference_html import REFERENCE_URL, CanonicalMethod, NoReferenceBody, reference_markdown
 
 # Support execution both as a script and from an editable vendor installation.
@@ -437,7 +438,9 @@ def retire_missing(urls: list[str], index_url: str = INDEX_DEFAULT) -> int:
     with psycopg.connect(admin_url()) as conn:
         cur = conn.execute(
             "update tutor.docs_source set status = 'retired' where status = 'active' "
-            "and starts_with(url, %s) and url <> all(%s)", (prefix, urls)
+            "and starts_with(url, %s) and url <> all(%s) "
+            "and not starts_with(url, 'https://supabase.com/docs/reference/') and url <> all(%s)",
+            (prefix, urls, sorted(enrolled()))
         )
         return cur.rowcount
 
@@ -455,15 +458,29 @@ async def main() -> int:
     ap.add_argument("--no-expand", action="store_true",
                     help="skip depth-1 expansion to linked guide pages and KB articles")
     ap.add_argument("--verbose", action="store_true", help="print one row per source, not only the summary")
+    ap.add_argument("--check-enrolled", action="store_true", help="Stage changed enrolled guides and CLI sections for review, preserving indexed snapshots")
+    ap.add_argument("--enrolled-only", action="store_true", help="Check enrolled snapshots without running seed ingestion or modifying the database")
     a = ap.parse_args()
+    protected = enrolled()
+    if (a.check_enrolled or a.enrolled_only) and (a.index != INDEX_DEFAULT or a.dry_run or a.only or a.limit):
+        ap.error("--check-enrolled requires an unfiltered official refresh")
+
 
     provider = os.environ.get("EMBEDDINGS_PROVIDER", "ollama")
     known = {} if a.dry_run else existing_hashes()
-    model = resolve_model(provider, os.environ.get("EMBEDDINGS_MODEL"), (record[2] for record in known.values()))
+
     # A support profile deliberately omits SDK sources; absence is not removal.
     partial = bool(a.only or a.limit or a.no_expand or a.profile != "all")
 
+    review = {}
     async with httpx.AsyncClient() as client:
+        if a.check_enrolled or a.enrolled_only:
+            review = dict(await stage_checks(client, {url: record[0] for url, record in known.items()},
+                                             RAW_DIR.parent / "reference-review"))
+            if a.enrolled_only:
+                print(f"Enrolled documentation checks: {review}")
+                return 1 if review.get("invalid") or review.get("unreachable") else 0
+        model = resolve_model(provider, os.environ.get("EMBEDDINGS_MODEL"), (record[2] for record in known.values()))
         try:
             idx = await client.get(a.index, headers={"User-Agent": UA}, timeout=30)
             idx.raise_for_status()
@@ -508,6 +525,9 @@ async def main() -> int:
                     expand_failed += 1
                 rows.append((d.url, "failed", 0, "-"))
                 continue
+            if d.url in known and (d.url in protected or d.url.startswith("https://supabase.com/docs/reference/")):
+                rows.append((d.url, "separately_enrolled", 0, "no"))
+                continue
             if known.get(d.url) == (d.hash, a.corpus_version, model):
                 rows.append((d.url, "unchanged", 0, "no"))
                 continue
@@ -543,9 +563,10 @@ async def main() -> int:
           f"{sum(r[2] for r in rows)} chunks written, status {by_status}, "
           f"{seed_failed} index failures, {expand_failed} linked-page failures, {retired} retired"
           + ("; retirement skipped because seed discovery was incomplete" if seed_failed and not partial and not a.dry_run else "")
+          + (f"; enrolled checks {review}" if a.check_enrolled else "")
           + ("  (dry run)" if a.dry_run else ""))
     # Index entries are Tier 1 and must all succeed; a dead link inside the docs is only a warning.
-    return 1 if seed_failed else 0
+    return 1 if seed_failed or review.get("invalid") or review.get("unreachable") else 0
 
 
 if __name__ == "__main__":

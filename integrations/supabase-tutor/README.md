@@ -55,3 +55,11 @@ Then open the tutor, say "Hallo", and answer its single opening question.
   disposable **lab** database, never against the learner's real projects.
 - No secrets in client code. `service_role` stays server-side.
 - RLS is never disabled as a "fix"; only as a labelled diagnostic experiment in the lab.
+
+### Enrolled documentation checks
+
+The scheduled refresh also compares already indexed guides and CLI or self-hosting command sections in `scripts/enrolled_reference_urls.txt` with the current official source. To run it alongside the normal incremental seed refresh, use `python scripts/ingest_llms.py --check-enrolled` with the usual local database settings. Check scheduler availability with `python scripts/refresh_schedule.py status`.
+
+For a read-only index check on a local schedule, run `python scripts/ingest_llms.py --enrolled-only` with the local database URL. A systemd user timer can run this weekly with `Persistent=true` to catch up after downtime. The same check also runs through the vendor refresh manager when pg_cron is configured.
+
+Each check writes a receipt under `data/reference-review/<run>/review.json`. A changed entry includes the SHA-256 of the indexed snapshot and the new Markdown file in that directory. Invalid or unreachable sources mark the run incomplete. Entries listed as `not_indexed` have no active snapshot on this installation. Accepted sources, passages and existing citation IDs stay available while changes await review.
