@@ -3345,6 +3345,23 @@ export interface paths {
     patch?: never
     trace?: never
   }
+  '/api/knowledge-material/uploads/{upload_id}/versions/{version_id}/pages/{page}/table-reading': {
+    parameters: {
+      query?: never
+      header?: never
+      path?: never
+      cookie?: never
+    }
+    /** Table Reading */
+    get: operations['table_reading_api_knowledge_material_uploads__upload_id__versions__version_id__pages__page__table_reading_get']
+    put?: never
+    post?: never
+    delete?: never
+    options?: never
+    head?: never
+    patch?: never
+    trace?: never
+  }
   '/api/knowledge-material/drafts': {
     parameters: {
       query?: never
@@ -16142,6 +16159,39 @@ export interface operations {
         }
         content: {
           'image/png': unknown
+        }
+      }
+      /** @description Validation Error */
+      422: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': components['schemas']['HTTPValidationError']
+        }
+      }
+    }
+  }
+  table_reading_api_knowledge_material_uploads__upload_id__versions__version_id__pages__page__table_reading_get: {
+    parameters: {
+      query?: never
+      header?: never
+      path: {
+        upload_id: string
+        version_id: string
+        page: number
+      }
+      cookie?: never
+    }
+    requestBody?: never
+    responses: {
+      /** @description Successful Response */
+      200: {
+        headers: {
+          [name: string]: unknown
+        }
+        content: {
+          'application/json': string
         }
       }
       /** @description Validation Error */

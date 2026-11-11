@@ -34,6 +34,8 @@ test('trace a selected scanned passage to its original PDF page after saving and
   await expect(page.getByRole('option', { name: 'Page 2', exact: true })).toHaveCount(0)
   const pdfPage = page.getByRole('combobox', { name: 'PDF page' })
   await pdfPage.selectOption({ label: 'Page 3 · OCR used' })
+  await page.getByRole('button', {name: 'Read scan as table rows'}).click()
+  await expect(page.locator('pre').filter({hasText: 'Scanned visibility.'})).toBeVisible()
   const inspect = page.getByRole('button', {name:'Inspect original page 3'})
   await page.route('**/pages/3/preview', route => route.fulfill({ status: 429 }), { times: 1 })
   await inspect.press('Enter')

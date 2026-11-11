@@ -264,3 +264,41 @@ def test_orientation_pack_is_optional(monkeypatch):
     monkeypatch.setattr(pdf_ocr.subprocess, "run", run)
     assert pdf_ocr.ocr_pages(b"synthetic", [1], PdfOcrOptions()) == {1: "page text"}
     assert calls[-1][-2:] == ["--psm", "3"]
+
+
+@runtime
+async def test_optional_table_reading_preserves_original_extraction(client, settings, tmp_path):
+    from PIL import Image, ImageDraw, ImageFont
+
+    settings.knowledge_authoring_root = str(tmp_path / "private")
+    image = Image.new("RGB", (1200, 880), "white")
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype("DejaVuSansMono.ttf", 32)
+    rows = [
+        ("Role", "Visible rows", "Delta"),
+        ("Owner", "150", "-12"),
+        ("Reader", "105", "+7"),
+        ("Guest", "0", "0"),
+    ]
+    for index, row in enumerate(rows):
+        for x, value in zip((50, 430, 880), row, strict=True):
+            draw.text((x, 60 + index * 78), value, font=font, fill="black")
+    raw = io.BytesIO()
+    image.save(raw, format="PDF", resolution=150)
+    uploaded = await client.post(
+        "/api/knowledge-material/uploads",
+        content=raw.getvalue(),
+        headers={"X-Filename": "table.pdf"},
+    )
+    assert uploaded.status_code == 200, uploaded.text
+    result = uploaded.json()
+    pages = (
+        f"/api/knowledge-material/uploads/{result['document_id']}/versions/"
+        f"{result['document_version_id']}/pages"
+    )
+    original = (await client.get(pages)).json()
+    reading = await client.get(pages + "/1/table-reading")
+    assert reading.status_code == 200, reading.text
+    assert reading.json().splitlines() == [" ".join(row) for row in rows]
+    assert (await client.get(pages)).json() == original
+    assert (await client.get(pages + "/2/table-reading")).status_code == 404

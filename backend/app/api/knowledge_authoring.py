@@ -294,6 +294,19 @@ async def preview_pdf_page(
     )
 
 
+@router.get("/uploads/{upload_id}/versions/{version_id}/pages/{page}/table-reading")
+async def table_reading(
+    upload_id: str, version_id: str, page: int, db: DB, learner: Learner, settings: SettingsDep
+) -> str:
+    source = await owned_pdf_version(upload_id, version_id, db, learner, settings)
+    if not settings.pdf_ocr_enabled:
+        raise AppError("pdf_ocr_unavailable", "Local PDF OCR is disabled.", 422)
+    options = PdfOcrOptions(
+        languages=settings.pdf_ocr_languages, timeout_s=settings.pdf_ocr_timeout_s
+    )
+    return await run_in_threadpool(pdf_page_preview.read_table_rows, *source, page, options)
+
+
 async def check_diagram_page(
     body: KnowledgeMaterialInput, db: DB, learner: Learner, settings: SettingsDep
 ) -> None:

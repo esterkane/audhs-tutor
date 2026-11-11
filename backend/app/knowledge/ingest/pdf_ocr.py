@@ -77,7 +77,9 @@ def visible_pages(data: bytes, pages: list[int], options: PdfOcrOptions) -> list
     return marked
 
 
-def ocr_pages(data: bytes, pages: list[int], options: PdfOcrOptions) -> dict[int, str]:
+def ocr_pages(
+    data: bytes, pages: list[int], options: PdfOcrOptions, *, table_rows: bool = False
+) -> dict[int, str]:
     """Recognize selected 1-based pages, with one bounded raster in memory/on disk at a time."""
     if len(pages) > options.max_pages:
         raise PdfOcrLimit(
@@ -117,6 +119,8 @@ def ocr_pages(data: bytes, pages: list[int], options: PdfOcrOptions) -> dict[int
         )
     # Detect orientation on rendered pixels; Poppler already applies PDF rotation metadata.
     segmentation = "1" if "osd" in available else "3"
+    if table_rows:
+        segmentation = "6"
     results: dict[int, str] = {}
     with tempfile.TemporaryDirectory(prefix="audhs-pdf-ocr-") as folder:
         root = Path(folder)

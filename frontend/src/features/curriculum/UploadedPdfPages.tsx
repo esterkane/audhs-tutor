@@ -1,4 +1,6 @@
 import { useId, useMemo, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { boundedRead } from '../../lib/boundedRead'
 import { Button } from '../../components/ui/button'
 import { Disclosure } from '../../components/ui/disclosure'
 import { useUploadedPdfPages } from './useUploadedPdfPages'
@@ -16,6 +18,25 @@ type Props = {
   passage?: string
   selectPassage?: (text: string) => void
   notes?: string
+}
+
+function TableReading({ path }: { path: string }) {
+  const result = useQuery({
+    queryKey: ['pdf-table-reading', path],
+    queryFn: ({ signal }) => boundedRead<string>(path, signal, 'Table reading'),
+    enabled: false,
+    retry: false,
+  })
+  return <div>
+    <Button variant="secondary" disabled={result.isFetching} onClick={() => void result.refetch()}>
+      {result.isFetching ? 'Reading table rows…' : 'Read scan as table rows'}
+    </Button>
+    {result.isError && <p role="alert">The table reading failed. You can retry or inspect the original page.</p>}
+    {result.isSuccess && <div role="status">
+      <p>Compare these rows with the original page before copying values into your notes.</p>
+      <pre className="whitespace-pre-wrap break-words">{result.data || 'No table text found.'}</pre>
+    </div>}
+  </div>
 }
 
 export function UploadedPdfPages({ uploadId, versionId, passage, selectPassage, notes, diagramLabel, editLabel }: Props) {
@@ -80,6 +101,7 @@ export function UploadedPdfPages({ uploadId, versionId, passage, selectPassage, 
                 </div>
               </figure>)}
           </>}
+          {page.ocr && src && <TableReading key={src} path={src.replace(/preview$/, 'table-reading')} />}
           {selectPassage && !!page.text.trim() && (page.text.length <= 6000 && notes?.includes(page.text)
             ? <Button variant="secondary" onClick={() => selectPassage(page.text)}>Use page {page.page} as passage</Button>
             : <p className="text-sm">Copy a passage of up to 6,000 characters that also appears in your source notes.</p>)}
