@@ -94,3 +94,18 @@ def incompatible_reference(url: str, scope: SdkScope | None) -> bool:
 def url_pattern(scope: SdkScope, edition: str | None) -> str:
     branch = "" if edition == "unversioned" else (re.escape(edition) + "/" if edition else "(v[0-9]+/)?")
     return rf"^https://supabase\.com/docs/reference/{scope.sdk}/{branch}[a-z0-9-]+/?$"
+
+
+def row_page_query(query: str, learner_text: str) -> str:
+    """Retrieve row-position semantics for an explicitly numbered page of table results."""
+    row = r"\b(?:rows?|records?|table|zeilen?|datensätze[n]?|tabelle)\b"
+    page = r"\b(?:page\s+(?:number\s+)?\d+|(?:second|third|fourth|\d+(?:nd|rd|th))\s+page|seite\s+\d+|(?:zweite[nr]?|dritte[nr]?)\s+seite)\b"
+    other = r"\b(?:cursor|keyset|token|auth|admin|buckets?|storage|files?|users?|benutzer|infinite|ohne\s+offset|without\s+offset)\b"
+    if (
+        re.search(row, learner_text, re.I)
+        and re.search(page, learner_text, re.I)
+        and not re.search(other, learner_text + "\n" + query, re.I)
+        and re.search(r"\b(?:pag\w*|range|limit|offset|seite\w*)\b", query, re.I)
+    ):
+        return query + "\nPaginate query results by offset: start and end row positions."
+    return query

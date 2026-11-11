@@ -17,7 +17,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from backend.tutor.sdk_scope import Sdk, SdkScope, learner_sdk_scope
+from backend.tutor.sdk_scope import Sdk, SdkScope, learner_sdk_scope, row_page_query
 from backend.tutor.guard import learner_secrets
 from backend.tutor.ledger import LedgerDelta, LedgerStore, UnknownTopicsError
 from backend.tutor.postgres_versions import major, manual_edition, requested_releases, without_release_mentions
@@ -348,6 +348,7 @@ async def _search_docs(args: SearchDocsInput, ctx: ToolContext, budget: TurnBudg
     sdk = learner_sdk_scope(ctx.learner_text)
     if sdk is not None:
         # Planner hints may split a comparison but cannot invent a language or version.
+        query = row_page_query(query, ctx.learner_text)
         selected = sdk
         if args.sdk in (None, sdk.sdk) and args.edition in sdk.editions:
             selected = SdkScope(sdk.sdk, (args.edition,))
