@@ -76,3 +76,24 @@ test('role-check practice moves from arranging to completing to independent writ
   expect(await projects()).toEqual(before)
   expect(writes).toEqual([])
 })
+
+test('an older saved SQL exercise can start the new transfer step', async ({ page, request }) => {
+  const projects = await (await request.get(API_URL + '/api/projects')).json()
+  const project = projects.find((row: { slug: string }) => row.slug === 'supabase-postgres-support')
+  await page.goto('/projects?project=' + project.id)
+  await page.evaluate((id: string) => {
+    const draftId = 'sql-role-practice-v1:' + id
+    const text = JSON.stringify({
+      order: [0, 1, 2, 3], stage: 2, ending: 'ROLLBACK;', query: 'SELECT current_user;', compared: true,
+    })
+    sessionStorage.setItem('curriculum-edit:v1:' + draftId, JSON.stringify({
+      version: 1, draftId, baseVersion: 1, text, baseText: '{}', savedAt: new Date().toISOString(),
+    }))
+  }, project.id)
+  await page.reload()
+  await page.getByText('Practice a role check (optional)', { exact: true }).click()
+  await expect(page.getByLabel('Your SQL')).toHaveValue('SELECT current_user;')
+  await page.getByText('Try a different role and transaction ending', { exact: true }).click()
+  await expect(page.getByLabel('SQL for the new situation')).toHaveValue('')
+  await expect(page.getByRole('button', { name: 'Compare the new role check' })).toBeDisabled()
+})
