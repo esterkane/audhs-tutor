@@ -75,3 +75,18 @@ for (const status of ['saved', 'unverified'] as const) it(`retains local draft f
   expect(posts).toEqual([])
   expect(sessionStorage.getItem(recapDraftKey('s1'))).toContain('Local changes')
 })
+
+it.each([
+  { mastery: 0, count: 1, estimate: '0%', reviews: 'You have one review due.' },
+  { mastery: 0.425, count: 2, estimate: '43%', reviews: 'You have 2 reviews due.' },
+])('shows the recorded estimate and review count for a next skill ($count due)', async ({ mastery, count, estimate, reviews }) => {
+  useMode.setState({ sessionId: 's1' })
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => jsonResponse(url.endsWith('/end') ? {
+    id: 's1', next_skill: { title: 'Reading a query plan', mastery }, due_reviews: count,
+  } : { values: {}, specs: [] })))
+  renderApp(<Recap />, { route: '/recap' })
+  fireEvent.click(screen.getByRole('button', { name: 'Save and finish session' }))
+  expect(await screen.findByRole('heading', { name: 'Session saved' })).toBeVisible()
+  expect(screen.getByText(/Reading a query plan/)).toHaveTextContent(estimate + ' estimated mastery')
+  expect(screen.getByText(reviews)).toBeVisible()
+})
