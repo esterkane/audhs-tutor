@@ -164,22 +164,25 @@ class ReviewedOrchestrator:
             )
             return
 
+        from app.integrations.supabase_balance import balance_answer
         from app.integrations.supabase_incidents import incident_turn, select_plan
         from app.integrations.supabase_isolation import isolation_answer
         from app.integrations.supabase_membership import membership_answer
         from app.integrations.supabase_reference import reference_answer, supports_manual
 
-        isolation = await isolation_answer(
-            user_text, state, kwargs.get("ctx"), kwargs.get("history")
-        )
+        isolation = await balance_answer(user_text, state, kwargs.get("ctx"), kwargs.get("history"))
+        lab_model = "local:same-row-balance-lab.v1"
+        if isolation is None:
+            isolation = await isolation_answer(
+                user_text, state, kwargs.get("ctx"), kwargs.get("history")
+            )
+            lab_model = "local:isolation-lab.v1"
         if isolation is not None:
             for name, args, is_error in isolation.calls:
                 yield ToolCall(name, args)
                 yield ToolResultSummary(name, is_error, "Local transaction experiment evidence.")
             yield Token(isolation.turn.text)
-            yield Final(
-                turn=isolation.turn, new_messages=isolation.messages, model="local:isolation-lab.v1"
-            )
+            yield Final(turn=isolation.turn, new_messages=isolation.messages, model=lab_model)
             return
 
         membership = await membership_answer(

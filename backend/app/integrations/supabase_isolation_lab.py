@@ -6,6 +6,8 @@ existing lab schemas, learner data and role definitions are never modified.
 
 import asyncio
 import time
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -217,12 +219,12 @@ async def _trial(
         )
 
 
-async def _cleanup(admin: Any, schema: sql.Identifier, created: bool) -> None:
+async def _cleanup(admin: Any, schema: sql.Identifier, table: sql.Composed, created: bool) -> None:
     try:
         async with asyncio.timeout(3):
             if created:
                 # RESTRICT keeps unexpected dependencies outside this fixture untouched.
-                await admin.execute(sql.SQL("DROP TABLE IF EXISTS {}.workers").format(schema))
+                await admin.execute(sql.SQL("DROP TABLE IF EXISTS {}").format(table))
                 await admin.execute(sql.SQL("DROP SCHEMA IF EXISTS {}").format(schema))
     except (psycopg.Error, TimeoutError) as error:
         raise IsolationLabError("The disposable fixture could not be removed") from error
@@ -239,14 +241,17 @@ TRIALS: tuple[tuple[str, Literal["none", "full", "update_only"]], ...] = (
 )
 
 
-async def run_isolation_experiment(lab_url: str, values: IsolationInput) -> dict[str, Any]:
+@asynccontextmanager
+async def isolated_fixture(
+    lab_url: str, fixture: Literal["workers", "wallet"]
+) -> AsyncIterator[tuple[Any, sql.Composed, str]]:
+    """Provide a fresh two-session fixture; only fixed internal tables are supported."""
     validate_lab_target(lab_url)
     async with _EXPERIMENT_LOCK:
-        started = time.perf_counter()
         admin = None
         created = False
         schema = sql.Identifier("audhs_isolation_" + uuid4().hex)
-        table = sql.SQL("{}.workers").format(schema)
+        table = sql.SQL("{}.{}").format(schema, sql.Identifier(fixture))
         try:
             async with asyncio.timeout(10):
                 admin = await psycopg.AsyncConnection.connect(
@@ -272,10 +277,13 @@ async def run_isolation_experiment(lab_url: str, values: IsolationInput) -> dict
                 except psycopg.errors.DuplicateSchema:
                     created = False  # A collision is not our fixture to remove.
                     raise
+                columns = sql.SQL(
+                    "active boolean NOT NULL"
+                    if fixture == "workers"
+                    else "balance integer NOT NULL"
+                )
                 await admin.execute(
-                    sql.SQL(
-                        "CREATE TABLE {} (id integer PRIMARY KEY, active boolean NOT NULL)"
-                    ).format(table)
+                    sql.SQL("CREATE TABLE {} (id integer PRIMARY KEY, {})").format(table, columns)
                 )
                 await admin.execute(
                     sql.SQL("GRANT USAGE ON SCHEMA {} TO authenticated").format(schema)
@@ -283,28 +291,32 @@ async def run_isolation_experiment(lab_url: str, values: IsolationInput) -> dict
                 await admin.execute(
                     sql.SQL("GRANT SELECT, UPDATE ON {} TO authenticated").format(table)
                 )
-                runs = []
-                for level, retry in TRIALS:
-                    runs.append(await _trial(admin, lab_url, table, values, level, retry))
-                result = {
-                    "database": "lab",
-                    "server_version": target[1],
-                    "input": values.model_dump(),
-                    "runs": runs,
-                    "schema_removed": False,
-                }
+                yield admin, table, target[1]
         except (psycopg.Error, TimeoutError) as error:
             raise IsolationLabError(
                 "The disposable transaction experiment could not complete"
             ) from error
         finally:
             if admin is not None:
-                cleanup = asyncio.create_task(_cleanup(admin, schema, created))
+                cleanup = asyncio.create_task(_cleanup(admin, schema, table, created))
                 try:
                     await asyncio.shield(cleanup)
                 except asyncio.CancelledError:
                     await cleanup
                     raise
-        result["schema_removed"] = True
-        result["elapsed_ms"] = round((time.perf_counter() - started) * 1000, 2)
-        return result
+
+
+async def run_isolation_experiment(lab_url: str, values: IsolationInput) -> dict[str, Any]:
+    started = time.perf_counter()
+    async with isolated_fixture(lab_url, "workers") as (admin, table, version):
+        runs = []
+        for level, retry in TRIALS:
+            runs.append(await _trial(admin, lab_url, table, values, level, retry))
+    return {
+        "database": "lab",
+        "server_version": version,
+        "input": values.model_dump(),
+        "runs": runs,
+        "schema_removed": True,
+        "elapsed_ms": round((time.perf_counter() - started) * 1000, 2),
+    }

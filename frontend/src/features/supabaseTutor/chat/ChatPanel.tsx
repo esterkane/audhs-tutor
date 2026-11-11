@@ -1,3 +1,4 @@
+import { BalanceLab } from '../lab/BalanceLab'
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { ChatState } from '../chatReducer'
 import type { Strings } from '../i18n'
@@ -29,6 +30,8 @@ export function ChatPanel({
   draftStorageKey?: string
   membershipLab?: boolean
 }) {
+  const balanceDialog = useRef<HTMLDialogElement>(null)
+  const balanceTitleId = useId()
   const isolationDialog = useRef<HTMLDialogElement>(null)
   const isolationTitleId = useId()
   const isolationHelpId = useId()
@@ -144,7 +147,7 @@ export function ChatPanel({
                           : 'border-sky-700 text-sky-300'
                     }`}
                   >
-                    {tool.name === 'compare_isolation_lab' ? s.isolationTitle : tool.name}
+                    {tool.name === 'compare_isolation_lab' ? s.isolationTitle : tool.name === 'same_row_balance_lab' ? s.balanceTitle : tool.name}
                     {typeof tool.input.query === 'string' ? `: ${tool.input.query}` : ''}
                   </li>
                 ))}
@@ -242,6 +245,26 @@ export function ChatPanel({
               voice.cancelSpeech()
               sendQuestion(text, 'text')
             }} />
+        </dialog>
+      </>}
+      {membershipLab && <>
+        <button type="button" aria-haspopup="dialog" disabled={busy || retained.pending !== null}
+          className="border-t border-line p-3 text-left text-sm disabled:opacity-40"
+          onClick={() => { balanceDialog.current?.showModal(); balanceDialog.current?.querySelector('input')?.focus() }}>{s.balanceTitle}</button>
+        <dialog ref={balanceDialog} aria-labelledby={balanceTitleId}
+          className="m-auto max-h-[90dvh] w-[calc(100%-2rem)] max-w-md overflow-y-auto rounded-lg border border-line bg-card text-fg p-0 backdrop:bg-fg/30">
+          <div className="flex flex-wrap items-start justify-between gap-2 border-b border-line p-3">
+            <h2 id={balanceTitleId} className="min-w-0 break-words font-semibold">{s.balanceTitle}</h2>
+            <button type="button" onClick={() => balanceDialog.current?.close()} className="rounded border border-line p-2">{s.isolationClose}</button>
+          </div>
+        <BalanceLab s={s} language={language} disabled={busy || retained.pending !== null}
+          storageKey={draftStorageKey ? draftStorageKey + ':balance' : undefined}
+          onRun={text => {
+            if (busy || retainedRef.current.pending) return
+            balanceDialog.current?.close()
+            voice.cancelSpeech()
+            sendQuestion(text, 'text')
+          }} />
         </dialog>
       </>}
       {membershipLab && <details className="border-t border-line">
