@@ -6534,6 +6534,8 @@ export interface components {
     }
     /** KnowledgeReadingOut */
     KnowledgeReadingOut: {
+      /** Notebook Upload Id */
+      notebook_upload_id?: string | null
       original_pdf?: components['schemas']['AcceptedPdfSource'] | null
       /** Draft Id */
       draft_id: string

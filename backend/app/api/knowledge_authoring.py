@@ -452,6 +452,7 @@ async def revise(
 async def accepted_reading(
     skill_id: str, db: DB, learner: Learner, settings: SettingsDep
 ) -> KnowledgeReadingOut | None:
+    from app.api.notebooks import owned_upload
     from app.kernel import skill_graph
 
     node = await skill_graph.get_node(db, skill_id, learner_id=learner.id)
@@ -464,12 +465,16 @@ async def accepted_reading(
     reading = _reading_view(node, draft, lo)
     accepted = draft.payload_json.get("authoring", {})
     upload_id, version_id = accepted.get("upload_id"), accepted.get("upload_version_id")
-    if (
-        isinstance(upload_id, str)
-        and isinstance(version_id, str)
-        and [reading.explanation, reading.worked_example]
-        == [accepted.get("explanation"), accepted.get("worked_example")]
-    ):
+    if isinstance(upload_id, str) and [reading.explanation, reading.worked_example] == [
+        accepted.get("explanation"),
+        accepted.get("worked_example"),
+    ]:
+        if version_id is None:
+            if await owned_upload(upload_id, db, learner, settings):
+                reading.notebook_upload_id = upload_id
+            return reading
+        if not isinstance(version_id, str):
+            return reading
         try:
             await owned_pdf_version(upload_id, version_id, db, learner, settings)
         except AppError as exc:

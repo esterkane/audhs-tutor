@@ -447,6 +447,7 @@ class AcceptedPdfSource(BaseModel):
 
 
 class KnowledgeReadingOut(BaseModel):
+    notebook_upload_id: str | None = None
     original_pdf: AcceptedPdfSource | None = None
     draft_id: str
     title: str

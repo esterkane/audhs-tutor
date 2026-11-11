@@ -9,6 +9,7 @@ import { Disclosure } from '../../components/ui/disclosure'
 import { Markdown } from '../../components/Markdown'
 import { LessonReader } from '../tutor/LessonReader'
 import { PredictionReading } from '../tutor/PredictionReading'
+import { UploadedNotebook } from './UploadedNotebook'
 import { UploadedPdfPages } from './UploadedPdfPages'
 import { SourceViewer } from './SourceViewer'
 import { useState } from 'react'
@@ -50,6 +51,7 @@ ${data.worked_example}`
     {data.case_comparison && <CasePractice key={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id}
       identity={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id} pair={data.case_comparison}/>}
     <Disclosure label="Your notes and source references"><Markdown text={data.notes} />
+      {data.notebook_upload_id && <UploadedNotebook key={data.notebook_upload_id} documentId={data.notebook_upload_id} />}
       {data.original_pdf && <div><Button variant="secondary" aria-expanded={openPdf === data.original_pdf.version_id}
         onClick={() => setOpenPdf(openPdf === data.original_pdf?.version_id ? null : data.original_pdf!.version_id)}>Original PDF source</Button>
         {openPdf === data.original_pdf.version_id && <UploadedPdfPages key={openPdf}
