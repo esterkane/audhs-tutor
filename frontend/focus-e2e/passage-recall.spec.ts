@@ -132,7 +132,8 @@ test('explicit prediction enrollment, unprompted recall and clean-browser recove
     const history = await third.newPage()
     await history.goto('/review?practice=passage')
     await expect(history.getByText(/No passage recall is due/)).toBeVisible()
-    await history.getByRole('button', { name: 'View last saved recall' }).click()
+    await history.getByRole('button', { name: 'View last saved recall' }).press('Enter')
+    await expect(history.getByRole('heading', { name: title, exact: true })).toBeFocused()
     for (const text of [prediction, passage, answer])
       await expect(history.getByText(text, { exact: true })).toBeVisible()
   } finally {
