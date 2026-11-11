@@ -315,8 +315,9 @@ async def update(
     if not previous:
         raise AppError("invalid_authoring_draft", "Choose a knowledge material draft.", 422)
     fields = body.model_dump(exclude={"expected_version"})
-    if "case_comparison" not in body.model_fields_set:
-        fields["case_comparison"] = previous.get("case_comparison")
+    for field in ("case_comparison", "explanation_prequestion", "worked_example_prequestion"):
+        if field not in body.model_fields_set and field in previous:
+            fields[field] = previous[field]
     command = KnowledgeMaterialInput.model_validate(fields)
     if previous.get("factual_review_id") and not previous.get("skill_slug"):
         # Recover review drafts saved before the original skill identity was retained.

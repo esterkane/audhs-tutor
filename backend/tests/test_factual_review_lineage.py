@@ -20,8 +20,20 @@ async def test_changed_unreachable_unchanged_and_explicit_revision_acceptance(
     await db.commit()
     await enable(db, learner)
     form = complete(focus_topic="postgresql")
+    activities = {
+        "explanation_prequestion": "What happens when Python joins strings?",
+        "worked_example_prequestion": "Which operand needs conversion in the example?",
+        "case_comparison": {
+            "case_a": "'Day ' + str(3)",
+            "case_b": "'Day ' + 3",
+            "failing_case": "b",
+            "rationale": "One operand is an integer.",
+        },
+    }
     new = await client.post(
-        "/api/knowledge-material/drafts", json=form, headers={"Idempotency-Key": str(uuid4())}
+        "/api/knowledge-material/drafts",
+        json=form | activities,
+        headers={"Idempotency-Key": str(uuid4())},
     )
     assert new.status_code == 200, new.text
     original = new.json()
@@ -37,6 +49,18 @@ async def test_changed_unreachable_unchanged_and_explicit_revision_acceptance(
     skill = await db.scalar(select(SkillNode).where(SkillNode.slug == slug))
     reading = f"/api/knowledge-material/skills/{skill.id}/reading"
     before = (await client.get(reading)).json()
+    source_question = before["prequestions"][0]
+    guess = "Both values must be strings."
+    enrollment = await client.post(
+        "/api/reading-predictions",
+        json={
+            "draft_id": before["draft_id"],
+            "learning_object_version": before["learning_object_version"],
+            "question_id": source_question["question_id"],
+            "prediction": guess,
+        },
+    )
+    assert enrollment.status_code == 200, enrollment.text
     route = f"/api/knowledge-material/drafts/{original['id']}/factual-review"
     url = "https://example.org/manual"
     assert (await client.put(route, json={"urls": [url]})).status_code == 200
@@ -99,6 +123,28 @@ async def test_changed_unreachable_unchanged_and_explicit_revision_acceptance(
     assert (await publish(changed.json())).status_code == 200
     after = (await client.get(reading)).json()
     assert after["draft_id"] == selected["id"] and after["explanation"] == edition["explanation"]
+    assert [q["question"] for q in after["prequestions"]] == [
+        q["question"] for q in before["prequestions"]
+    ]
+    assert after["prequestions"][0]["question_id"] != source_question["question_id"]
+    assert after["prequestions"][1] == before["prequestions"][1]
+    assert after["case_comparison"] == before["case_comparison"]
+    assert guess not in str(after)
+    receipt = enrollment.json()
+    monkeypatch.setattr("app.api.reading_predictions.utcnow_iso", lambda: receipt["due_at"])
+    due = (await client.get("/api/reading-predictions/due")).json()
+    assert (
+        due["question"] == source_question["question"]
+        and "prediction" not in due
+        and "passage" not in due
+    )
+    recalled = await client.post(
+        f"/api/reading-predictions/{receipt['id']}/recall", json={"answer": "Use two strings."}
+    )
+    assert (
+        recalled.json()["passage"] == before["explanation"]
+        and recalled.json()["prediction"] == guess
+    )
     assert after["learning_object_version"] == before["learning_object_version"] + 1
     await db.refresh(skill)
     assert skill.area_id == area.id
