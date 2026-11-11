@@ -151,7 +151,7 @@ function SearchForm({ initial, onSearch }: { initial: string; onSearch: (query: 
 function RecentMaterial() {
   const drafts = useDrafts()
   const recent = (drafts.data?.drafts ?? [])
-    .filter((row) => row.origin === 'knowledge_authored' && row.status !== 'published')
+    .filter((row) => row.origin === 'knowledge_authored' && row.status === 'draft')
     .slice(0, 5)
   return (
     <section aria-label="Recent material">
