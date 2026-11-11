@@ -20,6 +20,7 @@ function fixture() {
   const fetch = vi.fn(async (input: RequestInfo | URL) => {
     const url = String(input)
     if (url.includes('/curriculum/drafts')) return jsonResponse({ drafts: [] })
+    if (url.includes('/knowledge-material/library/lesson-matches?')) return jsonResponse([])
     if (url.includes('/skills')) return jsonResponse({ skills: [] })
     if (url.includes('/answers')) return jsonResponse({ items: [], next_cursor: null })
     if (url.includes('/curriculum/chunks/'))
