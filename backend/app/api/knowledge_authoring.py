@@ -325,6 +325,8 @@ async def create(
     }
     if body.diagram_label is None:
         empty_prequestions.add("diagram_label")
+    if body.state_trace is None:
+        empty_prequestions.add("state_trace")
     if body.relationship is None:
         empty_prequestions.add("relationship")
     if body.case_comparison is None:
@@ -380,6 +382,7 @@ async def update(
     for field in (
         "case_comparison",
         "relationship",
+        "state_trace",
         "explanation_prequestion",
         "worked_example_prequestion",
     ):
@@ -563,6 +566,9 @@ def _reading_view(
         sources=list(lo.sources_json or []),
         learning_object_version=lo.version,
         relationship=relationship,
+        state_trace=knowledge_authoring.accepted_state_trace(authoring.get("state_trace"))
+        if list(examples[:2]) == original_examples
+        else None,
         case_comparison=knowledge_authoring.accepted_case_comparison(
             draft.payload_json.get("authoring", {}).get("case_comparison")
         ),

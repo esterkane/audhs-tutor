@@ -1,3 +1,4 @@
+import { TraceAuthoring } from './StateTrace'
 import { RelationshipAuthoring } from './ConceptRelationship'
 import { CaseAuthoring } from './CasePractice'
 import { useSearchParams } from 'react-router-dom'
@@ -36,6 +37,7 @@ const empty = (): Form => ({
   worked_example_prequestion: '',
   case_comparison: null,
   relationship: null,
+  state_trace: null,
   question: '',
   criteria: [],
   research: null,
@@ -757,6 +759,8 @@ function Editor({
               </label>)}
             </fieldset>
           </Disclosure>
+          <TraceAuthoring value={form.state_trace ?? null} disabled={!!busy || readOnly}
+            onChange={state_trace => change({...form, state_trace})}/>
           <RelationshipAuthoring value={form.relationship ?? null} disabled={!!busy || readOnly}
             onChange={relationship => change({...form, relationship})}/>
           <CaseAuthoring pair={form.case_comparison ?? null} disabled={!!busy || readOnly}

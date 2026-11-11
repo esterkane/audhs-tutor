@@ -16,6 +16,7 @@ from app.schemas.knowledge_authoring import (
     ConceptRelationship,
     KnowledgeMaterialInput,
     ReadingPrequestion,
+    StateTrace,
 )
 
 
@@ -189,6 +190,17 @@ def accepted_prequestions(
             )
         )
     return result
+
+
+def accepted_state_trace(value: Any) -> StateTrace | None:
+    try:
+        trace = StateTrace.model_validate(value)
+    except ValueError:
+        return None
+    required = [trace.variable, trace.initial, trace.transfer_question, trace.transfer_answer]
+    for step in trace.steps:
+        required.extend((step.action, step.value))
+    return trace if len(trace.steps) >= 2 and all(part.strip() for part in required) else None
 
 
 def accepted_relationship(value: Any) -> ConceptRelationship | None:

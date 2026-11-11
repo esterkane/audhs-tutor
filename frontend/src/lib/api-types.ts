@@ -6517,6 +6517,7 @@ export interface components {
        */
       worked_example_prequestion: string
       relationship?: components['schemas']['ConceptRelationship'] | null
+      state_trace?: components['schemas']['StateTrace'] | null
       case_comparison?: components['schemas']['CaseComparison'] | null
       /** Criteria */
       criteria?: string[]
@@ -6575,6 +6576,7 @@ export interface components {
        */
       worked_example_prequestion: string
       relationship?: components['schemas']['ConceptRelationship'] | null
+      state_trace?: components['schemas']['StateTrace'] | null
       case_comparison?: components['schemas']['CaseComparison'] | null
       /** Criteria */
       criteria?: string[]
@@ -6607,6 +6609,7 @@ export interface components {
       /** Prequestions */
       prequestions?: components['schemas']['ReadingPrequestion'][]
       relationship?: components['schemas']['ConceptRelationship'] | null
+      state_trace?: components['schemas']['StateTrace'] | null
       case_comparison?: components['schemas']['AcceptedCaseComparison'] | null
     }
     /** KnowledgeResearch */
@@ -8943,6 +8946,44 @@ export interface components {
       request_id?: string | null
       /** Service Id */
       service_id?: string | null
+    }
+    /** StateTrace */
+    StateTrace: {
+      /**
+       * Variable
+       * @default
+       */
+      variable: string
+      /**
+       * Initial
+       * @default
+       */
+      initial: string
+      /** Steps */
+      steps?: components['schemas']['StateTraceStep'][]
+      /**
+       * Transfer Question
+       * @default
+       */
+      transfer_question: string
+      /**
+       * Transfer Answer
+       * @default
+       */
+      transfer_answer: string
+    }
+    /** StateTraceStep */
+    StateTraceStep: {
+      /**
+       * Action
+       * @default
+       */
+      action: string
+      /**
+       * Value
+       * @default
+       */
+      value: string
     }
     /** StudyConditions */
     StudyConditions: {

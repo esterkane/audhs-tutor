@@ -844,6 +844,18 @@ async def _validate_payload(
     pedagogy gaps a deterministic draft leaves open (criteria, exercises, guessable cloze)."""
     problems: list[Problem] = []
     authoring = payload.get("authoring")
+    if isinstance(authoring, dict) and authoring.get("state_trace") is not None:
+        from app.kernel.knowledge_authoring import accepted_state_trace
+
+        if accepted_state_trace(authoring["state_trace"]) is None:
+            problems.append(
+                Problem(
+                    "error",
+                    "state_trace",
+                    "Enter a starting value, at least two action/value steps, and a transfer question and answer.",
+                )
+            )
+
     if isinstance(authoring, dict) and authoring.get("relationship") is not None:
         from app.kernel.knowledge_authoring import accepted_relationship
 

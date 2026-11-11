@@ -607,6 +607,7 @@ async def test_legacy_create_identity_replays_without_new_optional_fields(
                 "case_comparison",
                 "relationship",
                 "diagram_label",
+                "state_trace",
             }
         )
         .encode()
@@ -625,3 +626,35 @@ async def test_legacy_create_identity_replays_without_new_optional_fields(
     )
     assert changed.status_code == 409
     assert await db.scalar(select(func.count()).select_from(CurriculumDraft)) == 1
+
+
+async def test_partial_state_trace_is_editable_but_must_be_complete_for_activation(client):
+    trace = {
+        "variable": "count",
+        "initial": "0",
+        "steps": [{"action": "Add one", "value": "1"}],
+        "transfer_question": "Start at 3?",
+        "transfer_answer": "4",
+    }
+    created = await client.post(
+        "/api/knowledge-material/drafts",
+        headers={"Idempotency-Key": str(uuid4())},
+        json=complete(state_trace=trace),
+    )
+    assert created.is_success, created.text
+    draft = created.json()
+    url = "/api/knowledge-material/drafts/" + draft["id"]
+    publish = "/api/curriculum/drafts/" + draft["id"] + "/publish"
+    invalid = await client.post(publish, json={"expected_version": draft["version"]})
+    assert invalid.status_code == 400
+    legacy = await client.put(url, json={**complete(), "expected_version": draft["version"]})
+    assert legacy.is_success
+    assert legacy.json()["payload"]["authoring"]["state_trace"]["steps"] == trace["steps"]
+    trace["steps"].append({"action": "Skip a hidden row", "value": "1"})
+    edit = await client.put(
+        url, json={**complete(state_trace=trace), "expected_version": legacy.json()["version"]}
+    )
+    assert edit.is_success
+    assert (
+        await client.post(publish, json={"expected_version": edit.json()["version"]})
+    ).is_success

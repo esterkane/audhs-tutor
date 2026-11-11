@@ -328,6 +328,19 @@ class KnowledgeResearch(BaseModel):
         return self
 
 
+class StateTraceStep(BaseModel):
+    action: str = Field(default="", max_length=500)
+    value: str = Field(default="", max_length=300)
+
+
+class StateTrace(BaseModel):
+    variable: str = Field(default="", max_length=100)
+    initial: str = Field(default="", max_length=300)
+    steps: list[StateTraceStep] = Field(default_factory=list, max_length=8)
+    transfer_question: str = Field(default="", max_length=500)
+    transfer_answer: str = Field(default="", max_length=500)
+
+
 class ConceptRelationship(BaseModel):
     """A learner-authored directed link; drafts may be incomplete."""
 
@@ -382,6 +395,7 @@ class KnowledgeMaterialInput(BaseModel):
     explanation_prequestion: str = Field(default="", max_length=1000)
     worked_example_prequestion: str = Field(default="", max_length=1000)
     relationship: ConceptRelationship | None = None
+    state_trace: StateTrace | None = None
     case_comparison: CaseComparison | None = None
     criteria: list[str] = Field(default_factory=list, max_length=12)
 
@@ -471,4 +485,5 @@ class KnowledgeReadingOut(BaseModel):
     learning_object_version: int
     prequestions: list[ReadingPrequestion] = Field(default_factory=list)
     relationship: ConceptRelationship | None = None
+    state_trace: StateTrace | None = None
     case_comparison: AcceptedCaseComparison | None = None

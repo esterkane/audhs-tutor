@@ -1,4 +1,5 @@
 import { DiagramSketch } from './DiagramSketch'
+import { TracePractice } from './StateTrace'
 import { RelationshipPractice } from './ConceptRelationship'
 import { CasePractice } from './CasePractice'
 import type { ReactNode } from 'react'
@@ -49,6 +50,8 @@ ${data.worked_example}`
     </PredictionReading>}
     {active && data.original_pdf?.diagram_label && <DiagramSketch key={data.draft_id+':'+data.learning_object_version}
       identity={data.draft_id+':'+data.learning_object_version} source={data.original_pdf} label={data.original_pdf.diagram_label} />}
+    {data.state_trace && <TracePractice key={data.draft_id+':'+data.learning_object_version}
+      identity={data.draft_id+':'+data.learning_object_version} value={data.state_trace} />}
     {data.relationship && <RelationshipPractice key={data.draft_id+':'+data.learning_object_version}
       identity={data.draft_id+':'+data.learning_object_version} value={data.relationship}/>}
     {data.case_comparison && <CasePractice key={data.draft_id+':'+data.learning_object_version+':'+data.case_comparison.comparison_id}
