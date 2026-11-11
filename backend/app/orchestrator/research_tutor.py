@@ -355,6 +355,7 @@ async def help_research(
             "The reply referred to an unavailable source passage. Your saved writing is unchanged.",
             422,
         )
+    cited = list(dict.fromkeys(parsed.source_indices))
     normalized = parsed.model_dump(exclude={"source_indices"})
     if isinstance(parsed, ResearchRepetitionRule) and verified:
         normalized = {
@@ -365,9 +366,8 @@ async def help_research(
     answer = ResearchTutorAnswer.model_validate(
         {
             **normalized,
-            "source_quotes": [
-                passages[index - 1] for index in dict.fromkeys(parsed.source_indices)
-            ],
+            "source_quotes": [passages[index - 1] for index in cited],
+            "source_passage_ids": cited,
         }
     )
     if (

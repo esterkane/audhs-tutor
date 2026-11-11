@@ -31,6 +31,7 @@ class ResearchTutorAnswer(BaseModel):
     discussion: str = Field(default="", max_length=2000)
     needs_check: str = Field(default="", max_length=1000)
     source_quotes: list[str] = Field(default_factory=list, max_length=3)
+    source_passage_ids: list[Annotated[int, Field(ge=1)]] = Field(default_factory=list, max_length=3)
     next_question: str = Field(default="", max_length=500)
     section: str = Field(default="", max_length=2000)
 

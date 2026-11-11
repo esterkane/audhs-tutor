@@ -8147,6 +8147,8 @@ export interface components {
       needs_check: string
       /** Source Quotes */
       source_quotes?: string[]
+      /** Source Passage Ids */
+      source_passage_ids?: number[]
       /**
        * Next Question
        * @default

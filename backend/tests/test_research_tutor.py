@@ -244,6 +244,7 @@ async def test_numbered_evidence_keeps_entire_source_and_attaches_exact_saved_te
         0
     ]["answer"]
     assert answer["source_quotes"] == [passage[3600:]]
+    assert answer["source_passage_ids"] == [3]
     content = fake_local.calls[0].messages[-1].content
     data = json.loads(content.split("\n", 1)[1].rsplit("\n", 1)[0])
     assert next(iter(data)) == "source_passages"

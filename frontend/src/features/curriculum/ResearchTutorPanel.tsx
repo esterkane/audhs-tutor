@@ -35,7 +35,10 @@ export function ResearchTutorPanel({ research, question, disabled, sourceChanged
       {!exchange.answer.source_quotes?.length && <p className="text-warn">Source support unavailable — this reply needs checking.</p>}
       {exchange.answer.discussion && <Markdown text={exchange.answer.discussion} />}
       <Disclosure label={`Sources (${exchange.answer.source_quotes?.length ?? 0})`}>
-        {(exchange.answer.source_quotes ?? []).map((quote, i) => <blockquote key={i} className="whitespace-pre-wrap border-l-2 pl-3">{quote}</blockquote>)}
+        {(exchange.answer.source_quotes ?? []).map((quote, i) => <div key={i}>
+          {exchange.answer.source_passage_ids?.length === exchange.answer.source_quotes?.length && <p>Passage [{exchange.answer.source_passage_ids?.[i]}]</p>}
+          <blockquote className="whitespace-pre-wrap border-l-2 pl-3">{quote}</blockquote>
+        </div>)}
         {!exchange.answer.source_quotes?.length && <p className="text-warn">No source passages were supplied with this reply. Check its claims against your materials before using it.</p>}
         {!!exchange.answer.source_quotes?.length && <p className="text-sm text-muted">Quoted source content is evidence to inspect, not independent verification of every claim.</p>}
       </Disclosure>
