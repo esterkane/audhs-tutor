@@ -12,6 +12,7 @@ it('retries the same versioned page in place after an image failure', () => {
   button.focus()
   fireEvent.click(button)
   const first = screen.getByAltText('Original uploaded PDF page 2')
+  expect(first.closest('figure')?.querySelector('figcaption')).toHaveTextContent(/^Original PDF page 2\.$/)
   fireEvent.error(first)
   expect(screen.getByRole('button', { name: 'Retry original page 2' })).toHaveFocus()
   fireEvent.click(button)
