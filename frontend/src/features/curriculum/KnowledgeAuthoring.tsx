@@ -675,7 +675,8 @@ function Editor({
             <p>Uploaded source linked. Its passages remain attached to the lesson.</p>
             {form.upload_version_id && <UploadedPdfPages key={form.upload_version_id} uploadId={form.upload_id} versionId={form.upload_version_id}
               diagramLabel={form.diagram_label} editLabel={readOnly || busy ? undefined : diagram_label => change({...form, diagram_label})} />}
-            <UploadedNotebook key={form.upload_id} documentId={form.upload_id} />
+            <UploadedNotebook key={form.upload_id} documentId={form.upload_id} notes={form.notes}
+              addSource={readOnly || busy ? undefined : notes => change({ ...form, notes })} />
           </>}
           <label>
             Your notes and selected source content

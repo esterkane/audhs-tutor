@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 from app.api.deps import DB, Learner, SettingsDep
 from app.core.errors import AppError
 from app.db.models import Document
+from app.notebooks.edits import saved_edits
 from app.notebooks.inspection import NotebookInspection, inspect_notebook
 from app.notebooks.lab import NotebookLab
 
@@ -90,6 +91,28 @@ async def upload_availability(
     return NotebookUploadAvailability(
         available=await owned_upload(document_id, db, learner, settings) is not None
     )
+
+
+@router.get("/uploads/{document_id}/edits", response_model=list[str])
+async def upload_edits(
+    document_id: str,
+    request: Request,
+    response: Response,
+    db: DB,
+    learner: Learner,
+    settings: SettingsDep,
+) -> list[str]:
+    local(request)
+    response.headers["Cache-Control"] = "no-store"
+    path = await owned_upload(document_id, db, learner, settings)
+    if path is None:
+        raise HTTPException(404, "The original notebook is unavailable.")
+    try:
+        return await asyncio.to_thread(saved_edits, path, settings.project_root, document_id)
+    except (OSError, ValueError, RecursionError) as exc:
+        raise HTTPException(
+            422, "Could not read the saved notebook. Check its format and size."
+        ) from exc
 
 
 @router.post("/uploads/{document_id}/start", response_model=NotebookStatus)
