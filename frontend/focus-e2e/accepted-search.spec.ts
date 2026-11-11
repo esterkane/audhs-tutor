@@ -7,6 +7,7 @@ test('search finds a worked example across activation and follows the latest acc
 }) => {
   const body = {
     title: 'Synthetic visibility lesson',
+    focus_topic: 'postgresql',
     domain: 'programming',
     notes: 'Personal note about grants.',
     objective: 'Separate privileges from visibility.',

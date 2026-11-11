@@ -14,7 +14,7 @@ test('explicit prediction enrollment, unprompted recall and clean-browser recove
   if (!db?.match(/^\/tmp\/audhs-c2-browser-[\w-]+\/synthetic\.db$/))
     throw new Error('Disposable browser fixture required')
   await endOpenSession(request)
-  const title = 'Synthetic separated permissions'
+  const title = 'Synthetic delayed recall of permissions'
   const passage = 'A table privilege permits SELECT. A policy may restrict visible rows.'
   const question = 'What happens when the role has SELECT but no row passes the policy?'
   const prediction = 'I predict an empty result.'
@@ -23,6 +23,7 @@ test('explicit prediction enrollment, unprompted recall and clean-browser recove
     headers: { 'Idempotency-Key': crypto.randomUUID() },
     data: {
       title,
+      focus_topic: 'postgresql',
       domain: 'programming',
       objective: 'Distinguish privilege from visibility.',
       notes: 'Synthetic database permission notes.',

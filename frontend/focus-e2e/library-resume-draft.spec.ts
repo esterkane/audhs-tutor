@@ -7,6 +7,7 @@ test('Library keeps editable work reachable after newer drafts were discarded', 
       headers: { 'Idempotency-Key': crypto.randomUUID() },
       data: {
         title,
+        focus_topic: 'postgresql',
         domain: 'programming',
         notes: 'Synthetic personal notes on SQL privileges.',
         workflow_step: 'source',

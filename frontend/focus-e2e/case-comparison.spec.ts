@@ -19,6 +19,7 @@ test('author, accept, compare, restore and skip on a narrow screen', async ({
     headers: { 'Idempotency-Key': crypto.randomUUID() },
     data: {
       title,
+      focus_topic: 'postgresql',
       domain: 'programming',
       objective: 'Distinguish privilege from visibility.',
       notes: 'Synthetic database permission notes.',

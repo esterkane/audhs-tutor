@@ -5,7 +5,7 @@ test('write and activate a lesson directly from personal notes, without a resear
   request,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 })
-  await page.goto('/curriculum')
+  await page.goto('/curriculum?topic=postgresql')
   const title = 'Synthetic personal lesson on privileges'
   const notes = 'An application role requires a table SELECT grant to read rows.'
   await page.getByLabel('Material title', { exact: true }).fill(title)
