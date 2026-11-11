@@ -146,6 +146,10 @@ def test_implemented_bindings_exist_in_current_oracle_report_shape():
     paths.update(f"concurrency.{index}.{key}" for index in (0, 1) for key in returned_dict("skew"))
     for family in ("null_comparisons", "read_committed"):
         paths.update(f"{family}.{key}" for key in returned_dict(family))
+    for assignment in ("absolute", "relative"):
+        paths.update(
+            f"read_committed.{assignment}.{key}" for key in returned_dict("read_committed_update")
+        )
     for binding in manifest()["oracle_bindings"].values():
         if binding["availability"] == "implemented":
             assert binding["report_path"] in paths
