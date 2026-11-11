@@ -56,7 +56,8 @@ def main():
             continue
         if server.get("port") == 8890:
             print(
-                "A notebook lab is already running on port 8890. Reuse its authenticated browser tab, or stop it with Ctrl-C in its terminal before launching another."
+                "A notebook lab is already running on port 8890. Reuse its authenticated browser tab, "
+                "or stop it with Ctrl-C in its terminal before launching another."
             )
             return 0
     clean_env = {
@@ -66,6 +67,7 @@ def main():
     }
     clean_env["PATH"] = str(python.parent) + os.pathsep + clean_env.get("PATH", os.defpath)
     clean_env["VIRTUAL_ENV"] = str(env)
+    clean_env["JUPYTERLAB_WORKSPACES_DIR"] = str(ROOT / "data/notebook-workspaces")
     command = [
         str(python),
         "-m",
