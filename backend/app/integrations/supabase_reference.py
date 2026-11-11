@@ -92,20 +92,21 @@ def lab_scope_note(
     return f"These results were measured on PostgreSQL {measured}. A separate run is needed for {versions}."
 
 
-def config_default_request(text: str) -> str | None:
+def config_default_request(text: str) -> tuple[str, bool] | None:
     key = r"(`?)([a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+)\1"
     request = re.fullmatch(
         r"(?i:what(?: is|'s) the default(?: value)? (?:of|for)|"
         r"was ist der standardwert (?:von|für)) "
         + key
-        + r" (?i:in (?:supabase/)?config\.toml|in (?:the |der )?supabase cli)\??",
+        + r" (?i:in (?:supabase/)?config\.toml|in (?:the |der )?supabase cli)"
+        r"(?P<required>(?i:,? (?:and is it required|und ist (?:er|es) erforderlich)))?\??",
         text.strip(),
     )
-    return request[2] if request else None
+    return (request[2], bool(request["required"])) if request else None
 
 
 async def config_default_answer(
-    text: str, key: str, state: Any, ctx: Any
+    text: str, key: str, include_required: bool, state: Any, ctx: Any
 ) -> ReferenceAnswer | None:
     from backend.tutor.tools import TurnBudget, dispatch
 
@@ -114,7 +115,7 @@ async def config_default_answer(
     if result.is_error:
         return None
     url = "https://supabase.com/docs/guides/local-development/cli/config"
-    matches: list[tuple[str, dict[str, Any]]] = []
+    matches: list[tuple[str, str, dict[str, Any]]] = []
     for hit in json.loads(result.content).get("results", []):
         if hit.get("url") not in {url, f"{url}#{key}"} or hit.get("tier") != 1:
             continue
@@ -133,10 +134,12 @@ async def config_default_answer(
         if fields:
             cells = [field.strip() for field in fields[0].split("|")]
             if len(cells) == 3 and cells[0] == key and cells[2] in {"true", "false"}:
-                matches.append((cells[1], hit))
-    if len({value for value, _ in matches}) != 1:
+                matches.append((cells[1], cells[2], hit))
+    if len({value for value, _, _ in matches}) != 1:
         return None
-    value, source = matches[0]
+    if include_required and len({flag for _, flag, _ in matches}) != 1:
+        return None
+    value, required, source = matches[0]
     # Only literal numeric and boolean defaults are unambiguous without the surrounding prose.
     if not re.fullmatch(r"true|false|-?[0-9]+(?:\.[0-9]+)?", value):
         return None
@@ -150,6 +153,13 @@ async def config_default_answer(
         if state.language == "de"
         else f"{label} `{value}` as the default for `{key}`."
     )
+    if include_required:
+        if state.language == "de":
+            requirement = "erforderlich" if required == "true" else "optional"
+            description += f" Die Referenz führt diese Einstellung als {requirement}."
+        else:
+            requirement = "required" if required == "true" else "optional"
+            description += f" The reference marks this setting as {requirement}."
     return build_reference_answer(
         text,
         state,
@@ -186,9 +196,10 @@ async def reference_answer(
             and not history
             and not getattr(state, "objective", None)
         ):
-            key = config_default_request(text)
-            if key:
-                return await config_default_answer(text, key, state, ctx)
+            request = config_default_request(text)
+            if request:
+                key, include_required = request
+                return await config_default_answer(text, key, include_required, state, ctx)
         return None
     from backend.tutor.tools import TurnBudget, dispatch
 

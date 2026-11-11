@@ -219,10 +219,8 @@ CONFIG = "https://supabase.com/docs/guides/local-development/cli/config"
 QUESTION = "What is the default value for api.max_rows in supabase/config.toml?"
 
 
-def config_context(value="42", *, url=CONFIG, prefix="", key="api.max_rows"):
-    content = (
-        f"{prefix}| Name | Default | Required |\n| --- | --- | --- |\n| {key} | {value} | false |"
-    )
+def config_context(value="42", *, url=CONFIG, prefix="", key="api.max_rows", required="false"):
+    content = f"{prefix}| Name | Default | Required |\n| --- | --- | --- |\n| {key} | {value} | {required} |"
     ctx = context(content, url)
     hit = ctx.retriever.search.return_value[0]
     ctx.retriever.search.return_value = [hit.model_copy(update={"tier": 1})]
@@ -287,3 +285,34 @@ async def test_config_default_declines_missing_conflicting_historical_or_bad_evi
         ctx = config_context()
         assert await reference_answer(QUESTION, st, ctx, hist) is None
         ctx.retriever.search.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("question", "language", "required", "expected"),
+    [
+        (QUESTION[:-1] + ", and is it required?", "en", "false", "as optional"),
+        (
+            "Was ist der Standardwert für api.max_rows in der Supabase CLI und ist er erforderlich?",
+            "de",
+            "true",
+            "als erforderlich",
+        ),
+    ],
+)
+async def test_config_default_with_required_column(question, language, required, expected):
+    ctx = config_context(value="0", required=required)
+    answer = await reference_answer(question, state(language=language), ctx)
+    assert answer and "`0`" in answer.turn.text and expected in answer.turn.text
+    assert expected in answer.turn.speech and answer.turn.citations[0].url == CONFIG
+
+
+async def test_conflicting_requirement_or_unanswered_extra_question_declines():
+    ctx = config_context()
+    ctx.retriever.search.return_value += config_context(
+        required="true"
+    ).retriever.search.return_value
+    assert await reference_answer(QUESTION[:-1] + " and is it required?", state(), ctx) is None
+    assert await reference_answer(QUESTION, state(), ctx) is not None
+    ctx = config_context()
+    assert await reference_answer(QUESTION[:-1] + " and why is it required?", state(), ctx) is None
+    ctx.retriever.search.assert_not_called()
