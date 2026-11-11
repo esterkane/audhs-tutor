@@ -4,7 +4,7 @@ import { API, expectOk, endOpenSession } from '../e2e/helpers'
 test('rate an explicitly enrolled pair of authored discrimination cases', async ({ page, request }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await endOpenSession(request)
-  const title = 'Synthetic scheduled comparison'
+  const title = 'Synthetic scheduled comparison ' + crypto.randomUUID()
   const passage = 'A table privilege permits SELECT. A policy may restrict visible rows.'
   const question = 'What happens when the role has SELECT but no row passes the policy?'
   const caseA = 'The role has a SELECT grant, but a policy hides the row.'
