@@ -1,5 +1,6 @@
 import { afterEach, expect, test, vi } from 'vitest'
-import { TutorApi } from './api'
+import { t } from './i18n'
+import { ApiError, TutorApi, turnErrorMessage } from './api'
 
 afterEach(() => vi.unstubAllGlobals())
 function client(body: BodyInit) {
@@ -45,7 +46,14 @@ test.each(['turn', 'error', 'token'] as const)('keeps the %s outcome when the co
   const result = api.turn('session', 'Question', event)
   if (kind === 'turn') await expect(result).rejects.toThrow('Your answer was saved')
   if (kind === 'error') await expect(result).resolves.toBeUndefined()
-  if (kind === 'token') await expect(result).rejects.toBe(error)
+  if (kind === 'token') await expect(result).rejects.toMatchObject({ streamOutcome: 'incomplete' })
   expect(event).toHaveBeenCalledExactlyOnceWith({ event: kind, data })
   expect(fetch).toHaveBeenCalledTimes(1)
+})
+
+test('localizes interrupted turns and preserves the actual provider failure', () => {
+  expect(turnErrorMessage(new ApiError(502, '', 'saved'), t('de'))).toContain('gespeichert')
+  expect(turnErrorMessage(new ApiError(502, '', 'incomplete'), t('de'))).toContain('Verlauf')
+  for (const lang of ['de', 'en'] as const)
+    expect(turnErrorMessage(new ApiError(503, 'Daily budget exhausted'), t(lang))).toBe('Daily budget exhausted')
 })

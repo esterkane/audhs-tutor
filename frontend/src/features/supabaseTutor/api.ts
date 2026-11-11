@@ -1,4 +1,5 @@
 // Typed client for the FastAPI router (backend/tutor/router.py), mounted at apiBase.
+import type { Strings } from './i18n'
 import { SseParser } from './sse'
 import type {
   IncidentScalar,
@@ -14,10 +15,20 @@ import type {
 
 export class ApiError extends Error {
   status: number
-  constructor(status: number, message: string) {
+  readonly streamOutcome?: 'incomplete' | 'saved'
+  constructor(status: number, message: string, streamOutcome?: 'incomplete' | 'saved') {
     super(message)
     this.status = status
+    this.streamOutcome = streamOutcome
   }
+}
+
+export function turnErrorMessage(error: unknown, strings: Strings): string {
+  if (error instanceof ApiError) {
+    if (error.streamOutcome === 'saved') return strings.savedStreamInterrupted
+    if (error.streamOutcome === 'incomplete') return strings.incompleteStream
+  }
+  return error instanceof Error ? error.message : String(error)
 }
 
 export class TutorApi {
@@ -129,8 +140,9 @@ export class TutorApi {
         } catch (error) {
           if (terminal === 'error') return
           if (terminal === 'turn')
-            throw new ApiError(502, 'Your answer was saved. Reload to check for later session updates.')
-          throw error
+            throw new ApiError(502, 'Your answer was saved. Reload to check for later session updates.', 'saved')
+          if (signal?.aborted) throw error
+          throw new ApiError(502, 'Tutor connection interrupted before a complete answer.', 'incomplete')
         }
         const { value, done } = chunk
         if (done) break
@@ -143,6 +155,7 @@ export class TutorApi {
         throw new ApiError(
           502,
           'Tutor stream ended before a complete answer. Restore or re-enter your question to retry.',
+          'incomplete',
         )
     } finally {
       reader.releaseLock()

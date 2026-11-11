@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
-import { ApiError, TutorApi } from './api'
+import { ApiError, TutorApi, turnErrorMessage } from './api'
 import type { AuthClient, AuthSession } from './auth/authClient'
 import { LoginForm } from './auth/LoginForm'
 import { ChatPanel, type InputMode } from './chat/ChatPanel'
@@ -233,10 +233,10 @@ export function TutorApp({
           .then((r) => setLedger(r.entries))
           .catch(() => undefined)
       } catch (e) {
-        dispatch({ type: 'fail', message: e instanceof ApiError && e.status === 503 ? s.noKey : String(e) })
+        dispatch({ type: 'fail', message: turnErrorMessage(e, s) })
       }
     },
-    [api, session, s.noKey],
+    [api, session, s],
   )
 
   const editIncident: IncidentEditFn = useCallback(
