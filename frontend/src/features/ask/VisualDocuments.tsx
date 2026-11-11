@@ -1,7 +1,7 @@
+import { VisualDescription } from './VisualDescription'
 import { lazy, Suspense, useEffect, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Button } from '../../components/ui/button'
-import { Disclosure } from '../../components/ui/disclosure'
 import type { Schemas } from '../../lib/api'
 import { boundedRead } from '../../lib/boundedRead'
 import { VisualEditor } from './VisualEditor'
@@ -69,14 +69,10 @@ function VisualDocument({ document, learnerId, locked }: { document: Document; l
         <h3 className="font-semibold">{spec.title}</h3>
         <p className="text-sm text-muted">Version {detail.data!.version} · {detail.data!.origin?.kind === 'model' ? 'Model-generated draft' : detail.data!.origin?.kind === 'learner' ? 'Learner-edited draft' : 'Origin unknown'} · No learning assessment.</p>
         <p>{detail.data!.grounding_now === 'sources_recorded' ? 'Source references are recorded; this does not verify the diagram.' : detail.data!.grounding_now === 'ungrounded' ? 'Ungrounded: no source passages support this draft.' : 'Grounding is unavailable or changed. Review the original answer and sources before relying on this draft.'}</p>
-        <p>{spec.text_equivalent}</p>
+        <VisualDescription value={spec} />
         <VisualFallback key={detail.data!.id}><Suspense fallback={<p role="status">Loading diagram renderer…</p>}>
-          <RelationshipGraph graph={{ title: spec.title, textEquivalent: spec.text_equivalent, directed: spec.directed, nodes: spec.nodes, edges: spec.edges }} showTextEquivalent={false} />
+          <RelationshipGraph graph={{ title: spec.title, textEquivalent: spec.text_equivalent, directed: spec.directed, nodes: spec.nodes, edges: spec.edges }} showTextEquivalent={false} showConnections={false} />
         </Suspense></VisualFallback>
-        <Disclosure label="Read all concepts and relationships">
-          <ul className="list-disc pl-5 space-y-2">{spec.nodes.map(node => <li key={node.id}><strong>{node.label}:</strong> {node.explanation}</li>)}</ul>
-          <ul className="list-disc pl-5 space-y-2 mt-3">{spec.edges.map(edge => <li key={edge.id}>{spec.nodes.find(node => node.id === edge.source)?.label} {spec.directed ? '→' : '—'} {spec.nodes.find(node => node.id === edge.target)?.label}: {edge.label}</li>)}</ul>
-        </Disclosure>
         <p className="text-sm text-muted">Source passages, when available, are in the answer above.</p>
         <VisualEditor key={`edit:${detail.data!.id}`} document={document} learnerId={learnerId} version={detail.data!} readOnly={locked || document.archived || versionId !== rows[0]?.id || offset !== 0} />
         {<VisualReview readOnly={locked || document.archived || versionId !== versions.data?.[0]?.id || offset !== 0} key={`review:${detail.data!.id}`} documentId={document.id} learnerId={learnerId} version={detail.data!} />}

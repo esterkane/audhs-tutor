@@ -11,7 +11,7 @@ export interface RelationshipGraphData {
   nodes: ReadonlyArray<{ id: string; label: string; explanation: string }>
   edges: ReadonlyArray<{ id: string; source: string; target: string; label: string }>
 }
-export default function RelationshipGraph({ graph, showTextEquivalent = true }: { graph: RelationshipGraphData; showTextEquivalent?: boolean }) {
+export default function RelationshipGraph({ graph, showTextEquivalent = true, showConnections = true }: { graph: RelationshipGraphData; showTextEquivalent?: boolean; showConnections?: boolean }) {
   const [selected, setSelected] = useState('')
   const frame = useRef<HTMLDivElement>(null)
   const [width, setWidth] = useState(0)
@@ -38,7 +38,7 @@ export default function RelationshipGraph({ graph, showTextEquivalent = true }: 
       </div>
     </div>
     {showTextEquivalent && <p>{graph.textEquivalent}</p>}
-    {graph.edges.length > 0 && <details className="border border-line rounded-md p-3">
+    {showConnections && graph.edges.length > 0 && <details className="border border-line rounded-md p-3">
       <summary className="cursor-pointer">Read connections as text</summary>
       <p className="text-sm text-muted mt-2">Numbers in the diagram match this list.</p>
       <ol className="list-decimal pl-5 mt-2 space-y-2 break-words">
