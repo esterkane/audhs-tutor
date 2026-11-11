@@ -9,6 +9,9 @@ import { API_URL } from '../playwright.config'
 const root = resolve(import.meta.dirname, '../..')
 test.beforeAll(async ({ request }) => {
   expect((await request.get(API_URL + '/api/learner/me')).ok()).toBeTruthy()
+  const recallDb = process.env.AUDHS_RECALL_FIXTURE_DB
+  if (recallDb && !/^\/tmp\/audhs-c2-browser-[\w-]+\/synthetic\.db$/.test(recallDb))
+    throw new Error('Disposable browser fixture required')
   const destination = mkdtempSync(resolve(tmpdir(), 'audhs-focus-map-'))
   execFileSync(
     resolve(root, 'backend/.venv/bin/python'),
@@ -22,7 +25,7 @@ test.beforeAll(async ({ request }) => {
       cwd: resolve(root, 'backend'),
       env: {
         ...process.env,
-        DATABASE_URL: 'sqlite+aiosqlite:///' + resolve(root, 'data/focus-sandbox.db'),
+        DATABASE_URL: 'sqlite+aiosqlite:///' + (recallDb || resolve(root, 'data/focus-sandbox.db')),
         ANTHROPIC_API_KEY: '',
         OPENAI_API_KEY: '',
         DAILY_BUDGET_USD: '0',

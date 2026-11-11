@@ -171,7 +171,10 @@ jobs:
       - name: Journeys (fresh seeded sandbox DB, hosted providers off, code runs offline)
         run: make test-e2e
       - name: Focused authoring after an isolated map reset
-        run: cd frontend && pnpm exec playwright test --config=playwright.focus.config.ts
+        run: |
+          fixture=$(mktemp -d /tmp/audhs-c2-browser-XXXXXXXX)
+          cd frontend
+          AUDHS_RECALL_FIXTURE_DB="$fixture/synthetic.db" pnpm exec playwright test --config=playwright.focus.config.ts
       - name: CPU OCR runtime for the scanned upload journey
         run: sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends poppler-utils tesseract-ocr tesseract-ocr-eng tesseract-ocr-deu
       - name: Scanned PDF through source, research, writing, review and learning

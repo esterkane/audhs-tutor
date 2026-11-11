@@ -94,7 +94,7 @@ test('explicit prediction enrollment, unprompted recall and clean-browser recove
     await expect(recall.getByText(/No passage recall is due/)).toBeVisible()
     execFileSync('python3', [
       '-c',
-      "import sqlite3,sys; db=sqlite3.connect(sys.argv[1]); row=db.execute(\"UPDATE reading_prediction SET created_at='2001-01-01T00:00:00+00:00',due_at='2001-01-02T00:00:00+00:00' WHERE id=?\",(sys.argv[2],)); assert row.rowcount==1; db.commit()",
+      "import sqlite3,sys; db=sqlite3.connect(sys.argv[1]); row=db.execute(\"UPDATE reading_prediction SET due_at=created_at WHERE id=?\",(sys.argv[2],)); assert row.rowcount==1; db.commit()",
       db,
       receipt.id,
     ])
